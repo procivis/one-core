@@ -1,0 +1,13 @@
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [
+  "lib/one-core",
+  
+  "apps/mock-server"
+]
+
+[workspace.dependencies]
+one-core = { path = "lib/one-core" }
