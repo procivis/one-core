@@ -1,0 +1,35 @@
+image: rust:alpine
+
+stages:
+  - build
+  - test
+  - publish
+  - deploy
+
+
+build:
+  stage: build
+  script:
+    - cargo build --release --features strict
+  artifacts:
+    paths:
+      - target/release/
+
+tests:
+  stage: test
+  dependencies: [ build ]
+  script:
+    - cargo test --features strict
+
+linter:clippy:
+  stage: test
+  dependencies: [ build ]
+  script:
+    - rustup component add clippy
+    - cargo clippy --all-targets -- -D warnings
+
+linter:rustfmt:
+  stage: test
+  script:
+    - rustup component add rustfmt
+    - cargo fmt --all -- --check
