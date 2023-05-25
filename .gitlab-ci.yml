@@ -13,7 +13,7 @@ build:
     - cargo build --release --features strict
   artifacts:
     paths:
-      - target/release/
+      - target/release/mock-server
 
 tests:
   stage: test
