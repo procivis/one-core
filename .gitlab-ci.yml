@@ -6,10 +6,10 @@ stages:
   - publish
   - deploy
 
-
 build:
   stage: build
   script:
+    - apk add musl-dev
     - cargo build --release --features strict
   artifacts:
     paths:
@@ -19,12 +19,14 @@ tests:
   stage: test
   dependencies: [ build ]
   script:
+    - apk add musl-dev
     - cargo test --features strict
 
 linter:clippy:
   stage: test
   dependencies: [ build ]
   script:
+    - apk add musl-dev
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
 
