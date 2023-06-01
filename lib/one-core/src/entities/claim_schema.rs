@@ -1,7 +1,8 @@
-use crate::data_model;
 use chrono::{offset::Utc, DateTime};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::data_model;
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
@@ -9,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct Model {
     #[sea_orm(primary_key)]
     #[serde(skip_deserializing)]
-    pub id: i32,
+    pub id: u32,
 
     pub createdDate: DateTime<Utc>,
     pub lastModified: DateTime<Utc>,
@@ -17,7 +18,7 @@ pub struct Model {
     pub key: String,
     pub datatype: data_model::Datatype,
 
-    pub credentialId: i32,
+    pub credentialId: u32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

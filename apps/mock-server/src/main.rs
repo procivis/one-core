@@ -2,6 +2,7 @@
 
 use std::net::SocketAddr;
 
+use axum::routing::delete;
 use axum::{routing::post, Router};
 use sea_orm::DatabaseConnection;
 use utoipa::OpenApi;
@@ -10,7 +11,11 @@ use utoipa_swagger_ui::SwaggerUi;
 use migration::{Migrator, MigratorTrait};
 
 mod create_credential_schema;
+mod delete_credential_schema;
 mod endpoints;
+
+#[cfg(test)]
+mod test_utilities;
 
 async fn setup_database_and_connection() -> Result<DatabaseConnection, sea_orm::DbErr> {
     const DATABASE_URL: &str = "sqlite::memory:";
@@ -31,6 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(OpenApi)]
     #[openapi(
         paths(
+            endpoints::delete_credential_schema,
             endpoints::post_credential_schema
         ),
         components(
@@ -53,6 +59,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .route(
+            "/api/credential-schema/v1/:id",
+            delete(endpoints::delete_credential_schema),
+        )
         .route(
             "/api/credential-schema/v1",
             post(endpoints::post_credential_schema),
