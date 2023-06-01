@@ -13,6 +13,7 @@ pub struct Model {
 
     pub createdDate: DateTime<Utc>,
     pub lastModified: DateTime<Utc>,
+    pub deletedAt: Option<DateTime<Utc>>,
     pub key: String,
     pub datatype: data_model::Datatype,
 
