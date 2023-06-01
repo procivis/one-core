@@ -3,11 +3,18 @@ name = "mock-server"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [features]
 # Treat build warnings as error
 strict = []
 
 [dependencies]
 one-core.workspace = true
+migration.workspace = true
+
+chrono.workspace = true
+sea-orm.workspace = true
+utoipa.workspace = true
+
+axum = { version = "0.6" }
+tokio = { version = "1.26", features = ["full"]}
+utoipa-swagger-ui = {version = "3.0", features = ["axum"]}
