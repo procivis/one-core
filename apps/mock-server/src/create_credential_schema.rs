@@ -1,6 +1,7 @@
 use chrono::Utc;
-use one_core::data_model::CreateCredentialSchemaRequestDTO;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, Set};
+
+use one_core::data_model::CreateCredentialSchemaRequestDTO;
 
 pub(crate) async fn create_credential_schema(
     db: &DatabaseConnection,
@@ -39,12 +40,12 @@ pub(crate) async fn create_credential_schema(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use migration::{Migrator, MigratorTrait};
     use one_core::data_model::*;
     use one_core::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
     use sea_orm::EntityTrait;
+
+    use super::*;
+    use crate::test_utilities::*;
 
     fn create_schema() -> CreateCredentialSchemaRequestDTO {
         CreateCredentialSchemaRequestDTO {
@@ -63,12 +64,6 @@ mod tests {
                 },
             ],
         }
-    }
-
-    async fn setup_test_database_and_connection() -> Result<DatabaseConnection, DbErr> {
-        let db = sea_orm::Database::connect("sqlite::memory:").await?;
-        Migrator::up(&db, None).await?;
-        Ok(db)
     }
 
     #[tokio::test]

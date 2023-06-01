@@ -2,7 +2,7 @@ use chrono::{offset::Utc, DateTime};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::super::data_model::{Format, RevocationMethod};
+use crate::data_model::{Format, RevocationMethod};
 
 #[allow(non_snake_case)]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
@@ -10,7 +10,7 @@ use super::super::data_model::{Format, RevocationMethod};
 pub struct Model {
     #[sea_orm(primary_key)]
     #[serde(skip_deserializing)]
-    pub id: i32,
+    pub id: u32,
 
     pub deletedAt: Option<DateTime<Utc>>,
     pub createdDate: DateTime<Utc>,
