@@ -18,11 +18,15 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ClaimSchemas::Key).string())
-                    .col(ColumnDef::new(ClaimSchemas::Datatype).enumeration(
-                        Datatype::Table,
-                        [Datatype::STRING, Datatype::DATE, Datatype::NUMBER],
-                    ))
+                    .col(ColumnDef::new(ClaimSchemas::Key).string().not_null())
+                    .col(
+                        ColumnDef::new(ClaimSchemas::Datatype)
+                            .enumeration(
+                                Datatype::Table,
+                                [Datatype::STRING, Datatype::DATE, Datatype::NUMBER],
+                            )
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ClaimSchemas::CreatedDate).time().not_null())
                     .col(ColumnDef::new(ClaimSchemas::LastModified).time().not_null())
                     .col(ColumnDef::new(ClaimSchemas::DeletedAt).time())
