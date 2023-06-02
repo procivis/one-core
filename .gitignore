@@ -3,3 +3,5 @@
 
 # IDE settings
 .idea/
+
+postgresql-*.tgz

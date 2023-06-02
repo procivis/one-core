@@ -1,37 +1,111 @@
 image: rust:alpine
 
+
 stages:
   - build
   - test
   - publish
   - deploy
 
+
+before_script:
+  - APP_FLAVOR=$(echo $CI_COMMIT_TAG | sed -n "s/^v.*-\(.*\)$/\1/p")
+  - APP_FLAVOR=${APP_FLAVOR:-procivis}
+  - APP_VERSION=$(echo $CI_COMMIT_TAG | sed -n "s/^\(v.*\)-.*$/\1/p")
+  - APP_VERSION=${APP_VERSION:-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA}
+  - IMAGE_NAME=$CI_REGISTRY_IMAGE/$APP_FLAVOR
+  - IMAGE_TAG=$IMAGE_NAME:$APP_VERSION
+
+.only_main_or_tag:
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
+      when: on_success
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: on_success
+    - when: never
+
+
 build:
   stage: build
   script:
     - apk add musl-dev
-    - cargo build --release --features strict
+    - rustup target add x86_64-unknown-linux-musl
+    - cargo build --target x86_64-unknown-linux-musl --release --features strict
   artifacts:
     paths:
-      - target/release/mock-server
+      - target/x86_64-unknown-linux-musl/release/mock-server
+
 
 tests:
   stage: test
-  dependencies: [ build ]
   script:
     - apk add musl-dev
     - cargo test --features strict
 
+
 linter:clippy:
   stage: test
-  dependencies: [ build ]
   script:
     - apk add musl-dev
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
+
 
 linter:rustfmt:
   stage: test
   script:
     - rustup component add rustfmt
     - cargo fmt --all -- --check
+
+
+publish:
+  stage: publish
+  image: docker:latest
+  services:
+    - docker:dind
+  dependencies: [ build ]
+  script:
+    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
+    - docker build -t $IMAGE_TAG -f docker/Dockerfile .
+    - >
+      if [ "$CI_COMMIT_REF_NAME" == "main" ] ; then
+        docker image tag $IMAGE_TAG $IMAGE_NAME:latest
+        docker push $IMAGE_NAME:latest
+      fi
+    - docker push $IMAGE_TAG
+    - docker logout
+  extends:
+    - .only_main_or_tag
+
+
+.deploy_k8s:
+  image: registry.gitlab.procivis.ch/procivis/one/one-operations/az-helm-kubectl:1.25.7
+  variables:
+    DEPLOY_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    K8S_TYPE: deployment
+    HELM_APP_NAME: one-core
+    HELM_PATH: onecorechart
+  before_script:
+    - az login --service-principal -u "$AD_APP_ID" -p "$AD_APP_SECRET" --tenant "$AD_TENANT_ID"
+    - az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --admin
+  script:
+    - cd "$HELM_PATH"
+    - helm repo add bitnami https://charts.bitnami.com/bitnami
+    - helm dep build
+    - >
+      helm upgrade --install $HELM_APP_NAME .
+      --values $HELM_VALUES_FILE
+      --set "image.tag=$DEPLOY_IMAGE_TAG"
+      --namespace $K8S_NAMESPACE
+    - kubectl rollout restart $K8S_TYPE $HELM_APP_NAME-$HELM_PATH --namespace=$K8S_NAMESPACE
+
+
+deploy:
+  stage: deploy
+  extends:
+    - .deploy_k8s
+  variables:
+    HELM_VALUES_FILE: values/desk.dev.one-trust-solution.yaml
+    K8S_NAMESPACE: default
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "main"

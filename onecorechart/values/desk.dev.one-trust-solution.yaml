@@ -1,0 +1,7 @@
+
+ingress:
+  hosts:
+  - host: core.dev.one-trust-solution.com
+    paths:
+      - path: /
+        pathType: ImplementationSpecific
