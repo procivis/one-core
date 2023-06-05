@@ -16,7 +16,7 @@ pub(crate) async fn create_credential_schema(
         lastModified: Set(now),
         format: Set(request.format),
         deletedAt: Default::default(),
-        revocationMethod: Set(request.revocation_method),
+        revocationMethod: Set(request.revocationMethod),
     }
     .insert(db)
     .await?;
@@ -51,8 +51,8 @@ mod tests {
         CreateCredentialSchemaRequestDTO {
             name: "credential".to_string(),
             format: Format::JWT,
-            revocation_method: RevocationMethod::STATUSLIST2021,
-            organisation_id: "123".to_string(),
+            revocationMethod: RevocationMethod::STATUSLIST2021,
+            organisationId: "123".to_string(),
             claims: vec![
                 CredentialClaimSchemaRequestDTO {
                     key: "1".to_string(),
