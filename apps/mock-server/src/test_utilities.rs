@@ -19,13 +19,13 @@ pub async fn insert_credential_schema_to_database(
 ) -> Result<u32, DbErr> {
     let schema = credential_schema::ActiveModel {
         id: Default::default(),
-        createdDate: Set(get_dummy_date()),
-        lastModified: Set(get_dummy_date()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
         format: Set(Default::default()),
         name: Set(Default::default()),
-        revocationMethod: Set(Default::default()),
+        revocation_method: Set(Default::default()),
 
-        deletedAt: Set(deleted_at),
+        deleted_at: Set(deleted_at),
     }
     .insert(database)
     .await?;
@@ -39,13 +39,13 @@ pub async fn insert_claim_schema_to_database(
 ) -> Result<u32, DbErr> {
     let schema = claim_schema::ActiveModel {
         id: Default::default(),
-        createdDate: Set(get_dummy_date()),
-        lastModified: Set(get_dummy_date()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
         key: Set(Default::default()),
         datatype: Set(Default::default()),
 
-        deletedAt: Set(deleted_at),
-        credentialId: Set(credential_schema_id),
+        deleted_at: Set(deleted_at),
+        credential_id: Set(credential_schema_id),
     }
     .insert(database)
     .await?;
