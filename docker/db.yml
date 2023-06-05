@@ -1,0 +1,16 @@
+services:
+  mariadb:
+    image: mariadb:10.9
+    ports:
+      - 3306:3306
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Qpq5nDb5MKD6v9bt8dPD
+      MYSQL_PASSWORD: 886eOqVMmlHsayu6Vyxw
+      MYSQL_USER: core
+      MYSQL_DATABASE: core
+    restart: on-failure
+
+volumes:
+  mariadb_data:
