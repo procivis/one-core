@@ -14,7 +14,6 @@ pub struct Model {
 
     pub created_date: DateTime<Utc>,
     pub last_modified: DateTime<Utc>,
-    pub deleted_at: Option<DateTime<Utc>>,
     pub key: String,
     pub datatype: data_model::Datatype,
 

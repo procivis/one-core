@@ -26,7 +26,6 @@ pub(crate) async fn create_credential_schema(
             id: Default::default(),
             created_date: Set(now),
             last_modified: Set(now),
-            deleted_at: Default::default(),
             key: Set(claim_schema.key),
             datatype: Set(claim_schema.datatype),
             credential_id: Set(credential_schema.id),
