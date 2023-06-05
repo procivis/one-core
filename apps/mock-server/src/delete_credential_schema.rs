@@ -58,7 +58,7 @@ async fn delete_credential_schema_from_database(
     now: DateTime<Utc>,
 ) -> Option<DbErr> {
     let mut value: credential_schema::ActiveModel = credential_schema.into();
-    value.deletedAt = Set(Some(now));
+    value.deleted_at = Set(Some(now));
     value.reset(credential_schema::Column::DeletedAt);
 
     value.update(db).await.err()
@@ -90,7 +90,7 @@ async fn delete_claim_schema(
     now: DateTime<Utc>,
 ) -> Result<claim_schema::Model, DbErr> {
     let mut claim_schema: claim_schema::ActiveModel = claim_schema.into();
-    claim_schema.deletedAt = Set(Some(now));
+    claim_schema.deleted_at = Set(Some(now));
     claim_schema.reset(claim_schema::Column::DeletedAt);
 
     claim_schema.update(db).await
@@ -119,7 +119,7 @@ mod tests {
         assert!(deleted_schema.is_some());
 
         let now = Utc::now();
-        let deleted_at = deleted_schema.unwrap().deletedAt;
+        let deleted_at = deleted_schema.unwrap().deleted_at;
         assert!(deleted_at.is_some());
         assert!(are_datetimes_within_minute(now, deleted_at.unwrap()));
     }
@@ -142,7 +142,7 @@ mod tests {
             .await
             .unwrap();
         assert!(deleted_schema.is_some());
-        assert_eq!(predefined_deletion_date, deleted_schema.unwrap().deletedAt);
+        assert_eq!(predefined_deletion_date, deleted_schema.unwrap().deleted_at);
     }
 
     #[tokio::test]
@@ -179,7 +179,7 @@ mod tests {
         assert!(deleted_schema.is_some());
         assert!(are_datetimes_within_minute(
             now,
-            deleted_schema.unwrap().deletedAt.unwrap()
+            deleted_schema.unwrap().deleted_at.unwrap()
         ));
 
         let deleted_claim_one = get_claim_schema_with_id(&database, claim_one)
@@ -188,7 +188,7 @@ mod tests {
         assert!(deleted_claim_one.is_some());
         assert!(are_datetimes_within_minute(
             now,
-            deleted_claim_one.unwrap().deletedAt.unwrap()
+            deleted_claim_one.unwrap().deleted_at.unwrap()
         ));
 
         let deleted_claim_two = get_claim_schema_with_id(&database, claim_two)
@@ -197,7 +197,7 @@ mod tests {
         assert!(deleted_claim_two.is_some());
         assert!(are_datetimes_within_minute(
             now,
-            deleted_claim_two.unwrap().deletedAt.unwrap()
+            deleted_claim_two.unwrap().deleted_at.unwrap()
         ));
 
         let deleted_claim_three = get_claim_schema_with_id(&database, claim_three)
@@ -206,7 +206,7 @@ mod tests {
         assert!(deleted_claim_three.is_some());
         assert_eq!(
             predefined_deletion_date,
-            deleted_claim_three.unwrap().deletedAt
+            deleted_claim_three.unwrap().deleted_at
         );
     }
 }

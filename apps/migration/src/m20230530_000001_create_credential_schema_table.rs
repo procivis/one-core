@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(ClaimSchemas::Datatype)
                             .enumeration(
                                 Datatype::Table,
-                                [Datatype::STRING, Datatype::DATE, Datatype::NUMBER],
+                                [Datatype::String, Datatype::Date, Datatype::Number],
                             )
                             .not_null(),
                     )
@@ -67,7 +67,7 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(CredentialSchemas::Format)
                             .enumeration(
                                 Format::Table,
-                                [Format::JWT, Format::SD_JWT, Format::JSON_LD, Format::MDOC],
+                                [Format::Jwt, Format::SdJwt, Format::JsonLd, Format::Mdoc],
                             )
                             .not_null(),
                     )
@@ -75,7 +75,7 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(CredentialSchemas::RevocationMethod)
                             .enumeration(
                                 RevocationMethod::Table,
-                                [RevocationMethod::STATUSLIST2021, RevocationMethod::LVVC],
+                                [RevocationMethod::StatusList2021, RevocationMethod::Lvvc],
                             )
                             .not_null(),
                     )
@@ -103,28 +103,26 @@ enum CredentialSchemas {
     RevocationMethod,
 }
 
-#[allow(clippy::upper_case_acronyms, non_camel_case_types)]
 #[derive(Iden)]
 enum Format {
     Table,
     #[iden = "JWT"]
-    JWT,
+    Jwt,
     #[iden = "SD_JWT"]
-    SD_JWT,
+    SdJwt,
     #[iden = "JSON_LD"]
-    JSON_LD,
+    JsonLd,
     #[iden = "MDOC"]
-    MDOC,
+    Mdoc,
 }
 
-#[allow(clippy::upper_case_acronyms, non_camel_case_types)]
 #[derive(Iden)]
 enum RevocationMethod {
     Table,
     #[iden = "STATUSLIST2021"]
-    STATUSLIST2021,
+    StatusList2021,
     #[iden = "LVVC"]
-    LVVC,
+    Lvvc,
 }
 
 #[derive(Iden)]
@@ -139,14 +137,13 @@ enum ClaimSchemas {
     CredentialId,
 }
 
-#[allow(clippy::upper_case_acronyms, non_camel_case_types)]
 #[derive(Iden)]
 enum Datatype {
     Table,
     #[iden = "STRING"]
-    STRING,
+    String,
     #[iden = "DATE"]
-    DATE,
+    Date,
     #[iden = "NUMBER"]
-    NUMBER,
+    Number,
 }

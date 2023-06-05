@@ -12,11 +12,11 @@ pub(crate) async fn create_credential_schema(
     let credential_schema = one_core::entities::credential_schema::ActiveModel {
         id: Default::default(),
         name: Set(request.name),
-        createdDate: Set(now),
-        lastModified: Set(now),
+        created_date: Set(now),
+        last_modified: Set(now),
         format: Set(request.format),
-        deletedAt: Default::default(),
-        revocationMethod: Set(request.revocationMethod),
+        deleted_at: Default::default(),
+        revocation_method: Set(request.revocation_method),
     }
     .insert(db)
     .await?;
@@ -24,12 +24,12 @@ pub(crate) async fn create_credential_schema(
     for claim_schema in request.claims {
         one_core::entities::claim_schema::ActiveModel {
             id: Default::default(),
-            createdDate: Set(now),
-            lastModified: Set(now),
-            deletedAt: Default::default(),
+            created_date: Set(now),
+            last_modified: Set(now),
+            deleted_at: Default::default(),
             key: Set(claim_schema.key),
             datatype: Set(claim_schema.datatype),
-            credentialId: Set(credential_schema.id),
+            credential_id: Set(credential_schema.id),
         }
         .insert(db)
         .await?;
@@ -50,17 +50,17 @@ mod tests {
     fn create_schema() -> CreateCredentialSchemaRequestDTO {
         CreateCredentialSchemaRequestDTO {
             name: "credential".to_string(),
-            format: Format::JWT,
-            revocationMethod: RevocationMethod::STATUSLIST2021,
-            organisationId: "123".to_string(),
+            format: Format::Jwt,
+            revocation_method: RevocationMethod::StatusList2021,
+            organisation_id: "123".to_string(),
             claims: vec![
                 CredentialClaimSchemaRequestDTO {
                     key: "1".to_string(),
-                    datatype: Datatype::STRING,
+                    datatype: Datatype::String,
                 },
                 CredentialClaimSchemaRequestDTO {
                     key: "2".to_string(),
-                    datatype: Datatype::NUMBER,
+                    datatype: Datatype::Number,
                 },
             ],
         }

@@ -2,7 +2,6 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-#[allow(non_camel_case_types)]
 #[derive(
     Clone,
     Debug,
@@ -16,15 +15,15 @@ use utoipa::ToSchema;
     DeriveActiveEnum,
 )]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum RevocationMethod {
     #[default]
     #[sea_orm(string_value = "STATUSLIST2021")]
-    STATUSLIST2021,
+    StatusList2021,
     #[sea_orm(string_value = "LVVC")]
-    LVVC,
+    Lvvc,
 }
 
-#[allow(non_camel_case_types)]
 #[derive(
     Clone,
     Debug,
@@ -38,25 +37,26 @@ pub enum RevocationMethod {
     DeriveActiveEnum,
 )]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Format {
     #[default]
     #[sea_orm(string_value = "JWT")]
-    JWT,
+    Jwt,
     #[sea_orm(string_value = "SD_JWT")]
-    SD_JWT,
+    SdJwt,
     #[sea_orm(string_value = "JSON_LD")]
-    JSON_LD,
+    JsonLd,
     #[sea_orm(string_value = "MDOC")]
-    MDOC,
+    Mdoc,
 }
 
-#[allow(non_snake_case)]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: Format,
-    pub revocationMethod: RevocationMethod,
-    pub organisationId: String,
+    pub revocation_method: RevocationMethod,
+    pub organisation_id: String,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }
 
@@ -79,12 +79,13 @@ pub struct CredentialClaimSchemaRequestDTO {
     DeriveActiveEnum,
 )]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum Datatype {
     #[default]
     #[sea_orm(string_value = "STRING")]
-    STRING,
+    String,
     #[sea_orm(string_value = "DATE")]
-    DATE,
+    Date,
     #[sea_orm(string_value = "NUMBER")]
-    NUMBER,
+    Number,
 }

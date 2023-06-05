@@ -4,20 +4,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::data_model::{Format, RevocationMethod};
 
-#[allow(non_snake_case)]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "credential_schemas")]
+#[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key)]
     #[serde(skip_deserializing)]
     pub id: u32,
 
-    pub deletedAt: Option<DateTime<Utc>>,
-    pub createdDate: DateTime<Utc>,
-    pub lastModified: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub created_date: DateTime<Utc>,
+    pub last_modified: DateTime<Utc>,
     pub name: String,
     pub format: Format,
-    pub revocationMethod: RevocationMethod,
+    pub revocation_method: RevocationMethod,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

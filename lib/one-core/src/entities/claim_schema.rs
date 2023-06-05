@@ -4,21 +4,21 @@ use serde::{Deserialize, Serialize};
 
 use crate::data_model;
 
-#[allow(non_snake_case)]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "claim_schemas")]
+#[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key)]
     #[serde(skip_deserializing)]
     pub id: u32,
 
-    pub createdDate: DateTime<Utc>,
-    pub lastModified: DateTime<Utc>,
-    pub deletedAt: Option<DateTime<Utc>>,
+    pub created_date: DateTime<Utc>,
+    pub last_modified: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
     pub key: String,
     pub datatype: data_model::Datatype,
 
-    pub credentialId: u32,
+    pub credential_id: u32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
