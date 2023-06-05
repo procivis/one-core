@@ -50,12 +50,13 @@ pub enum Format {
     MDOC,
 }
 
+#[allow(non_snake_case)]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: Format,
-    pub revocation_method: RevocationMethod,
-    pub organisation_id: String,
+    pub revocationMethod: RevocationMethod,
+    pub organisationId: String,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }
 
