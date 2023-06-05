@@ -1,4 +1,4 @@
-image: rust:alpine
+image: rust:1.70-alpine
 
 
 stages:
