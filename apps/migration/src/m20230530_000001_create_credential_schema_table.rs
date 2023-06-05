@@ -29,7 +29,6 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(ClaimSchemas::CreatedDate).time().not_null())
                     .col(ColumnDef::new(ClaimSchemas::LastModified).time().not_null())
-                    .col(ColumnDef::new(ClaimSchemas::DeletedAt).time())
                     .col(
                         ColumnDef::new(ClaimSchemas::CredentialId)
                             .integer()
@@ -133,7 +132,6 @@ enum ClaimSchemas {
     Key,
     CreatedDate,
     LastModified,
-    DeletedAt,
     CredentialId,
 }
 

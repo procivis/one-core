@@ -2,7 +2,7 @@ use chrono::{DateTime, Duration, NaiveDate, NaiveTime, Utc};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 
 use migration::{Migrator, MigratorTrait};
-use one_core::entities::{claim_schema, credential_schema};
+use one_core::entities::credential_schema;
 
 pub fn get_dummy_date() -> DateTime<Utc> {
     DateTime::from_utc(
@@ -32,26 +32,6 @@ pub async fn insert_credential_schema_to_database(
     Ok(schema.id)
 }
 
-pub async fn insert_claim_schema_to_database(
-    database: &DatabaseConnection,
-    credential_schema_id: u32,
-    deleted_at: Option<DateTime<Utc>>,
-) -> Result<u32, DbErr> {
-    let schema = claim_schema::ActiveModel {
-        id: Default::default(),
-        created_date: Set(get_dummy_date()),
-        last_modified: Set(get_dummy_date()),
-        key: Set(Default::default()),
-        datatype: Set(Default::default()),
-
-        deleted_at: Set(deleted_at),
-        credential_id: Set(credential_schema_id),
-    }
-    .insert(database)
-    .await?;
-    Ok(schema.id)
-}
-
 pub async fn get_credential_schema_with_id(
     database: &DatabaseConnection,
     id: u32,
@@ -59,13 +39,6 @@ pub async fn get_credential_schema_with_id(
     credential_schema::Entity::find_by_id(id)
         .one(database)
         .await
-}
-
-pub async fn get_claim_schema_with_id(
-    database: &DatabaseConnection,
-    id: u32,
-) -> Result<Option<claim_schema::Model>, DbErr> {
-    claim_schema::Entity::find_by_id(id).one(database).await
 }
 
 pub async fn setup_test_database_and_connection() -> Result<DatabaseConnection, DbErr> {
