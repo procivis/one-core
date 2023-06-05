@@ -1,13 +1,14 @@
-FROM alpine:3.16.0
+FROM debian:11-slim
 
 ARG GID=1000
 ARG UID=1000
 ARG USER=rust
 
-RUN addgroup -g $GID -S $USER && \
-    adduser -S $USER -G $USER --uid "$UID"
 
-COPY --chown=$USER:$USER target/x86_64-unknown-linux-musl/release/mock-server /usr/local/bin
+RUN groupadd -g $GID $USER && \
+    useradd -r -u $UID -g $USER $USER
+
+COPY --chown=$USER:$USER target/release/mock-server /usr/local/bin
 
 EXPOSE 3000
 
