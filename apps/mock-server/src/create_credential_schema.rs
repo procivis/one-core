@@ -1,7 +1,7 @@
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, Set};
 use time::OffsetDateTime;
 
-use one_core::data_model::CreateCredentialSchemaRequestDTO;
+use crate::data_model::CreateCredentialSchemaRequestDTO;
 
 pub(crate) async fn create_credential_schema(
     db: &DatabaseConnection,
@@ -40,11 +40,14 @@ pub(crate) async fn create_credential_schema(
 
 #[cfg(test)]
 mod tests {
-    use one_core::data_model::*;
-    use one_core::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
     use sea_orm::EntityTrait;
 
+    use one_core::entities::claim_schema::Datatype;
+    use one_core::entities::credential_schema::{Format, RevocationMethod};
+    use one_core::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
+
     use super::*;
+    use crate::data_model::*;
     use crate::test_utilities::*;
 
     fn create_schema() -> CreateCredentialSchemaRequestDTO {

@@ -56,7 +56,6 @@ async fn delete_credential_schema_from_database(
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use crate::test_utilities::*;
 

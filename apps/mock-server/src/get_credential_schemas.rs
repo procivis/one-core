@@ -1,12 +1,8 @@
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseBackend, DatabaseConnection, DbErr, EntityTrait,
-    PaginatorTrait, QueryFilter, QuerySelect, QueryTrait, Set,
-};
+use sea_orm::{DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QuerySelect};
 use serde::Deserialize;
-use time::OffsetDateTime;
-use utoipa::{IntoParams, ToSchema};
+use utoipa::IntoParams;
 
-use one_core::data_model::{CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO};
+use crate::data_model::{CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO};
 use one_core::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
 
 #[derive(Deserialize, IntoParams)]
