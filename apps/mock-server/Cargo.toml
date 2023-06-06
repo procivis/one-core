@@ -11,8 +11,8 @@ strict = []
 one-core.workspace = true
 migration.workspace = true
 
-chrono.workspace = true
 sea-orm.workspace = true
+time.workspace = true
 utoipa.workspace = true
 
 tracing.workspace = true

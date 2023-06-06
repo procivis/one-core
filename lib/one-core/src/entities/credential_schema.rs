@@ -1,6 +1,6 @@
-use chrono::{offset::Utc, DateTime};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use crate::data_model::{Format, RevocationMethod};
 
@@ -12,9 +12,9 @@ pub struct Model {
     #[serde(skip_deserializing)]
     pub id: u32,
 
-    pub deleted_at: Option<DateTime<Utc>>,
-    pub created_date: DateTime<Utc>,
-    pub last_modified: DateTime<Utc>,
+    pub deleted_at: Option<OffsetDateTime>,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: Format,
     pub revocation_method: RevocationMethod,

@@ -1,5 +1,5 @@
-use chrono::Utc;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, Set};
+use time::OffsetDateTime;
 
 use one_core::data_model::CreateCredentialSchemaRequestDTO;
 
@@ -7,7 +7,7 @@ pub(crate) async fn create_credential_schema(
     db: &DatabaseConnection,
     request: CreateCredentialSchemaRequestDTO,
 ) -> Result<(), DbErr> {
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
 
     let credential_schema = one_core::entities::credential_schema::ActiveModel {
         id: Default::default(),

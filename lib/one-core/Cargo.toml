@@ -10,7 +10,7 @@ strict = []
 [dependencies]
 sea-orm.workspace = true
 
-chrono.workspace = true
+time.workspace = true
 utoipa.workspace = true
 
 tracing.workspace = true
