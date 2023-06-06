@@ -80,7 +80,63 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(CredentialSchemas::OrganisationId)
-                            .integer()
+                            .unsigned()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(ProofSchemaClaims::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(ProofSchemaClaims::ClaimSchemaId)
+                            .unsigned()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchemaClaims::ProofSchemaId)
+                            .unsigned()
+                            .not_null(),
+                    )
+                    .primary_key(
+                        Index::create()
+                            .name("pk-ClaimSchema_ProofSchema")
+                            .col(ProofSchemaClaims::ClaimSchemaId)
+                            .col(ProofSchemaClaims::ProofSchemaId)
+                            .primary(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(ProofSchemas::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(ProofSchemas::Id)
+                            .unsigned()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(ProofSchemas::DeletedAt).time())
+                    .col(ColumnDef::new(ProofSchemas::CreatedDate).time().not_null())
+                    .col(ColumnDef::new(ProofSchemas::LastModified).time().not_null())
+                    .col(ColumnDef::new(ProofSchemas::Name).string().not_null())
+                    .col(
+                        ColumnDef::new(ProofSchemas::ExpireDuration)
+                            .unsigned()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchemas::OrganisationId)
+                            .unsigned()
                             .not_null(),
                     )
                     .to_owned(),
@@ -90,7 +146,19 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
+            .drop_table(Table::drop().table(ClaimSchemas::Table).to_owned())
+            .await?;
+
+        manager
             .drop_table(Table::drop().table(CredentialSchemas::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(ProofSchemaClaims::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(ProofSchemas::Table).to_owned())
             .await
     }
 }
@@ -150,4 +218,23 @@ enum Datatype {
     Date,
     #[iden = "NUMBER"]
     Number,
+}
+
+#[derive(Iden)]
+enum ProofSchemas {
+    Table,
+    Id,
+    DeletedAt,
+    CreatedDate,
+    LastModified,
+    Name,
+    ExpireDuration,
+    OrganisationId,
+}
+
+#[derive(Iden)]
+enum ProofSchemaClaims {
+    Table,
+    ClaimSchemaId, // ClaimSchemas::Id
+    ProofSchemaId, // ProofSchemas::Id
 }
