@@ -17,6 +17,7 @@ pub(crate) async fn create_credential_schema(
         format: Set(request.format),
         deleted_at: Default::default(),
         revocation_method: Set(request.revocation_method),
+        organisation_id: Set(0), // TODO: Set this correctly once organisation table is added
     }
     .insert(db)
     .await?;
