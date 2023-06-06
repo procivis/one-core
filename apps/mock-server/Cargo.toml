@@ -15,6 +15,13 @@ chrono.workspace = true
 sea-orm.workspace = true
 utoipa.workspace = true
 
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
 axum = { version = "0.6" }
+tower-http = { version = "0.4", features = [ "trace"] }
 tokio = { version = "1.26", features = ["full"]}
 utoipa-swagger-ui = {version = "3.0", features = ["axum"]}
+shadow-rs = "0.23.0"
+envmnt = "0.10.4"
+panic-handler = "2.1.2"

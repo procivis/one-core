@@ -1,0 +1,24 @@
+# Docs: https://github.com/sagiegurari/cargo-make
+
+env_files = [
+    "./dev.env",
+]
+
+[config]
+default_to_workspace = false
+
+[tasks.clean]
+command = "cargo"
+args = ["clean"]
+
+[tasks.build]
+command = "cargo"
+args = ["build"]
+
+[tasks.run]
+command = "cargo"
+args = ["run"]
+
+[tasks.test]
+command = "cargo"
+args = ["test"]

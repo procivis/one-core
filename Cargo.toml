@@ -6,7 +6,7 @@ edition = "2021"
 default-members = ["apps/mock-server"]
 members = [
   "lib/one-core",
-  
+
   "apps/migration",
   "apps/mock-server"
 ]
@@ -18,3 +18,5 @@ migration = { path = "apps/migration" }
 chrono = "0.4"
 sea-orm = { version = "0.11", features = [ "sqlx-all", "runtime-tokio-rustls", "macros" ] }
 utoipa = "3.0"
+tracing = "0.1"
+tracing-subscriber = {version="0.3",  features = ["env-filter", "fmt", "json"]}
