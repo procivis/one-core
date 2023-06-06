@@ -1,11 +1,18 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::{http::StatusCode, Json};
 use sea_orm::DbErr;
+use serde::Deserialize;
 
 use crate::create_credential_schema::create_credential_schema;
+use crate::get_credential_schemas::*;
 use crate::AppState;
 
-use one_core::data_model::CreateCredentialSchemaRequestDTO;
+use one_core::data_model::{
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaResponseDTO,
+    CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO,
+};
+use one_core::entities::claim_schema;
+use one_core::entities::credential_schema;
 
 #[utoipa::path(
         delete,
@@ -30,13 +37,39 @@ pub(crate) async fn delete_credential_schema(
             DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
             DbErr::RecordNotUpdated => StatusCode::NOT_FOUND,
             _ => {
-                eprintln!("Error while deleting credential: {:?}", error);
+                tracing::error!("Error while deleting credential: {:?}", error);
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         };
     }
 
     StatusCode::NO_CONTENT
+}
+
+#[utoipa::path(
+        get,
+        path = "/api/credential-schema/v1",
+        responses(
+            (status = 200, description = "OK"),
+            (status = 500, description = "Server error"),
+        ),
+        params(
+            GetCredentialSchemaQuery
+        )
+    )]
+pub(crate) async fn get_credential_schema(
+    state: State<AppState>,
+    Query(query): Query<GetCredentialSchemaQuery>,
+) -> Response {
+    let result = get_credential_schemas(&state.db, query.page, query.page_size).await;
+
+    match result {
+        Err(error) => {
+            tracing::error!("Error while getting credential: {:?}", error);
+            (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response()
+        }
+        Ok(value) => (StatusCode::OK, Json::from(value)).into_response(),
+    }
 }
 
 #[utoipa::path(
@@ -54,7 +87,7 @@ pub(crate) async fn post_credential_schema(
     let result = create_credential_schema(&state.db, request.0).await;
 
     if let Err(error) = result {
-        eprintln!("Error while inserting credential: {:?}", error);
+        tracing::error!("Error while inserting credential: {:?}", error);
         return StatusCode::INTERNAL_SERVER_ERROR;
     }
 

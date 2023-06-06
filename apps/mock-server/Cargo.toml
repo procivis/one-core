@@ -12,11 +12,12 @@ one-core.workspace = true
 migration.workspace = true
 
 sea-orm.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 time.workspace = true
-utoipa.workspace = true
-
 tracing.workspace = true
 tracing-subscriber.workspace = true
+utoipa.workspace = true
 
 axum = { version = "0.6" }
 tower-http = { version = "0.4", features = [ "trace"] }
