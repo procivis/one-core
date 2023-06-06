@@ -1,21 +1,16 @@
-use chrono::{DateTime, Duration, NaiveDate, NaiveTime, Utc};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
+use time::{macros::datetime, Duration, OffsetDateTime};
 
 use migration::{Migrator, MigratorTrait};
 use one_core::entities::credential_schema;
 
-pub fn get_dummy_date() -> DateTime<Utc> {
-    DateTime::from_utc(
-        NaiveDate::from_ymd_opt(2005, 4, 2)
-            .unwrap()
-            .and_time(NaiveTime::from_hms_opt(21, 37, 00).unwrap()),
-        Utc,
-    )
+pub fn get_dummy_date() -> OffsetDateTime {
+    datetime!(2005-04-02 21:37 +1)
 }
 
 pub async fn insert_credential_schema_to_database(
     database: &DatabaseConnection,
-    deleted_at: Option<DateTime<Utc>>,
+    deleted_at: Option<OffsetDateTime>,
 ) -> Result<u32, DbErr> {
     let schema = credential_schema::ActiveModel {
         id: Default::default(),
@@ -48,8 +43,8 @@ pub async fn setup_test_database_and_connection() -> Result<DatabaseConnection, 
     Ok(db)
 }
 
-pub fn are_datetimes_within_minute(d1: DateTime<Utc>, d2: DateTime<Utc>) -> bool {
-    (d2 - d1) < Duration::minutes(1)
+pub fn are_datetimes_within_minute(d1: OffsetDateTime, d2: OffsetDateTime) -> bool {
+    (d2 - d1).abs() < Duration::minutes(1)
 }
 
 #[test]
@@ -61,5 +56,10 @@ fn test_are_datetimes_within_minute() {
     assert!(!are_datetimes_within_minute(
         d1,
         d1 + Duration::seconds(120)
+    ));
+
+    assert!(!are_datetimes_within_minute(
+        d1 + Duration::seconds(120),
+        d1
     ));
 }

@@ -1,7 +1,7 @@
-use chrono::{DateTime, Utc};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
 };
+use time::OffsetDateTime;
 
 use one_core::entities::{credential_schema, CredentialSchema};
 
@@ -20,7 +20,7 @@ pub(crate) async fn delete_credential_schema(
         )));
     }
 
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
 
     let mut database_errors: Vec<DbErr> = vec![];
     for credential_schema in result {
@@ -45,7 +45,7 @@ pub(crate) async fn delete_credential_schema(
 async fn delete_credential_schema_from_database(
     db: &DatabaseConnection,
     credential_schema: credential_schema::Model,
-    now: DateTime<Utc>,
+    now: OffsetDateTime,
 ) -> Option<DbErr> {
     let mut value: credential_schema::ActiveModel = credential_schema.into();
     value.deleted_at = Set(Some(now));
@@ -76,7 +76,7 @@ mod tests {
             .unwrap();
         assert!(deleted_schema.is_some());
 
-        let now = Utc::now();
+        let now = OffsetDateTime::now_utc();
         let deleted_at = deleted_schema.unwrap().deleted_at;
         assert!(deleted_at.is_some());
         assert!(are_datetimes_within_minute(now, deleted_at.unwrap()));

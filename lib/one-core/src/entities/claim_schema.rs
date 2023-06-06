@@ -1,6 +1,6 @@
-use chrono::{offset::Utc, DateTime};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use crate::data_model;
 
@@ -12,8 +12,8 @@ pub struct Model {
     #[serde(skip_deserializing)]
     pub id: u32,
 
-    pub created_date: DateTime<Utc>,
-    pub last_modified: DateTime<Utc>,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: data_model::Datatype,
 
