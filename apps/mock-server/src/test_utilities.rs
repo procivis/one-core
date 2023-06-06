@@ -24,6 +24,7 @@ pub async fn insert_credential_schema_to_database(
         format: Set(Default::default()),
         name: Set(Default::default()),
         revocation_method: Set(Default::default()),
+        organisation_id: Set(Default::default()),
 
         deleted_at: Set(deleted_at),
     }

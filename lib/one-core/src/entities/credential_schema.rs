@@ -18,6 +18,7 @@ pub struct Model {
     pub name: String,
     pub format: Format,
     pub revocation_method: RevocationMethod,
+    pub organisation_id: u32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
