@@ -3,7 +3,7 @@
 use std::net::{IpAddr, SocketAddr};
 use std::panic;
 
-use axum::routing::delete;
+use axum::routing::{delete, get};
 use axum::{routing::post, Router};
 use sea_orm::DatabaseConnection;
 use tower_http::trace::{self, TraceLayer};
@@ -18,6 +18,7 @@ mod create_credential_schema;
 mod delete_credential_schema;
 mod delete_proof_schema;
 mod endpoints;
+mod get_credential_schemas;
 
 #[cfg(test)]
 mod test_utilities;
@@ -40,6 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[openapi(
         paths(
             endpoints::delete_credential_schema,
+            endpoints::get_credential_schema,
             endpoints::post_credential_schema
         ),
         components(
@@ -66,6 +68,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/credential-schema/v1/:id",
             delete(endpoints::delete_credential_schema),
+        )
+        .route(
+            "/api/credential-schema/v1",
+            get(endpoints::get_credential_schema),
         )
         .route(
             "/api/credential-schema/v1",

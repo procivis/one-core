@@ -1401,6 +1401,8 @@ dependencies = [
  "one-core",
  "panic-handler",
  "sea-orm",
+ "serde",
+ "serde_json",
  "shadow-rs",
  "time",
  "tokio",
