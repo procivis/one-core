@@ -1,8 +1,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-
-use crate::data_model;
+use utoipa::ToSchema;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
 #[sea_orm(table_name = "claim_schemas")]
@@ -15,7 +14,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub key: String,
-    pub datatype: data_model::Datatype,
+    pub datatype: Datatype,
 
     pub credential_id: u32,
 }
@@ -43,3 +42,27 @@ impl Related<super::credential_schema::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Deserialize,
+    Eq,
+    PartialEq,
+    Serialize,
+    ToSchema,
+    EnumIter,
+    DeriveActiveEnum,
+)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Datatype {
+    #[default]
+    #[sea_orm(string_value = "STRING")]
+    String,
+    #[sea_orm(string_value = "DATE")]
+    Date,
+    #[sea_orm(string_value = "NUMBER")]
+    Number,
+}

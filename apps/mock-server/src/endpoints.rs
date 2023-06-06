@@ -1,18 +1,12 @@
 use axum::extract::{Path, Query, State};
+use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 use sea_orm::DbErr;
-use serde::Deserialize;
 
 use crate::create_credential_schema::create_credential_schema;
+use crate::data_model::CreateCredentialSchemaRequestDTO;
 use crate::get_credential_schemas::*;
 use crate::AppState;
-
-use one_core::data_model::{
-    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaResponseDTO,
-    CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO,
-};
-use one_core::entities::claim_schema;
-use one_core::entities::credential_schema;
 
 #[utoipa::path(
         delete,

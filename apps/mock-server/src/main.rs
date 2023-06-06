@@ -15,6 +15,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use migration::{Migrator, MigratorTrait};
 
 mod create_credential_schema;
+mod data_model;
 mod delete_credential_schema;
 mod delete_proof_schema;
 mod endpoints;
@@ -45,11 +46,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::post_credential_schema
         ),
         components(
-            schemas(one_core::data_model::CreateCredentialSchemaRequestDTO,
-                    one_core::data_model::RevocationMethod,
-                    one_core::data_model::Format,
-                    one_core::data_model::CredentialClaimSchemaRequestDTO,
-                    one_core::data_model::Datatype)
+            schemas(data_model::CreateCredentialSchemaRequestDTO,
+                    data_model::RevocationMethod,
+                    data_model::Format,
+                    data_model::CreateCredentialSchemaRequestDTO,
+                    data_model::CredentialClaimSchemaRequestDTO,
+                    data_model::Datatype)
         ),
         modifiers(),
         tags(
