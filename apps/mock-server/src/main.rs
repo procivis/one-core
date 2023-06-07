@@ -6,6 +6,7 @@ use std::panic;
 use axum::routing::{delete, get};
 use axum::{routing::post, Router};
 use sea_orm::DatabaseConnection;
+use shadow_rs::shadow;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{info, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -43,7 +44,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         paths(
             endpoints::delete_credential_schema,
             endpoints::get_credential_schema,
-            endpoints::post_credential_schema
+            endpoints::post_credential_schema,
+            endpoints::delete_proof_schema,
+            endpoints::get_build_info
         ),
         components(
             schemas(data_model::CreateCredentialSchemaRequestDTO,
@@ -61,6 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     struct ApiDoc;
 
     config_tracing();
+    log_build_info();
 
     let db = setup_database_and_connection().await?;
     let state = AppState { db };
@@ -83,6 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/proof-schema/v1/:id",
             delete(endpoints::delete_proof_schema),
         )
+        .route("/build_info", get(endpoints::get_build_info))
         .with_state(state)
         .layer(
             TraceLayer::new_for_http()
@@ -107,6 +112,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap();
 
     Ok(())
+}
+
+fn log_build_info() {
+    shadow!(build);
+    info!("Build target: {}", build::BUILD_RUST_CHANNEL);
+    info!("Build time: {}", build::BUILD_TIME);
+    info!("Branch: {}", build::BRANCH);
+    info!("Tag: {}", build::TAG);
+    info!("Commit: {}", build::COMMIT_HASH);
+    info!("Rust version: {}", build::RUST_VERSION);
+    info!("Pipeline ID: {}", build::CI_PIPELINE_ID);
 }
 
 fn config_tracing() {
