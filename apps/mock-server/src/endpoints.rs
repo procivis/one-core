@@ -60,3 +60,32 @@ pub(crate) async fn post_credential_schema(
 
     StatusCode::NO_CONTENT
 }
+
+#[utoipa::path(
+    delete,
+    path = "/api/proof-schema/v1/{id}",
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 404, description = "Schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        ("id" = u32, Path, description = "Schema id")
+    )
+)]
+pub(crate) async fn delete_proof_schema(state: State<AppState>, Path(id): Path<u32>) -> StatusCode {
+    let result = super::delete_proof_schema::delete_proof_schema(&state.db, id).await;
+
+    if let Err(error) = result {
+        return match error {
+            DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
+            DbErr::RecordNotUpdated => StatusCode::NOT_FOUND,
+            _ => {
+                eprintln!("Error while deleting proof schema: {:?}", error);
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        };
+    }
+
+    StatusCode::NO_CONTENT
+}

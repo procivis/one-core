@@ -16,6 +16,7 @@ use migration::{Migrator, MigratorTrait};
 
 mod create_credential_schema;
 mod delete_credential_schema;
+mod delete_proof_schema;
 mod endpoints;
 
 #[cfg(test)]
@@ -45,7 +46,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             schemas(one_core::data_model::CreateCredentialSchemaRequestDTO,
                     one_core::data_model::RevocationMethod,
                     one_core::data_model::Format,
-                    one_core::data_model::CreateCredentialSchemaRequestDTO,
                     one_core::data_model::CredentialClaimSchemaRequestDTO,
                     one_core::data_model::Datatype)
         ),
@@ -70,6 +70,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/credential-schema/v1",
             post(endpoints::post_credential_schema),
+        )
+        .route(
+            "/api/proof-schema/v1/:id",
+            delete(endpoints::delete_proof_schema),
         )
         .with_state(state)
         .layer(
