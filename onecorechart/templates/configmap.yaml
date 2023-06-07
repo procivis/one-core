@@ -3,4 +3,6 @@ kind: ConfigMap
 metadata:
   name: {{ include "onecorechart.fullname" . }}
 data:
-  MARIADB_HOST: ""
+  DATABASE_URL: "sqlite::memory:"
+  RUST_LOG: "debug,hyper=error,sea_orm=info"
+  TRACE_JSON: "true"
