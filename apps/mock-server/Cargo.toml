@@ -2,6 +2,7 @@
 name = "mock-server"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [features]
 # Treat build warnings as error
@@ -19,10 +20,15 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 utoipa.workspace = true
 
+shadow-rs.workspace = true
+
 axum = { version = "0.6" }
 tower-http = { version = "0.4", features = [ "trace"] }
 tokio = { version = "1.26", features = ["full"]}
 utoipa-swagger-ui = {version = "3.0", features = ["axum"]}
-shadow-rs = "0.23.0"
 envmnt = "0.10.4"
 panic-handler = "2.1.2"
+
+[build-dependencies]
+shadow-rs.workspace = true
+envmnt = "0.10.4"
