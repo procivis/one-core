@@ -1,10 +1,18 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
-pub use one_core::entities::claim_schema::Datatype;
-pub use one_core::entities::credential_schema::{Format, RevocationMethod};
-use one_core::entities::{claim_schema, credential_schema};
+pub use crate::entities::claim_schema::Datatype;
+pub use crate::entities::credential_schema::{Format, RevocationMethod};
+use crate::entities::{claim_schema, credential_schema};
+
+// TODO create proper serialization function when
+time::serde::format_description!(
+    front_time,
+    OffsetDateTime,
+    "[year]-[month]-[day padding:zero]T[hour padding:zero]:[minute padding:zero]:[second padding:zero].000Z"
+);
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -12,7 +20,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: Format,
     pub revocation_method: RevocationMethod,
-    pub organisation_id: String,
+    pub organisation_id: Uuid,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }
 
@@ -33,10 +41,10 @@ pub struct GetCredentialClaimSchemaResponseDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaResponseDTO {
-    pub id: u32,
-    #[serde(with = "time::serde::rfc3339")]
+    pub id: String,
+    #[serde(with = "front_time")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
+    #[serde(with = "front_time")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: Format,
@@ -46,10 +54,11 @@ pub struct CredentialSchemaResponseDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct CredentialClaimSchemaResponseDTO {
-    #[serde(with = "time::serde::rfc3339")]
+    #[serde(with = "front_time")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
+    #[serde(with = "front_time")]
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: Datatype,
@@ -82,7 +91,7 @@ impl CredentialSchemaResponseDTO {
             name: value.name,
             format: value.format,
             revocation_method: value.revocation_method,
-            organisation_id: value.organisation_id.to_string(),
+            organisation_id: value.organisation_id,
             claims: CredentialClaimSchemaResponseDTO::from_vec(claim_schemas),
         }
     }

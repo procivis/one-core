@@ -3,7 +3,7 @@ use serde::Deserialize;
 use utoipa::IntoParams;
 
 use crate::data_model::{CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO};
-use one_core::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
+use crate::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]

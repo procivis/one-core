@@ -20,6 +20,7 @@ mod data_model;
 mod delete_credential_schema;
 mod delete_proof_schema;
 mod endpoints;
+mod entities;
 mod get_credential_schemas;
 
 #[cfg(test)]

@@ -1,8 +1,9 @@
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
+use uuid::Uuid;
 
+use crate::entities::{credential_schema, proof_schema};
 use migration::{Migrator, MigratorTrait};
-use one_core::entities::{credential_schema, proof_schema};
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
@@ -11,9 +12,9 @@ pub fn get_dummy_date() -> OffsetDateTime {
 pub async fn insert_credential_schema_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-) -> Result<u32, DbErr> {
+) -> Result<String, DbErr> {
     let schema = credential_schema::ActiveModel {
-        id: Default::default(),
+        id: Set(Uuid::new_v4().to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         format: Set(Default::default()),
@@ -30,7 +31,7 @@ pub async fn insert_credential_schema_to_database(
 
 pub async fn get_credential_schema_with_id(
     database: &DatabaseConnection,
-    id: u32,
+    id: &str,
 ) -> Result<Option<credential_schema::Model>, DbErr> {
     credential_schema::Entity::find_by_id(id)
         .one(database)
@@ -40,9 +41,9 @@ pub async fn get_credential_schema_with_id(
 pub async fn insert_proof_schema_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-) -> Result<u32, DbErr> {
+) -> Result<String, DbErr> {
     let schema = proof_schema::ActiveModel {
-        id: Default::default(),
+        id: Set(Uuid::new_v4().to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set(Default::default()),
@@ -58,7 +59,7 @@ pub async fn insert_proof_schema_to_database(
 
 pub async fn get_proof_schema_with_id(
     database: &DatabaseConnection,
-    id: u32,
+    id: &str,
 ) -> Result<Option<proof_schema::Model>, DbErr> {
     proof_schema::Entity::find_by_id(id).one(database).await
 }

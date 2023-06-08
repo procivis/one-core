@@ -4,4 +4,6 @@
 # IDE settings
 .idea/
 
+.vscode
+
 postgresql-*.tgz

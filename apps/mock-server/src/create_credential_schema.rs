@@ -1,7 +1,11 @@
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, Set};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
-use crate::data_model::CreateCredentialSchemaRequestDTO;
+use crate::{
+    data_model::CreateCredentialSchemaRequestDTO,
+    entities::{claim_schema, credential_schema},
+};
 
 pub(crate) async fn create_credential_schema(
     db: &DatabaseConnection,
@@ -9,27 +13,27 @@ pub(crate) async fn create_credential_schema(
 ) -> Result<(), DbErr> {
     let now = OffsetDateTime::now_utc();
 
-    let credential_schema = one_core::entities::credential_schema::ActiveModel {
-        id: Default::default(),
+    let credential_schema = credential_schema::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
         name: Set(request.name),
         created_date: Set(now),
         last_modified: Set(now),
         format: Set(request.format),
-        deleted_at: Default::default(),
+        deleted_at: Set(None),
         revocation_method: Set(request.revocation_method),
-        organisation_id: Set(0), // TODO: Set this correctly once organisation table is added
+        organisation_id: Set(request.organisation_id.to_string()),
     }
     .insert(db)
     .await?;
 
     for claim_schema in request.claims {
-        one_core::entities::claim_schema::ActiveModel {
-            id: Default::default(),
+        claim_schema::ActiveModel {
+            id: Set(Uuid::new_v4().to_string()),
             created_date: Set(now),
             last_modified: Set(now),
             key: Set(claim_schema.key),
             datatype: Set(claim_schema.datatype),
-            credential_id: Set(credential_schema.id),
+            credential_id: Set(credential_schema.id.to_string()),
         }
         .insert(db)
         .await?;
@@ -42,9 +46,9 @@ pub(crate) async fn create_credential_schema(
 mod tests {
     use sea_orm::EntityTrait;
 
-    use one_core::entities::claim_schema::Datatype;
-    use one_core::entities::credential_schema::{Format, RevocationMethod};
-    use one_core::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
+    use crate::entities::claim_schema::Datatype;
+    use crate::entities::credential_schema::{Format, RevocationMethod};
+    use crate::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
 
     use super::*;
     use crate::data_model::*;
@@ -55,7 +59,7 @@ mod tests {
             name: "credential".to_string(),
             format: Format::Jwt,
             revocation_method: RevocationMethod::StatusList2021,
-            organisation_id: "123".to_string(),
+            organisation_id: Uuid::new_v4(),
             claims: vec![
                 CredentialClaimSchemaRequestDTO {
                     key: "1".to_string(),

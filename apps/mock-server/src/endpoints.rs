@@ -3,6 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 use sea_orm::DbErr;
 use serde_json::{json, Value};
+use uuid::Uuid;
 
 use crate::create_credential_schema::create_credential_schema;
 use crate::data_model::CreateCredentialSchemaRequestDTO;
@@ -18,14 +19,15 @@ use crate::AppState;
             (status = 500, description = "Server error"),
         ),
         params(
-            ("id" = u32, Path, description = "Schema id")
+            ("id" = Uuid, Path, description = "Schema id")
         )
     )]
 pub(crate) async fn delete_credential_schema(
     state: State<AppState>,
-    Path(id): Path<u32>,
+    Path(id): Path<Uuid>,
 ) -> StatusCode {
-    let result = super::delete_credential_schema::delete_credential_schema(&state.db, id).await;
+    let result =
+        super::delete_credential_schema::delete_credential_schema(&state.db, &id.to_string()).await;
 
     if let Err(error) = result {
         return match error {
@@ -98,11 +100,14 @@ pub(crate) async fn post_credential_schema(
         (status = 500, description = "Server error"),
     ),
     params(
-        ("id" = u32, Path, description = "Schema id")
+        ("id" = Uuid, Path, description = "Schema id")
     )
 )]
-pub(crate) async fn delete_proof_schema(state: State<AppState>, Path(id): Path<u32>) -> StatusCode {
-    let result = super::delete_proof_schema::delete_proof_schema(&state.db, id).await;
+pub(crate) async fn delete_proof_schema(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> StatusCode {
+    let result = super::delete_proof_schema::delete_proof_schema(&state.db, &id.to_string()).await;
 
     if let Err(error) = result {
         return match error {

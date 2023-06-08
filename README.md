@@ -29,6 +29,15 @@ We can use `Makefile.toml` to add and fine tune build/run targets later in the p
 * Run MariaDB for local developing
 ```shell
 docker-compose -f docker/db.yml up -d
+or
+makers dbstart
+```
+
+* Stop MariaDB for local developing
+```shell
+docker-compose -f docker/db.yml down
+or
+makers dbstop
 ```
 
 * Run MariaDB logs
