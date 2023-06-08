@@ -22,3 +22,11 @@ args = ["run"]
 [tasks.test]
 command = "cargo"
 args = ["test"]
+
+[tasks.dbstart]
+command = "docker-compose"
+args = ["-f", "docker/db.yml", "up", "-d" ]
+
+[tasks.dbstop]
+command = "docker-compose"
+args = ["-f", "docker/db.yml", "down" ]

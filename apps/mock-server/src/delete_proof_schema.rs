@@ -3,9 +3,9 @@ use sea_orm::{
 };
 use time::OffsetDateTime;
 
-use one_core::entities::{proof_schema, ProofSchema};
+use crate::entities::{proof_schema, ProofSchema};
 
-pub(crate) async fn delete_proof_schema(db: &DatabaseConnection, id: u32) -> Result<(), DbErr> {
+pub(crate) async fn delete_proof_schema(db: &DatabaseConnection, id: &str) -> Result<(), DbErr> {
     let result = ProofSchema::find_by_id(id)
         .filter(proof_schema::Column::DeletedAt.is_null())
         .one(db)
@@ -45,10 +45,10 @@ mod tests {
             .await
             .unwrap();
 
-        let result = delete_proof_schema(&database, schema_id).await;
+        let result = delete_proof_schema(&database, &schema_id).await;
         assert!(result.is_ok());
 
-        let deleted_schema = get_proof_schema_with_id(&database, schema_id)
+        let deleted_schema = get_proof_schema_with_id(&database, &schema_id)
             .await
             .unwrap();
         assert!(deleted_schema.is_some());
@@ -69,10 +69,10 @@ mod tests {
             .await
             .unwrap();
 
-        let result = delete_proof_schema(&database, schema_id).await;
+        let result = delete_proof_schema(&database, &schema_id).await;
         assert!(result.is_err_and(|error| matches!(error, DbErr::RecordNotFound(_))));
 
-        let deleted_schema = get_proof_schema_with_id(&database, schema_id)
+        let deleted_schema = get_proof_schema_with_id(&database, &schema_id)
             .await
             .unwrap();
         assert!(deleted_schema.is_some());

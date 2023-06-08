@@ -6,16 +6,17 @@ use time::OffsetDateTime;
 #[sea_orm(table_name = "proof_schemas")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
+    #[sea_orm(primary_key, auto_increment = false)]
     #[serde(skip_deserializing)]
-    pub id: u32,
+    pub id: String,
 
     pub deleted_at: Option<OffsetDateTime>,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub expire_duration: u32,
-    pub organisation_id: u32,
+
+    pub organisation_id: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

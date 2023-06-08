@@ -7,16 +7,16 @@ use utoipa::ToSchema;
 #[sea_orm(table_name = "claim_schemas")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
+    #[sea_orm(primary_key, auto_increment = false)]
     #[serde(skip_deserializing)]
-    pub id: u32,
+    pub id: String,
 
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: Datatype,
 
-    pub credential_id: u32,
+    pub credential_id: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

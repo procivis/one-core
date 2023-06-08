@@ -13,9 +13,8 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(ClaimSchemas::Id)
-                            .unsigned()
+                            .char_len(36)
                             .not_null()
-                            .auto_increment()
                             .primary_key(),
                     )
                     .col(ColumnDef::new(ClaimSchemas::Key).string().not_null())
@@ -27,11 +26,19 @@ impl MigrationTrait for Migration {
                             )
                             .not_null(),
                     )
-                    .col(ColumnDef::new(ClaimSchemas::CreatedDate).time().not_null())
-                    .col(ColumnDef::new(ClaimSchemas::LastModified).time().not_null())
+                    .col(
+                        ColumnDef::new(ClaimSchemas::CreatedDate)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimSchemas::LastModified)
+                            .date_time()
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(ClaimSchemas::CredentialId)
-                            .integer()
+                            .char_len(36)
                             .not_null(),
                     )
                     .to_owned(),
@@ -45,20 +52,23 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(CredentialSchemas::Id)
-                            .unsigned()
+                            .char_len(36)
                             .not_null()
-                            .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(CredentialSchemas::DeletedAt).time())
+                    .col(
+                        ColumnDef::new(CredentialSchemas::DeletedAt)
+                            .date_time()
+                            .null(),
+                    )
                     .col(
                         ColumnDef::new(CredentialSchemas::CreatedDate)
-                            .time()
+                            .date_time()
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(CredentialSchemas::LastModified)
-                            .time()
+                            .date_time()
                             .not_null(),
                     )
                     .col(ColumnDef::new(CredentialSchemas::Name).string().not_null())
@@ -80,7 +90,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(CredentialSchemas::OrganisationId)
-                            .unsigned()
+                            .char_len(36)
                             .not_null(),
                     )
                     .to_owned(),
@@ -94,12 +104,12 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(ProofSchemaClaims::ClaimSchemaId)
-                            .unsigned()
+                            .char_len(36)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(ProofSchemaClaims::ProofSchemaId)
-                            .unsigned()
+                            .char_len(36)
                             .not_null(),
                     )
                     .primary_key(
@@ -120,14 +130,21 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(ProofSchemas::Id)
-                            .unsigned()
+                            .char_len(36)
                             .not_null()
-                            .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ProofSchemas::DeletedAt).time())
-                    .col(ColumnDef::new(ProofSchemas::CreatedDate).time().not_null())
-                    .col(ColumnDef::new(ProofSchemas::LastModified).time().not_null())
+                    .col(ColumnDef::new(ProofSchemas::DeletedAt).date_time().null())
+                    .col(
+                        ColumnDef::new(ProofSchemas::CreatedDate)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchemas::LastModified)
+                            .date_time()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(ProofSchemas::Name).string().not_null())
                     .col(
                         ColumnDef::new(ProofSchemas::ExpireDuration)
@@ -136,7 +153,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(ProofSchemas::OrganisationId)
-                            .unsigned()
+                            .char_len(36)
                             .not_null(),
                     )
                     .to_owned(),

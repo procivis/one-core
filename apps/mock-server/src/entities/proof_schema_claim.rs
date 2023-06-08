@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "proof_schema_claims")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
-    #[sea_orm(primary_key)]
-    pub claim_schema_id: u32,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub claim_schema_id: String,
 
-    #[sea_orm(primary_key)]
-    pub proof_schema_id: u32,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub proof_schema_id: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]

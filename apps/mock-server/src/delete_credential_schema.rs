@@ -3,11 +3,11 @@ use sea_orm::{
 };
 use time::OffsetDateTime;
 
-use one_core::entities::{credential_schema, CredentialSchema};
+use crate::entities::{credential_schema, CredentialSchema};
 
 pub(crate) async fn delete_credential_schema(
     db: &DatabaseConnection,
-    id: u32,
+    id: &str,
 ) -> Result<(), DbErr> {
     let result: Vec<credential_schema::Model> = CredentialSchema::find_by_id(id)
         .filter(credential_schema::Column::DeletedAt.is_null())
@@ -67,10 +67,10 @@ mod tests {
             .await
             .unwrap();
 
-        let result = delete_credential_schema(&database, credential_schema_id).await;
+        let result = delete_credential_schema(&database, &credential_schema_id).await;
         assert!(result.is_ok());
 
-        let deleted_schema = get_credential_schema_with_id(&database, credential_schema_id)
+        let deleted_schema = get_credential_schema_with_id(&database, &credential_schema_id)
             .await
             .unwrap();
         assert!(deleted_schema.is_some());
@@ -92,10 +92,10 @@ mod tests {
                 .await
                 .unwrap();
 
-        let result = delete_credential_schema(&database, credential_schema_id).await;
+        let result = delete_credential_schema(&database, &credential_schema_id).await;
         assert!(result.is_err_and(|error| matches!(error, DbErr::RecordNotFound(_))));
 
-        let deleted_schema = get_credential_schema_with_id(&database, credential_schema_id)
+        let deleted_schema = get_credential_schema_with_id(&database, &credential_schema_id)
             .await
             .unwrap();
         assert!(deleted_schema.is_some());
