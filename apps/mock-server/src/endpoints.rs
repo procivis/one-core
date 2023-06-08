@@ -45,6 +45,40 @@ pub(crate) async fn delete_credential_schema(
 
 #[utoipa::path(
         get,
+        path = "/api/credential-schema/v1/{id}",
+        responses(
+            (status = 200, description = "OK"),
+            (status = 404, description = "Schema not found"),
+            (status = 500, description = "Server error"),
+        ),
+        params(
+            ("id" = Uuid, Path, description = "Schema id")
+        )
+    )]
+pub(crate) async fn get_credential_schema_details(
+    state: State<AppState>,
+    Path(uuid): Path<Uuid>,
+) -> Response {
+    let result = crate::get_credential_schema_details::get_credential_schema_details(
+        &state.db,
+        &uuid.to_string(),
+    )
+    .await;
+
+    match result {
+        Err(error) => match error {
+            DbErr::RecordNotFound(message) => (StatusCode::NOT_FOUND, message).into_response(),
+            _ => {
+                tracing::error!("Error while getting credential: {:?}", error);
+                (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response()
+            }
+        },
+        Ok(value) => (StatusCode::OK, Json::from(value)).into_response(),
+    }
+}
+
+#[utoipa::path(
+        get,
         path = "/api/credential-schema/v1",
         responses(
             (status = 200, description = "OK"),
