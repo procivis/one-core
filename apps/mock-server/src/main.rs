@@ -21,6 +21,7 @@ mod delete_credential_schema;
 mod delete_proof_schema;
 mod endpoints;
 mod entities;
+mod get_credential_schema_details;
 mod get_credential_schemas;
 
 #[cfg(test)]
@@ -44,6 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[openapi(
         paths(
             endpoints::delete_credential_schema,
+            endpoints::get_credential_schema_details,
             endpoints::get_credential_schema,
             endpoints::post_credential_schema,
             endpoints::delete_proof_schema,
@@ -75,6 +77,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/credential-schema/v1/:id",
             delete(endpoints::delete_credential_schema),
+        )
+        .route(
+            "/api/credential-schema/v1/:id",
+            get(endpoints::get_credential_schema_details),
         )
         .route(
             "/api/credential-schema/v1",
