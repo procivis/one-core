@@ -1,3 +1,10 @@
+architecture: standalone
+
+mariadb:
+  auth:
+    rootPassword: "Gkgm5LX4wxoMDR92CASJqqU1j4gptB0AWhZh"
+    password: "B8O4SPG1pgRpFdv8eBn7"
+
 
 ingress:
   hosts:
