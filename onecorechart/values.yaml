@@ -64,3 +64,15 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+
+mariadb:
+  enabled: true
+  auth:
+    database: "one-core"
+    username: "core_user"
+    rootPassword: ""
+    password: ""
+  primary:
+    persistence:
+      size: 8Gi
