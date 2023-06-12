@@ -59,11 +59,11 @@ pub(crate) async fn delete_credential_schema(
     )]
 pub(crate) async fn get_credential_schema_details(
     state: State<AppState>,
-    Path(uuid): Path<Uuid>,
+    Path(id): Path<Uuid>,
 ) -> Response {
     let result = crate::get_credential_schema_details::get_credential_schema_details(
         &state.db,
-        &uuid.to_string(),
+        &id.to_string(),
     )
     .await;
 
