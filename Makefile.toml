@@ -30,3 +30,9 @@ args = ["-f", "docker/db.yml", "up", "-d" ]
 [tasks.dbstop]
 command = "docker-compose"
 args = ["-f", "docker/db.yml", "down" ]
+
+[tasks.dbdrop]
+script = [
+    "docker rm --force docker-mariadb-1",
+    "docker volume rm docker_mariadb_data",
+]
