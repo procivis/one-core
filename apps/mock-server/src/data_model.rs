@@ -44,8 +44,10 @@ pub struct GetCredentialClaimSchemaResponseDTO {
 pub struct CredentialSchemaResponseDTO {
     pub id: String,
     #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: Format,
@@ -59,8 +61,10 @@ pub struct CredentialSchemaResponseDTO {
 pub struct CredentialClaimSchemaResponseDTO {
     pub id: String,
     #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: Datatype,
