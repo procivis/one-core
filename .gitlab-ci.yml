@@ -6,6 +6,7 @@ stages:
   - test
   - publish
   - deploy
+  - e2e_tests
 
 
 before_script:
@@ -15,6 +16,7 @@ before_script:
   - APP_VERSION=${APP_VERSION:-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA}
   - IMAGE_NAME=$CI_REGISTRY_IMAGE/$APP_FLAVOR
   - IMAGE_TAG=$IMAGE_NAME:$APP_VERSION
+
 
 .only_main_or_tag:
   rules:
@@ -70,6 +72,19 @@ publish:
       fi
     - docker push $IMAGE_TAG
     - docker logout
+  extends:
+    - .only_main_or_tag
+
+
+test_e2e:
+  stage: e2e_tests
+  needs: [publish]
+  variables:
+    CORE_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+  trigger:
+    project: procivis/one/one-e2e-tests
+    branch: main
+    strategy: depend
   extends:
     - .only_main_or_tag
 
