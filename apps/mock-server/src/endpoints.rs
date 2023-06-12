@@ -83,7 +83,7 @@ pub(crate) async fn get_credential_schema_details(
         get,
         path = "/api/credential-schema/v1",
         responses(
-            (status = 200, description = "OK"),
+            (status = 200, description = "OK", body = GetCredentialClaimSchemaResponseDTO),
             (status = 500, description = "Server error"),
         ),
         params(
@@ -94,7 +94,7 @@ pub(crate) async fn get_credential_schema(
     state: State<AppState>,
     Query(query): Query<GetCredentialSchemaQuery>,
 ) -> Response {
-    let result = get_credential_schemas(&state.db, query.page, query.page_size).await;
+    let result = get_credential_schemas(&state.db, query).await;
 
     match result {
         Err(error) => {

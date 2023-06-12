@@ -24,6 +24,7 @@ mod endpoints;
 mod entities;
 mod get_credential_schema_details;
 mod get_credential_schemas;
+mod list_query;
 
 #[cfg(test)]
 mod test_utilities;
@@ -55,13 +56,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         components(
             schemas(data_model::CreateCredentialSchemaRequestDTO,
-                    data_model::RevocationMethod,
-                    data_model::Format,
+                    data_model::CredentialClaimSchemaRequestDTO,
+                    data_model::GetCredentialClaimSchemaResponseDTO,
+                    data_model::CredentialSchemaResponseDTO,
+                    data_model::CredentialClaimSchemaResponseDTO,
                     data_model::CreateProofSchemaRequestDTO,
                     data_model::CreateProofSchemaResponseDTO,
-                    data_model::CredentialClaimSchemaRequestDTO,
                     data_model::ClaimProofSchemaRequestDTO,
-                    data_model::Datatype)
+                    data_model::RevocationMethod,
+                    data_model::Format,
+                    data_model::Datatype,
+                    list_query::SortDirection)
         ),
         modifiers(),
         tags(
