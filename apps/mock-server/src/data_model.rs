@@ -57,6 +57,7 @@ pub struct CredentialSchemaResponseDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialClaimSchemaResponseDTO {
+    pub id: String,
     #[serde(with = "front_time")]
     pub created_date: OffsetDateTime,
     #[serde(with = "front_time")]
@@ -68,6 +69,7 @@ pub struct CredentialClaimSchemaResponseDTO {
 impl CredentialClaimSchemaResponseDTO {
     pub fn from_model(value: &claim_schema::Model) -> Self {
         Self {
+            id: value.id.clone(),
             created_date: value.created_date,
             last_modified: value.last_modified,
             key: value.key.clone(),
