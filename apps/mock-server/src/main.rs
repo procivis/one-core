@@ -16,6 +16,7 @@ use utoipa_swagger_ui::SwaggerUi;
 use migration::{Migrator, MigratorTrait};
 
 mod create_credential_schema;
+mod create_proof_schema;
 mod data_model;
 mod delete_credential_schema;
 mod delete_proof_schema;
@@ -48,6 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_credential_schema_details,
             endpoints::get_credential_schema,
             endpoints::post_credential_schema,
+            endpoints::post_proof_schema,
             endpoints::delete_proof_schema,
             endpoints::get_build_info
         ),
@@ -55,8 +57,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             schemas(data_model::CreateCredentialSchemaRequestDTO,
                     data_model::RevocationMethod,
                     data_model::Format,
-                    data_model::CreateCredentialSchemaRequestDTO,
+                    data_model::CreateProofSchemaRequestDTO,
+                    data_model::CreateProofSchemaResponseDTO,
                     data_model::CredentialClaimSchemaRequestDTO,
+                    data_model::ClaimProofSchemaRequestDTO,
                     data_model::Datatype)
         ),
         modifiers(),
@@ -84,16 +88,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route(
             "/api/credential-schema/v1",
-            get(endpoints::get_credential_schema),
-        )
-        .route(
-            "/api/credential-schema/v1",
-            post(endpoints::post_credential_schema),
+            get(endpoints::get_credential_schema).post(endpoints::post_credential_schema),
         )
         .route(
             "/api/proof-schema/v1/:id",
             delete(endpoints::delete_proof_schema),
         )
+        .route("/api/proof-schema/v1", post(endpoints::post_proof_schema))
         .route("/build_info", get(endpoints::get_build_info))
         .with_state(state)
         .layer(

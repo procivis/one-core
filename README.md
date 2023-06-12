@@ -40,6 +40,11 @@ or
 makers dbstop
 ```
 
+* Drop MariaDB for local developing - removes everything
+```shell
+makers dbdrop
+```
+
 * Run MariaDB logs
 ```shell
 docker-compose -f docker/db.yml logs -f

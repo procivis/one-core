@@ -29,6 +29,7 @@ utoipa-swagger-ui = {version = "3.0", features = ["axum"]}
 envmnt = "0.10.4"
 panic-handler = "2.1.2"
 uuid = { version = "1", features = ["v4"] }
+validator = { version = "0.16.0", features = ["derive"] }
 
 [build-dependencies]
 shadow-rs.workspace = true

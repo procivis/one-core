@@ -37,4 +37,8 @@ impl Related<super::claim_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Claim.def()
     }
+
+    fn via() -> Option<RelationDef> {
+        Some(super::proof_schema_claim::Relation::ProofSchema.def().rev())
+    }
 }

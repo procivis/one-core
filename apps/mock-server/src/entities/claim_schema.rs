@@ -22,6 +22,7 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter)]
 pub enum Relation {
     Credential,
+    Proof,
 }
 
 impl RelationTrait for Relation {
@@ -31,6 +32,7 @@ impl RelationTrait for Relation {
                 .from(Column::CredentialId)
                 .to(super::credential_schema::Column::Id)
                 .into(),
+            Self::Proof => Entity::has_many(super::proof_schema::Entity).into(),
         }
     }
 }
@@ -38,6 +40,16 @@ impl RelationTrait for Relation {
 impl Related<super::credential_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Credential.def()
+    }
+}
+
+impl Related<super::proof_schema::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Credential.def()
+    }
+
+    fn via() -> Option<RelationDef> {
+        Some(super::proof_schema_claim::Relation::ClaimSchema.def().rev())
     }
 }
 

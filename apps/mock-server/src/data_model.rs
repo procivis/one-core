@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
+use validator::Validate;
 
 pub use crate::entities::claim_schema::Datatype;
 pub use crate::entities::credential_schema::{Format, RevocationMethod};
@@ -95,4 +96,27 @@ impl CredentialSchemaResponseDTO {
             claims: CredentialClaimSchemaResponseDTO::from_vec(claim_schemas),
         }
     }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateProofSchemaRequestDTO {
+    #[validate(length(min = 1))]
+    pub name: String,
+    pub organisation_id: Uuid,
+    pub expire_duration: u32,
+    pub claim_schemas: Vec<ClaimProofSchemaRequestDTO>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ClaimProofSchemaRequestDTO {
+    pub id: Uuid,
+    pub is_required: bool,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateProofSchemaResponseDTO {
+    pub id: String,
 }

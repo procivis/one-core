@@ -1,8 +1,9 @@
+use claim_schema::Datatype;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::entities::{credential_schema, proof_schema};
+use crate::entities::{claim_schema, credential_schema, proof_schema};
 use migration::{Migrator, MigratorTrait};
 
 pub fn get_dummy_date() -> OffsetDateTime {
@@ -27,6 +28,26 @@ pub async fn insert_credential_schema_to_database(
     .insert(database)
     .await?;
     Ok(schema.id)
+}
+
+pub async fn insert_many_claims_schema_to_database(
+    database: &DatabaseConnection,
+    credential_schema_id: &str,
+    claim_ids: &Vec<Uuid>,
+) -> Result<(), DbErr> {
+    for id in claim_ids {
+        claim_schema::ActiveModel {
+            id: Set(id.to_string()),
+            created_date: Set(get_dummy_date()),
+            last_modified: Set(get_dummy_date()),
+            key: Set("TestKey".to_string()),
+            datatype: Set(Datatype::String),
+            credential_id: Set(credential_schema_id.to_owned()),
+        }
+        .insert(database)
+        .await?;
+    }
+    Ok(())
 }
 
 pub async fn get_credential_schema_with_id(

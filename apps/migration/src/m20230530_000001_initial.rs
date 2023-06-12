@@ -100,32 +100,6 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(ProofSchemaClaims::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(ProofSchemaClaims::ClaimSchemaId)
-                            .char_len(36)
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(ProofSchemaClaims::ProofSchemaId)
-                            .char_len(36)
-                            .not_null(),
-                    )
-                    .primary_key(
-                        Index::create()
-                            .name("pk-ClaimSchema_ProofSchema")
-                            .col(ProofSchemaClaims::ClaimSchemaId)
-                            .col(ProofSchemaClaims::ProofSchemaId)
-                            .primary(),
-                    )
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_table(
-                Table::create()
                     .table(ProofSchemas::Table)
                     .if_not_exists()
                     .col(
@@ -155,6 +129,48 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(ProofSchemas::OrganisationId)
                             .char_len(36)
                             .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(ProofSchemaClaims::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(ProofSchemaClaims::ClaimSchemaId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchemaClaims::ProofSchemaId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .primary_key(
+                        Index::create()
+                            .name("pk-ClaimSchema_ProofSchema")
+                            .col(ProofSchemaClaims::ClaimSchemaId)
+                            .col(ProofSchemaClaims::ProofSchemaId)
+                            .primary(),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-ClaimSchema_ProofSchema-ClaimId")
+                            .from_tbl(ProofSchemaClaims::Table)
+                            .from_col(ProofSchemaClaims::ClaimSchemaId)
+                            .to_tbl(ClaimSchemas::Table)
+                            .to_col(ClaimSchemas::Id),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-ClaimSchema_ProofSchema-ProofId")
+                            .from_tbl(ProofSchemaClaims::Table)
+                            .from_col(ProofSchemaClaims::ProofSchemaId)
+                            .to_tbl(ProofSchemas::Table)
+                            .to_col(ProofSchemas::Id),
                     )
                     .to_owned(),
             )
