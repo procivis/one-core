@@ -1,4 +1,4 @@
-use sea_orm::{DatabaseConnection, DbErr, EntityTrait, QuerySelect};
+use sea_orm::{DatabaseConnection, DbErr, EntityTrait, ModelTrait};
 
 use crate::data_model::CredentialSchemaResponseDTO;
 use crate::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
@@ -7,17 +7,12 @@ pub(crate) async fn get_credential_schema_details(
     db: &DatabaseConnection,
     uuid: &str,
 ) -> Result<CredentialSchemaResponseDTO, DbErr> {
-    let result: Vec<(credential_schema::Model, Vec<claim_schema::Model>)> =
-        CredentialSchema::find_by_id(uuid)
-            .find_with_related(ClaimSchema)
-            .limit(1)
-            .all(db)
-            .await?;
-
-    let (schema, claims): (credential_schema::Model, Vec<claim_schema::Model>) = result
-        .into_iter()
-        .next()
+    let schema: credential_schema::Model = CredentialSchema::find_by_id(uuid)
+        .one(db)
+        .await?
         .ok_or(DbErr::RecordNotFound("Record not found".to_string()))?;
+
+    let claims: Vec<claim_schema::Model> = schema.find_related(ClaimSchema).all(db).await?;
 
     Ok(CredentialSchemaResponseDTO::from_model(schema, claims))
 }
@@ -29,6 +24,7 @@ mod tests {
     use crate::test_utilities::*;
 
     use sea_orm::DbErr;
+    use uuid::Uuid;
 
     #[tokio::test]
     async fn test_get_credential_schemas_simple() {
@@ -47,5 +43,28 @@ mod tests {
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(uuid, response.id);
+    }
+
+    #[tokio::test]
+    async fn test_get_credential_schemas_multiple_claims() {
+        let db = setup_test_database_and_connection().await.unwrap();
+
+        let uuid = insert_credential_schema_to_database(&db, None)
+            .await
+            .unwrap();
+
+        insert_many_claims_schema_to_database(
+            &db,
+            &uuid,
+            &vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()],
+        )
+        .await
+        .unwrap();
+
+        let result = get_credential_schema_details(&db, &uuid).await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(uuid, response.id);
+        assert_eq!(3, response.claims.len());
     }
 }
