@@ -29,6 +29,7 @@ pub(crate) async fn create_proof_schema(
         proof_schema_claim::ActiveModel {
             claim_schema_id: Set(claim_schema.id.to_string()),
             proof_schema_id: Set(proof_schema.id.clone()),
+            is_required: Set(claim_schema.is_required),
         }
         .insert(db)
         .await?;

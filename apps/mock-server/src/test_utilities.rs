@@ -3,7 +3,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::entities::{claim_schema, credential_schema, proof_schema};
+use crate::entities::{claim_schema, credential_schema, proof_schema, proof_schema_claim};
 use migration::{Migrator, MigratorTrait};
 
 pub fn get_dummy_date() -> OffsetDateTime {
@@ -57,6 +57,37 @@ pub async fn get_credential_schema_with_id(
     credential_schema::Entity::find_by_id(id)
         .one(database)
         .await
+}
+
+pub async fn insert_proof_with_claims_schema_to_database(
+    database: &DatabaseConnection,
+    deleted_at: Option<OffsetDateTime>,
+    claims: &Vec<(Uuid, bool)>,
+) -> Result<String, DbErr> {
+    let schema = proof_schema::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        name: Set(Default::default()),
+        expire_duration: Set(Default::default()),
+        organisation_id: Set(Default::default()),
+
+        deleted_at: Set(deleted_at),
+    }
+    .insert(database)
+    .await?;
+
+    for (claim_id, is_required) in claims {
+        proof_schema_claim::ActiveModel {
+            claim_schema_id: Set(claim_id.to_string()),
+            proof_schema_id: Set(schema.id.clone()),
+            is_required: Set(*is_required),
+        }
+        .insert(database)
+        .await?;
+    }
+
+    Ok(schema.id)
 }
 
 pub async fn insert_proof_schema_to_database(

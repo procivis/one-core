@@ -1,3 +1,4 @@
+use sea_orm::FromQueryResult;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -6,7 +7,7 @@ use validator::Validate;
 
 pub use crate::entities::claim_schema::Datatype;
 pub use crate::entities::credential_schema::{Format, RevocationMethod};
-use crate::entities::{claim_schema, credential_schema};
+use crate::entities::{claim_schema, credential_schema, proof_schema};
 
 // TODO create proper serialization function when
 time::serde::format_description!(
@@ -100,6 +101,80 @@ impl CredentialSchemaResponseDTO {
             revocation_method: value.revocation_method,
             organisation_id: value.organisation_id,
             claims: CredentialClaimSchemaResponseDTO::from_vec(claim_schemas),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetProofSchemaResponseDTO {
+    pub values: Vec<ProofSchemaResponseDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofSchemaResponseDTO {
+    pub id: String,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub expire_duration: u32,
+    pub organisation_id: String,
+    pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
+}
+
+#[derive(Debug, Clone, FromQueryResult)]
+pub struct ClaimsCombined {
+    pub claim_schema_id: String,
+    pub proof_schema_id: String,
+    pub is_required: bool,
+    pub claim_key: String,
+    pub credential_id: String,
+    pub credential_name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofClaimSchemaResponseDTO {
+    pub id: String,
+    pub is_required: bool,
+    pub key: String,
+    pub credential_schema_id: String,
+    pub credential_schema_name: String,
+}
+
+impl ProofClaimSchemaResponseDTO {
+    pub fn from_model(value: ClaimsCombined) -> Self {
+        Self {
+            id: value.claim_schema_id,
+            key: value.claim_key,
+            is_required: value.is_required,
+            credential_schema_id: value.credential_id,
+            credential_schema_name: value.credential_name,
+        }
+    }
+
+    pub fn from_vec(value: Vec<ClaimsCombined>) -> Vec<Self> {
+        value.into_iter().map(Self::from_model).collect()
+    }
+}
+
+impl ProofSchemaResponseDTO {
+    pub fn from_model(value: proof_schema::Model, claim_schemas: Vec<ClaimsCombined>) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            organisation_id: value.organisation_id,
+            expire_duration: value.expire_duration,
+            claim_schemas: ProofClaimSchemaResponseDTO::from_vec(claim_schemas),
         }
     }
 }

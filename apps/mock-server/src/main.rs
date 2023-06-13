@@ -4,7 +4,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::panic;
 
 use axum::routing::{delete, get};
-use axum::{routing::post, Router};
+use axum::Router;
 use sea_orm::DatabaseConnection;
 use shadow_rs::shadow;
 use tower_http::trace::{self, TraceLayer};
@@ -24,6 +24,7 @@ mod endpoints;
 mod entities;
 mod get_credential_schema_details;
 mod get_credential_schemas;
+mod get_proof_schemas;
 mod list_query;
 
 #[cfg(test)]
@@ -51,6 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_credential_schema,
             endpoints::post_credential_schema,
             endpoints::post_proof_schema,
+            endpoints::get_proof_schemas,
             endpoints::delete_proof_schema,
             endpoints::get_build_info
         ),
@@ -64,6 +66,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CreateProofSchemaResponseDTO,
                     data_model::ClaimProofSchemaRequestDTO,
                     data_model::RevocationMethod,
+                    data_model::ProofSchemaResponseDTO,
+                    data_model::GetProofSchemaResponseDTO,
+                    data_model::ProofClaimSchemaResponseDTO,
                     data_model::Format,
                     data_model::Datatype,
                     list_query::SortDirection)
@@ -101,7 +106,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/proof-schema/v1/:id",
             delete(endpoints::delete_proof_schema),
         )
-        .route("/api/proof-schema/v1", post(endpoints::post_proof_schema))
+        .route(
+            "/api/proof-schema/v1",
+            get(endpoints::get_proof_schemas).post(endpoints::post_proof_schema),
+        )
         .route("/build_info", get(endpoints::get_build_info))
         .with_state(state)
         .layer(
