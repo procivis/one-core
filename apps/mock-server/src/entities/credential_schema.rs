@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "credential_schemas")]
+#[sea_orm(table_name = "credential_schema")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -20,25 +20,19 @@ pub struct Model {
     pub organisation_id: String,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    Claim,
+    #[sea_orm(has_many = "super::claim_schema::Entity")]
+    ClaimSchema,
+}
+
+impl Related<super::claim_schema::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ClaimSchema.def()
+    }
 }
 
 impl ActiveModelBehavior for ActiveModel {}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        match self {
-            Self::Claim => Entity::has_many(super::claim_schema::Entity).into(),
-        }
-    }
-}
-impl Related<super::claim_schema::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Claim.def()
-    }
-}
 
 #[derive(
     Clone,

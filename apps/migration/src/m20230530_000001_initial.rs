@@ -9,71 +9,32 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(ClaimSchemas::Table)
+                    .table(CredentialSchema::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(ClaimSchemas::Id)
-                            .char_len(36)
-                            .not_null()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(ClaimSchemas::Key).string().not_null())
-                    .col(
-                        ColumnDef::new(ClaimSchemas::Datatype)
-                            .enumeration(
-                                Datatype::Table,
-                                [Datatype::String, Datatype::Date, Datatype::Number],
-                            )
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(ClaimSchemas::CreatedDate)
-                            .date_time()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(ClaimSchemas::LastModified)
-                            .date_time()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(ClaimSchemas::CredentialId)
-                            .char_len(36)
-                            .not_null(),
-                    )
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_table(
-                Table::create()
-                    .table(CredentialSchemas::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(CredentialSchemas::Id)
+                        ColumnDef::new(CredentialSchema::Id)
                             .char_len(36)
                             .not_null()
                             .primary_key(),
                     )
                     .col(
-                        ColumnDef::new(CredentialSchemas::DeletedAt)
+                        ColumnDef::new(CredentialSchema::DeletedAt)
                             .date_time()
                             .null(),
                     )
                     .col(
-                        ColumnDef::new(CredentialSchemas::CreatedDate)
+                        ColumnDef::new(CredentialSchema::CreatedDate)
                             .date_time()
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(CredentialSchemas::LastModified)
+                        ColumnDef::new(CredentialSchema::LastModified)
                             .date_time()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(CredentialSchemas::Name).string().not_null())
+                    .col(ColumnDef::new(CredentialSchema::Name).string().not_null())
                     .col(
-                        ColumnDef::new(CredentialSchemas::Format)
+                        ColumnDef::new(CredentialSchema::Format)
                             .enumeration(
                                 Format::Table,
                                 [Format::Jwt, Format::SdJwt, Format::JsonLd, Format::Mdoc],
@@ -81,7 +42,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(CredentialSchemas::RevocationMethod)
+                        ColumnDef::new(CredentialSchema::RevocationMethod)
                             .enumeration(
                                 RevocationMethod::Table,
                                 [RevocationMethod::StatusList2021, RevocationMethod::Lvvc],
@@ -89,7 +50,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(CredentialSchemas::OrganisationId)
+                        ColumnDef::new(CredentialSchema::OrganisationId)
                             .char_len(36)
                             .not_null(),
                     )
@@ -100,33 +61,78 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(ProofSchemas::Table)
+                    .table(ClaimSchema::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(ProofSchemas::Id)
+                        ColumnDef::new(ClaimSchema::Id)
                             .char_len(36)
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ProofSchemas::DeletedAt).date_time().null())
+                    .col(ColumnDef::new(ClaimSchema::Key).string().not_null())
                     .col(
-                        ColumnDef::new(ProofSchemas::CreatedDate)
+                        ColumnDef::new(ClaimSchema::Datatype)
+                            .enumeration(
+                                Datatype::Table,
+                                [Datatype::String, Datatype::Date, Datatype::Number],
+                            )
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ClaimSchema::CreatedDate)
                             .date_time()
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(ProofSchemas::LastModified)
+                        ColumnDef::new(ClaimSchema::LastModified)
                             .date_time()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(ProofSchemas::Name).string().not_null())
                     .col(
-                        ColumnDef::new(ProofSchemas::ExpireDuration)
+                        ColumnDef::new(ClaimSchema::CredentialId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-ClaimSchema-CredentialId")
+                            .from(ClaimSchema::Table, ClaimSchema::CredentialId)
+                            .to(CredentialSchema::Table, CredentialSchema::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(ProofSchema::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(ProofSchema::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(ProofSchema::DeletedAt).date_time().null())
+                    .col(
+                        ColumnDef::new(ProofSchema::CreatedDate)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchema::LastModified)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(ProofSchema::Name).string().not_null())
+                    .col(
+                        ColumnDef::new(ProofSchema::ExpireDuration)
                             .unsigned()
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(ProofSchemas::OrganisationId)
+                        ColumnDef::new(ProofSchema::OrganisationId)
                             .char_len(36)
                             .not_null(),
                     )
@@ -137,40 +143,45 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(ProofSchemaClaims::Table)
+                    .table(ProofSchemaClaim::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(ProofSchemaClaims::ClaimSchemaId)
+                        ColumnDef::new(ProofSchemaClaim::ClaimSchemaId)
                             .char_len(36)
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(ProofSchemaClaims::ProofSchemaId)
+                        ColumnDef::new(ProofSchemaClaim::ProofSchemaId)
                             .char_len(36)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchemaClaim::IsRequired)
+                            .boolean()
                             .not_null(),
                     )
                     .primary_key(
                         Index::create()
                             .name("pk-ClaimSchema_ProofSchema")
-                            .col(ProofSchemaClaims::ClaimSchemaId)
-                            .col(ProofSchemaClaims::ProofSchemaId)
+                            .col(ProofSchemaClaim::ClaimSchemaId)
+                            .col(ProofSchemaClaim::ProofSchemaId)
                             .primary(),
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
                             .name("fk-ClaimSchema_ProofSchema-ClaimId")
-                            .from_tbl(ProofSchemaClaims::Table)
-                            .from_col(ProofSchemaClaims::ClaimSchemaId)
-                            .to_tbl(ClaimSchemas::Table)
-                            .to_col(ClaimSchemas::Id),
+                            .from_tbl(ProofSchemaClaim::Table)
+                            .from_col(ProofSchemaClaim::ClaimSchemaId)
+                            .to_tbl(ClaimSchema::Table)
+                            .to_col(ClaimSchema::Id),
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
                             .name("fk-ClaimSchema_ProofSchema-ProofId")
-                            .from_tbl(ProofSchemaClaims::Table)
-                            .from_col(ProofSchemaClaims::ProofSchemaId)
-                            .to_tbl(ProofSchemas::Table)
-                            .to_col(ProofSchemas::Id),
+                            .from_tbl(ProofSchemaClaim::Table)
+                            .from_col(ProofSchemaClaim::ProofSchemaId)
+                            .to_tbl(ProofSchema::Table)
+                            .to_col(ProofSchema::Id),
                     )
                     .to_owned(),
             )
@@ -179,25 +190,25 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(ClaimSchemas::Table).to_owned())
+            .drop_table(Table::drop().table(ClaimSchema::Table).to_owned())
             .await?;
 
         manager
-            .drop_table(Table::drop().table(CredentialSchemas::Table).to_owned())
+            .drop_table(Table::drop().table(CredentialSchema::Table).to_owned())
             .await?;
 
         manager
-            .drop_table(Table::drop().table(ProofSchemaClaims::Table).to_owned())
+            .drop_table(Table::drop().table(ProofSchemaClaim::Table).to_owned())
             .await?;
 
         manager
-            .drop_table(Table::drop().table(ProofSchemas::Table).to_owned())
+            .drop_table(Table::drop().table(ProofSchema::Table).to_owned())
             .await
     }
 }
 
 #[derive(Iden)]
-enum CredentialSchemas {
+enum CredentialSchema {
     Table,
     Id,
     DeletedAt,
@@ -232,7 +243,7 @@ enum RevocationMethod {
 }
 
 #[derive(Iden)]
-enum ClaimSchemas {
+enum ClaimSchema {
     Table,
     Id,
     Datatype,
@@ -254,7 +265,7 @@ enum Datatype {
 }
 
 #[derive(Iden)]
-enum ProofSchemas {
+enum ProofSchema {
     Table,
     Id,
     DeletedAt,
@@ -266,8 +277,9 @@ enum ProofSchemas {
 }
 
 #[derive(Iden)]
-enum ProofSchemaClaims {
+enum ProofSchemaClaim {
     Table,
-    ClaimSchemaId, // ClaimSchemas::Id
-    ProofSchemaId, // ProofSchemas::Id
+    ClaimSchemaId,
+    ProofSchemaId,
+    IsRequired,
 }

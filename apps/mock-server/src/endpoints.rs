@@ -10,6 +10,7 @@ use crate::create_credential_schema::create_credential_schema;
 use crate::create_proof_schema::create_proof_schema;
 use crate::data_model::{CreateCredentialSchemaRequestDTO, CreateProofSchemaRequestDTO};
 use crate::get_credential_schemas::{get_credential_schemas, GetCredentialSchemaQuery};
+use crate::get_proof_schemas::GetProofSchemaQuery;
 use crate::AppState;
 
 #[utoipa::path(
@@ -129,6 +130,34 @@ pub(crate) async fn post_credential_schema(
     }
 
     StatusCode::NO_CONTENT
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/proof-schema/v1",
+    responses(
+        (status = 200, description = "OK", body = ProofSchemaResponseDTO),
+        (status = 400, description = "Bad request"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        GetProofSchemaQuery
+    ),
+    tag = "proof_schema_management"
+)]
+pub(crate) async fn get_proof_schemas(
+    state: State<AppState>,
+    Query(query): Query<GetProofSchemaQuery>,
+) -> Response {
+    let result = super::get_proof_schemas::get_proof_schemas(&state.db, query).await;
+
+    match result {
+        Err(error) => {
+            tracing::error!("Error while getting credential: {:?}", error);
+            (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response()
+        }
+        Ok(value) => (StatusCode::OK, Json::from(value)).into_response(),
+    }
 }
 
 #[utoipa::path(

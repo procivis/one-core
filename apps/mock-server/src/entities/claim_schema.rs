@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "claim_schemas")]
+#[sea_orm(table_name = "claim_schema")]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -19,35 +19,28 @@ pub struct Model {
     pub credential_id: String,
 }
 
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    Credential,
-    Proof,
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        match self {
-            Self::Credential => Entity::belongs_to(super::credential_schema::Entity)
-                .from(Column::CredentialId)
-                .to(super::credential_schema::Column::Id)
-                .into(),
-            Self::Proof => Entity::has_many(super::proof_schema::Entity).into(),
-        }
-    }
+    #[sea_orm(
+        belongs_to = "super::credential_schema::Entity",
+        from = "Column::CredentialId",
+        to = "super::credential_schema::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    CredentialSchema,
 }
 
 impl Related<super::credential_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Credential.def()
+        Relation::CredentialSchema.def()
     }
 }
 
 impl Related<super::proof_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Credential.def()
+        super::proof_schema_claim::Relation::ProofSchema.def()
     }
-
     fn via() -> Option<RelationDef> {
         Some(super::proof_schema_claim::Relation::ClaimSchema.def().rev())
     }
