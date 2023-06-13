@@ -1,5 +1,6 @@
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter, Select,
+    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, LoaderTrait, PaginatorTrait, QueryFilter,
+    Select,
 };
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -36,15 +37,16 @@ pub(crate) async fn get_credential_schemas(
     let limit: u64 = query_params.page_size as u64;
     let items_count = get_base_query().count(db).await?;
 
-    let values: Vec<(credential_schema::Model, Vec<claim_schema::Model>)> = get_base_query()
+    let schemas: Vec<credential_schema::Model> = get_base_query()
         .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
-        .find_with_related(ClaimSchema)
         .all(db)
         .await?;
+    let claims: Vec<Vec<claim_schema::Model>> = schemas.load_many(ClaimSchema, db).await?;
 
     Ok(GetCredentialClaimSchemaResponseDTO {
-        values: values
+        values: schemas
             .into_iter()
+            .zip(claims)
             .map(|(credential_schema, claim_schemas)| {
                 CredentialSchemaResponseDTO::from_model(credential_schema, claim_schemas)
             })
@@ -392,5 +394,34 @@ mod tests {
         assert_eq!(2, response.total_items);
         assert_eq!(1, response.total_pages);
         assert_eq!(0, response.values.len());
+    }
+
+    #[tokio::test]
+    async fn test_get_credential_schemas_multiple_claims_with_small_page_size() {
+        let db = setup_test_database_and_connection().await.unwrap();
+
+        let id = insert_credential_schema_to_database(&db, None)
+            .await
+            .unwrap();
+
+        insert_many_claims_schema_to_database(
+            &db,
+            &id,
+            &vec![
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+                Uuid::new_v4(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        let result =
+            get_credential_schemas(&db, GetCredentialSchemaQuery::from_pagination(0, 2)).await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(1, response.values.len());
+        assert_eq!(4, response.values[0].claims.len());
     }
 }
