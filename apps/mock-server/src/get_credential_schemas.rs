@@ -1,6 +1,6 @@
 use sea_orm::{
     ColumnTrait, DatabaseConnection, DbErr, EntityTrait, LoaderTrait, PaginatorTrait, QueryFilter,
-    Select,
+    QueryOrder, QueryTrait, Select,
 };
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -37,7 +37,13 @@ pub(crate) async fn get_credential_schemas(
     let limit: u64 = query_params.page_size as u64;
     let items_count = get_base_query().count(db).await?;
 
+    let default_order = match query_params.sort {
+        Some(_) => None,
+        None => Some(credential_schema::Column::CreatedDate),
+    };
+
     let schemas: Vec<credential_schema::Model> = get_base_query()
+        .apply_if(default_order, QueryOrder::order_by_desc)
         .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
         .all(db)
         .await?;
@@ -305,6 +311,16 @@ mod tests {
         assert_eq!(1, response.total_pages);
         assert_eq!(2, response.values.len());
         assert_eq!(older_jwt_schema.id, response.values[0].id);
+
+        // no sorting specified - default Descending by CreatedDate
+        let result =
+            get_credential_schemas(&db, GetCredentialSchemaQuery::from_pagination(0, 2)).await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(2, response.total_items);
+        assert_eq!(1, response.total_pages);
+        assert_eq!(2, response.values.len());
+        assert_eq!(newer_sdjwt_schema.id, response.values[0].id);
     }
 
     #[tokio::test]
