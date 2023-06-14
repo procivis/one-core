@@ -193,7 +193,7 @@ pub struct CreateProofSchemaRequestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ClaimProofSchemaRequestDTO {
     pub id: Uuid,
-    pub is_required: bool,
+    //pub is_required: bool, // Todo: Bring it back later
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]

@@ -29,7 +29,7 @@ pub(crate) async fn create_proof_schema(
         proof_schema_claim::ActiveModel {
             claim_schema_id: Set(claim_schema.id.to_string()),
             proof_schema_id: Set(proof_schema.id.clone()),
-            is_required: Set(claim_schema.is_required),
+            is_required: Set(false),
         }
         .insert(db)
         .await?;
@@ -93,10 +93,7 @@ mod tests {
         assert_eq!(0, proof_schema_claim_count);
 
         let mut request = create_schema();
-        request.claim_schemas = vec![ClaimProofSchemaRequestDTO {
-            id: Uuid::new_v4(),
-            is_required: false,
-        }];
+        request.claim_schemas = vec![ClaimProofSchemaRequestDTO { id: Uuid::new_v4() }];
 
         let response = create_proof_schema(&database, request.clone()).await;
         assert!(response.is_err());
@@ -125,18 +122,9 @@ mod tests {
 
         let mut request = create_schema();
         request.claim_schemas = vec![
-            ClaimProofSchemaRequestDTO {
-                id: claim_ids[0],
-                is_required: false,
-            },
-            ClaimProofSchemaRequestDTO {
-                id: claim_ids[1],
-                is_required: false,
-            },
-            ClaimProofSchemaRequestDTO {
-                id: claim_ids[2],
-                is_required: false,
-            },
+            ClaimProofSchemaRequestDTO { id: claim_ids[0] },
+            ClaimProofSchemaRequestDTO { id: claim_ids[1] },
+            ClaimProofSchemaRequestDTO { id: claim_ids[2] },
         ];
 
         let response = create_proof_schema(&database, request.clone()).await;
