@@ -13,17 +13,18 @@ use crate::get_credential_schemas::{get_credential_schemas, GetCredentialSchemaQ
 use crate::AppState;
 
 #[utoipa::path(
-        delete,
-        path = "/api/credential-schema/v1/{id}",
-        responses(
-            (status = 204, description = "Deleted"),
-            (status = 404, description = "Schema not found"),
-            (status = 500, description = "Server error"),
-        ),
-        params(
-            ("id" = Uuid, Path, description = "Schema id")
-        )
-    )]
+    delete,
+    path = "/api/credential-schema/v1/{id}",
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 404, description = "Schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        ("id" = Uuid, Path, description = "Schema id")
+    ),
+    tag = "credential_schema_management"
+)]
 pub(crate) async fn delete_credential_schema(
     state: State<AppState>,
     Path(id): Path<Uuid>,
@@ -46,17 +47,18 @@ pub(crate) async fn delete_credential_schema(
 }
 
 #[utoipa::path(
-        get,
-        path = "/api/credential-schema/v1/{id}",
-        responses(
-            (status = 200, description = "OK"),
-            (status = 404, description = "Schema not found"),
-            (status = 500, description = "Server error"),
-        ),
-        params(
-            ("id" = Uuid, Path, description = "Schema id")
-        )
-    )]
+    get,
+    path = "/api/credential-schema/v1/{id}",
+    responses(
+        (status = 200, description = "OK"),
+        (status = 404, description = "Schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        ("id" = Uuid, Path, description = "Schema id")
+    ),
+    tag = "credential_schema_management"
+)]
 pub(crate) async fn get_credential_schema_details(
     state: State<AppState>,
     Path(id): Path<Uuid>,
@@ -80,16 +82,17 @@ pub(crate) async fn get_credential_schema_details(
 }
 
 #[utoipa::path(
-        get,
-        path = "/api/credential-schema/v1",
-        responses(
-            (status = 200, description = "OK", body = GetCredentialClaimSchemaResponseDTO),
-            (status = 500, description = "Server error"),
-        ),
-        params(
-            GetCredentialSchemaQuery
-        )
-    )]
+    get,
+    path = "/api/credential-schema/v1",
+    responses(
+        (status = 200, description = "OK", body = GetCredentialClaimSchemaResponseDTO),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        GetCredentialSchemaQuery
+    ),
+    tag = "credential_schema_management"
+)]
 pub(crate) async fn get_credential_schema(
     state: State<AppState>,
     Query(query): Query<GetCredentialSchemaQuery>,
@@ -106,13 +109,14 @@ pub(crate) async fn get_credential_schema(
 }
 
 #[utoipa::path(
-        post,
-        path = "/api/credential-schema/v1",
-        request_body = CreateCredentialSchemaRequestDTO,
-        responses(
-            (status = 204, description = "Created")
-        )
-    )]
+    post,
+    path = "/api/credential-schema/v1",
+    request_body = CreateCredentialSchemaRequestDTO,
+    responses(
+        (status = 204, description = "Created")
+    ),
+    tag = "credential_schema_management"
+)]
 pub(crate) async fn post_credential_schema(
     state: State<AppState>,
     request: Json<CreateCredentialSchemaRequestDTO>,
@@ -135,7 +139,8 @@ pub(crate) async fn post_credential_schema(
         (status = 201, description = "Created"),
         (status = 400, description = "Bad request"),
         (status = 500, description = "Internal server error")
-    )
+    ),
+    tag = "proof_schema_management"
 )]
 pub(crate) async fn post_proof_schema(
     state: State<AppState>,
@@ -172,7 +177,8 @@ pub(crate) async fn post_proof_schema(
     ),
     params(
         ("id" = Uuid, Path, description = "Schema id")
-    )
+    ),
+    tag = "proof_schema_management"
 )]
 pub(crate) async fn delete_proof_schema(
     state: State<AppState>,
@@ -199,7 +205,8 @@ pub(crate) async fn delete_proof_schema(
     path = "/build_info",
     responses(
         (status = 200, description = "Ok")
-    )
+    ),
+    tag = "other"
 )]
 pub(crate) async fn get_build_info() -> Json<Value> {
     use shadow_rs::shadow;

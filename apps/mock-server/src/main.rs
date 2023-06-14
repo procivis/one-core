@@ -70,7 +70,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         modifiers(),
         tags(
-            (name = "one_core_mock_server", description = "one-core mock server API")
+            (name = "credential_schema_management", description = "Credential schema management"),
+            (name = "proof_schema_management", description = "Proof schema management"),
+            (name = "other", description = "Other utility endpoints"),
         )
     )]
     struct ApiDoc;
