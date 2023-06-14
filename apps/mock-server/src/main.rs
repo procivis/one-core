@@ -46,6 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_credential_schema,
             endpoints::post_credential_schema,
             endpoints::post_proof_schema,
+            endpoints::get_proof_schema_details,
             endpoints::get_proof_schemas,
             endpoints::delete_proof_schema,
             endpoints::get_build_info
@@ -86,11 +87,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route(
             "/api/credential-schema/v1/:id",
-            delete(endpoints::delete_credential_schema),
-        )
-        .route(
-            "/api/credential-schema/v1/:id",
-            get(endpoints::get_credential_schema_details),
+            delete(endpoints::delete_credential_schema)
+                .get(endpoints::get_credential_schema_details),
         )
         .route(
             "/api/credential-schema/v1",
@@ -98,7 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route(
             "/api/proof-schema/v1/:id",
-            delete(endpoints::delete_proof_schema),
+            delete(endpoints::delete_proof_schema).get(endpoints::get_proof_schema_details),
         )
         .route(
             "/api/proof-schema/v1",

@@ -145,7 +145,7 @@ pub(crate) async fn post_credential_schema(
     get,
     path = "/api/proof-schema/v1",
     responses(
-        (status = 200, description = "OK", body = ProofSchemaResponseDTO),
+        (status = 200, description = "OK", body = GetProofSchemaResponseDTO),
         (status = 400, description = "Bad request"),
         (status = 500, description = "Server error"),
     ),
@@ -165,6 +165,38 @@ pub(crate) async fn get_proof_schemas(
             tracing::error!("Error while getting credential: {:?}", error);
             (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response()
         }
+        Ok(value) => (StatusCode::OK, Json::from(value)).into_response(),
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/proof-schema/v1/{id}",
+    responses(
+        (status = 200, description = "OK", body = ProofSchemaResponseDTO),
+        (status = 404, description = "Schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        ("id" = Uuid, Path, description = "Schema id")
+    ),
+    tag = "proof_schema_management"
+)]
+pub(crate) async fn get_proof_schema_details(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Response {
+    let result =
+        get_proof_schema_details::get_proof_schema_details(&state.db, &id.to_string()).await;
+
+    match result {
+        Err(error) => match error {
+            DbErr::RecordNotFound(message) => (StatusCode::NOT_FOUND, message).into_response(),
+            _ => {
+                tracing::error!("Error while getting credential: {:?}", error);
+                (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()).into_response()
+            }
+        },
         Ok(value) => (StatusCode::OK, Json::from(value)).into_response(),
     }
 }
