@@ -3,12 +3,12 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-default-members = ["apps/mock-server"]
+default-members = ["apps/core-server"]
 members = [
   "lib/one-core",
 
-  "apps/migration",
-  "apps/mock-server"
+  "apps/core-server",
+  "apps/migration"
 ]
 
 [workspace.dependencies]

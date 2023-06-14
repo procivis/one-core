@@ -33,7 +33,7 @@ build:
     - cargo build --release --features strict
   artifacts:
     paths:
-      - target/release/mock-server
+      - target/release/core-server
 
 
 tests:
