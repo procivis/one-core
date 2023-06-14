@@ -497,6 +497,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e496a50fda8aacccc86d7529e2c1e0892dbd0f898a6b5645b5561b89c3210efa"
 
 [[package]]
+name = "core-server"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "envmnt",
+ "migration",
+ "one-core",
+ "panic-handler",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "shadow-rs",
+ "time",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "utoipa",
+ "utoipa-swagger-ui",
+ "uuid",
+ "validator",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1307,30 +1331,6 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "mock-server"
-version = "0.1.0"
-dependencies = [
- "axum",
- "envmnt",
- "migration",
- "one-core",
- "panic-handler",
- "sea-orm",
- "serde",
- "serde_json",
- "shadow-rs",
- "time",
- "tokio",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "utoipa",
- "utoipa-swagger-ui",
- "uuid",
- "validator",
 ]
 
 [[package]]
