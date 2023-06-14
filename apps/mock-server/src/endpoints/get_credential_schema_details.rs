@@ -1,6 +1,6 @@
 use sea_orm::{DatabaseConnection, DbErr, EntityTrait, ModelTrait};
 
-use crate::data_model::CredentialSchemaResponseDTO;
+use crate::endpoints::data_model::CredentialSchemaResponseDTO;
 use crate::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
 
 pub(crate) async fn get_credential_schema_details(

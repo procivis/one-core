@@ -5,7 +5,7 @@ use sea_orm::{
 use serde::Deserialize;
 use utoipa::ToSchema;
 
-use crate::data_model::{ClaimsCombined, GetProofSchemaResponseDTO, ProofSchemaResponseDTO};
+use crate::endpoints::data_model::{ClaimsCombined, GetProofSchemaResponseDTO, ProofSchemaResponseDTO};
 use crate::entities::{
     claim_schema, credential_schema, proof_schema, proof_schema_claim, ProofSchema,
     ProofSchemaClaim,

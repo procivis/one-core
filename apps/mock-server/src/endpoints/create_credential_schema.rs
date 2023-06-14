@@ -3,7 +3,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    data_model::CreateCredentialSchemaRequestDTO,
+    endpoints::data_model::CreateCredentialSchemaRequestDTO,
     entities::{claim_schema, credential_schema},
 };
 

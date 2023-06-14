@@ -15,17 +15,11 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use migration::{Migrator, MigratorTrait};
 
-mod create_credential_schema;
-mod create_proof_schema;
-mod data_model;
-mod delete_credential_schema;
-mod delete_proof_schema;
 mod endpoints;
 mod entities;
-mod get_credential_schema_details;
-mod get_credential_schemas;
-mod get_proof_schemas;
 mod list_query;
+
+use endpoints::data_model;
 
 #[cfg(test)]
 mod test_utilities;

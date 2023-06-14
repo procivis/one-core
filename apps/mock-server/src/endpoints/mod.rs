@@ -6,12 +6,23 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::create_credential_schema::create_credential_schema;
-use crate::create_proof_schema::create_proof_schema;
-use crate::data_model::{CreateCredentialSchemaRequestDTO, CreateProofSchemaRequestDTO};
-use crate::get_credential_schemas::{get_credential_schemas, GetCredentialSchemaQuery};
-use crate::get_proof_schemas::GetProofSchemaQuery;
 use crate::AppState;
+
+use data_model::*;
+use get_credential_schemas::GetCredentialSchemaQuery;
+use get_proof_schemas::GetProofSchemaQuery;
+
+pub mod data_model;
+
+mod common;
+mod create_credential_schema;
+mod create_proof_schema;
+mod delete_credential_schema;
+mod delete_proof_schema;
+mod get_credential_schema_details;
+mod get_credential_schemas;
+mod get_proof_schema_details;
+mod get_proof_schemas;
 
 #[utoipa::path(
     delete,
@@ -31,7 +42,7 @@ pub(crate) async fn delete_credential_schema(
     Path(id): Path<Uuid>,
 ) -> StatusCode {
     let result =
-        super::delete_credential_schema::delete_credential_schema(&state.db, &id.to_string()).await;
+        delete_credential_schema::delete_credential_schema(&state.db, &id.to_string()).await;
 
     if let Err(error) = result {
         return match error {
@@ -64,11 +75,9 @@ pub(crate) async fn get_credential_schema_details(
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Response {
-    let result = crate::get_credential_schema_details::get_credential_schema_details(
-        &state.db,
-        &id.to_string(),
-    )
-    .await;
+    let result =
+        get_credential_schema_details::get_credential_schema_details(&state.db, &id.to_string())
+            .await;
 
     match result {
         Err(error) => match error {
@@ -98,7 +107,7 @@ pub(crate) async fn get_credential_schema(
     state: State<AppState>,
     Query(query): Query<GetCredentialSchemaQuery>,
 ) -> Response {
-    let result = get_credential_schemas(&state.db, query).await;
+    let result = get_credential_schemas::get_credential_schemas(&state.db, query).await;
 
     match result {
         Err(error) => {
@@ -122,7 +131,7 @@ pub(crate) async fn post_credential_schema(
     state: State<AppState>,
     request: Json<CreateCredentialSchemaRequestDTO>,
 ) -> StatusCode {
-    let result = create_credential_schema(&state.db, request.0).await;
+    let result = create_credential_schema::create_credential_schema(&state.db, request.0).await;
 
     if let Err(error) = result {
         tracing::error!("Error while inserting credential: {:?}", error);
@@ -149,7 +158,7 @@ pub(crate) async fn get_proof_schemas(
     state: State<AppState>,
     Query(query): Query<GetProofSchemaQuery>,
 ) -> Response {
-    let result = super::get_proof_schemas::get_proof_schemas(&state.db, query).await;
+    let result = get_proof_schemas::get_proof_schemas(&state.db, query).await;
 
     match result {
         Err(error) => {
@@ -180,7 +189,7 @@ pub(crate) async fn post_proof_schema(
         return StatusCode::BAD_REQUEST.into_response();
     }
 
-    let result = create_proof_schema(&state.db, request).await;
+    let result = create_proof_schema::create_proof_schema(&state.db, request).await;
 
     match result {
         // Most probably caused by missing constraints - missing claims for example
@@ -213,7 +222,7 @@ pub(crate) async fn delete_proof_schema(
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> StatusCode {
-    let result = super::delete_proof_schema::delete_proof_schema(&state.db, &id.to_string()).await;
+    let result = delete_proof_schema::delete_proof_schema(&state.db, &id.to_string()).await;
 
     if let Err(error) = result {
         return match error {

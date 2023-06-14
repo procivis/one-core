@@ -3,7 +3,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    data_model::{CreateProofSchemaRequestDTO, CreateProofSchemaResponseDTO},
+    endpoints::data_model::{CreateProofSchemaRequestDTO, CreateProofSchemaResponseDTO},
     entities::{proof_schema, proof_schema_claim},
 };
 
@@ -45,7 +45,7 @@ mod tests {
     use sea_orm::{DbErr, EntityTrait};
     use uuid::Uuid;
 
-    use crate::create_proof_schema::create_proof_schema;
+    use super::*;
     use crate::data_model::{ClaimProofSchemaRequestDTO, CreateProofSchemaRequestDTO};
     use crate::entities::{ProofSchema, ProofSchemaClaim};
     use crate::test_utilities::{
