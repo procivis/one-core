@@ -5,7 +5,7 @@ use sea_orm::{
 use serde::Deserialize;
 use utoipa::ToSchema;
 
-use crate::data_model::{CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO};
+use crate::endpoints::data_model::{CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO};
 use crate::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
 use crate::list_query::{GetEntityColumn, GetListQueryParams, SelectWithListQuery};
 
