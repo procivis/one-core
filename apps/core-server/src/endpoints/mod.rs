@@ -136,6 +136,7 @@ pub(crate) async fn get_credential_schema(
     request_body = CreateCredentialSchemaRequestDTO,
     responses(
         (status = 204, description = "Created"),
+        (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
     ),
     tag = "credential_schema_management",
@@ -147,6 +148,11 @@ pub(crate) async fn post_credential_schema(
     state: State<AppState>,
     request: Json<CreateCredentialSchemaRequestDTO>,
 ) -> StatusCode {
+    if let Err(e) = request.validate() {
+        tracing::error!("Request validation failure: {}", e.to_string());
+        return StatusCode::BAD_REQUEST;
+    }
+
     let result = create_credential_schema::create_credential_schema(&state.db, request.0).await;
 
     if let Err(error) = result {

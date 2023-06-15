@@ -16,13 +16,15 @@ time::serde::format_description!(
     "[year]-[month]-[day padding:zero]T[hour padding:zero]:[minute padding:zero]:[second padding:zero].000Z"
 );
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCredentialSchemaRequestDTO {
+    #[validate(length(min = 1))]
     pub name: String,
     pub format: Format,
     pub revocation_method: RevocationMethod,
     pub organisation_id: Uuid,
+    #[validate(length(min = 1))]
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }
 
@@ -186,6 +188,7 @@ pub struct CreateProofSchemaRequestDTO {
     pub name: String,
     pub organisation_id: Uuid,
     pub expire_duration: u32,
+    #[validate(length(min = 1))]
     pub claim_schemas: Vec<ClaimProofSchemaRequestDTO>,
 }
 
