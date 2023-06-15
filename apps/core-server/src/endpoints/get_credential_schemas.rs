@@ -1,6 +1,6 @@
 use sea_orm::{
     ColumnTrait, DatabaseConnection, DbErr, EntityTrait, LoaderTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QueryTrait, Select,
+    QueryOrder, Select,
 };
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -40,14 +40,10 @@ pub(crate) async fn get_credential_schemas(
     let limit: u64 = query_params.page_size as u64;
     let items_count = get_base_query().count(db).await?;
 
-    let default_order = match query_params.sort {
-        Some(_) => None,
-        None => Some(credential_schema::Column::CreatedDate),
-    };
-
     let schemas: Vec<credential_schema::Model> = get_base_query()
-        .apply_if(default_order, QueryOrder::order_by_desc)
         .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
+        .order_by_desc(credential_schema::Column::CreatedDate)
+        .order_by_desc(credential_schema::Column::Id)
         .all(db)
         .await?;
     let claims: Vec<Vec<claim_schema::Model>> = schemas.load_many(ClaimSchema, db).await?;
