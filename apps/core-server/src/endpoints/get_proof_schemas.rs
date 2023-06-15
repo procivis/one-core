@@ -1,6 +1,6 @@
 use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, QueryTrait, RelationTrait, Select,
+    QueryOrder, QuerySelect, RelationTrait, Select,
 };
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -41,14 +41,10 @@ pub(crate) async fn get_proof_schemas(
     let limit: u64 = query_params.page_size as u64;
     let items_count = get_base_query().count(db).await?;
 
-    let default_order = match query_params.sort {
-        Some(_) => None,
-        None => Some(proof_schema::Column::CreatedDate),
-    };
-
     let values: Vec<proof_schema::Model> = get_base_query()
-        .apply_if(default_order, QueryOrder::order_by_desc)
         .with_list_query(&query_params, &Some(vec![proof_schema::Column::Name]))
+        .order_by_desc(proof_schema::Column::CreatedDate)
+        .order_by_desc(proof_schema::Column::Id)
         .all(db)
         .await?;
 
