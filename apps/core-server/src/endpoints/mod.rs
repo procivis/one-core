@@ -29,13 +29,17 @@ mod get_proof_schemas;
     path = "/api/credential-schema/v1/{id}",
     responses(
         (status = 204, description = "Deleted"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Schema not found"),
         (status = 500, description = "Server error"),
     ),
     params(
         ("id" = Uuid, Path, description = "Schema id")
     ),
-    tag = "credential_schema_management"
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn delete_credential_schema(
     state: State<AppState>,
@@ -63,13 +67,17 @@ pub(crate) async fn delete_credential_schema(
     path = "/api/credential-schema/v1/{id}",
     responses(
         (status = 200, description = "OK"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Schema not found"),
         (status = 500, description = "Server error"),
     ),
     params(
         ("id" = Uuid, Path, description = "Schema id")
     ),
-    tag = "credential_schema_management"
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn get_credential_schema_details(
     state: State<AppState>,
@@ -96,12 +104,16 @@ pub(crate) async fn get_credential_schema_details(
     path = "/api/credential-schema/v1",
     responses(
         (status = 200, description = "OK", body = GetCredentialClaimSchemaResponseDTO),
+        (status = 401, description = "Unauthorized"),
         (status = 500, description = "Server error"),
     ),
     params(
         GetCredentialSchemaQuery
     ),
-    tag = "credential_schema_management"
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn get_credential_schema(
     state: State<AppState>,
@@ -123,9 +135,13 @@ pub(crate) async fn get_credential_schema(
     path = "/api/credential-schema/v1",
     request_body = CreateCredentialSchemaRequestDTO,
     responses(
-        (status = 204, description = "Created")
+        (status = 204, description = "Created"),
+        (status = 401, description = "Unauthorized"),
     ),
-    tag = "credential_schema_management"
+    tag = "credential_schema_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn post_credential_schema(
     state: State<AppState>,
@@ -147,12 +163,16 @@ pub(crate) async fn post_credential_schema(
     responses(
         (status = 200, description = "OK", body = GetProofSchemaResponseDTO),
         (status = 400, description = "Bad request"),
+        (status = 401, description = "Unauthorized"),
         (status = 500, description = "Server error"),
     ),
     params(
         GetProofSchemaQuery
     ),
-    tag = "proof_schema_management"
+    tag = "proof_schema_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn get_proof_schemas(
     state: State<AppState>,
@@ -174,13 +194,17 @@ pub(crate) async fn get_proof_schemas(
     path = "/api/proof-schema/v1/{id}",
     responses(
         (status = 200, description = "OK", body = ProofSchemaResponseDTO),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Schema not found"),
         (status = 500, description = "Server error"),
     ),
     params(
         ("id" = Uuid, Path, description = "Schema id")
     ),
-    tag = "proof_schema_management"
+    tag = "proof_schema_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn get_proof_schema_details(
     state: State<AppState>,
@@ -208,9 +232,13 @@ pub(crate) async fn get_proof_schema_details(
     responses(
         (status = 201, description = "Created"),
         (status = 400, description = "Bad request"),
+        (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
-    tag = "proof_schema_management"
+    tag = "proof_schema_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn post_proof_schema(
     state: State<AppState>,
@@ -242,13 +270,17 @@ pub(crate) async fn post_proof_schema(
     path = "/api/proof-schema/v1/{id}",
     responses(
         (status = 204, description = "Deleted"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Schema not found"),
         (status = 500, description = "Server error"),
     ),
     params(
         ("id" = Uuid, Path, description = "Schema id")
     ),
-    tag = "proof_schema_management"
+    tag = "proof_schema_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn delete_proof_schema(
     state: State<AppState>,
@@ -272,11 +304,11 @@ pub(crate) async fn delete_proof_schema(
 
 #[utoipa::path(
     get,
-    path = "/build_info",
+    path = "/build-info",
     responses(
         (status = 200, description = "Ok")
     ),
-    tag = "other"
+    tag = "other",
 )]
 pub(crate) async fn get_build_info() -> Json<Value> {
     use shadow_rs::shadow;

@@ -3,6 +3,9 @@
 use std::net::{IpAddr, SocketAddr};
 use std::panic;
 
+use axum::http::{Request, StatusCode};
+use axum::middleware::{self, Next};
+use axum::response::Response;
 use axum::routing::{delete, get};
 use axum::Router;
 use sea_orm::DatabaseConnection;
@@ -10,7 +13,8 @@ use shadow_rs::shadow;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{info, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
-use utoipa::OpenApi;
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 use migration::{Migrator, MigratorTrait};
@@ -73,9 +77,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             (name = "credential_schema_management", description = "Credential schema management"),
             (name = "proof_schema_management", description = "Proof schema management"),
             (name = "other", description = "Other utility endpoints"),
-        )
+        ),
+        modifiers(&SecurityAddon)
     )]
     struct ApiDoc;
+
+    struct SecurityAddon;
+
+    impl Modify for SecurityAddon {
+        fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+            let components = openapi.components.as_mut().expect("OpenAPI Components");
+            components.add_security_scheme(
+                "bearer",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .description(Some("Provide bearer token"))
+                        .build(),
+                ),
+            )
+        }
+    }
 
     config_tracing();
     log_build_info();
@@ -83,8 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = setup_database_and_connection().await?;
     let state = AppState { db };
 
-    let app = Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+    let protected = Router::new()
         .route(
             "/api/credential-schema/v1/:id",
             delete(endpoints::delete_credential_schema)
@@ -102,7 +123,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/proof-schema/v1",
             get(endpoints::get_proof_schemas).post(endpoints::post_proof_schema),
         )
-        .route("/build_info", get(endpoints::get_build_info))
+        .layer(middleware::from_fn(bearer_check));
+
+    let unprotected = Router::new().route("/build-info", get(endpoints::get_build_info));
+
+    let app = Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(protected)
+        .merge(unprotected)
         .with_state(state)
         .layer(
             TraceLayer::new_for_http()
@@ -169,4 +197,34 @@ fn config_tracing() {
     panic::set_hook(Box::new(|p| {
         tracing::error!("PANIC! Error: {p}");
     }));
+}
+
+#[derive(Debug, Clone)]
+pub struct Authorized {}
+
+async fn bearer_check<B>(mut request: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+    let auth_header = request
+        .headers()
+        .get("Authorization")
+        .and_then(|header| header.to_str().ok());
+
+    let auth_header = if let Some(auth_header) = auth_header {
+        auth_header.to_owned()
+    } else {
+        tracing::error!("Authorization header not found.");
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    let mut split = auth_header.split(' ');
+    let auth_type = split.next().unwrap_or_default();
+    let token = split.next().unwrap_or_default();
+
+    if auth_type == "Bearer" && !token.is_empty() && token == envmnt::get_or("AUTH_TOKEN", "") {
+        request.extensions_mut().insert(Authorized {});
+    } else {
+        tracing::error!("Could not authorize request. Incorrect authorization method or token.");
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    Ok(next.run(request).await)
 }
