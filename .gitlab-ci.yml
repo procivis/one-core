@@ -111,7 +111,7 @@ test_e2e:
     - kubectl rollout restart $K8S_TYPE $HELM_APP_NAME-$HELM_PATH --namespace=$K8S_NAMESPACE
 
 
-deploy:
+deploy:dev:
   stage: deploy
   extends:
     - .deploy_k8s
@@ -120,3 +120,15 @@ deploy:
     K8S_NAMESPACE: default
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
+
+
+deploy:test:
+  stage: deploy
+  extends:
+    - .deploy_k8s
+  variables:
+    HELM_VALUES_FILE: values/desk.test.one-trust-solution.yaml
+    K8S_NAMESPACE: one-test
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+      when: manual
