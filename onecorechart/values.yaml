@@ -69,6 +69,7 @@ affinity: {}
 
 mariadb:
   enabled: true
+  architecture: standalone
   auth:
     database: "one-core"
     username: "core_user"
