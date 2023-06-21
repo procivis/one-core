@@ -54,12 +54,12 @@ mod tests {
     use crate::data_model::*;
     use crate::test_utilities::*;
 
-    fn create_schema() -> CreateCredentialSchemaRequestDTO {
+    fn create_schema(organization_id: &Uuid) -> CreateCredentialSchemaRequestDTO {
         CreateCredentialSchemaRequestDTO {
             name: "credential".to_string(),
             format: Format::Jwt,
             revocation_method: RevocationMethod::StatusList2021,
-            organisation_id: Uuid::new_v4(),
+            organisation_id: organization_id.to_owned(),
             claims: vec![
                 CredentialClaimSchemaRequestDTO {
                     key: "1".to_string(),
@@ -80,7 +80,13 @@ mod tests {
         let credential_schemas_count = CredentialSchema::find().all(&database).await.unwrap().len();
         assert_eq!(0, credential_schemas_count);
 
-        let mut schema = create_schema();
+        let organisation_id = Uuid::new_v4();
+
+        insert_organisation_to_database(&database, Some(organisation_id))
+            .await
+            .unwrap();
+
+        let mut schema = create_schema(&organisation_id);
         schema.claims.clear();
 
         assert!(create_credential_schema(&database, schema).await.is_ok());
@@ -98,9 +104,17 @@ mod tests {
         let claim_schemas_count = ClaimSchema::find().all(&database).await.unwrap().len();
         assert_eq!(0, claim_schemas_count);
 
-        assert!(create_credential_schema(&database, create_schema())
+        let organisation_id = Uuid::new_v4();
+
+        insert_organisation_to_database(&database, Some(organisation_id))
             .await
-            .is_ok());
+            .unwrap();
+
+        assert!(
+            create_credential_schema(&database, create_schema(&organisation_id))
+                .await
+                .is_ok()
+        );
 
         let credential_schemas_count = CredentialSchema::find().all(&database).await.unwrap().len();
         assert_eq!(1, credential_schemas_count);
@@ -112,15 +126,27 @@ mod tests {
     async fn create_credential_schema_test_related_claims() {
         let database = setup_test_database_and_connection().await.unwrap();
 
-        assert!(create_credential_schema(&database, create_schema())
+        let organisation_id = Uuid::new_v4();
+
+        insert_organisation_to_database(&database, Some(organisation_id))
             .await
-            .is_ok());
-        assert!(create_credential_schema(&database, create_schema())
-            .await
-            .is_ok());
-        assert!(create_credential_schema(&database, create_schema())
-            .await
-            .is_ok());
+            .unwrap();
+
+        assert!(
+            create_credential_schema(&database, create_schema(&organisation_id))
+                .await
+                .is_ok()
+        );
+        assert!(
+            create_credential_schema(&database, create_schema(&organisation_id))
+                .await
+                .is_ok()
+        );
+        assert!(
+            create_credential_schema(&database, create_schema(&organisation_id))
+                .await
+                .is_ok()
+        );
 
         let schemas: Vec<(credential_schema::Model, Vec<claim_schema::Model>)> =
             CredentialSchema::find()

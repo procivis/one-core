@@ -50,7 +50,7 @@ mod tests {
     use crate::entities::{ProofSchema, ProofSchemaClaim};
     use crate::test_utilities::{
         insert_credential_schema_to_database, insert_many_claims_schema_to_database,
-        setup_test_database_and_connection,
+        insert_organisation_to_database, setup_test_database_and_connection,
     };
 
     fn create_schema() -> CreateProofSchemaRequestDTO {
@@ -72,7 +72,13 @@ mod tests {
         let proof_schema_claim_count = ProofSchemaClaim::find().all(&database).await.unwrap().len();
         assert_eq!(0, proof_schema_claim_count);
 
-        let request = create_schema();
+        let mut request = create_schema();
+
+        request.organisation_id = Uuid::new_v4();
+
+        insert_organisation_to_database(&database, Some(request.organisation_id))
+            .await
+            .unwrap();
 
         let response = create_proof_schema(&database, request).await;
         assert!(response.is_ok());
@@ -112,7 +118,11 @@ mod tests {
 
         let claim_ids = vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
 
-        let credential_id = insert_credential_schema_to_database(&database, None)
+        let organisation_id = insert_organisation_to_database(&database, None)
+            .await
+            .unwrap();
+
+        let credential_id = insert_credential_schema_to_database(&database, None, &organisation_id)
             .await
             .unwrap();
 
@@ -126,6 +136,10 @@ mod tests {
             ClaimProofSchemaRequestDTO { id: claim_ids[1] },
             ClaimProofSchemaRequestDTO { id: claim_ids[2] },
         ];
+
+        insert_organisation_to_database(&database, Some(request.organisation_id))
+            .await
+            .unwrap();
 
         let response = create_proof_schema(&database, request.clone()).await;
         assert!(response.is_ok());

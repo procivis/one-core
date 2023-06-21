@@ -56,6 +56,7 @@ async fn delete_credential_schema_from_database(
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::test_utilities::*;
 
@@ -63,9 +64,14 @@ mod tests {
     async fn delete_credential_schema_test_simple_without_claims() {
         let database = setup_test_database_and_connection().await.unwrap();
 
-        let credential_schema_id = insert_credential_schema_to_database(&database, None)
+        let organisation_id = insert_organisation_to_database(&database, None)
             .await
             .unwrap();
+
+        let credential_schema_id =
+            insert_credential_schema_to_database(&database, None, &organisation_id)
+                .await
+                .unwrap();
 
         let result = delete_credential_schema(&database, &credential_schema_id).await;
         assert!(result.is_ok());
@@ -87,10 +93,17 @@ mod tests {
 
         let predefined_deletion_date = Some(get_dummy_date());
 
-        let credential_schema_id =
-            insert_credential_schema_to_database(&database, predefined_deletion_date)
-                .await
-                .unwrap();
+        let organisation_id = insert_organisation_to_database(&database, None)
+            .await
+            .unwrap();
+
+        let credential_schema_id = insert_credential_schema_to_database(
+            &database,
+            predefined_deletion_date,
+            &organisation_id,
+        )
+        .await
+        .unwrap();
 
         let result = delete_credential_schema(&database, &credential_schema_id).await;
         assert!(result.is_err_and(|error| matches!(error, DbErr::RecordNotFound(_))));

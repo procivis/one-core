@@ -16,6 +16,7 @@ pub mod data_model;
 
 mod common;
 mod create_credential_schema;
+mod create_organisation;
 mod create_proof_schema;
 mod delete_credential_schema;
 mod delete_proof_schema;
@@ -306,6 +307,44 @@ pub(crate) async fn delete_proof_schema(
     }
 
     StatusCode::NO_CONTENT
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/organisation/v1",
+    request_body = Option<CreateOrganisationRequestDTO>,
+    responses(
+        (status = 201, description = "Created", body = CreateOrganisationResponseDTO),
+        (status = 409, description = "Organisation already exists"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "organisation_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn post_organisation(
+    state: State<AppState>,
+    request: Option<Json<CreateOrganisationRequestDTO>>,
+) -> impl IntoResponse {
+    let Json(request): Json<CreateOrganisationRequestDTO> =
+        request.unwrap_or(Json(CreateOrganisationRequestDTO {
+            id: Some(Uuid::new_v4()),
+        }));
+    let result = create_organisation::create_organisation(&state.db, request).await;
+
+    match result {
+        Err(DbErr::Exec(e)) => {
+            tracing::error!("Database runtime error: {:?}", e);
+            StatusCode::CONFLICT.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error while getting credential: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+        Ok(value) => (StatusCode::CREATED, Json::from(value)).into_response(),
+    }
 }
 
 #[utoipa::path(

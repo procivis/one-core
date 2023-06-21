@@ -33,6 +33,20 @@ args = ["-f", "docker/db.yml", "down" ]
 
 [tasks.dbdrop]
 script = [
-    "docker rm --force docker-mariadb-1",
+    "docker rm --force docker_mariadb_1",
     "docker volume rm docker_mariadb_data",
 ]
+
+[tasks.dbup1]
+cwd = "./apps/migration"
+command = "cargo"
+args = ["run", "--", "up", "-n1" ]
+
+[tasks.dbdown1]
+cwd = "./apps/migration"
+command = "cargo"
+args = ["run", "--", "down", "-n1" ]
+
+[tasks.dbtempent]
+command = "sea-orm-cli"
+args = ["generate", "entity", "--date-time-crate" , "time", "-o", "./apps/core-server/src/entities_new/" ]

@@ -6,7 +6,7 @@ use std::panic;
 use axum::http::{Request, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
-use axum::routing::{delete, get};
+use axum::routing::{delete, get, post};
 use axum::Router;
 use sea_orm::DatabaseConnection;
 use shadow_rs::shadow;
@@ -53,6 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_proof_schema_details,
             endpoints::get_proof_schemas,
             endpoints::delete_proof_schema,
+            endpoints::post_organisation,
             endpoints::get_build_info
         ),
         components(
@@ -68,6 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::ProofSchemaResponseDTO,
                     data_model::GetProofSchemaResponseDTO,
                     data_model::ProofClaimSchemaResponseDTO,
+                    data_model::CreateOrganisationRequestDTO,
+                    data_model::CreateOrganisationResponseDTO,
                     data_model::Format,
                     data_model::Datatype,
                     list_query::SortDirection)
@@ -123,6 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/proof-schema/v1",
             get(endpoints::get_proof_schemas).post(endpoints::post_proof_schema),
         )
+        .route("/api/organisation/v1", post(endpoints::post_organisation))
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new().route("/build-info", get(endpoints::get_build_info));

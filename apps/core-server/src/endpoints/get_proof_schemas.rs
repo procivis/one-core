@@ -116,7 +116,11 @@ mod tests {
     async fn test_get_proof_schemas_simple() {
         let db = setup_test_database_and_connection().await.unwrap();
 
-        let _id = insert_proof_schema_to_database(&db, None).await.unwrap();
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let _id = insert_proof_schema_to_database(&db, None, &organisation_id)
+            .await
+            .unwrap();
 
         let result = get_proof_schemas(&db, GetProofSchemaQuery::from_pagination(0, 1)).await;
         assert!(result.is_ok());
@@ -136,7 +140,9 @@ mod tests {
             (Uuid::new_v4(), true),
         ];
 
-        let credential_id = insert_credential_schema_to_database(&db, None)
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let credential_id = insert_credential_schema_to_database(&db, None, &organisation_id)
             .await
             .unwrap();
 
@@ -148,9 +154,12 @@ mod tests {
         .await
         .unwrap();
 
-        let proof_schema_id = insert_proof_with_claims_schema_to_database(&db, None, &new_claims)
-            .await
-            .unwrap();
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let proof_schema_id =
+            insert_proof_with_claims_schema_to_database(&db, None, &new_claims, &organisation_id)
+                .await
+                .unwrap();
 
         let result = get_proof_schemas(&db, GetProofSchemaQuery::from_pagination(0, 1)).await;
         assert!(result.is_ok());
@@ -187,8 +196,10 @@ mod tests {
     async fn test_get_proof_schemas_deleted() {
         let db = setup_test_database_and_connection().await.unwrap();
 
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
         let predefined_deletion_date = Some(get_dummy_date());
-        let _id = insert_proof_schema_to_database(&db, predefined_deletion_date)
+        let _id = insert_proof_schema_to_database(&db, predefined_deletion_date, &organisation_id)
             .await
             .unwrap();
 
@@ -204,8 +215,12 @@ mod tests {
     async fn test_get_proof_schemas_pages() {
         let db = setup_test_database_and_connection().await.unwrap();
 
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
         for _ in 0..50 {
-            let _id = insert_proof_schema_to_database(&db, None).await.unwrap();
+            let _id = insert_proof_schema_to_database(&db, None, &organisation_id)
+                .await
+                .unwrap();
         }
 
         let result = get_proof_schemas(&db, GetProofSchemaQuery::from_pagination(0, 10)).await;
@@ -234,12 +249,14 @@ mod tests {
     async fn test_get_proof_schemas_sorting() {
         let db = setup_test_database_and_connection().await.unwrap();
 
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
         let older_schema = proof_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(datetime!(2023-01-01 21:00 +0)),
             last_modified: Set(get_dummy_date()),
             name: Set("older".to_string()),
-            organisation_id: Set(Default::default()),
+            organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
             expire_duration: Set(0),
         }
@@ -252,7 +269,7 @@ mod tests {
             created_date: Set(datetime!(2023-02-01 21:00 +0)),
             last_modified: Set(get_dummy_date()),
             name: Set("newer".to_string()),
-            organisation_id: Set(Default::default()),
+            organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
             expire_duration: Set(0),
         }
@@ -350,12 +367,14 @@ mod tests {
     async fn test_get_proof_schemas_filtering() {
         let db = setup_test_database_and_connection().await.unwrap();
 
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
         let schema_a = proof_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             name: Set("a-schema".to_string()),
-            organisation_id: Set(Default::default()),
+            organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
             expire_duration: Set(0),
         }
@@ -368,7 +387,7 @@ mod tests {
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             name: Set("B-schema".to_string()),
-            organisation_id: Set(Default::default()),
+            organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
             expire_duration: Set(0),
         }

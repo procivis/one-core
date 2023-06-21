@@ -9,6 +9,31 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(Organisation::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Organisation::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Organisation::CreatedDate)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Organisation::LastModified)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(CredentialSchema::Table)
                     .if_not_exists()
                     .col(
@@ -53,6 +78,14 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(CredentialSchema::OrganisationId)
                             .char_len(36)
                             .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-CredentialSchema-OrganisationId")
+                            .from_tbl(CredentialSchema::Table)
+                            .from_col(CredentialSchema::OrganisationId)
+                            .to_tbl(Organisation::Table)
+                            .to_col(Organisation::Id),
                     )
                     .to_owned(),
             )
@@ -135,6 +168,14 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(ProofSchema::OrganisationId)
                             .char_len(36)
                             .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-ProofSchema-OrganisationId")
+                            .from_tbl(ProofSchema::Table)
+                            .from_col(ProofSchema::OrganisationId)
+                            .to_tbl(Organisation::Table)
+                            .to_col(Organisation::Id),
                     )
                     .to_owned(),
             )
@@ -282,4 +323,12 @@ pub enum ProofSchemaClaim {
     ClaimSchemaId,
     ProofSchemaId,
     IsRequired,
+}
+
+#[derive(Iden)]
+pub enum Organisation {
+    Table,
+    Id,
+    CreatedDate,
+    LastModified,
 }
