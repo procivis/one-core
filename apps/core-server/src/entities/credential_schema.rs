@@ -24,11 +24,25 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::claim_schema::Entity")]
     ClaimSchema,
+    #[sea_orm(
+        belongs_to = "super::organisation::Entity",
+        from = "Column::OrganisationId",
+        to = "super::organisation::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    Organisation,
 }
 
 impl Related<super::claim_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ClaimSchema.def()
+    }
+}
+
+impl Related<super::organisation::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Organisation.def()
     }
 }
 

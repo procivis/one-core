@@ -82,7 +82,9 @@ mod tests {
     async fn test_get_credential_schemas_simple() {
         let db = setup_test_database_and_connection().await.unwrap();
 
-        let _id = insert_credential_schema_to_database(&db, None)
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let _id = insert_credential_schema_to_database(&db, None, &organisation_id)
             .await
             .unwrap();
 
@@ -112,10 +114,13 @@ mod tests {
     async fn test_get_credential_schemas_deleted() {
         let db = setup_test_database_and_connection().await.unwrap();
 
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
         let predefined_deletion_date = Some(get_dummy_date());
-        let _id = insert_credential_schema_to_database(&db, predefined_deletion_date)
-            .await
-            .unwrap();
+        let _id =
+            insert_credential_schema_to_database(&db, predefined_deletion_date, &organisation_id)
+                .await
+                .unwrap();
 
         let result =
             get_credential_schemas(&db, GetCredentialSchemaQuery::from_pagination(0, 1)).await;
@@ -130,8 +135,10 @@ mod tests {
     async fn test_get_credential_schemas_pages() {
         let db = setup_test_database_and_connection().await.unwrap();
 
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
         for _ in 0..50 {
-            let _id = insert_credential_schema_to_database(&db, None)
+            let _id = insert_credential_schema_to_database(&db, None, &organisation_id)
                 .await
                 .unwrap();
         }
@@ -165,6 +172,8 @@ mod tests {
     async fn test_get_credential_schemas_sorting() {
         let db = setup_test_database_and_connection().await.unwrap();
 
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
         let older_jwt_schema = credential_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(datetime!(2023-01-01 21:00 +0)),
@@ -172,7 +181,7 @@ mod tests {
             format: Set(credential_schema::Format::Jwt),
             name: Set("older".to_string()),
             revocation_method: Set(Default::default()),
-            organisation_id: Set(Default::default()),
+            organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
         }
         .insert(&db)
@@ -186,7 +195,7 @@ mod tests {
             format: Set(credential_schema::Format::SdJwt),
             name: Set("newer".to_string()),
             revocation_method: Set(Default::default()),
-            organisation_id: Set(Default::default()),
+            organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
         }
         .insert(&db)
@@ -303,6 +312,8 @@ mod tests {
     async fn test_get_credential_schemas_filtering() {
         let db = setup_test_database_and_connection().await.unwrap();
 
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
         let schema_a = credential_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(get_dummy_date()),
@@ -310,7 +321,7 @@ mod tests {
             format: Set(Default::default()),
             name: Set("a-schema".to_string()),
             revocation_method: Set(Default::default()),
-            organisation_id: Set(Default::default()),
+            organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
         }
         .insert(&db)
@@ -324,7 +335,7 @@ mod tests {
             format: Set(Default::default()),
             name: Set("B-schema".to_string()),
             revocation_method: Set(Default::default()),
-            organisation_id: Set(Default::default()),
+            organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
         }
         .insert(&db)
@@ -392,7 +403,9 @@ mod tests {
     async fn test_get_credential_schemas_multiple_claims_with_small_page_size() {
         let db = setup_test_database_and_connection().await.unwrap();
 
-        let id = insert_credential_schema_to_database(&db, None)
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let id = insert_credential_schema_to_database(&db, None, &organisation_id)
             .await
             .unwrap();
 

@@ -35,7 +35,9 @@ mod tests {
         let result = get_credential_schema_details(&db, NON_EXISTING_UUID).await;
         assert!(result.is_err_and(|error| matches!(error, DbErr::RecordNotFound(_))));
 
-        let uuid = insert_credential_schema_to_database(&db, None)
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let uuid = insert_credential_schema_to_database(&db, None, &organisation_id)
             .await
             .unwrap();
 
@@ -49,7 +51,9 @@ mod tests {
     async fn test_get_credential_schemas_multiple_claims() {
         let db = setup_test_database_and_connection().await.unwrap();
 
-        let uuid = insert_credential_schema_to_database(&db, None)
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let uuid = insert_credential_schema_to_database(&db, None, &organisation_id)
             .await
             .unwrap();
 

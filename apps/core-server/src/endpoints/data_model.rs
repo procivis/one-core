@@ -204,3 +204,15 @@ pub struct ClaimProofSchemaRequestDTO {
 pub struct CreateProofSchemaResponseDTO {
     pub id: String,
 }
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateOrganisationRequestDTO {
+    pub id: Option<Uuid>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateOrganisationResponseDTO {
+    pub id: String,
+}

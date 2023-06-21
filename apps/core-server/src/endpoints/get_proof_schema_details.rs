@@ -65,7 +65,11 @@ mod tests {
         let result = get_proof_schema_details(&db, &Uuid::new_v4().to_string()).await;
         assert!(result.is_err_and(|error| matches!(error, DbErr::RecordNotFound(_))));
 
-        let uuid = insert_proof_schema_to_database(&db, None).await.unwrap();
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let uuid = insert_proof_schema_to_database(&db, None, &organisation_id)
+            .await
+            .unwrap();
 
         let result = get_proof_schema_details(&db, &uuid).await;
         assert!(result.is_ok());
@@ -84,7 +88,9 @@ mod tests {
             (Uuid::new_v4(), true),
         ];
 
-        let credential_id = insert_credential_schema_to_database(&db, None)
+        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+
+        let credential_id = insert_credential_schema_to_database(&db, None, &organisation_id)
             .await
             .unwrap();
 
@@ -96,9 +102,10 @@ mod tests {
         .await
         .unwrap();
 
-        let proof_schema_id = insert_proof_with_claims_schema_to_database(&db, None, &new_claims)
-            .await
-            .unwrap();
+        let proof_schema_id =
+            insert_proof_with_claims_schema_to_database(&db, None, &new_claims, &organisation_id)
+                .await
+                .unwrap();
 
         let result = get_proof_schema_details(&db, &proof_schema_id).await;
         assert!(result.is_ok());

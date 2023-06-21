@@ -41,7 +41,11 @@ mod tests {
     async fn delete_proof_schema_test() {
         let database = setup_test_database_and_connection().await.unwrap();
 
-        let schema_id = insert_proof_schema_to_database(&database, None)
+        let organisation_id = insert_organisation_to_database(&database, None)
+            .await
+            .unwrap();
+
+        let schema_id = insert_proof_schema_to_database(&database, None, &organisation_id)
             .await
             .unwrap();
 
@@ -65,9 +69,14 @@ mod tests {
 
         let predefined_deletion_date = Some(get_dummy_date());
 
-        let schema_id = insert_proof_schema_to_database(&database, predefined_deletion_date)
+        let organisation_id = insert_organisation_to_database(&database, None)
             .await
             .unwrap();
+
+        let schema_id =
+            insert_proof_schema_to_database(&database, predefined_deletion_date, &organisation_id)
+                .await
+                .unwrap();
 
         let result = delete_proof_schema(&database, &schema_id).await;
         assert!(result.is_err_and(|error| matches!(error, DbErr::RecordNotFound(_))));
