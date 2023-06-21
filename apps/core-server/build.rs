@@ -9,7 +9,8 @@ fn main() -> SdResult<()> {
 fn hook(mut file: &File) -> SdResult<()> {
     // Here we need to extract and put variables to the file one by one.
     let ci_pipeline_id = envmnt::get_or("CI_PIPELINE_ID", "NOT PROVIDED");
-    let hook_const: &str = &format!("pub const CI_PIPELINE_ID: &str = \"{ci_pipeline_id}\";");
+    let hook_const: &str =
+        &format!("#[allow(dead_code)] pub const CI_PIPELINE_ID: &str = \"{ci_pipeline_id}\";");
     writeln!(file, "{hook_const}")?;
     Ok(())
 }
