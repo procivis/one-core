@@ -17,7 +17,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-use migration::{Migrator, MigratorTrait};
+use migration::{Migrator, MigratorTrait, SQLiteMigrator};
 
 mod endpoints;
 mod entities;
@@ -29,8 +29,17 @@ use endpoints::data_model;
 mod test_utilities;
 
 async fn setup_database_and_connection() -> Result<DatabaseConnection, sea_orm::DbErr> {
-    let db = sea_orm::Database::connect(envmnt::get_or_panic("DATABASE_URL")).await?;
-    Migrator::up(&db, None).await?;
+    let database_url = envmnt::get_or_panic("DATABASE_URL");
+
+    let is_sqlite = database_url.starts_with("sqlite:");
+
+    let db = sea_orm::Database::connect(database_url).await?;
+
+    if is_sqlite {
+        SQLiteMigrator::up(&db, None).await?;
+    } else {
+        Migrator::up(&db, None).await?;
+    }
 
     Ok(db)
 }
