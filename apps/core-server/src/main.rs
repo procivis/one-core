@@ -105,6 +105,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     config_tracing();
     log_build_info();
 
+    shadow!(build);
+    let mut documentation = ApiDoc::openapi();
+    documentation.info.version = format!("{}-{}", build::PKG_VERSION, build::SHORT_COMMIT);
+
     let db = setup_database_and_connection().await?;
     let state = AppState { db };
 
@@ -132,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let unprotected = Router::new().route("/build-info", get(endpoints::get_build_info));
 
     let app = Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", documentation))
         .merge(protected)
         .merge(unprotected)
         .with_state(state)
