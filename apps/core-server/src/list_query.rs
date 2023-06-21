@@ -29,7 +29,7 @@ pub trait GetEntityColumn {
         Self::Column: IntoSimpleExpr;
 }
 
-#[derive(Deserialize, IntoParams)]
+#[derive(Clone, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
 pub struct GetListQueryParams<SortableColumn>
@@ -47,6 +47,7 @@ where
 
     // filtering
     pub name: Option<String>,
+    pub organisation_id: String,
 }
 
 pub trait SelectWithListQuery<SortableColumn, FilterColumn>
@@ -60,6 +61,13 @@ where
         self,
         query_params: &GetListQueryParams<SortableColumn>,
         filter_name_columns: &Option<Vec<FilterColumn>>,
+    ) -> Self;
+
+    /// Add expressions coming via GET url params
+    fn with_organisation_id(
+        self,
+        query_params: &GetListQueryParams<SortableColumn>,
+        column: &FilterColumn,
     ) -> Self;
 }
 
@@ -108,6 +116,15 @@ where
         let offset: u64 = (query_params.page * query_params.page_size) as u64;
         result.offset(offset).limit(limit)
     }
+
+    fn with_organisation_id(
+        self,
+        query_params: &GetListQueryParams<SortableColumn>,
+        column: &FilterColumn,
+    ) -> Select<T> {
+        let conditions = Condition::all().add(column.eq(&query_params.organisation_id));
+        self.filter(conditions)
+    }
 }
 
 #[cfg(test)]
@@ -115,13 +132,14 @@ impl<T> GetListQueryParams<T>
 where
     T: GetEntityColumn,
 {
-    pub fn from_pagination(page: u32, page_size: u32) -> Self {
+    pub fn from_pagination(page: u32, page_size: u32, organisation_id: String) -> Self {
         Self {
             page,
             page_size,
             sort: None,
             sort_direction: None,
             name: None,
+            organisation_id,
         }
     }
 }
