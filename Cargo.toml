@@ -3,8 +3,13 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
+resolver = "2"
 members = [
   "lib/one-core",
+
+  "platforms/uniffi",
+  "platforms/uniffi-bindgen",
+
   "apps/core-server",
   "apps/migration"
 ]
@@ -23,3 +28,4 @@ tracing-subscriber = {version="0.3",  features = ["env-filter", "fmt", "json"]}
 utoipa = { version = "3.0", features = [ "uuid", "axum_extras" ] }
 uuid = { version = "1", features = ["v4"] }
 validator = { version = "0.16.0", features = ["derive"] }
+uniffi = { version = "0.24.1", features = ["cli"] }

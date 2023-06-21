@@ -1,0 +1,18 @@
+namespace one_core {
+  OneCore initialize_core();
+};
+
+interface OneCore {
+  string create_org();
+  Version version();
+};
+
+dictionary Version {
+    string target;
+    string build_time;
+    string branch;
+    string tag;
+    string commit;
+    string rust_version;
+    string pipeline_id;
+};
