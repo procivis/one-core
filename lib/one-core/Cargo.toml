@@ -2,6 +2,7 @@
 name = "one-core"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [features]
 # Treat build warnings as error
@@ -16,3 +17,8 @@ time.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 migration.workspace = true
+shadow-rs.workspace = true
+
+[build-dependencies]
+shadow-rs.workspace = true
+envmnt = "0.10.4"
