@@ -34,16 +34,20 @@ impl DataLayer {
         query_params: GetProofSchemaQuery,
     ) -> Result<GetProofSchemaResponse, DataLayerError> {
         let limit: u64 = query_params.page_size as u64;
-        let items_count = get_base_query()
+
+        let query = get_base_query()
+            .with_organisation_id(&query_params, &proof_schema::Column::OrganisationId)
+            .with_list_query(&query_params, &Some(vec![proof_schema::Column::Name]))
+            .order_by_desc(proof_schema::Column::CreatedDate)
+            .order_by_desc(proof_schema::Column::Id);
+
+        let items_count = query
+            .to_owned()
             .count(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-        let values: Vec<proof_schema::Model> = get_base_query()
-            .with_organisation_id(&query_params, &proof_schema::Column::OrganisationId)
-            .with_list_query(&query_params, &Some(vec![proof_schema::Column::Name]))
-            .order_by_desc(proof_schema::Column::CreatedDate)
-            .order_by_desc(proof_schema::Column::Id)
+        let values: Vec<proof_schema::Model> = query
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
@@ -478,7 +482,7 @@ mod tests {
             .await;
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(2, response.total_items);
+        assert_eq!(1, response.total_items);
         assert_eq!(1, response.total_pages);
         assert_eq!(1, response.values.len());
         assert_eq!(schema_a.id, response.values[0].id);
@@ -496,7 +500,7 @@ mod tests {
             .await;
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(2, response.total_items);
+        assert_eq!(1, response.total_items);
         assert_eq!(1, response.total_pages);
         assert_eq!(1, response.values.len());
         assert_eq!(schema_capital_b.id, response.values[0].id);
@@ -514,8 +518,8 @@ mod tests {
             .await;
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(2, response.total_items);
-        assert_eq!(1, response.total_pages);
+        assert_eq!(0, response.total_items);
+        assert_eq!(0, response.total_pages);
         assert_eq!(0, response.values.len());
 
         let other_organisation_id = insert_organisation_to_database(&data_layer.db, None)
@@ -539,7 +543,7 @@ mod tests {
 
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(3, response.total_items);
+        assert_eq!(1, response.total_items);
         assert_eq!(1, response.total_pages);
         assert_eq!(1, response.values.len());
         assert_eq!(other_schema_a.id, response.values[0].id);
