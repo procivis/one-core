@@ -1,24 +1,16 @@
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, LoaderTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, Select,
+    ColumnTrait, EntityTrait, LoaderTrait, PaginatorTrait, QueryFilter, QueryOrder, Select,
 };
-use serde::Deserialize;
-use utoipa::ToSchema;
 
-use crate::endpoints::{
+use crate::data_layer::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
+use crate::data_layer::list_query::{GetEntityColumn, SelectWithListQuery};
+use crate::data_layer::{
     common::calculate_pages_count,
-    data_model::{CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO},
+    data_model::{CredentialSchemaResponse, GetCredentialClaimSchemaResponse},
 };
-use crate::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
-use crate::list_query::{GetEntityColumn, GetListQueryParams, SelectWithListQuery};
+use crate::data_layer::{DataLayer, DataLayerError};
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum SortableCredentialSchemaColumn {
-    Name,
-    Format,
-    CreatedDate,
-}
+use super::data_model::{GetListQueryParams, SortableCredentialSchemaColumn};
 
 impl GetEntityColumn for SortableCredentialSchemaColumn {
     type Column = credential_schema::Column;
@@ -33,33 +25,43 @@ impl GetEntityColumn for SortableCredentialSchemaColumn {
 
 pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumn>;
 
-pub(crate) async fn get_credential_schemas(
-    db: &DatabaseConnection,
-    query_params: GetCredentialSchemaQuery,
-) -> Result<GetCredentialClaimSchemaResponseDTO, DbErr> {
-    let limit: u64 = query_params.page_size as u64;
-    let items_count = get_base_query().count(db).await?;
+impl DataLayer {
+    pub async fn get_credential_schemas(
+        &self,
+        query_params: GetCredentialSchemaQuery,
+    ) -> Result<GetCredentialClaimSchemaResponse, DataLayerError> {
+        let limit: u64 = query_params.page_size as u64;
+        let items_count = get_base_query()
+            .count(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-    let schemas: Vec<credential_schema::Model> = get_base_query()
-        .with_organisation_id(&query_params, &credential_schema::Column::OrganisationId)
-        .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
-        .order_by_desc(credential_schema::Column::CreatedDate)
-        .order_by_desc(credential_schema::Column::Id)
-        .all(db)
-        .await?;
-    let claims: Vec<Vec<claim_schema::Model>> = schemas.load_many(ClaimSchema, db).await?;
+        let schemas: Vec<credential_schema::Model> = get_base_query()
+            .with_organisation_id(&query_params, &credential_schema::Column::OrganisationId)
+            .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
+            .order_by_desc(credential_schema::Column::CreatedDate)
+            .order_by_desc(credential_schema::Column::Id)
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-    Ok(GetCredentialClaimSchemaResponseDTO {
-        values: schemas
-            .into_iter()
-            .zip(claims)
-            .map(|(credential_schema, claim_schemas)| {
-                CredentialSchemaResponseDTO::from_model(credential_schema, claim_schemas)
-            })
-            .collect(),
-        total_pages: calculate_pages_count(items_count, limit),
-        total_items: items_count,
-    })
+        let claims: Vec<Vec<claim_schema::Model>> = schemas
+            .load_many(ClaimSchema, &self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        Ok(GetCredentialClaimSchemaResponse {
+            values: schemas
+                .into_iter()
+                .zip(claims)
+                .map(|(credential_schema, claim_schemas)| {
+                    CredentialSchemaResponse::from_model(credential_schema, claim_schemas)
+                })
+                .collect(),
+            total_pages: calculate_pages_count(items_count, limit),
+            total_items: items_count,
+        })
+    }
 }
 
 fn get_base_query() -> Select<CredentialSchema> {
@@ -72,28 +74,29 @@ mod tests {
     use time::macros::datetime;
     use uuid::Uuid;
 
-    use super::{
-        credential_schema, get_credential_schemas, GetCredentialSchemaQuery,
-        SortableCredentialSchemaColumn,
-    };
+    use super::{credential_schema, GetCredentialSchemaQuery, SortableCredentialSchemaColumn};
 
-    use crate::test_utilities::*;
+    use crate::data_layer::test_utilities::*;
 
     #[tokio::test]
     async fn test_get_credential_schemas_simple() {
-        let db = setup_test_database_and_connection().await.unwrap();
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
-
-        let _id = insert_credential_schema_to_database(&db, None, &organisation_id)
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
             .unwrap();
 
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery::from_pagination(0, 1, organisation_id.to_owned()),
-        )
-        .await;
+        let _id = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
+            .await
+            .unwrap();
+
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                0,
+                1,
+                organisation_id.to_owned(),
+            ))
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(1, response.total_items);
@@ -103,13 +106,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_credential_schemas_empty() {
-        let db = setup_test_database_and_connection().await.unwrap();
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery::from_pagination(0, 1, Uuid::new_v4().to_string()),
-        )
-        .await;
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                0,
+                1,
+                Uuid::new_v4().to_string(),
+            ))
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(0, response.total_items);
@@ -119,21 +124,28 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_credential_schemas_deleted() {
-        let db = setup_test_database_and_connection().await.unwrap();
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
 
         let predefined_deletion_date = Some(get_dummy_date());
-        let _id =
-            insert_credential_schema_to_database(&db, predefined_deletion_date, &organisation_id)
-                .await
-                .unwrap();
-
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery::from_pagination(0, 1, organisation_id.to_owned()),
+        let _id = insert_credential_schema_to_database(
+            &data_layer.db,
+            predefined_deletion_date,
+            &organisation_id,
         )
-        .await;
+        .await
+        .unwrap();
+
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                0,
+                1,
+                organisation_id.to_owned(),
+            ))
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(0, response.total_items);
@@ -143,43 +155,51 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_credential_schemas_pages() {
-        let db = setup_test_database_and_connection().await.unwrap();
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
 
         for _ in 0..50 {
-            let _id = insert_credential_schema_to_database(&db, None, &organisation_id)
+            let _id = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
                 .await
                 .unwrap();
         }
 
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery::from_pagination(0, 10, organisation_id.to_owned()),
-        )
-        .await;
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                0,
+                10,
+                organisation_id.to_owned(),
+            ))
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(50, response.total_items);
         assert_eq!(5, response.total_pages);
         assert_eq!(10, response.values.len());
 
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery::from_pagination(1, 10, organisation_id.to_owned()),
-        )
-        .await;
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                1,
+                10,
+                organisation_id.to_owned(),
+            ))
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(50, response.total_items);
         assert_eq!(5, response.total_pages);
         assert_eq!(10, response.values.len());
 
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery::from_pagination(5, 10, organisation_id.to_owned()),
-        )
-        .await;
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                5,
+                10,
+                organisation_id.to_owned(),
+            ))
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(50, response.total_items);
@@ -189,9 +209,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_credential_schemas_sorting() {
-        let db = setup_test_database_and_connection().await.unwrap();
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
 
         let older_jwt_schema = credential_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
@@ -203,7 +225,7 @@ mod tests {
             organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
         }
-        .insert(&db)
+        .insert(&data_layer.db)
         .await
         .unwrap();
 
@@ -217,23 +239,21 @@ mod tests {
             organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
         }
-        .insert(&db)
+        .insert(&data_layer.db)
         .await
         .unwrap();
 
         // sort by name - default Ascending
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery {
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery {
                 page: 0,
                 page_size: 2,
                 sort: Some(SortableCredentialSchemaColumn::Name),
                 sort_direction: None,
                 name: None,
                 organisation_id: organisation_id.to_owned(),
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
@@ -242,18 +262,16 @@ mod tests {
         assert_eq!(newer_sdjwt_schema.id, response.values[0].id);
 
         // sort by name - Descending
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery {
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery {
                 page: 0,
                 page_size: 2,
                 sort: Some(SortableCredentialSchemaColumn::Name),
-                sort_direction: Some(crate::list_query::SortDirection::Descending),
+                sort_direction: Some(crate::data_layer::data_model::SortDirection::Descending),
                 name: None,
                 organisation_id: organisation_id.to_owned(),
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
@@ -262,18 +280,16 @@ mod tests {
         assert_eq!(older_jwt_schema.id, response.values[0].id);
 
         // sort by name - explicit Ascending
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery {
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery {
                 page: 0,
                 page_size: 2,
                 sort: Some(SortableCredentialSchemaColumn::Name),
-                sort_direction: Some(crate::list_query::SortDirection::Ascending),
+                sort_direction: Some(crate::data_layer::data_model::SortDirection::Ascending),
                 name: None,
                 organisation_id: organisation_id.to_owned(),
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
@@ -282,18 +298,16 @@ mod tests {
         assert_eq!(newer_sdjwt_schema.id, response.values[0].id);
 
         // sort by CreatedDate - default Ascending
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery {
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery {
                 page: 0,
                 page_size: 2,
                 sort: Some(SortableCredentialSchemaColumn::CreatedDate),
                 sort_direction: None,
                 name: None,
                 organisation_id: organisation_id.to_owned(),
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
@@ -302,18 +316,16 @@ mod tests {
         assert_eq!(older_jwt_schema.id, response.values[0].id);
 
         // sort by Format - default Ascending
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery {
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery {
                 page: 0,
                 page_size: 2,
                 sort: Some(SortableCredentialSchemaColumn::Format),
                 sort_direction: None,
                 name: None,
                 organisation_id: organisation_id.to_owned(),
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
@@ -322,11 +334,13 @@ mod tests {
         assert_eq!(older_jwt_schema.id, response.values[0].id);
 
         // no sorting specified - default Descending by CreatedDate
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery::from_pagination(0, 2, organisation_id.to_owned()),
-        )
-        .await;
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                0,
+                2,
+                organisation_id.to_owned(),
+            ))
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
@@ -337,9 +351,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_credential_schemas_filtering() {
-        let db = setup_test_database_and_connection().await.unwrap();
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
 
         let schema_a = credential_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
@@ -351,7 +367,7 @@ mod tests {
             organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
         }
-        .insert(&db)
+        .insert(&data_layer.db)
         .await
         .unwrap();
 
@@ -365,7 +381,7 @@ mod tests {
             organisation_id: Set(organisation_id.to_owned()),
             deleted_at: Set(None),
         }
-        .insert(&db)
+        .insert(&data_layer.db)
         .await
         .unwrap();
 
@@ -378,7 +394,9 @@ mod tests {
             name: Some("a-".to_string()),
             organisation_id: organisation_id.to_owned(),
         };
-        let result = get_credential_schemas(&db, filter_a_minus_query.clone()).await;
+        let result = data_layer
+            .get_credential_schemas(filter_a_minus_query.clone())
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
@@ -387,18 +405,16 @@ mod tests {
         assert_eq!(schema_a.id, response.values[0].id);
 
         // filter "b-" (not matching case)
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery {
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery {
                 page: 0,
                 page_size: 2,
                 sort: None,
                 sort_direction: None,
                 name: Some("b-".to_string()),
                 organisation_id: organisation_id.to_owned(),
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
@@ -407,25 +423,25 @@ mod tests {
         assert_eq!(schema_capital_b.id, response.values[0].id);
 
         // filter "schema" (not matching anything)
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery {
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery {
                 page: 0,
                 page_size: 2,
                 sort: None,
                 sort_direction: None,
                 name: Some("schema".to_string()),
                 organisation_id: organisation_id.to_owned(),
-            },
-        )
-        .await;
+            })
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(2, response.total_items);
         assert_eq!(1, response.total_pages);
         assert_eq!(0, response.values.len());
 
-        let other_organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+        let other_organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
         let other_schema_a = credential_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(get_dummy_date()),
@@ -436,11 +452,13 @@ mod tests {
             organisation_id: Set(other_organisation_id.to_owned()),
             deleted_at: Set(None),
         }
-        .insert(&db)
+        .insert(&data_layer.db)
         .await
         .unwrap();
         filter_a_minus_query.organisation_id = other_organisation_id;
-        let result = get_credential_schemas(&db, filter_a_minus_query).await;
+        let result = data_layer
+            .get_credential_schemas(filter_a_minus_query)
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(3, response.total_items);
@@ -451,16 +469,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_credential_schemas_multiple_claims_with_small_page_size() {
-        let db = setup_test_database_and_connection().await.unwrap();
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
 
-        let id = insert_credential_schema_to_database(&db, None, &organisation_id)
+        let id = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
             .await
             .unwrap();
 
         insert_many_claims_schema_to_database(
-            &db,
+            &data_layer.db,
             &id,
             &vec![
                 Uuid::new_v4(),
@@ -472,11 +492,13 @@ mod tests {
         .await
         .unwrap();
 
-        let result = get_credential_schemas(
-            &db,
-            GetCredentialSchemaQuery::from_pagination(0, 2, organisation_id.to_owned()),
-        )
-        .await;
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                0,
+                2,
+                organisation_id.to_owned(),
+            ))
+            .await;
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(1, response.values.len());

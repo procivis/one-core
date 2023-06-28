@@ -1,15 +1,7 @@
 use sea_orm::{entity::*, query::*, EntityTrait, IntoSimpleExpr, Order, QueryOrder, QuerySelect};
-use serde::Deserialize;
 use std::convert::From;
-use utoipa::{IntoParams, ToSchema};
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
-pub enum SortDirection {
-    #[serde(rename = "ASC")]
-    Ascending,
-    #[serde(rename = "DESC")]
-    Descending,
-}
+use super::data_model::{GetListQueryParams, SortDirection};
 
 impl From<SortDirection> for Order {
     fn from(direction: SortDirection) -> Self {
@@ -27,27 +19,6 @@ pub trait GetEntityColumn {
     fn get_column(&self) -> Self::Column
     where
         Self::Column: IntoSimpleExpr;
-}
-
-#[derive(Clone, Deserialize, IntoParams)]
-#[into_params(parameter_in = Query)]
-#[serde(rename_all = "camelCase")]
-pub struct GetListQueryParams<SortableColumn>
-where
-    SortableColumn: GetEntityColumn,
-{
-    // pagination
-    pub page: u32,
-    pub page_size: u32,
-
-    // sorting
-    #[param(value_type = Option<String>)]
-    pub sort: Option<SortableColumn>,
-    pub sort_direction: Option<SortDirection>,
-
-    // filtering
-    pub name: Option<String>,
-    pub organisation_id: String,
 }
 
 pub trait SelectWithListQuery<SortableColumn, FilterColumn>

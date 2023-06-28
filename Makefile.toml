@@ -13,13 +13,14 @@ args = ["clean"]
 
 [tasks.build]
 command = "cargo"
-args = ["build"]
+args = ["build",  "-p", "core-server"]
 
 [tasks.run]
 command = "cargo"
-args = ["run"]
+args = ["run", "-p", "core-server"]
 
 [tasks.test]
+workspace = true
 command = "cargo"
 args = ["test"]
 
@@ -49,4 +50,4 @@ args = ["run", "--", "down", "-n1" ]
 
 [tasks.dbtempent]
 command = "sea-orm-cli"
-args = ["generate", "entity", "--date-time-crate" , "time", "-o", "./apps/core-server/src/entities_new/" ]
+args = ["generate", "entity", "--date-time-crate" , "time", "-o", "lib/one-core/src/data_layer/entities_new/" ]

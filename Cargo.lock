@@ -515,10 +515,8 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "envmnt",
- "migration",
  "one-core",
  "panic-handler",
- "sea-orm",
  "serde",
  "serde_json",
  "shadow-rs",
@@ -1291,7 +1289,6 @@ name = "migration"
 version = "0.1.0"
 dependencies = [
  "async-std",
- "one-core",
  "sea-orm-migration",
 ]
 
@@ -1463,12 +1460,14 @@ checksum = "9670a07f94779e00908f3e686eab508878ebb390ba6e604d3a284c00e8d0487b"
 name = "one-core"
 version = "0.1.0"
 dependencies = [
+ "migration",
  "sea-orm",
  "serde",
  "serde_json",
  "time",
+ "tokio",
  "tracing",
- "utoipa",
+ "uuid",
 ]
 
 [[package]]

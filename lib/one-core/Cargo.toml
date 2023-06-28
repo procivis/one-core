@@ -8,9 +8,11 @@ edition = "2021"
 strict = []
 
 [dependencies]
+tokio = { version = "1.26", features = ["full"]}
 sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 time.workspace = true
 tracing.workspace = true
-utoipa.workspace = true
+uuid.workspace = true
+migration.workspace = true

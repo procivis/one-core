@@ -1,12 +1,15 @@
-use claim_schema::Datatype;
+use crate::data_layer::{
+    entities::{claim_schema, credential_schema, organisation, proof_schema, proof_schema_claim},
+    DataLayer,
+};
+
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::entities::{
-    claim_schema, credential_schema, organisation, proof_schema, proof_schema_claim,
-};
 use migration::{MigratorTrait, SQLiteMigrator};
+
+use super::data_model::Datatype;
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
@@ -44,7 +47,7 @@ pub async fn insert_many_claims_schema_to_database(
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             key: Set("TestKey".to_string()),
-            datatype: Set(Datatype::String),
+            datatype: Set(Datatype::String.into()),
             credential_id: Set(credential_schema_id.to_owned()),
         }
         .insert(database)
@@ -135,10 +138,11 @@ pub async fn get_proof_schema_with_id(
     proof_schema::Entity::find_by_id(id).one(database).await
 }
 
-pub async fn setup_test_database_and_connection() -> Result<DatabaseConnection, DbErr> {
+pub async fn setup_test_data_layer_and_connection() -> Result<DataLayer, DbErr> {
     let db = sea_orm::Database::connect("sqlite::memory:").await?;
     SQLiteMigrator::up(&db, None).await?;
-    Ok(db)
+
+    Ok(DataLayer { db })
 }
 
 pub fn are_datetimes_within_minute(d1: OffsetDateTime, d2: OffsetDateTime) -> bool {

@@ -1,14 +1,10 @@
 use sea_orm::entity::prelude::*;
-use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "credential_schema")]
-#[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    #[serde(skip_deserializing)]
     pub id: String,
     pub deleted_at: Option<OffsetDateTime>,
     pub created_date: OffsetDateTime,
@@ -48,20 +44,8 @@ impl Related<super::organisation::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(
-    Clone,
-    Debug,
-    Default,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Serialize,
-    ToSchema,
-    EnumIter,
-    DeriveActiveEnum,
-)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-#[serde(rename_all = "UPPERCASE")]
 pub enum RevocationMethod {
     #[default]
     #[sea_orm(string_value = "STATUSLIST2021")]
@@ -70,20 +54,8 @@ pub enum RevocationMethod {
     Lvvc,
 }
 
-#[derive(
-    Clone,
-    Debug,
-    Default,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Serialize,
-    ToSchema,
-    EnumIter,
-    DeriveActiveEnum,
-)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Format {
     #[default]
     #[sea_orm(string_value = "JWT")]
