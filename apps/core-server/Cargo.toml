@@ -10,17 +10,16 @@ strict = []
 
 [dependencies]
 one-core.workspace = true
-migration.workspace = true
 
-sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+shadow-rs.workspace = true
 time.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 utoipa.workspace = true
-
-shadow-rs.workspace = true
+uuid.workspace = true
+validator.workspace = true
 
 axum = { version = "0.6", features = ["macros"] }
 tower-http = { version = "0.4", features = [ "trace"] }
@@ -28,8 +27,6 @@ tokio = { version = "1.26", features = ["full"]}
 utoipa-swagger-ui = {version = "3.0", features = ["axum"]}
 envmnt = "0.10.4"
 panic-handler = "2.1.2"
-uuid = { version = "1", features = ["v4"] }
-validator = { version = "0.16.0", features = ["derive"] }
 
 [build-dependencies]
 shadow-rs.workspace = true

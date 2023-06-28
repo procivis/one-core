@@ -1,4 +1,4 @@
-pub(crate) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u64 {
+pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u64 {
     if page_size == 0 {
         return 0;
     }

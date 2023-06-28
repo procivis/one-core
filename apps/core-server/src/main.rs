@@ -8,7 +8,7 @@ use axum::middleware::{self, Next};
 use axum::response::Response;
 use axum::routing::{delete, get, post};
 use axum::Router;
-use sea_orm::DatabaseConnection;
+use one_core::OneCore;
 use shadow_rs::shadow;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{info, Level};
@@ -17,36 +17,12 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-use migration::{Migrator, MigratorTrait, SQLiteMigrator};
-
+mod data_model;
 mod endpoints;
-mod entities;
-mod list_query;
-
-use endpoints::data_model;
-
-#[cfg(test)]
-mod test_utilities;
-
-async fn setup_database_and_connection() -> Result<DatabaseConnection, sea_orm::DbErr> {
-    let database_url = envmnt::get_or_panic("DATABASE_URL");
-
-    let is_sqlite = database_url.starts_with("sqlite:");
-
-    let db = sea_orm::Database::connect(database_url).await?;
-
-    if is_sqlite {
-        SQLiteMigrator::up(&db, None).await?;
-    } else {
-        Migrator::up(&db, None).await?;
-    }
-
-    Ok(db)
-}
 
 #[derive(Clone)]
 struct AppState {
-    db: DatabaseConnection,
+    pub core: OneCore,
 }
 
 #[tokio::main]
@@ -82,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CreateOrganisationResponseDTO,
                     data_model::Format,
                     data_model::Datatype,
-                    list_query::SortDirection)
+                    data_model::SortDirection)
         ),
         modifiers(),
         tags(
@@ -118,8 +94,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut documentation = ApiDoc::openapi();
     documentation.info.version = format!("{}-{}", build::PKG_VERSION, build::SHORT_COMMIT);
 
-    let db = setup_database_and_connection().await?;
-    let state = AppState { db };
+    let database_url = envmnt::get_or_panic("DATABASE_URL");
+    let core = OneCore::new(&database_url).await;
+
+    let state = AppState { core };
 
     let protected = Router::new()
         .route(

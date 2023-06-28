@@ -1,13 +1,10 @@
 use sea_orm::entity::prelude::*;
-use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "proof_schema")]
-#[serde(rename_all = "camelCase")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    #[serde(skip_deserializing)]
     pub id: String,
 
     pub deleted_at: Option<OffsetDateTime>,
