@@ -364,8 +364,8 @@ pub(crate) async fn post_organisation(
         .await;
 
     match result {
-        Err(DataLayerError::GeneralRuntimeError(e)) => {
-            tracing::error!("Database runtime error: {:?}", e);
+        Err(DataLayerError::AlreadyExists) => {
+            tracing::error!("Organisation already exists");
             StatusCode::CONFLICT.into_response()
         }
         Err(e) => {
