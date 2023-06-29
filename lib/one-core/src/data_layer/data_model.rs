@@ -2,7 +2,7 @@ use sea_orm::FromQueryResult;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::data_layer::entities::{claim_schema, credential_schema, proof_schema};
+use super::entities::{claim_schema, credential_schema, organisation, proof_schema};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Format {
@@ -298,4 +298,21 @@ pub struct CreateOrganisationRequest {
 #[derive(Clone, Debug)]
 pub struct CreateOrganisationResponse {
     pub id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GetOrganisationDetailsResponse {
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+}
+
+impl From<organisation::Model> for GetOrganisationDetailsResponse {
+    fn from(value: organisation::Model) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+        }
+    }
 }

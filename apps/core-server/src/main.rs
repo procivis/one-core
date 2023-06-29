@@ -39,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_proof_schemas,
             endpoints::delete_proof_schema,
             endpoints::post_organisation,
+            endpoints::get_organisation_details,
             endpoints::get_build_info
         ),
         components(
@@ -56,6 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::ProofClaimSchemaResponseDTO,
                     data_model::CreateOrganisationRequestDTO,
                     data_model::CreateOrganisationResponseDTO,
+                    data_model::GetOrganisationDetailsResponseDTO,
                     data_model::Format,
                     data_model::Datatype,
                     data_model::SortDirection)
@@ -118,6 +120,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             get(endpoints::get_proof_schemas).post(endpoints::post_proof_schema),
         )
         .route("/api/organisation/v1", post(endpoints::post_organisation))
+        .route(
+            "/api/organisation/v1/:id",
+            get(endpoints::get_organisation_details),
+        )
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new().route("/build-info", get(endpoints::get_build_info));
