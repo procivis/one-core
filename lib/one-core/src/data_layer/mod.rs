@@ -10,6 +10,7 @@ pub mod delete_credential_schema;
 pub mod delete_proof_schema;
 pub mod get_credential_schema_details;
 pub mod get_credential_schemas;
+pub mod get_organisation_details;
 pub mod get_proof_schema_details;
 pub mod get_proof_schemas;
 
@@ -17,7 +18,7 @@ pub mod list_query;
 
 pub(super) mod entities;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum DataLayerError {
     GeneralRuntimeError(String),
     AlreadyExists,

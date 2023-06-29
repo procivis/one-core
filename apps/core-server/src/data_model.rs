@@ -2,8 +2,8 @@ use one_core::data_layer::data_model::{
     ClaimProofSchemaRequest, CreateCredentialSchemaRequest, CreateOrganisationRequest,
     CreateOrganisationResponse, CreateProofSchemaRequest, CreateProofSchemaResponse,
     CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialSchemaResponse,
-    GetCredentialClaimSchemaResponse, GetProofSchemaResponse, ProofClaimSchemaResponse,
-    ProofSchemaResponse,
+    GetCredentialClaimSchemaResponse, GetOrganisationDetailsResponse, GetProofSchemaResponse,
+    ProofClaimSchemaResponse, ProofSchemaResponse,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -475,5 +475,27 @@ pub struct CreateOrganisationResponseDTO {
 impl From<CreateOrganisationResponse> for CreateOrganisationResponseDTO {
     fn from(value: CreateOrganisationResponse) -> Self {
         Self { id: value.id }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetOrganisationDetailsResponseDTO {
+    pub id: String,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+}
+
+impl From<GetOrganisationDetailsResponse> for GetOrganisationDetailsResponseDTO {
+    fn from(value: GetOrganisationDetailsResponse) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+        }
     }
 }

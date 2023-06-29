@@ -9,8 +9,9 @@ use validator::Validate;
 use crate::data_model::{
     CreateCredentialSchemaRequestDTO, CreateOrganisationRequestDTO, CreateOrganisationResponseDTO,
     CreateProofSchemaRequestDTO, CreateProofSchemaResponseDTO, CredentialSchemaResponseDTO,
-    GetCredentialClaimSchemaResponseDTO, GetCredentialSchemaQuery, GetProofSchemaQuery,
-    GetProofSchemaResponseDTO, ProofSchemaResponseDTO,
+    GetCredentialClaimSchemaResponseDTO, GetCredentialSchemaQuery,
+    GetOrganisationDetailsResponseDTO, GetProofSchemaQuery, GetProofSchemaResponseDTO,
+    ProofSchemaResponseDTO,
 };
 use crate::AppState;
 
@@ -375,6 +376,49 @@ pub(crate) async fn post_organisation(
         Ok(value) => (
             StatusCode::CREATED,
             Json(CreateOrganisationResponseDTO::from(value)),
+        )
+            .into_response(),
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/organisation/v1/{id}",
+    responses(
+        (status = 200, description = "OK", body = GetOrganisationDetailsResponseDTO),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Organisation not found"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        ("id" = Uuid, Path, description = "Organisation id")
+    ),
+    tag = "organisation_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_organisation_details(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Response {
+    let result = state
+        .core
+        .data_layer
+        .get_organisation_details(&id.to_string())
+        .await;
+
+    match result {
+        Err(error) => match error {
+            DataLayerError::RecordNotFound => (StatusCode::NOT_FOUND).into_response(),
+            _ => {
+                tracing::error!("Error while getting organisation details: {:?}", error);
+                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
+            }
+        },
+        Ok(value) => (
+            StatusCode::OK,
+            Json(GetOrganisationDetailsResponseDTO::from(value)),
         )
             .into_response(),
     }
