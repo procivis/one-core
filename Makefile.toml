@@ -114,3 +114,54 @@ script='''
 mkdir -p target/bindings/android/
 cp -r target/platforms/android/onecore/build/outputs/aar/* target/bindings/android/
 '''
+
+############################################################### iOS
+[tasks.generateuniffi_ios]
+script='''
+cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate -l swift -o target/uniffi/ios/ platforms/uniffi/src/one_core.udl
+'''
+
+[tasks.add_ios_targets]
+script='''
+rustup toolchain install nightly
+rustup target add aarch64-apple-ios-sim --toolchain nightly
+rustup target add aarch64-apple-ios x86_64-apple-ios
+rustup component add rust-src --toolchain nightly
+'''
+
+[tasks.build_ios_code]
+script='''
+cargo build --package one-core-uniffi --lib --release --target x86_64-apple-ios
+cargo +nightly build --package one-core-uniffi --lib --release --target aarch64-apple-ios-sim
+cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios
+'''
+
+[tasks.collect_ios_libs]
+script="""
+sed -i '' 's/^module\\ one_coreFFI/framework\\ module\\ one_coreFFI/' target/uniffi/ios/one_coreFFI.modulemap
+
+find . -type d -name one_coreFFI.framework -exec rm -rf {} \\; 2>/dev/null || true
+pushd target/x86_64-apple-ios/release >/dev/null && mkdir -p one_coreFFI.framework && cd one_coreFFI.framework && mkdir -p Headers Modules Resources && cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap && cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h && cp ../libone_core_uniffi.a ./one_coreFFI && cp ../../../../platforms/ios/Info.plist ./Resources && popd >/dev/null
+pushd target/aarch64-apple-ios-sim/release >/dev/null && mkdir -p one_coreFFI.framework && cd one_coreFFI.framework && mkdir -p Headers Modules Resources && cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap && cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h && cp ../libone_core_uniffi.a ./one_coreFFI && cp ../../../../platforms/ios/Info.plist ./Resources && popd >/dev/null
+pushd target/aarch64-apple-ios/release >/dev/null && mkdir -p one_coreFFI.framework && cd one_coreFFI.framework && mkdir -p Headers Modules Resources && cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap && cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h && cp ../libone_core_uniffi.a ./one_coreFFI && cp ../../../../platforms/ios/Info.plist ./Resources && popd >/dev/null
+"""
+
+[tasks.create_xc_framework]
+script='''
+lipo -create target/x86_64-apple-ios/release/one_coreFFI.framework/one_coreFFI target/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI -output target/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI
+rm -rf target/one_coreFFI.xcframework || echo 'skip removing'
+xcodebuild -create-xcframework -framework target/aarch64-apple-ios/release/one_coreFFI.framework -framework target/aarch64-apple-ios-sim/release/one_coreFFI.framework -output target/one_coreFFI.xcframework
+'''
+
+[tasks.package_ios_bindings]
+script='''
+pushd target >/dev/null
+rm -rf bindings/ios && mkdir -p bindings/ios/one_core/Sources/one_core
+cp -r one_coreFFI.xcframework bindings/ios/one_core/Sources/
+cp uniffi/ios/one_core.swift bindings/ios/one_core/Sources/one_core/
+cp ../platforms/ios/Package.swift bindings/ios/one_core/Package.swift
+'''
+
+[tasks.build_ios]
+dependencies = ["generateuniffi_ios", "add_ios_targets", "build_ios_code", "collect_ios_libs", "create_xc_framework", "package_ios_bindings"]
+script='echo "--- output available in target/bindings/ios ---"'
