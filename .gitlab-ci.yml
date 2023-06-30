@@ -46,7 +46,7 @@ tests:
   artifacts:
     expire_in: 1 hour
     paths:
-      - results.xml
+      - coverage.xml
     reports:
       junit:
         - coverage.xml
