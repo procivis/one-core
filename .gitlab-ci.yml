@@ -32,6 +32,7 @@ build:
   script:
     - cargo build --release --features strict
   artifacts:
+    expire_in: 1 hour
     paths:
       - target/release/core-server
 
@@ -39,7 +40,16 @@ build:
 tests:
   stage: test
   script:
-    - cargo test --features strict
+    - rustup install nightly-2023-06-15
+    - cargo install cargo2junit
+    - cargo +nightly-2023-06-15 test --features strict -- -Z unstable-options --format json --report-time | cargo2junit > coverage.xml
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - results.xml
+    reports:
+      junit:
+        - coverage.xml
 
 
 linter:clippy:
@@ -47,13 +57,38 @@ linter:clippy:
   script:
     - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
-
+    - cargo clippy --message-format=json &> report.json
+  artifacts:
+    expire_in: 1 hour
+    paths:
+      - report.json
 
 linter:rustfmt:
   stage: test
   script:
     - rustup component add rustfmt
     - cargo fmt --all -- --check
+
+
+sonarqube-check:
+  stage: test
+  dependencies:
+    - linter:clippy
+    - tests
+  needs:
+    - linter:clippy
+    - tests
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  script:
+    - sonar-scanner
+  allow_failure: true
+  extends:
+    - .only_main_or_tag
 
 
 publish:

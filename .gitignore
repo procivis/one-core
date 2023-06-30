@@ -7,3 +7,6 @@
 .vscode
 
 mariadb-*.tgz
+
+report.json
+coverage.xml

@@ -1,3 +1,5 @@
+[![Quality Gate Status](https://sonarqube.dev.one-trust-solution.com/api/project_badges/measure?project=procivis_one_one-core_AYkHTYbt1WzC4GkDJJ75&metric=alert_status&token=sqb_d3d9dfb52da864937b6d90e597437bd70a1eba30)](https://sonarqube.dev.one-trust-solution.com/dashboard?id=procivis_one_one-core_AYkHTYbt1WzC4GkDJJ75)
+
 # Deploying the One CORE
 
 Fetch dependencies 
