@@ -6,7 +6,7 @@ use std::panic;
 use axum::http::{Request, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get};
 use axum::Router;
 use one_core::OneCore;
 use shadow_rs::shadow;
@@ -40,6 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::delete_proof_schema,
             endpoints::post_organisation,
             endpoints::get_organisation_details,
+            endpoints::get_organisations,
             endpoints::get_build_info
         ),
         components(
@@ -119,7 +120,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/proof-schema/v1",
             get(endpoints::get_proof_schemas).post(endpoints::post_proof_schema),
         )
-        .route("/api/organisation/v1", post(endpoints::post_organisation))
+        .route(
+            "/api/organisation/v1",
+            get(endpoints::get_organisations).post(endpoints::post_organisation),
+        )
         .route(
             "/api/organisation/v1/:id",
             get(endpoints::get_organisation_details),

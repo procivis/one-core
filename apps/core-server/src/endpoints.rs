@@ -426,6 +426,40 @@ pub(crate) async fn get_organisation_details(
 
 #[utoipa::path(
     get,
+    path = "/api/organisation/v1",
+    responses(
+        (status = 200, description = "OK", body = Vec<GetOrganisationDetailsResponseDTO>),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "organisation_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_organisations(state: State<AppState>) -> Response {
+    let result = state.core.data_layer.get_organisations().await;
+
+    match result {
+        Err(error) => {
+            tracing::error!("Error while getting organisation details: {:?}", error);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+        Ok(value) => (
+            StatusCode::OK,
+            Json(
+                value
+                    .into_iter()
+                    .map(|org| org.into())
+                    .collect::<Vec<GetOrganisationDetailsResponseDTO>>(),
+            ),
+        )
+            .into_response(),
+    }
+}
+
+#[utoipa::path(
+    get,
     path = "/build-info",
     responses(
         (status = 200, description = "Ok")
