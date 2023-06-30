@@ -1,13 +1,11 @@
 image: rust:1.70.0-slim-buster
 
-
 stages:
   - build
   - test
   - publish
   - deploy
   - e2e_tests
-
 
 before_script:
   - APP_FLAVOR=$(echo $CI_COMMIT_TAG | sed -n "s/^v.*-\(.*\)$/\1/p")
@@ -17,7 +15,6 @@ before_script:
   - IMAGE_NAME=$CI_REGISTRY_IMAGE/$APP_FLAVOR
   - IMAGE_TAG=$IMAGE_NAME:$APP_VERSION
 
-
 .only_main_or_tag:
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
@@ -25,7 +22,6 @@ before_script:
     - if: $CI_COMMIT_BRANCH == "main"
       when: on_success
     - when: never
-
 
 build:
   stage: build
@@ -35,7 +31,6 @@ build:
     expire_in: 1 hour
     paths:
       - target/release/core-server
-
 
 tests:
   stage: test
@@ -50,7 +45,6 @@ tests:
     reports:
       junit:
         - coverage.xml
-
 
 linter:clippy:
   stage: test
@@ -69,7 +63,6 @@ linter:rustfmt:
     - rustup component add rustfmt
     - cargo fmt --all -- --check
 
-
 sonarqube-check:
   stage: test
   dependencies:
@@ -82,21 +75,20 @@ sonarqube-check:
     name: sonarsource/sonar-scanner-cli:latest
     entrypoint: [""]
   variables:
-    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
-    GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar" # Defines the location of the analysis task cache
+    GIT_DEPTH: "0" # Tells git to fetch all the branches of the project, required by the analysis task
   script:
     - sonar-scanner
   allow_failure: true
   extends:
     - .only_main_or_tag
 
-
 publish:
   stage: publish
   image: docker:latest
   services:
     - docker:dind
-  dependencies: [ build ]
+  dependencies: [build]
   script:
     - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
     - docker build -t $IMAGE_TAG -f docker/Dockerfile .
@@ -110,7 +102,6 @@ publish:
   extends:
     - .only_main_or_tag
 
-
 test_e2e:
   stage: e2e_tests
   needs: [publish]
@@ -122,7 +113,6 @@ test_e2e:
     strategy: depend
   extends:
     - .only_main_or_tag
-
 
 .deploy_k8s:
   image: registry.gitlab.procivis.ch/procivis/one/one-operations/az-helm-kubectl:1.25.7
@@ -145,7 +135,6 @@ test_e2e:
       --namespace $K8S_NAMESPACE
     - kubectl rollout restart $K8S_TYPE $HELM_APP_NAME-$HELM_PATH --namespace=$K8S_NAMESPACE
 
-
 deploy:dev:
   stage: deploy
   extends:
@@ -155,7 +144,6 @@ deploy:dev:
     K8S_NAMESPACE: default
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
-
 
 deploy:test:
   stage: deploy
@@ -167,3 +155,22 @@ deploy:test:
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
       when: manual
+
+bitrise_ios_sdk:
+  stage: deploy
+  variables:
+    # ONE-wallet project on Bitrise
+    BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
+    BITRISE_WORKFLOW: iOS_Core_SDK
+  before_script:
+    # dependencies of gitrise
+    - apt-get update && apt-get install curl jq -y
+  script:
+    - >
+      ./gitlab/gitrise.sh
+      --access-token $BITRISE_API_ACCESS_TOKEN
+      --slug $BITRISE_PROJECT_SLUG
+      --workflow $BITRISE_WORKFLOW
+      --branch "$CI_COMMIT_REF_NAME"
+  extends:
+    - .only_main_or_tag
