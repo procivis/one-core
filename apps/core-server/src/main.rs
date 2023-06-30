@@ -95,7 +95,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     shadow!(build);
     let mut documentation = ApiDoc::openapi();
-    documentation.info.version = format!("{}-{}", build::PKG_VERSION, build::SHORT_COMMIT);
+    let local_version = format!("{}-{}", build::PKG_VERSION, build::SHORT_COMMIT);
+    let app_version = build::APP_VERSION.unwrap_or(&local_version);
+    documentation.info.version = app_version.to_owned();
 
     let database_url = envmnt::get_or_panic("DATABASE_URL");
     let core = OneCore::new(&database_url).await;
