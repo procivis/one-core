@@ -5,6 +5,7 @@ stages:
   - test
   - publish
   - deploy
+  - sdk_build
   - e2e_tests
 
 before_script:
@@ -157,7 +158,7 @@ deploy:test:
       when: manual
 
 bitrise_ios_sdk:
-  stage: deploy
+  stage: sdk_build
   variables:
     # ONE-wallet project on Bitrise
     BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
