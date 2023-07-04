@@ -167,10 +167,15 @@ bitrise_ios_sdk:
     - apt-get update && apt-get install curl jq -y
   script:
     - >
-      ./gitlab/gitrise.sh
+      ./etc/gitrise.sh
       --access-token $BITRISE_API_ACCESS_TOKEN
       --slug $BITRISE_PROJECT_SLUG
       --workflow $BITRISE_WORKFLOW
       --branch "$CI_COMMIT_REF_NAME"
+      --output "artifacts"
   extends:
     - .only_main_or_tag
+  artifacts:
+    paths:
+      - artifacts
+    expire_in: 10 days
