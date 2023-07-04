@@ -10,3 +10,6 @@ mariadb-*.tgz
 
 report.json
 coverage.xml
+
+.sonar
+.scannerwork
