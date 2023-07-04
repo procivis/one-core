@@ -481,3 +481,7 @@ pub(crate) async fn get_build_info() -> Json<Value> {
         "pipeline_id": String::from(build::CI_PIPELINE_ID),
     }))
 }
+
+pub(crate) async fn health_check() -> impl IntoResponse {
+    StatusCode::NO_CONTENT
+}
