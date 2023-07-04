@@ -132,7 +132,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .layer(middleware::from_fn(bearer_check));
 
-    let unprotected = Router::new().route("/build-info", get(endpoints::get_build_info));
+    let unprotected = Router::new()
+        .route("/build-info", get(endpoints::get_build_info))
+        .route("/health", get(endpoints::health_check));
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", documentation))
