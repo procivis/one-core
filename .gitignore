@@ -10,6 +10,8 @@ mariadb-*.tgz
 
 report.json
 coverage.xml
+cobertura.xml
+lcov.info
 
 .sonar
 .scannerwork

@@ -39,6 +39,7 @@ tests:
     - rustup install nightly-2023-06-15
     - cargo install cargo2junit
     - cargo +nightly-2023-06-15 test --features strict -- -Z unstable-options --format json --report-time | cargo2junit > coverage.xml
+  coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     expire_in: 1 hour
     paths:
@@ -103,6 +104,31 @@ publish:
   extends:
     - .only_main_or_tag
 
+bitrise_ios_sdk:
+  stage: sdk_build
+  needs: [build]
+  variables:
+    # ONE-wallet project on Bitrise
+    BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
+    BITRISE_WORKFLOW: iOS_Core_SDK
+  before_script:
+    # dependencies of gitrise
+    - apt-get update && apt-get install curl jq -y
+  script:
+    - >
+      ./etc/gitrise.sh
+      --access-token $BITRISE_API_ACCESS_TOKEN
+      --slug $BITRISE_PROJECT_SLUG
+      --workflow $BITRISE_WORKFLOW
+      --branch "$CI_COMMIT_REF_NAME"
+      --output "artifacts"
+  extends:
+    - .only_main_or_tag
+  artifacts:
+    paths:
+      - artifacts
+    expire_in: 10 days
+
 test_e2e:
   stage: e2e_tests
   needs: [publish]
@@ -156,27 +182,3 @@ deploy:test:
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
       when: manual
-
-bitrise_ios_sdk:
-  stage: sdk_build
-  variables:
-    # ONE-wallet project on Bitrise
-    BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
-    BITRISE_WORKFLOW: iOS_Core_SDK
-  before_script:
-    # dependencies of gitrise
-    - apt-get update && apt-get install curl jq -y
-  script:
-    - >
-      ./etc/gitrise.sh
-      --access-token $BITRISE_API_ACCESS_TOKEN
-      --slug $BITRISE_PROJECT_SLUG
-      --workflow $BITRISE_WORKFLOW
-      --branch "$CI_COMMIT_REF_NAME"
-      --output "artifacts"
-  extends:
-    - .only_main_or_tag
-  artifacts:
-    paths:
-      - artifacts
-    expire_in: 10 days
