@@ -1,4 +1,4 @@
-use sea_orm::{ActiveModelTrait, DbErr, Set};
+use sea_orm::{DbErr, EntityTrait, Set};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -15,16 +15,16 @@ impl DataLayer {
         let now = OffsetDateTime::now_utc();
         let id = request.id.unwrap_or_else(Uuid::new_v4);
 
-        let organisation = organisation::ActiveModel {
+        let organisation = organisation::Entity::insert(organisation::ActiveModel {
             id: Set(id.to_string()),
             created_date: Set(now),
             last_modified: Set(now),
-        }
-        .insert(&self.db)
+        })
+        .exec(&self.db)
         .await
         .map_err(|e| match e {
             DbErr::Exec(e) => {
-                tracing::error!("Database runtime error: {:?}", e);
+                tracing::error!("Record not inserted. Error: {e}");
                 DataLayerError::AlreadyExists
             }
             e => {
@@ -34,7 +34,7 @@ impl DataLayer {
         })?;
 
         Ok(CreateOrganisationResponse {
-            id: organisation.id,
+            id: organisation.last_insert_id,
         })
     }
 }

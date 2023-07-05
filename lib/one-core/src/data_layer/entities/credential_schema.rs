@@ -18,8 +18,6 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::claim_schema::Entity")]
-    ClaimSchema,
     #[sea_orm(
         belongs_to = "super::organisation::Entity",
         from = "Column::OrganisationId",
@@ -30,15 +28,22 @@ pub enum Relation {
     Organisation,
 }
 
-impl Related<super::claim_schema::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ClaimSchema.def()
-    }
-}
-
 impl Related<super::organisation::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Organisation.def()
+    }
+}
+
+impl Related<super::claim_schema::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::credential_schema_claim_schema::Relation::ClaimSchema.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::credential_schema_claim_schema::Relation::CredentialSchema
+                .def()
+                .rev(),
+        )
     }
 }
 

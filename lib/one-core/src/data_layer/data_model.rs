@@ -165,36 +165,37 @@ pub struct CredentialClaimSchemaResponse {
     pub datatype: Datatype,
 }
 
-impl CredentialClaimSchemaResponse {
-    pub(super) fn from_model(value: &claim_schema::Model) -> Self {
+impl From<CredentialSchemaClaimSchemaCombined> for CredentialClaimSchemaResponse {
+    fn from(value: CredentialSchemaClaimSchemaCombined) -> Self {
         Self {
             id: value.id.clone(),
             created_date: value.created_date,
             last_modified: value.last_modified,
             key: value.key.clone(),
-            datatype: value.datatype.clone().into(),
+            datatype: value.datatype.into(),
         }
-    }
-
-    pub(super) fn from_vec(value: Vec<claim_schema::Model>) -> Vec<Self> {
-        value.iter().map(Self::from_model).collect()
     }
 }
 
+#[allow(clippy::ptr_arg)]
 impl CredentialSchemaResponse {
     pub(super) fn from_model(
         value: credential_schema::Model,
-        claim_schemas: Vec<claim_schema::Model>,
+        claim_schemas: &Vec<CredentialSchemaClaimSchemaCombined>,
     ) -> Self {
         Self {
-            id: value.id,
+            id: value.id.clone(),
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
             format: value.format.into(),
             revocation_method: value.revocation_method.into(),
             organisation_id: value.organisation_id,
-            claims: CredentialClaimSchemaResponse::from_vec(claim_schemas),
+            claims: claim_schemas
+                .iter()
+                .filter(|claim| claim.credential_schema_id == value.id)
+                .map(|claim| claim.clone().into())
+                .collect(),
         }
     }
 }
@@ -220,13 +221,23 @@ pub struct ProofSchemaResponse {
 }
 
 #[derive(Debug, Clone, FromQueryResult)]
-pub struct ClaimsCombined {
+pub(crate) struct ProofSchemaClaimSchemaCombined {
     pub claim_schema_id: String,
     pub proof_schema_id: String,
-    pub is_required: bool,
+    pub required: bool,
     pub claim_key: String,
     pub credential_id: String,
     pub credential_name: String,
+}
+
+#[derive(Debug, Clone, FromQueryResult)]
+pub(crate) struct CredentialSchemaClaimSchemaCombined {
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub key: String,
+    pub datatype: claim_schema::Datatype,
+    pub credential_schema_id: String,
 }
 
 #[derive(Clone, Debug)]
@@ -239,17 +250,17 @@ pub struct ProofClaimSchemaResponse {
 }
 
 impl ProofClaimSchemaResponse {
-    pub(super) fn from_model(value: ClaimsCombined) -> Self {
+    pub(super) fn from_model(value: ProofSchemaClaimSchemaCombined) -> Self {
         Self {
             id: value.claim_schema_id,
             key: value.claim_key,
-            is_required: value.is_required,
+            is_required: value.required,
             credential_schema_id: value.credential_id,
             credential_schema_name: value.credential_name,
         }
     }
 
-    pub(super) fn from_vec(value: Vec<ClaimsCombined>) -> Vec<Self> {
+    pub(super) fn from_vec(value: Vec<ProofSchemaClaimSchemaCombined>) -> Vec<Self> {
         value.into_iter().map(Self::from_model).collect()
     }
 }
@@ -257,7 +268,7 @@ impl ProofClaimSchemaResponse {
 impl ProofSchemaResponse {
     pub(super) fn from_model(
         value: proof_schema::Model,
-        claim_schemas: Vec<ClaimsCombined>,
+        claim_schemas: Vec<ProofSchemaClaimSchemaCombined>,
     ) -> Self {
         Self {
             id: value.id,

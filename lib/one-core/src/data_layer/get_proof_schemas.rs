@@ -1,19 +1,14 @@
-use sea_orm::{
-    ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect,
-    RelationTrait, Select,
-};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Select};
 
-use crate::data_layer::entities::{
-    claim_schema, credential_schema, proof_schema, proof_schema_claim, ProofSchema,
-    ProofSchemaClaim,
-};
+use crate::data_layer::entities::{proof_schema, ProofSchema};
 use crate::data_layer::list_query::{GetEntityColumn, SelectWithListQuery};
 use crate::data_layer::{
     common::calculate_pages_count,
-    data_model::{ClaimsCombined, GetProofSchemaResponse, ProofSchemaResponse},
+    data_model::{GetProofSchemaResponse, ProofSchemaResponse},
 };
 use crate::data_layer::{DataLayer, DataLayerError};
 
+use super::common_queries;
 use super::data_model::{GetListQueryParams, SortableProofSchemaColumn};
 
 impl GetEntityColumn for SortableProofSchemaColumn {
@@ -47,46 +42,20 @@ impl DataLayer {
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-        let values: Vec<proof_schema::Model> = query
+        let proof_schemas: Vec<proof_schema::Model> = query
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-        let claims = ProofSchemaClaim::find()
-            .filter(
-                Condition::all().add(
-                    proof_schema_claim::Column::ProofSchemaId.is_in(
-                        values
-                            .iter()
-                            .map(|item| item.id.clone())
-                            .collect::<Vec<String>>(),
-                    ),
-                ),
-            )
-            .select_only()
-            .columns([
-                proof_schema_claim::Column::ClaimSchemaId,
-                proof_schema_claim::Column::ProofSchemaId,
-                proof_schema_claim::Column::IsRequired,
-            ])
-            .column_as(claim_schema::Column::Key, "claim_key")
-            .column_as(credential_schema::Column::Id, "credential_id")
-            .column_as(credential_schema::Column::Name, "credential_name")
-            .join(
-                sea_orm::JoinType::LeftJoin,
-                proof_schema_claim::Relation::ClaimSchema.def(),
-            )
-            .join(
-                sea_orm::JoinType::LeftJoin,
-                claim_schema::Relation::CredentialSchema.def(),
-            )
-            .into_model::<ClaimsCombined>()
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+        let proof_ids = proof_schemas
+            .iter()
+            .map(|item| item.id.clone())
+            .collect::<Vec<String>>();
+
+        let claims = common_queries::fetch_proof_schema_claim_schemas(&self.db, &proof_ids).await?;
 
         Ok(GetProofSchemaResponse {
-            values: values
+            values: proof_schemas
                 .into_iter()
                 .map(|proof_schema| {
                     let claims = claims
@@ -137,6 +106,7 @@ mod tests {
                 organisation_id.to_owned(),
             ))
             .await;
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(1, response.total_items);
@@ -145,14 +115,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_proof_schemas_with_claims() {
+    async fn test_get_proof_schemas_with_ordered_claims() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let new_claims = vec![
-            (Uuid::new_v4(), true),
-            (Uuid::new_v4(), false),
-            (Uuid::new_v4(), true),
-        ];
+        let mut new_claims: Vec<(Uuid, bool, u32)> =
+            (0..50).map(|i| (Uuid::new_v4(), i % 2 == 0, i)).collect();
+
+        // Seems that sqlite keeps the order of insertion. We sort by UUID to mimic
+        // MariaDB behaviour and reproduce unordered response
+        new_claims.sort_by(|a, b| a.0.cmp(&b.0));
 
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
@@ -163,19 +134,15 @@ mod tests {
                 .await
                 .unwrap();
 
-        insert_many_claims_schema_to_database(
-            &data_layer.db,
-            &credential_id,
-            &new_claims.iter().map(|item| item.0).collect(),
-        )
-        .await
-        .unwrap();
+        insert_many_claims_schema_to_database(&data_layer.db, &credential_id, &new_claims)
+            .await
+            .unwrap();
 
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
             .unwrap();
 
-        let proof_schema_id = insert_proof_with_claims_schema_to_database(
+        let proof_schema_id = insert_proof_schema_with_claims_to_database(
             &data_layer.db,
             None,
             &new_claims,
@@ -191,22 +158,25 @@ mod tests {
                 organisation_id.to_owned(),
             ))
             .await;
+
         assert!(result.is_ok());
         let response = result.unwrap();
-        assert_eq!(response.values[0].id, proof_schema_id);
         assert_eq!(response.values[0].id, proof_schema_id);
         assert_eq!(1, response.total_items);
         assert_eq!(1, response.total_pages);
         assert_eq!(1, response.values.len());
         let claims = response.values[0].claim_schemas.clone();
+        assert_eq!(claims.len(), 50);
 
-        assert!(new_claims.iter().all(|(claim_id, is_required)| {
-            if let Some(claim) = claims.iter().find(|claim| claim.id == claim_id.to_string()) {
-                claim.is_required == *is_required && claim.credential_schema_id == credential_id
-            } else {
-                false
-            }
-        }));
+        // Now lets get back to the expected order and compare with the result
+        new_claims.sort_by(|a, b| a.2.cmp(&b.2));
+
+        assert!(new_claims
+            .iter()
+            .zip(claims.iter())
+            .all(|(expected, result)| expected.0.to_string() == result.id
+                && expected.1 == result.is_required
+                && result.credential_schema_id == credential_id));
     }
 
     #[tokio::test]

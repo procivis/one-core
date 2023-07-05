@@ -1,10 +1,10 @@
-use sea_orm::{ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::data_layer::{
     data_model::{CreateProofSchemaRequest, CreateProofSchemaResponse},
-    entities::{proof_schema, proof_schema_claim},
+    entities::{proof_schema, proof_schema_claim_schema},
     DataLayer, DataLayerError,
 };
 
@@ -28,15 +28,24 @@ impl DataLayer {
         .await
         .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-        for claim_schema in request.claim_schemas {
-            proof_schema_claim::ActiveModel {
-                claim_schema_id: Set(claim_schema.id.to_string()),
-                proof_schema_id: Set(proof_schema.id.clone()),
-                is_required: Set(false),
-            }
-            .insert(&self.db)
-            .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+        if !request.claim_schemas.is_empty() {
+            let proof_schema_claim_schema_relations: Vec<proof_schema_claim_schema::ActiveModel> =
+                request
+                    .claim_schemas
+                    .iter()
+                    .enumerate()
+                    .map(|(i, claim_schema)| proof_schema_claim_schema::ActiveModel {
+                        claim_schema_id: Set(claim_schema.id.to_string()),
+                        proof_schema_id: Set(proof_schema.id.clone()),
+                        required: Set(false),
+                        order: Set(i as u32),
+                    })
+                    .collect();
+
+            proof_schema_claim_schema::Entity::insert_many(proof_schema_claim_schema_relations)
+                .exec(&self.db)
+                .await
+                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
         }
 
         Ok(CreateProofSchemaResponse {
@@ -51,7 +60,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::data_layer::data_model::{ClaimProofSchemaRequest, CreateProofSchemaRequest};
-    use crate::data_layer::entities::{ProofSchema, ProofSchemaClaim};
+    use crate::data_layer::entities::{ProofSchema, ProofSchemaClaimSchema};
     use crate::data_layer::test_utilities::{
         insert_credential_schema_to_database, insert_many_claims_schema_to_database,
         insert_organisation_to_database, setup_test_data_layer_and_connection,
@@ -74,7 +83,7 @@ mod tests {
         let proof_schemas_count = ProofSchema::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(0, proof_schemas_count);
 
-        let proof_schema_claim_count = ProofSchemaClaim::find()
+        let proof_schema_claim_count = ProofSchemaClaimSchema::find()
             .all(&data_layer.db)
             .await
             .unwrap()
@@ -104,7 +113,7 @@ mod tests {
         let proof_schemas_count = ProofSchema::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(0, proof_schemas_count);
 
-        let proof_schema_claim_count = ProofSchemaClaim::find()
+        let proof_schema_claim_count = ProofSchemaClaimSchema::find()
             .all(&data_layer.db)
             .await
             .unwrap()
@@ -129,14 +138,15 @@ mod tests {
         let proof_schemas_count = ProofSchema::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(0, proof_schemas_count);
 
-        let proof_schema_claim_count = ProofSchemaClaim::find()
+        let proof_schema_claim_count = ProofSchemaClaimSchema::find()
             .all(&data_layer.db)
             .await
             .unwrap()
             .len();
         assert_eq!(0, proof_schema_claim_count);
 
-        let claim_ids = vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
+        let new_claims: Vec<(Uuid, bool, u32)> =
+            (0..50).map(|i| (Uuid::new_v4(), i % 2 == 0, i)).collect();
 
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
@@ -147,16 +157,15 @@ mod tests {
                 .await
                 .unwrap();
 
-        insert_many_claims_schema_to_database(&data_layer.db, &credential_id, &claim_ids)
+        insert_many_claims_schema_to_database(&data_layer.db, &credential_id, &new_claims)
             .await
             .unwrap();
 
         let mut request = create_schema();
-        request.claim_schemas = vec![
-            ClaimProofSchemaRequest { id: claim_ids[0] },
-            ClaimProofSchemaRequest { id: claim_ids[1] },
-            ClaimProofSchemaRequest { id: claim_ids[2] },
-        ];
+        request.claim_schemas = new_claims
+            .iter()
+            .map(|claim| ClaimProofSchemaRequest { id: claim.0 })
+            .collect();
 
         insert_organisation_to_database(&data_layer.db, Some(request.organisation_id))
             .await
@@ -166,8 +175,10 @@ mod tests {
         assert!(response.is_ok());
         assert!(Uuid::parse_str(&response.as_ref().unwrap().id).is_ok());
 
-        let proof_schema_claims = ProofSchemaClaim::find().all(&data_layer.db).await.unwrap();
-        assert_eq!(3, proof_schema_claims.len());
+        let proof_schema_claims = ProofSchemaClaimSchema::find()
+            .all(&data_layer.db)
+            .await
+            .unwrap();
 
         assert!(proof_schema_claims
             .into_iter()
