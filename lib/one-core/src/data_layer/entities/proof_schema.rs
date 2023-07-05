@@ -36,10 +36,14 @@ impl Related<super::organisation::Entity> for Entity {
 
 impl Related<super::claim_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        super::proof_schema_claim::Relation::ClaimSchema.def()
+        super::proof_schema_claim_schema::Relation::ClaimSchema.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(super::proof_schema_claim::Relation::ProofSchema.def().rev())
+        Some(
+            super::proof_schema_claim_schema::Relation::ProofSchema
+                .def()
+                .rev(),
+        )
     }
 }
 

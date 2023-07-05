@@ -1,15 +1,16 @@
 use crate::data_layer::{
-    entities::{claim_schema, credential_schema, organisation, proof_schema, proof_schema_claim},
+    entities::{
+        claim_schema, credential_schema, organisation, proof_schema, proof_schema_claim_schema,
+    },
     DataLayer,
 };
 
+use migration::{Migrator, MigratorTrait};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use migration::{MigratorTrait, SQLiteMigrator};
-
-use super::data_model::Datatype;
+use super::{data_model::Datatype, entities::credential_schema_claim_schema};
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
@@ -36,19 +37,28 @@ pub async fn insert_credential_schema_to_database(
     Ok(schema.id)
 }
 
+#[allow(clippy::ptr_arg)]
 pub async fn insert_many_claims_schema_to_database(
     database: &DatabaseConnection,
     credential_schema_id: &str,
-    claim_ids: &Vec<Uuid>,
+    claims: &Vec<(Uuid, bool, u32)>,
 ) -> Result<(), DbErr> {
-    for id in claim_ids {
+    for (id, required, order) in claims {
         claim_schema::ActiveModel {
             id: Set(id.to_string()),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             key: Set("TestKey".to_string()),
             datatype: Set(Datatype::String.into()),
-            credential_id: Set(credential_schema_id.to_owned()),
+        }
+        .insert(database)
+        .await?;
+
+        credential_schema_claim_schema::ActiveModel {
+            claim_schema_id: Set(id.to_string()),
+            credential_schema_id: Set(credential_schema_id.to_owned()),
+            required: Set(*required),
+            order: Set(*order),
         }
         .insert(database)
         .await?;
@@ -65,10 +75,10 @@ pub async fn get_credential_schema_with_id(
         .await
 }
 
-pub async fn insert_proof_with_claims_schema_to_database(
+pub async fn insert_proof_schema_with_claims_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    claims: &Vec<(Uuid, bool)>,
+    claims: &Vec<(Uuid, bool, u32)>,
     organisation_id: &str,
 ) -> Result<String, DbErr> {
     let schema = proof_schema::ActiveModel {
@@ -84,11 +94,12 @@ pub async fn insert_proof_with_claims_schema_to_database(
     .insert(database)
     .await?;
 
-    for (claim_id, is_required) in claims {
-        proof_schema_claim::ActiveModel {
-            claim_schema_id: Set(claim_id.to_string()),
+    for (id, required, order) in claims {
+        proof_schema_claim_schema::ActiveModel {
+            claim_schema_id: Set(id.to_string()),
             proof_schema_id: Set(schema.id.clone()),
-            is_required: Set(*is_required),
+            required: Set(*required),
+            order: Set(*order),
         }
         .insert(database)
         .await?;
@@ -140,7 +151,7 @@ pub async fn get_proof_schema_with_id(
 
 pub async fn setup_test_data_layer_and_connection() -> Result<DataLayer, DbErr> {
     let db = sea_orm::Database::connect("sqlite::memory:").await?;
-    SQLiteMigrator::up(&db, None).await?;
+    Migrator::up(&db, None).await?;
 
     Ok(DataLayer { db })
 }

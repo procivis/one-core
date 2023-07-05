@@ -9,6 +9,31 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(Organisation::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Organisation::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Organisation::CreatedDate)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Organisation::LastModified)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(CredentialSchema::Table)
                     .if_not_exists()
                     .col(
@@ -54,6 +79,14 @@ impl MigrationTrait for Migration {
                             .char_len(36)
                             .not_null(),
                     )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-CredentialSchema-OrganisationId")
+                            .from_tbl(CredentialSchema::Table)
+                            .from_col(CredentialSchema::OrganisationId)
+                            .to_tbl(Organisation::Table)
+                            .to_col(Organisation::Id),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -87,17 +120,6 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(ClaimSchema::LastModified)
                             .date_time()
                             .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(ClaimSchema::CredentialId)
-                            .char_len(36)
-                            .not_null(),
-                    )
-                    .foreign_key(
-                        ForeignKey::create()
-                            .name("fk-ClaimSchema-CredentialId")
-                            .from(ClaimSchema::Table, ClaimSchema::CredentialId)
-                            .to(CredentialSchema::Table, CredentialSchema::Id),
                     )
                     .to_owned(),
             )
@@ -136,6 +158,14 @@ impl MigrationTrait for Migration {
                             .char_len(36)
                             .not_null(),
                     )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-ProofSchema-OrganisationId")
+                            .from_tbl(ProofSchema::Table)
+                            .from_col(ProofSchema::OrganisationId)
+                            .to_tbl(Organisation::Table)
+                            .to_col(Organisation::Id),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -143,52 +173,125 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(ProofSchemaClaim::Table)
+                    .table(CredentialSchemaClaimSchema::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(ProofSchemaClaim::ClaimSchemaId)
+                        ColumnDef::new(CredentialSchemaClaimSchema::ClaimSchemaId)
                             .char_len(36)
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(ProofSchemaClaim::ProofSchemaId)
+                        ColumnDef::new(CredentialSchemaClaimSchema::CredentialSchemaId)
                             .char_len(36)
                             .not_null(),
                     )
                     .col(
-                        ColumnDef::new(ProofSchemaClaim::IsRequired)
+                        ColumnDef::new(CredentialSchemaClaimSchema::Required)
                             .boolean()
                             .not_null(),
                     )
+                    .col(
+                        ColumnDef::new(CredentialSchemaClaimSchema::Order)
+                            .unsigned()
+                            .not_null()
+                            .default(0),
+                    )
                     .primary_key(
                         Index::create()
-                            .name("pk-ClaimSchema_ProofSchema")
-                            .col(ProofSchemaClaim::ClaimSchemaId)
-                            .col(ProofSchemaClaim::ProofSchemaId)
+                            .name("pk-CredentialSchema_ClaimSchema")
+                            .col(CredentialSchemaClaimSchema::ClaimSchemaId)
+                            .col(CredentialSchemaClaimSchema::CredentialSchemaId)
                             .primary(),
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("fk-ClaimSchema_ProofSchema-ClaimId")
-                            .from_tbl(ProofSchemaClaim::Table)
-                            .from_col(ProofSchemaClaim::ClaimSchemaId)
+                            .name("fk-CredentialSchema_ClaimSchema-ClaimId")
+                            .from_tbl(CredentialSchemaClaimSchema::Table)
+                            .from_col(CredentialSchemaClaimSchema::ClaimSchemaId)
                             .to_tbl(ClaimSchema::Table)
                             .to_col(ClaimSchema::Id),
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("fk-ClaimSchema_ProofSchema-ProofId")
-                            .from_tbl(ProofSchemaClaim::Table)
-                            .from_col(ProofSchemaClaim::ProofSchemaId)
+                            .name("fk-CredentialSchema_ClaimSchema-ProofId")
+                            .from_tbl(CredentialSchemaClaimSchema::Table)
+                            .from_col(CredentialSchemaClaimSchema::CredentialSchemaId)
+                            .to_tbl(CredentialSchema::Table)
+                            .to_col(CredentialSchema::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(ProofSchemaClaimSchema::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(ProofSchemaClaimSchema::ClaimSchemaId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchemaClaimSchema::ProofSchemaId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchemaClaimSchema::Required)
+                            .boolean()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(ProofSchemaClaimSchema::Order)
+                            .unsigned()
+                            .not_null()
+                            .default(0),
+                    )
+                    .primary_key(
+                        Index::create()
+                            .name("pk-ProofSchema_ClaimSchema")
+                            .col(ProofSchemaClaimSchema::ClaimSchemaId)
+                            .col(ProofSchemaClaimSchema::ProofSchemaId)
+                            .primary(),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-ProofSchema_ClaimSchema-ClaimId")
+                            .from_tbl(ProofSchemaClaimSchema::Table)
+                            .from_col(ProofSchemaClaimSchema::ClaimSchemaId)
+                            .to_tbl(ClaimSchema::Table)
+                            .to_col(ClaimSchema::Id),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-ProofSchema_ClaimSchema-ProofId")
+                            .from_tbl(ProofSchemaClaimSchema::Table)
+                            .from_col(ProofSchemaClaimSchema::ProofSchemaId)
                             .to_tbl(ProofSchema::Table)
                             .to_col(ProofSchema::Id),
                     )
                     .to_owned(),
             )
-            .await
+            .await?;
+
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(
+                Table::drop()
+                    .table(ProofSchemaClaimSchema::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(ProofSchema::Table).to_owned())
+            .await?;
+
         manager
             .drop_table(Table::drop().table(ClaimSchema::Table).to_owned())
             .await?;
@@ -198,12 +301,10 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
-            .drop_table(Table::drop().table(ProofSchemaClaim::Table).to_owned())
+            .drop_table(Table::drop().table(Organisation::Table).to_owned())
             .await?;
 
-        manager
-            .drop_table(Table::drop().table(ProofSchema::Table).to_owned())
-            .await
+        Ok(())
     }
 }
 
@@ -250,7 +351,6 @@ pub enum ClaimSchema {
     Key,
     CreatedDate,
     LastModified,
-    CredentialId,
 }
 
 #[derive(Iden)]
@@ -277,9 +377,27 @@ pub enum ProofSchema {
 }
 
 #[derive(Iden)]
-pub enum ProofSchemaClaim {
+pub enum ProofSchemaClaimSchema {
     Table,
     ClaimSchemaId,
     ProofSchemaId,
-    IsRequired,
+    Required,
+    Order,
+}
+
+#[derive(Iden)]
+pub enum CredentialSchemaClaimSchema {
+    Table,
+    ClaimSchemaId,
+    CredentialSchemaId,
+    Required,
+    Order,
+}
+
+#[derive(Iden)]
+pub enum Organisation {
+    Table,
+    Id,
+    CreatedDate,
+    LastModified,
 }

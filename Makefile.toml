@@ -34,7 +34,7 @@ args = ["-f", "docker/db.yml", "down" ]
 
 [tasks.dbdrop]
 script = [
-    "docker rm --force docker_mariadb_1",
+    "docker rm --force docker-mariadb-1",
     "docker volume rm docker_mariadb_data",
 ]
 

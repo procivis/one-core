@@ -1,7 +1,8 @@
-use migration::{Migrator, MigratorTrait, SQLiteMigrator};
+use migration::{Migrator, MigratorTrait};
 use sea_orm::DatabaseConnection;
 
 pub mod common;
+mod common_queries;
 pub mod create_credential_schema;
 pub mod create_organisation;
 pub mod create_proof_schema;
@@ -35,15 +36,9 @@ pub struct DataLayer {
 
 impl DataLayer {
     pub async fn create(database_url: &str) -> Self {
-        let is_sqlite = database_url.starts_with("sqlite:");
-
         let db = sea_orm::Database::connect(database_url).await.unwrap();
 
-        if is_sqlite {
-            SQLiteMigrator::up(&db, None).await.unwrap();
-        } else {
-            Migrator::up(&db, None).await.unwrap();
-        }
+        Migrator::up(&db, None).await.unwrap();
 
         Self { db }
     }

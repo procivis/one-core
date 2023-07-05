@@ -1,8 +1,6 @@
-use sea_orm::{
-    ColumnTrait, EntityTrait, LoaderTrait, PaginatorTrait, QueryFilter, QueryOrder, Select,
-};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Select};
 
-use crate::data_layer::entities::{claim_schema, credential_schema, ClaimSchema, CredentialSchema};
+use crate::data_layer::entities::{credential_schema, CredentialSchema};
 use crate::data_layer::list_query::{GetEntityColumn, SelectWithListQuery};
 use crate::data_layer::{
     common::calculate_pages_count,
@@ -10,6 +8,7 @@ use crate::data_layer::{
 };
 use crate::data_layer::{DataLayer, DataLayerError};
 
+use super::common_queries;
 use super::data_model::{GetListQueryParams, SortableCredentialSchemaColumn};
 
 impl GetEntityColumn for SortableCredentialSchemaColumn {
@@ -49,17 +48,20 @@ impl DataLayer {
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-        let claims: Vec<Vec<claim_schema::Model>> = schemas
-            .load_many(ClaimSchema, &self.db)
-            .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+        let schema_ids = schemas
+            .iter()
+            .map(|model| model.id.clone())
+            .collect::<Vec<_>>();
+
+        let claims =
+            common_queries::fetch_credential_schema_claim_schemas(&self.db, schema_ids.as_slice())
+                .await?;
 
         Ok(GetCredentialClaimSchemaResponse {
             values: schemas
                 .into_iter()
-                .zip(claims)
-                .map(|(credential_schema, claim_schemas)| {
-                    CredentialSchemaResponse::from_model(credential_schema, claim_schemas)
+                .map(|credential_schema| {
+                    CredentialSchemaResponse::from_model(credential_schema, &claims)
                 })
                 .collect(),
             total_pages: calculate_pages_count(items_count, limit),
@@ -109,6 +111,59 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_get_credential_schemas_with_ordered_claims() {
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+
+        let claims_count: usize = 50;
+
+        let mut new_claims: Vec<(Uuid, bool, u32)> = (0..claims_count)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i as u32))
+            .collect();
+
+        // Seems that sqlite keeps the order of insertion. We sort by UUID to mimic
+        // MariaDB behaviour and reproduce unordered response
+        new_claims.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
+
+        let id = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
+            .await
+            .unwrap();
+
+        insert_many_claims_schema_to_database(&data_layer.db, &id, &new_claims)
+            .await
+            .unwrap();
+
+        let result = data_layer
+            .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
+                0,
+                1,
+                organisation_id.to_owned(),
+            ))
+            .await;
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+        assert_eq!(1, response.total_items);
+        assert_eq!(1, response.total_pages);
+        assert_eq!(1, response.values.len());
+        assert_eq!(id, response.values[0].id);
+        let claims = response.values[0].claims.clone();
+
+        assert_eq!(claims.len(), claims_count);
+
+        // Now lets get back to the expected order and compare with the result
+        new_claims.sort_by(|a, b| a.2.cmp(&b.2));
+
+        assert!(new_claims
+            .iter()
+            .zip(claims.iter())
+            .all(|(expected, result)| expected.0.to_string() == result.id));
+    }
+
+    #[tokio::test]
     async fn test_get_credential_schemas_empty() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
@@ -119,6 +174,7 @@ mod tests {
                 Uuid::new_v4().to_string(),
             ))
             .await;
+
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(0, response.total_items);
@@ -483,18 +539,12 @@ mod tests {
             .await
             .unwrap();
 
-        insert_many_claims_schema_to_database(
-            &data_layer.db,
-            &id,
-            &vec![
-                Uuid::new_v4(),
-                Uuid::new_v4(),
-                Uuid::new_v4(),
-                Uuid::new_v4(),
-            ],
-        )
-        .await
-        .unwrap();
+        let new_claims: Vec<(Uuid, bool, u32)> =
+            (0..4).map(|i| (Uuid::new_v4(), i % 2 == 0, i)).collect();
+
+        insert_many_claims_schema_to_database(&data_layer.db, &id, &new_claims)
+            .await
+            .unwrap();
 
         let result = data_layer
             .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(

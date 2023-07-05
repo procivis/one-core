@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "proof_schema_claim")]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[sea_orm(table_name = "proof_schema_claim_schema")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub claim_schema_id: String,
@@ -9,7 +9,8 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub proof_schema_id: String,
 
-    pub is_required: bool,
+    pub required: bool,
+    pub order: u32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

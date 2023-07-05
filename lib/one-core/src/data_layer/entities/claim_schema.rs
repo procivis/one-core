@@ -11,34 +11,34 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: Datatype,
-
-    pub credential_id: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::credential_schema::Entity",
-        from = "Column::CredentialId",
-        to = "super::credential_schema::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    CredentialSchema,
-}
+pub enum Relation {}
 
 impl Related<super::credential_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::CredentialSchema.def()
+        super::credential_schema_claim_schema::Relation::CredentialSchema.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::credential_schema_claim_schema::Relation::ClaimSchema
+                .def()
+                .rev(),
+        )
     }
 }
 
 impl Related<super::proof_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        super::proof_schema_claim::Relation::ProofSchema.def()
+        super::proof_schema_claim_schema::Relation::ProofSchema.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(super::proof_schema_claim::Relation::ClaimSchema.def().rev())
+        Some(
+            super::proof_schema_claim_schema::Relation::ClaimSchema
+                .def()
+                .rev(),
+        )
     }
 }
 
