@@ -52,6 +52,8 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum RevocationMethod {
+    #[sea_orm(string_value = "NONE")]
+    None,
     #[default]
     #[sea_orm(string_value = "STATUSLIST2021")]
     StatusList2021,

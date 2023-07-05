@@ -54,6 +54,7 @@ impl From<one_core::data_layer::data_model::Format> for Format {
 #[serde(rename_all = "UPPERCASE")]
 pub enum RevocationMethod {
     #[default]
+    None,
     StatusList2021,
     Lvvc,
 }
@@ -65,6 +66,7 @@ impl From<RevocationMethod> for one_core::data_layer::data_model::RevocationMeth
                 one_core::data_layer::data_model::RevocationMethod::StatusList2021
             }
             RevocationMethod::Lvvc => one_core::data_layer::data_model::RevocationMethod::Lvvc,
+            RevocationMethod::None => one_core::data_layer::data_model::RevocationMethod::None,
         }
     }
 }
@@ -76,6 +78,7 @@ impl From<one_core::data_layer::data_model::RevocationMethod> for RevocationMeth
                 RevocationMethod::StatusList2021
             }
             one_core::data_layer::data_model::RevocationMethod::Lvvc => RevocationMethod::Lvvc,
+            one_core::data_layer::data_model::RevocationMethod::None => RevocationMethod::None,
         }
     }
 }

@@ -38,6 +38,7 @@ impl From<super::entities::credential_schema::Format> for Format {
 #[derive(Clone, Debug, Default)]
 pub enum RevocationMethod {
     #[default]
+    None,
     StatusList2021,
     Lvvc,
 }
@@ -47,6 +48,7 @@ impl From<RevocationMethod> for super::entities::credential_schema::RevocationMe
         match value {
             RevocationMethod::StatusList2021 => credential_schema::RevocationMethod::StatusList2021,
             RevocationMethod::Lvvc => credential_schema::RevocationMethod::Lvvc,
+            RevocationMethod::None => credential_schema::RevocationMethod::None,
         }
     }
 }
@@ -56,6 +58,7 @@ impl From<super::entities::credential_schema::RevocationMethod> for RevocationMe
         match value {
             credential_schema::RevocationMethod::StatusList2021 => RevocationMethod::StatusList2021,
             credential_schema::RevocationMethod::Lvvc => RevocationMethod::Lvvc,
+            credential_schema::RevocationMethod::None => RevocationMethod::None,
         }
     }
 }
