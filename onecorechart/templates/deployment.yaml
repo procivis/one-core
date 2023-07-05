@@ -42,13 +42,13 @@ spec:
             periodSeconds: 60
             timeoutSeconds: 5
             httpGet:
-              path: /swagger-ui/
+              path: /health
               port: http
           readinessProbe:
             initialDelaySeconds: 5
             timeoutSeconds: 5
             httpGet:
-              path: /swagger-ui/
+              path: /health
               port: http
           envFrom:
             - configMapRef:
