@@ -39,14 +39,12 @@ script = [
 ]
 
 [tasks.dbup1]
-cwd = "./apps/migration"
 command = "cargo"
-args = ["run", "--", "up", "-n1" ]
+args = ["run", "-p", "migration", "--", "up", "-n1" ]
 
 [tasks.dbdown1]
-cwd = "./apps/migration"
 command = "cargo"
-args = ["run", "--", "down", "-n1" ]
+args = ["run", "-p", "migration", "--", "down", "-n1" ]
 
 [tasks.dbtempent]
 command = "sea-orm-cli"
