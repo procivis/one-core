@@ -95,7 +95,7 @@ mod tests {
             .await
             .unwrap();
 
-        let _id = insert_proof_schema_to_database(&data_layer.db, None, &organisation_id)
+        let _id = insert_proof_schema_to_database(&data_layer.db, None, &organisation_id, "Proof1")
             .await
             .unwrap();
 
@@ -129,10 +129,14 @@ mod tests {
             .await
             .unwrap();
 
-        let credential_id =
-            insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-                .await
-                .unwrap();
+        let credential_id = insert_credential_schema_to_database(
+            &data_layer.db,
+            None,
+            &organisation_id,
+            "Credential1",
+        )
+        .await
+        .unwrap();
 
         insert_many_claims_schema_to_database(&data_layer.db, &credential_id, &new_claims)
             .await
@@ -210,6 +214,7 @@ mod tests {
             &data_layer.db,
             predefined_deletion_date,
             &organisation_id,
+            "Proof1",
         )
         .await
         .unwrap();
@@ -236,10 +241,15 @@ mod tests {
             .await
             .unwrap();
 
-        for _ in 0..50 {
-            let _id = insert_proof_schema_to_database(&data_layer.db, None, &organisation_id)
-                .await
-                .unwrap();
+        for i in 0..50 {
+            let _id = insert_proof_schema_to_database(
+                &data_layer.db,
+                None,
+                &organisation_id,
+                format!("Proof{i}").as_str(),
+            )
+            .await
+            .unwrap();
         }
 
         let result = data_layer

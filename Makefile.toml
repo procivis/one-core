@@ -38,6 +38,10 @@ script = [
     "docker volume rm docker_mariadb_data",
 ]
 
+[tasks.install_seaormcli]
+command = "cargo"
+args = ["install", "sea-orm-cli", "--force", "--version", "0.12.0-rc.3"]
+
 [tasks.dbup1]
 command = "cargo"
 args = ["run", "-p", "migration", "--", "up", "-n1" ]
@@ -49,6 +53,7 @@ args = ["run", "-p", "migration", "--", "down", "-n1" ]
 [tasks.dbtempent]
 command = "sea-orm-cli"
 args = ["generate", "entity", "--date-time-crate" , "time", "-o", "lib/one-core/src/data_layer/entities_new/" ]
+
 
 ############################################################### ANDROID-UNIFFI
 [tasks.add_android_targets]

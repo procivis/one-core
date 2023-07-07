@@ -71,10 +71,14 @@ mod tests {
             .await
             .unwrap();
 
-        let credential_schema_id =
-            insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-                .await
-                .unwrap();
+        let credential_schema_id = insert_credential_schema_to_database(
+            &data_layer.db,
+            None,
+            &organisation_id,
+            "Credential1",
+        )
+        .await
+        .unwrap();
 
         let result = data_layer
             .delete_credential_schema(&credential_schema_id)
@@ -106,6 +110,7 @@ mod tests {
             &data_layer.db,
             predefined_deletion_date,
             &organisation_id,
+            "Credential1",
         )
         .await
         .unwrap();

@@ -20,13 +20,14 @@ pub async fn insert_credential_schema_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
     organisation_id: &str,
+    name: &str,
 ) -> Result<String, DbErr> {
     let schema = credential_schema::ActiveModel {
         id: Set(Uuid::new_v4().to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         format: Set(Default::default()),
-        name: Set(Default::default()),
+        name: Set(name.to_owned()),
         revocation_method: Set(Default::default()),
         organisation_id: Set(organisation_id.to_owned()),
 
@@ -112,12 +113,13 @@ pub async fn insert_proof_schema_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
     organisation_id: &str,
+    name: &str,
 ) -> Result<String, DbErr> {
     let schema = proof_schema::ActiveModel {
         id: Set(Uuid::new_v4().to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        name: Set(Default::default()),
+        name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
         organisation_id: Set(organisation_id.to_owned()),
 
@@ -150,8 +152,11 @@ pub async fn get_proof_schema_with_id(
 }
 
 pub async fn setup_test_data_layer_and_connection() -> Result<DataLayer, DbErr> {
-    let db = sea_orm::Database::connect("sqlite::memory:").await?;
-    Migrator::up(&db, None).await?;
+    let db = sea_orm::Database::connect("sqlite::memory:")
+        .await
+        .expect("Database Connected");
+
+    Migrator::up(&db, None).await.unwrap();
 
     Ok(DataLayer { db })
 }

@@ -49,9 +49,14 @@ mod tests {
             .await
             .unwrap();
 
-        let uuid = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-            .await
-            .unwrap();
+        let uuid = insert_credential_schema_to_database(
+            &data_layer.db,
+            None,
+            &organisation_id,
+            "Credential1",
+        )
+        .await
+        .unwrap();
 
         let result = data_layer.get_credential_schema_details(&uuid).await;
         assert!(result.is_ok());
@@ -77,9 +82,14 @@ mod tests {
         // MariaDB behaviour and reproduce unordered response
         new_claims.sort_by(|a, b| a.0.cmp(&b.0));
 
-        let uuid = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-            .await
-            .unwrap();
+        let uuid = insert_credential_schema_to_database(
+            &data_layer.db,
+            None,
+            &organisation_id,
+            "Credential1",
+        )
+        .await
+        .unwrap();
 
         insert_many_claims_schema_to_database(&data_layer.db, &uuid, &new_claims)
             .await

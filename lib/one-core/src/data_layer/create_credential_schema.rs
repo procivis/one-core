@@ -1,4 +1,4 @@
-use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set, SqlErr};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -29,7 +29,12 @@ impl DataLayer {
         }
         .insert(&self.db)
         .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+        .map_err(|e| match e.sql_err() {
+            Some(sql_error) if matches!(sql_error, SqlErr::UniqueConstraintViolation(_)) => {
+                DataLayerError::AlreadyExists
+            }
+            Some(_) | None => DataLayerError::GeneralRuntimeError(e.to_string()),
+        })?;
 
         if !request.claims.is_empty() {
             let claim_schema_models: Vec<claim_schema::ActiveModel> = request
@@ -90,9 +95,9 @@ mod tests {
     use crate::data_layer::data_model::*;
     use crate::data_layer::test_utilities::*;
 
-    fn create_schema(organization_id: &Uuid) -> CreateCredentialSchemaRequest {
+    fn create_schema(organization_id: &Uuid, name: &str) -> CreateCredentialSchemaRequest {
         CreateCredentialSchemaRequest {
-            name: "credential".to_string(),
+            name: name.to_owned(),
             format: Format::Jwt.into(),
             revocation_method: RevocationMethod::StatusList2021.into(),
             organisation_id: organization_id.to_owned(),
@@ -126,7 +131,7 @@ mod tests {
             .await
             .unwrap();
 
-        let mut schema = create_schema(&organisation_id);
+        let mut schema = create_schema(&organisation_id, "Credential1");
         schema.claims.clear();
 
         assert!(data_layer.create_credential_schema(schema).await.is_ok());
@@ -137,6 +142,47 @@ mod tests {
             .unwrap()
             .len();
         assert_eq!(1, credential_schemas_count);
+    }
+
+    #[tokio::test]
+    async fn create_credential_schema_test_simple_without_claims_duplicated_name() {
+        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+
+        let organisation_id = Uuid::new_v4();
+        let organisation_id2 = Uuid::new_v4();
+
+        insert_organisation_to_database(&data_layer.db, Some(organisation_id))
+            .await
+            .unwrap();
+
+        insert_organisation_to_database(&data_layer.db, Some(organisation_id2))
+            .await
+            .unwrap();
+
+        assert!(data_layer
+            .create_credential_schema(create_schema(&organisation_id, "Credential1"))
+            .await
+            .is_ok());
+
+        // The same name is not allowed
+        assert!(matches!(
+            data_layer
+                .create_credential_schema(create_schema(&organisation_id, "Credential1"))
+                .await,
+            Err(DataLayerError::AlreadyExists)
+        ));
+
+        // Case sensitive
+        assert!(data_layer
+            .create_credential_schema(create_schema(&organisation_id, "credential1"))
+            .await
+            .is_ok());
+
+        // Same name for different organisation is ok
+        assert!(data_layer
+            .create_credential_schema(create_schema(&organisation_id2, "Credential1"))
+            .await
+            .is_ok());
     }
 
     #[tokio::test]
@@ -159,7 +205,7 @@ mod tests {
             .unwrap();
 
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id))
+            .create_credential_schema(create_schema(&organisation_id, "Credential1"))
             .await
             .is_ok());
 
@@ -184,15 +230,15 @@ mod tests {
             .unwrap();
 
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id))
+            .create_credential_schema(create_schema(&organisation_id, "Credential1"))
             .await
             .is_ok());
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id))
+            .create_credential_schema(create_schema(&organisation_id, "Credential2"))
             .await
             .is_ok());
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id))
+            .create_credential_schema(create_schema(&organisation_id, "Credential3"))
             .await
             .is_ok());
 

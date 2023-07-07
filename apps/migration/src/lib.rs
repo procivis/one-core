@@ -2,6 +2,7 @@ pub use sea_orm_migration::prelude::*;
 
 mod m20230530_000001_initial;
 mod m20230705_000002_revocation_none;
+mod m20230707_000003_unique_schema_name;
 
 pub struct Migrator;
 
@@ -11,6 +12,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20230530_000001_initial::Migration),
             Box::new(m20230705_000002_revocation_none::Migration),
+            Box::new(m20230707_000003_unique_schema_name::Migration),
         ]
     }
 }
