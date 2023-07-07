@@ -36,17 +36,18 @@ build:
 tests:
   stage: test
   script:
-    - rustup install nightly-2023-06-15
-    - cargo install cargo2junit
-    - cargo +nightly-2023-06-15 test --features strict -- -Z unstable-options --format json --report-time | cargo2junit > coverage.xml
+    - apt-get update && apt-get install pkg-config libssl-dev -y
+    - cargo install cargo-tarpaulin
+    - cargo tarpaulin --ignore-tests --all-features --release --out Xml
   coverage: '/TOTAL.*\s+(\d+%)$/'
   artifacts:
     expire_in: 1 hour
     paths:
-      - coverage.xml
+      - cobertura.xml
     reports:
-      junit:
-        - coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: cobertura.xml
 
 linter:clippy:
   stage: test
