@@ -26,6 +26,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organisation,
+    #[sea_orm(has_many = "super::proof_schema_claim_schema::Entity")]
+    ProofSchemaClaimSchema,
 }
 
 impl Related<super::organisation::Entity> for Entity {
@@ -34,6 +36,11 @@ impl Related<super::organisation::Entity> for Entity {
     }
 }
 
+impl Related<super::proof_schema_claim_schema::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProofSchemaClaimSchema.def()
+    }
+}
 impl Related<super::claim_schema::Entity> for Entity {
     fn to() -> RelationDef {
         super::proof_schema_claim_schema::Relation::ClaimSchema.def()

@@ -36,7 +36,9 @@ pub struct DataLayer {
 
 impl DataLayer {
     pub async fn create(database_url: &str) -> Self {
-        let db = sea_orm::Database::connect(database_url).await.unwrap();
+        let db = sea_orm::Database::connect(database_url)
+            .await
+            .expect("Database Connected");
 
         Migrator::up(&db, None).await.unwrap();
 

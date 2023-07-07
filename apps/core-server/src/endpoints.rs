@@ -146,6 +146,7 @@ pub(crate) async fn get_credential_schema(
         (status = 204, description = "Created"),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
+        (status = 409, description = "Duplicated name"),
     ),
     tag = "credential_schema_management",
     security(
@@ -169,7 +170,10 @@ pub(crate) async fn post_credential_schema(
 
     if let Err(error) = result {
         tracing::error!("Error while inserting credential: {:?}", error);
-        return StatusCode::INTERNAL_SERVER_ERROR;
+        match error {
+            DataLayerError::AlreadyExists => return StatusCode::CONFLICT,
+            _ => return StatusCode::INTERNAL_SERVER_ERROR,
+        };
     }
 
     StatusCode::NO_CONTENT
@@ -277,6 +281,10 @@ pub(crate) async fn post_proof_schema(
         .await;
 
     match result {
+        Err(DataLayerError::AlreadyExists) => {
+            tracing::error!("Name duplicated in the organisation");
+            StatusCode::CONFLICT.into_response()
+        }
         Err(DataLayerError::GeneralRuntimeError(e)) => {
             tracing::error!("Database runtime error: {:?}", e);
             StatusCode::BAD_REQUEST.into_response()

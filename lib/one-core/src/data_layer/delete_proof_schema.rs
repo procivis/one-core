@@ -51,9 +51,10 @@ mod tests {
             .await
             .unwrap();
 
-        let schema_id = insert_proof_schema_to_database(&data_layer.db, None, &organisation_id)
-            .await
-            .unwrap();
+        let schema_id =
+            insert_proof_schema_to_database(&data_layer.db, None, &organisation_id, "Proof1")
+                .await
+                .unwrap();
 
         let result = data_layer.delete_proof_schema(&schema_id).await;
         assert!(result.is_ok());
@@ -83,6 +84,7 @@ mod tests {
             &data_layer.db,
             predefined_deletion_date,
             &organisation_id,
+            "Proof1",
         )
         .await
         .unwrap();

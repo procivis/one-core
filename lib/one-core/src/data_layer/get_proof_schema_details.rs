@@ -47,9 +47,10 @@ mod tests {
             .await
             .unwrap();
 
-        let uuid = insert_proof_schema_to_database(&data_layer.db, None, &organisation_id)
-            .await
-            .unwrap();
+        let uuid =
+            insert_proof_schema_to_database(&data_layer.db, None, &organisation_id, "Proof1")
+                .await
+                .unwrap();
 
         let result = data_layer.get_proof_schema_details(&uuid).await;
         assert!(result.is_ok());
@@ -73,10 +74,14 @@ mod tests {
             .await
             .unwrap();
 
-        let credential_id =
-            insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-                .await
-                .unwrap();
+        let credential_id = insert_credential_schema_to_database(
+            &data_layer.db,
+            None,
+            &organisation_id,
+            "Credential1",
+        )
+        .await
+        .unwrap();
 
         insert_many_claims_schema_to_database(&data_layer.db, &credential_id, &new_claims)
             .await

@@ -92,9 +92,14 @@ mod tests {
             .await
             .unwrap();
 
-        let _id = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-            .await
-            .unwrap();
+        let _id = insert_credential_schema_to_database(
+            &data_layer.db,
+            None,
+            &organisation_id,
+            "Credential1",
+        )
+        .await
+        .unwrap();
 
         let result = data_layer
             .get_credential_schemas(GetCredentialSchemaQuery::from_pagination(
@@ -128,9 +133,14 @@ mod tests {
             .await
             .unwrap();
 
-        let id = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-            .await
-            .unwrap();
+        let id = insert_credential_schema_to_database(
+            &data_layer.db,
+            None,
+            &organisation_id,
+            "Credential1",
+        )
+        .await
+        .unwrap();
 
         insert_many_claims_schema_to_database(&data_layer.db, &id, &new_claims)
             .await
@@ -195,6 +205,7 @@ mod tests {
             &data_layer.db,
             predefined_deletion_date,
             &organisation_id,
+            "Credential1",
         )
         .await
         .unwrap();
@@ -221,10 +232,15 @@ mod tests {
             .await
             .unwrap();
 
-        for _ in 0..50 {
-            let _id = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-                .await
-                .unwrap();
+        for i in 0..50 {
+            let _id = insert_credential_schema_to_database(
+                &data_layer.db,
+                None,
+                &organisation_id,
+                format!("Credential{i}").as_str(),
+            )
+            .await
+            .unwrap();
         }
 
         let result = data_layer
@@ -535,9 +551,14 @@ mod tests {
             .await
             .unwrap();
 
-        let id = insert_credential_schema_to_database(&data_layer.db, None, &organisation_id)
-            .await
-            .unwrap();
+        let id = insert_credential_schema_to_database(
+            &data_layer.db,
+            None,
+            &organisation_id,
+            "Credential1",
+        )
+        .await
+        .unwrap();
 
         let new_claims: Vec<(Uuid, bool, u32)> =
             (0..4).map(|i| (Uuid::new_v4(), i % 2 == 0, i)).collect();
