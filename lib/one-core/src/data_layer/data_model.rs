@@ -204,7 +204,6 @@ impl CredentialSchemaResponse {
 }
 
 #[derive(Clone, Debug)]
-
 pub struct GetProofSchemaResponse {
     pub values: Vec<ProofSchemaResponse>,
     pub total_pages: u64,
@@ -212,7 +211,6 @@ pub struct GetProofSchemaResponse {
 }
 
 #[derive(Clone, Debug)]
-
 pub struct ProofSchemaResponse {
     pub id: String,
     pub created_date: OffsetDateTime,
@@ -329,4 +327,40 @@ impl From<organisation::Model> for GetOrganisationDetailsResponse {
             last_modified: value.last_modified,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateCredentialRequest {
+    pub credential_schema_id: Uuid,
+    pub issuer_did: Uuid,
+    pub transport: Transport,
+    pub claim_values: Vec<CreateCredentialRequestClaim>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Transport {
+    ProcivisTemporary,
+    OpenId4Vc,
+}
+
+impl From<Transport> for super::entities::credential::Transport {
+    fn from(value: Transport) -> Self {
+        match value {
+            Transport::ProcivisTemporary => {
+                super::entities::credential::Transport::ProcivisTemporary
+            }
+            Transport::OpenId4Vc => super::entities::credential::Transport::OpenId4Vc,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateCredentialRequestClaim {
+    pub claim_id: Uuid,
+    pub value: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct EntityResponse {
+    pub id: String,
 }

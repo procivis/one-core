@@ -1,7 +1,8 @@
 use one_core::data_layer::data_model::{
-    ClaimProofSchemaRequest, CreateCredentialSchemaRequest, CreateOrganisationRequest,
-    CreateOrganisationResponse, CreateProofSchemaRequest, CreateProofSchemaResponse,
-    CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialSchemaResponse,
+    ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
+    CreateCredentialSchemaRequest, CreateOrganisationRequest, CreateOrganisationResponse,
+    CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
+    CredentialClaimSchemaResponse, CredentialSchemaResponse, EntityResponse,
     GetCredentialClaimSchemaResponse, GetOrganisationDetailsResponse, GetProofSchemaResponse,
     ProofClaimSchemaResponse, ProofSchemaResponse,
 };
@@ -500,5 +501,87 @@ impl From<GetOrganisationDetailsResponse> for GetOrganisationDetailsResponseDTO 
             created_date: value.created_date,
             last_modified: value.last_modified,
         }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialRequestDTO {
+    pub credential_schema_id: Uuid,
+    pub issuer_did: Uuid,
+    pub transport: Transport,
+    pub claim_values: Vec<CredentialRequestClaimDTO>,
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Transport {
+    #[default]
+    ProcivisTemporary,
+    #[serde(rename = "OPENID4VC")]
+    OpenId4Vc,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialRequestClaimDTO {
+    pub claim_id: Uuid,
+    pub value: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+pub struct EntityResponseDTO {
+    pub id: String,
+}
+
+impl From<CredentialRequestDTO> for CreateCredentialRequest {
+    fn from(value: CredentialRequestDTO) -> Self {
+        Self {
+            credential_schema_id: value.credential_schema_id,
+            issuer_did: value.issuer_did,
+            transport: value.transport.into(),
+            claim_values: value
+                .claim_values
+                .into_iter()
+                .map(|claim| claim.into())
+                .collect(),
+        }
+    }
+}
+
+impl From<CredentialRequestClaimDTO> for CreateCredentialRequestClaim {
+    fn from(value: CredentialRequestClaimDTO) -> Self {
+        Self {
+            claim_id: value.claim_id,
+            value: value.value,
+        }
+    }
+}
+
+impl From<Transport> for one_core::data_layer::data_model::Transport {
+    fn from(value: Transport) -> Self {
+        match value {
+            Transport::ProcivisTemporary => {
+                one_core::data_layer::data_model::Transport::ProcivisTemporary
+            }
+            Transport::OpenId4Vc => one_core::data_layer::data_model::Transport::OpenId4Vc,
+        }
+    }
+}
+
+impl From<one_core::data_layer::data_model::Transport> for Transport {
+    fn from(value: one_core::data_layer::data_model::Transport) -> Self {
+        match value {
+            one_core::data_layer::data_model::Transport::ProcivisTemporary => {
+                Transport::ProcivisTemporary
+            }
+            one_core::data_layer::data_model::Transport::OpenId4Vc => Transport::OpenId4Vc,
+        }
+    }
+}
+
+impl From<one_core::data_layer::data_model::EntityResponse> for EntityResponseDTO {
+    fn from(value: EntityResponse) -> Self {
+        Self { id: value.id }
     }
 }

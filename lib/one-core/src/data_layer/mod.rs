@@ -3,6 +3,7 @@ use sea_orm::DatabaseConnection;
 
 pub mod common;
 mod common_queries;
+pub mod create_credential;
 pub mod create_credential_schema;
 pub mod create_organisation;
 pub mod create_proof_schema;
@@ -24,6 +25,7 @@ pub(super) mod entities;
 pub enum DataLayerError {
     GeneralRuntimeError(String),
     AlreadyExists,
+    IncorrectParameters,
     RecordNotFound,
     RecordNotUpdated,
     Other,

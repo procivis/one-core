@@ -6,7 +6,7 @@ use std::panic;
 use axum::http::{Request, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
-use axum::routing::{delete, get};
+use axum::routing::{delete, get, post};
 use axum::Router;
 use one_core::OneCore;
 use shadow_rs::shadow;
@@ -30,6 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(OpenApi)]
     #[openapi(
         paths(
+            endpoints::post_credential,
             endpoints::delete_credential_schema,
             endpoints::get_credential_schema_details,
             endpoints::get_credential_schema,
@@ -44,7 +45,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_build_info
         ),
         components(
-            schemas(data_model::CreateCredentialSchemaRequestDTO,
+            schemas(data_model::CredentialRequestDTO,
+                    data_model::EntityResponseDTO,
+                    data_model::CredentialRequestClaimDTO,
+                    data_model::Transport,
+                    data_model::CreateCredentialSchemaRequestDTO,
                     data_model::CredentialClaimSchemaRequestDTO,
                     data_model::GetCredentialClaimSchemaResponseDTO,
                     data_model::CredentialSchemaResponseDTO,
@@ -105,6 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState { core };
 
     let protected = Router::new()
+        .route("/api/credential/v1", post(endpoints::post_credential))
         .route(
             "/api/credential-schema/v1/:id",
             delete(endpoints::delete_credential_schema)

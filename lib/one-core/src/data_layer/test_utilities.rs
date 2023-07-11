@@ -10,7 +10,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::{data_model::Datatype, entities::credential_schema_claim_schema};
+use super::entities::credential_schema_claim_schema;
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
@@ -42,15 +42,15 @@ pub async fn insert_credential_schema_to_database(
 pub async fn insert_many_claims_schema_to_database(
     database: &DatabaseConnection,
     credential_schema_id: &str,
-    claims: &Vec<(Uuid, bool, u32)>,
+    claims: &Vec<(Uuid, bool, u32, claim_schema::Datatype)>,
 ) -> Result<(), DbErr> {
-    for (id, required, order) in claims {
+    for (id, required, order, datatype) in claims {
         claim_schema::ActiveModel {
             id: Set(id.to_string()),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             key: Set("TestKey".to_string()),
-            datatype: Set(Datatype::String.into()),
+            datatype: Set(datatype.to_owned()),
         }
         .insert(database)
         .await?;
@@ -79,7 +79,7 @@ pub async fn get_credential_schema_with_id(
 pub async fn insert_proof_schema_with_claims_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    claims: &Vec<(Uuid, bool, u32)>,
+    claims: &Vec<(Uuid, bool, u32, claim_schema::Datatype)>,
     organisation_id: &str,
 ) -> Result<String, DbErr> {
     let schema = proof_schema::ActiveModel {
@@ -95,7 +95,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
     .insert(database)
     .await?;
 
-    for (id, required, order) in claims {
+    for (id, required, order, _) in claims {
         proof_schema_claim_schema::ActiveModel {
             claim_schema_id: Set(id.to_string()),
             proof_schema_id: Set(schema.id.clone()),
@@ -151,14 +151,20 @@ pub async fn get_proof_schema_with_id(
     proof_schema::Entity::find_by_id(id).one(database).await
 }
 
-pub async fn setup_test_data_layer_and_connection() -> Result<DataLayer, DbErr> {
-    let db = sea_orm::Database::connect("sqlite::memory:")
+pub async fn setup_test_data_layer_and_connection_with_custom_url(
+    database_url: &str,
+) -> Result<DataLayer, DbErr> {
+    let db = sea_orm::Database::connect(database_url)
         .await
         .expect("Database Connected");
 
     Migrator::up(&db, None).await.unwrap();
 
     Ok(DataLayer { db })
+}
+
+pub async fn setup_test_data_layer_and_connection() -> Result<DataLayer, DbErr> {
+    setup_test_data_layer_and_connection_with_custom_url("sqlite::memory:").await
 }
 
 pub fn are_datetimes_within_minute(d1: OffsetDateTime, d2: OffsetDateTime) -> bool {
