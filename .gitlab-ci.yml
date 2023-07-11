@@ -1,5 +1,17 @@
 image: rust:1.70.0-slim-buster
 
+
+variables:
+  DOCKER_DRIVER: overlay2
+  # Required variables in GitLab config:
+  # - AD_APP_ID: Azure Active directory application id
+  # - AD_APP_SECRET: Application secret
+  # - AD_TENANT_ID: Azure Active Directory Tenant ID
+  # - RESOURCE_GROUP: Azure Resource group where AKS deployed
+  # - CLUSTER_NAME: AKS cluster name
+  # - DOCKER_AUTH_CONFIG: Pull image from private repository
+
+
 stages:
   - build
   - test
@@ -129,6 +141,23 @@ bitrise_ios_sdk:
     paths:
       - artifacts
     expire_in: 10 days
+
+
+build_android_sdk:
+  image: registry.gitlab.procivis.ch/procivis/one/one-operations/rust-android-builder:0.3.0
+  services:
+    - docker:dind
+  stage: sdk_build
+  before_script:
+    - export HOSTNAME=$(docker ps -ql)
+  script:
+    - makers build_android
+  artifacts:
+    paths:
+      - target/bindings/android
+    expire_in: 5 days
+  extends:
+    - .only_main_or_tag
 
 test_e2e:
   stage: e2e_tests
