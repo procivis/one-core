@@ -1,6 +1,7 @@
 use axum::extract::{Path, Query, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
+
 use one_core::data_layer::DataLayerError;
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -8,12 +9,49 @@ use validator::Validate;
 
 use crate::data_model::{
     CreateCredentialSchemaRequestDTO, CreateOrganisationRequestDTO, CreateOrganisationResponseDTO,
-    CreateProofSchemaRequestDTO, CreateProofSchemaResponseDTO, CredentialSchemaResponseDTO,
-    GetCredentialClaimSchemaResponseDTO, GetCredentialSchemaQuery,
-    GetOrganisationDetailsResponseDTO, GetProofSchemaQuery, GetProofSchemaResponseDTO,
-    ProofSchemaResponseDTO,
+    CreateProofSchemaRequestDTO, CreateProofSchemaResponseDTO, CredentialRequestDTO,
+    CredentialSchemaResponseDTO, EntityResponseDTO, GetCredentialClaimSchemaResponseDTO,
+    GetCredentialSchemaQuery, GetOrganisationDetailsResponseDTO, GetProofSchemaQuery,
+    GetProofSchemaResponseDTO, ProofSchemaResponseDTO,
 };
 use crate::AppState;
+
+#[utoipa::path(
+    post,
+    path = "/api/credential/v1",
+    request_body = CredentialRequestDTO,
+    responses(
+        (status = 200, description = "Created", body = EntityResponseDTO),
+        (status = 400, description = "Bad request"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Credential schema or DID not found"),
+    ),
+    tag = "credential_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn post_credential(
+    state: State<AppState>,
+    Json(request): Json<CredentialRequestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .data_layer
+        .create_credential(request.into())
+        .await;
+
+    match result {
+        Ok(value) => (StatusCode::OK, Json(EntityResponseDTO::from(value))).into_response(),
+        Err(error) => match error {
+            DataLayerError::RecordNotFound => StatusCode::NOT_FOUND.into_response(),
+            _ => {
+                tracing::error!("Error while getting credential");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        },
+    }
+}
 
 #[utoipa::path(
     delete,

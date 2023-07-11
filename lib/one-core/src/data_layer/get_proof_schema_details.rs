@@ -31,7 +31,7 @@ fn get_base_query(uuid: &str) -> Select<ProofSchema> {
 
 #[cfg(test)]
 mod tests {
-    use crate::data_layer::{test_utilities::*, DataLayerError};
+    use crate::data_layer::{entities::claim_schema::Datatype, test_utilities::*, DataLayerError};
     use uuid::Uuid;
 
     #[tokio::test]
@@ -63,8 +63,9 @@ mod tests {
     async fn test_get_proof_schemas_with_claims_and_credential_schemas() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let mut new_claims: Vec<(Uuid, bool, u32)> =
-            (0..50).map(|i| (Uuid::new_v4(), i % 2 == 0, i)).collect();
+        let mut new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..50)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+            .collect();
 
         // Seems that sqlite keeps the order of insertion. We sort by UUID to mimic
         // MariaDB behaviour and reproduce unordered response

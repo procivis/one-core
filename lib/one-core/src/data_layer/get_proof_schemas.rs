@@ -85,7 +85,7 @@ mod tests {
 
     use super::{proof_schema, GetProofSchemaQuery, SortableProofSchemaColumn};
 
-    use crate::data_layer::test_utilities::*;
+    use crate::data_layer::{entities::claim_schema::Datatype, test_utilities::*};
 
     #[tokio::test]
     async fn test_get_proof_schemas_simple() {
@@ -118,8 +118,9 @@ mod tests {
     async fn test_get_proof_schemas_with_ordered_claims() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
 
-        let mut new_claims: Vec<(Uuid, bool, u32)> =
-            (0..50).map(|i| (Uuid::new_v4(), i % 2 == 0, i)).collect();
+        let mut new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..50)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+            .collect();
 
         // Seems that sqlite keeps the order of insertion. We sort by UUID to mimic
         // MariaDB behaviour and reproduce unordered response
