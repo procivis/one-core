@@ -119,7 +119,9 @@ publish:
 
 bitrise_ios_sdk:
   stage: sdk_build
-  needs: [build]
+  needs:
+    - build
+    - tests
   variables:
     # ONE-wallet project on Bitrise
     BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
@@ -148,6 +150,9 @@ build_android_sdk:
   services:
     - docker:dind
   stage: sdk_build
+  needs:
+    - build
+    - tests
   before_script:
     - export HOSTNAME=$(docker ps -ql)
   script:
