@@ -19,10 +19,12 @@ pub struct Model {
     pub organisation_id: String,
 }
 
-impl ActiveModelBehavior for ActiveModel {}
-
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::credential::Entity")]
+    Credential,
+    #[sea_orm(has_many = "super::key::Entity")]
+    Key,
     #[sea_orm(
         belongs_to = "super::organisation::Entity",
         from = "Column::OrganisationId",
@@ -31,6 +33,14 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organisation,
+    #[sea_orm(has_many = "super::proof::Entity")]
+    Proof,
+}
+
+impl Related<super::key::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Key.def()
+    }
 }
 
 impl Related<super::organisation::Entity> for Entity {
@@ -38,6 +48,23 @@ impl Related<super::organisation::Entity> for Entity {
         Relation::Organisation.def()
     }
 }
+
+impl Related<super::proof::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Proof.def()
+    }
+}
+
+impl Related<super::credential::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::key::Relation::Credential.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::key::Relation::Did.def().rev())
+    }
+}
+
+impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]

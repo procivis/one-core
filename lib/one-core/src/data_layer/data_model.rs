@@ -2,7 +2,7 @@ use sea_orm::FromQueryResult;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::entities::{claim_schema, credential_schema, organisation, proof_schema};
+use super::entities::{claim_schema, credential_schema, did, organisation, proof_schema};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Format {
@@ -31,6 +31,56 @@ impl From<super::entities::credential_schema::Format> for Format {
             credential_schema::Format::SdJwt => Format::SdJwt,
             credential_schema::Format::JsonLd => Format::JsonLd,
             credential_schema::Format::Mdoc => Format::Mdoc,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub enum DidType {
+    #[default]
+    Remote,
+    Local,
+}
+
+impl From<DidType> for super::entities::did::DidType {
+    fn from(value: DidType) -> Self {
+        match value {
+            DidType::Remote => did::DidType::Remote,
+            DidType::Local => did::DidType::Local,
+        }
+    }
+}
+
+impl From<super::entities::did::DidType> for DidType {
+    fn from(value: super::entities::did::DidType) -> Self {
+        match value {
+            did::DidType::Remote => DidType::Remote,
+            did::DidType::Local => DidType::Local,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub enum DidMethod {
+    #[default]
+    Key,
+    Web,
+}
+
+impl From<DidMethod> for super::entities::did::DidMethod {
+    fn from(value: DidMethod) -> Self {
+        match value {
+            DidMethod::Key => did::DidMethod::Key,
+            DidMethod::Web => did::DidMethod::Web,
+        }
+    }
+}
+
+impl From<super::entities::did::DidMethod> for DidMethod {
+    fn from(value: super::entities::did::DidMethod) -> Self {
+        match value {
+            did::DidMethod::Key => DidMethod::Key,
+            did::DidMethod::Web => DidMethod::Web,
         }
     }
 }
@@ -363,4 +413,31 @@ pub struct CreateCredentialRequestClaim {
 #[derive(Clone, Debug)]
 pub struct EntityResponse {
     pub id: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct GetDidDetailsResponse {
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub organisation_id: String,
+    pub did: String,
+    pub did_type: DidType,
+    pub did_method: DidMethod,
+}
+
+impl From<did::Model> for GetDidDetailsResponse {
+    fn from(value: did::Model) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            organisation_id: value.organisation_id,
+            did: value.did,
+            did_type: value.type_field.into(),
+            did_method: value.method.into(),
+        }
+    }
 }

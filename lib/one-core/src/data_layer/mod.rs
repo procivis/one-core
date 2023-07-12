@@ -12,6 +12,7 @@ pub mod delete_credential_schema;
 pub mod delete_proof_schema;
 pub mod get_credential_schema_details;
 pub mod get_credential_schemas;
+pub mod get_did;
 pub mod get_organisation_details;
 pub mod get_organisations;
 pub mod get_proof_schema_details;

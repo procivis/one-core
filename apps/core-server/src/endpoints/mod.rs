@@ -1,0 +1,11 @@
+pub mod delete_credential_schema;
+pub mod delete_proof_schema;
+pub mod get_credential_schema;
+pub mod get_did;
+pub mod get_organisation;
+pub mod get_proof_schema;
+pub mod misc;
+pub mod post_credential;
+pub mod post_credential_schema;
+pub mod post_organisation;
+pub mod post_proof_schema;

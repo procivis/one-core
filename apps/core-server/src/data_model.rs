@@ -3,8 +3,8 @@ use one_core::data_layer::data_model::{
     CreateCredentialSchemaRequest, CreateOrganisationRequest, CreateOrganisationResponse,
     CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
     CredentialClaimSchemaResponse, CredentialSchemaResponse, EntityResponse,
-    GetCredentialClaimSchemaResponse, GetOrganisationDetailsResponse, GetProofSchemaResponse,
-    ProofClaimSchemaResponse, ProofSchemaResponse,
+    GetCredentialClaimSchemaResponse, GetDidDetailsResponse, GetOrganisationDetailsResponse,
+    GetProofSchemaResponse, ProofClaimSchemaResponse, ProofSchemaResponse,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -583,5 +583,89 @@ impl From<one_core::data_layer::data_model::Transport> for Transport {
 impl From<one_core::data_layer::data_model::EntityResponse> for EntityResponseDTO {
     fn from(value: EntityResponse) -> Self {
         Self { id: value.id }
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DidType {
+    #[default]
+    Remote,
+    Local,
+}
+
+impl From<DidType> for one_core::data_layer::data_model::DidType {
+    fn from(value: DidType) -> Self {
+        match value {
+            DidType::Remote => one_core::data_layer::data_model::DidType::Remote,
+            DidType::Local => one_core::data_layer::data_model::DidType::Local,
+        }
+    }
+}
+
+impl From<one_core::data_layer::data_model::DidType> for DidType {
+    fn from(value: one_core::data_layer::data_model::DidType) -> Self {
+        match value {
+            one_core::data_layer::data_model::DidType::Remote => DidType::Remote,
+            one_core::data_layer::data_model::DidType::Local => DidType::Local,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum DidMethod {
+    #[default]
+    Key,
+    Web,
+}
+
+impl From<DidMethod> for one_core::data_layer::data_model::DidMethod {
+    fn from(value: DidMethod) -> Self {
+        match value {
+            DidMethod::Key => one_core::data_layer::data_model::DidMethod::Key,
+            DidMethod::Web => one_core::data_layer::data_model::DidMethod::Web,
+        }
+    }
+}
+
+impl From<one_core::data_layer::data_model::DidMethod> for DidMethod {
+    fn from(value: one_core::data_layer::data_model::DidMethod) -> Self {
+        match value {
+            one_core::data_layer::data_model::DidMethod::Key => DidMethod::Key,
+            one_core::data_layer::data_model::DidMethod::Web => DidMethod::Web,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetDidDetailsResponseDTO {
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub organisation_id: String,
+    pub did: String,
+    #[serde(rename = "type")]
+    pub did_type: DidType,
+    #[serde(rename = "method")]
+    pub did_method: DidMethod,
+}
+
+impl From<GetDidDetailsResponse> for GetDidDetailsResponseDTO {
+    fn from(value: GetDidDetailsResponse) -> Self {
+        Self {
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            organisation_id: value.organisation_id,
+            did: value.did,
+            did_type: value.did_type.into(),
+            did_method: value.did_method.into(),
+        }
     }
 }
