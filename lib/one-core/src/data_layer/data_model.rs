@@ -441,3 +441,15 @@ impl From<did::Model> for GetDidDetailsResponse {
         }
     }
 }
+
+pub struct GetDidsResponse {
+    pub values: Vec<GetDidDetailsResponse>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableDidColumn {
+    Name,
+    CreatedDate,
+}

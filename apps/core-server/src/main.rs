@@ -51,6 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_organisation::get_organisation_details,
             endpoints::get_organisation::get_organisations,
             endpoints::get_did::get_did_details,
+            endpoints::get_did::get_dids,
             endpoints::misc::get_build_info
         ),
         components(
@@ -74,6 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CreateOrganisationResponseDTO,
                     data_model::GetOrganisationDetailsResponseDTO,
                     data_model::GetDidDetailsResponseDTO,
+                    data_model::GetDidsResponseDTO,
                     data_model::Format,
                     data_model::Datatype,
                     data_model::DidType,
@@ -151,6 +153,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             get(get_organisation::get_organisation_details),
         )
         .route("/api/did/v1/:id", get(get_did::get_did_details))
+        .route("/api/did/v1", get(get_did::get_dids))
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new()

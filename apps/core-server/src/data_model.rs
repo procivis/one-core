@@ -3,8 +3,9 @@ use one_core::data_layer::data_model::{
     CreateCredentialSchemaRequest, CreateOrganisationRequest, CreateOrganisationResponse,
     CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
     CredentialClaimSchemaResponse, CredentialSchemaResponse, EntityResponse,
-    GetCredentialClaimSchemaResponse, GetDidDetailsResponse, GetOrganisationDetailsResponse,
-    GetProofSchemaResponse, ProofClaimSchemaResponse, ProofSchemaResponse,
+    GetCredentialClaimSchemaResponse, GetDidDetailsResponse, GetDidsResponse,
+    GetOrganisationDetailsResponse, GetProofSchemaResponse, ProofClaimSchemaResponse,
+    ProofSchemaResponse,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -666,6 +667,43 @@ impl From<GetDidDetailsResponse> for GetDidDetailsResponseDTO {
             did: value.did,
             did_type: value.did_type.into(),
             did_method: value.did_method.into(),
+        }
+    }
+}
+
+pub type GetDidQuery = GetListQueryParams<SortableDidColumn>;
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum SortableDidColumn {
+    Name,
+    CreatedDate,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetDidsResponseDTO {
+    pub values: Vec<GetDidDetailsResponseDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+impl From<GetDidsResponse> for GetDidsResponseDTO {
+    fn from(value: GetDidsResponse) -> Self {
+        Self {
+            values: value.values.into_iter().map(|item| item.into()).collect(),
+            total_pages: value.total_pages,
+            total_items: value.total_items,
+        }
+    }
+}
+
+impl From<SortableDidColumn> for one_core::data_layer::data_model::SortableDidColumn {
+    fn from(value: SortableDidColumn) -> Self {
+        match value {
+            SortableDidColumn::Name => one_core::data_layer::data_model::SortableDidColumn::Name,
+            SortableDidColumn::CreatedDate => {
+                one_core::data_layer::data_model::SortableDidColumn::CreatedDate
+            }
         }
     }
 }

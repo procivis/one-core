@@ -1,4 +1,4 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 
@@ -6,8 +6,37 @@ use one_core::data_layer::DataLayerError;
 
 use uuid::Uuid;
 
-use crate::data_model::GetDidDetailsResponseDTO;
+use crate::data_model::{GetDidDetailsResponseDTO, GetDidQuery, GetDidsResponseDTO};
 use crate::AppState;
+
+#[utoipa::path(
+    get,
+    path = "/api/did/v1",
+    responses(
+        (status = 200, description = "OK", body = GetDidsResponseDTO),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        GetDidQuery
+    ),
+    tag = "did_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_dids(state: State<AppState>, Query(query): Query<GetDidQuery>) -> Response {
+    let result = state.core.data_layer.get_dids(query.into()).await;
+
+    match result {
+        Err(error) => {
+            tracing::error!("Error while getting credential: {:?}", error);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+        Ok(value) => (StatusCode::OK, Json(GetDidsResponseDTO::from(value))).into_response(),
+    }
+}
+
 #[utoipa::path(
     get,
     path = "/api/did/v1/{id}",
