@@ -14,6 +14,8 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::credential_schema::Entity")]
     CredentialSchema,
+    #[sea_orm(has_many = "super::did::Entity")]
+    Did,
     #[sea_orm(has_many = "super::proof_schema::Entity")]
     ProofSchema,
 }
@@ -21,6 +23,12 @@ pub enum Relation {
 impl Related<super::credential_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::CredentialSchema.def()
+    }
+}
+
+impl Related<super::did::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Did.def()
     }
 }
 

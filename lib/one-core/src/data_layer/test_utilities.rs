@@ -10,7 +10,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::entities::credential_schema_claim_schema;
+use super::entities::{credential_schema_claim_schema, did};
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
@@ -161,6 +161,30 @@ pub async fn setup_test_data_layer_and_connection_with_custom_url(
     Migrator::up(&db, None).await.unwrap();
 
     Ok(DataLayer { db })
+}
+
+pub async fn insert_did(
+    database: &DatabaseConnection,
+    name: &str,
+    did: &str,
+    organisation_id: &str,
+) -> Result<String, DbErr> {
+    let now = OffsetDateTime::now_utc();
+
+    let did = did::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        did: Set(did.to_owned()),
+        created_date: Set(now),
+        last_modified: Set(now),
+        name: Set(name.to_owned()),
+        type_field: Set(did::DidType::Local),
+        method: Set(did::DidMethod::Key),
+        organisation_id: Set(organisation_id.to_owned()),
+    }
+    .insert(database)
+    .await?;
+
+    Ok(did.id)
 }
 
 pub async fn setup_test_data_layer_and_connection() -> Result<DataLayer, DbErr> {

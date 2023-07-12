@@ -104,34 +104,10 @@ impl DataLayer {
 #[cfg(test)]
 mod tests {
     use crate::data_layer::data_model::{CreateCredentialRequestClaim, Transport};
-    use crate::data_layer::entities::{did, Claim, Credential};
+    use crate::data_layer::entities::{Claim, Credential};
     use crate::data_layer::test_utilities::*;
-    use sea_orm::{DatabaseConnection, DbErr};
 
     use super::*;
-
-    async fn insert_did(
-        database: &DatabaseConnection,
-        name: &str,
-        organisation_id: &str,
-    ) -> Result<String, DbErr> {
-        let now = OffsetDateTime::now_utc();
-
-        let did = did::ActiveModel {
-            id: Set(Uuid::new_v4().to_string()),
-            did: Set(String::default()),
-            created_date: Set(now),
-            last_modified: Set(now),
-            name: Set(name.to_string()),
-            type_field: Set(did::DidType::Local),
-            method: Set(did::DidMethod::Key),
-            organisation_id: Set(organisation_id.to_string()),
-        }
-        .insert(database)
-        .await?;
-
-        Ok(did.id)
-    }
 
     #[tokio::test]
     async fn create_credential_test_simple() {
@@ -140,7 +116,7 @@ mod tests {
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
             .unwrap();
-        let did = insert_did(&data_layer.db, "test123", &organisation_id)
+        let did = insert_did(&data_layer.db, "did name", "test123", &organisation_id)
             .await
             .unwrap();
         let credential_schema_id =
@@ -186,7 +162,7 @@ mod tests {
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
             .unwrap();
-        let did = insert_did(&data_layer.db, "test123", &organisation_id)
+        let did = insert_did(&data_layer.db, "test123", "test123", &organisation_id)
             .await
             .unwrap();
         let credential_schema_id =

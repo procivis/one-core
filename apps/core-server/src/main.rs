@@ -20,6 +20,14 @@ use utoipa_swagger_ui::SwaggerUi;
 mod data_model;
 mod endpoints;
 
+use endpoints::{
+    delete_credential_schema, delete_proof_schema, get_credential_schema, get_organisation,
+    get_proof_schema, misc, post_credential, post_credential_schema, post_organisation,
+    post_proof_schema,
+};
+
+use crate::endpoints::get_did;
+
 #[derive(Clone)]
 struct AppState {
     pub core: OneCore,
@@ -30,19 +38,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(OpenApi)]
     #[openapi(
         paths(
-            endpoints::post_credential,
-            endpoints::delete_credential_schema,
-            endpoints::get_credential_schema_details,
-            endpoints::get_credential_schema,
-            endpoints::post_credential_schema,
-            endpoints::post_proof_schema,
-            endpoints::get_proof_schema_details,
-            endpoints::get_proof_schemas,
-            endpoints::delete_proof_schema,
-            endpoints::post_organisation,
-            endpoints::get_organisation_details,
-            endpoints::get_organisations,
-            endpoints::get_build_info
+            endpoints::post_credential::post_credential,
+            endpoints::delete_credential_schema::delete_credential_schema,
+            endpoints::get_credential_schema::get_credential_schema_details,
+            endpoints::get_credential_schema::get_credential_schema,
+            endpoints::post_credential_schema::post_credential_schema,
+            endpoints::post_proof_schema::post_proof_schema,
+            endpoints::get_proof_schema::get_proof_schema_details,
+            endpoints::get_proof_schema::get_proof_schemas,
+            endpoints::delete_proof_schema::delete_proof_schema,
+            endpoints::post_organisation::post_organisation,
+            endpoints::get_organisation::get_organisation_details,
+            endpoints::get_organisation::get_organisations,
+            endpoints::get_did::get_did_details,
+            endpoints::misc::get_build_info
         ),
         components(
             schemas(data_model::CredentialRequestDTO,
@@ -64,8 +73,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CreateOrganisationRequestDTO,
                     data_model::CreateOrganisationResponseDTO,
                     data_model::GetOrganisationDetailsResponseDTO,
+                    data_model::GetDidDetailsResponseDTO,
                     data_model::Format,
                     data_model::Datatype,
+                    data_model::DidType,
+                    data_model::DidMethod,
                     data_model::SortDirection)
         ),
         modifiers(),
@@ -110,37 +122,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState { core };
 
     let protected = Router::new()
-        .route("/api/credential/v1", post(endpoints::post_credential))
+        .route("/api/credential/v1", post(post_credential::post_credential))
         .route(
             "/api/credential-schema/v1/:id",
-            delete(endpoints::delete_credential_schema)
-                .get(endpoints::get_credential_schema_details),
+            delete(delete_credential_schema::delete_credential_schema)
+                .get(get_credential_schema::get_credential_schema_details),
         )
         .route(
             "/api/credential-schema/v1",
-            get(endpoints::get_credential_schema).post(endpoints::post_credential_schema),
+            get(get_credential_schema::get_credential_schema)
+                .post(post_credential_schema::post_credential_schema),
         )
         .route(
             "/api/proof-schema/v1/:id",
-            delete(endpoints::delete_proof_schema).get(endpoints::get_proof_schema_details),
+            delete(delete_proof_schema::delete_proof_schema)
+                .get(get_proof_schema::get_proof_schema_details),
         )
         .route(
             "/api/proof-schema/v1",
-            get(endpoints::get_proof_schemas).post(endpoints::post_proof_schema),
+            get(get_proof_schema::get_proof_schemas).post(post_proof_schema::post_proof_schema),
         )
         .route(
             "/api/organisation/v1",
-            get(endpoints::get_organisations).post(endpoints::post_organisation),
+            get(get_organisation::get_organisations).post(post_organisation::post_organisation),
         )
         .route(
             "/api/organisation/v1/:id",
-            get(endpoints::get_organisation_details),
+            get(get_organisation::get_organisation_details),
         )
+        .route("/api/did/v1/:id", get(get_did::get_did_details))
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new()
-        .route("/build-info", get(endpoints::get_build_info))
-        .route("/health", get(endpoints::health_check));
+        .route("/build-info", get(misc::get_build_info))
+        .route("/health", get(misc::health_check));
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", documentation))
