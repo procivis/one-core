@@ -642,6 +642,7 @@ impl From<one_core::data_layer::data_model::DidMethod> for DidMethod {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetDidDetailsResponseDTO {
+    id: String,
     #[serde(with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
@@ -660,6 +661,7 @@ pub struct GetDidDetailsResponseDTO {
 impl From<GetDidDetailsResponse> for GetDidDetailsResponseDTO {
     fn from(value: GetDidDetailsResponse) -> Self {
         Self {
+            id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
