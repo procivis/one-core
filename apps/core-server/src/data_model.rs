@@ -2,8 +2,8 @@ use one_core::data_layer::data_model::{
     ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
     CreateCredentialSchemaRequest, CreateOrganisationRequest, CreateOrganisationResponse,
     CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
-    CredentialClaimSchemaResponse, CredentialSchemaResponse, EntityResponse,
-    GetCredentialClaimSchemaResponse, GetDidDetailsResponse, GetDidsResponse,
+    CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialShareResponse,
+    EntityResponse, GetCredentialClaimSchemaResponse, GetDidDetailsResponse, GetDidsResponse,
     GetOrganisationDetailsResponse, GetProofSchemaResponse, ProofClaimSchemaResponse,
     ProofSchemaResponse,
 };
@@ -706,6 +706,24 @@ impl From<SortableDidColumn> for one_core::data_layer::data_model::SortableDidCo
             SortableDidColumn::CreatedDate => {
                 one_core::data_layer::data_model::SortableDidColumn::CreatedDate
             }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+pub struct CredentialShareResponseDTO {
+    pub url: String,
+}
+
+impl From<CredentialShareResponse> for CredentialShareResponseDTO {
+    fn from(value: CredentialShareResponse) -> Self {
+        let protocol =
+            serde_variant::to_variant_name(&Transport::from(value.transport)).unwrap_or("UNKNOWN");
+        Self {
+            url: format!(
+                "/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
+                protocol, value.credential_id
+            ),
         }
     }
 }

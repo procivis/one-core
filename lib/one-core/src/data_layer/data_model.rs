@@ -453,3 +453,8 @@ pub enum SortableDidColumn {
     Name,
     CreatedDate,
 }
+
+pub struct CredentialShareResponse {
+    pub credential_id: String,
+    pub transport: Transport,
+}

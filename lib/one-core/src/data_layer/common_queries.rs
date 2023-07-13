@@ -1,9 +1,14 @@
+use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-    RelationTrait,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter,
+    QueryOrder, QuerySelect, RelationTrait,
 };
+use time::OffsetDateTime;
 
-use crate::data_layer::entities::{claim_schema, ClaimSchema, ProofSchemaClaimSchema};
+use crate::data_layer::entities::credential_state::CredentialState;
+use crate::data_layer::entities::{
+    claim_schema, credential_state, ClaimSchema, ProofSchemaClaimSchema,
+};
 use crate::data_layer::DataLayerError;
 
 use super::data_model::{CredentialSchemaClaimSchemaCombined, ProofSchemaClaimSchemaCombined};
@@ -84,4 +89,22 @@ pub(crate) async fn fetch_proof_schema_claim_schemas(
         .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
     Ok(claims)
+}
+
+pub(crate) async fn insert_credential_state(
+    db: &DatabaseConnection,
+    credential_id: &str,
+    created_date: OffsetDateTime,
+    state: CredentialState,
+) -> Result<(), DataLayerError> {
+    credential_state::ActiveModel {
+        credential_id: Set(credential_id.to_owned()),
+        created_date: Set(created_date),
+        state: Set(state),
+    }
+    .insert(db)
+    .await
+    .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+    Ok(())
 }

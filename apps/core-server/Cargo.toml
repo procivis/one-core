@@ -27,6 +27,7 @@ tokio = { version = "1.26", features = ["full"]}
 utoipa-swagger-ui = {version = "3.0", features = ["axum"]}
 envmnt = "0.10.4"
 panic-handler = "2.1.2"
+serde_variant = "0.1.2"
 
 [build-dependencies]
 shadow-rs.workspace = true

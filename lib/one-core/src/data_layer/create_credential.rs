@@ -4,8 +4,9 @@ use time::macros::format_description;
 use time::{OffsetDateTime, PrimitiveDateTime};
 use uuid::Uuid;
 
+use crate::data_layer::entities::credential_state;
 use crate::data_layer::{
-    common_queries::fetch_credential_schema_claim_schemas,
+    common_queries::{fetch_credential_schema_claim_schemas, insert_credential_state},
     data_model::{CreateCredentialRequest, CredentialSchemaClaimSchemaCombined, EntityResponse},
     entities::{claim, claim_schema::Datatype, credential, CredentialSchema, Did},
     DataLayer, DataLayerError,
@@ -97,15 +98,25 @@ impl DataLayer {
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
+        insert_credential_state(
+            &self.db,
+            &credential.id,
+            now,
+            credential_state::CredentialState::Created,
+        )
+        .await?;
+
         Ok(EntityResponse { id: credential.id })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::data_layer::data_model::{CreateCredentialRequestClaim, Transport};
-    use crate::data_layer::entities::{Claim, Credential};
-    use crate::data_layer::test_utilities::*;
+    use crate::data_layer::{
+        data_model::{CreateCredentialRequestClaim, Transport},
+        entities::{Claim, Credential, CredentialState},
+        test_utilities::*,
+    };
 
     use super::*;
 
@@ -135,6 +146,12 @@ mod tests {
         assert_eq!(0, claim_count);
         let credential_count = Credential::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(0, credential_count);
+        let credential_state_count = CredentialState::find()
+            .all(&data_layer.db)
+            .await
+            .unwrap()
+            .len();
+        assert_eq!(0, credential_state_count);
 
         let result = data_layer
             .create_credential(CreateCredentialRequest {
@@ -153,6 +170,12 @@ mod tests {
         assert_eq!(1, claim_count);
         let credential_count = Credential::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(1, credential_count);
+        let credential_state_count = CredentialState::find()
+            .all(&data_layer.db)
+            .await
+            .unwrap()
+            .len();
+        assert_eq!(1, credential_state_count);
     }
 
     #[tokio::test]
@@ -182,6 +205,12 @@ mod tests {
         assert_eq!(0, claim_count);
         let credential_count = Credential::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(0, credential_count);
+        let credential_state_count = CredentialState::find()
+            .all(&data_layer.db)
+            .await
+            .unwrap()
+            .len();
+        assert_eq!(0, credential_state_count);
 
         let failed_to_verify_number = data_layer
             .create_credential(CreateCredentialRequest {
@@ -213,6 +242,12 @@ mod tests {
         assert_eq!(0, claim_count);
         let credential_count = Credential::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(0, credential_count);
+        let credential_state_count = CredentialState::find()
+            .all(&data_layer.db)
+            .await
+            .unwrap()
+            .len();
+        assert_eq!(0, credential_state_count);
 
         let correct_insert = data_layer
             .create_credential(CreateCredentialRequest {
@@ -237,5 +272,11 @@ mod tests {
         assert_eq!(2, claim_count);
         let credential_count = Credential::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(1, credential_count);
+        let credential_state_count = CredentialState::find()
+            .all(&data_layer.db)
+            .await
+            .unwrap()
+            .len();
+        assert_eq!(1, credential_state_count);
     }
 }
