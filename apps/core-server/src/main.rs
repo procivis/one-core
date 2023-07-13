@@ -23,7 +23,7 @@ mod endpoints;
 use endpoints::{
     delete_credential_schema, delete_proof_schema, get_credential_schema, get_organisation,
     get_proof_schema, misc, post_credential, post_credential_schema, post_organisation,
-    post_proof_schema,
+    post_proof_schema, share_credential,
 };
 
 use crate::endpoints::get_did;
@@ -39,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[openapi(
         paths(
             endpoints::post_credential::post_credential,
+            endpoints::share_credential::share_credential,
             endpoints::delete_credential_schema::delete_credential_schema,
             endpoints::get_credential_schema::get_credential_schema_details,
             endpoints::get_credential_schema::get_credential_schema,
@@ -57,6 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         components(
             schemas(data_model::CredentialRequestDTO,
                     data_model::EntityResponseDTO,
+                    data_model::CredentialShareResponseDTO,
                     data_model::CredentialRequestClaimDTO,
                     data_model::Transport,
                     data_model::CreateCredentialSchemaRequestDTO,
@@ -125,6 +127,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let protected = Router::new()
         .route("/api/credential/v1", post(post_credential::post_credential))
+        .route(
+            "/api/credential/v1/:id/share",
+            post(share_credential::share_credential),
+        )
         .route(
             "/api/credential-schema/v1/:id",
             delete(delete_credential_schema::delete_credential_schema)
