@@ -3,7 +3,7 @@
 use std::net::{IpAddr, SocketAddr};
 use std::panic;
 
-use axum::http::{Request, StatusCode};
+use axum::http::{HeaderValue, Request, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use axum::routing::{delete, get, post};
@@ -11,7 +11,7 @@ use axum::Router;
 use one_core::OneCore;
 use shadow_rs::shadow;
 use tower_http::trace::{self, TraceLayer};
-use tracing::{info, Level};
+use tracing::{info, info_span, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
@@ -173,7 +173,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(state)
         .layer(
             TraceLayer::new_for_http()
-                .make_span_with(trace::DefaultMakeSpan::new().level(Level::DEBUG))
+                .make_span_with(|request: &Request<_>| {
+                    let headers = request.headers();
+                    let default_header_value = "NOT PROVIDED";
+                    let default_header = HeaderValue::from_static(default_header_value);
+
+                    let request_id = headers
+                        .get("x-request-id")
+                        .unwrap_or(&default_header)
+                        .to_str()
+                        .unwrap_or(default_header_value)
+                        .to_string();
+                    let session_id = headers
+                        .get("x-session-id")
+                        .unwrap_or(&default_header)
+                        .to_str()
+                        .unwrap_or(default_header_value)
+                        .to_string();
+
+                    let method = request.method().to_string();
+
+                    info_span!(
+                        "http_request",
+                        method = method,
+                        RequestId = request_id,
+                        SessionId = session_id,
+                    )
+                })
                 .on_request(trace::DefaultOnRequest::new().level(Level::DEBUG))
                 .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
         );
@@ -264,6 +290,5 @@ async fn bearer_check<B>(mut request: Request<B>, next: Next<B>) -> Result<Respo
         tracing::error!("Could not authorize request. Incorrect authorization method or token.");
         return Err(StatusCode::UNAUTHORIZED);
     }
-
     Ok(next.run(request).await)
 }
