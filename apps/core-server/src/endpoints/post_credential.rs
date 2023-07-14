@@ -37,7 +37,7 @@ pub(crate) async fn post_credential(
         Err(error) => match error {
             DataLayerError::RecordNotFound => StatusCode::NOT_FOUND.into_response(),
             _ => {
-                tracing::error!("Error while getting credential");
+                tracing::error!("Error while getting credential: {:?}", error);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         },

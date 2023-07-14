@@ -1,7 +1,7 @@
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter,
-    QueryOrder, QuerySelect, RelationTrait,
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
+    RelationTrait,
 };
 use time::OffsetDateTime;
 
@@ -97,12 +97,12 @@ pub(crate) async fn insert_credential_state(
     created_date: OffsetDateTime,
     state: CredentialState,
 ) -> Result<(), DataLayerError> {
-    credential_state::ActiveModel {
+    credential_state::Entity::insert(credential_state::ActiveModel {
         credential_id: Set(credential_id.to_owned()),
         created_date: Set(created_date),
         state: Set(state),
-    }
-    .insert(db)
+    })
+    .exec(db)
     .await
     .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
