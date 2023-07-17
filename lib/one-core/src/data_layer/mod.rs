@@ -10,6 +10,7 @@ pub mod create_proof_schema;
 pub mod data_model;
 pub mod delete_credential_schema;
 pub mod delete_proof_schema;
+pub mod get_credential_details;
 pub mod get_credential_schema_details;
 pub mod get_credential_schemas;
 pub mod get_did;

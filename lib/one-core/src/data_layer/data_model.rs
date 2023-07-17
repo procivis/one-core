@@ -1,3 +1,4 @@
+use crate::data_layer::entities;
 use sea_orm::FromQueryResult;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -457,4 +458,79 @@ pub enum SortableDidColumn {
 pub struct CredentialShareResponse {
     pub credential_id: String,
     pub transport: Transport,
+}
+
+pub struct DetailCredentialResponse {
+    pub created_date: OffsetDateTime,
+    pub issuance_date: OffsetDateTime,
+    pub state: CredentialState,
+    pub last_modified: OffsetDateTime,
+    pub schema: ListCredentialSchemaResponse,
+    pub issuer_did: Option<String>,
+    pub claims: Vec<DetailCredentialClaimResponse>,
+}
+
+pub struct ListCredentialSchemaResponse {
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub format: Format,
+    pub revocation_method: RevocationMethod,
+    pub organisation_id: String,
+}
+
+pub struct DetailCredentialClaimResponse {
+    pub schema: CredentialClaimSchemaResponse,
+    pub value: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum CredentialState {
+    Created,
+    Pending,
+    Offered,
+    Accepted,
+    Rejected,
+    Revoked,
+    Error,
+}
+
+impl From<entities::credential_state::CredentialState> for CredentialState {
+    fn from(value: entities::credential_state::CredentialState) -> Self {
+        match value {
+            entities::credential_state::CredentialState::Created => CredentialState::Created,
+            entities::credential_state::CredentialState::Pending => CredentialState::Pending,
+            entities::credential_state::CredentialState::Offered => CredentialState::Offered,
+            entities::credential_state::CredentialState::Accepted => CredentialState::Accepted,
+            entities::credential_state::CredentialState::Rejected => CredentialState::Rejected,
+            entities::credential_state::CredentialState::Revoked => CredentialState::Revoked,
+            entities::credential_state::CredentialState::Error => CredentialState::Error,
+        }
+    }
+}
+
+#[derive(Debug, Clone, FromQueryResult)]
+pub(crate) struct ClaimClaimSchemaCombined {
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub value: String,
+    pub key: String,
+    pub datatype: claim_schema::Datatype,
+}
+
+impl From<ClaimClaimSchemaCombined> for DetailCredentialClaimResponse {
+    fn from(value: ClaimClaimSchemaCombined) -> Self {
+        Self {
+            schema: CredentialClaimSchemaResponse {
+                id: value.id,
+                created_date: value.created_date,
+                last_modified: value.last_modified,
+                key: value.key,
+                datatype: value.datatype.into(),
+            },
+            value: value.value,
+        }
+    }
 }

@@ -3,12 +3,14 @@ use one_core::data_layer::data_model::{
     CreateCredentialSchemaRequest, CreateOrganisationRequest, CreateOrganisationResponse,
     CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
     CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialShareResponse,
-    EntityResponse, GetCredentialClaimSchemaResponse, GetDidDetailsResponse, GetDidsResponse,
-    GetOrganisationDetailsResponse, GetProofSchemaResponse, ProofClaimSchemaResponse,
-    ProofSchemaResponse,
+    DetailCredentialClaimResponse, DetailCredentialResponse, EntityResponse,
+    GetCredentialClaimSchemaResponse, GetDidDetailsResponse, GetDidsResponse,
+    GetOrganisationDetailsResponse, GetProofSchemaResponse, ListCredentialSchemaResponse,
+    ProofClaimSchemaResponse, ProofSchemaResponse,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
@@ -724,6 +726,111 @@ impl From<CredentialShareResponse> for CredentialShareResponseDTO {
                 "/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
                 protocol, value.credential_id
             ),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DetailCredentialResponseDTO {
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub issuance_date: OffsetDateTime,
+    pub state: CredentialState,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub schema: ListCredentialSchemaResponseDTO,
+    pub issuer_did: Option<String>,
+    pub claims: Vec<DetailCredentialClaimResponseDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ListCredentialSchemaResponseDTO {
+    pub id: String,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub format: Format,
+    pub revocation_method: RevocationMethod,
+    pub organisation_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DetailCredentialClaimResponseDTO {
+    pub schema: CredentialClaimSchemaResponseDTO,
+    pub value: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CredentialState {
+    Created,
+    Pending,
+    Offered,
+    Accepted,
+    Rejected,
+    Revoked,
+    Error,
+}
+
+impl From<DetailCredentialResponse> for DetailCredentialResponseDTO {
+    fn from(value: DetailCredentialResponse) -> Self {
+        Self {
+            created_date: value.created_date,
+            issuance_date: value.issuance_date,
+            state: value.state.into(),
+            last_modified: value.last_modified,
+            schema: value.schema.into(),
+            issuer_did: value.issuer_did,
+            claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
+        }
+    }
+}
+
+impl From<ListCredentialSchemaResponse> for ListCredentialSchemaResponseDTO {
+    fn from(value: ListCredentialSchemaResponse) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            format: value.format.into(),
+            revocation_method: value.revocation_method.into(),
+            organisation_id: value.organisation_id,
+        }
+    }
+}
+
+impl From<DetailCredentialClaimResponse> for DetailCredentialClaimResponseDTO {
+    fn from(value: DetailCredentialClaimResponse) -> Self {
+        Self {
+            schema: value.schema.into(),
+            value: value.value,
+        }
+    }
+}
+
+impl From<one_core::data_layer::data_model::CredentialState> for CredentialState {
+    fn from(value: one_core::data_layer::data_model::CredentialState) -> Self {
+        use one_core::data_layer::data_model::CredentialState as cs;
+        match value {
+            cs::Created => CredentialState::Created,
+            cs::Pending => CredentialState::Pending,
+            cs::Offered => CredentialState::Offered,
+            cs::Accepted => CredentialState::Accepted,
+            cs::Rejected => CredentialState::Rejected,
+            cs::Revoked => CredentialState::Revoked,
+            cs::Error => CredentialState::Error,
         }
     }
 }

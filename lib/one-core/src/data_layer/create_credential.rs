@@ -13,6 +13,7 @@ use crate::data_layer::{
 };
 
 fn is_valid_data(value: &str, datatype: Datatype) -> bool {
+    eprintln!("is_valid_data value: '{value}', datatype: {:?}", datatype);
     match datatype {
         Datatype::String => true,
         Datatype::Date => {
