@@ -1,20 +1,46 @@
-use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-    RelationTrait,
+    ActiveValue::Set, ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter,
+    QueryOrder, QuerySelect, RelationTrait,
 };
 use time::OffsetDateTime;
 
-use crate::data_layer::entities::credential_state::CredentialState;
-use crate::data_layer::entities::{
-    claim_schema, credential_state, ClaimSchema, ProofSchemaClaimSchema,
+use crate::data_layer::{
+    data_model::ClaimClaimSchemaCombined,
+    data_model::{CredentialSchemaClaimSchemaCombined, ProofSchemaClaimSchemaCombined},
+    entities::{
+        claim, claim_schema, credential_schema, credential_schema_claim_schema, credential_state,
+        proof_schema_claim_schema, Claim, ClaimSchema, CredentialState, ProofSchemaClaimSchema,
+    },
+    DataLayerError,
 };
-use crate::data_layer::DataLayerError;
 
-use super::data_model::{CredentialSchemaClaimSchemaCombined, ProofSchemaClaimSchemaCombined};
-use super::entities::{
-    credential_schema, credential_schema_claim_schema, proof_schema_claim_schema,
-};
+pub(crate) async fn fetch_claim_claim_schemas(
+    db: &DatabaseConnection,
+    schema_ids: &[String],
+) -> Result<Vec<ClaimClaimSchemaCombined>, DataLayerError> {
+    let claims = Claim::find()
+        .filter(Condition::all().add(claim::Column::CredentialId.is_in(schema_ids)))
+        .select_only()
+        .columns([claim::Column::Value])
+        .columns([
+            claim_schema::Column::Id,
+            claim_schema::Column::Datatype,
+            claim_schema::Column::Key,
+            claim_schema::Column::CreatedDate,
+            claim_schema::Column::LastModified,
+        ])
+        .join_rev(
+            sea_orm::JoinType::LeftJoin,
+            claim::Relation::ClaimSchema.def().rev(),
+        )
+        .order_by(claim_schema::Column::CreatedDate, sea_orm::Order::Asc)
+        .into_model::<ClaimClaimSchemaCombined>()
+        .all(db)
+        .await
+        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+    Ok(claims)
+}
 
 pub(crate) async fn fetch_credential_schema_claim_schemas(
     db: &DatabaseConnection,
@@ -91,11 +117,26 @@ pub(crate) async fn fetch_proof_schema_claim_schemas(
     Ok(claims)
 }
 
+pub(crate) async fn get_credential_state(
+    db: &DatabaseConnection,
+    credential_id: &str,
+) -> Result<credential_state::CredentialState, DataLayerError> {
+    let credential_state = CredentialState::find()
+        .filter(credential_state::Column::CredentialId.eq(credential_id))
+        .order_by(credential_state::Column::CreatedDate, Order::Desc)
+        .one(db)
+        .await
+        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+        .ok_or(DataLayerError::RecordNotFound)?;
+
+    Ok(credential_state.state)
+}
+
 pub(crate) async fn insert_credential_state(
     db: &DatabaseConnection,
     credential_id: &str,
     created_date: OffsetDateTime,
-    state: CredentialState,
+    state: credential_state::CredentialState,
 ) -> Result<(), DataLayerError> {
     credential_state::Entity::insert(credential_state::ActiveModel {
         credential_id: Set(credential_id.to_owned()),

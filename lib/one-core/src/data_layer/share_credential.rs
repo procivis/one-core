@@ -1,29 +1,12 @@
-use sea_orm::{
-    ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder,
-};
 use time::OffsetDateTime;
 
-use crate::data_layer::data_model::Transport;
-use crate::data_layer::entities::CredentialState;
 use crate::data_layer::{
-    common_queries::insert_credential_state, data_model::CredentialShareResponse,
-    entities::credential_state, DataLayer, DataLayerError,
+    common_queries::get_credential_state,
+    common_queries::insert_credential_state,
+    data_model::{CredentialShareResponse, Transport},
+    entities::credential_state,
+    DataLayer, DataLayerError,
 };
-
-async fn get_credential_state(
-    db: &DatabaseConnection,
-    credential_id: &str,
-) -> Result<credential_state::CredentialState, DataLayerError> {
-    let credential_state = CredentialState::find()
-        .filter(Condition::all().add(credential_state::Column::CredentialId.eq(credential_id)))
-        .order_by(credential_state::Column::CreatedDate, Order::Desc)
-        .one(db)
-        .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
-        .ok_or(DataLayerError::RecordNotFound)?;
-
-    Ok(credential_state.state)
-}
 
 impl DataLayer {
     pub async fn share_credential(
@@ -55,48 +38,12 @@ impl DataLayer {
 
 #[cfg(test)]
 mod tests {
-    use crate::data_layer::entities::credential::Transport;
-    use crate::data_layer::entities::{credential, CredentialState};
-    use crate::data_layer::{entities::claim_schema::Datatype, test_utilities::*};
-    use sea_orm::ActiveValue::Set;
-    use sea_orm::{ActiveModelTrait, DatabaseConnection};
+    use crate::data_layer::{
+        entities::{claim_schema::Datatype, CredentialState},
+        test_utilities::*,
+    };
+    use sea_orm::EntityTrait;
     use uuid::Uuid;
-
-    use super::*;
-
-    async fn insert_credential(
-        db: &DatabaseConnection,
-        credential_schema_id: &str,
-        did_id: &str,
-    ) -> Result<String, DataLayerError> {
-        let now = OffsetDateTime::now_utc();
-
-        let credential = credential::ActiveModel {
-            id: Set(Uuid::new_v4().to_string()),
-            credential_schema_id: Set(credential_schema_id.to_string()),
-            created_date: Set(now),
-            last_modified: Set(now),
-            issuance_date: Set(now),
-            deleted_at: Set(None),
-            transport: Set(Transport::ProcivisTemporary),
-            credential: Set(vec![0, 0, 0, 0]),
-            did_id: Set(Some(did_id.to_string())),
-        }
-        .insert(db)
-        .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-        credential_state::ActiveModel {
-            credential_id: Set(credential.id.to_owned()),
-            created_date: Set(now),
-            state: Set(credential_state::CredentialState::Created),
-        }
-        .insert(db)
-        .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-        Ok(credential.id)
-    }
 
     #[tokio::test]
     async fn create_credential_test_simple() {

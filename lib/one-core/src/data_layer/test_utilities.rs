@@ -1,19 +1,51 @@
-use crate::data_layer::{
-    entities::{
-        claim_schema, credential_schema, organisation, proof_schema, proof_schema_claim_schema,
-    },
-    DataLayer,
-};
-
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::entities::{credential_schema_claim_schema, did};
+use crate::data_layer::{
+    entities::{
+        claim_schema, credential, credential::Transport, credential_schema,
+        credential_schema_claim_schema, credential_state, did, organisation, proof_schema,
+        proof_schema_claim_schema,
+    },
+    DataLayer,
+};
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
+}
+
+pub async fn insert_credential(
+    db: &DatabaseConnection,
+    credential_schema_id: &str,
+    did_id: &str,
+) -> Result<String, DbErr> {
+    let now = OffsetDateTime::now_utc();
+
+    let credential = credential::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        credential_schema_id: Set(credential_schema_id.to_string()),
+        created_date: Set(now),
+        last_modified: Set(now),
+        issuance_date: Set(now),
+        deleted_at: Set(None),
+        transport: Set(Transport::ProcivisTemporary),
+        credential: Set(vec![0, 0, 0, 0]),
+        did_id: Set(Some(did_id.to_string())),
+    }
+    .insert(db)
+    .await?;
+
+    credential_state::ActiveModel {
+        credential_id: Set(credential.id.to_owned()),
+        created_date: Set(now),
+        state: Set(credential_state::CredentialState::Created),
+    }
+    .insert(db)
+    .await?;
+
+    Ok(credential.id)
 }
 
 pub async fn insert_credential_schema_to_database(
