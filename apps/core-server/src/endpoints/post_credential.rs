@@ -36,6 +36,7 @@ pub(crate) async fn post_credential(
         Ok(value) => (StatusCode::OK, Json(EntityResponseDTO::from(value))).into_response(),
         Err(error) => match error {
             DataLayerError::RecordNotFound => StatusCode::NOT_FOUND.into_response(),
+            DataLayerError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
             _ => {
                 tracing::error!("Error while getting credential: {:?}", error);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
