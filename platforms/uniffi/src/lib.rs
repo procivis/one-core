@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use one_core::data_layer::data_model::CreateOrganisationRequest;
+use one_core::data_layer::{data_model::CreateOrganisationRequest, DataLayerError};
 use tokio::runtime::Runtime;
 
 uniffi::include_scaffolding!("one_core");
@@ -14,18 +14,15 @@ pub struct OneCore {
 pub type Version = one_core::Version;
 
 impl OneCore {
-    fn create_org(&self) -> String {
+    fn create_org(&self) -> Result<String, DataLayerError> {
         let rt = Runtime::new().unwrap();
-        let org = rt.block_on(async {
+        let org_response = rt.block_on(async {
             self.inner
                 .data_layer
                 .create_organisation(CreateOrganisationRequest { id: None })
                 .await
         });
-        match org {
-            Ok(org) => org.id,
-            Err(_) => "Error".to_string(),
-        }
+        org_response.map(|org| org.id)
     }
 
     fn version(&self) -> Version {
@@ -33,8 +30,13 @@ impl OneCore {
     }
 }
 
-fn initialize_core() -> Arc<OneCore> {
+fn initialize_core(data_dir_path: String) -> Arc<OneCore> {
     let rt = Runtime::new().unwrap();
-    let core = rt.block_on(async { one_core::OneCore::new("sqlite::memory:").await });
+    let core = rt.block_on(async {
+        one_core::OneCore::new(
+            format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc").as_str(),
+        )
+        .await
+    });
     Arc::new(OneCore { inner: core })
 }

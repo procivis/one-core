@@ -1,6 +1,5 @@
 image: rust:1.70.0-slim-buster
 
-
 variables:
   DOCKER_DRIVER: overlay2
   # Required variables in GitLab config:
@@ -10,7 +9,6 @@ variables:
   # - RESOURCE_GROUP: Azure Resource group where AKS deployed
   # - CLUSTER_NAME: AKS cluster name
   # - DOCKER_AUTH_CONFIG: Pull image from private repository
-
 
 stages:
   - build
@@ -143,7 +141,6 @@ bitrise_ios_sdk:
     paths:
       - artifacts
     expire_in: 10 days
-
 
 build_android_sdk:
   image: registry.gitlab.procivis.ch/procivis/one/one-operations/rust-android-builder:0.3.0

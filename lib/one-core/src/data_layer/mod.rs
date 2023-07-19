@@ -1,5 +1,6 @@
 use migration::{Migrator, MigratorTrait};
 use sea_orm::DatabaseConnection;
+use thiserror::Error;
 
 pub mod common;
 mod common_queries;
@@ -25,13 +26,19 @@ pub mod list_query;
 
 pub(super) mod entities;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Error)]
 pub enum DataLayerError {
+    #[error("General Data Layer error `{0}`")]
     GeneralRuntimeError(String),
+    #[error("Already exists")]
     AlreadyExists,
+    #[error("Wrong parameters")]
     IncorrectParameters,
+    #[error("Record not found")]
     RecordNotFound,
+    #[error("Record not updated")]
     RecordNotUpdated,
+    #[error("Other Data Layer error")]
     Other,
 }
 
