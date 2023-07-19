@@ -1,8 +1,14 @@
 namespace one_core {
-  OneCore initialize_core();
+  OneCore initialize_core(string data_dir_path);
+};
+
+[Error]
+enum DataLayerError {
+  "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "RecordNotFound", "RecordNotUpdated", "Other"
 };
 
 interface OneCore {
+  [Throws=DataLayerError]
   string create_org();
   Version version();
 };

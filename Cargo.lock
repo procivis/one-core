@@ -1659,6 +1659,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shadow-rs",
+ "thiserror",
  "time",
  "tokio",
  "tracing",
