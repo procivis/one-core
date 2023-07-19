@@ -4,9 +4,9 @@ use one_core::data_layer::data_model::{
     CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
     CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialShareResponse,
     DetailCredentialClaimResponse, DetailCredentialResponse, EntityResponse,
-    GetCredentialClaimSchemaResponse, GetDidDetailsResponse, GetDidsResponse,
-    GetOrganisationDetailsResponse, GetProofSchemaResponse, ListCredentialSchemaResponse,
-    ProofClaimSchemaResponse, ProofSchemaResponse,
+    GetCredentialClaimSchemaResponse, GetCredentialsResponse, GetDidDetailsResponse,
+    GetDidsResponse, GetOrganisationDetailsResponse, GetProofSchemaResponse,
+    ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofSchemaResponse,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -831,6 +831,24 @@ impl From<one_core::data_layer::data_model::CredentialState> for CredentialState
             cs::Rejected => CredentialState::Rejected,
             cs::Revoked => CredentialState::Revoked,
             cs::Error => CredentialState::Error,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetCredentialsResponseDTO {
+    pub values: Vec<DetailCredentialResponseDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+impl From<GetCredentialsResponse> for GetCredentialsResponseDTO {
+    fn from(value: GetCredentialsResponse) -> Self {
+        Self {
+            values: value.values.into_iter().map(|item| item.into()).collect(),
+            total_pages: value.total_pages,
+            total_items: value.total_items,
         }
     }
 }

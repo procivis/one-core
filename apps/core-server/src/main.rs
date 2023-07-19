@@ -36,6 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(OpenApi)]
     #[openapi(
         paths(
+            endpoints::get_credential::get_credentials,
             endpoints::get_credential::get_credential_details,
             endpoints::post_credential::post_credential,
             endpoints::share_credential::share_credential,
@@ -130,7 +131,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState { core };
 
     let protected = Router::new()
-        .route("/api/credential/v1", post(post_credential::post_credential))
+        .route(
+            "/api/credential/v1",
+            get(get_credential::get_credentials).post(post_credential::post_credential),
+        )
         .route(
             "/api/credential/v1/:id",
             get(get_credential::get_credential_details),

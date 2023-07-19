@@ -1,4 +1,4 @@
-use crate::data_layer::entities;
+use crate::data_layer::{entities, DataLayerError};
 use sea_orm::FromQueryResult;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -512,6 +512,7 @@ impl From<entities::credential_state::CredentialState> for CredentialState {
 
 #[derive(Debug, Clone, FromQueryResult)]
 pub(crate) struct ClaimClaimSchemaCombined {
+    pub credential_id: String,
     pub id: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -532,5 +533,74 @@ impl From<ClaimClaimSchemaCombined> for DetailCredentialClaimResponse {
             },
             value: value.value,
         }
+    }
+}
+
+pub struct GetCredentialsResponse {
+    pub values: Vec<DetailCredentialResponse>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+#[derive(Debug, Clone, FromQueryResult)]
+pub(crate) struct CredentialDidCredentialSchemaCombined {
+    // credential table
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub issuance_date: OffsetDateTime,
+
+    // did table
+    pub did: Option<String>,
+
+    // credential_schema table
+    pub schema_id: String,
+    pub schema_name: String,
+    pub schema_format: credential_schema::Format,
+    pub schema_revocation_method: credential_schema::RevocationMethod,
+    pub schema_organisation_id: String,
+    pub schema_created_date: OffsetDateTime,
+    pub schema_last_modified: OffsetDateTime,
+}
+
+impl From<CredentialDidCredentialSchemaCombined> for ListCredentialSchemaResponse {
+    fn from(value: CredentialDidCredentialSchemaCombined) -> Self {
+        Self {
+            id: value.schema_id,
+            created_date: value.schema_created_date,
+            last_modified: value.schema_last_modified,
+            name: value.schema_name,
+            format: value.schema_format.into(),
+            revocation_method: value.schema_revocation_method.into(),
+            organisation_id: value.schema_organisation_id,
+        }
+    }
+}
+
+impl DetailCredentialResponse {
+    pub(crate) fn from_combined_credential_did_and_credential_schema(
+        value: CredentialDidCredentialSchemaCombined,
+        claims: &[ClaimClaimSchemaCombined],
+        states: &[entities::credential_state::Model],
+    ) -> Result<Self, DataLayerError> {
+        Ok(DetailCredentialResponse {
+            created_date: value.created_date,
+            issuance_date: value.issuance_date,
+            state: states
+                .iter()
+                .find(|e| e.credential_id == value.id)
+                .ok_or(DataLayerError::RecordNotFound)?
+                .to_owned()
+                .state
+                .into(),
+            last_modified: value.last_modified,
+            issuer_did: value.did.to_owned(),
+            claims: claims
+                .iter()
+                .filter(|claim| claim.credential_id == value.id)
+                .map(|claim| claim.clone().into())
+                .collect(),
+            schema: value.into(),
+        })
     }
 }
