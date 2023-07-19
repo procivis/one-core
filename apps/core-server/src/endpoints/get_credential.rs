@@ -1,11 +1,14 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
+
 use uuid::Uuid;
 
 use one_core::data_layer::DataLayerError;
 
-use crate::data_model::DetailCredentialResponseDTO;
+use crate::data_model::{
+    DetailCredentialResponseDTO, GetCredentialSchemaQuery, GetCredentialsResponseDTO,
+};
 use crate::AppState;
 
 #[utoipa::path(
@@ -40,6 +43,40 @@ pub(crate) async fn get_credential_details(
             Json(DetailCredentialResponseDTO::from(value)),
         )
             .into_response(),
+        Err(error) => match error {
+            DataLayerError::RecordNotFound => StatusCode::NOT_FOUND.into_response(),
+            _ => {
+                tracing::error!("Error while getting credential");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        },
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/credential/v1",
+    responses(
+        (status = 200, description = "OK", body = DetailCredentialResponseDTO),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Credential not found"),
+    ),
+    params(
+        GetCredentialSchemaQuery
+    ),
+    tag = "credential_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_credentials(
+    state: State<AppState>,
+    Query(query): Query<GetCredentialSchemaQuery>,
+) -> Response {
+    let result = state.core.data_layer.get_credentials(query.into()).await;
+
+    match result {
+        Ok(value) => (StatusCode::OK, Json(GetCredentialsResponseDTO::from(value))).into_response(),
         Err(error) => match error {
             DataLayerError::RecordNotFound => StatusCode::NOT_FOUND.into_response(),
             _ => {

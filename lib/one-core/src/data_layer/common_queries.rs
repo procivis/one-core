@@ -21,7 +21,7 @@ pub(crate) async fn fetch_claim_claim_schemas(
     let claims = Claim::find()
         .filter(Condition::all().add(claim::Column::CredentialId.is_in(schema_ids)))
         .select_only()
-        .columns([claim::Column::Value])
+        .columns([claim::Column::CredentialId, claim::Column::Value])
         .columns([
             claim_schema::Column::Id,
             claim_schema::Column::Datatype,
