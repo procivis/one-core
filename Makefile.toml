@@ -44,11 +44,11 @@ args = ["install", "sea-orm-cli", "--force", "--version", "0.12.0-rc.3"]
 
 [tasks.dbup1]
 command = "cargo"
-args = ["run", "-p", "migration", "--", "up", "-n1" ]
+args = ["run", "-p", "migration", "--", "up", "-n1"]
 
 [tasks.dbdown1]
 command = "cargo"
-args = ["run", "-p", "migration", "--", "down", "-n1" ]
+args = ["run", "-p", "migration", "--", "down", "-n1"]
 
 [tasks.dbtempent]
 command = "sea-orm-cli"
@@ -144,9 +144,18 @@ script="""
 sed -i '' 's/^module\\ one_coreFFI/framework\\ module\\ one_coreFFI/' target/uniffi/ios/one_coreFFI.modulemap
 
 find . -type d -name one_coreFFI.framework -exec rm -rf {} \\; 2>/dev/null || true
-pushd target/x86_64-apple-ios/release >/dev/null && mkdir -p one_coreFFI.framework && cd one_coreFFI.framework && mkdir -p Headers Modules Resources && cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap && cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h && cp ../libone_core_uniffi.a ./one_coreFFI && cp ../../../../platforms/ios/Info.plist ./Resources && popd >/dev/null
-pushd target/aarch64-apple-ios-sim/release >/dev/null && mkdir -p one_coreFFI.framework && cd one_coreFFI.framework && mkdir -p Headers Modules Resources && cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap && cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h && cp ../libone_core_uniffi.a ./one_coreFFI && cp ../../../../platforms/ios/Info.plist ./Resources && popd >/dev/null
-pushd target/aarch64-apple-ios/release >/dev/null && mkdir -p one_coreFFI.framework && cd one_coreFFI.framework && mkdir -p Headers Modules Resources && cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap && cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h && cp ../libone_core_uniffi.a ./one_coreFFI && cp ../../../../platforms/ios/Info.plist ./Resources && popd >/dev/null
+for arch in "x86_64-apple-ios" "aarch64-apple-ios-sim" "aarch64-apple-ios"
+do
+  pushd target/$arch/release >/dev/null &&
+  mkdir -p one_coreFFI.framework &&
+  cd one_coreFFI.framework &&
+  mkdir -p Headers Modules Resources &&
+  cp ../../../uniffi/ios/one_coreFFI.modulemap ./Modules/module.modulemap &&
+  cp ../../../uniffi/ios/one_coreFFI.h ./Headers/one_coreFFI.h &&
+  strip -S -x -o ./one_coreFFI -r ../libone_core_uniffi.a 2>/dev/null &&
+  cp ../../../../platforms/ios/Info.plist ./Resources &&
+  popd >/dev/null
+done
 """
 
 [tasks.create_xc_framework]
