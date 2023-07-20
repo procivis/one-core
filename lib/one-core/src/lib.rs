@@ -24,7 +24,7 @@ impl OneCore {
 
         Version {
             target: build::BUILD_RUST_CHANNEL.to_owned(),
-            build_time: build::BUILD_TIME.to_owned(),
+            build_time: build::BUILD_TIME_3339.to_owned(),
             branch: build::BRANCH.to_owned(),
             tag: build::TAG.to_owned(),
             commit: build::COMMIT_HASH.to_owned(),
