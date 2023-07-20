@@ -19,7 +19,8 @@ one-core = { path = "lib/one-core" }
 migration = { path = "apps/migration", default-features = false }
 
 sea-orm = { version = "0.12.0-rc.3", default-features = false, features = [
-  "sqlx-all",
+  "sqlx-mysql",
+  "sqlx-sqlite",
   "runtime-tokio-rustls",
   "macros",
   "with-time",
