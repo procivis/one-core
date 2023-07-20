@@ -15,19 +15,6 @@ members = [
 ]
 
 [workspace.dependencies]
-one-core = { path = "lib/one-core" }
-migration = { path = "apps/migration", default-features = false }
-
-sea-orm = { version = "0.12.0-rc.3", default-features = false, features = [
-  "sqlx-mysql",
-  "sqlx-sqlite",
-  "runtime-tokio-rustls",
-  "macros",
-  "with-time",
-  "with-uuid",
-  "with-json",
-] }
-
 serde = "1.0"
 serde_json = "1.0"
 shadow-rs = "0.21.0"

@@ -7,16 +7,24 @@ build = "build.rs"
 [features]
 # Treat build warnings as error
 strict = []
+mysql = ["migration/mysql", "sea-orm/sqlx-mysql"]
 
 [dependencies]
+migration = { path = "../../apps/migration", default-features = false }
+sea-orm = { version = "0.12.0-rc.3", default-features = false, features = [
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-time",
+    "with-uuid",
+    "with-json",
+] }
 tokio = { version = "1.26", features = ["full"] }
-sea-orm.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 time.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-migration.workspace = true
 shadow-rs.workspace = true
 thiserror.workspace = true
 

@@ -11,16 +11,16 @@ path = "src/lib.rs"
 [[bin]]
 name = "migration"
 path = "src/main.rs"
-required-features = ["cli"]
+required-features = ["cli", "mysql"]
 
 [dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
 sea-orm-migration = { version = "0.12.0-rc.3", default_features = false, features = [
     "runtime-tokio-rustls",
     "sqlx-sqlite",
-    "sqlx-mysql",
 ] }
 
 [features]
-default = ["cli"]
+default = ["cli", "mysql"]
 cli = ["sea-orm-migration/cli"]
+mysql = ["sea-orm-migration/sqlx-mysql"]

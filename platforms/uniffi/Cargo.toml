@@ -11,11 +11,11 @@ crate-type = ["cdylib", "staticlib"]
 strict = []
 
 [dependencies]
-one-core = { path = "../../lib/one-core/" }
-tokio = { version = "1.26", features = ["rt"]}
+one-core = { path = "../../lib/one-core" }
+tokio = { version = "1.26", features = ["rt"] }
 serde.workspace = true
 serde_json.workspace = true
 uniffi.workspace = true
 
 [build-dependencies]
-uniffi = { version = "0.24.0", features = [ "build" ] }
+uniffi = { version = "0.24.0", features = ["build"] }
