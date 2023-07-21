@@ -161,7 +161,7 @@ pub enum SortableProofSchemaColumn {
     CreatedDate,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GetListQueryParams<SortableColumn> {
     // pagination
     pub page: u32,
@@ -174,6 +174,13 @@ pub struct GetListQueryParams<SortableColumn> {
     // filtering
     pub name: Option<String>,
     pub organisation_id: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct GetListResponse<ResponseItem> {
+    pub values: Vec<ResponseItem>,
+    pub total_pages: u64,
+    pub total_items: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -192,13 +199,6 @@ pub struct CredentialClaimSchemaRequest {
 }
 
 #[derive(Clone, Debug)]
-pub struct GetCredentialClaimSchemaResponse {
-    pub values: Vec<CredentialSchemaResponse>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
-
-#[derive(Clone, Debug)]
 pub struct CredentialSchemaResponse {
     pub id: String,
     pub created_date: OffsetDateTime,
@@ -209,6 +209,8 @@ pub struct CredentialSchemaResponse {
     pub organisation_id: String,
     pub claims: Vec<CredentialClaimSchemaResponse>,
 }
+
+pub type GetCredentialClaimSchemaResponse = GetListResponse<CredentialSchemaResponse>;
 
 #[derive(Clone, Debug)]
 pub struct CredentialClaimSchemaResponse {
@@ -255,13 +257,6 @@ impl CredentialSchemaResponse {
 }
 
 #[derive(Clone, Debug)]
-pub struct GetProofSchemaResponse {
-    pub values: Vec<ProofSchemaResponse>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
-
-#[derive(Clone, Debug)]
 pub struct ProofSchemaResponse {
     pub id: String,
     pub created_date: OffsetDateTime,
@@ -271,6 +266,8 @@ pub struct ProofSchemaResponse {
     pub organisation_id: String,
     pub claim_schemas: Vec<ProofClaimSchemaResponse>,
 }
+
+pub type GetProofSchemaResponse = GetListResponse<ProofSchemaResponse>;
 
 #[derive(Debug, Clone, FromQueryResult)]
 pub(crate) struct ProofSchemaClaimSchemaCombined {
@@ -443,11 +440,7 @@ impl From<did::Model> for GetDidDetailsResponse {
     }
 }
 
-pub struct GetDidsResponse {
-    pub values: Vec<GetDidDetailsResponse>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
+pub type GetDidsResponse = GetListResponse<GetDidDetailsResponse>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableDidColumn {
@@ -469,6 +462,8 @@ pub struct DetailCredentialResponse {
     pub issuer_did: Option<String>,
     pub claims: Vec<DetailCredentialClaimResponse>,
 }
+
+pub type GetCredentialsResponse = GetListResponse<DetailCredentialResponse>;
 
 pub struct ListCredentialSchemaResponse {
     pub id: String,
@@ -534,12 +529,6 @@ impl From<ClaimClaimSchemaCombined> for DetailCredentialClaimResponse {
             value: value.value,
         }
     }
-}
-
-pub struct GetCredentialsResponse {
-    pub values: Vec<DetailCredentialResponse>,
-    pub total_pages: u64,
-    pub total_items: u64,
 }
 
 #[derive(Debug, Clone, FromQueryResult)]
