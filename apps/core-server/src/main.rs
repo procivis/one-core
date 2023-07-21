@@ -57,6 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         components(
             schemas(data_model::DetailCredentialResponseDTO,
+                    data_model::GetCredentialsResponseDTO,
                     data_model::ListCredentialSchemaResponseDTO,
                     data_model::DetailCredentialClaimResponseDTO,
                     data_model::CredentialClaimSchemaResponseDTO,

@@ -54,7 +54,7 @@ pub(crate) async fn get_credential_schema(
     get,
     path = "/api/credential-schema/v1/{id}",
     responses(
-        (status = 200, description = "OK"),
+        (status = 200, description = "OK", body = CredentialSchemaResponseDTO),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Schema not found"),
         (status = 500, description = "Server error"),

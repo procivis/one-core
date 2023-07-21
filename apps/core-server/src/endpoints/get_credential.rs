@@ -57,7 +57,7 @@ pub(crate) async fn get_credential_details(
     get,
     path = "/api/credential/v1",
     responses(
-        (status = 200, description = "OK", body = DetailCredentialResponseDTO),
+        (status = 200, description = "OK", body = GetCredentialsResponseDTO),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Credential not found"),
     ),
