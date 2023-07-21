@@ -140,6 +140,7 @@ bitrise_ios_sdk:
       --slug $BITRISE_PROJECT_SLUG
       --workflow $BITRISE_WORKFLOW
       --branch "$CI_COMMIT_REF_NAME"
+      --env "CI_PIPELINE_ID:$CI_PIPELINE_ID"
       --output "artifacts"
   extends:
     - .only_main_or_tag
