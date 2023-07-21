@@ -2,6 +2,7 @@ image: rust:1.70.0-slim-buster
 
 variables:
   DOCKER_DRIVER: overlay2
+
   # Required variables in GitLab config:
   # - AD_APP_ID: Azure Active directory application id
   # - AD_APP_SECRET: Application secret
@@ -9,6 +10,10 @@ variables:
   # - RESOURCE_GROUP: Azure Resource group where AKS deployed
   # - CLUSTER_NAME: AKS cluster name
   # - DOCKER_AUTH_CONFIG: Pull image from private repository
+  # - BITRISE_API_ACCESS_TOKEN: Bitrise access token for IOS sdk build
+  # - AZURE_STORAGE_ACCOUNT: storage account for sdk build upload
+  # - AZURE_STORAGE_KEY: storage account key
+
 
 stages:
   - build
@@ -16,6 +21,7 @@ stages:
   - publish
   - deploy
   - sdk_build
+  - sdk_artifact
   - e2e_tests
 
 before_script:
@@ -160,6 +166,39 @@ build_android_sdk:
     expire_in: 5 days
   extends:
     - .only_main_or_tag
+
+upload_sdk_artifacts:
+  stage: sdk_artifact
+  image: mcr.microsoft.com/azure-cli
+  needs: [build_android_sdk, bitrise_ios_sdk]
+  dependencies: [build_android_sdk, bitrise_ios_sdk]
+  extends:
+    - .only_main_or_tag
+  variables:
+    AZURE_CONTAINER_NAME: "core-sdk"
+    ANDROID_BUILD_SOURCE_PATH: "target/bindings/android"
+    ANDROID_CONTAINER_PATH: "android/${CI_PIPELINE_ID}"
+    ANDROID_SDK_DEBUG_FILE: "onecore-debug.aar"
+    ANDROID_SDK_RELEASE_FILE: "onecore-release.aar"
+
+    IOS_CONTAINER_PATH: "ios/${CI_PIPELINE_ID}"
+    IOS_BUILD_SOURCE_PATH: "artifacts"
+    IOS_BUILD_FILE: "deploy.zip"
+  script:
+    # https://learn.microsoft.com/en-us/cli/azure/storage/blob?view=azure-cli-latest#az-storage-blob-download
+    - ANDROID_CONTAINER_PATH_DEBUG=$ANDROID_CONTAINER_PATH/$ANDROID_SDK_DEBUG_FILE
+    - ANDROID_CONTAINER_PATH_RELEASE=$ANDROID_CONTAINER_PATH/$ANDROID_SDK_RELEASE_FILE
+    - IOS_CONTAINER_PATH=$IOS_CONTAINER_PATH/$IOS_BUILD_FILE
+    # Upload Android debug file
+    - az storage blob upload -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_DEBUG -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE
+    # Upload Android release file
+    - az storage blob upload -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_RELEASE -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE
+    # Upload IOS zip file
+    - az storage blob upload -c $AZURE_CONTAINER_NAME -n $IOS_CONTAINER_PATH -f $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE
+
+    - echo "Download Android SDK DEBUG link https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_DEBUG"
+    - echo "Download Android SDK RELEASE link https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_RELEASE"
+    - echo "Download IOS SDK link           https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$IOS_CONTAINER_PATH"
 
 test_e2e:
   stage: e2e_tests
