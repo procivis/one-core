@@ -195,10 +195,21 @@ upload_sdk_artifacts:
     - az storage blob upload -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_RELEASE -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE
     # Upload IOS zip file
     - az storage blob upload -c $AZURE_CONTAINER_NAME -n $IOS_CONTAINER_PATH -f $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE
-
-    - echo "Download Android SDK DEBUG link https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_DEBUG"
-    - echo "Download Android SDK RELEASE link https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_RELEASE"
-    - echo "Download IOS SDK link           https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$IOS_CONTAINER_PATH"
+    - >
+      cat <<-EOM
+        =========================
+        SDK Download links:
+        -------------------------
+        Android DEBUG: https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_DEBUG
+        SHA-1: $(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE | cut -d " " -f1)
+        -------------------------
+        Android RELEASE: https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_RELEASE
+        SHA-1: $(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE | cut -d " " -f1)
+        -------------------------
+        iOS: https://onetfstatestorage.blob.core.windows.net/$AZURE_CONTAINER_NAME/$IOS_CONTAINER_PATH
+        SHA-1: $(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
+        =========================
+      EOM
 
 test_e2e:
   stage: e2e_tests
