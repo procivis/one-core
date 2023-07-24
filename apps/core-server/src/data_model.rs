@@ -731,6 +731,7 @@ impl From<CredentialShareResponse> for CredentialShareResponseDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialResponseDTO {
+    pub id: String,
     #[serde(with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
@@ -784,6 +785,7 @@ pub enum CredentialState {
 impl From<DetailCredentialResponse> for DetailCredentialResponseDTO {
     fn from(value: DetailCredentialResponse) -> Self {
         Self {
+            id: value.id,
             created_date: value.created_date,
             issuance_date: value.issuance_date,
             state: value.state.into(),

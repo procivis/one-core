@@ -465,6 +465,7 @@ pub struct CredentialShareResponse {
 }
 
 pub struct DetailCredentialResponse {
+    pub id: String,
     pub created_date: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
     pub state: CredentialState,
@@ -585,6 +586,7 @@ impl DetailCredentialResponse {
         states: &[entities::credential_state::Model],
     ) -> Result<Self, DataLayerError> {
         Ok(DetailCredentialResponse {
+            id: value.id.to_owned(),
             created_date: value.created_date,
             issuance_date: value.issuance_date,
             state: states
