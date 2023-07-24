@@ -75,7 +75,7 @@ mod tests {
             .await
             .unwrap();
 
-        let credential_id = insert_credential_schema_to_database(
+        let credential_schema_id = insert_credential_schema_to_database(
             &data_layer.db,
             None,
             &organisation_id,
@@ -84,7 +84,7 @@ mod tests {
         .await
         .unwrap();
 
-        insert_many_claims_schema_to_database(&data_layer.db, &credential_id, &new_claims)
+        insert_many_claims_schema_to_database(&data_layer.db, &credential_schema_id, &new_claims)
             .await
             .unwrap();
 
@@ -112,6 +112,6 @@ mod tests {
             .zip(response.claim_schemas.iter())
             .all(|(expected, result)| expected.0.to_string() == result.id
                 && expected.1 == result.is_required
-                && result.credential_schema_id == credential_id));
+                && result.credential_schema.id == credential_schema_id));
     }
 }

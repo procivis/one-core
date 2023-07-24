@@ -275,8 +275,13 @@ pub(crate) struct ProofSchemaClaimSchemaCombined {
     pub proof_schema_id: String,
     pub required: bool,
     pub claim_key: String,
-    pub credential_id: String,
-    pub credential_name: String,
+    pub credential_schema_id: String,
+    pub credential_schema_created_date: OffsetDateTime,
+    pub credential_schema_last_modified: OffsetDateTime,
+    pub credential_schema_name: String,
+    pub credential_schema_format: credential_schema::Format,
+    pub credential_schema_revocation_method: credential_schema::RevocationMethod,
+    pub credential_schema_organisation_id: String,
 }
 
 #[derive(Debug, Clone, FromQueryResult)]
@@ -294,8 +299,7 @@ pub struct ProofClaimSchemaResponse {
     pub id: String,
     pub is_required: bool,
     pub key: String,
-    pub credential_schema_id: String,
-    pub credential_schema_name: String,
+    pub credential_schema: ListCredentialSchemaResponse,
 }
 
 impl ProofClaimSchemaResponse {
@@ -304,8 +308,15 @@ impl ProofClaimSchemaResponse {
             id: value.claim_schema_id,
             key: value.claim_key,
             is_required: value.required,
-            credential_schema_id: value.credential_id,
-            credential_schema_name: value.credential_name,
+            credential_schema: ListCredentialSchemaResponse {
+                id: value.credential_schema_id,
+                created_date: value.credential_schema_created_date,
+                last_modified: value.credential_schema_last_modified,
+                name: value.credential_schema_name,
+                format: value.credential_schema_format.into(),
+                revocation_method: value.credential_schema_revocation_method.into(),
+                organisation_id: value.credential_schema_organisation_id,
+            },
         }
     }
 
@@ -465,6 +476,7 @@ pub struct DetailCredentialResponse {
 
 pub type GetCredentialsResponse = GetListResponse<DetailCredentialResponse>;
 
+#[derive(Clone, Debug)]
 pub struct ListCredentialSchemaResponse {
     pub id: String,
     pub created_date: OffsetDateTime,
