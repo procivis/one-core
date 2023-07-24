@@ -1,4 +1,4 @@
-use sea_orm::{EntityTrait, PaginatorTrait, QueryOrder};
+use sea_orm::{sea_query::SimpleExpr, EntityTrait, IntoSimpleExpr, PaginatorTrait, QueryOrder};
 
 use crate::data_layer::entities::{did, Did};
 use crate::data_layer::{DataLayer, DataLayerError};
@@ -9,11 +9,10 @@ use super::list_query::GetEntityColumn;
 use crate::data_layer::list_query::SelectWithListQuery;
 
 impl GetEntityColumn for SortableDidColumn {
-    type Column = did::Column;
-    fn get_column(&self) -> did::Column {
+    fn get_simple_expr(&self) -> SimpleExpr {
         match self {
-            SortableDidColumn::Name => did::Column::Name,
-            SortableDidColumn::CreatedDate => did::Column::CreatedDate,
+            SortableDidColumn::Name => did::Column::Name.into_simple_expr(),
+            SortableDidColumn::CreatedDate => did::Column::CreatedDate.into_simple_expr(),
         }
     }
 }

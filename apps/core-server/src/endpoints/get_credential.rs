@@ -7,7 +7,8 @@ use uuid::Uuid;
 use one_core::data_layer::DataLayerError;
 
 use crate::data_model::{
-    DetailCredentialResponseDTO, GetCredentialSchemaQuery, GetCredentialsResponseDTO,
+    DetailCredentialResponseDTO, GetCredentialQuery, GetCredentialSchemaQuery,
+    GetCredentialsResponseDTO,
 };
 use crate::AppState;
 
@@ -71,7 +72,7 @@ pub(crate) async fn get_credential_details(
 )]
 pub(crate) async fn get_credentials(
     state: State<AppState>,
-    Query(query): Query<GetCredentialSchemaQuery>,
+    Query(query): Query<GetCredentialQuery>,
 ) -> Response {
     let result = state.core.data_layer.get_credentials(query.into()).await;
 

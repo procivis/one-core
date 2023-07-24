@@ -1,4 +1,7 @@
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Select};
+use sea_orm::{
+    sea_query::SimpleExpr, ColumnTrait, EntityTrait, IntoSimpleExpr, PaginatorTrait, QueryFilter,
+    QueryOrder, Select,
+};
 
 use crate::data_layer::entities::{proof_schema, ProofSchema};
 use crate::data_layer::list_query::{GetEntityColumn, SelectWithListQuery};
@@ -12,11 +15,12 @@ use super::common_queries;
 use super::data_model::{GetListQueryParams, SortableProofSchemaColumn};
 
 impl GetEntityColumn for SortableProofSchemaColumn {
-    type Column = proof_schema::Column;
-    fn get_column(&self) -> proof_schema::Column {
+    fn get_simple_expr(&self) -> SimpleExpr {
         match self {
-            SortableProofSchemaColumn::Name => proof_schema::Column::Name,
-            SortableProofSchemaColumn::CreatedDate => proof_schema::Column::CreatedDate,
+            SortableProofSchemaColumn::Name => proof_schema::Column::Name.into_simple_expr(),
+            SortableProofSchemaColumn::CreatedDate => {
+                proof_schema::Column::CreatedDate.into_simple_expr()
+            }
         }
     }
 }
