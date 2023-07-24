@@ -366,8 +366,7 @@ pub struct ProofClaimSchemaResponseDTO {
     pub id: String,
     pub is_required: bool,
     pub key: String,
-    pub credential_schema_id: String,
-    pub credential_schema_name: String,
+    pub credential_schema: ListCredentialSchemaResponseDTO,
 }
 
 impl From<GetProofSchemaResponse> for GetProofSchemaResponseDTO {
@@ -404,8 +403,7 @@ impl From<ProofClaimSchemaResponse> for ProofClaimSchemaResponseDTO {
             id: value.id,
             is_required: value.is_required,
             key: value.key,
-            credential_schema_id: value.credential_schema_id,
-            credential_schema_name: value.credential_schema_name,
+            credential_schema: value.credential_schema.into(),
         }
     }
 }

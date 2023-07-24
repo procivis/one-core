@@ -91,8 +91,28 @@ pub(crate) async fn fetch_proof_schema_claim_schemas(
             proof_schema_claim_schema::Column::Required,
         ])
         .column_as(claim_schema::Column::Key, "claim_key")
-        .column_as(credential_schema::Column::Id, "credential_id")
-        .column_as(credential_schema::Column::Name, "credential_name")
+        .column_as(credential_schema::Column::Id, "credential_schema_id")
+        .column_as(
+            credential_schema::Column::CreatedDate,
+            "credential_schema_created_date",
+        )
+        .column_as(
+            credential_schema::Column::LastModified,
+            "credential_schema_last_modified",
+        )
+        .column_as(credential_schema::Column::Name, "credential_schema_name")
+        .column_as(
+            credential_schema::Column::Format,
+            "credential_schema_format",
+        )
+        .column_as(
+            credential_schema::Column::RevocationMethod,
+            "credential_schema_revocation_method",
+        )
+        .column_as(
+            credential_schema::Column::OrganisationId,
+            "credential_schema_organisation_id",
+        )
         .join(
             sea_orm::JoinType::LeftJoin,
             proof_schema_claim_schema::Relation::ClaimSchema.def(),
