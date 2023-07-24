@@ -1,9 +1,9 @@
 use migration::{ColumnRef, Expr, Order, Query};
 
-use sea_orm::sea_query::{IntoCondition, IntoIden};
+use sea_orm::sea_query::{IntoCondition, IntoIden, SimpleExpr};
 use sea_orm::{
-    ColumnTrait, Condition, EntityTrait, IntoIdentity, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, RelationTrait,
+    ColumnTrait, Condition, EntityTrait, IntoIdentity, IntoSimpleExpr, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect, RelationTrait,
 };
 
 use crate::data_layer::{
@@ -11,14 +11,27 @@ use crate::data_layer::{
     common_queries::*,
     data_model::{
         CredentialDidCredentialSchemaCombined, DetailCredentialResponse, GetCredentialsResponse,
-        GetListQueryParams, SortableCredentialSchemaColumn,
+        GetListQueryParams, SortableCredentialColumn,
     },
     entities::{credential, credential_schema, credential_state, did, Credential},
-    list_query::SelectWithListQuery,
+    list_query::{GetEntityColumn, SelectWithListQuery},
     DataLayer, DataLayerError,
 };
 
-pub type GetCredentialsQuery = GetListQueryParams<SortableCredentialSchemaColumn>;
+impl GetEntityColumn for SortableCredentialColumn {
+    fn get_simple_expr(&self) -> SimpleExpr {
+        match self {
+            SortableCredentialColumn::CreatedDate => {
+                credential::Column::CreatedDate.into_simple_expr()
+            }
+            SortableCredentialColumn::SchemaName => {
+                credential_schema::Column::Name.into_simple_expr()
+            }
+        }
+    }
+}
+
+pub type GetCredentialsQuery = GetListQueryParams<SortableCredentialColumn>;
 
 impl DataLayer {
     pub async fn get_credentials(
@@ -73,8 +86,7 @@ impl DataLayer {
                         .eq(query_params.organisation_id.clone())
                         .into_condition()
                     }),
-            )
-            .order_by(credential::Column::CreatedDate, sea_orm::Order::Asc);
+            );
 
         let items_count = query
             .to_owned()

@@ -852,3 +852,25 @@ impl From<GetCredentialsResponse> for GetCredentialsResponseDTO {
         }
     }
 }
+
+pub type GetCredentialQuery = GetListQueryParams<SortableCredentialColumn>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum SortableCredentialColumn {
+    CreatedDate,
+    SchemaName,
+}
+
+impl From<SortableCredentialColumn> for one_core::data_layer::data_model::SortableCredentialColumn {
+    fn from(value: SortableCredentialColumn) -> Self {
+        match value {
+            SortableCredentialColumn::CreatedDate => {
+                one_core::data_layer::data_model::SortableCredentialColumn::CreatedDate
+            }
+            SortableCredentialColumn::SchemaName => {
+                one_core::data_layer::data_model::SortableCredentialColumn::SchemaName
+            }
+        }
+    }
+}

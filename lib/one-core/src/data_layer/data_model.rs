@@ -156,6 +156,12 @@ pub enum SortableCredentialSchemaColumn {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableCredentialColumn {
+    CreatedDate,
+    SchemaName,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableProofSchemaColumn {
     Name,
     CreatedDate,

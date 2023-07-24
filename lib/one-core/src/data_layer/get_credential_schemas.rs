@@ -1,4 +1,7 @@
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Select};
+use sea_orm::{
+    sea_query::SimpleExpr, ColumnTrait, EntityTrait, IntoSimpleExpr, PaginatorTrait, QueryFilter,
+    QueryOrder, Select,
+};
 
 use crate::data_layer::entities::{credential_schema, CredentialSchema};
 use crate::data_layer::list_query::{GetEntityColumn, SelectWithListQuery};
@@ -12,12 +15,17 @@ use super::common_queries;
 use super::data_model::{GetListQueryParams, SortableCredentialSchemaColumn};
 
 impl GetEntityColumn for SortableCredentialSchemaColumn {
-    type Column = credential_schema::Column;
-    fn get_column(&self) -> credential_schema::Column {
+    fn get_simple_expr(&self) -> SimpleExpr {
         match self {
-            SortableCredentialSchemaColumn::Name => credential_schema::Column::Name,
-            SortableCredentialSchemaColumn::Format => credential_schema::Column::Format,
-            SortableCredentialSchemaColumn::CreatedDate => credential_schema::Column::CreatedDate,
+            SortableCredentialSchemaColumn::Name => {
+                credential_schema::Column::Name.into_simple_expr()
+            }
+            SortableCredentialSchemaColumn::Format => {
+                credential_schema::Column::Format.into_simple_expr()
+            }
+            SortableCredentialSchemaColumn::CreatedDate => {
+                credential_schema::Column::CreatedDate.into_simple_expr()
+            }
         }
     }
 }

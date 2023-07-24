@@ -1,4 +1,6 @@
-use sea_orm::{entity::*, query::*, EntityTrait, IntoSimpleExpr, Order, QueryOrder, QuerySelect};
+use sea_orm::{
+    entity::*, query::*, sea_query::SimpleExpr, EntityTrait, Order, QueryOrder, QuerySelect,
+};
 use std::convert::From;
 
 use super::data_model::{GetListQueryParams, SortDirection};
@@ -14,17 +16,12 @@ impl From<SortDirection> for Order {
 
 // column conversion
 pub trait GetEntityColumn {
-    type Column;
-
-    fn get_column(&self) -> Self::Column
-    where
-        Self::Column: IntoSimpleExpr;
+    fn get_simple_expr(&self) -> SimpleExpr;
 }
 
 pub trait SelectWithListQuery<SortableColumn, FilterColumn>
 where
     SortableColumn: GetEntityColumn,
-    SortableColumn::Column: IntoSimpleExpr,
     FilterColumn: ColumnTrait,
 {
     /// Add expressions coming via GET url params
@@ -47,7 +44,6 @@ impl<T, SortableColumn, FilterColumn> SelectWithListQuery<SortableColumn, Filter
 where
     T: EntityTrait,
     SortableColumn: GetEntityColumn,
-    SortableColumn::Column: IntoSimpleExpr,
     FilterColumn: ColumnTrait,
 {
     fn with_list_query(
@@ -73,7 +69,7 @@ where
         // sorting
         if let Some(sort_column) = &query_params.sort {
             result = result.order_by(
-                sort_column.get_column(),
+                sort_column.get_simple_expr(),
                 Order::from(
                     query_params
                         .sort_direction
