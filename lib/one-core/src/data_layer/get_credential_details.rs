@@ -51,6 +51,7 @@ impl DataLayer {
             fetch_claim_claim_schemas(&self.db, vec![credential.id.clone()].as_slice()).await?;
 
         Ok(DetailCredentialResponse {
+            id: credential.id,
             created_date: credential.created_date,
             issuance_date: credential.issuance_date,
             state: credential_state.into(),
