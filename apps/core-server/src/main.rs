@@ -68,6 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CredentialRequestClaimDTO,
                     data_model::Transport,
                     data_model::CreateCredentialSchemaRequestDTO,
+                    data_model::CreateCredentialSchemaResponseDTO,
                     data_model::CredentialClaimSchemaRequestDTO,
                     data_model::GetCredentialClaimSchemaResponseDTO,
                     data_model::CredentialSchemaResponseDTO,
