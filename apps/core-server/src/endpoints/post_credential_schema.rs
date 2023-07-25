@@ -1,12 +1,15 @@
-use axum::extract::State;
-
-use axum::{http::StatusCode, Json};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
 
 use one_core::data_layer::DataLayerError;
 
 use validator::Validate;
 
-use crate::data_model::CreateCredentialSchemaRequestDTO;
+use crate::data_model::{CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO};
 use crate::AppState;
 
 #[utoipa::path(
@@ -14,7 +17,7 @@ use crate::AppState;
     path = "/api/credential-schema/v1",
     request_body = CreateCredentialSchemaRequestDTO,
     responses(
-        (status = 204, description = "Created"),
+        (status = 201, description = "Created", body = CreateCredentialSchemaResponseDTO),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
         (status = 409, description = "Duplicated name"),
@@ -27,10 +30,10 @@ use crate::AppState;
 pub(crate) async fn post_credential_schema(
     state: State<AppState>,
     Json(request): Json<CreateCredentialSchemaRequestDTO>,
-) -> StatusCode {
+) -> Response {
     if let Err(e) = request.validate() {
         tracing::error!("Request validation failure: {}", e.to_string());
-        return StatusCode::BAD_REQUEST;
+        return StatusCode::BAD_REQUEST.into_response();
     }
 
     let result = state
@@ -39,13 +42,19 @@ pub(crate) async fn post_credential_schema(
         .create_credential_schema(request.into())
         .await;
 
-    if let Err(error) = result {
-        tracing::error!("Error while inserting credential: {:?}", error);
-        match error {
-            DataLayerError::AlreadyExists => return StatusCode::CONFLICT,
-            _ => return StatusCode::INTERNAL_SERVER_ERROR,
-        };
+    match result {
+        Err(DataLayerError::AlreadyExists) => {
+            tracing::error!("Credential schema already exists");
+            StatusCode::CONFLICT.into_response()
+        }
+        Err(error) => {
+            tracing::error!("Error while inserting credential: {:?}", error);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+        Ok(value) => (
+            StatusCode::CREATED,
+            Json(CreateCredentialSchemaResponseDTO::from(value)),
+        )
+            .into_response(),
     }
-
-    StatusCode::NO_CONTENT
 }

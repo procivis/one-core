@@ -199,6 +199,11 @@ pub struct CreateCredentialSchemaRequest {
 }
 
 #[derive(Clone, Debug)]
+pub struct CreateCredentialSchemaResponse {
+    pub id: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct CredentialClaimSchemaRequest {
     pub key: String,
     pub datatype: Datatype,

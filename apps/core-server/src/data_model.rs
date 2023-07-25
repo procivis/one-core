@@ -1,11 +1,11 @@
 use one_core::data_layer::data_model::{
     ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
-    CreateCredentialSchemaRequest, CreateOrganisationRequest, CreateOrganisationResponse,
-    CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
-    CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialShareResponse,
-    DetailCredentialClaimResponse, DetailCredentialResponse, EntityResponse,
-    GetCredentialClaimSchemaResponse, GetCredentialsResponse, GetDidDetailsResponse,
-    GetDidsResponse, GetOrganisationDetailsResponse, GetProofSchemaResponse,
+    CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateOrganisationRequest,
+    CreateOrganisationResponse, CreateProofSchemaRequest, CreateProofSchemaResponse,
+    CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialSchemaResponse,
+    CredentialShareResponse, DetailCredentialClaimResponse, DetailCredentialResponse,
+    EntityResponse, GetCredentialClaimSchemaResponse, GetCredentialsResponse,
+    GetDidDetailsResponse, GetDidsResponse, GetOrganisationDetailsResponse, GetProofSchemaResponse,
     ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofSchemaResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -242,6 +242,18 @@ impl From<CreateCredentialSchemaRequestDTO> for CreateCredentialSchemaRequest {
             organisation_id: value.organisation_id,
             claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
         }
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateCredentialSchemaResponseDTO {
+    pub id: String,
+}
+
+impl From<CreateCredentialSchemaResponse> for CreateCredentialSchemaResponseDTO {
+    fn from(value: CreateCredentialSchemaResponse) -> Self {
+        CreateCredentialSchemaResponseDTO { id: value.id }
     }
 }
 

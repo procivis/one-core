@@ -3,18 +3,16 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::data_layer::{
-    data_model::CreateCredentialSchemaRequest,
-    entities::{claim_schema, credential_schema},
+    data_model::{CreateCredentialSchemaRequest, CreateCredentialSchemaResponse},
+    entities::{claim_schema, credential_schema, credential_schema_claim_schema},
     DataLayer, DataLayerError,
 };
-
-use super::entities::credential_schema_claim_schema;
 
 impl DataLayer {
     pub async fn create_credential_schema(
         &self,
         request: CreateCredentialSchemaRequest,
-    ) -> Result<(), DataLayerError> {
+    ) -> Result<CreateCredentialSchemaResponse, DataLayerError> {
         let now = OffsetDateTime::now_utc();
 
         let credential_schema = credential_schema::ActiveModel {
@@ -77,7 +75,9 @@ impl DataLayer {
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
         }
 
-        Ok(())
+        Ok(CreateCredentialSchemaResponse {
+            id: credential_schema.id,
+        })
     }
 }
 
