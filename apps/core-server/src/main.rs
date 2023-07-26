@@ -27,7 +27,7 @@ use endpoints::{
     ssi_post_verifier_reject_proof_request,
 };
 
-use crate::endpoints::{ssi_post_issuer_connect, temp_post_did};
+use crate::endpoints::{post_proof, ssi_post_issuer_connect, temp_post_did};
 
 #[derive(Clone)]
 struct AppState {
@@ -49,6 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_credential_schema::get_credential_schema,
             endpoints::post_credential_schema::post_credential_schema,
             endpoints::post_proof_schema::post_proof_schema,
+            endpoints::post_proof::post_proof,
             endpoints::get_proof_schema::get_proof_schema_details,
             endpoints::get_proof_schema::get_proof_schemas,
             endpoints::delete_proof_schema::delete_proof_schema,
@@ -82,6 +83,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CredentialClaimSchemaResponseDTO,
                     data_model::CreateProofSchemaRequestDTO,
                     data_model::CreateProofSchemaResponseDTO,
+                    data_model::CreateProofRequestDTO,
+                    data_model::CreateProofResponseDTO,
                     data_model::ClaimProofSchemaRequestDTO,
                     data_model::RevocationMethod,
                     data_model::ProofSchemaResponseDTO,
@@ -181,6 +184,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/proof-schema/v1",
             get(get_proof_schema::get_proof_schemas).post(post_proof_schema::post_proof_schema),
         )
+        .route("/api/proof-request/v1", post(post_proof::post_proof))
         .route(
             "/api/organisation/v1",
             get(get_organisation::get_organisations).post(post_organisation::post_organisation),

@@ -12,6 +12,7 @@ pub struct Model {
     pub issuance_date: OffsetDateTime,
 
     pub did_id: String,
+    pub receiver_did_id: Option<String>,
     pub proof_schema_id: String,
 }
 
@@ -26,7 +27,15 @@ pub enum Relation {
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    Did,
+    VerifierDid,
+    #[sea_orm(
+        belongs_to = "super::did::Entity",
+        from = "Column::ReceiverDidId",
+        to = "super::did::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    HolderDid,
     #[sea_orm(
         belongs_to = "super::proof_schema::Entity",
         from = "Column::ProofSchemaId",
@@ -35,16 +44,18 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     ProofSchema,
-}
-
-impl Related<super::did::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Did.def()
-    }
+    #[sea_orm(has_many = "super::proof_state::Entity")]
+    ProofState,
 }
 
 impl Related<super::proof_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProofSchema.def()
+    }
+}
+
+impl Related<super::proof_state::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProofState.def()
     }
 }

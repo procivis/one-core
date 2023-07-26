@@ -67,7 +67,7 @@ mod tests {
             .unwrap();
 
             let proof_request_id =
-                insert_proof_request_to_database(&data_layer.db, &did_id, &proof_schema_id)
+                insert_proof_request_to_database(&data_layer.db, &did_id, None, &proof_schema_id)
                     .await
                     .unwrap();
 

@@ -9,6 +9,7 @@ pub mod misc;
 pub mod post_credential;
 pub mod post_credential_schema;
 pub mod post_organisation;
+pub mod post_proof;
 pub mod post_proof_schema;
 pub mod share_credential;
 pub mod share_proof;
