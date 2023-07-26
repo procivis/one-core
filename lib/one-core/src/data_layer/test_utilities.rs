@@ -31,6 +31,7 @@ pub async fn insert_proof(
         last_modified: Set(now),
         issuance_date: Set(now),
         did_id: Set(did_id.to_string()),
+        receiver_did_id: Set(None),
     }
     .insert(db)
     .await?;
@@ -150,6 +151,7 @@ pub async fn get_credential_by_id(
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
     did_id: &str,
+    receiver_did_id: Option<String>,
     proof_schema_id: &str,
 ) -> Result<String, DbErr> {
     let schema = proof::ActiveModel {
@@ -158,6 +160,7 @@ pub async fn insert_proof_request_to_database(
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
         did_id: Set(did_id.to_string()),
+        receiver_did_id: Set(receiver_did_id),
         proof_schema_id: Set(proof_schema_id.to_string()),
     }
     .insert(database)

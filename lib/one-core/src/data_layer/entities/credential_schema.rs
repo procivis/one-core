@@ -18,6 +18,8 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::credential::Entity")]
+    Credential,
     #[sea_orm(has_many = "super::credential_schema_claim_schema::Entity")]
     CredentialSchemaClaimSchema,
     #[sea_orm(
@@ -28,6 +30,12 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organisation,
+}
+
+impl Related<super::credential::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Credential.def()
+    }
 }
 
 impl Related<super::credential_schema_claim_schema::Entity> for Entity {

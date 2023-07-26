@@ -8,6 +8,7 @@ pub mod create_credential;
 pub mod create_credential_schema;
 pub mod create_did;
 pub mod create_organisation;
+pub mod create_proof;
 pub mod create_proof_schema;
 pub mod data_model;
 pub mod delete_credential_schema;

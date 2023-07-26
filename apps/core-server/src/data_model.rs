@@ -2,13 +2,13 @@ use one_core::{
     data_layer::data_model::{
         ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
         CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateOrganisationRequest,
-        CreateOrganisationResponse, CreateProofSchemaRequest, CreateProofSchemaResponse,
-        CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialSchemaResponse,
-        CredentialShareResponse, DetailCredentialClaimResponse, DetailCredentialResponse,
-        EntityResponse, GetCredentialClaimSchemaResponse, GetCredentialsResponse,
-        GetDidDetailsResponse, GetDidsResponse, GetOrganisationDetailsResponse,
-        GetProofSchemaResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
-        ProofSchemaResponse, ProofShareResponse,
+        CreateOrganisationResponse, CreateProofRequest, CreateProofSchemaRequest,
+        CreateProofSchemaResponse, CredentialClaimSchemaRequest, CredentialClaimSchemaResponse,
+        CredentialSchemaResponse, CredentialShareResponse, DetailCredentialClaimResponse,
+        DetailCredentialResponse, EntityResponse, GetCredentialClaimSchemaResponse,
+        GetCredentialsResponse, GetDidDetailsResponse, GetDidsResponse,
+        GetOrganisationDetailsResponse, GetProofSchemaResponse, ListCredentialSchemaResponse,
+        ProofClaimSchemaResponse, ProofSchemaResponse, ProofShareResponse,
     },
     data_model::ConnectResponse,
 };
@@ -963,4 +963,29 @@ impl From<CreateDidRequest> for one_core::data_layer::data_model::CreateDidReque
 #[derive(Deserialize, ToSchema)]
 pub(crate) struct ProofRequestQueryParams {
     pub proof: Uuid,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateProofRequestDTO {
+    pub proof_schema_id: Uuid,
+    #[validate(length(min = 1))]
+    pub verifier_did: String,
+    pub transport_protocol: Transport,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateProofResponseDTO {
+    pub id: String,
+}
+
+impl From<CreateProofRequestDTO> for CreateProofRequest {
+    fn from(value: CreateProofRequestDTO) -> Self {
+        Self {
+            proof_schema_id: value.proof_schema_id,
+            verifier_did: value.verifier_did,
+            transport_protocol: value.transport_protocol.into(),
+        }
+    }
 }

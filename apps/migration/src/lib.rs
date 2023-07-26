@@ -5,6 +5,7 @@ mod m20230705_000002_revocation_none;
 mod m20230707_000003_unique_schema_name;
 mod m20230707_000004_add_credential;
 mod m20230720_000005_unique_did_value;
+mod m20230726_000006_proof_receiver;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20230707_000003_unique_schema_name::Migration),
             Box::new(m20230707_000004_add_credential::Migration),
             Box::new(m20230720_000005_unique_did_value::Migration),
+            Box::new(m20230726_000006_proof_receiver::Migration),
         ]
     }
 }

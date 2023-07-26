@@ -637,3 +637,15 @@ impl DetailCredentialResponse {
         })
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct CreateProofRequest {
+    pub proof_schema_id: Uuid,
+    pub verifier_did: String,
+    pub transport_protocol: Transport,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateProofResponse {
+    pub id: String,
+}
