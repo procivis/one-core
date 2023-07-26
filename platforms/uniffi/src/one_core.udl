@@ -7,18 +7,75 @@ enum DataLayerError {
   "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "RecordNotFound", "RecordNotUpdated", "Other"
 };
 
-interface OneCore {
-  [Throws=DataLayerError]
-  string create_org();
-  Version version();
+[Error]
+enum InvitationError {
+  "GeneralError", "CredentialIssuanceFailure"
 };
 
 dictionary Version {
-    string target;
-    string build_time;
-    string branch;
-    string tag;
-    string commit;
-    string rust_version;
-    string pipeline_id;
+  string target;
+  string build_time;
+  string branch;
+  string tag;
+  string commit;
+  string rust_version;
+  string pipeline_id;
+};
+
+dictionary InvitationResult {
+  string issued_credential_id;
+};
+
+enum CredentialState {
+  "Created", "Pending", "Offered", "Accepted", "Rejected", "Revoked", "Error"
+};
+
+enum RevocationMethod {
+  "None", "StatusList2021", "Lvvc"
+};
+
+enum CredentialFormat {
+  "Jwt", "SdJwt", "JsonLd", "Mdoc"
+};
+
+enum ClaimDataType {
+  "String", "Date", "Number"
+};
+
+dictionary CredentialSchema {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  string organisation_id;
+  CredentialFormat format;
+  RevocationMethod revocation_method;
+};
+
+dictionary Claim {
+  string id;
+  string key;
+  ClaimDataType data_type;
+  string value;
+};
+
+dictionary Credential {
+  string id;
+  string created_date;
+  string issuance_date;
+  string last_modified;
+  string? issuer_did;
+  CredentialState state;
+  sequence<Claim> claims;
+  CredentialSchema schema;
+};
+
+interface OneCore {
+  Version version();
+
+  [Throws=InvitationError]
+  InvitationResult handle_invitation(string url);
+
+  [Throws=DataLayerError]
+  sequence<Credential> get_credentials();
 };
