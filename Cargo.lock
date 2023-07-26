@@ -1862,6 +1862,8 @@ dependencies = [
  "one-core",
  "serde",
  "serde_json",
+ "thiserror",
+ "time",
  "tokio",
  "uniffi",
 ]

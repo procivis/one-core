@@ -1,9 +1,9 @@
-use migration::{ColumnRef, Expr, Order, Query};
+use migration::{Order, Query};
 
-use sea_orm::sea_query::{IntoCondition, IntoIden, SimpleExpr};
+use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{
-    ColumnTrait, Condition, EntityTrait, IntoIdentity, IntoSimpleExpr, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, RelationTrait,
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoSimpleExpr, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select,
 };
 
 use crate::data_layer::{
@@ -33,6 +33,100 @@ impl GetEntityColumn for SortableCredentialColumn {
 
 pub type GetCredentialsQuery = GetListQueryParams<SortableCredentialColumn>;
 
+fn get_select_credentials_query(
+    base_query: Select<Credential>,
+    organisation_id: Option<String>,
+) -> Select<Credential> {
+    base_query
+        .select_only()
+        .columns([
+            credential::Column::Id,
+            credential::Column::CreatedDate,
+            credential::Column::LastModified,
+            credential::Column::IssuanceDate,
+        ])
+        .columns([did::Column::Did])
+        .column_as(credential_schema::Column::Id, "schema_id")
+        .column_as(credential_schema::Column::Name, "schema_name")
+        .column_as(credential_schema::Column::Format, "schema_format")
+        .column_as(
+            credential_schema::Column::RevocationMethod,
+            "schema_revocation_method",
+        )
+        .column_as(
+            credential_schema::Column::CreatedDate,
+            "schema_created_date",
+        )
+        .column_as(
+            credential_schema::Column::LastModified,
+            "schema_last_modified",
+        )
+        .column_as(
+            credential_schema::Column::OrganisationId,
+            "schema_organisation_id",
+        )
+        .join_rev(
+            sea_orm::JoinType::LeftJoin,
+            credential::Relation::IssuerDid.def().rev(),
+        )
+        .join_rev(
+            sea_orm::JoinType::InnerJoin,
+            credential::Relation::CredentialSchema
+                .def()
+                .rev()
+                .on_condition(move |_left, _right| match &organisation_id {
+                    None => Condition::all(),
+                    Some(id) => credential_schema::Column::OrganisationId
+                        .eq(id)
+                        .into_condition(),
+                }),
+        )
+}
+
+async fn combine_with_states_and_claims(
+    db: &DatabaseConnection,
+    query: Select<Credential>,
+) -> Result<Vec<DetailCredentialResponse>, DataLayerError> {
+    let combined_credentials = query
+        .into_model::<CredentialDidCredentialSchemaCombined>()
+        .all(db)
+        .await
+        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+    let states = credential_state::Entity::find()
+        .filter(
+            credential_state::Column::CreatedDate.in_subquery(
+                Query::select()
+                    .expr(credential_state::Column::CreatedDate.max())
+                    .group_by_col(credential_state::Column::CredentialId)
+                    .from(credential_state::Entity)
+                    .to_owned(),
+            ),
+        )
+        .order_by(credential_state::Column::CreatedDate, Order::Desc)
+        .all(db)
+        .await
+        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+    let credential_ids = combined_credentials
+        .iter()
+        .map(|model| model.id.clone())
+        .collect::<Vec<_>>();
+
+    let claims = fetch_claim_claim_schemas(db, credential_ids.as_slice()).await?;
+
+    let result = combined_credentials
+        .into_iter()
+        .map(|value| {
+            DetailCredentialResponse::from_combined_credential_did_and_credential_schema(
+                value, &claims, &states,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(result)
+}
+
 impl DataLayer {
     pub async fn get_credentials(
         &self,
@@ -40,53 +134,11 @@ impl DataLayer {
     ) -> Result<GetCredentialsResponse, DataLayerError> {
         let limit: u64 = query_params.page_size as u64;
 
-        let query = Credential::find()
-            .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
-            .select_only()
-            .columns([
-                credential::Column::Id,
-                credential::Column::CreatedDate,
-                credential::Column::LastModified,
-                credential::Column::IssuanceDate,
-            ])
-            .columns([did::Column::Did])
-            .column_as(credential_schema::Column::Id, "schema_id")
-            .column_as(credential_schema::Column::Name, "schema_name")
-            .column_as(credential_schema::Column::Format, "schema_format")
-            .column_as(
-                credential_schema::Column::RevocationMethod,
-                "schema_revocation_method",
-            )
-            .column_as(
-                credential_schema::Column::CreatedDate,
-                "schema_created_date",
-            )
-            .column_as(
-                credential_schema::Column::LastModified,
-                "schema_last_modified",
-            )
-            .column_as(
-                credential_schema::Column::OrganisationId,
-                "schema_organisation_id",
-            )
-            .join_rev(
-                sea_orm::JoinType::LeftJoin,
-                credential::Relation::IssuerDid.def().rev(),
-            )
-            .join_rev(
-                sea_orm::JoinType::InnerJoin,
-                credential::Relation::CredentialSchema
-                    .def()
-                    .rev()
-                    .on_condition(move |_left, _right| {
-                        Expr::col(ColumnRef::TableColumn(
-                            "credential_schema".into_identity().into_iden(),
-                            "organisation_id".into_identity().into_iden(),
-                        ))
-                        .eq(query_params.organisation_id.clone())
-                        .into_condition()
-                    }),
-            );
+        let query = get_select_credentials_query(
+            Credential::find()
+                .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name])),
+            Some(query_params.organisation_id),
+        );
 
         let items_count = query
             .to_owned()
@@ -94,49 +146,18 @@ impl DataLayer {
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-        let combined_credentials = query
-            .to_owned()
-            .into_model::<CredentialDidCredentialSchemaCombined>()
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-        let states = credential_state::Entity::find()
-            .filter(
-                Condition::all().add(
-                    credential_state::Column::CreatedDate.in_subquery(
-                        Query::select()
-                            .expr(credential_state::Column::CreatedDate.max())
-                            .group_by_col(credential_state::Column::CredentialId)
-                            .from(credential_state::Entity)
-                            .to_owned(),
-                    ),
-                ),
-            )
-            .order_by(credential_state::Column::CreatedDate, Order::Desc)
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-        let credential_ids = combined_credentials
-            .iter()
-            .map(|model| model.id.clone())
-            .collect::<Vec<_>>();
-
-        let claims = fetch_claim_claim_schemas(&self.db, credential_ids.as_slice()).await?;
-
         Ok(GetCredentialsResponse {
-            values: combined_credentials
-                .into_iter()
-                .map(|value| {
-                    DetailCredentialResponse::from_combined_credential_did_and_credential_schema(
-                        value, &claims, &states,
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?,
+            values: combine_with_states_and_claims(&self.db, query).await?,
             total_pages: calculate_pages_count(items_count, limit),
             total_items: items_count,
         })
+    }
+
+    pub async fn get_all_credentials(
+        &self,
+    ) -> Result<Vec<DetailCredentialResponse>, DataLayerError> {
+        let query = get_select_credentials_query(Credential::find(), None);
+        combine_with_states_and_claims(&self.db, query).await
     }
 }
 
@@ -256,5 +277,25 @@ mod tests {
         assert!(credentials.is_ok());
         let credentials = credentials.unwrap();
         assert_eq!(CredentialState::Offered, credentials.values[0].state);
+    }
+
+    #[tokio::test]
+    async fn get_all_credentials_test_simple() {
+        let test_data = TestData::new().await;
+
+        let credentials = test_data.data_layer.get_all_credentials().await;
+        assert!(credentials.is_ok());
+        let credentials = credentials.unwrap();
+        assert_eq!(2, credentials.len());
+        assert_eq!(CredentialState::Created, credentials[0].state);
+        assert_eq!(CredentialState::Created, credentials[1].state);
+        assert_eq!(
+            test_data.did_value,
+            credentials[0].issuer_did.to_owned().unwrap()
+        );
+        assert_eq!(
+            test_data.did_value,
+            credentials[1].issuer_did.to_owned().unwrap()
+        );
     }
 }
