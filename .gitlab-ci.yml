@@ -48,6 +48,8 @@ build:
     expire_in: 1 hour
     paths:
       - target/release/core-server
+  extends:
+    - .only_main_or_tag
 
 tests:
   stage: test
