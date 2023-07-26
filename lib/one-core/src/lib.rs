@@ -1,19 +1,44 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
-use data_layer::DataLayer;
+use std::sync::Arc;
 
+use credential_formatter::jwt_formatter::JWTFormatter;
+use credential_formatter::CredentialFormatter;
+use data_layer::DataLayer;
+use error::OneCoreError;
+use signature_provider::SignatureProvider;
+use transport_protocol::procivis_temp::ProcivisTemp;
+use transport_protocol::TransportProtocol;
+
+pub mod credential_formatter;
 pub mod data_layer;
+pub mod data_model;
+pub mod error;
+pub mod issuer_connect;
+pub mod signature_provider;
+pub mod transport_protocol;
 
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
     pub data_layer: DataLayer,
+    pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
+    pub signature_providers: Vec<(String, Arc<dyn SignatureProvider + Send + Sync>)>,
+    pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
 }
 
 impl OneCore {
     pub async fn new(database_url: &str) -> OneCore {
+        // For now we will just put them here.
+        // We will introduce a builder later.
         OneCore {
             data_layer: DataLayer::create(database_url).await,
+            transport_protocols: vec![(
+                "PROCIVIS_TEMPORARY".to_string(),
+                Arc::new(ProcivisTemp {}),
+            )],
+            signature_providers: vec![],
+            credential_formatters: vec![("JWT".to_string(), Arc::new(JWTFormatter {}))],
         }
     }
 
@@ -31,6 +56,32 @@ impl OneCore {
             rust_version: build::RUST_VERSION.to_owned(),
             pipeline_id: build::CI_PIPELINE_ID.to_owned(),
         }
+    }
+
+    fn get_transport_protocol(
+        &self,
+        protocol: &str,
+    ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, OneCoreError> {
+        self.transport_protocols
+            .iter()
+            .find(|(key, _)| key == protocol)
+            .map(|(_, transport)| transport.clone())
+            .ok_or(OneCoreError::SSIError(
+                error::SSIError::UnsupportedTransportProtocol,
+            ))
+    }
+
+    fn get_formatter(
+        &self,
+        format: &str,
+    ) -> Result<Arc<dyn CredentialFormatter + Send + Sync>, OneCoreError> {
+        self.credential_formatters
+            .iter()
+            .find(|(key, _)| key == format)
+            .map(|(_, formatter)| formatter.clone())
+            .ok_or(OneCoreError::SSIError(
+                error::SSIError::UnsupportedCredentialFormat,
+            ))
     }
 }
 

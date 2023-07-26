@@ -26,6 +26,8 @@ use endpoints::{
     post_organisation, post_proof_schema, share_credential,
 };
 
+use crate::endpoints::{ssi_post_issuer_connect, temp_post_did};
+
 #[derive(Clone)]
 struct AppState {
     pub core: OneCore,
@@ -53,7 +55,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_organisation::get_organisations,
             endpoints::get_did::get_did_details,
             endpoints::get_did::get_dids,
-            endpoints::misc::get_build_info
+            endpoints::misc::get_build_info,
+            endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
+            endpoints::temp_post_did::post_did
         ),
         components(
             schemas(data_model::DetailCredentialResponseDTO,
@@ -85,6 +89,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::GetOrganisationDetailsResponseDTO,
                     data_model::GetDidDetailsResponseDTO,
                     data_model::GetDidsResponseDTO,
+                    data_model::ConnectResponseDTO,
+                    data_model::ConnectRequestDTO,
+                    data_model::CreateDidRequest,
+                    data_model::CreateDidResponse,
                     data_model::Format,
                     data_model::Datatype,
                     data_model::DidType,
@@ -174,9 +182,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route("/api/did/v1/:id", get(get_did::get_did_details))
         .route("/api/did/v1", get(get_did::get_dids))
+        .route("/tmp/did/v1", post(temp_post_did::post_did))
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new()
+        .route(
+            "/ssi/temporary-issuer/v1/connect",
+            post(ssi_post_issuer_connect::ssi_issuer_connect),
+        )
         .route("/build-info", get(misc::get_build_info))
         .route("/health", get(misc::health_check));
 

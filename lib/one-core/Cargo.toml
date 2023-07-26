@@ -27,6 +27,8 @@ tracing.workspace = true
 uuid.workspace = true
 shadow-rs.workspace = true
 thiserror.workspace = true
+jwt-simple = "0.11.6"
+base64 = "0.21.2"
 
 [build-dependencies]
 shadow-rs.workspace = true

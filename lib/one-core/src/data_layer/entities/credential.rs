@@ -19,12 +19,15 @@ pub struct Model {
     pub credential: Vec<u8>,
 
     pub did_id: Option<String>,
+    pub receiver_did_id: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::claim::Entity")]
+    Claim,
     #[sea_orm(
         belongs_to = "super::credential_schema::Entity",
         from = "Column::CredentialSchemaId",
@@ -33,6 +36,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     CredentialSchema,
+    #[sea_orm(has_many = "super::credential_state::Entity")]
+    CredentialState,
     #[sea_orm(
         belongs_to = "super::did::Entity",
         from = "Column::DidId",
@@ -40,7 +45,23 @@ pub enum Relation {
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    Did,
+    IssuerDid,
+    #[sea_orm(
+        belongs_to = "super::did::Entity",
+        from = "Column::ReceiverDidId",
+        to = "super::did::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    HolderDid,
+    #[sea_orm(has_many = "super::key::Entity")]
+    Key,
+}
+
+impl Related<super::claim::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Claim.def()
+    }
 }
 
 impl Related<super::credential_schema::Entity> for Entity {
@@ -49,9 +70,24 @@ impl Related<super::credential_schema::Entity> for Entity {
     }
 }
 
+impl Related<super::credential_state::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::CredentialState.def()
+    }
+}
+
+impl Related<super::key::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Key.def()
+    }
+}
+
 impl Related<super::did::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Did.def()
+        super::key::Relation::Did.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::key::Relation::Credential.def().rev())
     }
 }
 
