@@ -436,6 +436,20 @@ pub struct EntityResponse {
 }
 
 #[derive(Clone, Debug)]
+pub struct CreateDidRequest {
+    pub name: String,
+    pub organisation_id: String,
+    pub did: String,
+    pub did_type: DidType,
+    pub did_method: DidMethod,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateDidResponse {
+    pub id: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct GetDidDetailsResponse {
     pub id: String,
     pub created_date: OffsetDateTime,

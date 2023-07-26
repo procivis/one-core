@@ -85,7 +85,7 @@ mod tests {
             .await;
         assert!(result.is_ok());
 
-        let deleted_schema = get_credential_schema_with_id(&data_layer.db, &credential_schema_id)
+        let deleted_schema = get_credential_schema_by_id(&data_layer.db, &credential_schema_id)
             .await
             .unwrap();
         assert!(deleted_schema.is_some());
@@ -120,7 +120,7 @@ mod tests {
             .await;
         assert!(result.is_err_and(|error| matches!(error, DataLayerError::RecordNotFound)));
 
-        let deleted_schema = get_credential_schema_with_id(&data_layer.db, &credential_schema_id)
+        let deleted_schema = get_credential_schema_by_id(&data_layer.db, &credential_schema_id)
             .await
             .unwrap();
         assert!(deleted_schema.is_some());

@@ -33,6 +33,7 @@ pub async fn insert_credential(
         transport: Set(Transport::ProcivisTemporary),
         credential: Set(vec![0, 0, 0, 0]),
         did_id: Set(Some(did_id.to_string())),
+        receiver_did_id: Set(None),
     }
     .insert(db)
     .await?;
@@ -99,13 +100,20 @@ pub async fn insert_many_claims_schema_to_database(
     Ok(())
 }
 
-pub async fn get_credential_schema_with_id(
+pub async fn get_credential_schema_by_id(
     database: &DatabaseConnection,
     id: &str,
 ) -> Result<Option<credential_schema::Model>, DbErr> {
     credential_schema::Entity::find_by_id(id)
         .one(database)
         .await
+}
+
+pub async fn get_credential_by_id(
+    database: &DatabaseConnection,
+    id: &str,
+) -> Result<Option<credential::Model>, DbErr> {
+    credential::Entity::find_by_id(id).one(database).await
 }
 
 pub async fn insert_proof_schema_with_claims_to_database(

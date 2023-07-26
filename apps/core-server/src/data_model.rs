@@ -1,12 +1,16 @@
-use one_core::data_layer::data_model::{
-    ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
-    CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateOrganisationRequest,
-    CreateOrganisationResponse, CreateProofSchemaRequest, CreateProofSchemaResponse,
-    CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialSchemaResponse,
-    CredentialShareResponse, DetailCredentialClaimResponse, DetailCredentialResponse,
-    EntityResponse, GetCredentialClaimSchemaResponse, GetCredentialsResponse,
-    GetDidDetailsResponse, GetDidsResponse, GetOrganisationDetailsResponse, GetProofSchemaResponse,
-    ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofSchemaResponse,
+use one_core::{
+    data_layer::data_model::{
+        ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
+        CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateOrganisationRequest,
+        CreateOrganisationResponse, CreateProofSchemaRequest, CreateProofSchemaResponse,
+        CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialSchemaResponse,
+        CredentialShareResponse, DetailCredentialClaimResponse, DetailCredentialResponse,
+        EntityResponse, GetCredentialClaimSchemaResponse, GetCredentialsResponse,
+        GetDidDetailsResponse, GetDidsResponse, GetOrganisationDetailsResponse,
+        GetProofSchemaResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
+        ProofSchemaResponse,
+    },
+    data_model::ConnectResponse,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -883,6 +887,62 @@ impl From<SortableCredentialColumn> for one_core::data_layer::data_model::Sortab
             SortableCredentialColumn::SchemaName => {
                 one_core::data_layer::data_model::SortableCredentialColumn::SchemaName
             }
+        }
+    }
+}
+
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+#[serde(rename_all = "camelCase")]
+pub struct PostSsiConnect {
+    pub protocol: String,
+    pub credential: Uuid,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectRequestDTO {
+    pub did: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectResponseDTO {
+    pub credentials: String,
+    pub format: String,
+}
+
+impl From<ConnectResponse> for ConnectResponseDTO {
+    fn from(value: ConnectResponse) -> Self {
+        Self {
+            credentials: value.credential,
+            format: value.format,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub(crate) struct CreateDidRequest {
+    pub name: String,
+    pub organisation_id: Uuid,
+    pub did: String,
+    pub did_type: DidType,
+    pub did_method: DidMethod,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+pub(crate) struct CreateDidResponse {
+    pub id: String,
+}
+
+impl From<CreateDidRequest> for one_core::data_layer::data_model::CreateDidRequest {
+    fn from(value: CreateDidRequest) -> Self {
+        Self {
+            name: value.name,
+            organisation_id: value.organisation_id.to_string(),
+            did: value.did,
+            did_type: value.did_type.into(),
+            did_method: value.did_method.into(),
         }
     }
 }

@@ -6,6 +6,7 @@ pub mod common;
 mod common_queries;
 pub mod create_credential;
 pub mod create_credential_schema;
+pub mod create_did;
 pub mod create_organisation;
 pub mod create_proof_schema;
 pub mod data_model;
@@ -22,6 +23,7 @@ pub mod get_organisations;
 pub mod get_proof_schema_details;
 pub mod get_proof_schemas;
 pub mod share_credential;
+pub mod update_credential;
 
 pub mod list_query;
 

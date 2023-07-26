@@ -144,9 +144,14 @@ mod tests {
         let did = "test:did";
 
         for _ in 0..50 {
-            insert_did(&data_layer.db, did_name, did, &organisation_id)
-                .await
-                .unwrap();
+            insert_did(
+                &data_layer.db,
+                did_name,
+                &format!("{}:{}", did, Uuid::new_v4()),
+                &organisation_id,
+            )
+            .await
+            .unwrap();
         }
 
         let result = data_layer

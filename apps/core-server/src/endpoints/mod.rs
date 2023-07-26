@@ -11,3 +11,9 @@ pub mod post_credential_schema;
 pub mod post_organisation;
 pub mod post_proof_schema;
 pub mod share_credential;
+
+// SSI
+pub mod ssi_post_issuer_connect;
+
+// TEMP
+pub mod temp_post_did;

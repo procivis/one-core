@@ -40,7 +40,7 @@ impl DataLayer {
         &self,
         request: CreateCredentialRequest,
     ) -> Result<EntityResponse, DataLayerError> {
-        let did = Did::find_by_id(request.issuer_did.to_string())
+        let did: super::entities::did::Model = Did::find_by_id(request.issuer_did.to_string())
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
@@ -75,8 +75,9 @@ impl DataLayer {
             issuance_date: Set(now),
             deleted_at: Set(None),
             transport: Set(request.transport.into()),
-            credential: Set(vec![0, 0, 0, 0]),
+            credential: Set(vec![]),
             did_id: Set(Some(did.id)),
+            receiver_did_id: Set(None),
         }
         .insert(&self.db)
         .await

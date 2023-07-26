@@ -71,7 +71,7 @@ impl DataLayer {
             )
             .join_rev(
                 sea_orm::JoinType::LeftJoin,
-                credential::Relation::Did.def().rev(),
+                credential::Relation::IssuerDid.def().rev(),
             )
             .join_rev(
                 sea_orm::JoinType::InnerJoin,
