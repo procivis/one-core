@@ -946,3 +946,8 @@ impl From<CreateDidRequest> for one_core::data_layer::data_model::CreateDidReque
         }
     }
 }
+
+#[derive(Deserialize, ToSchema)]
+pub(crate) struct ProofRequestQueryParams {
+    pub proof: Uuid,
+}

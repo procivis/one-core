@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::data_layer::{
     entities::{
         claim_schema, credential, credential::Transport, credential_schema,
-        credential_schema_claim_schema, credential_state, did, organisation, proof_schema,
+        credential_schema_claim_schema, credential_state, did, organisation, proof, proof_schema,
         proof_schema_claim_schema,
     },
     DataLayer,
@@ -114,6 +114,24 @@ pub async fn get_credential_by_id(
     id: &str,
 ) -> Result<Option<credential::Model>, DbErr> {
     credential::Entity::find_by_id(id).one(database).await
+}
+
+pub async fn insert_proof_request_to_database(
+    database: &DatabaseConnection,
+    did_id: &str,
+    proof_schema_id: &str,
+) -> Result<String, DbErr> {
+    let schema = proof::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        issuance_date: Set(get_dummy_date()),
+        did_id: Set(did_id.to_string()),
+        proof_schema_id: Set(proof_schema_id.to_string()),
+    }
+    .insert(database)
+    .await?;
+    Ok(schema.id)
 }
 
 pub async fn insert_proof_schema_with_claims_to_database(

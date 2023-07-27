@@ -23,7 +23,7 @@ mod endpoints;
 use endpoints::{
     delete_credential_schema, delete_proof_schema, get_credential, get_credential_schema, get_did,
     get_organisation, get_proof_schema, misc, post_credential, post_credential_schema,
-    post_organisation, post_proof_schema, share_credential,
+    post_organisation, post_proof_schema, share_credential, ssi_post_verifier_reject_proof_request,
 };
 
 use crate::endpoints::{ssi_post_issuer_connect, temp_post_did};
@@ -57,6 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_did::get_dids,
             endpoints::misc::get_build_info,
             endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
+            endpoints::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
             endpoints::temp_post_did::post_did
         ),
         components(
@@ -93,6 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::ConnectRequestDTO,
                     data_model::CreateDidRequest,
                     data_model::CreateDidResponse,
+                    data_model::ProofRequestQueryParams,
                     data_model::Format,
                     data_model::Datatype,
                     data_model::DidType,
@@ -103,6 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tags(
             (name = "credential_schema_management", description = "Credential schema management"),
             (name = "proof_schema_management", description = "Proof schema management"),
+            (name = "ssi", description = "SSI"),
             (name = "other", description = "Other utility endpoints"),
         ),
         modifiers(&SecurityAddon)
@@ -189,6 +192,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/ssi/temporary-issuer/v1/connect",
             post(ssi_post_issuer_connect::ssi_issuer_connect),
+        )
+        .route(
+            "/ssi/temporary-verifier/v1/reject",
+            post(ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request),
         )
         .route("/build-info", get(misc::get_build_info))
         .route("/health", get(misc::health_check));
