@@ -9,7 +9,8 @@ use crate::data_layer::{
     data_model::{CredentialSchemaClaimSchemaCombined, ProofSchemaClaimSchemaCombined},
     entities::{
         claim, claim_schema, credential_schema, credential_schema_claim_schema, credential_state,
-        proof_schema_claim_schema, Claim, ClaimSchema, CredentialState, ProofSchemaClaimSchema,
+        proof_schema_claim_schema, proof_state, Claim, ClaimSchema, CredentialState,
+        ProofSchemaClaimSchema, ProofState,
     },
     DataLayerError,
 };
@@ -161,6 +162,41 @@ pub(crate) async fn insert_credential_state(
     credential_state::Entity::insert(credential_state::ActiveModel {
         credential_id: Set(credential_id.to_owned()),
         created_date: Set(created_date),
+        state: Set(state),
+    })
+    .exec(db)
+    .await
+    .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+    Ok(())
+}
+
+pub(crate) async fn get_proof_request_state(
+    db: &DatabaseConnection,
+    proof_request_id: &str,
+) -> Result<proof_state::ProofRequestState, DataLayerError> {
+    let proof_request_state = ProofState::find()
+        .filter(proof_state::Column::ProofId.eq(proof_request_id))
+        .order_by(proof_state::Column::CreatedDate, Order::Desc)
+        .one(db)
+        .await
+        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+        .ok_or(DataLayerError::RecordNotFound)?;
+
+    Ok(proof_request_state.state)
+}
+
+pub(crate) async fn insert_proof_request_state(
+    db: &DatabaseConnection,
+    proof_request_id: &str,
+    created_date: OffsetDateTime,
+    last_modified: OffsetDateTime,
+    state: proof_state::ProofRequestState,
+) -> Result<(), DataLayerError> {
+    proof_state::Entity::insert(proof_state::ActiveModel {
+        proof_id: Set(proof_request_id.to_owned()),
+        created_date: Set(created_date),
+        last_modified: Set(last_modified),
         state: Set(state),
     })
     .exec(db)

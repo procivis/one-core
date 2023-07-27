@@ -14,6 +14,7 @@ pub mod share_credential;
 
 // SSI
 pub mod ssi_post_issuer_connect;
+pub mod ssi_post_verifier_reject_proof_request;
 
 // TEMP
 pub mod temp_post_did;
