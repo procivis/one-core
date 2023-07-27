@@ -1,18 +1,18 @@
 use crate::data_layer::{DataLayer, DataLayerError};
 use time::OffsetDateTime;
 
-use crate::data_layer::common_queries::{get_proof_request_state, insert_proof_request_state};
+use crate::data_layer::common_queries::{get_proof_state, insert_proof_state};
 use crate::data_layer::entities::proof_state;
 
 impl DataLayer {
     pub async fn reject_proof_request(&self, proof_request_id: &str) -> Result<(), DataLayerError> {
-        let proof_request_state = get_proof_request_state(&self.db, proof_request_id).await?;
+        let proof_request_state = get_proof_state(&self.db, proof_request_id).await?;
 
         match proof_request_state {
             proof_state::ProofRequestState::Offered => {
                 let now = OffsetDateTime::now_utc();
 
-                insert_proof_request_state(
+                insert_proof_state(
                     &self.db,
                     proof_request_id,
                     now,
@@ -34,7 +34,7 @@ mod tests {
     use time::Duration;
 
     use crate::data_layer::{
-        common_queries::{get_proof_request_state, insert_proof_request_state},
+        common_queries::{get_proof_state, insert_proof_state},
         entities::proof_state::ProofRequestState,
         test_utilities::*,
         DataLayer, DataLayerError,
@@ -83,7 +83,7 @@ mod tests {
         let test_data = TestData::new().await;
 
         let now = get_dummy_date();
-        insert_proof_request_state(
+        insert_proof_state(
             &test_data.data_layer.db,
             &test_data.proof_request_id,
             now,
@@ -93,10 +93,9 @@ mod tests {
         .await
         .unwrap();
 
-        let old_state =
-            get_proof_request_state(&test_data.data_layer.db, &test_data.proof_request_id)
-                .await
-                .unwrap();
+        let old_state = get_proof_state(&test_data.data_layer.db, &test_data.proof_request_id)
+            .await
+            .unwrap();
         assert_eq!(ProofRequestState::Created, old_state);
 
         let result = test_data
@@ -105,14 +104,13 @@ mod tests {
             .await;
         assert!(result.is_err_and(|error| matches!(error, DataLayerError::RecordNotUpdated)));
 
-        let new_state =
-            get_proof_request_state(&test_data.data_layer.db, &test_data.proof_request_id)
-                .await
-                .unwrap();
+        let new_state = get_proof_state(&test_data.data_layer.db, &test_data.proof_request_id)
+            .await
+            .unwrap();
         assert_eq!(ProofRequestState::Created, new_state);
 
         let later = now.add(Duration::new(1, 0));
-        insert_proof_request_state(
+        insert_proof_state(
             &test_data.data_layer.db,
             &test_data.proof_request_id,
             later,
@@ -122,10 +120,9 @@ mod tests {
         .await
         .unwrap();
 
-        let old_state =
-            get_proof_request_state(&test_data.data_layer.db, &test_data.proof_request_id)
-                .await
-                .unwrap();
+        let old_state = get_proof_state(&test_data.data_layer.db, &test_data.proof_request_id)
+            .await
+            .unwrap();
         assert_eq!(ProofRequestState::Offered, old_state);
 
         let result = test_data
@@ -134,10 +131,9 @@ mod tests {
             .await;
         assert!(result.is_ok());
 
-        let new_state =
-            get_proof_request_state(&test_data.data_layer.db, &test_data.proof_request_id)
-                .await
-                .unwrap();
+        let new_state = get_proof_state(&test_data.data_layer.db, &test_data.proof_request_id)
+            .await
+            .unwrap();
         assert_eq!(ProofRequestState::Rejected, new_state);
 
         let result = test_data
@@ -146,10 +142,9 @@ mod tests {
             .await;
         assert!(result.is_err_and(|error| matches!(error, DataLayerError::RecordNotUpdated)));
 
-        let new_state =
-            get_proof_request_state(&test_data.data_layer.db, &test_data.proof_request_id)
-                .await
-                .unwrap();
+        let new_state = get_proof_state(&test_data.data_layer.db, &test_data.proof_request_id)
+            .await
+            .unwrap();
         assert_eq!(ProofRequestState::Rejected, new_state);
     }
 }

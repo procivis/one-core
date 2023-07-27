@@ -171,7 +171,7 @@ pub(crate) async fn insert_credential_state(
     Ok(())
 }
 
-pub(crate) async fn get_proof_request_state(
+pub(crate) async fn get_proof_state(
     db: &DatabaseConnection,
     proof_request_id: &str,
 ) -> Result<proof_state::ProofRequestState, DataLayerError> {
@@ -186,7 +186,7 @@ pub(crate) async fn get_proof_request_state(
     Ok(proof_request_state.state)
 }
 
-pub(crate) async fn insert_proof_request_state(
+pub(crate) async fn insert_proof_state(
     db: &DatabaseConnection,
     proof_request_id: &str,
     created_date: OffsetDateTime,
