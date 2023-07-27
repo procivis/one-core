@@ -8,7 +8,7 @@ use one_core::{
         EntityResponse, GetCredentialClaimSchemaResponse, GetCredentialsResponse,
         GetDidDetailsResponse, GetDidsResponse, GetOrganisationDetailsResponse,
         GetProofSchemaResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
-        ProofSchemaResponse,
+        ProofSchemaResponse, ProofShareResponse,
     },
     data_model::ConnectResponse,
 };
@@ -727,11 +727,11 @@ impl From<SortableDidColumn> for one_core::data_layer::data_model::SortableDidCo
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-pub struct CredentialShareResponseDTO {
+pub struct EntityShareResponseDTO {
     pub url: String,
 }
 
-impl From<CredentialShareResponse> for CredentialShareResponseDTO {
+impl From<CredentialShareResponse> for EntityShareResponseDTO {
     fn from(value: CredentialShareResponse) -> Self {
         let protocol =
             serde_variant::to_variant_name(&Transport::from(value.transport)).unwrap_or("UNKNOWN");
@@ -739,6 +739,19 @@ impl From<CredentialShareResponse> for CredentialShareResponseDTO {
             url: format!(
                 "/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
                 protocol, value.credential_id
+            ),
+        }
+    }
+}
+
+impl From<ProofShareResponse> for EntityShareResponseDTO {
+    fn from(value: ProofShareResponse) -> Self {
+        let protocol =
+            serde_variant::to_variant_name(&Transport::from(value.transport)).unwrap_or("UNKNOWN");
+        Self {
+            url: format!(
+                "/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
+                protocol, value.proof_id
             ),
         }
     }

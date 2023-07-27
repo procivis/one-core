@@ -9,27 +9,23 @@ use crate::AppState;
 
 #[utoipa::path(
     post,
-    path = "/api/credential/v1/{id}/share",
+    path = "/api/proof-request/v1/{id}/share",
     responses(
         (status = 200, description = "Created", body = EntityShareResponseDTO),
-        (status = 400, description = "Credential has been shared already"),
+        (status = 400, description = "Proof has been shared already"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Credential schema or DID not found"),
+        (status = 404, description = "proof schema or DID not found"),
     ),
     params(
-        ("id" = Uuid, Path, description = "Credential id")
+        ("id" = Uuid, Path, description = "Proof id")
     ),
-    tag = "credential_management",
+    tag = "proof_management",
     security(
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn share_credential(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
-    let result = state
-        .core
-        .data_layer
-        .share_credential(&id.to_string())
-        .await;
+pub(crate) async fn share_proof(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
+    let result = state.core.data_layer.share_proof(&id.to_string()).await;
 
     match result {
         Ok(value) => (StatusCode::OK, Json(EntityShareResponseDTO::from(value))).into_response(),
@@ -37,7 +33,7 @@ pub(crate) async fn share_credential(state: State<AppState>, Path(id): Path<Uuid
             DataLayerError::RecordNotFound => StatusCode::NOT_FOUND.into_response(),
             DataLayerError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
             _ => {
-                tracing::error!("Error while getting credential");
+                tracing::error!("Error while getting proof");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         },

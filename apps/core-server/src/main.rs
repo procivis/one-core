@@ -23,7 +23,8 @@ mod endpoints;
 use endpoints::{
     delete_credential_schema, delete_proof_schema, get_credential, get_credential_schema, get_did,
     get_organisation, get_proof_schema, misc, post_credential, post_credential_schema,
-    post_organisation, post_proof_schema, share_credential, ssi_post_verifier_reject_proof_request,
+    post_organisation, post_proof_schema, share_credential, share_proof,
+    ssi_post_verifier_reject_proof_request,
 };
 
 use crate::endpoints::{ssi_post_issuer_connect, temp_post_did};
@@ -42,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_credential::get_credential_details,
             endpoints::post_credential::post_credential,
             endpoints::share_credential::share_credential,
+            endpoints::share_proof::share_proof,
             endpoints::delete_credential_schema::delete_credential_schema,
             endpoints::get_credential_schema::get_credential_schema_details,
             endpoints::get_credential_schema::get_credential_schema,
@@ -69,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CredentialState,
                     data_model::CredentialRequestDTO,
                     data_model::EntityResponseDTO,
-                    data_model::CredentialShareResponseDTO,
+                    data_model::EntityShareResponseDTO,
                     data_model::CredentialRequestClaimDTO,
                     data_model::Transport,
                     data_model::CreateCredentialSchemaRequestDTO,
@@ -155,6 +157,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/credential/v1/:id/share",
             post(share_credential::share_credential),
+        )
+        .route(
+            "/api/proof-request/v1/:id/share",
+            post(share_proof::share_proof),
         )
         .route(
             "/api/credential-schema/v1/:id",

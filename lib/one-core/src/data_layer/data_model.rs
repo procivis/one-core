@@ -489,6 +489,11 @@ pub struct CredentialShareResponse {
     pub transport: Transport,
 }
 
+pub struct ProofShareResponse {
+    pub proof_id: String,
+    pub transport: Transport,
+}
+
 pub struct DetailCredentialResponse {
     pub id: String,
     pub created_date: OffsetDateTime,

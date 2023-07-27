@@ -24,6 +24,7 @@ pub mod get_proof_schema_details;
 pub mod get_proof_schemas;
 pub mod reject_proof_request;
 pub mod share_credential;
+pub mod share_proof;
 pub mod update_credential;
 
 pub mod list_query;

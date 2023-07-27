@@ -3,6 +3,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::data_layer::entities::proof_state;
 use crate::data_layer::{
     entities::{
         claim_schema, credential, credential::Transport, credential_schema,
@@ -14,6 +15,36 @@ use crate::data_layer::{
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
+}
+
+pub async fn insert_proof(
+    db: &DatabaseConnection,
+    proof_schema_id: &str,
+    did_id: &str,
+) -> Result<String, DbErr> {
+    let now = OffsetDateTime::now_utc();
+
+    let proof = proof::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        proof_schema_id: Set(proof_schema_id.to_string()),
+        created_date: Set(now),
+        last_modified: Set(now),
+        issuance_date: Set(now),
+        did_id: Set(did_id.to_string()),
+    }
+    .insert(db)
+    .await?;
+
+    proof_state::ActiveModel {
+        proof_id: Set(proof.id.to_owned()),
+        created_date: Set(now),
+        last_modified: Set(now),
+        state: Set(proof_state::ProofRequestState::Created),
+    }
+    .insert(db)
+    .await?;
+
+    Ok(proof.id)
 }
 
 pub async fn insert_credential(
