@@ -3,15 +3,14 @@
 use std::net::{IpAddr, SocketAddr};
 use std::panic;
 
-use axum::http::{HeaderValue, Request, StatusCode};
+use axum::http::{HeaderValue, Request, Response, StatusCode};
 use axum::middleware::{self, Next};
-use axum::response::Response;
 use axum::routing::{delete, get, post};
 use axum::Router;
 use one_core::OneCore;
 use shadow_rs::shadow;
-use tower_http::trace::{self, TraceLayer};
-use tracing::{info, info_span, Level};
+use tower_http::trace::TraceLayer;
+use tracing::{info, info_span, Span};
 use tracing_subscriber::fmt::format::FmtSpan;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
@@ -28,6 +27,7 @@ use endpoints::{
 };
 
 use crate::endpoints::{post_proof, ssi_post_issuer_connect, temp_post_did};
+use std::time::Duration;
 
 #[derive(Clone)]
 struct AppState {
@@ -206,15 +206,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/ssi/temporary-verifier/v1/reject",
             post(ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request),
-        )
+        );
+
+    let technical_endpoints = Router::new()
         .route("/build-info", get(misc::get_build_info))
         .route("/health", get(misc::health_check));
 
     let app = Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", documentation))
         .merge(protected)
         .merge(unprotected)
-        .with_state(state)
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
@@ -240,13 +240,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     info_span!(
                         "http_request",
                         method = method,
+                        path = request.uri().path(),
+                        service = "one-core",
                         RequestId = request_id,
                         SessionId = session_id,
                     )
                 })
-                .on_request(trace::DefaultOnRequest::new().level(Level::DEBUG))
-                .on_response(trace::DefaultOnResponse::new().level(Level::DEBUG)),
-        );
+                .on_request(|request: &Request<_>, _span: &Span| {
+                    tracing::debug!(
+                        "SERVICE CALL START {} {}",
+                        request.method(),
+                        request.uri().path()
+                    )
+                })
+                .on_response(|response: &Response<_>, _latency: Duration, _span: &Span| {
+                    tracing::debug!("SERVICE CALL END {}", response.status())
+                }),
+        )
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", documentation))
+        .merge(technical_endpoints)
+        .with_state(state);
 
     let ip: IpAddr = envmnt::get_or("SERVER_IP", "0.0.0.0")
         .parse()
@@ -311,7 +324,10 @@ fn config_tracing() {
 #[derive(Debug, Clone)]
 pub struct Authorized {}
 
-async fn bearer_check<B>(mut request: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
+async fn bearer_check<B>(
+    mut request: Request<B>,
+    next: Next<B>,
+) -> Result<axum::response::Response, StatusCode> {
     let auth_header = request
         .headers()
         .get("Authorization")
