@@ -203,6 +203,23 @@ pub struct CreateCredentialSchemaRequest {
 }
 
 #[derive(Clone, Debug)]
+pub struct CreateCredentialSchemaFromJwtRequest {
+    pub id: Uuid,
+    pub name: String,
+    pub format: Format,
+    pub revocation_method: RevocationMethod,
+    pub organisation_id: Uuid,
+    pub claims: Vec<CredentialClaimSchemaFromJwtRequest>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CredentialClaimSchemaFromJwtRequest {
+    pub id: Uuid,
+    pub key: String,
+    pub datatype: Datatype,
+}
+
+#[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaResponse {
     pub id: String,
 }

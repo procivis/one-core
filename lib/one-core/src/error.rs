@@ -1,8 +1,12 @@
-use crate::{credential_formatter::FormatterError, data_layer::DataLayerError};
-
 use thiserror::Error;
 
-#[derive(Debug, PartialEq, Eq, Error)]
+use crate::{
+    credential_formatter::{FormatterError, ParseError},
+    data_layer::DataLayerError,
+    transport_protocol::TransportProtocolError,
+};
+
+#[derive(Debug, Error)]
 pub enum OneCoreError {
     #[error("Data layer error: `{0}`")]
     DataLayerError(DataLayerError),
@@ -12,16 +16,24 @@ pub enum OneCoreError {
     FormatterError(FormatterError),
 }
 
-#[derive(Debug, PartialEq, Eq, Error)]
+#[derive(Debug, Error)]
 pub enum SSIError {
     #[error("Already issued")]
     AlreadyIssued,
     #[error("Incorrect credential state")]
     IncorrectCredentialState,
+    #[error("Incorrect parameters")]
+    IncorrectParameters,
     #[error("Incorrect proof state")]
     IncorrectProofState,
     #[error("Missing credential")]
     MissingCredential,
+    #[error("Parse error: `{0}`")]
+    ParseError(ParseError),
+    #[error("Incorrect query parameters: `{0}`")]
+    QueryRejection(axum::extract::rejection::QueryRejection),
+    #[error("Transport protocol error: `{0}`")]
+    TransportProtocolError(TransportProtocolError),
     #[error("Unsupported credential format")]
     UnsupportedCredentialFormat,
     #[error("Unsupported transport protocol")]

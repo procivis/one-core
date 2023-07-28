@@ -955,14 +955,14 @@ pub struct ConnectRequestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectIssuerResponseDTO {
-    pub credentials: String,
+    pub credential: String,
     pub format: String,
 }
 
 impl From<ConnectIssuerResponse> for ConnectIssuerResponseDTO {
     fn from(value: ConnectIssuerResponse) -> Self {
         Self {
-            credentials: value.credential,
+            credential: value.credential,
             format: value.format,
         }
     }
@@ -1066,4 +1066,9 @@ impl From<CreateProofRequestDTO> for CreateProofRequest {
             transport: value.transport.into(),
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+pub struct HandleInvitationRequestDTO {
+    pub url: String,
 }

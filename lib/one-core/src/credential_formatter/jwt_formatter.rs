@@ -5,48 +5,48 @@ use crate::data_layer::data_model::{Datatype, DetailCredentialResponse};
 use base64::{engine::general_purpose, Engine};
 use jwt_simple::prelude::*;
 
-use super::{CredentialFormatter, FormatterError};
+use super::{CredentialFormatter, FormatterError, ParseError};
 
 pub struct JWTFormatter {}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VCCredentialClaimSchemaResponse {
-    key: String,
-    id: String,
-    datatype: String,
+    pub key: String,
+    pub id: String,
+    pub datatype: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VCCredentialSchemaResponse {
-    name: String,
-    id: String,
-    claims: Vec<VCCredentialClaimSchemaResponse>,
+    pub name: String,
+    pub id: String,
+    pub claims: Vec<VCCredentialClaimSchemaResponse>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSubject {
     #[serde(flatten)]
-    values: HashMap<String, String>,
-    one_credential_schema: VCCredentialSchemaResponse,
+    pub values: HashMap<String, String>,
+    pub one_credential_schema: VCCredentialSchemaResponse,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct VCContent {
+pub struct VCContent {
     #[serde(rename = "@context")]
-    context: Vec<String>,
+    pub context: Vec<String>,
     #[serde(rename = "type")]
-    _type: Vec<String>,
-    credential_subject: CredentialSubject,
+    pub _type: Vec<String>,
+    pub credential_subject: CredentialSubject,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct VC {
-    vc: VCContent,
+pub struct VC {
+    pub vc: VCContent,
 }
 
 impl CredentialFormatter for JWTFormatter {
@@ -133,4 +133,17 @@ impl From<&DetailCredentialResponse> for VC {
             },
         }
     }
+}
+
+pub fn from_jwt(token: &str) -> Result<JWTClaims<VC>, ParseError> {
+    let public = general_purpose::STANDARD
+        .decode("rTa2X5z9tCT9eVFG0yKDR5w4k89fwHohWxcd1I2LDsQ=")
+        .unwrap();
+    let pubkey =
+        Ed25519PublicKey::from_bytes(&public).map_err(|e| ParseError::Failed(e.to_string()))?;
+
+    let claims = pubkey
+        .verify_token::<VC>(token, None)
+        .map_err(|e| ParseError::Failed(e.to_string()))?;
+    Ok(claims)
 }

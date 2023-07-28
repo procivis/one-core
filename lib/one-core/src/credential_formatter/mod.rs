@@ -15,6 +15,12 @@ pub enum FormatterError {
     CouldNotFormat(String),
 }
 
+#[derive(Debug, PartialEq, Eq, Error)]
+pub enum ParseError {
+    #[error("Failed: `{0}`")]
+    Failed(String),
+}
+
 // This is just a proposition.
 // Will be  developed in future.
 pub trait CredentialFormatter {

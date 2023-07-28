@@ -10,6 +10,7 @@ strict = []
 mysql = ["migration/mysql", "sea-orm/sqlx-mysql"]
 
 [dependencies]
+async-trait = "0.1.68"
 migration = { path = "../../apps/migration", default-features = false }
 sea-orm = { version = "0.12.0-rc.3", default-features = false, features = [
     "sqlx-sqlite",
@@ -20,6 +21,8 @@ sea-orm = { version = "0.12.0-rc.3", default-features = false, features = [
     "with-json",
 ] }
 tokio = { version = "1.26", features = ["full"] }
+
+axum.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 time.workspace = true
@@ -27,8 +30,10 @@ tracing.workspace = true
 uuid.workspace = true
 shadow-rs.workspace = true
 thiserror.workspace = true
+
 jwt-simple = "0.11.6"
 base64 = "0.21.2"
+reqwest = { version = "0.11.18", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots"] }
 
 [build-dependencies]
 shadow-rs.workspace = true
