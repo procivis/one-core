@@ -642,7 +642,7 @@ impl DetailCredentialResponse {
 pub struct CreateProofRequest {
     pub proof_schema_id: Uuid,
     pub verifier_did: String,
-    pub transport_protocol: Transport,
+    pub transport: Transport,
 }
 
 #[derive(Clone, Debug)]

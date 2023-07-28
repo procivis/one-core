@@ -971,7 +971,7 @@ pub struct CreateProofRequestDTO {
     pub proof_schema_id: Uuid,
     #[validate(length(min = 1))]
     pub verifier_did: String,
-    pub transport_protocol: Transport,
+    pub transport: Transport,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
@@ -985,7 +985,7 @@ impl From<CreateProofRequestDTO> for CreateProofRequest {
         Self {
             proof_schema_id: value.proof_schema_id,
             verifier_did: value.verifier_did,
-            transport_protocol: value.transport_protocol.into(),
+            transport: value.transport.into(),
         }
     }
 }

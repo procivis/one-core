@@ -126,7 +126,7 @@ mod tests {
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
-            transport_protocol: Transport::ProcivisTemporary,
+            transport: Transport::ProcivisTemporary,
             verifier_did: verifier_did.clone(),
         };
 
@@ -161,7 +161,7 @@ mod tests {
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
-            transport_protocol: Transport::ProcivisTemporary,
+            transport: Transport::ProcivisTemporary,
             verifier_did: verifier_did.clone(),
         };
 
@@ -185,7 +185,7 @@ mod tests {
 
         let request = CreateProofRequest {
             proof_schema_id,
-            transport_protocol: Transport::ProcivisTemporary,
+            transport: Transport::ProcivisTemporary,
             verifier_did: verifier_did.clone(),
         };
 
@@ -207,7 +207,7 @@ mod tests {
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
-            transport_protocol: Transport::ProcivisTemporary,
+            transport: Transport::ProcivisTemporary,
             verifier_did: verifier_did.clone(),
         };
 
