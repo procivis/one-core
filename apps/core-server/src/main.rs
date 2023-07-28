@@ -2,6 +2,7 @@
 
 use std::net::{IpAddr, SocketAddr};
 use std::panic;
+use std::time::Duration;
 
 use axum::http::{HeaderValue, Request, Response, StatusCode};
 use axum::middleware::{self, Next};
@@ -22,14 +23,10 @@ mod endpoints;
 use endpoints::{
     delete_credential_schema, delete_proof_schema, get_credential, get_credential_schema, get_did,
     get_organisation, get_proof_schema, misc, post_credential, post_credential_schema,
-    post_organisation, post_proof_schema, share_credential, share_proof,
-    ssi_post_verifier_reject_proof_request,
+    post_organisation, post_proof, post_proof_schema, share_credential, share_proof,
+    ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
+    ssi_post_verifier_reject_proof_request, temp_post_did,
 };
-
-use crate::endpoints::{
-    post_proof, ssi_post_issuer_connect, ssi_post_verifier_connect, temp_post_did,
-};
-use std::time::Duration;
 
 #[derive(Clone)]
 struct AppState {
@@ -61,6 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_did::get_did_details,
             endpoints::get_did::get_dids,
             endpoints::misc::get_build_info,
+            endpoints::ssi_post_handle_invitation::ssi_post_handle_invitation,
             endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
             endpoints::ssi_post_verifier_connect::ssi_verifier_connect,
             endpoints::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
@@ -105,6 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CreateDidRequest,
                     data_model::CreateDidResponse,
                     data_model::ProofRequestQueryParams,
+                    data_model::HandleInvitationRequestDTO,
                     data_model::Format,
                     data_model::Datatype,
                     data_model::DidType,
@@ -204,6 +203,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new()
+        .route(
+            "/ssi/handle-invitation/v1",
+            post(ssi_post_handle_invitation::ssi_post_handle_invitation),
+        )
         .route(
             "/ssi/temporary-issuer/v1/connect",
             post(ssi_post_issuer_connect::ssi_issuer_connect),

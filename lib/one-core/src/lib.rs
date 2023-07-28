@@ -14,6 +14,7 @@ pub mod credential_formatter;
 pub mod data_layer;
 pub mod data_model;
 pub mod error;
+pub mod handle_invitation;
 pub mod issuer_connect;
 pub mod signature_provider;
 pub mod transport_protocol;
@@ -37,7 +38,7 @@ impl OneCore {
             data_layer: DataLayer::create(database_url).await,
             transport_protocols: vec![(
                 "PROCIVIS_TEMPORARY".to_string(),
-                Arc::new(ProcivisTemp {}),
+                Arc::new(ProcivisTemp::default()),
             )],
             signature_providers: vec![],
             credential_formatters: vec![("JWT".to_string(), Arc::new(JWTFormatter {}))],

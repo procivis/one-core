@@ -15,6 +15,7 @@ members = [
 ]
 
 [workspace.dependencies]
+axum = { version = "0.6.19", features = ["macros"] }
 serde = "1.0"
 serde_json = "1.0"
 shadow-rs = "0.21.0"
