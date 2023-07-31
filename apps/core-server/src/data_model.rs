@@ -1,3 +1,4 @@
+use envmnt::errors::EnvmntError;
 use one_core::{
     data_layer::data_model::{
         ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
@@ -731,14 +732,28 @@ pub struct EntityShareResponseDTO {
     pub url: String,
 }
 
+fn get_core_base_url() -> String {
+    let env_url: Result<String, EnvmntError> = envmnt::get_parse("CORE_BASE_URL");
+    match env_url {
+        Ok(base_url) => base_url,
+        Err(_) => {
+            let ip = envmnt::get_or("SERVER_IP", "0.0.0.0");
+            let port = envmnt::get_u16("SERVER_PORT", 3000);
+            format!("http://{ip}:{port}")
+        }
+    }
+}
+
 impl From<CredentialShareResponse> for EntityShareResponseDTO {
     fn from(value: CredentialShareResponse) -> Self {
         let protocol =
             serde_variant::to_variant_name(&Transport::from(value.transport)).unwrap_or("UNKNOWN");
         Self {
             url: format!(
-                "/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
-                protocol, value.credential_id
+                "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
+                get_core_base_url(),
+                protocol,
+                value.credential_id
             ),
         }
     }
@@ -750,8 +765,10 @@ impl From<ProofShareResponse> for EntityShareResponseDTO {
             serde_variant::to_variant_name(&Transport::from(value.transport)).unwrap_or("UNKNOWN");
         Self {
             url: format!(
-                "/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
-                protocol, value.proof_id
+                "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
+                get_core_base_url(),
+                protocol,
+                value.proof_id
             ),
         }
     }
