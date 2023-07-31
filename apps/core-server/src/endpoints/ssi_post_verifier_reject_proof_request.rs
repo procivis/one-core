@@ -19,9 +19,6 @@ use crate::AppState;
         ("proof" = Uuid, Query, description = "Proof request id")
     ),
     tag = "ssi",
-    security(
-        ("bearer" = [])
-    ),
 )]
 pub(crate) async fn ssi_post_verifier_reject_proof_request(
     state: State<AppState>,
