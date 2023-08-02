@@ -20,37 +20,6 @@ pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
 }
 
-pub async fn insert_proof(
-    db: &DatabaseConnection,
-    proof_schema_id: &str,
-    verifier_did_id: &str,
-) -> Result<String, DbErr> {
-    let now = OffsetDateTime::now_utc();
-
-    let proof = proof::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
-        proof_schema_id: Set(proof_schema_id.to_string()),
-        created_date: Set(now),
-        last_modified: Set(now),
-        issuance_date: Set(now),
-        verifier_did_id: Set(verifier_did_id.to_string()),
-        receiver_did_id: Set(None),
-    }
-    .insert(db)
-    .await?;
-
-    proof_state::ActiveModel {
-        proof_id: Set(proof.id.to_owned()),
-        created_date: Set(now),
-        last_modified: Set(now),
-        state: Set(proof_state::ProofRequestState::Created),
-    }
-    .insert(db)
-    .await?;
-
-    Ok(proof.id)
-}
-
 pub async fn insert_credential(
     db: &DatabaseConnection,
     credential_schema_id: &str,
@@ -174,6 +143,13 @@ pub async fn get_credential_by_id(
     credential::Entity::find_by_id(id).one(database).await
 }
 
+pub async fn get_proof_by_id(
+    database: &DatabaseConnection,
+    id: &str,
+) -> Result<Option<proof::Model>, DbErr> {
+    proof::Entity::find_by_id(id).one(database).await
+}
+
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
     verifier_did_id: &str,
@@ -192,6 +168,22 @@ pub async fn insert_proof_request_to_database(
     .insert(database)
     .await?;
     Ok(proof.id)
+}
+
+pub async fn insert_proof_state_to_database(
+    database: &DatabaseConnection,
+    proof_id: &str,
+    state: ProofRequestState,
+) -> Result<(), DbErr> {
+    proof_state::ActiveModel {
+        proof_id: Set(proof_id.to_owned()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        state: Set(state),
+    }
+    .insert(database)
+    .await?;
+    Ok(())
 }
 
 #[allow(clippy::ptr_arg)]

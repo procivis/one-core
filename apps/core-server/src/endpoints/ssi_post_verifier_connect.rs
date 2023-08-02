@@ -52,7 +52,7 @@ pub(crate) async fn ssi_verifier_connect(
             tracing::warn!("Already finished");
             (StatusCode::CONFLICT, "Already finished").into_response()
         }
-        Err(OneCoreError::SSIError(SSIError::MissingCredential)) => {
+        Err(OneCoreError::SSIError(SSIError::MissingProof)) => {
             tracing::error!("Missing proof");
             (StatusCode::NOT_FOUND, "Missing proof").into_response()
         }

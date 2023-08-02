@@ -90,6 +90,9 @@ pub(crate) async fn fetch_proof_schema_claim_schemas(
             proof_schema_claim_schema::Column::Required,
         ])
         .column_as(claim_schema::Column::Key, "claim_key")
+        .column_as(claim_schema::Column::CreatedDate, "claim_created_date")
+        .column_as(claim_schema::Column::LastModified, "claim_last_modified")
+        .column_as(claim_schema::Column::Datatype, "claim_datatype")
         .column_as(credential_schema::Column::Id, "credential_schema_id")
         .column_as(
             credential_schema::Column::CreatedDate,

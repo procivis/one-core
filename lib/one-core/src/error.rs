@@ -28,6 +28,8 @@ pub enum SSIError {
     IncorrectProofState,
     #[error("Missing credential")]
     MissingCredential,
+    #[error("Missing proof")]
+    MissingProof,
     #[error("Parse error: `{0}`")]
     ParseError(ParseError),
     #[error("Incorrect query parameters: `{0}`")]

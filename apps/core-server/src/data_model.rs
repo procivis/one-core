@@ -1019,11 +1019,11 @@ pub struct ProofClaimResponseDTO {
 impl From<ProofClaimSchema> for ProofClaimResponseDTO {
     fn from(value: ProofClaimSchema) -> Self {
         Self {
-            id: value.schema.id,
-            created_date: value.schema.created_date,
-            last_modified: value.schema.last_modified,
-            key: value.schema.key,
-            datatype: value.schema.datatype.into(),
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            key: value.key,
+            datatype: value.datatype.into(),
             required: value.required,
             credential_schema: value.credential_schema.into(),
         }
