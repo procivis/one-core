@@ -11,7 +11,7 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
 
-    pub did_id: String,
+    pub verifier_did_id: String,
     pub receiver_did_id: Option<String>,
     pub proof_schema_id: String,
 }
@@ -22,7 +22,7 @@ impl ActiveModelBehavior for ActiveModel {}
 pub enum Relation {
     #[sea_orm(
         belongs_to = "super::did::Entity",
-        from = "Column::DidId",
+        from = "Column::VerifierDidId",
         to = "super::did::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"
@@ -36,6 +36,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     HolderDid,
+    #[sea_orm(has_many = "super::proof_claim::Entity")]
+    ProofClaim,
     #[sea_orm(
         belongs_to = "super::proof_schema::Entity",
         from = "Column::ProofSchemaId",
@@ -48,6 +50,12 @@ pub enum Relation {
     ProofState,
 }
 
+impl Related<super::proof_claim::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProofClaim.def()
+    }
+}
+
 impl Related<super::proof_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProofSchema.def()
@@ -57,5 +65,14 @@ impl Related<super::proof_schema::Entity> for Entity {
 impl Related<super::proof_state::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProofState.def()
+    }
+}
+
+impl Related<super::claim::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::proof_claim::Relation::Claim.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::proof_claim::Relation::Proof.def().rev())
     }
 }

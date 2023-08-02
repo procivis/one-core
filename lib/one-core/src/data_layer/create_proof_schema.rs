@@ -30,10 +30,7 @@ impl DataLayer {
             Some(sql_error) if matches!(sql_error, SqlErr::UniqueConstraintViolation(_)) => {
                 DataLayerError::AlreadyExists
             }
-            Some(_) | None => {
-                dbg!(&e);
-                DataLayerError::GeneralRuntimeError(e.to_string())
-            }
+            Some(_) | None => DataLayerError::GeneralRuntimeError(e.to_string()),
         })?;
 
         if !request.claim_schemas.is_empty() {
@@ -53,10 +50,7 @@ impl DataLayer {
             proof_schema_claim_schema::Entity::insert_many(proof_schema_claim_schema_relations)
                 .exec(&self.db)
                 .await
-                .map_err(|e| {
-                    dbg!(&e);
-                    DataLayerError::GeneralRuntimeError(e.to_string())
-                })?;
+                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
         }
 
         Ok(CreateProofSchemaResponse {

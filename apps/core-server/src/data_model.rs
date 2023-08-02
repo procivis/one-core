@@ -6,14 +6,15 @@ use one_core::{
         CreateOrganisationResponse, CreateProofRequest, CreateProofSchemaRequest,
         CreateProofSchemaResponse, CredentialClaimSchemaRequest, CredentialClaimSchemaResponse,
         CredentialSchemaResponse, CredentialShareResponse, DetailCredentialClaimResponse,
-        DetailCredentialResponse, EntityResponse, GetCredentialClaimSchemaResponse,
-        GetCredentialsResponse, GetDidDetailsResponse, GetDidsResponse,
-        GetOrganisationDetailsResponse, GetProofSchemaResponse, ListCredentialSchemaResponse,
-        ProofClaimSchemaResponse, ProofSchemaResponse, ProofShareResponse,
+        DetailCredentialResponse, DetailProofClaim, DetailProofClaimSchema, DetailProofSchema,
+        EntityResponse, GetCredentialClaimSchemaResponse, GetCredentialsResponse,
+        GetDidDetailsResponse, GetDidsResponse, GetOrganisationDetailsResponse,
+        GetProofSchemaResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
+        ProofDetailsResponse, ProofSchemaResponse, ProofShareResponse,
     },
     data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use time::OffsetDateTime;
 
 use utoipa::{IntoParams, ToSchema};
@@ -26,6 +27,23 @@ time::serde::format_description!(
     OffsetDateTime,
     "[year]-[month]-[day padding:zero]T[hour padding:zero]:[minute padding:zero]:[second padding:zero].000Z"
 );
+
+fn front_time<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let formatted = format!(
+        "{}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
+        dt.year(),
+        dt.month() as i32,
+        dt.day(),
+        dt.hour(),
+        dt.minute(),
+        dt.second(),
+        dt.millisecond()
+    );
+    formatted.serialize(s)
+}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -289,10 +307,10 @@ pub struct GetCredentialClaimSchemaResponseDTO {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaResponseDTO {
     pub id: String,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
@@ -306,10 +324,10 @@ pub struct CredentialSchemaResponseDTO {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialClaimSchemaResponseDTO {
     pub id: String,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub key: String,
@@ -365,10 +383,10 @@ pub struct GetProofSchemaResponseDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ProofSchemaResponseDTO {
     pub id: String,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
@@ -504,10 +522,10 @@ impl From<CreateOrganisationResponse> for CreateOrganisationResponseDTO {
 #[serde(rename_all = "camelCase")]
 pub struct GetOrganisationDetailsResponseDTO {
     pub id: String,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 }
@@ -660,10 +678,10 @@ impl From<one_core::data_layer::data_model::DidMethod> for DidMethod {
 #[serde(rename_all = "camelCase")]
 pub struct GetDidDetailsResponseDTO {
     id: String,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
@@ -778,14 +796,14 @@ impl From<ProofShareResponse> for EntityShareResponseDTO {
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialResponseDTO {
     pub id: String,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
     pub state: CredentialState,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub schema: ListCredentialSchemaResponseDTO,
@@ -797,10 +815,10 @@ pub struct DetailCredentialResponseDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ListCredentialSchemaResponseDTO {
     pub id: String,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
@@ -1071,4 +1089,132 @@ impl From<CreateProofRequestDTO> for CreateProofRequest {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct HandleInvitationRequestDTO {
     pub url: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofDetailsResponseDTO {
+    pub id: String,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub issuance_date: OffsetDateTime,
+    pub state: ProofRequestState,
+    pub organisation_id: String,
+    pub claims: Vec<DetailProofClaimDTO>,
+    pub schema: DetailProofSchemaDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct DetailProofSchemaDTO {
+    pub id: String,
+    pub name: String,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct DetailProofClaimDTO {
+    pub schema: DetailProofClaimSchemaDTO,
+    pub value: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct DetailProofClaimSchemaDTO {
+    pub id: String,
+    pub key: String,
+    pub datatype: Datatype,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub credential_schema: ListCredentialSchemaResponseDTO,
+}
+
+impl From<ProofDetailsResponse> for ProofDetailsResponseDTO {
+    fn from(value: ProofDetailsResponse) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            issuance_date: value.issuance_date,
+            state: value.state.into(),
+            organisation_id: value.organisation_id,
+            claims: value.claims.iter().map(|i| i.clone().into()).collect(),
+            schema: value.schema.into(),
+        }
+    }
+}
+
+impl From<DetailProofSchema> for DetailProofSchemaDTO {
+    fn from(value: DetailProofSchema) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+        }
+    }
+}
+
+impl From<DetailProofClaim> for DetailProofClaimDTO {
+    fn from(value: DetailProofClaim) -> Self {
+        Self {
+            schema: value.schema.into(),
+            value: value.value,
+        }
+    }
+}
+
+impl From<DetailProofClaimSchema> for DetailProofClaimSchemaDTO {
+    fn from(value: DetailProofClaimSchema) -> Self {
+        Self {
+            id: value.id,
+            key: value.key,
+            datatype: value.datatype.into(),
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            credential_schema: value.credential_schema.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ProofRequestState {
+    Created,
+    Pending,
+    Offered,
+    Accepted,
+    Rejected,
+    Revoked,
+    Error,
+}
+
+impl From<one_core::data_layer::data_model::ProofRequestState> for ProofRequestState {
+    fn from(value: one_core::data_layer::data_model::ProofRequestState) -> Self {
+        use one_core::data_layer::data_model::ProofRequestState as cs;
+        match value {
+            cs::Created => ProofRequestState::Created,
+            cs::Pending => ProofRequestState::Pending,
+            cs::Offered => ProofRequestState::Offered,
+            cs::Accepted => ProofRequestState::Accepted,
+            cs::Rejected => ProofRequestState::Rejected,
+            cs::Error => ProofRequestState::Error,
+        }
+    }
 }

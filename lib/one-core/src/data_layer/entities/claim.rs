@@ -5,14 +5,9 @@ use time::OffsetDateTime;
 #[sea_orm(table_name = "claim")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
+    pub id: String,
     pub claim_schema_id: String,
-
-    #[sea_orm(primary_key, auto_increment = false)]
     pub credential_id: String,
-
-    // #[sea_orm(primary_key, auto_increment = false)]
-    // pub proof_id: String,
-    #[sea_orm(primary_key, auto_increment = false)]
     pub value: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -38,14 +33,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Credential,
-    // #[sea_orm(
-    //     belongs_to = "super::proof::Entity",
-    //     from = "Column::ProofId",
-    //     to = "super::proof::Column::Id",
-    //     on_update = "Restrict",
-    //     on_delete = "Restrict"
-    // )]
-    // Proof,
+    #[sea_orm(has_many = "super::proof_claim::Entity")]
+    ProofClaim,
 }
 
 impl Related<super::claim_schema::Entity> for Entity {
@@ -60,8 +49,17 @@ impl Related<super::credential::Entity> for Entity {
     }
 }
 
-// impl Related<super::proof::Entity> for Entity {
-//     fn to() -> RelationDef {
-//         Relation::Proof.def()
-//     }
-// }
+impl Related<super::proof_claim::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProofClaim.def()
+    }
+}
+
+impl Related<super::proof::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::proof_claim::Relation::Proof.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::proof_claim::Relation::Claim.def().rev())
+    }
+}

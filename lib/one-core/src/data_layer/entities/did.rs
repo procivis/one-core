@@ -6,16 +6,14 @@ use time::OffsetDateTime;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
-
+    #[sea_orm(unique)]
     pub did: String,
-
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
     #[sea_orm(column_name = "type")]
     pub type_field: DidType,
     pub method: DidMethod,
-
     pub organisation_id: String,
 }
 

@@ -13,7 +13,6 @@ use crate::data_layer::{
 };
 
 fn is_valid_data(value: &str, datatype: Datatype) -> bool {
-    eprintln!("is_valid_data value: '{value}', datatype: {:?}", datatype);
     match datatype {
         Datatype::String => true,
         Datatype::Date => {
@@ -76,7 +75,7 @@ impl DataLayer {
             deleted_at: Set(None),
             transport: Set(request.transport.into()),
             credential: Set(vec![]),
-            did_id: Set(Some(did.id)),
+            issuer_did_id: Set(did.id),
             receiver_did_id: Set(None),
         }
         .insert(&self.db)
@@ -87,6 +86,7 @@ impl DataLayer {
             .claim_values
             .into_iter()
             .map(|request_claim| claim::ActiveModel {
+                id: Set(Uuid::new_v4().to_string()),
                 claim_schema_id: Set(request_claim.claim_id.to_string()),
                 credential_id: Set(credential.id.clone()),
                 value: Set(request_claim.value),

@@ -180,7 +180,14 @@ pub(crate) async fn get_proof_state(
         .order_by(proof_state::Column::CreatedDate, Order::Desc)
         .one(db)
         .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+        .map_err(|e| {
+            tracing::error!(
+                "Error while fetching proof state for proof {}. Error: {}",
+                proof_request_id,
+                e.to_string()
+            );
+            DataLayerError::GeneralRuntimeError(e.to_string())
+        })?
         .ok_or(DataLayerError::RecordNotFound)?;
 
     Ok(proof_request_state.state)
