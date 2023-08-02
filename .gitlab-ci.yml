@@ -156,12 +156,14 @@ build_android_sdk:
   services:
     - docker:dind
   stage: sdk_build
+  variables:
+    CROSS_DOCKER_IN_DOCKER: "true"
   needs:
     - build
     - tests
-  before_script:
-    - export HOSTNAME=$(docker ps -ql)
   script:
+    - export HOSTNAME=$(docker ps -ql)
+    - export CROSS_CONTAINER_OPTS='--env="CI_PIPELINE_ID='$CI_PIPELINE_ID'"'
     - makers build_android
   artifacts:
     paths:
