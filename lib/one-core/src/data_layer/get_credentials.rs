@@ -173,7 +173,7 @@ mod tests {
 
     use crate::data_layer::{
         common_queries::insert_credential_state,
-        data_model::CredentialState,
+        data_model::{CredentialState, SortDirection, SortableCredentialColumn},
         entities::{claim_schema::Datatype, credential_state},
         get_credentials::GetCredentialsQuery,
         test_utilities::*,
@@ -290,6 +290,65 @@ mod tests {
         assert_eq!(
             CredentialState::Offered,
             credentials.values[item_index].state
+        );
+    }
+
+    #[tokio::test]
+    async fn get_credentials_test_order_by_state() {
+        let test_data = TestData::new().await;
+
+        let later = OffsetDateTime::now_utc() + time::Duration::seconds(1);
+        insert_credential_state(
+            &test_data.data_layer.db,
+            &test_data.first_credential_id,
+            later,
+            credential_state::CredentialState::Offered,
+        )
+        .await
+        .unwrap();
+
+        fn get_query_sort_by_state(
+            organisation_id: &str,
+            sort_direction: SortDirection,
+        ) -> GetCredentialsQuery {
+            GetCredentialsQuery {
+                page: 0,
+                page_size: 2,
+                organisation_id: organisation_id.to_owned(),
+                name: None,
+                sort: Some(SortableCredentialColumn::State),
+                sort_direction: Some(sort_direction),
+            }
+        }
+
+        let credentials = test_data
+            .data_layer
+            .get_credentials(get_query_sort_by_state(
+                &test_data.organisation_id,
+                SortDirection::Descending,
+            ))
+            .await;
+        assert!(credentials.is_ok());
+        let credentials_descending = credentials.unwrap();
+        assert_eq!(2, credentials_descending.total_items);
+        assert_eq!(
+            test_data.first_credential_id,
+            credentials_descending.values[0].id
+        );
+
+        let credentials = test_data
+            .data_layer
+            .get_credentials(get_query_sort_by_state(
+                &test_data.organisation_id,
+                SortDirection::Ascending,
+            ))
+            .await;
+        assert!(credentials.is_ok());
+        let credentials_ascending = credentials.unwrap();
+        assert_eq!(2, credentials_ascending.total_items);
+        assert_eq!(
+            test_data.first_credential_id,
+            credentials_ascending.values[1].id
         );
     }
 
