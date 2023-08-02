@@ -17,10 +17,10 @@ use crate::data_layer::{
 
 pub(crate) async fn fetch_claim_claim_schemas(
     db: &DatabaseConnection,
-    schema_ids: &[String],
+    credential_ids: &[String],
 ) -> Result<Vec<ClaimClaimSchemaCombined>, DataLayerError> {
     let claims = Claim::find()
-        .filter(Condition::all().add(claim::Column::CredentialId.is_in(schema_ids)))
+        .filter(Condition::all().add(claim::Column::CredentialId.is_in(credential_ids)))
         .select_only()
         .columns([claim::Column::CredentialId, claim::Column::Value])
         .columns([
