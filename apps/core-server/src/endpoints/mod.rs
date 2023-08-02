@@ -16,6 +16,7 @@ pub mod share_proof;
 
 // SSI
 pub mod ssi_post_issuer_connect;
+pub mod ssi_post_verifier_connect;
 pub mod ssi_post_verifier_reject_proof_request;
 
 // TEMP

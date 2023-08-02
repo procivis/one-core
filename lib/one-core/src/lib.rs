@@ -17,6 +17,7 @@ pub mod error;
 pub mod issuer_connect;
 pub mod signature_provider;
 pub mod transport_protocol;
+pub mod verifier_connect;
 pub mod verifier_reject_proof_request;
 
 // Clone just for now. Later it should be removed.

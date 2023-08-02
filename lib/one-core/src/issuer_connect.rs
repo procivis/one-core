@@ -3,7 +3,7 @@ use crate::{
         data_model::{CreateDidRequest, CredentialState, DidMethod, DidType},
         DataLayerError,
     },
-    data_model::{ConnectRequest, ConnectResponse},
+    data_model::{ConnectIssuerRequest, ConnectIssuerResponse},
     error::{OneCoreError, SSIError},
     OneCore,
 };
@@ -12,8 +12,8 @@ impl OneCore {
     pub async fn issuer_connect(
         &self,
         transport_protocol: &str,
-        request: &ConnectRequest,
-    ) -> Result<ConnectResponse, OneCoreError> {
+        request: &ConnectIssuerRequest,
+    ) -> Result<ConnectIssuerResponse, OneCoreError> {
         // Not used for now
         let _transport = self.get_transport_protocol(transport_protocol)?;
 
@@ -73,7 +73,7 @@ impl OneCore {
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
-        Ok(ConnectResponse {
+        Ok(ConnectIssuerResponse {
             credential: token,
             format: format.to_owned(),
         })

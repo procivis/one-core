@@ -11,7 +11,7 @@ use one_core::{
         GetOrganisationDetailsResponse, GetProofSchemaResponse, ListCredentialSchemaResponse,
         ProofClaimSchemaResponse, ProofSchemaResponse, ProofShareResponse,
     },
-    data_model::ConnectResponse,
+    data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -933,9 +933,17 @@ impl From<SortableCredentialColumn> for one_core::data_layer::data_model::Sortab
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
-pub struct PostSsiConnect {
+pub struct PostSsiIssuerConnectQuery {
     pub protocol: String,
     pub credential: Uuid,
+}
+
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+#[serde(rename_all = "camelCase")]
+pub struct PostSsiVerifierConnectQuery {
+    pub protocol: String,
+    pub proof: Uuid,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -946,16 +954,60 @@ pub struct ConnectRequestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ConnectResponseDTO {
+pub struct ConnectIssuerResponseDTO {
     pub credentials: String,
     pub format: String,
 }
 
-impl From<ConnectResponse> for ConnectResponseDTO {
-    fn from(value: ConnectResponse) -> Self {
+impl From<ConnectIssuerResponse> for ConnectIssuerResponseDTO {
+    fn from(value: ConnectIssuerResponse) -> Self {
         Self {
             credentials: value.credential,
             format: value.format,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectVerifierResponseDTO {
+    pub claims: Vec<ProofClaimResponseDTO>,
+}
+
+impl From<ConnectVerifierResponse> for ConnectVerifierResponseDTO {
+    fn from(value: ConnectVerifierResponse) -> Self {
+        Self {
+            claims: value.claims.into_iter().map(|item| item.into()).collect(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofClaimResponseDTO {
+    pub id: String,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub key: String,
+    pub datatype: Datatype,
+    pub required: bool,
+    pub credential_schema: ListCredentialSchemaResponseDTO,
+}
+
+impl From<ProofClaimSchema> for ProofClaimResponseDTO {
+    fn from(value: ProofClaimSchema) -> Self {
+        Self {
+            id: value.schema.id,
+            created_date: value.schema.created_date,
+            last_modified: value.schema.last_modified,
+            key: value.schema.key,
+            datatype: value.schema.datatype.into(),
+            required: value.required,
+            credential_schema: value.credential_schema.into(),
         }
     }
 }
