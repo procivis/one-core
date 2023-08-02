@@ -22,7 +22,7 @@ mod endpoints;
 
 use endpoints::{
     delete_credential_schema, delete_proof_schema, get_credential, get_credential_schema, get_did,
-    get_organisation, get_proof_schema, misc, post_credential, post_credential_schema,
+    get_organisation, get_proof, get_proof_schema, misc, post_credential, post_credential_schema,
     post_organisation, post_proof, post_proof_schema, share_credential, share_proof,
     ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
     ssi_post_verifier_reject_proof_request, temp_post_did,
@@ -57,6 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_organisation::get_organisations,
             endpoints::get_did::get_did_details,
             endpoints::get_did::get_dids,
+            endpoints::get_proof::get_proof_details,
             endpoints::misc::get_build_info,
             endpoints::ssi_post_handle_invitation::ssi_post_handle_invitation,
             endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
@@ -99,7 +100,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::ConnectIssuerResponseDTO,
                     data_model::ConnectVerifierResponseDTO,
                     data_model::ProofClaimResponseDTO,
+                    data_model::ProofDetailsResponseDTO,
                     data_model::ConnectRequestDTO,
+                    data_model::DetailProofClaimDTO,
+                    data_model::DetailProofSchemaDTO,
+                    data_model::DetailProofClaimSchemaDTO,
                     data_model::CreateDidRequest,
                     data_model::CreateDidResponse,
                     data_model::ProofRequestQueryParams,
@@ -108,6 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::Datatype,
                     data_model::DidType,
                     data_model::DidMethod,
+                    data_model::ProofRequestState,
                     data_model::SortDirection)
         ),
         modifiers(),
@@ -189,6 +195,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             get(get_proof_schema::get_proof_schemas).post(post_proof_schema::post_proof_schema),
         )
         .route("/api/proof-request/v1", post(post_proof::post_proof))
+        .route(
+            "/api/proof-request/v1/:id",
+            get(get_proof::get_proof_details),
+        )
         .route(
             "/api/organisation/v1",
             get(get_organisation::get_organisations).post(post_organisation::post_organisation),

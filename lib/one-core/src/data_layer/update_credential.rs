@@ -13,7 +13,7 @@ impl DataLayer {
     ) -> Result<(), DataLayerError> {
         let model = credential::ActiveModel {
             id: Unchanged(credential_id.to_owned()),
-            did_id: Set(Some(issuer.to_owned())),
+            issuer_did_id: Set(issuer.to_owned()),
             last_modified: Set(OffsetDateTime::now_utc()),
             ..Default::default()
         };

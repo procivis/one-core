@@ -15,7 +15,7 @@ required-features = ["cli", "mysql"]
 
 [dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
-sea-orm-migration = { version = "0.12.0-rc.3", default_features = false, features = [
+sea-orm-migration = { version = "0.12.1", default_features = false, features = [
     "runtime-tokio-rustls",
     "sqlx-sqlite",
 ] }

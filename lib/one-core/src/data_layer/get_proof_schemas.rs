@@ -156,6 +156,7 @@ mod tests {
             None,
             &new_claims,
             &organisation_id,
+            "ProofSchema",
         )
         .await
         .unwrap();

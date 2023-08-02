@@ -32,7 +32,7 @@ impl DataLayer {
             created_date: Set(now),
             last_modified: Set(now),
             issuance_date: Set(now),
-            did_id: Set(request.verifier_did),
+            verifier_did_id: Set(request.verifier_did),
             receiver_did_id: Set(None),
             proof_schema_id: Set(request.proof_schema_id.to_string()),
         }
@@ -45,10 +45,7 @@ impl DataLayer {
             Some(sql_error) if matches!(sql_error, SqlErr::ForeignKeyConstraintViolation(_)) => {
                 DataLayerError::RecordNotFound
             }
-            Some(_) | None => {
-                dbg!(&e);
-                DataLayerError::GeneralRuntimeError(e.to_string())
-            }
+            Some(_) | None => DataLayerError::GeneralRuntimeError(e.to_string()),
         })?;
 
         insert_proof_state(&self.db, &proof.id, now, now, ProofRequestState::Pending).await?;
@@ -107,6 +104,7 @@ mod tests {
             proof_schema_deleted_at,
             &new_claims,
             &organisation_id,
+            "ProofSchema",
         )
         .await
         .unwrap();
@@ -145,7 +143,7 @@ mod tests {
         let state = get_proof_state(&data_layer.db, &proof_id).await.unwrap();
 
         assert_eq!(inserted_proof.proof_schema_id, proof_schema_id);
-        assert_eq!(inserted_proof.did_id, verifier_did);
+        assert_eq!(inserted_proof.verifier_did_id, verifier_did);
         assert_eq!(inserted_proof.receiver_did_id, None);
         assert_eq!(state, ProofRequestState::Pending);
     }

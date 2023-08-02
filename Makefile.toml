@@ -40,7 +40,7 @@ script = [
 
 [tasks.install_seaormcli]
 command = "cargo"
-args = ["install", "sea-orm-cli", "--force", "--version", "0.12.0-rc.3"]
+args = ["install", "sea-orm-cli", "--force", "--version", "0.12.1"]
 
 [tasks.dbup1]
 command = "cargo"

@@ -4,6 +4,7 @@ pub mod get_credential;
 pub mod get_credential_schema;
 pub mod get_did;
 pub mod get_organisation;
+pub mod get_proof;
 pub mod get_proof_schema;
 pub mod misc;
 pub mod post_credential;

@@ -40,7 +40,7 @@ pub(crate) async fn delete_proof_schema(
             DataLayerError::RecordNotFound => StatusCode::NOT_FOUND,
             DataLayerError::RecordNotUpdated => StatusCode::NOT_FOUND,
             _ => {
-                eprintln!("Error while deleting proof schema: {:?}", error);
+                tracing::error!("Error while deleting proof schema: {:?}", error);
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         };

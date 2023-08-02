@@ -9,20 +9,15 @@ use crate::data_layer::{
 
 async fn get_did_value(
     db: &DatabaseConnection,
-    did_id: &Option<String>,
+    did_id: &str,
 ) -> Result<Option<String>, DataLayerError> {
-    match did_id {
+    let did = Did::find_by_id(did_id)
+        .one(db)
+        .await
+        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+    match did {
         None => Ok(None),
-        Some(did_id) => {
-            let did = Did::find_by_id(did_id)
-                .one(db)
-                .await
-                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-            match did {
-                None => Ok(None),
-                Some(value) => Ok(Some(value.did)),
-            }
-        }
+        Some(value) => Ok(Some(value.did)),
     }
 }
 
@@ -37,7 +32,7 @@ impl DataLayer {
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
             .ok_or(DataLayerError::RecordNotFound)?;
 
-        let did = get_did_value(&self.db, &credential.did_id).await?;
+        let did = get_did_value(&self.db, &credential.issuer_did_id).await?;
         let credential_state = get_credential_state(&self.db, &credential.id).await?;
 
         let schema: credential_schema::Model =

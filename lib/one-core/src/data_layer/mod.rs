@@ -22,6 +22,7 @@ pub mod get_did;
 pub mod get_dids;
 pub mod get_organisation_details;
 pub mod get_organisations;
+pub mod get_proof_details;
 pub mod get_proof_schema_details;
 pub mod get_proof_schemas;
 pub mod reject_proof_request;

@@ -12,7 +12,7 @@ mysql = ["migration/mysql", "sea-orm/sqlx-mysql"]
 [dependencies]
 async-trait = "0.1.68"
 migration = { path = "../../apps/migration", default-features = false }
-sea-orm = { version = "0.12.0-rc.3", default-features = false, features = [
+sea-orm = { version = "0.12.1", default-features = false, features = [
     "sqlx-sqlite",
     "runtime-tokio-rustls",
     "macros",

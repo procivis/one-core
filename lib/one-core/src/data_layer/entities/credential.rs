@@ -16,9 +16,11 @@ pub struct Model {
     pub deleted_at: Option<OffsetDateTime>,
 
     pub transport: Transport,
+
+    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
     pub credential: Vec<u8>,
 
-    pub did_id: Option<String>,
+    pub issuer_did_id: String,
     pub receiver_did_id: Option<String>,
 }
 
@@ -40,7 +42,7 @@ pub enum Relation {
     CredentialState,
     #[sea_orm(
         belongs_to = "super::did::Entity",
-        from = "Column::DidId",
+        from = "Column::IssuerDidId",
         to = "super::did::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"
@@ -53,7 +55,7 @@ pub enum Relation {
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    HolderDid,
+    ReceiverDidId,
     #[sea_orm(has_many = "super::key::Entity")]
     Key,
 }

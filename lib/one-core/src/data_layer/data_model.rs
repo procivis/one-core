@@ -4,7 +4,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::entities::{
-    claim_schema, credential_schema, credential_state, did, organisation, proof_schema,
+    claim, claim_schema, credential_schema, credential_state, did, organisation, proof,
+    proof_schema, proof_state,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -544,7 +545,7 @@ pub struct DetailCredentialClaimResponse {
     pub value: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CredentialState {
     Created,
     Pending,
@@ -565,6 +566,29 @@ impl From<entities::credential_state::CredentialState> for CredentialState {
             entities::credential_state::CredentialState::Rejected => CredentialState::Rejected,
             entities::credential_state::CredentialState::Revoked => CredentialState::Revoked,
             entities::credential_state::CredentialState::Error => CredentialState::Error,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ProofRequestState {
+    Created,
+    Pending,
+    Offered,
+    Accepted,
+    Rejected,
+    Error,
+}
+
+impl From<entities::proof_state::ProofRequestState> for ProofRequestState {
+    fn from(value: entities::proof_state::ProofRequestState) -> Self {
+        match value {
+            entities::proof_state::ProofRequestState::Created => ProofRequestState::Created,
+            entities::proof_state::ProofRequestState::Pending => ProofRequestState::Pending,
+            entities::proof_state::ProofRequestState::Offered => ProofRequestState::Offered,
+            entities::proof_state::ProofRequestState::Accepted => ProofRequestState::Accepted,
+            entities::proof_state::ProofRequestState::Rejected => ProofRequestState::Rejected,
+            entities::proof_state::ProofRequestState::Error => ProofRequestState::Error,
         }
     }
 }
@@ -595,7 +619,7 @@ impl From<ClaimClaimSchemaCombined> for DetailCredentialClaimResponse {
     }
 }
 
-#[derive(Debug, Clone, FromQueryResult)]
+#[derive(Debug, FromQueryResult, Clone)]
 pub(crate) struct CredentialDidCredentialSchemaCombined {
     // credential table
     pub id: String,
@@ -633,6 +657,20 @@ impl From<CredentialDidCredentialSchemaCombined> for ListCredentialSchemaRespons
     }
 }
 
+impl From<credential_schema::Model> for ListCredentialSchemaResponse {
+    fn from(value: credential_schema::Model) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            format: value.format.into(),
+            revocation_method: value.revocation_method.into(),
+            organisation_id: value.organisation_id,
+        }
+    }
+}
+
 impl DetailCredentialResponse {
     pub(crate) fn from_combined_credential_did_and_credential_schema(
         value: CredentialDidCredentialSchemaCombined,
@@ -665,4 +703,98 @@ pub struct CreateProofRequest {
 #[derive(Clone, Debug)]
 pub struct CreateProofResponse {
     pub id: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProofDetailsResponse {
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub issuance_date: OffsetDateTime,
+    pub state: ProofRequestState,
+    pub organisation_id: String,
+    pub claims: Vec<DetailProofClaim>,
+    pub schema: DetailProofSchema,
+}
+
+impl ProofDetailsResponse {
+    pub(crate) fn from_models(
+        proof: proof::Model,
+        state: proof_state::ProofRequestState,
+        proof_schema: proof_schema::Model,
+        claims: Vec<(claim::Model, claim_schema::Model, credential_schema::Model)>,
+    ) -> Self {
+        Self {
+            id: proof.id,
+            created_date: proof.created_date,
+            last_modified: proof.last_modified,
+            issuance_date: proof.issuance_date,
+            state: state.into(),
+            organisation_id: proof_schema.organisation_id,
+            schema: DetailProofSchema {
+                id: proof_schema.id,
+                name: proof_schema.name,
+                created_date: proof_schema.created_date,
+                last_modified: proof_schema.last_modified,
+            },
+            claims: claims
+                .into_iter()
+                .map(DetailProofClaim::from_models)
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DetailProofSchema {
+    pub id: String,
+    pub name: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct DetailProofClaim {
+    pub schema: DetailProofClaimSchema,
+    pub value: String,
+}
+
+impl DetailProofClaim {
+    pub(crate) fn from_models(
+        (claim, claim_schema, credential_schema): (
+            claim::Model,
+            claim_schema::Model,
+            credential_schema::Model,
+        ),
+    ) -> Self {
+        Self {
+            schema: DetailProofClaimSchema::from_models(claim_schema, credential_schema),
+            value: claim.value,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DetailProofClaimSchema {
+    pub id: String,
+    pub key: String,
+    pub datatype: Datatype,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub credential_schema: ListCredentialSchemaResponse,
+}
+impl DetailProofClaimSchema {
+    fn from_models(
+        claim_schema: claim_schema::Model,
+        credential_schema: credential_schema::Model,
+    ) -> Self {
+        Self {
+            id: claim_schema.id,
+            key: claim_schema.key,
+            datatype: claim_schema.datatype.into(),
+            created_date: claim_schema.created_date,
+            last_modified: claim_schema.last_modified,
+            credential_schema: credential_schema.into(),
+        }
+    }
 }
