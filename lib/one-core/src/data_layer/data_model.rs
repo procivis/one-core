@@ -3,7 +3,9 @@ use sea_orm::FromQueryResult;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::entities::{claim_schema, credential_schema, did, organisation, proof_schema};
+use super::entities::{
+    claim_schema, credential_schema, credential_state, did, organisation, proof_schema,
+};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum Format {
@@ -159,6 +161,8 @@ pub enum SortableCredentialSchemaColumn {
 pub enum SortableCredentialColumn {
     CreatedDate,
     SchemaName,
+    IssuerDid,
+    State,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -585,6 +589,9 @@ pub(crate) struct CredentialDidCredentialSchemaCombined {
     // did table
     pub did: Option<String>,
 
+    // credential_state table
+    pub state: credential_state::CredentialState,
+
     // credential_schema table
     pub schema_id: String,
     pub schema_name: String,
@@ -613,19 +620,12 @@ impl DetailCredentialResponse {
     pub(crate) fn from_combined_credential_did_and_credential_schema(
         value: CredentialDidCredentialSchemaCombined,
         claims: &[ClaimClaimSchemaCombined],
-        states: &[entities::credential_state::Model],
     ) -> Result<Self, DataLayerError> {
         Ok(DetailCredentialResponse {
             id: value.id.to_owned(),
             created_date: value.created_date,
             issuance_date: value.issuance_date,
-            state: states
-                .iter()
-                .find(|e| e.credential_id == value.id)
-                .ok_or(DataLayerError::RecordNotFound)?
-                .to_owned()
-                .state
-                .into(),
+            state: value.state.into(),
             last_modified: value.last_modified,
             issuer_did: value.did.to_owned(),
             claims: claims

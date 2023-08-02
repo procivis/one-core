@@ -32,7 +32,7 @@ impl Related<super::credential::Entity> for Entity {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum CredentialState {
     #[default]

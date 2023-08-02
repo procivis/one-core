@@ -1,9 +1,7 @@
-use migration::{Order, Query};
-
-use sea_orm::sea_query::{IntoCondition, SimpleExpr};
+use sea_orm::sea_query::{expr::Expr, IntoCondition, SimpleExpr};
 use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoSimpleExpr, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select,
+    QueryOrder, QuerySelect, RelationTrait, Select,
 };
 
 use crate::data_layer::{
@@ -27,6 +25,8 @@ impl GetEntityColumn for SortableCredentialColumn {
             SortableCredentialColumn::SchemaName => {
                 credential_schema::Column::Name.into_simple_expr()
             }
+            SortableCredentialColumn::IssuerDid => did::Column::Did.into_simple_expr(),
+            SortableCredentialColumn::State => credential_state::Column::State.into_simple_expr(),
         }
     }
 }
@@ -46,6 +46,7 @@ fn get_select_credentials_query(
             credential::Column::IssuanceDate,
         ])
         .columns([did::Column::Did])
+        .columns([credential_state::Column::State])
         .column_as(credential_schema::Column::Id, "schema_id")
         .column_as(credential_schema::Column::Name, "schema_name")
         .column_as(credential_schema::Column::Format, "schema_format")
@@ -65,10 +66,12 @@ fn get_select_credentials_query(
             credential_schema::Column::OrganisationId,
             "schema_organisation_id",
         )
+        // add related issuerDid
         .join_rev(
             sea_orm::JoinType::LeftJoin,
             credential::Relation::IssuerDid.def().rev(),
         )
+        // add related schema
         .join_rev(
             sea_orm::JoinType::InnerJoin,
             credential::Relation::CredentialSchema
@@ -81,29 +84,31 @@ fn get_select_credentials_query(
                         .into_condition(),
                 }),
         )
+        // add latest state
+        .column_as(
+            Expr::col((
+                credential_state::Entity,
+                credential_state::Column::CreatedDate,
+            ))
+            .max(),
+            "state_created_date",
+        )
+        .group_by(credential::Column::Id)
+        .join(
+            sea_orm::JoinType::InnerJoin,
+            credential::Relation::CredentialState.def(),
+        )
+        // fallback ordering
+        .order_by_desc(credential::Column::CreatedDate)
+        .order_by_desc(credential::Column::Id)
 }
 
-async fn combine_with_states_and_claims(
+async fn combine_with_claims(
     db: &DatabaseConnection,
     query: Select<Credential>,
 ) -> Result<Vec<DetailCredentialResponse>, DataLayerError> {
     let combined_credentials = query
         .into_model::<CredentialDidCredentialSchemaCombined>()
-        .all(db)
-        .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-    let states = credential_state::Entity::find()
-        .filter(
-            credential_state::Column::CreatedDate.in_subquery(
-                Query::select()
-                    .expr(credential_state::Column::CreatedDate.max())
-                    .group_by_col(credential_state::Column::CredentialId)
-                    .from(credential_state::Entity)
-                    .to_owned(),
-            ),
-        )
-        .order_by(credential_state::Column::CreatedDate, Order::Desc)
         .all(db)
         .await
         .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
@@ -119,7 +124,7 @@ async fn combine_with_states_and_claims(
         .into_iter()
         .map(|value| {
             DetailCredentialResponse::from_combined_credential_did_and_credential_schema(
-                value, &claims, &states,
+                value, &claims,
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -147,7 +152,7 @@ impl DataLayer {
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
         Ok(GetCredentialsResponse {
-            values: combine_with_states_and_claims(&self.db, query).await?,
+            values: combine_with_claims(&self.db, query).await?,
             total_pages: calculate_pages_count(items_count, limit),
             total_items: items_count,
         })
@@ -157,7 +162,7 @@ impl DataLayer {
         &self,
     ) -> Result<Vec<DetailCredentialResponse>, DataLayerError> {
         let query = get_select_credentials_query(Credential::find(), None);
-        combine_with_states_and_claims(&self.db, query).await
+        combine_with_claims(&self.db, query).await
     }
 }
 
@@ -256,11 +261,11 @@ mod tests {
             credentials.values[1].issuer_did.to_owned().unwrap()
         );
 
-        let now = OffsetDateTime::now_utc();
+        let later = OffsetDateTime::now_utc() + time::Duration::seconds(1);
         insert_credential_state(
             &test_data.data_layer.db,
             &test_data.first_credential_id,
-            now,
+            later,
             credential_state::CredentialState::Offered,
         )
         .await
@@ -276,7 +281,16 @@ mod tests {
             .await;
         assert!(credentials.is_ok());
         let credentials = credentials.unwrap();
-        assert_eq!(CredentialState::Offered, credentials.values[0].state);
+        assert_eq!(2, credentials.total_items);
+        let item_index = credentials
+            .values
+            .iter()
+            .position(|r| r.id == test_data.first_credential_id)
+            .unwrap();
+        assert_eq!(
+            CredentialState::Offered,
+            credentials.values[item_index].state
+        );
     }
 
     #[tokio::test]
