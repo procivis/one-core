@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::data_layer::data_model::{CredentialClaimSchemaResponse, ListCredentialSchemaResponse};
+use crate::data_layer::data_model::{Datatype, ListCredentialSchemaResponse};
 
 #[derive(Deserialize)]
 pub struct ConnectIssuerRequest {
@@ -25,7 +26,11 @@ pub struct ConnectVerifierResponse {
 }
 
 pub struct ProofClaimSchema {
-    pub schema: CredentialClaimSchemaResponse,
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub key: String,
+    pub datatype: Datatype,
     pub required: bool,
     pub credential_schema: ListCredentialSchemaResponse,
 }

@@ -1,8 +1,5 @@
 use crate::{
-    data_layer::{
-        data_model::{CreateDidRequest, CredentialState, DidMethod, DidType},
-        DataLayerError,
-    },
+    data_layer::{data_model::CredentialState, DataLayerError},
     data_model::{ConnectIssuerRequest, ConnectIssuerResponse},
     error::{OneCoreError, SSIError},
     OneCore,
@@ -43,26 +40,22 @@ impl OneCore {
 
         let formatter = self.get_formatter(format)?;
 
-        let did_insert_result = self
-            .data_layer
-            .create_did(CreateDidRequest {
-                name: "NEW_DID_FIXME".to_string(),
-                organisation_id: credential.schema.organisation_id.clone(),
-                did: request.did.clone(),
-                did_type: DidType::Remote,
-                did_method: DidMethod::Web,
-            })
-            .await;
-
-        match did_insert_result {
-            Ok(did) => self
+        let did_id = match self.data_layer.get_did_details_by_value(&request.did).await {
+            Ok(did) => did.id,
+            Err(DataLayerError::RecordNotFound) => self
                 .data_layer
-                .update_credential_received_did(&credential_id, &did.id)
+                .insert_remote_did(&request.did, &credential.schema.organisation_id)
                 .await
                 .map_err(OneCoreError::DataLayerError)?,
-            Err(DataLayerError::AlreadyExists) => {}
-            Err(e) => return Err(OneCoreError::DataLayerError(e)),
-        }
+            Err(e) => {
+                return Err(OneCoreError::DataLayerError(e));
+            }
+        };
+
+        self.data_layer
+            .update_credential_received_did(&credential_id, &did_id)
+            .await
+            .map_err(OneCoreError::DataLayerError)?;
 
         let token = formatter
             .format(&credential, &request.did)

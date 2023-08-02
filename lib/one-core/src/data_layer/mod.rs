@@ -14,6 +14,7 @@ pub mod create_proof_schema;
 pub mod data_model;
 pub mod delete_credential_schema;
 pub mod delete_proof_schema;
+pub mod did_manipulation;
 pub mod get_credential_details;
 pub mod get_credential_schema_details;
 pub mod get_credential_schemas;
@@ -30,6 +31,7 @@ pub mod set_credential_state;
 pub mod share_credential;
 pub mod share_proof;
 pub mod update_credential;
+pub mod update_proof;
 
 pub mod list_query;
 

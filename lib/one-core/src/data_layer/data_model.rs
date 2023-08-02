@@ -308,6 +308,9 @@ pub(crate) struct ProofSchemaClaimSchemaCombined {
     pub proof_schema_id: String,
     pub required: bool,
     pub claim_key: String,
+    pub claim_created_date: OffsetDateTime,
+    pub claim_last_modified: OffsetDateTime,
+    pub claim_datatype: claim_schema::Datatype,
     pub credential_schema_id: String,
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_last_modified: OffsetDateTime,
@@ -332,6 +335,9 @@ pub struct ProofClaimSchemaResponse {
     pub id: String,
     pub is_required: bool,
     pub key: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub datatype: claim_schema::Datatype,
     pub credential_schema: ListCredentialSchemaResponse,
 }
 
@@ -341,6 +347,9 @@ impl ProofClaimSchemaResponse {
             id: value.claim_schema_id,
             key: value.claim_key,
             is_required: value.required,
+            created_date: value.claim_created_date,
+            last_modified: value.claim_last_modified,
+            datatype: value.claim_datatype,
             credential_schema: ListCredentialSchemaResponse {
                 id: value.credential_schema_id,
                 created_date: value.credential_schema_created_date,
@@ -713,6 +722,7 @@ pub struct ProofDetailsResponse {
     pub issuance_date: OffsetDateTime,
     pub state: ProofRequestState,
     pub organisation_id: String,
+    pub receiver_did_id: Option<String>,
     pub claims: Vec<DetailProofClaim>,
     pub schema: DetailProofSchema,
 }
@@ -731,6 +741,7 @@ impl ProofDetailsResponse {
             issuance_date: proof.issuance_date,
             state: state.into(),
             organisation_id: proof_schema.organisation_id,
+            receiver_did_id: proof.receiver_did_id,
             schema: DetailProofSchema {
                 id: proof_schema.id,
                 name: proof_schema.name,

@@ -87,12 +87,18 @@ mod tests {
             .await
             .unwrap();
 
-            let proof_id = insert_proof(&data_layer.db, &proof_schema_id, &did_id)
-                .await
-                .unwrap();
+            let proof_id =
+                insert_proof_request_to_database(&data_layer.db, &did_id, None, &proof_schema_id)
+                    .await
+                    .unwrap();
 
-            let proof_state_count = ProofState::find().all(&data_layer.db).await.unwrap().len();
-            assert_eq!(1, proof_state_count);
+            insert_proof_state_to_database(
+                &data_layer.db,
+                &proof_id,
+                proof_state::ProofRequestState::Created,
+            )
+            .await
+            .unwrap();
 
             Self {
                 data_layer,
