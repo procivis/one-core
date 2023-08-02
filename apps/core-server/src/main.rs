@@ -26,7 +26,9 @@ use endpoints::{
     ssi_post_verifier_reject_proof_request,
 };
 
-use crate::endpoints::{post_proof, ssi_post_issuer_connect, temp_post_did};
+use crate::endpoints::{
+    post_proof, ssi_post_issuer_connect, ssi_post_verifier_connect, temp_post_did,
+};
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -60,6 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_did::get_dids,
             endpoints::misc::get_build_info,
             endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
+            endpoints::ssi_post_verifier_connect::ssi_verifier_connect,
             endpoints::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
             endpoints::temp_post_did::post_did
         ),
@@ -95,7 +98,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::GetOrganisationDetailsResponseDTO,
                     data_model::GetDidDetailsResponseDTO,
                     data_model::GetDidsResponseDTO,
-                    data_model::ConnectResponseDTO,
+                    data_model::ConnectIssuerResponseDTO,
+                    data_model::ConnectVerifierResponseDTO,
+                    data_model::ProofClaimResponseDTO,
                     data_model::ConnectRequestDTO,
                     data_model::CreateDidRequest,
                     data_model::CreateDidResponse,
@@ -202,6 +207,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/ssi/temporary-issuer/v1/connect",
             post(ssi_post_issuer_connect::ssi_issuer_connect),
+        )
+        .route(
+            "/ssi/temporary-verifier/v1/connect",
+            post(ssi_post_verifier_connect::ssi_verifier_connect),
         )
         .route(
             "/ssi/temporary-verifier/v1/reject",

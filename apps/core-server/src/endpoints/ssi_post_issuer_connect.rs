@@ -5,12 +5,12 @@ use axum::{
     Json,
 };
 use one_core::{
-    data_model::ConnectRequest,
+    data_model::ConnectIssuerRequest,
     error::{OneCoreError, SSIError},
 };
 
 use crate::{
-    data_model::{ConnectRequestDTO, ConnectResponseDTO, PostSsiConnect},
+    data_model::{ConnectIssuerResponseDTO, ConnectRequestDTO, PostSsiIssuerConnectQuery},
     AppState,
 };
 
@@ -19,21 +19,21 @@ use crate::{
     path = "/ssi/temporary-issuer/v1/connect",
     request_body = ConnectRequestDTO,
     responses(
-        (status = 200, description = "OK", body = ConnectResponseDTO),
+        (status = 200, description = "OK", body = ConnectIssuerResponseDTO),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Server error"),
     ),
     params(
-        PostSsiConnect
+        PostSsiIssuerConnectQuery
     ),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_issuer_connect(
     state: State<AppState>,
-    Query(query): Query<PostSsiConnect>,
+    Query(query): Query<PostSsiIssuerConnectQuery>,
     Json(request): Json<ConnectRequestDTO>,
 ) -> Response {
-    let request = ConnectRequest {
+    let request = ConnectIssuerRequest {
         credential: query.credential,
         did: request.did,
     };
@@ -41,7 +41,9 @@ pub(crate) async fn ssi_issuer_connect(
     let result = state.core.issuer_connect(&query.protocol, &request).await;
 
     match result {
-        Ok(result) => (StatusCode::OK, Json(ConnectResponseDTO::from(result))).into_response(),
+        Ok(result) => {
+            (StatusCode::OK, Json(ConnectIssuerResponseDTO::from(result))).into_response()
+        }
         Err(OneCoreError::SSIError(SSIError::IncorrectCredentialState)) => {
             tracing::error!("Already issued");
             (StatusCode::CONFLICT, "Already issued").into_response()

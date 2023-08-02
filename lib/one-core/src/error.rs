@@ -18,6 +18,8 @@ pub enum SSIError {
     AlreadyIssued,
     #[error("Incorrect credential state")]
     IncorrectCredentialState,
+    #[error("Incorrect proof state")]
+    IncorrectProofState,
     #[error("Missing credential")]
     MissingCredential,
     #[error("Unsupported credential format")]
