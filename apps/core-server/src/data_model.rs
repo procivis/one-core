@@ -905,7 +905,10 @@ pub type GetCredentialQuery = GetListQueryParams<SortableCredentialColumn>;
 #[serde(rename_all = "camelCase")]
 pub enum SortableCredentialColumn {
     CreatedDate,
+    #[serde(rename = "schema.name")]
     SchemaName,
+    IssuerDid,
+    State,
 }
 
 impl From<SortableCredentialColumn> for one_core::data_layer::data_model::SortableCredentialColumn {
@@ -916,6 +919,12 @@ impl From<SortableCredentialColumn> for one_core::data_layer::data_model::Sortab
             }
             SortableCredentialColumn::SchemaName => {
                 one_core::data_layer::data_model::SortableCredentialColumn::SchemaName
+            }
+            SortableCredentialColumn::IssuerDid => {
+                one_core::data_layer::data_model::SortableCredentialColumn::IssuerDid
+            }
+            SortableCredentialColumn::State => {
+                one_core::data_layer::data_model::SortableCredentialColumn::State
             }
         }
     }
