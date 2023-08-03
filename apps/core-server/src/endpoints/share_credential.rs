@@ -36,8 +36,8 @@ pub(crate) async fn share_credential(state: State<AppState>, Path(id): Path<Uuid
         Err(error) => match error {
             DataLayerError::RecordNotFound => StatusCode::NOT_FOUND.into_response(),
             DataLayerError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
-            _ => {
-                tracing::error!("Error while getting credential");
+            other => {
+                tracing::error!("Error while getting credential: {other:?}");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         },
