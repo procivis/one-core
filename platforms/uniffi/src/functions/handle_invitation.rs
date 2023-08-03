@@ -1,20 +1,17 @@
-use crate::OneCore;
-use thiserror::Error;
+use crate::{utils::run_sync, OneCore};
+
+pub use one_core::error::OneCoreError;
 
 pub struct InvitationResult {
     pub issued_credential_id: String,
 }
 
-#[derive(Debug, Error)]
-pub enum InvitationError {
-    #[error("General invitation error `{0}`")]
-    GeneralError(String),
-    #[error("Credential Issuance failed")]
-    CredentialIssuanceFailure,
-}
-
 impl OneCore {
-    pub fn handle_invitation(&self, _url: String) -> Result<InvitationResult, InvitationError> {
-        Err(InvitationError::GeneralError("Not implemented".to_string()))
+    pub fn handle_invitation(&self, url: String) -> Result<InvitationResult, OneCoreError> {
+        run_sync(async {
+            Ok(InvitationResult {
+                issued_credential_id: self.inner.handle_invitation(&url).await?,
+            })
+        })
     }
 }

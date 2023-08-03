@@ -114,7 +114,7 @@ fn create_credential_schema_request_from_jwt(
 }
 
 impl OneCore {
-    pub async fn handle_invitation(&self, url: &str) -> Result<(), OneCoreError> {
+    pub async fn handle_invitation(&self, url: &str) -> Result<String, OneCoreError> {
         let url_query_params = parse_query(url)?;
         let credential_id = url_query_params.credential.to_string();
 
@@ -199,7 +199,7 @@ impl OneCore {
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
-        Ok(())
+        Ok(credential_id)
     }
 }
 
