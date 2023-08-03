@@ -8,8 +8,8 @@ enum DataLayerError {
 };
 
 [Error]
-enum InvitationError {
-  "GeneralError", "CredentialIssuanceFailure"
+enum OneCoreError {
+  "DataLayerError", "SSIError", "FormatterError"
 };
 
 dictionary Version {
@@ -73,7 +73,7 @@ dictionary Credential {
 interface OneCore {
   Version version();
 
-  [Throws=InvitationError]
+  [Throws=OneCoreError]
   InvitationResult handle_invitation(string url);
 
   [Throws=DataLayerError]
