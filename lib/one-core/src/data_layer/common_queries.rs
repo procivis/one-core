@@ -20,7 +20,7 @@ pub(crate) async fn fetch_claim_claim_schemas(
     credential_ids: &[String],
 ) -> Result<Vec<ClaimClaimSchemaCombined>, DataLayerError> {
     let claims = Claim::find()
-        .filter(Condition::all().add(claim::Column::CredentialId.is_in(credential_ids)))
+        .filter(claim::Column::CredentialId.is_in(credential_ids))
         .select_only()
         .columns([claim::Column::CredentialId, claim::Column::Value])
         .columns([
@@ -34,7 +34,11 @@ pub(crate) async fn fetch_claim_claim_schemas(
             sea_orm::JoinType::LeftJoin,
             claim::Relation::ClaimSchema.def().rev(),
         )
-        .order_by(claim_schema::Column::CreatedDate, sea_orm::Order::Asc)
+        .join_rev(
+            sea_orm::JoinType::LeftJoin,
+            credential_schema_claim_schema::Relation::ClaimSchema.def(),
+        )
+        .order_by_asc(credential_schema_claim_schema::Column::Order)
         .into_model::<ClaimClaimSchemaCombined>()
         .all(db)
         .await
@@ -48,10 +52,7 @@ pub(crate) async fn fetch_credential_schema_claim_schemas(
     schema_ids: &[String],
 ) -> Result<Vec<CredentialSchemaClaimSchemaCombined>, DataLayerError> {
     let claims = ClaimSchema::find()
-        .filter(
-            Condition::all()
-                .add(credential_schema_claim_schema::Column::CredentialSchemaId.is_in(schema_ids)),
-        )
+        .filter(credential_schema_claim_schema::Column::CredentialSchemaId.is_in(schema_ids))
         .select_only()
         .columns([
             claim_schema::Column::CreatedDate,
@@ -65,10 +66,7 @@ pub(crate) async fn fetch_credential_schema_claim_schemas(
             sea_orm::JoinType::LeftJoin,
             credential_schema_claim_schema::Relation::ClaimSchema.def(),
         )
-        .order_by(
-            credential_schema_claim_schema::Column::Order,
-            sea_orm::Order::Asc,
-        )
+        .order_by_asc(credential_schema_claim_schema::Column::Order)
         .into_model::<CredentialSchemaClaimSchemaCombined>()
         .all(db)
         .await
