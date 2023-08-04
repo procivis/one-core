@@ -73,6 +73,12 @@ dictionary Credential {
 interface OneCore {
   Version version();
 
+  [Throws=DataLayerError]
+  string create_organisation(string? uuid);
+
+  [Throws=DataLayerError]
+  string create_local_did(string did, string organisation_id);
+
   [Throws=OneCoreError]
   InvitationResult handle_invitation(string url);
 
