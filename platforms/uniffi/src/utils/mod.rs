@@ -1,11 +1,13 @@
 use std::future::Future;
 use time::OffsetDateTime;
-use tokio::runtime::Runtime;
 
 /// Run synchronously
 pub fn run_sync<F: Future>(future: F) -> F::Output {
-    let rt = Runtime::new().unwrap();
-    rt.block_on(future)
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(future)
 }
 
 /// Date-time formatting

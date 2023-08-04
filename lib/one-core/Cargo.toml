@@ -20,7 +20,6 @@ sea-orm = { version = "0.12.1", default-features = false, features = [
     "with-uuid",
     "with-json",
 ] }
-tokio = { version = "1.26", features = ["full"] }
 
 axum.workspace = true
 serde.workspace = true
@@ -30,10 +29,14 @@ tracing.workspace = true
 uuid.workspace = true
 shadow-rs.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 
 jwt-simple = "0.11.6"
 base64 = "0.21.2"
-reqwest = { version = "0.11.18", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots"] }
+reqwest = { version = "0.11.18", default-features = false, features = [
+    "rustls-tls",
+    "rustls-tls-native-roots",
+] }
 
 [build-dependencies]
 shadow-rs.workspace = true
