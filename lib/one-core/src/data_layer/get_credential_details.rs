@@ -91,12 +91,16 @@ mod tests {
             insert_credential_schema_to_database(&data_layer.db, None, &organisation_id, "test123")
                 .await
                 .unwrap();
-        let new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..4)
+        let claim_schemas: Vec<(Uuid, bool, u32, Datatype)> = (0..4)
             .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
             .collect();
-        insert_many_claims_schema_to_database(&data_layer.db, &credential_schema_id, &new_claims)
-            .await
-            .unwrap();
+        insert_many_claims_schema_to_database(
+            &data_layer.db,
+            &credential_schema_id,
+            &claim_schemas,
+        )
+        .await
+        .unwrap();
 
         let non_existing_credential = data_layer
             .get_credential_details(&Uuid::new_v4().to_string())
@@ -104,6 +108,17 @@ mod tests {
         assert!(non_existing_credential.is_err());
 
         let credential_id = insert_credential(&data_layer.db, &credential_schema_id, &did_id)
+            .await
+            .unwrap();
+
+        let claim_values: Vec<(Uuid, String)> = claim_schemas
+            .clone()
+            .into_iter()
+            .enumerate()
+            .map(|(i, (claim_schema_id, _, _, _))| (claim_schema_id, format!("value-{i}")))
+            .rev() // try to insert items in different order than the defined claim_schema order
+            .collect();
+        insert_many_claims_to_database(&data_layer.db, &credential_id, &claim_values)
             .await
             .unwrap();
 
@@ -126,5 +141,11 @@ mod tests {
         assert!(credential.is_ok());
         let credential = credential.unwrap();
         assert_eq!(CredentialState::Offered, credential.state);
+
+        // check that claims are sorted based on claim_schema order
+        assert_eq!(4, credential.claims.len());
+        for (n, (claim_schema_id, _, _, _)) in claim_schemas.iter().enumerate() {
+            assert_eq!(claim_schema_id.to_string(), credential.claims[n].schema.id);
+        }
     }
 }
