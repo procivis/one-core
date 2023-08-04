@@ -38,6 +38,9 @@ reqwest = { version = "0.11.18", default-features = false, features = [
     "rustls-tls-native-roots",
 ] }
 
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros"] }
+
 [build-dependencies]
 shadow-rs.workspace = true
 envmnt = "0.10.4"

@@ -16,12 +16,11 @@ impl OneCore {
         };
 
         run_sync(async {
-            Ok(self
-                .inner
+            self.inner
                 .data_layer
                 .create_organisation(CreateOrganisationRequest { id })
                 .await
-                .map(|org| org.id)?)
+                .map(|org| org.id)
         })
     }
 }

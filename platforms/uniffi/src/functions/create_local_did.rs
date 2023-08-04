@@ -11,8 +11,7 @@ impl OneCore {
         organisation_id: String,
     ) -> Result<String, DataLayerError> {
         run_sync(async {
-            Ok(self
-                .inner
+            self.inner
                 .data_layer
                 .create_did(CreateDidRequest {
                     name: "local".to_string(),
@@ -22,7 +21,7 @@ impl OneCore {
                     did_method: DidMethod::Key,
                 })
                 .await
-                .map(|response| response.id)?)
+                .map(|response| response.id)
         })
     }
 }
