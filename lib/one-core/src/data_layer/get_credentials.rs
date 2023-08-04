@@ -1,7 +1,7 @@
-use sea_orm::sea_query::{expr::Expr, IntoCondition, SimpleExpr};
+use sea_orm::sea_query::{expr::Expr, Alias, IntoCondition, Query, SimpleExpr};
 use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoSimpleExpr, PaginatorTrait,
-    QueryOrder, QuerySelect, RelationTrait, Select,
+    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select,
 };
 
 use crate::data_layer::{
@@ -85,18 +85,37 @@ fn get_select_credentials_query(
                 }),
         )
         // add latest state
-        .column_as(
-            Expr::col((
-                credential_state::Entity,
-                credential_state::Column::CreatedDate,
-            ))
-            .max(),
-            "state_created_date",
-        )
-        .group_by(credential::Column::Id)
         .join(
             sea_orm::JoinType::InnerJoin,
             credential::Relation::CredentialState.def(),
+        )
+        .filter(
+            credential_state::Column::CreatedDate
+                .in_subquery(
+                    // taken from https://mariadb.com/kb/en/groupwise-max-in-mariadb/#the-duds
+                    // TODO: this subquery is probably inefficient
+                    Query::select()
+                        .expr(
+                            Expr::col((
+                                Alias::new("inner_state"),
+                                credential_state::Column::CreatedDate,
+                            ))
+                            .max(),
+                        )
+                        .from_as(credential_state::Entity, Alias::new("inner_state"))
+                        .cond_where(
+                            Expr::col((
+                                Alias::new("inner_state"),
+                                credential_state::Column::CredentialId,
+                            ))
+                            .equals((
+                                credential_state::Entity,
+                                credential_state::Column::CredentialId,
+                            )),
+                        )
+                        .to_owned(),
+                )
+                .into_condition(),
         )
         // fallback ordering
         .order_by_desc(credential::Column::CreatedDate)
