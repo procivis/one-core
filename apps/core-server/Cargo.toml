@@ -23,7 +23,7 @@ uuid.workspace = true
 validator.workspace = true
 
 tower-http = { version = "0.4", features = ["trace"] }
-tokio = { version = "1.26", features = ["full"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 utoipa-swagger-ui = { version = "3.0", features = ["axum"] }
 envmnt = "0.10.4"
 panic-handler = "2.1.2"

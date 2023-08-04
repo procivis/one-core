@@ -31,3 +31,4 @@ uuid = { version = "1", features = ["v4"] }
 validator = { version = "0.16.0", features = ["derive"] }
 uniffi = { version = "0.24.1", features = ["cli"] }
 thiserror = "1.0"
+tokio = "1.26"
