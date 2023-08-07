@@ -21,7 +21,7 @@ impl DataLayer {
             last_modified: Set(now),
             name: Set(request.name),
             type_field: Set(request.did_type.into()),
-            method: Set(request.did_method.into()),
+            method: Set(request.method.into()),
             organisation_id: Set(request.organisation_id),
         }
         .insert(&self.db)
@@ -67,7 +67,7 @@ mod tests {
             organisation_id,
             did: did.clone(),
             did_type: DidType::Local,
-            did_method: DidMethod::Key,
+            method: DidMethod::Key,
         };
 
         let result = data_layer.create_did(request).await;
@@ -97,7 +97,7 @@ mod tests {
             organisation_id,
             did: did1.clone(),
             did_type: DidType::Local,
-            did_method: DidMethod::Key,
+            method: DidMethod::Key,
         };
 
         let result = data_layer.create_did(request.clone()).await;

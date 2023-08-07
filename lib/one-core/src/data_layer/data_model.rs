@@ -471,8 +471,8 @@ pub struct CreateDidRequest {
     pub name: String,
     pub organisation_id: String,
     pub did: String,
+    pub method: DidMethod,
     pub did_type: DidType,
-    pub did_method: DidMethod,
 }
 
 #[derive(Clone, Debug)]

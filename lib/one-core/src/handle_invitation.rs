@@ -152,7 +152,7 @@ impl OneCore {
                 organisation_id: organisation_id.to_owned(),
                 did: ISSUER_DID_VALUE.to_string(),
                 did_type: DidType::Remote,
-                did_method: DidMethod::Web,
+                method: DidMethod::Web,
             })
             .await;
 
@@ -296,7 +296,7 @@ mod tests {
                 organisation_id: organisation_id.to_owned(),
                 did: "RECEIVER:DID".to_string(),
                 did_type: Default::default(),
-                did_method: Default::default(),
+                method: Default::default(),
             })
             .await
             .unwrap()

@@ -9,14 +9,16 @@ use crate::AppState;
 
 #[utoipa::path(
     post,
-    path = "/tmp/did/v1",
+    path = "/api/did/v1",
     request_body = Option<CreateDidRequest>,
     responses(
         (status = 201, description = "Created", body = CreateDidResponse),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Organisation not found"),
+        (status = 409, description = "Did already exists"),
         (status = 500, description = "Internal server error")
     ),
-    tag = "tmp",
+    tag = "did_management",
     security(
         ("bearer" = [])
     ),
@@ -29,8 +31,12 @@ pub(crate) async fn post_did(
 
     match result {
         Err(DataLayerError::AlreadyExists) => {
-            tracing::error!("Organisation already exists");
+            tracing::error!("Did already exists");
             StatusCode::CONFLICT.into_response()
+        }
+        Err(DataLayerError::IncorrectParameters) => {
+            tracing::error!("Organisation not found");
+            StatusCode::NOT_FOUND.into_response()
         }
         Err(e) => {
             tracing::error!("Error while getting credential: {:?}", e);

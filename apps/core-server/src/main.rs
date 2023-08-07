@@ -23,9 +23,9 @@ mod endpoints;
 use endpoints::{
     delete_credential_schema, delete_proof_schema, get_credential, get_credential_schema, get_did,
     get_organisation, get_proof, get_proof_schema, misc, post_credential, post_credential_schema,
-    post_organisation, post_proof, post_proof_schema, share_credential, share_proof,
+    post_did, post_organisation, post_proof, post_proof_schema, share_credential, share_proof,
     ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
-    ssi_post_verifier_reject_proof_request, temp_post_did,
+    ssi_post_verifier_reject_proof_request,
 };
 
 #[derive(Clone)]
@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
             endpoints::ssi_post_verifier_connect::ssi_verifier_connect,
             endpoints::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
-            endpoints::temp_post_did::post_did
+            endpoints::post_did::post_did
         ),
         components(
             schemas(data_model::DetailCredentialResponseDTO,
@@ -209,7 +209,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route("/api/did/v1/:id", get(get_did::get_did_details))
         .route("/api/did/v1", get(get_did::get_dids))
-        .route("/tmp/did/v1", post(temp_post_did::post_did))
+        .route("/api/did/v1", post(post_did::post_did))
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new()
