@@ -46,26 +46,6 @@ impl DataLayer {
         Ok(())
     }
 
-    pub async fn update_credential_schema_id(
-        &self,
-        credential_id: &str,
-        credential_schema_id: &str,
-    ) -> Result<(), DataLayerError> {
-        let model = credential::ActiveModel {
-            id: Unchanged(credential_id.to_owned()),
-            credential_schema_id: Set(credential_schema_id.to_owned()),
-            last_modified: Set(OffsetDateTime::now_utc()),
-            ..Default::default()
-        };
-
-        model.update(&self.db).await.map_err(|e| match e {
-            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
-        })?;
-
-        Ok(())
-    }
-
     pub async fn update_credential_token(
         &self,
         credential_id: &str,
