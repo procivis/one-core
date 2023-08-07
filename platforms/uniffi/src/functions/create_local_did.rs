@@ -18,7 +18,7 @@ impl OneCore {
                     organisation_id,
                     did,
                     did_type: DidType::Local,
-                    did_method: DidMethod::Key,
+                    method: DidMethod::Key,
                 })
                 .await
                 .map(|response| response.id)
