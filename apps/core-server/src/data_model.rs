@@ -1031,12 +1031,12 @@ impl From<ProofClaimSchema> for ProofClaimResponseDTO {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CreateDidRequest {
     pub name: String,
     pub organisation_id: Uuid,
     pub did: String,
-    pub did_type: DidType,
-    pub did_method: DidMethod,
+    pub method: DidMethod,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
@@ -1050,8 +1050,8 @@ impl From<CreateDidRequest> for one_core::data_layer::data_model::CreateDidReque
             name: value.name,
             organisation_id: value.organisation_id.to_string(),
             did: value.did,
-            did_type: value.did_type.into(),
-            did_method: value.did_method.into(),
+            did_type: DidType::Local.into(),
+            method: value.method.into(),
         }
     }
 }

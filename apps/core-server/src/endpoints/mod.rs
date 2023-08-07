@@ -22,4 +22,4 @@ pub mod ssi_post_verifier_connect;
 pub mod ssi_post_verifier_reject_proof_request;
 
 // TEMP
-pub mod temp_post_did;
+pub mod post_did;
