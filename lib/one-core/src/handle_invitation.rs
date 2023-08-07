@@ -3,7 +3,12 @@ use axum::http::Uri;
 use std::str::FromStr;
 use uuid::Uuid;
 
+use crate::credential_formatter::ParseError;
+use crate::data_layer::data_model::{
+    CreateCredentialRequest, CreateCredentialRequestClaim, Transport,
+};
 use crate::error::SSIError;
+use crate::transport_protocol::TransportProtocolError;
 use crate::{
     credential_formatter,
     credential_formatter::jwt_formatter::{
@@ -67,7 +72,9 @@ async fn get_first_did(
 }
 
 fn string_to_uuid(value: &str) -> Result<Uuid, OneCoreError> {
-    Uuid::from_str(value).map_err(|_| OneCoreError::DataLayerError(DataLayerError::Other))
+    Uuid::from_str(value).map_err(|e| {
+        OneCoreError::SSIError(SSIError::ParseError(ParseError::Failed(e.to_string())))
+    })
 }
 
 impl FromStr for Datatype {
@@ -120,11 +127,11 @@ impl OneCore {
 
         // FIXME - these two should be fetched correctly
         let organisation_id = get_first_organisation_id(&self.data_layer).await?;
-        let did = get_first_did(&self.data_layer, &organisation_id).await?;
+        let holder_did = get_first_did(&self.data_layer, &organisation_id).await?;
 
         let connect_response = self
             .get_transport_protocol(&url_query_params.protocol)?
-            .handle_invitation(url, &did.did)
+            .handle_invitation(url, &holder_did.did)
             .await
             .map_err(|e| OneCoreError::SSIError(SSIError::TransportProtocolError(e)))?;
 
@@ -138,50 +145,52 @@ impl OneCore {
         let jwt_claims = credential_formatter::jwt_formatter::from_jwt(&jwt)
             .map_err(|e| OneCoreError::SSIError(SSIError::ParseError(e)))?;
 
+        // check headers
+        let issuer_did_value =
+            jwt_claims
+                .issuer
+                .ok_or(OneCoreError::SSIError(SSIError::ParseError(
+                    ParseError::Failed("IssuerDid missing".to_owned()),
+                )))?;
+
+        if let Some(jwt_credential_id) = jwt_claims.jwt_id {
+            if jwt_credential_id != credential_id {
+                return Err(OneCoreError::SSIError(SSIError::TransportProtocolError(
+                    TransportProtocolError::Failed("Credential ID mismatch".to_owned()),
+                )));
+            }
+        } else {
+            return Err(OneCoreError::SSIError(SSIError::ParseError(
+                ParseError::Failed("Credential ID missing".to_owned()),
+            )));
+        }
+
+        if let Some(jwt_holder_did) = jwt_claims.subject {
+            if jwt_holder_did != holder_did.did {
+                return Err(OneCoreError::SSIError(SSIError::TransportProtocolError(
+                    TransportProtocolError::Failed("Holder DID mismatch".to_owned()),
+                )));
+            }
+        } else {
+            return Err(OneCoreError::SSIError(SSIError::ParseError(
+                ParseError::Failed("Holder ID missing".to_owned()),
+            )));
+        }
+
+        // insert credential schema if not yet known
         let schema = jwt_claims
             .custom
             .vc
             .credential_subject
             .one_credential_schema;
 
-        const ISSUER_DID_VALUE: &str = "ISSUER:DID";
-        let did_insert_result = self
-            .data_layer
-            .create_did(CreateDidRequest {
-                name: "NEW_DID_FIXME".to_string(),
-                organisation_id: organisation_id.to_owned(),
-                did: ISSUER_DID_VALUE.to_string(),
-                did_type: DidType::Remote,
-                method: DidMethod::Web,
-            })
-            .await;
-
-        match did_insert_result {
-            Ok(did) => self
-                .data_layer
-                .update_credential_issuer_did(&credential_id.to_string(), &did.id)
-                .await
-                .map_err(OneCoreError::DataLayerError)?,
-            Err(DataLayerError::AlreadyExists) => {
-                let did = self
-                    .data_layer
-                    .get_did_details_by_value(ISSUER_DID_VALUE)
-                    .await
-                    .map_err(OneCoreError::DataLayerError)?;
-                self.data_layer
-                    .update_credential_issuer_did(&credential_id.to_string(), &did.id)
-                    .await
-                    .map_err(OneCoreError::DataLayerError)?
-            }
-            Err(e) => return Err(OneCoreError::DataLayerError(e)),
-        }
-
         let credential_schema_id = schema.id.to_owned();
 
-        let request = create_credential_schema_request_from_jwt(schema, &organisation_id)?;
+        let credential_schema_request =
+            create_credential_schema_request_from_jwt(schema, &organisation_id)?;
         let result = self
             .data_layer
-            .create_credential_schema_from_jwt(request)
+            .create_credential_schema_from_jwt(credential_schema_request.clone())
             .await;
         if let Err(error) = result {
             if error != DataLayerError::AlreadyExists {
@@ -189,8 +198,60 @@ impl OneCore {
             }
         }
 
+        // insert issuer did if not yet known
+        let did_insert_result = self
+            .data_layer
+            .create_did(CreateDidRequest {
+                name: "NEW_DID_FIXME".to_string(),
+                organisation_id: organisation_id.to_owned(),
+                did: issuer_did_value.to_owned(),
+                did_type: DidType::Remote,
+                method: DidMethod::Key,
+            })
+            .await;
+        let issuer_did_id = match did_insert_result {
+            Ok(did) => did.id,
+            Err(DataLayerError::AlreadyExists) => {
+                self.data_layer
+                    .get_did_details_by_value(&issuer_did_value)
+                    .await
+                    .map_err(OneCoreError::DataLayerError)?
+                    .id
+            }
+            Err(e) => return Err(OneCoreError::DataLayerError(e)),
+        };
+
+        // create credential
+        let incoming_claims = jwt_claims.custom.vc.credential_subject.values;
+        let claim_values: Result<Vec<CreateCredentialRequestClaim>, _> = credential_schema_request
+            .claims
+            .iter()
+            .map(
+                |claim_schema| -> Result<CreateCredentialRequestClaim, OneCoreError> {
+                    if let Some(value) = incoming_claims.get(&claim_schema.key) {
+                        Ok(CreateCredentialRequestClaim {
+                            claim_id: claim_schema.id,
+                            value: value.to_owned(),
+                        })
+                    } else {
+                        Err(OneCoreError::SSIError(SSIError::ParseError(
+                            ParseError::Failed(format!("Claim key {} missing", &claim_schema.key)),
+                        )))
+                    }
+                },
+            )
+            .collect();
+
         self.data_layer
-            .update_credential_schema_id(&credential_id, &credential_schema_id)
+            .create_credential(CreateCredentialRequest {
+                credential_id: Some(credential_id.to_owned()),
+                credential_schema_id: string_to_uuid(&credential_schema_id)?,
+                issuer_did: string_to_uuid(&issuer_did_id)?,
+                transport: Transport::ProcivisTemporary,
+                claim_values: claim_values?,
+                receiver_did_id: Some(string_to_uuid(&holder_did.id)?),
+                credential: Some(jwt.bytes().collect()),
+            })
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
@@ -206,12 +267,12 @@ impl OneCore {
 #[cfg(test)]
 mod tests {
     use crate::{
-        data_layer,
         data_layer::data_model::{
-            CreateCredentialRequest, CreateCredentialRequestClaim, CreateCredentialSchemaRequest,
-            CreateDidRequest, CreateOrganisationRequest, CredentialClaimSchemaRequest,
-            CredentialState, Format, RevocationMethod, Transport,
+            CreateCredentialSchemaRequest, CreateDidRequest, CreateOrganisationRequest,
+            CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialState,
+            DetailCredentialClaimResponse, Format, ListCredentialSchemaResponse, RevocationMethod,
         },
+        data_layer::{self, data_model::DetailCredentialResponse},
         data_model::ConnectIssuerResponse,
         error::{OneCoreError, SSIError},
         transport_protocol::{TransportProtocol, TransportProtocolError},
@@ -221,6 +282,7 @@ mod tests {
     use async_trait::async_trait;
     use std::str::FromStr;
     use std::sync::Arc;
+    use time::OffsetDateTime;
     use tokio::sync::RwLock;
     use uuid::Uuid;
 
@@ -289,12 +351,14 @@ mod tests {
             .await
             .unwrap()
             .id;
-        let did_id = one_core
+
+        let holder_did_value = "HOLDER:DID".to_string();
+        let _holder_did_id = one_core
             .data_layer
             .create_did(CreateDidRequest {
-                name: "bla".to_string(),
+                name: "holder".to_string(),
                 organisation_id: organisation_id.to_owned(),
-                did: "RECEIVER:DID".to_string(),
+                did: holder_did_value.to_owned(),
                 did_type: Default::default(),
                 method: Default::default(),
             })
@@ -324,39 +388,45 @@ mod tests {
             .await
             .unwrap();
 
-        let credential_id = one_core
-            .data_layer
-            .create_credential(CreateCredentialRequest {
-                credential_schema_id: Uuid::from_str(&credential_schema_id).unwrap(),
-                issuer_did: Uuid::from_str(&did_id).unwrap(),
-                transport: Transport::ProcivisTemporary,
-                claim_values: vec![CreateCredentialRequestClaim {
-                    claim_id: Uuid::from_str(&credential_schema.claims[0].id).unwrap(),
+        let credential_id = Uuid::new_v4().to_string();
+        let credential = DetailCredentialResponse {
+            id: credential_id.to_owned(),
+            created_date: OffsetDateTime::now_utc(),
+            issuance_date: OffsetDateTime::now_utc(),
+            state: CredentialState::Pending,
+            last_modified: OffsetDateTime::now_utc(),
+            issuer_did: Some("ISSUER:DID".to_string()),
+            schema: ListCredentialSchemaResponse {
+                id: credential_schema.id,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: credential_schema.name,
+                format: credential_schema.format,
+                revocation_method: credential_schema.revocation_method,
+                organisation_id,
+            },
+            claims: credential_schema
+                .claims
+                .into_iter()
+                .map(|claim| DetailCredentialClaimResponse {
+                    schema: CredentialClaimSchemaResponse {
+                        id: claim.id,
+                        created_date: claim.created_date,
+                        last_modified: claim.last_modified,
+                        key: claim.key,
+                        datatype: claim.datatype,
+                    },
                     value: "Test".to_string(),
-                }],
-            })
-            .await
-            .unwrap()
-            .id;
-        let credential = one_core
-            .data_layer
-            .get_credential_details(&credential_id)
-            .await
-            .unwrap();
-
-        let _ = one_core
-            .data_layer
-            .share_credential(&credential_id)
-            .await
-            .unwrap();
+                })
+                .collect(),
+        };
 
         let correct_url = format!("http://127.0.0.1/ssi/temporary-issuer/v1/connect?protocol=StubTransportProtocol&credential={credential_id}");
 
-        let holder_did = Uuid::new_v4();
         let jwt = one_core
             .get_formatter("JWT")
             .unwrap()
-            .format(&credential, &holder_did.to_string())
+            .format(&credential, &holder_did_value.to_string())
             .unwrap();
         let correct_response = ConnectIssuerResponse {
             credential: jwt,
@@ -457,20 +527,13 @@ mod tests {
             .set_handle_invitation_result(Ok(test_data.correct_response))
             .await;
 
-        let credential_before = test_data
-            .one_core
-            .data_layer
-            .get_credential_details(&test_data.credential_id)
-            .await
-            .unwrap();
-        assert_eq!(CredentialState::Offered, credential_before.state);
-
-        let success = test_data
+        let result = test_data
             .one_core
             .handle_invitation(&test_data.correct_url)
             .await;
-        assert!(success.is_ok());
+        assert!(result.is_ok());
 
+        assert_eq!(&test_data.credential_id, &result.unwrap());
         let credential_after = test_data
             .one_core
             .data_layer

@@ -67,16 +67,16 @@ impl DataLayer {
         let now = OffsetDateTime::now_utc();
 
         let credential = credential::ActiveModel {
-            id: Set(Uuid::new_v4().to_string()),
+            id: Set(request.credential_id.unwrap_or(Uuid::new_v4().to_string())),
             credential_schema_id: Set(request.credential_schema_id.to_string()),
             created_date: Set(now),
             last_modified: Set(now),
             issuance_date: Set(now),
             deleted_at: Set(None),
             transport: Set(request.transport.into()),
-            credential: Set(vec![]),
+            credential: Set(request.credential.unwrap_or(vec![])),
             issuer_did_id: Set(did.id),
-            receiver_did_id: Set(None),
+            receiver_did_id: Set(request.receiver_did_id.map(|uuid| uuid.to_string())),
         }
         .insert(&self.db)
         .await
@@ -157,6 +157,7 @@ mod tests {
 
         let result = data_layer
             .create_credential(CreateCredentialRequest {
+                credential_id: None,
                 credential_schema_id: credential_schema_id.parse().unwrap(),
                 issuer_did: did.parse().unwrap(),
                 transport: Transport::ProcivisTemporary,
@@ -164,6 +165,8 @@ mod tests {
                     claim_id: new_claims[0].0,
                     value: "placeholder".to_string(),
                 }],
+                receiver_did_id: None,
+                credential: None,
             })
             .await;
         assert!(result.is_ok());
@@ -216,6 +219,7 @@ mod tests {
 
         let failed_to_verify_number = data_layer
             .create_credential(CreateCredentialRequest {
+                credential_id: None,
                 credential_schema_id: credential_schema_id.parse().unwrap(),
                 issuer_did: did.parse().unwrap(),
                 transport: Transport::ProcivisTemporary,
@@ -223,12 +227,15 @@ mod tests {
                     claim_id: new_claims[0].0,
                     value: "this is not a number".to_string(),
                 }],
+                receiver_did_id: None,
+                credential: None,
             })
             .await;
         assert!(failed_to_verify_number.is_err_and(|e| e == DataLayerError::IncorrectParameters));
 
         let failed_to_verify_date = data_layer
             .create_credential(CreateCredentialRequest {
+                credential_id: None,
                 credential_schema_id: credential_schema_id.parse().unwrap(),
                 issuer_did: did.parse().unwrap(),
                 transport: Transport::ProcivisTemporary,
@@ -236,6 +243,8 @@ mod tests {
                     claim_id: new_claims[1].0,
                     value: "this is not a date".to_string(),
                 }],
+                receiver_did_id: None,
+                credential: None,
             })
             .await;
         assert!(failed_to_verify_date.is_err_and(|e| e == DataLayerError::IncorrectParameters));
@@ -253,6 +262,7 @@ mod tests {
 
         let correct_insert = data_layer
             .create_credential(CreateCredentialRequest {
+                credential_id: None,
                 credential_schema_id: credential_schema_id.parse().unwrap(),
                 issuer_did: did.parse().unwrap(),
                 transport: Transport::ProcivisTemporary,
@@ -266,6 +276,8 @@ mod tests {
                         value: "2005-04-02T21:37:42.069Z".to_string(),
                     },
                 ],
+                receiver_did_id: None,
+                credential: None,
             })
             .await;
         assert!(correct_insert.is_ok());

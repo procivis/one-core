@@ -573,6 +573,7 @@ pub struct EntityResponseDTO {
 impl From<CredentialRequestDTO> for CreateCredentialRequest {
     fn from(value: CredentialRequestDTO) -> Self {
         Self {
+            credential_id: None,
             credential_schema_id: value.credential_schema_id,
             issuer_did: value.issuer_did,
             transport: value.transport.into(),
@@ -581,6 +582,8 @@ impl From<CredentialRequestDTO> for CreateCredentialRequest {
                 .into_iter()
                 .map(|claim| claim.into())
                 .collect(),
+            receiver_did_id: None,
+            credential: None,
         }
     }
 }

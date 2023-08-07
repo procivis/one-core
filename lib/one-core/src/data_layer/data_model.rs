@@ -432,10 +432,13 @@ impl From<organisation::Model> for GetOrganisationDetailsResponse {
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialRequest {
+    pub credential_id: Option<String>,
     pub credential_schema_id: Uuid,
     pub issuer_did: Uuid,
     pub transport: Transport,
     pub claim_values: Vec<CreateCredentialRequestClaim>,
+    pub receiver_did_id: Option<Uuid>,
+    pub credential: Option<Vec<u8>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
