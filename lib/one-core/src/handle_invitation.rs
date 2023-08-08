@@ -3,17 +3,15 @@ use axum::http::Uri;
 use std::str::FromStr;
 use uuid::Uuid;
 
-use crate::credential_formatter::ParseError;
+use crate::credential_formatter::{
+    ParseError, VCCredentialClaimSchemaResponse, VCCredentialSchemaResponse,
+};
 use crate::data_layer::data_model::{
     CreateCredentialRequest, CreateCredentialRequestClaim, Transport,
 };
 use crate::error::SSIError;
 use crate::transport_protocol::TransportProtocolError;
 use crate::{
-    credential_formatter,
-    credential_formatter::jwt_formatter::{
-        VCCredentialClaimSchemaResponse, VCCredentialSchemaResponse,
-    },
     data_layer::{
         data_model::{
             CreateCredentialSchemaFromJwtRequest, CreateDidRequest,
@@ -123,38 +121,37 @@ fn create_credential_schema_request_from_jwt(
 impl OneCore {
     pub async fn handle_invitation(&self, url: &str) -> Result<String, OneCoreError> {
         let url_query_params = parse_query(url)?;
-        let credential_id = url_query_params.credential.to_string();
+        let expected_credential_id = url_query_params.credential.to_string();
 
         // FIXME - these two should be fetched correctly
         let organisation_id = get_first_organisation_id(&self.data_layer).await?;
-        let holder_did = get_first_did(&self.data_layer, &organisation_id).await?;
+        let expected_holder_did = get_first_did(&self.data_layer, &organisation_id).await?;
 
         let connect_response = self
             .get_transport_protocol(&url_query_params.protocol)?
-            .handle_invitation(url, &holder_did.did)
+            .handle_invitation(url, &expected_holder_did.did)
             .await
             .map_err(|e| OneCoreError::SSIError(SSIError::TransportProtocolError(e)))?;
 
-        if connect_response.format != "JWT" {
-            return Err(OneCoreError::SSIError(
-                SSIError::UnsupportedCredentialFormat,
-            ));
-        }
+        let raw_credential = connect_response.credential;
+        let format = connect_response.format;
 
-        let jwt = connect_response.credential;
-        let jwt_claims = credential_formatter::jwt_formatter::from_jwt(&jwt)
-            .map_err(|e| OneCoreError::SSIError(SSIError::ParseError(e)))?;
+        let formatter = self.get_formatter(&format)?;
+
+        let credentials = formatter
+            .extract_credentials(&raw_credential)
+            .map_err(OneCoreError::FormatterError)?;
 
         // check headers
         let issuer_did_value =
-            jwt_claims
-                .issuer
+            credentials
+                .issuer_did
                 .ok_or(OneCoreError::SSIError(SSIError::ParseError(
                     ParseError::Failed("IssuerDid missing".to_owned()),
                 )))?;
 
-        if let Some(jwt_credential_id) = jwt_claims.jwt_id {
-            if jwt_credential_id != credential_id {
+        if let Some(credential_id) = credentials.id {
+            if credential_id != expected_credential_id {
                 return Err(OneCoreError::SSIError(SSIError::TransportProtocolError(
                     TransportProtocolError::Failed("Credential ID mismatch".to_owned()),
                 )));
@@ -165,8 +162,8 @@ impl OneCore {
             )));
         }
 
-        if let Some(jwt_holder_did) = jwt_claims.subject {
-            if jwt_holder_did != holder_did.did {
+        if let Some(holder_did) = credentials.subject {
+            if holder_did != expected_holder_did.did {
                 return Err(OneCoreError::SSIError(SSIError::TransportProtocolError(
                     TransportProtocolError::Failed("Holder DID mismatch".to_owned()),
                 )));
@@ -178,11 +175,7 @@ impl OneCore {
         }
 
         // insert credential schema if not yet known
-        let schema = jwt_claims
-            .custom
-            .vc
-            .credential_subject
-            .one_credential_schema;
+        let schema = credentials.claims.one_credential_schema;
 
         let credential_schema_id = schema.id.to_owned();
 
@@ -222,7 +215,7 @@ impl OneCore {
         };
 
         // create credential
-        let incoming_claims = jwt_claims.custom.vc.credential_subject.values;
+        let incoming_claims = credentials.claims.values;
         let claim_values: Result<Vec<CreateCredentialRequestClaim>, _> = credential_schema_request
             .claims
             .iter()
@@ -244,23 +237,23 @@ impl OneCore {
 
         self.data_layer
             .create_credential(CreateCredentialRequest {
-                credential_id: Some(credential_id.to_owned()),
+                credential_id: Some(expected_credential_id.to_owned()),
                 credential_schema_id: string_to_uuid(&credential_schema_id)?,
                 issuer_did: string_to_uuid(&issuer_did_id)?,
                 transport: Transport::ProcivisTemporary,
                 claim_values: claim_values?,
-                receiver_did_id: Some(string_to_uuid(&holder_did.id)?),
-                credential: Some(jwt.bytes().collect()),
+                receiver_did_id: Some(string_to_uuid(&expected_holder_did.id)?),
+                credential: Some(raw_credential.bytes().collect()),
             })
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
         self.data_layer
-            .set_credential_state(&credential_id, CredentialState::Accepted)
+            .set_credential_state(&expected_credential_id, CredentialState::Accepted)
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
-        Ok(credential_id)
+        Ok(expected_credential_id)
     }
 }
 
@@ -442,7 +435,7 @@ mod tests {
         let jwt = one_core
             .get_formatter("JWT")
             .unwrap()
-            .format(&credential, &holder_did_value.to_string())
+            .format_credentials(&credential, &holder_did_value.to_string())
             .unwrap();
         let correct_response = ConnectIssuerResponse {
             credential: jwt,
@@ -531,7 +524,7 @@ mod tests {
             .handle_invitation(&test_data.correct_url)
             .await;
         assert!(transport_success_but_credential_is_wrong
-            .is_err_and(|e| matches!(e, OneCoreError::SSIError(SSIError::ParseError(_)))));
+            .is_err_and(|e| matches!(e, OneCoreError::FormatterError(_))));
     }
 
     #[tokio::test]

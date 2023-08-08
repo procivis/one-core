@@ -45,3 +45,8 @@ pub struct HandleInvitationQueryRequest {
 pub struct HandleInvitationConnectRequest {
     pub did: String,
 }
+
+pub struct VerifierSubmitRequest {
+    pub proof: Uuid,
+    pub proof_submit_request: String, // I think
+}
