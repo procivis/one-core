@@ -1281,3 +1281,10 @@ impl From<ProofsDetailResponse> for ProofsDetailResponseDTO {
         }
     }
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifierSubmitRequestDTO {
+    pub proof: Uuid,
+    pub proof_submit_request: String,
+}

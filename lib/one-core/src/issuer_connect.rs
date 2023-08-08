@@ -58,7 +58,7 @@ impl OneCore {
             .map_err(OneCoreError::DataLayerError)?;
 
         let token = formatter
-            .format(&credential, &request.did)
+            .format_credentials(&credential, &request.did)
             .map_err(OneCoreError::FormatterError)?;
 
         self.data_layer
