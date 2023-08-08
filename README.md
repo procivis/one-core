@@ -24,6 +24,23 @@ makers run
 
 We can use `Makefile.toml` to add and fine tune build/run targets later in the project.
 
+### Live Reload
+
+Using `cargo-watch`, the code can be automatically recompiled when changes are made.
+
+Setup
+
+```
+cargo install cargo-watch
+```
+
+Run the REST server
+
+```
+makers runw
+```
+
+
 ## Docker
 
 * Run MariaDB for local developing
