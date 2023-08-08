@@ -19,6 +19,10 @@ args = ["build",  "-p", "core-server"]
 command = "cargo"
 args = ["run", "-p", "core-server"]
 
+[tasks.runw]
+command = "cargo"
+args = ["watch", "--ignore", "*.md", "--ignore", "*.yaml", "--ignore", "*.yml", "--exec", "make run"]
+
 [tasks.test]
 workspace = true
 command = "cargo"

@@ -291,7 +291,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let addr = SocketAddr::new(ip, port);
 
-    info!("Starting server at {addr}");
+    info!("Starting server at http://{addr}");
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
