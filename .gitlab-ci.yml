@@ -35,10 +35,14 @@ before_script:
 .only_main_or_tag:
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
-      when: on_success
     - if: $CI_COMMIT_BRANCH == "main"
-      when: on_success
-    - when: never
+
+.only_main_or_tag_manual:
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
+      when: manual
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
 
 build:
   stage: build
@@ -145,7 +149,7 @@ bitrise_ios_sdk:
       --env "CI_PIPELINE_ID:$CI_PIPELINE_ID"
       --output "artifacts"
   extends:
-    - .only_main_or_tag
+    - .only_main_or_tag_manual
   artifacts:
     paths:
       - artifacts
@@ -170,7 +174,7 @@ build_android_sdk:
       - target/bindings/android
     expire_in: 5 days
   extends:
-    - .only_main_or_tag
+    - .only_main_or_tag_manual
 
 upload_sdk_artifacts:
   stage: sdk_artifact
