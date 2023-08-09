@@ -723,6 +723,8 @@ pub struct ProofDetailsResponse {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
+    pub requested_date: Option<OffsetDateTime>,
+    pub completed_date: Option<OffsetDateTime>,
     pub state: ProofRequestState,
     pub organisation_id: String,
     pub receiver_did_id: Option<String>,
@@ -731,9 +733,9 @@ pub struct ProofDetailsResponse {
 }
 
 impl ProofDetailsResponse {
-    pub(crate) fn from_models(
+    pub(super) fn from_models(
         proof: proof::Model,
-        state: proof_state::ProofRequestState,
+        history: Vec<proof_state::Model>,
         proof_schema: proof_schema::Model,
         claims: Vec<(claim::Model, claim_schema::Model, credential_schema::Model)>,
     ) -> Self {
@@ -742,14 +744,17 @@ impl ProofDetailsResponse {
             created_date: proof.created_date,
             last_modified: proof.last_modified,
             issuance_date: proof.issuance_date,
-            state: state.into(),
-            organisation_id: proof_schema.organisation_id,
+            requested_date: get_proof_requested_date(&history),
+            completed_date: get_proof_completed_date(&history),
+            organisation_id: proof_schema.organisation_id.clone(),
+            state: get_current_proof_state(&history),
             receiver_did_id: proof.receiver_did_id,
             schema: DetailProofSchema {
                 id: proof_schema.id,
                 name: proof_schema.name,
                 created_date: proof_schema.created_date,
                 last_modified: proof_schema.last_modified,
+                organisation_id: proof_schema.organisation_id,
             },
             claims: claims
                 .into_iter()
@@ -765,6 +770,7 @@ pub struct DetailProofSchema {
     pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub organisation_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -809,6 +815,117 @@ impl DetailProofClaimSchema {
             created_date: claim_schema.created_date,
             last_modified: claim_schema.last_modified,
             credential_schema: credential_schema.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableProofColumn {
+    ProofSchemaName,
+    VerifierDid,
+    CreatedDate,
+    State,
+}
+
+pub type GetProofsResponse = GetListResponse<ProofsDetailResponse>;
+#[derive(Clone, Debug)]
+pub struct ProofsDetailResponse {
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub issuance_date: OffsetDateTime,
+    pub requested_date: Option<OffsetDateTime>,
+    pub completed_date: Option<OffsetDateTime>,
+    pub state: ProofRequestState,
+    pub organisation_id: String,
+    pub verifier_did: String,
+    pub schema: DetailProofSchema,
+}
+
+#[derive(Debug, Clone, FromQueryResult)]
+pub(crate) struct ProofsCombined {
+    // proof
+    pub id: String,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub issuance_date: OffsetDateTime,
+    pub organisation_id: String,
+
+    // state
+    pub state: entities::proof_state::ProofRequestState,
+
+    // did
+    pub verifier_did: String,
+
+    // proof schema
+    pub schema_id: String,
+    pub schema_name: String,
+    pub schema_created_date: OffsetDateTime,
+    pub schema_last_modified: OffsetDateTime,
+}
+
+impl ProofsDetailResponse {
+    pub(super) fn from_models((value, history): (ProofsCombined, Vec<proof_state::Model>)) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            issuance_date: value.issuance_date,
+            requested_date: get_proof_requested_date(&history),
+            completed_date: get_proof_completed_date(&history),
+            state: value.state.into(),
+            organisation_id: value.organisation_id.clone(),
+            verifier_did: value.verifier_did,
+            schema: DetailProofSchema {
+                id: value.schema_id,
+                name: value.schema_name,
+                created_date: value.schema_created_date,
+                last_modified: value.schema_last_modified,
+                organisation_id: value.organisation_id,
+            },
+        }
+    }
+}
+
+fn get_current_proof_state(history: &[proof_state::Model]) -> ProofRequestState {
+    history
+        .iter()
+        .max_by_key(|status_entry| status_entry.created_date)
+        .map(|entry| entry.state.clone().into())
+        .unwrap_or(ProofRequestState::Error)
+}
+
+fn get_proof_requested_date(history: &[proof_state::Model]) -> Option<OffsetDateTime> {
+    history
+        .iter()
+        .find(|entry| entry.state == proof_state::ProofRequestState::Offered)
+        .map(|entry| entry.created_date)
+}
+
+fn get_proof_completed_date(history: &[proof_state::Model]) -> Option<OffsetDateTime> {
+    history
+        .iter()
+        .find(|entry| {
+            [
+                proof_state::ProofRequestState::Accepted,
+                proof_state::ProofRequestState::Rejected,
+                proof_state::ProofRequestState::Error,
+            ]
+            .contains(&entry.state)
+        })
+        .map(|entry| entry.created_date)
+}
+
+impl From<&ProofsCombined> for proof::Model {
+    fn from(value: &ProofsCombined) -> Self {
+        Self {
+            id: value.id.clone(),
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            issuance_date: value.issuance_date,
+            verifier_did_id: value.verifier_did.clone(),
+            receiver_did_id: None,
+            proof_schema_id: value.schema_id.clone(),
         }
     }
 }

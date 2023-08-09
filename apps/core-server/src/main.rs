@@ -58,6 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::get_did::get_did_details,
             endpoints::get_did::get_dids,
             endpoints::get_proof::get_proof_details,
+            endpoints::get_proof::get_proofs,
             endpoints::misc::get_build_info,
             endpoints::ssi_post_handle_invitation::ssi_post_handle_invitation,
             endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
@@ -109,6 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::CreateDidResponse,
                     data_model::ProofRequestQueryParams,
                     data_model::HandleInvitationRequestDTO,
+                    data_model::GetProofsResponseDTO,
                     data_model::Format,
                     data_model::Datatype,
                     data_model::DidType,
@@ -194,7 +196,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/proof-schema/v1",
             get(get_proof_schema::get_proof_schemas).post(post_proof_schema::post_proof_schema),
         )
-        .route("/api/proof-request/v1", post(post_proof::post_proof))
+        .route(
+            "/api/proof-request/v1",
+            post(post_proof::post_proof).get(get_proof::get_proofs),
+        )
         .route(
             "/api/proof-request/v1/:id",
             get(get_proof::get_proof_details),

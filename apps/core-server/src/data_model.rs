@@ -1,3 +1,5 @@
+use core::fmt;
+
 use envmnt::errors::EnvmntError;
 use one_core::{
     data_layer::data_model::{
@@ -7,10 +9,9 @@ use one_core::{
         CreateProofSchemaResponse, CredentialClaimSchemaRequest, CredentialClaimSchemaResponse,
         CredentialSchemaResponse, CredentialShareResponse, DetailCredentialClaimResponse,
         DetailCredentialResponse, DetailProofClaim, DetailProofClaimSchema, DetailProofSchema,
-        EntityResponse, GetCredentialClaimSchemaResponse, GetCredentialsResponse,
-        GetDidDetailsResponse, GetDidsResponse, GetOrganisationDetailsResponse,
-        GetProofSchemaResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
-        ProofDetailsResponse, ProofSchemaResponse, ProofShareResponse,
+        EntityResponse, GetDidDetailsResponse, GetOrganisationDetailsResponse,
+        ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofDetailsResponse,
+        ProofSchemaResponse, ProofShareResponse, ProofsDetailResponse,
     },
     data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
 };
@@ -20,13 +21,6 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
-
-// TODO create proper serialization function when
-time::serde::format_description!(
-    front_time,
-    OffsetDateTime,
-    "[year]-[month]-[day padding:zero]T[hour padding:zero]:[minute padding:zero]:[second padding:zero].000Z"
-);
 
 fn front_time<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
 where
@@ -43,6 +37,16 @@ where
         dt.millisecond()
     );
     formatted.serialize(s)
+}
+
+fn front_time_option<S>(dt: &Option<OffsetDateTime>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match dt {
+        Some(dt) => front_time(dt, s),
+        None => s.serialize_none(),
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
@@ -295,12 +299,35 @@ pub struct CredentialClaimSchemaRequestDTO {
     pub datatype: Datatype,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GetCredentialClaimSchemaResponseDTO {
-    pub values: Vec<CredentialSchemaResponseDTO>,
+// ToSchema is properly generated thanks to that
+#[aliases(
+    GetProofsResponseDTO = GetListResponseDTO<ProofsDetailResponseDTO>,
+    GetCredentialClaimSchemaResponseDTO = GetListResponseDTO<CredentialSchemaResponseDTO>,
+    GetProofSchemaResponseDTO = GetListResponseDTO<ProofSchemaResponseDTO>,
+    GetDidsResponseDTO = GetListResponseDTO<GetDidDetailsResponseDTO>,
+    GetCredentialsResponseDTO = GetListResponseDTO<DetailCredentialResponseDTO>)]
+pub struct GetListResponseDTO<T>
+where
+    T: Clone + fmt::Debug + Serialize,
+{
+    pub values: Vec<T>,
     pub total_pages: u64,
     pub total_items: u64,
+}
+
+impl<T, K> From<one_core::data_layer::data_model::GetListResponse<K>> for GetListResponseDTO<T>
+where
+    T: From<K> + Clone + fmt::Debug + Serialize,
+{
+    fn from(value: one_core::data_layer::data_model::GetListResponse<K>) -> Self {
+        Self {
+            values: value.values.into_iter().map(|item| item.into()).collect(),
+            total_pages: value.total_pages,
+            total_items: value.total_items,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -334,16 +361,6 @@ pub struct CredentialClaimSchemaResponseDTO {
     pub datatype: Datatype,
 }
 
-impl From<GetCredentialClaimSchemaResponse> for GetCredentialClaimSchemaResponseDTO {
-    fn from(value: GetCredentialClaimSchemaResponse) -> Self {
-        Self {
-            values: value.values.into_iter().map(|item| item.into()).collect(),
-            total_pages: value.total_pages,
-            total_items: value.total_items,
-        }
-    }
-}
-
 impl From<CredentialSchemaResponse> for CredentialSchemaResponseDTO {
     fn from(value: CredentialSchemaResponse) -> Self {
         Self {
@@ -371,14 +388,6 @@ impl From<CredentialClaimSchemaResponse> for CredentialClaimSchemaResponseDTO {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GetProofSchemaResponseDTO {
-    pub values: Vec<ProofSchemaResponseDTO>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofSchemaResponseDTO {
@@ -402,16 +411,6 @@ pub struct ProofClaimSchemaResponseDTO {
     pub is_required: bool,
     pub key: String,
     pub credential_schema: ListCredentialSchemaResponseDTO,
-}
-
-impl From<GetProofSchemaResponse> for GetProofSchemaResponseDTO {
-    fn from(value: GetProofSchemaResponse) -> Self {
-        Self {
-            values: value.values.into_iter().map(|item| item.into()).collect(),
-            total_pages: value.total_pages,
-            total_items: value.total_items,
-        }
-    }
 }
 
 impl From<ProofSchemaResponse> for ProofSchemaResponseDTO {
@@ -719,24 +718,6 @@ pub enum SortableDidColumn {
     CreatedDate,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GetDidsResponseDTO {
-    pub values: Vec<GetDidDetailsResponseDTO>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
-
-impl From<GetDidsResponse> for GetDidsResponseDTO {
-    fn from(value: GetDidsResponse) -> Self {
-        Self {
-            values: value.values.into_iter().map(|item| item.into()).collect(),
-            total_pages: value.total_pages,
-            total_items: value.total_items,
-        }
-    }
-}
-
 impl From<SortableDidColumn> for one_core::data_layer::data_model::SortableDidColumn {
     fn from(value: SortableDidColumn) -> Self {
         match value {
@@ -902,24 +883,6 @@ impl From<one_core::data_layer::data_model::CredentialState> for CredentialState
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GetCredentialsResponseDTO {
-    pub values: Vec<DetailCredentialResponseDTO>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
-
-impl From<GetCredentialsResponse> for GetCredentialsResponseDTO {
-    fn from(value: GetCredentialsResponse) -> Self {
-        Self {
-            values: value.values.into_iter().map(|item| item.into()).collect(),
-            total_pages: value.total_pages,
-            total_items: value.total_items,
-        }
-    }
-}
-
 pub type GetCredentialQuery = GetListQueryParams<SortableCredentialColumn>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
@@ -1007,10 +970,10 @@ impl From<ConnectVerifierResponse> for ConnectVerifierResponseDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ProofClaimResponseDTO {
     pub id: String,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
-    #[serde(with = "front_time")]
+    #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub key: String,
@@ -1098,15 +1061,29 @@ pub struct HandleInvitationRequestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ProofDetailsResponseDTO {
     pub id: String,
+
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
+
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
+
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub requested_date: Option<OffsetDateTime>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub completed_date: Option<OffsetDateTime>,
+
     pub state: ProofRequestState,
     pub organisation_id: String,
     pub claims: Vec<DetailProofClaimDTO>,
@@ -1155,6 +1132,8 @@ impl From<ProofDetailsResponse> for ProofDetailsResponseDTO {
             created_date: value.created_date,
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
+            requested_date: value.requested_date,
+            completed_date: value.completed_date,
             state: value.state.into(),
             organisation_id: value.organisation_id,
             claims: value.claims.iter().map(|i| i.clone().into()).collect(),
@@ -1218,6 +1197,86 @@ impl From<one_core::data_layer::data_model::ProofRequestState> for ProofRequestS
             cs::Accepted => ProofRequestState::Accepted,
             cs::Rejected => ProofRequestState::Rejected,
             cs::Error => ProofRequestState::Error,
+        }
+    }
+}
+
+pub type GetProofQuery = GetListQueryParams<SortableProofColumn>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum SortableProofColumn {
+    ProofSchemaName,
+    VerifierDid,
+    CreatedDate,
+    State,
+}
+
+impl From<SortableProofColumn> for one_core::data_layer::data_model::SortableProofColumn {
+    fn from(value: SortableProofColumn) -> Self {
+        match value {
+            SortableProofColumn::CreatedDate => {
+                one_core::data_layer::data_model::SortableProofColumn::CreatedDate
+            }
+            SortableProofColumn::ProofSchemaName => {
+                one_core::data_layer::data_model::SortableProofColumn::ProofSchemaName
+            }
+            SortableProofColumn::VerifierDid => {
+                one_core::data_layer::data_model::SortableProofColumn::VerifierDid
+            }
+            SortableProofColumn::State => {
+                one_core::data_layer::data_model::SortableProofColumn::State
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofsDetailResponseDTO {
+    pub id: String,
+
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub issuance_date: OffsetDateTime,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub requested_date: Option<OffsetDateTime>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub completed_date: Option<OffsetDateTime>,
+
+    pub state: ProofRequestState,
+    pub organisation_id: String,
+    pub verifier_did: String,
+    pub schema: DetailProofSchemaDTO,
+}
+
+impl From<ProofsDetailResponse> for ProofsDetailResponseDTO {
+    fn from(value: ProofsDetailResponse) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            issuance_date: value.issuance_date,
+            requested_date: value.requested_date,
+            completed_date: value.completed_date,
+            state: value.state.into(),
+            organisation_id: value.organisation_id,
+            verifier_did: value.verifier_did,
+            schema: value.schema.into(),
         }
     }
 }

@@ -5,9 +5,8 @@ use crate::data_layer::entities::{
 };
 use crate::data_layer::{DataLayer, DataLayerError};
 
-use super::common_queries::get_proof_state;
 use super::data_model::ProofDetailsResponse;
-use super::entities::{claim_schema, credential_schema, proof_schema_claim_schema};
+use super::entities::{claim_schema, credential_schema, proof_schema_claim_schema, ProofState};
 
 impl DataLayer {
     pub async fn get_proof_details(
@@ -27,8 +26,6 @@ impl DataLayer {
                 DataLayerError::GeneralRuntimeError(e.to_string())
             })?
             .ok_or(DataLayerError::RecordNotFound)?;
-
-        let state = get_proof_state(&self.db, uuid).await?;
 
         let proof_schema = proof_schema.ok_or(DataLayerError::RecordNotFound)?;
 
@@ -54,10 +51,8 @@ impl DataLayer {
                 DataLayerError::GeneralRuntimeError(e.to_string())
             })?;
 
-        let claim_schemas: Vec<claim_schema::Model> = claims
-            .iter()
-            .filter_map(|(_claim, claim_schema)| claim_schema.clone())
-            .collect();
+        let (claims, claim_schemas): (Vec<_>, Vec<_>) = claims.into_iter().unzip();
+        let claim_schemas: Vec<claim_schema::Model> = claim_schemas.into_iter().flatten().collect();
 
         let mut credential_schemas = claim_schemas
             .load_many_to_many(CredentialSchema, CredentialSchemaClaimSchema, &self.db)
@@ -87,14 +82,27 @@ impl DataLayer {
             .into_iter()
             .zip(claim_schemas.into_iter())
             .zip(credential_schemas.into_iter())
-            .map(|(((claim, _), claim_schema), credential_schema)| {
+            .map(|((claim, claim_schema), credential_schema)| {
                 (claim, claim_schema, credential_schema)
             })
             .collect();
 
+        let history = proof
+            .find_related(ProofState)
+            .all(&self.db)
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    "Error while fetching state history for proof {}. Error: {}",
+                    uuid,
+                    e.to_string()
+                );
+                DataLayerError::GeneralRuntimeError(e.to_string())
+            })?;
+
         Ok(ProofDetailsResponse::from_models(
             proof,
-            state,
+            history,
             proof_schema,
             claims,
         ))
