@@ -93,6 +93,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::ProofSchemaResponseDTO,
                     data_model::GetProofSchemaResponseDTO,
                     data_model::ProofClaimSchemaResponseDTO,
+                    data_model::ProofsDetailResponseDTO,
                     data_model::CreateOrganisationRequestDTO,
                     data_model::CreateOrganisationResponseDTO,
                     data_model::GetOrganisationDetailsResponseDTO,

@@ -1206,6 +1206,7 @@ pub type GetProofQuery = GetListQueryParams<SortableProofColumn>;
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum SortableProofColumn {
+    #[serde(rename = "schema.name")]
     ProofSchemaName,
     VerifierDid,
     CreatedDate,
