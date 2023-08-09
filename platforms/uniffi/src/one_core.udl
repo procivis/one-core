@@ -1,5 +1,11 @@
 namespace one_core {
+  [Throws=ConfigParseError]
   OneCore initialize_core(string data_dir_path);
+};
+
+[Error]
+enum ConfigParseError {
+  "JsonError", "InvalidType"
 };
 
 [Error]

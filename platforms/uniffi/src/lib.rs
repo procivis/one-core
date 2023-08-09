@@ -7,18 +7,28 @@ use utils::run_sync;
 mod functions;
 use functions::*;
 
+use one_core::config::{
+    data_structure::{ConfigKind, UnparsedConfig},
+    ConfigParseError,
+};
+
 uniffi::include_scaffolding!("one_core");
 
 pub struct OneCore {
     inner: one_core::OneCore,
 }
 
-fn initialize_core(data_dir_path: String) -> Arc<OneCore> {
+fn initialize_core(data_dir_path: String) -> Result<Arc<OneCore>, ConfigParseError> {
+    let placeholder_config = UnparsedConfig {
+        content: include_str!("../../../config.yml").to_string(),
+        kind: ConfigKind::Yaml,
+    };
     let core = run_sync(async {
         one_core::OneCore::new(
             format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc").as_str(),
+            placeholder_config,
         )
         .await
-    });
-    Arc::new(OneCore { inner: core })
+    })?;
+    Ok(Arc::new(OneCore { inner: core }))
 }

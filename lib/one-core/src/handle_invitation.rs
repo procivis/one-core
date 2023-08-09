@@ -267,6 +267,7 @@ impl OneCore {
 #[cfg(test)]
 mod tests {
     use crate::{
+        config::data_structure::{ConfigKind, UnparsedConfig},
         data_layer::data_model::{
             CreateCredentialSchemaRequest, CreateDidRequest, CreateOrganisationRequest,
             CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialState,
@@ -338,7 +339,22 @@ mod tests {
     }
 
     async fn setup_test_data() -> TestData {
-        let mut one_core = OneCore::new("sqlite::memory:").await;
+        let minimal_config = r#"{
+          "format": {},
+          "exchange": {},
+          "did": {},
+          "datatype": {}
+        }
+        "#
+        .to_string();
+
+        let unparsed_config = UnparsedConfig {
+            content: minimal_config,
+            kind: ConfigKind::Json,
+        };
+        let mut one_core = OneCore::new("sqlite::memory:", unparsed_config)
+            .await
+            .unwrap();
         let stub_transport_protocol = Arc::new(StubTransportProtocol::default());
         one_core.transport_protocols.push((
             "StubTransportProtocol".to_string(),

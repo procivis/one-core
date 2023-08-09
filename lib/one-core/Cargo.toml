@@ -20,6 +20,7 @@ sea-orm = { version = "0.12.1", default-features = false, features = [
     "with-uuid",
     "with-json",
 ] }
+serde_yaml = "0.9.25"
 
 axum.workspace = true
 serde.workspace = true

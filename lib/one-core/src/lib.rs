@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use crate::config::ConfigParseError;
 use credential_formatter::jwt_formatter::JWTFormatter;
 use credential_formatter::CredentialFormatter;
 use data_layer::DataLayer;
@@ -10,6 +11,7 @@ use signature_provider::SignatureProvider;
 use transport_protocol::procivis_temp::ProcivisTemp;
 use transport_protocol::TransportProtocol;
 
+pub mod config;
 pub mod credential_formatter;
 pub mod data_layer;
 pub mod data_model;
@@ -21,6 +23,8 @@ pub mod transport_protocol;
 pub mod verifier_connect;
 pub mod verifier_reject_proof_request;
 
+use crate::config::data_structure::{CoreConfig, UnparsedConfig};
+
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
@@ -28,21 +32,42 @@ pub struct OneCore {
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub signature_providers: Vec<(String, Arc<dyn SignatureProvider + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
+    pub config: CoreConfig,
 }
 
 impl OneCore {
-    pub async fn new(database_url: &str) -> OneCore {
+    pub async fn new(
+        database_url: &str,
+        unparsed_config: UnparsedConfig,
+    ) -> Result<OneCore, ConfigParseError> {
         // For now we will just put them here.
         // We will introduce a builder later.
-        OneCore {
+
+        let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![(
+            "PROCIVIS_TEMPORARY".to_string(),
+            Arc::new(ProcivisTemp::default()),
+        )];
+        let credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)> =
+            vec![("JWT".to_string(), Arc::new(JWTFormatter {}))];
+        let config = config::config_provider::parse_config(
+            unparsed_config,
+            &transport_protocols
+                .iter()
+                .map(|i| i.0.to_owned())
+                .collect::<Vec<String>>(),
+            &credential_formatters
+                .iter()
+                .map(|i| i.0.to_owned())
+                .collect::<Vec<String>>(),
+        )?;
+
+        Ok(OneCore {
             data_layer: DataLayer::create(database_url).await,
-            transport_protocols: vec![(
-                "PROCIVIS_TEMPORARY".to_string(),
-                Arc::new(ProcivisTemp::default()),
-            )],
+            transport_protocols,
             signature_providers: vec![],
-            credential_formatters: vec![("JWT".to_string(), Arc::new(JWTFormatter {}))],
-        }
+            credential_formatters,
+            config,
+        })
     }
 
     pub fn version() -> Version {
