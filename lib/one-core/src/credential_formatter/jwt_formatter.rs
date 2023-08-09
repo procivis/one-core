@@ -38,8 +38,7 @@ pub struct CredentialSubject {
 pub struct VCContent {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
-    #[serde(rename = "type")]
-    pub _type: Vec<String>,
+    pub r#type: Vec<String>,
     pub credential_subject: CredentialSubject,
 }
 
@@ -109,7 +108,7 @@ impl From<&DetailCredentialResponse> for VC {
         Self {
             vc: VCContent {
                 context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
-                _type: vec!["VerifiableCredential".to_owned()],
+                r#type: vec!["VerifiableCredential".to_owned()],
                 credential_subject: CredentialSubject {
                     values: claims,
                     one_credential_schema: VCCredentialSchemaResponse {

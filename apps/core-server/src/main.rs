@@ -2,6 +2,7 @@
 
 use std::net::{IpAddr, SocketAddr};
 use std::panic;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use axum::http::{HeaderValue, Request, Response, StatusCode};
@@ -17,6 +18,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
+mod config;
 mod data_model;
 mod endpoints;
 
@@ -156,8 +158,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_version = build::APP_VERSION.unwrap_or(&local_version);
     documentation.info.version = app_version.to_owned();
 
+    let config_path = PathBuf::from(envmnt::get_or_panic("CONFIG_FILE"));
+    let unparsed_config = config::load_config(&config_path).expect("Failed to load config.yml");
     let database_url = envmnt::get_or_panic("DATABASE_URL");
-    let core = OneCore::new(&database_url).await;
+    let core = OneCore::new(&database_url, unparsed_config)
+        .await
+        .expect("Failed to parse config");
 
     let state = AppState { core };
 
