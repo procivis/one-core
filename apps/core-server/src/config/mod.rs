@@ -1,3 +1,5 @@
+pub mod config_mapper;
+
 use one_core::config::data_structure::{ConfigKind, UnparsedConfig};
 
 pub fn load_config(path: &std::path::Path) -> Result<UnparsedConfig, std::io::Error> {

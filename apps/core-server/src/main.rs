@@ -20,14 +20,15 @@ use utoipa_swagger_ui::SwaggerUi;
 
 mod config;
 mod data_model;
+mod dto;
 mod endpoints;
 
 use endpoints::{
-    delete_credential_schema, delete_proof_schema, get_credential, get_credential_schema, get_did,
-    get_organisation, get_proof, get_proof_schema, misc, post_credential, post_credential_schema,
-    post_did, post_organisation, post_proof, post_proof_schema, share_credential, share_proof,
-    ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
-    ssi_post_verifier_reject_proof_request,
+    delete_credential_schema, delete_proof_schema, get_config, get_credential,
+    get_credential_schema, get_did, get_organisation, get_proof, get_proof_schema, misc,
+    post_credential, post_credential_schema, post_did, post_organisation, post_proof,
+    post_proof_schema, share_credential, share_proof, ssi_post_handle_invitation,
+    ssi_post_issuer_connect, ssi_post_verifier_connect, ssi_post_verifier_reject_proof_request,
 };
 
 #[derive(Clone)]
@@ -40,6 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(OpenApi)]
     #[openapi(
         paths(
+            endpoints::get_config::get_config,
             endpoints::get_credential::get_credentials,
             endpoints::get_credential::get_credential_details,
             endpoints::post_credential::post_credential,
@@ -119,7 +121,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::DidType,
                     data_model::DidMethod,
                     data_model::ProofRequestState,
-                    data_model::SortDirection)
+                    data_model::SortDirection,
+                    dto::response::config::ConfigDTO)
         ),
         modifiers(),
         tags(
@@ -168,6 +171,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState { core };
 
     let protected = Router::new()
+        .route("/api/config/v1", get(get_config::get_config))
         .route(
             "/api/credential/v1",
             get(get_credential::get_credentials).post(post_credential::post_credential),

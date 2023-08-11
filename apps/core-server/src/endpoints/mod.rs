@@ -1,5 +1,6 @@
 pub mod delete_credential_schema;
 pub mod delete_proof_schema;
+pub mod get_config;
 pub mod get_credential;
 pub mod get_credential_schema;
 pub mod get_did;
