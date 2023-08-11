@@ -1,5 +1,6 @@
 use crate::data_layer::{entities, DataLayerError};
 use sea_orm::FromQueryResult;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -8,7 +9,9 @@ use super::entities::{
     proof_schema, proof_state,
 };
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")] // serialization necessary for wallet to parse JSON API response
+
 pub enum Format {
     #[default]
     Jwt,
@@ -89,7 +92,8 @@ impl From<super::entities::did::DidMethod> for DidMethod {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")] // serialization necessary for wallet to parse JSON API response
 pub enum RevocationMethod {
     #[default]
     None,
@@ -117,7 +121,8 @@ impl From<super::entities::credential_schema::RevocationMethod> for RevocationMe
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")] // serialization necessary for wallet to parse JSON API response
 pub enum Datatype {
     #[default]
     String,
@@ -541,10 +546,13 @@ pub struct DetailCredentialResponse {
 
 pub type GetCredentialsResponse = GetListResponse<DetailCredentialResponse>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")] // serialization necessary for wallet to parse JSON API response
 pub struct ListCredentialSchemaResponse {
     pub id: String,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: Format,

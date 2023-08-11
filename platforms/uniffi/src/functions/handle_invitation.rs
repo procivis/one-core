@@ -1,16 +1,71 @@
-use crate::{utils::run_sync, OneCore};
+use crate::{
+    utils::{run_sync, TimestampFormat},
+    OneCore,
+};
 
 pub use one_core::error::OneCoreError;
+use one_core::{
+    data_model::{ConnectVerifierResponse, ProofClaimSchema},
+    handle_invitation::InvitationResponse,
+};
 
-pub struct InvitationResult {
-    pub issued_credential_id: String,
+use super::{ClaimDataType, CredentialSchema};
+
+pub struct ProofRequest {
+    pub claims: Vec<ProofRequestClaim>,
+}
+
+impl From<ConnectVerifierResponse> for ProofRequest {
+    fn from(value: ConnectVerifierResponse) -> Self {
+        Self {
+            claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
+        }
+    }
+}
+
+pub struct ProofRequestClaim {
+    pub id: String,
+    pub created_date: String,
+    pub last_modified: String,
+    pub key: String,
+    pub data_type: ClaimDataType,
+    pub required: bool,
+    pub credential_schema: CredentialSchema,
+}
+
+impl From<ProofClaimSchema> for ProofRequestClaim {
+    fn from(value: ProofClaimSchema) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date.format_timestamp(),
+            last_modified: value.last_modified.format_timestamp(),
+            key: value.key,
+            data_type: value.datatype,
+            required: value.required,
+            credential_schema: value.credential_schema.into(),
+        }
+    }
+}
+
+pub enum HandleInvitationResponse {
+    InvitationResponseCredentialIssuance { issued_credential_id: String },
+    InvitationResponseProofRequest { proof_request: ProofRequest },
 }
 
 impl OneCore {
-    pub fn handle_invitation(&self, url: String) -> Result<InvitationResult, OneCoreError> {
+    pub fn handle_invitation(&self, url: String) -> Result<HandleInvitationResponse, OneCoreError> {
         run_sync(async {
-            Ok(InvitationResult {
-                issued_credential_id: self.inner.handle_invitation(&url).await?,
+            Ok(match self.inner.handle_invitation(&url).await? {
+                InvitationResponse::Credential {
+                    issued_credential_id,
+                } => HandleInvitationResponse::InvitationResponseCredentialIssuance {
+                    issued_credential_id,
+                },
+                InvitationResponse::ProofRequest { proof_request } => {
+                    HandleInvitationResponse::InvitationResponseProofRequest {
+                        proof_request: proof_request.into(),
+                    }
+                }
             })
         })
     }
