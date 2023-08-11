@@ -1,11 +1,9 @@
-use std::str::FromStr;
+use std::collections::HashMap;
 
 use async_trait::async_trait;
-use axum::extract::Query;
-use axum::http::Uri;
 
 use super::{InvitationResponse, TransportProtocol, TransportProtocolError};
-use crate::data_model::{HandleInvitationConnectRequest, HandleInvitationQueryRequest};
+use crate::data_model::HandleInvitationConnectRequest;
 
 pub struct ProcivisTemp {
     client: reqwest::Client,
@@ -25,14 +23,15 @@ enum InvitationType {
 }
 
 fn categorize_url(url: &str) -> Result<InvitationType, TransportProtocolError> {
-    let uri = Uri::from_str(url)
-        .map_err(|_e| TransportProtocolError::Failed("Invalid URL".to_string()))?;
-    let result: Query<HandleInvitationQueryRequest> =
-        Query::try_from_uri(&uri).map_err(TransportProtocolError::QueryRejection)?;
+    let query: HashMap<String, String> = reqwest::Url::parse(url)
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+        .query_pairs()
+        .map(|(key, value)| (key.to_string(), value.to_string()))
+        .collect();
 
-    if result.credential.is_some() {
+    if query.contains_key("credential") {
         return Ok(InvitationType::CredentialIssuance);
-    } else if result.proof.is_some() {
+    } else if query.contains_key("proof") {
         return Ok(InvitationType::ProofRequest);
     }
 
