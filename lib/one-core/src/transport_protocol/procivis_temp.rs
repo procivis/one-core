@@ -1,7 +1,11 @@
-use async_trait::async_trait;
+use std::str::FromStr;
 
-use super::{TransportProtocol, TransportProtocolError};
-use crate::data_model::{ConnectIssuerResponse, HandleInvitationConnectRequest};
+use async_trait::async_trait;
+use axum::extract::Query;
+use axum::http::Uri;
+
+use super::{InvitationResponse, TransportProtocol, TransportProtocolError};
+use crate::data_model::{HandleInvitationConnectRequest, HandleInvitationQueryRequest};
 
 pub struct ProcivisTemp {
     client: reqwest::Client,
@@ -15,13 +19,35 @@ impl Default for ProcivisTemp {
     }
 }
 
+enum InvitationType {
+    CredentialIssuance,
+    ProofRequest,
+}
+
+fn categorize_url(url: &str) -> Result<InvitationType, TransportProtocolError> {
+    let uri = Uri::from_str(url)
+        .map_err(|_e| TransportProtocolError::Failed("Invalid URL".to_string()))?;
+    let result: Query<HandleInvitationQueryRequest> =
+        Query::try_from_uri(&uri).map_err(TransportProtocolError::QueryRejection)?;
+
+    if result.credential.is_some() {
+        return Ok(InvitationType::CredentialIssuance);
+    } else if result.proof.is_some() {
+        return Ok(InvitationType::ProofRequest);
+    }
+
+    Err(TransportProtocolError::Failed("Invalid Query".to_owned()))
+}
+
 #[async_trait]
 impl TransportProtocol for ProcivisTemp {
     async fn handle_invitation(
         &self,
         url: &str,
         own_did: &str,
-    ) -> Result<ConnectIssuerResponse, TransportProtocolError> {
+    ) -> Result<InvitationResponse, TransportProtocolError> {
+        let invitation_type = categorize_url(url)?;
+
         let request_body = HandleInvitationConnectRequest {
             did: own_did.to_owned(),
         };
@@ -40,13 +66,14 @@ impl TransportProtocol for ProcivisTemp {
             .text()
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;
-        Ok(serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?)
-    }
 
-    fn send(&self, _input: &str) -> Result<(), TransportProtocolError> {
-        Ok(())
-    }
-    fn handle_message(&self, _message: &str) -> Result<(), TransportProtocolError> {
-        Ok(())
+        Ok(match invitation_type {
+            InvitationType::CredentialIssuance => InvitationResponse::Credential(
+                serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?,
+            ),
+            InvitationType::ProofRequest => InvitationResponse::Proof(
+                serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?,
+            ),
+        })
     }
 }

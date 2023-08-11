@@ -9,6 +9,7 @@ use crate::credential_formatter::{
 use crate::data_layer::data_model::{
     CreateCredentialRequest, CreateCredentialRequestClaim, Transport,
 };
+use crate::data_model::ConnectVerifierResponse;
 use crate::error::SSIError;
 use crate::transport_protocol::TransportProtocolError;
 use crate::{
@@ -118,10 +119,19 @@ fn create_credential_schema_request_from_jwt(
     })
 }
 
+#[derive(Clone)]
+pub enum InvitationResponse {
+    Credential {
+        issued_credential_id: String,
+    },
+    ProofRequest {
+        proof_request: ConnectVerifierResponse,
+    },
+}
+
 impl OneCore {
-    pub async fn handle_invitation(&self, url: &str) -> Result<String, OneCoreError> {
+    pub async fn handle_invitation(&self, url: &str) -> Result<InvitationResponse, OneCoreError> {
         let url_query_params = parse_query(url)?;
-        let expected_credential_id = url_query_params.credential.to_string();
 
         // FIXME - these two should be fetched correctly
         let organisation_id = get_first_organisation_id(&self.data_layer).await?;
@@ -133,24 +143,44 @@ impl OneCore {
             .await
             .map_err(|e| OneCoreError::SSIError(SSIError::TransportProtocolError(e)))?;
 
-        let raw_credential = connect_response.credential;
-        let format = connect_response.format;
+        let issuer_response = match connect_response {
+            crate::transport_protocol::InvitationResponse::Proof(verifier_response) => {
+                return Ok(InvitationResponse::ProofRequest {
+                    proof_request: verifier_response,
+                });
+            }
+            crate::transport_protocol::InvitationResponse::Credential(issuer_response) => {
+                issuer_response
+            }
+        };
+
+        let raw_credential = issuer_response.credential;
+        let format = issuer_response.format;
 
         let formatter = self.get_formatter(&format)?;
 
-        let credentials = formatter
+        let credential = formatter
             .extract_credentials(&raw_credential)
             .map_err(OneCoreError::FormatterError)?;
 
         // check headers
         let issuer_did_value =
-            credentials
+            credential
                 .issuer_did
                 .ok_or(OneCoreError::SSIError(SSIError::ParseError(
                     ParseError::Failed("IssuerDid missing".to_owned()),
                 )))?;
 
-        if let Some(credential_id) = credentials.id {
+        let expected_credential_id = match url_query_params.credential {
+            None => {
+                return Err(OneCoreError::SSIError(SSIError::ParseError(
+                    ParseError::Failed("Credential ID missing".to_owned()),
+                )));
+            }
+            Some(uuid) => uuid.to_string(),
+        };
+
+        if let Some(credential_id) = credential.id {
             if credential_id != expected_credential_id {
                 return Err(OneCoreError::SSIError(SSIError::TransportProtocolError(
                     TransportProtocolError::Failed("Credential ID mismatch".to_owned()),
@@ -162,7 +192,7 @@ impl OneCore {
             )));
         }
 
-        if let Some(holder_did) = credentials.subject {
+        if let Some(holder_did) = credential.subject {
             if holder_did != expected_holder_did.did {
                 return Err(OneCoreError::SSIError(SSIError::TransportProtocolError(
                     TransportProtocolError::Failed("Holder DID mismatch".to_owned()),
@@ -175,7 +205,7 @@ impl OneCore {
         }
 
         // insert credential schema if not yet known
-        let schema = credentials.claims.one_credential_schema;
+        let schema = credential.claims.one_credential_schema;
 
         let credential_schema_id = schema.id.to_owned();
 
@@ -215,7 +245,7 @@ impl OneCore {
         };
 
         // create credential
-        let incoming_claims = credentials.claims.values;
+        let incoming_claims = credential.claims.values;
         let claim_values: Result<Vec<CreateCredentialRequestClaim>, _> = credential_schema_request
             .claims
             .iter()
@@ -253,7 +283,9 @@ impl OneCore {
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
-        Ok(expected_credential_id)
+        Ok(InvitationResponse::Credential {
+            issued_credential_id: expected_credential_id,
+        })
     }
 }
 
@@ -266,8 +298,11 @@ mod tests {
             CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialState,
             DetailCredentialClaimResponse, Format, ListCredentialSchemaResponse, RevocationMethod,
         },
-        data_layer::{self, data_model::DetailCredentialResponse},
-        data_model::ConnectIssuerResponse,
+        data_layer::{
+            self,
+            data_model::{Datatype, DetailCredentialResponse},
+        },
+        data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
         error::{OneCoreError, SSIError},
         transport_protocol::{TransportProtocol, TransportProtocolError},
         OneCore,
@@ -281,7 +316,8 @@ mod tests {
     use uuid::Uuid;
 
     pub struct StubTransportProtocol {
-        handle_invitation_result: Arc<RwLock<Result<ConnectIssuerResponse, String>>>,
+        handle_invitation_result:
+            Arc<RwLock<Result<crate::transport_protocol::InvitationResponse, String>>>,
     }
 
     impl Default for StubTransportProtocol {
@@ -293,7 +329,10 @@ mod tests {
     }
 
     impl StubTransportProtocol {
-        async fn set_handle_invitation_result(&self, value: Result<ConnectIssuerResponse, String>) {
+        async fn set_handle_invitation_result(
+            &self,
+            value: Result<crate::transport_protocol::InvitationResponse, String>,
+        ) {
             let mut handle_invitation_result = self.handle_invitation_result.write().await;
             *handle_invitation_result = value;
         }
@@ -305,19 +344,12 @@ mod tests {
             &self,
             _url: &str,
             _own_did: &str,
-        ) -> Result<ConnectIssuerResponse, TransportProtocolError> {
+        ) -> Result<crate::transport_protocol::InvitationResponse, TransportProtocolError> {
             let handle_invitation_result = self.handle_invitation_result.read().await;
             match &*handle_invitation_result {
                 Ok(value) => Ok(value.to_owned()),
                 Err(error) => Err(TransportProtocolError::Failed(error.to_owned())),
             }
-        }
-
-        fn send(&self, _input: &str) -> Result<(), TransportProtocolError> {
-            Ok(())
-        }
-        fn handle_message(&self, _message: &str) -> Result<(), TransportProtocolError> {
-            Ok(())
         }
     }
 
@@ -328,7 +360,7 @@ mod tests {
         pub credential_id: String,
 
         pub correct_url: String,
-        pub correct_response: ConnectIssuerResponse,
+        pub credential_response: ConnectIssuerResponse,
     }
 
     async fn setup_test_data() -> TestData {
@@ -437,7 +469,7 @@ mod tests {
             .unwrap()
             .format_credentials(&credential, &holder_did_value.to_string())
             .unwrap();
-        let correct_response = ConnectIssuerResponse {
+        let credential_response = ConnectIssuerResponse {
             credential: jwt,
             format: "JWT".to_string(),
         };
@@ -447,7 +479,7 @@ mod tests {
             tp: stub_transport_protocol,
             credential_id,
             correct_url,
-            correct_response,
+            credential_response,
         }
     }
 
@@ -496,10 +528,12 @@ mod tests {
 
         test_data
             .tp
-            .set_handle_invitation_result(Ok(ConnectIssuerResponse {
-                credential: "".to_string(),
-                format: "".to_string(),
-            }))
+            .set_handle_invitation_result(Ok(
+                crate::transport_protocol::InvitationResponse::Credential(ConnectIssuerResponse {
+                    credential: "".to_string(),
+                    format: "".to_string(),
+                }),
+            ))
             .await;
         let transport_success_but_format_is_wrong = test_data
             .one_core
@@ -514,10 +548,12 @@ mod tests {
 
         test_data
             .tp
-            .set_handle_invitation_result(Ok(ConnectIssuerResponse {
-                credential: "".to_string(),
-                format: "JWT".to_string(),
-            }))
+            .set_handle_invitation_result(Ok(
+                crate::transport_protocol::InvitationResponse::Credential(ConnectIssuerResponse {
+                    credential: "".to_string(),
+                    format: "JWT".to_string(),
+                }),
+            ))
             .await;
         let transport_success_but_credential_is_wrong = test_data
             .one_core
@@ -528,12 +564,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_success() {
+    async fn test_success_credential_issuance() {
         let test_data = setup_test_data().await;
 
         test_data
             .tp
-            .set_handle_invitation_result(Ok(test_data.correct_response))
+            .set_handle_invitation_result(Ok(
+                crate::transport_protocol::InvitationResponse::Credential(
+                    test_data.credential_response,
+                ),
+            ))
             .await;
 
         let result = test_data
@@ -541,8 +581,17 @@ mod tests {
             .handle_invitation(&test_data.correct_url)
             .await;
         assert!(result.is_ok());
+        match result.unwrap() {
+            super::InvitationResponse::Credential {
+                issued_credential_id,
+            } => {
+                assert_eq!(&test_data.credential_id, &issued_credential_id);
+            }
+            super::InvitationResponse::ProofRequest { .. } => {
+                unreachable!();
+            }
+        };
 
-        assert_eq!(&test_data.credential_id, &result.unwrap());
         let credential_after = test_data
             .one_core
             .data_layer
@@ -550,5 +599,51 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(CredentialState::Accepted, credential_after.state);
+    }
+
+    #[tokio::test]
+    async fn test_success_proof_request() {
+        let test_data = setup_test_data().await;
+
+        test_data
+            .tp
+            .set_handle_invitation_result(Ok(crate::transport_protocol::InvitationResponse::Proof(
+                ConnectVerifierResponse {
+                    claims: vec![ProofClaimSchema {
+                        id: "id".to_string(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                        key: "key".to_string(),
+                        datatype: Datatype::String,
+                        required: true,
+                        credential_schema: ListCredentialSchemaResponse {
+                            id: "schema-id".to_string(),
+                            created_date: OffsetDateTime::now_utc(),
+                            last_modified: OffsetDateTime::now_utc(),
+                            name: "name".to_string(),
+                            format: Format::Jwt,
+                            revocation_method: RevocationMethod::None,
+                            organisation_id: "organisation-id".to_string(),
+                        },
+                    }],
+                },
+            )))
+            .await;
+
+        let result = test_data
+            .one_core
+            .handle_invitation(&test_data.correct_url)
+            .await;
+        assert!(result.is_ok());
+        match result.unwrap() {
+            super::InvitationResponse::Credential { .. } => {
+                unreachable!();
+            }
+            super::InvitationResponse::ProofRequest { proof_request } => {
+                assert_eq!(1, proof_request.claims.len());
+                assert_eq!("id", proof_request.claims[0].id);
+                assert_eq!("key", proof_request.claims[0].key);
+            }
+        };
     }
 }

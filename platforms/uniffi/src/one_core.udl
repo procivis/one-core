@@ -28,10 +28,6 @@ dictionary Version {
   string pipeline_id;
 };
 
-dictionary InvitationResult {
-  string issued_credential_id;
-};
-
 enum CredentialState {
   "Created", "Pending", "Offered", "Accepted", "Rejected", "Revoked", "Error"
 };
@@ -76,6 +72,26 @@ dictionary Credential {
   CredentialSchema schema;
 };
 
+dictionary ProofRequestClaim {
+    string id;
+    string created_date;
+    string last_modified;
+    string key;
+    ClaimDataType data_type;
+    boolean required;
+    CredentialSchema credential_schema;
+};
+
+dictionary ProofRequest {
+    sequence<ProofRequestClaim> claims;
+};
+
+[Enum]
+interface HandleInvitationResponse {
+  InvitationResponseCredentialIssuance(string issued_credential_id);
+  InvitationResponseProofRequest(ProofRequest proof_request);
+};
+
 interface OneCore {
   Version version();
 
@@ -86,7 +102,7 @@ interface OneCore {
   string create_local_did(string did, string organisation_id);
 
   [Throws=OneCoreError]
-  InvitationResult handle_invitation(string url);
+  HandleInvitationResponse handle_invitation(string url);
 
   [Throws=DataLayerError]
   sequence<Credential> get_credentials();

@@ -1,4 +1,4 @@
-use crate::data_model::ConnectIssuerResponse;
+use crate::data_model::{ConnectIssuerResponse, ConnectVerifierResponse};
 use async_trait::async_trait;
 
 use thiserror::Error;
@@ -13,6 +13,14 @@ pub enum TransportProtocolError {
     HttpRequestError(reqwest::Error),
     #[error("JSON error: `{0}`")]
     JsonError(serde_json::Error),
+    #[error("Incorrect query parameters: `{0}`")]
+    QueryRejection(axum::extract::rejection::QueryRejection),
+}
+
+#[derive(Clone)]
+pub enum InvitationResponse {
+    Credential(ConnectIssuerResponse),
+    Proof(ConnectVerifierResponse),
 }
 
 // This is just a proposition.
@@ -23,7 +31,5 @@ pub trait TransportProtocol {
         &self,
         url: &str,
         own_did: &str,
-    ) -> Result<ConnectIssuerResponse, TransportProtocolError>;
-    fn send(&self, input: &str) -> Result<(), TransportProtocolError>;
-    fn handle_message(&self, message: &str) -> Result<(), TransportProtocolError>;
+    ) -> Result<InvitationResponse, TransportProtocolError>;
 }

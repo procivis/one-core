@@ -13,12 +13,10 @@ impl DataLayer {
         let proof_state = get_proof_state(&self.db, proof_id).await?;
 
         match proof_state {
-            ProofRequestState::Created
-            | ProofRequestState::Offered
-            | ProofRequestState::Pending => {
+            ProofRequestState::Offered | ProofRequestState::Pending => {
                 let now = OffsetDateTime::now_utc();
 
-                if proof_state == ProofRequestState::Created {
+                if proof_state == ProofRequestState::Pending {
                     insert_proof_state(&self.db, proof_id, now, now, ProofRequestState::Offered)
                         .await?;
                 }
@@ -36,6 +34,7 @@ impl DataLayer {
 #[cfg(test)]
 mod tests {
     use crate::data_layer::common_queries::insert_proof_state;
+    use crate::data_layer::data_model::ProofRequestState;
     use crate::data_layer::entities::proof_state;
     use crate::data_layer::{
         entities::{claim_schema::Datatype, ProofState},
@@ -95,7 +94,7 @@ mod tests {
             insert_proof_state_to_database(
                 &data_layer.db,
                 &proof_id,
-                proof_state::ProofRequestState::Created,
+                proof_state::ProofRequestState::Pending,
             )
             .await
             .unwrap();
@@ -120,10 +119,17 @@ mod tests {
             .unwrap()
             .len();
         assert_eq!(2, proof_state_count);
+
+        let proof = test_data
+            .data_layer
+            .get_proof_details(&test_data.proof_id)
+            .await;
+        assert!(proof.is_ok());
+        assert_eq!(ProofRequestState::Offered, proof.unwrap().state);
     }
 
     #[tokio::test]
-    async fn create_proof_test_share_three_states() {
+    async fn create_proof_test_share_states() {
         let test_data = TestData::new().await;
 
         let share_proof = test_data.data_layer.share_proof(&test_data.proof_id).await;
@@ -134,20 +140,6 @@ mod tests {
         assert!(we_can_share_same_proof_many_times.is_ok());
 
         let now = OffsetDateTime::now_utc();
-        insert_proof_state(
-            &test_data.data_layer.db,
-            &test_data.proof_id,
-            now,
-            now,
-            proof_state::ProofRequestState::Pending,
-        )
-        .await
-        .unwrap();
-
-        let we_can_also_share_in_pending_state =
-            &test_data.data_layer.share_proof(&test_data.proof_id).await;
-        assert!(we_can_also_share_in_pending_state.is_ok());
-
         let later: OffsetDateTime = now.add(Duration::new(1, 0));
         insert_proof_state(
             &test_data.data_layer.db,
@@ -168,6 +160,6 @@ mod tests {
             .await
             .unwrap()
             .len();
-        assert_eq!(4, proof_state_count);
+        assert_eq!(3, proof_state_count);
     }
 }
