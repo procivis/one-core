@@ -8,3 +8,4 @@ data:
   DATABASE_URL: {{ default (printf "mysql://%s:%s@%s-mariadb:3306/%s" .Values.mariadb.auth.username .Values.mariadb.auth.password .Release.Name .Values.mariadb.auth.database) | quote }}
   AUTH_TOKEN: {{ required "Auth token is required" .Values.authToken | quote }}
   CORE_BASE_URL: {{ required "Base url is required" .Values.baseUrl | quote }}
+  CONFIG_FILE: "/app/config.yml"
