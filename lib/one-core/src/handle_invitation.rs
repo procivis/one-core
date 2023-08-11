@@ -1,5 +1,4 @@
-use axum::extract::Query;
-use axum::http::Uri;
+use std::collections::HashMap;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -29,11 +28,27 @@ use crate::{
 };
 
 fn parse_query(url: &str) -> Result<HandleInvitationQueryRequest, OneCoreError> {
-    let uri =
-        Uri::from_str(url).map_err(|_| OneCoreError::SSIError(SSIError::IncorrectParameters))?;
-    let result: Query<HandleInvitationQueryRequest> = Query::try_from_uri(&uri)
-        .map_err(|e| OneCoreError::SSIError(SSIError::QueryRejection(e)))?;
-    Ok(result.0)
+    let query: HashMap<String, String> = reqwest::Url::parse(url)
+        .map_err(|_| OneCoreError::SSIError(SSIError::IncorrectParameters))?
+        .query_pairs()
+        .map(|(key, value)| (key.to_string(), value.to_string()))
+        .collect();
+
+    fn option_parse_uuid(input: Option<&String>) -> Result<Option<Uuid>, OneCoreError> {
+        Ok(match input {
+            None => None,
+            Some(str) => Some(string_to_uuid(str)?),
+        })
+    }
+
+    Ok(HandleInvitationQueryRequest {
+        protocol: query
+            .get("protocol")
+            .ok_or(OneCoreError::SSIError(SSIError::IncorrectParameters))?
+            .to_owned(),
+        credential: option_parse_uuid(query.get("credential"))?,
+        proof: option_parse_uuid(query.get("proof"))?,
+    })
 }
 
 async fn get_first_organisation_id(data_layer: &DataLayer) -> Result<String, OneCoreError> {

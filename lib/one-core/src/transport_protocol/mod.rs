@@ -13,8 +13,6 @@ pub enum TransportProtocolError {
     HttpRequestError(reqwest::Error),
     #[error("JSON error: `{0}`")]
     JsonError(serde_json::Error),
-    #[error("Incorrect query parameters: `{0}`")]
-    QueryRejection(axum::extract::rejection::QueryRejection),
 }
 
 #[derive(Clone)]

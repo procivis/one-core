@@ -32,8 +32,6 @@ pub enum SSIError {
     MissingProof,
     #[error("Parse error: `{0}`")]
     ParseError(ParseError),
-    #[error("Incorrect query parameters: `{0}`")]
-    QueryRejection(axum::extract::rejection::QueryRejection),
     #[error("Transport protocol error: `{0}`")]
     TransportProtocolError(TransportProtocolError),
     #[error("Unsupported credential format")]
