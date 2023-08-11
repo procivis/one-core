@@ -15,9 +15,9 @@ use one_core::{
     },
     data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
 };
+
 use serde::{Deserialize, Serialize, Serializer};
 use time::OffsetDateTime;
-
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
