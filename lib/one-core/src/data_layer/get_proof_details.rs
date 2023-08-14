@@ -6,7 +6,9 @@ use crate::data_layer::entities::{
 use crate::data_layer::{DataLayer, DataLayerError};
 
 use super::data_model::ProofDetailsResponse;
-use super::entities::{claim_schema, credential_schema, proof_schema_claim_schema, ProofState};
+use super::entities::{
+    claim, claim_schema, credential_schema, proof_schema_claim_schema, ProofState,
+};
 
 impl DataLayer {
     pub async fn get_proof_details(
@@ -40,6 +42,7 @@ impl DataLayer {
                 sea_orm::JoinType::LeftJoin,
                 proof_schema_claim_schema::Relation::ClaimSchema.def(),
             )
+            .group_by(claim::Column::Id)
             .all(&self.db)
             .await
             .map_err(|e| {
