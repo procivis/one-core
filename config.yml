@@ -10,6 +10,17 @@ exchange:
     type: "PROCIVIS_TEMPORARY"
     order: 0 # optional to force ordering
     params: null
+revocation:
+  NONE:
+    display: "revocation.none"
+    order: 1
+    type: "NONE"
+    params: null
+  STATUSLIST2021:
+    display: "revocation.statuslist"
+    order: 10
+    type: "STATUSLIST2021"
+    params: null
 did:
   KEY:
     display: "did.key"
@@ -17,10 +28,25 @@ did:
     type: "KEY"
     params: null
 datatype:
+  STRING:
+    display: "datatype.string"
+    type: "STRING"
+    order: 100
+    params: null
+  NUMBER:
+    display: "datatype.number"
+    type: "NUMBER"
+    order: 200
+    params: null
+  DATE:
+    display: "datatype.date"
+    type: "DATE"
+    order: 300
+    params: null
   EMAIL:
     display: "datatype.email"
     type: "STRING"
-    order: 1
+    order: 110
     params:
       public:
         autocomplete: true # optional
@@ -32,7 +58,7 @@ datatype:
   COUNT:
     display: "datatype.count"
     type: "NUMBER"
-    order: 5
+    order: 210
     params:
       public:
         min: 0 # optional
@@ -40,20 +66,20 @@ datatype:
   BIRTH_DATE:
     display: "datatype.birth_date"
     type: "DATE"
-    order: 9
+    order: 310
     params:
       public:
         min: 1900-01-01 # optional
         max: "NOW" # optional
-  COUNTRY:
-    display: "datatype.country"
-    type: "ENUM" # not supported yet
-    order: 2
-    params:
-      public:
-        values: # optional
-          - key: "CH" # mandatory
-            value: "CH" # optional, defaults to key
-            display: # optional
-              en: "Switzerland"
-              de: "Schweiz"
+  # COUNTRY:
+  #   display: "datatype.country"
+  #   type: "ENUM" # not supported yet
+  #   order: 2
+  #   params:
+  #     public:
+  #       values: # optional
+  #         - key: "CH" # mandatory
+  #           value: "CH" # optional, defaults to key
+  #           display: # optional
+  #             en: "Switzerland"
+  #             de: "Schweiz"
