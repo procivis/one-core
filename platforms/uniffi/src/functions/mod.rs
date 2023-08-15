@@ -4,6 +4,9 @@ pub use version::*;
 mod handle_invitation;
 pub use handle_invitation::*;
 
+mod holder_reject_proof;
+pub use holder_reject_proof::*;
+
 mod get_credentials;
 pub use get_credentials::*;
 

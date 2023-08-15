@@ -141,6 +141,8 @@ pub enum InvitationResponse {
     },
     ProofRequest {
         proof_request: ConnectVerifierResponse,
+        proof_id: String,
+        base_url: String,
     },
 }
 
@@ -159,9 +161,24 @@ impl OneCore {
             .map_err(|e| OneCoreError::SSIError(SSIError::TransportProtocolError(e)))?;
 
         let issuer_response = match connect_response {
-            crate::transport_protocol::InvitationResponse::Proof(verifier_response) => {
+            crate::transport_protocol::InvitationResponse::Proof {
+                proof_id,
+                proof_request,
+            } => {
+                let url_parsed = reqwest::Url::parse(url)
+                    .map_err(|_| OneCoreError::SSIError(SSIError::IncorrectParameters))?;
+                let base_url = format!(
+                    "{}://{}",
+                    url_parsed.scheme(),
+                    url_parsed
+                        .host_str()
+                        .ok_or(OneCoreError::SSIError(SSIError::IncorrectParameters))?
+                );
+
                 return Ok(InvitationResponse::ProofRequest {
-                    proof_request: verifier_response,
+                    proof_id,
+                    proof_request,
+                    base_url,
                 });
             }
             crate::transport_protocol::InvitationResponse::Credential(issuer_response) => {
@@ -365,6 +382,14 @@ mod tests {
                 Ok(value) => Ok(value.to_owned()),
                 Err(error) => Err(TransportProtocolError::Failed(error.to_owned())),
             }
+        }
+
+        async fn reject_proof(
+            &self,
+            _base_url: &str,
+            _proof_id: &str,
+        ) -> Result<(), TransportProtocolError> {
+            Err(TransportProtocolError::Failed("Error".to_owned()))
         }
     }
 
@@ -622,27 +647,30 @@ mod tests {
 
         test_data
             .tp
-            .set_handle_invitation_result(Ok(crate::transport_protocol::InvitationResponse::Proof(
-                ConnectVerifierResponse {
-                    claims: vec![ProofClaimSchema {
-                        id: "id".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        key: "key".to_string(),
-                        datatype: Datatype::String,
-                        required: true,
-                        credential_schema: ListCredentialSchemaResponse {
-                            id: "schema-id".to_string(),
+            .set_handle_invitation_result(Ok(
+                crate::transport_protocol::InvitationResponse::Proof {
+                    proof_id: "id".to_string(),
+                    proof_request: ConnectVerifierResponse {
+                        claims: vec![ProofClaimSchema {
+                            id: "id".to_string(),
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
-                            name: "name".to_string(),
-                            format: Format::Jwt,
-                            revocation_method: RevocationMethod::None,
-                            organisation_id: "organisation-id".to_string(),
-                        },
-                    }],
+                            key: "key".to_string(),
+                            datatype: Datatype::String,
+                            required: true,
+                            credential_schema: ListCredentialSchemaResponse {
+                                id: "schema-id".to_string(),
+                                created_date: OffsetDateTime::now_utc(),
+                                last_modified: OffsetDateTime::now_utc(),
+                                name: "name".to_string(),
+                                format: Format::Jwt,
+                                revocation_method: RevocationMethod::None,
+                                organisation_id: "organisation-id".to_string(),
+                            },
+                        }],
+                    },
                 },
-            )))
+            ))
             .await;
 
         let result = test_data
@@ -654,7 +682,7 @@ mod tests {
             super::InvitationResponse::Credential { .. } => {
                 unreachable!();
             }
-            super::InvitationResponse::ProofRequest { proof_request } => {
+            super::InvitationResponse::ProofRequest { proof_request, .. } => {
                 assert_eq!(1, proof_request.claims.len());
                 assert_eq!("id", proof_request.claims[0].id);
                 assert_eq!("key", proof_request.claims[0].key);

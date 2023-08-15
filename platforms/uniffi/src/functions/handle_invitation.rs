@@ -1,6 +1,6 @@
 use crate::{
     utils::{run_sync, TimestampFormat},
-    OneCore,
+    ActiveProof, OneCore,
 };
 
 pub use one_core::error::OneCoreError;
@@ -61,7 +61,17 @@ impl OneCore {
                 } => HandleInvitationResponse::InvitationResponseCredentialIssuance {
                     issued_credential_id,
                 },
-                InvitationResponse::ProofRequest { proof_request } => {
+                InvitationResponse::ProofRequest {
+                    proof_id,
+                    proof_request,
+                    base_url,
+                } => {
+                    let mut active_proof = self.active_proof.write().await;
+                    *active_proof = Some(ActiveProof {
+                        id: proof_id,
+                        base_url,
+                    });
+
                     HandleInvitationResponse::InvitationResponseProofRequest {
                         proof_request: proof_request.into(),
                     }

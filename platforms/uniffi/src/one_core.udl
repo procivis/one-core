@@ -104,6 +104,9 @@ interface OneCore {
   [Throws=OneCoreError]
   HandleInvitationResponse handle_invitation(string url);
 
+  [Throws=OneCoreError]
+  void holder_reject_proof();
+
   [Throws=DataLayerError]
   sequence<Credential> get_credentials();
 };
