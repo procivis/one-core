@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 mod utils;
+use tokio::sync::RwLock;
 use utils::run_sync;
 
 mod functions;
@@ -14,8 +15,16 @@ use one_core::config::{
 
 uniffi::include_scaffolding!("one_core");
 
+pub struct ActiveProof {
+    id: String,
+    base_url: String,
+}
+
 pub struct OneCore {
     inner: one_core::OneCore,
+
+    // FIXME: temporary solution for proof submit/reject until interaction is developed
+    active_proof: RwLock<Option<ActiveProof>>,
 }
 
 fn initialize_core(data_dir_path: String) -> Result<Arc<OneCore>, ConfigParseError> {
@@ -30,5 +39,8 @@ fn initialize_core(data_dir_path: String) -> Result<Arc<OneCore>, ConfigParseErr
         )
         .await
     })?;
-    Ok(Arc::new(OneCore { inner: core }))
+    Ok(Arc::new(OneCore {
+        inner: core,
+        active_proof: RwLock::new(None),
+    }))
 }

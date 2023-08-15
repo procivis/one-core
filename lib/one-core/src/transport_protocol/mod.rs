@@ -18,7 +18,10 @@ pub enum TransportProtocolError {
 #[derive(Clone)]
 pub enum InvitationResponse {
     Credential(ConnectIssuerResponse),
-    Proof(ConnectVerifierResponse),
+    Proof {
+        proof_request: ConnectVerifierResponse,
+        proof_id: String,
+    },
 }
 
 // This is just a proposition.
@@ -30,4 +33,10 @@ pub trait TransportProtocol {
         url: &str,
         own_did: &str,
     ) -> Result<InvitationResponse, TransportProtocolError>;
+
+    async fn reject_proof(
+        &self,
+        base_url: &str,
+        proof_id: &str,
+    ) -> Result<(), TransportProtocolError>;
 }

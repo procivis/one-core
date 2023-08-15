@@ -17,6 +17,7 @@ pub mod data_layer;
 pub mod data_model;
 pub mod error;
 pub mod handle_invitation;
+pub mod holder_reject_proof_request;
 pub mod issuer_connect;
 pub mod signature_provider;
 pub mod transport_protocol;

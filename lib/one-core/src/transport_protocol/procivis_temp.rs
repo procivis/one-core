@@ -19,7 +19,7 @@ impl Default for ProcivisTemp {
 
 enum InvitationType {
     CredentialIssuance,
-    ProofRequest,
+    ProofRequest { proof_id: String },
 }
 
 fn categorize_url(url: &str) -> Result<InvitationType, TransportProtocolError> {
@@ -31,8 +31,10 @@ fn categorize_url(url: &str) -> Result<InvitationType, TransportProtocolError> {
 
     if query.contains_key("credential") {
         return Ok(InvitationType::CredentialIssuance);
-    } else if query.contains_key("proof") {
-        return Ok(InvitationType::ProofRequest);
+    } else if let Some(proof) = query.get("proof") {
+        return Ok(InvitationType::ProofRequest {
+            proof_id: proof.to_owned(),
+        });
     }
 
     Err(TransportProtocolError::Failed("Invalid Query".to_owned()))
@@ -70,9 +72,30 @@ impl TransportProtocol for ProcivisTemp {
             InvitationType::CredentialIssuance => InvitationResponse::Credential(
                 serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?,
             ),
-            InvitationType::ProofRequest => InvitationResponse::Proof(
-                serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?,
-            ),
+            InvitationType::ProofRequest { proof_id } => InvitationResponse::Proof {
+                proof_request: serde_json::from_str(&response_value)
+                    .map_err(TransportProtocolError::JsonError)?,
+                proof_id,
+            },
         })
+    }
+
+    async fn reject_proof(
+        &self,
+        base_url: &str,
+        proof_id: &str,
+    ) -> Result<(), TransportProtocolError> {
+        let mut url = reqwest::Url::parse(base_url)
+            .map_err(|_e| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+        url.set_path("/ssi/temporary-verifier/v1/reject");
+        url.set_query(Some(&format!("proof={proof_id}")));
+
+        self.client
+            .post(url)
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+
+        Ok(())
     }
 }
