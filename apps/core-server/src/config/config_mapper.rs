@@ -13,6 +13,7 @@ impl TryFrom<one_core::config::data_structure::CoreConfig> for ConfigDTO {
 
         dto.format = filter_config_entities(dto.format);
         dto.exchange = filter_config_entities(dto.exchange);
+        dto.revocation = filter_config_entities(dto.revocation);
         dto.did = filter_config_entities(dto.did);
         dto.datatype = filter_config_entities(dto.datatype);
 
