@@ -45,6 +45,7 @@ mod tests {
         let config = one_core::config::data_structure::CoreConfig {
             format: Default::default(),
             exchange: Default::default(),
+            revocation: Default::default(),
             did: Default::default(),
             datatype: HashMap::from([(
                 "test".to_string(),
@@ -73,6 +74,7 @@ mod tests {
             r#"{
   "format": {},
   "exchange": {},
+  "revocation": {},
   "did": {},
   "datatype": {
     "test": {
@@ -94,6 +96,7 @@ mod tests {
         let config = one_core::config::data_structure::CoreConfig {
             format: Default::default(),
             exchange: Default::default(),
+            revocation: Default::default(),
             did: Default::default(),
             datatype: HashMap::from([(
                 "test".to_string(),
@@ -123,6 +126,7 @@ mod tests {
             r#"{
   "format": {},
   "exchange": {},
+  "revocation": {},
   "did": {},
   "datatype": {
     "test": {

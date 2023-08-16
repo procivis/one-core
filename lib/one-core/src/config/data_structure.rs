@@ -16,12 +16,14 @@ pub enum ConfigKind {
 pub struct CoreConfig {
     pub format: HashMap<String, FormatEntity>,
     pub exchange: HashMap<String, ExchangeEntity>,
+    pub revocation: HashMap<String, RevocationEntity>,
     pub did: HashMap<String, DidEntity>,
     pub datatype: HashMap<String, DatatypeEntity>,
 }
 
 pub type FormatEntity = ConfigEntity<String, serde_json::Value>;
 pub type ExchangeEntity = ConfigEntity<String, serde_json::Value>;
+pub type RevocationEntity = ConfigEntity<String, serde_json::Value>;
 pub type DidEntity = ConfigEntity<DidType, DidParams>;
 pub type DatatypeEntity = ConfigEntity<DatatypeType, DatatypeParams>;
 
