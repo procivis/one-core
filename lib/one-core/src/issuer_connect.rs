@@ -72,6 +72,3 @@ impl OneCore {
         })
     }
 }
-
-// testcases
-// wrong state

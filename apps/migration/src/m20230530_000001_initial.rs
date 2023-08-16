@@ -670,7 +670,6 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Claim::ClaimSchemaId).char_len(36).not_null())
-                    .col(ColumnDef::new(Claim::CredentialId).char_len(36).not_null())
                     .col(ColumnDef::new(Claim::Value).string().not_null())
                     .col(
                         ColumnDef::new(Claim::CreatedDate)
@@ -693,14 +692,6 @@ impl MigrationTrait for Migration {
                             .from_col(Claim::ClaimSchemaId)
                             .to_tbl(ClaimSchema::Table)
                             .to_col(ClaimSchema::Id),
-                    )
-                    .foreign_key(
-                        ForeignKeyCreateStatement::new()
-                            .name("fk-Claim-CredentialId")
-                            .from_tbl(Claim::Table)
-                            .from_col(Claim::CredentialId)
-                            .to_tbl(Credential::Table)
-                            .to_col(Credential::Id),
                     )
                     .to_owned(),
             )
@@ -776,17 +767,51 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(CredentialClaim::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(CredentialClaim::ClaimId)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(CredentialClaim::CredentialId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-Credential_Claim-ClaimId")
+                            .from_tbl(CredentialClaim::Table)
+                            .from_col(CredentialClaim::ClaimId)
+                            .to_tbl(Claim::Table)
+                            .to_col(Claim::Id),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-Credential_Claim-CredentialId")
+                            .from_tbl(CredentialClaim::Table)
+                            .from_col(CredentialClaim::CredentialId)
+                            .to_tbl(Credential::Table)
+                            .to_col(Credential::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(ProofClaim::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(ProofClaim::ClaimId).char_len(36).not_null())
-                    .col(ColumnDef::new(ProofClaim::ProofId).char_len(36).not_null())
-                    .primary_key(
-                        Index::create()
-                            .name("pk-Proof_Claim")
-                            .col(ProofClaim::ClaimId)
-                            .col(ProofClaim::ProofId)
-                            .primary(),
+                    .col(
+                        ColumnDef::new(ProofClaim::ClaimId)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
                     )
+                    .col(ColumnDef::new(ProofClaim::ProofId).char_len(36).not_null())
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
                             .name("fk-Proof_Claim-ClaimId")
@@ -813,6 +838,9 @@ impl MigrationTrait for Migration {
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .drop_table(Table::drop().table(ProofClaim::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(CredentialClaim::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(Key::Table).to_owned())
@@ -1085,7 +1113,6 @@ pub enum Claim {
     Table,
     Id,
     ClaimSchemaId,
-    CredentialId,
     Value,
     CreatedDate,
     LastModified,
@@ -1129,6 +1156,13 @@ pub enum ProofClaim {
     Table,
     ClaimId,
     ProofId,
+}
+
+#[derive(Iden)]
+pub enum CredentialClaim {
+    Table,
+    ClaimId,
+    CredentialId,
 }
 
 struct CustomDateTime(sea_orm::DatabaseBackend);

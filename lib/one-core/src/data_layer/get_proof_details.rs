@@ -119,9 +119,9 @@ mod tests {
     use crate::data_layer::{
         entities::{claim_schema::Datatype, proof_state::ProofRequestState},
         test_utilities::{
-            insert_credential, insert_credential_schema_to_database, insert_did,
-            insert_many_claims_schema_to_database, insert_many_claims_to_database,
-            insert_organisation_to_database, insert_proof_request_to_database_with_claims,
+            insert_credential_schema_to_database, insert_did,
+            insert_many_claims_schema_to_database, insert_organisation_to_database,
+            insert_proof_request_to_database_with_claims,
             insert_proof_schema_with_claims_to_database, setup_test_data_layer_and_connection,
         },
     };
@@ -133,14 +133,7 @@ mod tests {
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
             .unwrap();
-        let issuer_did = insert_did(
-            &data_layer.db,
-            "did name",
-            "did:issuer:123",
-            &organisation_id,
-        )
-        .await
-        .unwrap();
+
         let verifier_did = insert_did(
             &data_layer.db,
             "did name",
@@ -164,12 +157,7 @@ mod tests {
         .await
         .unwrap();
 
-        let credential_id = insert_credential(&data_layer.db, &credential_schema_id, &issuer_did)
-            .await
-            .unwrap();
-
         let proof_schema_name = "ProofSchema";
-
         let proof_schema_id = insert_proof_schema_with_claims_to_database(
             &data_layer.db,
             None,
@@ -182,12 +170,8 @@ mod tests {
 
         let claims = &new_claim_schemas
             .iter()
-            .map(|cs| (cs.0, "value".to_string()))
+            .map(|cs| (Uuid::new_v4(), cs.0, "value".to_string()))
             .collect();
-
-        insert_many_claims_to_database(&data_layer.db, &credential_id, claims)
-            .await
-            .unwrap();
 
         let proof_id = insert_proof_request_to_database_with_claims(
             &data_layer.db,
@@ -195,7 +179,7 @@ mod tests {
             None,
             &proof_schema_id,
             ProofRequestState::Accepted,
-            &claims.iter().map(|c| c.0.to_owned()).collect(),
+            claims,
         )
         .await
         .unwrap();

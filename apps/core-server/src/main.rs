@@ -29,6 +29,7 @@ use endpoints::{
     post_credential, post_credential_schema, post_did, post_organisation, post_proof,
     post_proof_schema, share_credential, share_proof, ssi_post_handle_invitation,
     ssi_post_issuer_connect, ssi_post_verifier_connect, ssi_post_verifier_reject_proof_request,
+    ssi_post_verifier_submit,
 };
 
 #[derive(Clone)]
@@ -68,6 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
             endpoints::ssi_post_verifier_connect::ssi_verifier_connect,
             endpoints::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
+            endpoints::ssi_post_verifier_submit::ssi_verifier_submit,
             endpoints::post_did::post_did
         ),
         components(
@@ -240,6 +242,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/ssi/temporary-verifier/v1/connect",
             post(ssi_post_verifier_connect::ssi_verifier_connect),
+        )
+        .route(
+            "/ssi/temporary-verifier/v1/submit",
+            post(ssi_post_verifier_submit::ssi_verifier_submit),
         )
         .route(
             "/ssi/temporary-verifier/v1/reject",

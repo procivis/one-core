@@ -54,5 +54,5 @@ pub struct HandleInvitationConnectRequest {
 
 pub struct VerifierSubmitRequest {
     pub proof: Uuid,
-    pub proof_submit_request: String, // I think
+    pub proof_submit_request: String,
 }

@@ -7,7 +7,6 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
     pub claim_schema_id: String,
-    pub credential_id: String,
     pub value: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -25,15 +24,9 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     ClaimSchema,
-    #[sea_orm(
-        belongs_to = "super::credential::Entity",
-        from = "Column::CredentialId",
-        to = "super::credential::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    Credential,
-    #[sea_orm(has_many = "super::proof_claim::Entity")]
+    #[sea_orm(has_one = "super::credential_claim::Entity")]
+    CredentialClaim,
+    #[sea_orm(has_one = "super::proof_claim::Entity")]
     ProofClaim,
 }
 
@@ -43,15 +36,15 @@ impl Related<super::claim_schema::Entity> for Entity {
     }
 }
 
-impl Related<super::credential::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Credential.def()
-    }
-}
-
 impl Related<super::proof_claim::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProofClaim.def()
+    }
+}
+
+impl Related<super::credential_claim::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::CredentialClaim.def()
     }
 }
 

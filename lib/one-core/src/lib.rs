@@ -23,7 +23,7 @@ pub mod signature_provider;
 pub mod transport_protocol;
 pub mod verifier_connect;
 pub mod verifier_reject_proof_request;
-//pub mod verifier_submit;
+pub mod verifier_submit;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 

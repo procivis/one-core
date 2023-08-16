@@ -118,7 +118,7 @@ mod tests {
             .map(|(i, (claim_schema_id, _, _, _))| (claim_schema_id, format!("value-{i}")))
             .rev() // try to insert items in different order than the defined claim_schema order
             .collect();
-        insert_many_claims_to_database(&data_layer.db, &credential_id, &claim_values)
+        insert_many_credential_claims_to_database(&data_layer.db, &credential_id, &claim_values)
             .await
             .unwrap();
 

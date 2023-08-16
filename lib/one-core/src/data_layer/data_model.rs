@@ -446,6 +446,12 @@ pub struct CreateCredentialRequest {
     pub credential: Option<Vec<u8>>,
 }
 
+#[derive(Clone, Debug)]
+pub struct CreateProofClaimRequest {
+    pub claim_schema_id: String,
+    pub value: String,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Transport {
     ProcivisTemporary,
@@ -523,16 +529,19 @@ pub enum SortableDidColumn {
     CreatedDate,
 }
 
+#[derive(Clone, Debug)]
 pub struct CredentialShareResponse {
     pub credential_id: String,
     pub transport: Transport,
 }
 
+#[derive(Clone, Debug)]
 pub struct ProofShareResponse {
     pub proof_id: String,
     pub transport: Transport,
 }
 
+#[derive(Clone, Debug)]
 pub struct DetailCredentialResponse {
     pub id: String,
     pub created_date: OffsetDateTime,
@@ -560,6 +569,7 @@ pub struct ListCredentialSchemaResponse {
     pub organisation_id: String,
 }
 
+#[derive(Clone, Debug)]
 pub struct DetailCredentialClaimResponse {
     pub schema: CredentialClaimSchemaResponse,
     pub value: String,
@@ -590,6 +600,20 @@ impl From<entities::credential_state::CredentialState> for CredentialState {
     }
 }
 
+impl From<CredentialState> for entities::credential_state::CredentialState {
+    fn from(value: CredentialState) -> Self {
+        match value {
+            CredentialState::Created => entities::credential_state::CredentialState::Created,
+            CredentialState::Pending => entities::credential_state::CredentialState::Pending,
+            CredentialState::Offered => entities::credential_state::CredentialState::Offered,
+            CredentialState::Accepted => entities::credential_state::CredentialState::Accepted,
+            CredentialState::Rejected => entities::credential_state::CredentialState::Rejected,
+            CredentialState::Revoked => entities::credential_state::CredentialState::Revoked,
+            CredentialState::Error => entities::credential_state::CredentialState::Error,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum ProofRequestState {
     Created,
@@ -609,6 +633,19 @@ impl From<entities::proof_state::ProofRequestState> for ProofRequestState {
             entities::proof_state::ProofRequestState::Accepted => ProofRequestState::Accepted,
             entities::proof_state::ProofRequestState::Rejected => ProofRequestState::Rejected,
             entities::proof_state::ProofRequestState::Error => ProofRequestState::Error,
+        }
+    }
+}
+
+impl From<ProofRequestState> for entities::proof_state::ProofRequestState {
+    fn from(value: ProofRequestState) -> Self {
+        match value {
+            ProofRequestState::Created => entities::proof_state::ProofRequestState::Created,
+            ProofRequestState::Pending => entities::proof_state::ProofRequestState::Pending,
+            ProofRequestState::Offered => entities::proof_state::ProofRequestState::Offered,
+            ProofRequestState::Accepted => entities::proof_state::ProofRequestState::Accepted,
+            ProofRequestState::Rejected => entities::proof_state::ProofRequestState::Rejected,
+            ProofRequestState::Error => entities::proof_state::ProofRequestState::Error,
         }
     }
 }
@@ -716,7 +753,7 @@ impl DetailCredentialResponse {
 #[derive(Clone, Debug)]
 pub struct CreateProofRequest {
     pub proof_schema_id: Uuid,
-    pub verifier_did: String,
+    pub verifier_did_id: Uuid,
     pub transport: Transport,
 }
 

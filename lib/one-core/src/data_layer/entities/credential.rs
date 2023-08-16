@@ -28,8 +28,8 @@ impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::claim::Entity")]
-    Claim,
+    #[sea_orm(has_many = "super::credential_claim::Entity")]
+    CredentialClaim,
     #[sea_orm(
         belongs_to = "super::credential_schema::Entity",
         from = "Column::CredentialSchemaId",
@@ -60,9 +60,9 @@ pub enum Relation {
     Key,
 }
 
-impl Related<super::claim::Entity> for Entity {
+impl Related<super::credential_claim::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Claim.def()
+        Relation::CredentialClaim.def()
     }
 }
 

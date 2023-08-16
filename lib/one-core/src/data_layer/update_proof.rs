@@ -1,9 +1,12 @@
-use sea_orm::{ActiveModelTrait, DbErr, Set, Unchanged};
-use time::OffsetDateTime;
-
+use super::{
+    common_queries,
+    data_model::{CreateProofClaimRequest, ProofRequestState},
+    entities::{claim, proof, proof_claim},
+};
 use crate::data_layer::{DataLayer, DataLayerError};
-
-use super::entities::proof;
+use sea_orm::{ActiveModelTrait, DbErr, EntityTrait, Set, Unchanged};
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 impl DataLayer {
     pub async fn set_proof_receiver_did_id(
@@ -26,6 +29,54 @@ impl DataLayer {
         })?;
 
         Ok(())
+    }
+
+    pub async fn set_proof_claims(
+        &self,
+        proof_request_id: &str,
+        claims: Vec<CreateProofClaimRequest>,
+    ) -> Result<(), DataLayerError> {
+        let now = OffsetDateTime::now_utc();
+
+        let claim_models: Vec<claim::ActiveModel> = claims
+            .into_iter()
+            .map(|claim| claim::ActiveModel {
+                id: Set(Uuid::new_v4().to_string()),
+                claim_schema_id: Set(claim.claim_schema_id),
+                value: Set(claim.value),
+                created_date: Set(now),
+                last_modified: Set(now),
+            })
+            .collect();
+
+        let proof_claim_models: Vec<proof_claim::ActiveModel> = claim_models
+            .iter()
+            .map(|claim| proof_claim::ActiveModel {
+                claim_id: claim.id.to_owned(),
+                proof_id: Set(proof_request_id.to_string()),
+            })
+            .collect();
+
+        claim::Entity::insert_many(claim_models)
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        proof_claim::Entity::insert_many(proof_claim_models)
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn set_proof_state(
+        &self,
+        proof_request_id: &str,
+        state: ProofRequestState,
+    ) -> Result<(), DataLayerError> {
+        let now = OffsetDateTime::now_utc();
+        common_queries::insert_proof_state(&self.db, proof_request_id, now, now, state.into()).await
     }
 }
 

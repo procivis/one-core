@@ -25,7 +25,7 @@ impl OneCore {
                 e => OneCoreError::DataLayerError(e),
             })?;
 
-        if proof_request.state != ProofRequestState::Offered {
+        if proof_request.state != ProofRequestState::Pending {
             return Err(OneCoreError::SSIError(SSIError::IncorrectProofState));
         }
 
@@ -58,6 +58,10 @@ impl OneCore {
             .get_proof_schema_details(&proof_request.schema.id)
             .await
             .map_err(OneCoreError::DataLayerError)?;
+
+        self.data_layer
+            .set_proof_state(&proof_request_id, ProofRequestState::Offered)
+            .await?;
 
         Ok(ConnectVerifierResponse {
             claims: proof_schema

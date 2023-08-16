@@ -22,10 +22,12 @@ pub enum SSIError {
     AlreadyIssued,
     #[error("Incorrect credential state")]
     IncorrectCredentialState,
-    #[error("Incorrect parameters")]
-    IncorrectParameters,
+    #[error("Incorrect parameters: `{0}`")]
+    IncorrectParameters(String),
     #[error("Incorrect proof state")]
     IncorrectProofState,
+    #[error("Incorrect proof")]
+    IncorrectProof,
     #[error("Missing credential")]
     MissingCredential,
     #[error("Missing proof")]
@@ -38,4 +40,22 @@ pub enum SSIError {
     UnsupportedCredentialFormat,
     #[error("Unsupported transport protocol")]
     UnsupportedTransportProtocol,
+}
+
+impl From<SSIError> for OneCoreError {
+    fn from(value: SSIError) -> Self {
+        OneCoreError::SSIError(value)
+    }
+}
+
+impl From<FormatterError> for OneCoreError {
+    fn from(value: FormatterError) -> Self {
+        OneCoreError::FormatterError(value)
+    }
+}
+
+impl From<DataLayerError> for OneCoreError {
+    fn from(value: DataLayerError) -> Self {
+        OneCoreError::DataLayerError(value)
+    }
 }

@@ -78,7 +78,7 @@ impl CredentialFormatter for JWTFormatter {
         let custom_claims: VC = credentials.into();
 
         let claims = Claims::with_custom_claims(custom_claims, Duration::from_days(365 * 2))
-            // Issuer did should probably not be optional.
+            // FIXME Issuer did should probably not be optional.
             .with_issuer(
                 credentials
                     .issuer_did
@@ -186,7 +186,7 @@ fn format_presentation(credentials: &[String]) -> VP {
     VP {
         vp: VPContent {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
-            r#type: vec!["VerifiableCredential".to_owned()],
+            r#type: vec!["VerifiablePresentation".to_owned()],
             verifiable_credential: credentials.to_owned(),
         },
     }

@@ -8,9 +8,9 @@ use crate::data_layer::{
     data_model::ClaimClaimSchemaCombined,
     data_model::{CredentialSchemaClaimSchemaCombined, ProofSchemaClaimSchemaCombined},
     entities::{
-        claim, claim_schema, credential_schema, credential_schema_claim_schema, credential_state,
-        proof_schema_claim_schema, proof_state, Claim, ClaimSchema, CredentialState,
-        ProofSchemaClaimSchema, ProofState,
+        claim, claim_schema, credential_claim, credential_schema, credential_schema_claim_schema,
+        credential_state, proof_schema_claim_schema, proof_state, ClaimSchema, CredentialClaim,
+        CredentialState, ProofSchemaClaimSchema, ProofState,
     },
     DataLayerError,
 };
@@ -19,10 +19,11 @@ pub(crate) async fn fetch_claim_claim_schemas(
     db: &DatabaseConnection,
     credential_ids: &[String],
 ) -> Result<Vec<ClaimClaimSchemaCombined>, DataLayerError> {
-    let claims = Claim::find()
-        .filter(claim::Column::CredentialId.is_in(credential_ids))
+    let claims = CredentialClaim::find()
+        .filter(credential_claim::Column::CredentialId.is_in(credential_ids))
         .select_only()
-        .columns([claim::Column::CredentialId, claim::Column::Value])
+        .columns([credential_claim::Column::CredentialId])
+        .columns([claim::Column::Value])
         .columns([
             claim_schema::Column::Id,
             claim_schema::Column::Datatype,
@@ -30,13 +31,21 @@ pub(crate) async fn fetch_claim_claim_schemas(
             claim_schema::Column::CreatedDate,
             claim_schema::Column::LastModified,
         ])
-        .join_rev(
+        .join(
             sea_orm::JoinType::LeftJoin,
-            claim::Relation::ClaimSchema.def().rev(),
+            credential_claim::Relation::Credential.def(),
         )
-        .join_rev(
+        .join(
             sea_orm::JoinType::LeftJoin,
-            credential_schema_claim_schema::Relation::ClaimSchema.def(),
+            credential_claim::Relation::Claim.def(),
+        )
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            claim::Relation::ClaimSchema.def(),
+        )
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            claim_schema::Relation::CredentialSchemaClaimSchema.def(),
         )
         .order_by_asc(credential_schema_claim_schema::Column::Order)
         .into_model::<ClaimClaimSchemaCombined>()
