@@ -17,7 +17,7 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::claim::Entity")]
     Claim,
-    #[sea_orm(has_many = "super::credential_schema_claim_schema::Entity")]
+    #[sea_orm(has_one = "super::credential_schema_claim_schema::Entity")]
     CredentialSchemaClaimSchema,
     #[sea_orm(has_many = "super::proof_schema_claim_schema::Entity")]
     ProofSchemaClaimSchema,

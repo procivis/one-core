@@ -32,7 +32,7 @@ impl DataLayer {
             created_date: Set(now),
             last_modified: Set(now),
             issuance_date: Set(now),
-            verifier_did_id: Set(request.verifier_did),
+            verifier_did_id: Set(request.verifier_did_id.to_string()),
             receiver_did_id: Set(None),
             proof_schema_id: Set(request.proof_schema_id.to_string()),
         }
@@ -48,7 +48,7 @@ impl DataLayer {
             Some(_) | None => DataLayerError::GeneralRuntimeError(e.to_string()),
         })?;
 
-        insert_proof_state(&self.db, &proof.id, now, now, ProofRequestState::Pending).await?;
+        insert_proof_state(&self.db, &proof.id, now, now, ProofRequestState::Created).await?;
 
         Ok(CreateProofResponse { id: proof.id })
     }
@@ -118,14 +118,15 @@ mod tests {
 
         let (organisation_id, proof_schema_id) = prepare_env(&data_layer, None).await;
 
-        let verifier_did = insert_did(&data_layer.db, "DID_NAME", "DID:123:KEY", &organisation_id)
-            .await
-            .unwrap();
+        let verifier_did_id =
+            insert_did(&data_layer.db, "DID_NAME", "DID:123:KEY", &organisation_id)
+                .await
+                .unwrap();
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
             transport: Transport::ProcivisTemporary,
-            verifier_did: verifier_did.clone(),
+            verifier_did_id: Uuid::from_str(&verifier_did_id).unwrap(),
         };
 
         let result = data_layer.create_proof(request).await;
@@ -143,9 +144,9 @@ mod tests {
         let state = get_proof_state(&data_layer.db, &proof_id).await.unwrap();
 
         assert_eq!(inserted_proof.proof_schema_id, proof_schema_id);
-        assert_eq!(inserted_proof.verifier_did_id, verifier_did);
+        assert_eq!(inserted_proof.verifier_did_id, verifier_did_id);
         assert_eq!(inserted_proof.receiver_did_id, None);
-        assert_eq!(state, ProofRequestState::Pending);
+        assert_eq!(state, ProofRequestState::Created);
     }
 
     #[tokio::test]
@@ -155,12 +156,12 @@ mod tests {
         let (_organisation_id, proof_schema_id) = prepare_env(&data_layer, None).await;
 
         // ID is not inserted to DB
-        let verifier_did = Uuid::new_v4().to_string();
+        let verifier_did_id = Uuid::new_v4().to_string();
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
             transport: Transport::ProcivisTemporary,
-            verifier_did: verifier_did.clone(),
+            verifier_did_id: Uuid::from_str(&verifier_did_id).unwrap(),
         };
 
         let result = data_layer.create_proof(request).await;
@@ -177,14 +178,15 @@ mod tests {
         // Random schema id - not in database
         let proof_schema_id = Uuid::new_v4();
 
-        let verifier_did = insert_did(&data_layer.db, "DID_NAME", "DID:123:KEY", &organisation_id)
-            .await
-            .unwrap();
+        let verifier_did_id =
+            insert_did(&data_layer.db, "DID_NAME", "DID:123:KEY", &organisation_id)
+                .await
+                .unwrap();
 
         let request = CreateProofRequest {
             proof_schema_id,
             transport: Transport::ProcivisTemporary,
-            verifier_did: verifier_did.clone(),
+            verifier_did_id: Uuid::from_str(&verifier_did_id).unwrap(),
         };
 
         let result = data_layer.create_proof(request).await;
@@ -199,14 +201,15 @@ mod tests {
         let (organisation_id, proof_schema_id) =
             prepare_env(&data_layer, Some(get_dummy_date())).await;
 
-        let verifier_did = insert_did(&data_layer.db, "DID_NAME", "DID:123:KEY", &organisation_id)
-            .await
-            .unwrap();
+        let verifier_did_id =
+            insert_did(&data_layer.db, "DID_NAME", "DID:123:KEY", &organisation_id)
+                .await
+                .unwrap();
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
             transport: Transport::ProcivisTemporary,
-            verifier_did: verifier_did.clone(),
+            verifier_did_id: Uuid::from_str(&verifier_did_id).unwrap(),
         };
 
         let result = data_layer.create_proof(request).await;

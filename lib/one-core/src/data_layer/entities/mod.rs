@@ -1,6 +1,7 @@
 pub mod claim;
 pub mod claim_schema;
 pub mod credential;
+pub mod credential_claim;
 pub mod credential_schema;
 pub mod credential_schema_claim_schema;
 pub mod credential_state;
@@ -16,6 +17,7 @@ pub mod proof_state;
 pub use claim::Entity as Claim;
 pub use claim_schema::Entity as ClaimSchema;
 pub use credential::Entity as Credential;
+pub use credential_claim::Entity as CredentialClaim;
 pub use credential_schema::Entity as CredentialSchema;
 pub use credential_schema_claim_schema::Entity as CredentialSchemaClaimSchema;
 pub use credential_state::Entity as CredentialState;

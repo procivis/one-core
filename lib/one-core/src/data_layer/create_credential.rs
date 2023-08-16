@@ -8,7 +8,9 @@ use crate::data_layer::entities::credential_state;
 use crate::data_layer::{
     common_queries::{fetch_credential_schema_claim_schemas, insert_credential_state},
     data_model::{CreateCredentialRequest, CredentialSchemaClaimSchemaCombined, EntityResponse},
-    entities::{claim, claim_schema::Datatype, credential, CredentialSchema, Did},
+    entities::{
+        claim, claim_schema::Datatype, credential, credential_claim, CredentialSchema, Did,
+    },
     DataLayer, DataLayerError,
 };
 
@@ -88,14 +90,27 @@ impl DataLayer {
             .map(|request_claim| claim::ActiveModel {
                 id: Set(Uuid::new_v4().to_string()),
                 claim_schema_id: Set(request_claim.claim_id.to_string()),
-                credential_id: Set(credential.id.clone()),
                 value: Set(request_claim.value),
                 created_date: Set(now),
                 last_modified: Set(now),
             })
             .collect();
 
+        let credential_claim_models: Vec<credential_claim::ActiveModel> = claim_models
+            .clone()
+            .into_iter()
+            .map(|claim| credential_claim::ActiveModel {
+                claim_id: claim.id,
+                credential_id: Set(credential.id.clone()),
+            })
+            .collect();
+
         claim::Entity::insert_many(claim_models)
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        credential_claim::Entity::insert_many(credential_claim_models)
             .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;

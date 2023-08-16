@@ -13,11 +13,11 @@ impl DataLayer {
         let proof_state = get_proof_state(&self.db, proof_id).await?;
 
         match proof_state {
-            ProofRequestState::Offered | ProofRequestState::Pending => {
-                let now = OffsetDateTime::now_utc();
+            ProofRequestState::Created | ProofRequestState::Pending => {
+                if proof_state == ProofRequestState::Created {
+                    let now = OffsetDateTime::now_utc();
 
-                if proof_state == ProofRequestState::Pending {
-                    insert_proof_state(&self.db, proof_id, now, now, ProofRequestState::Offered)
+                    insert_proof_state(&self.db, proof_id, now, now, ProofRequestState::Pending)
                         .await?;
                 }
 
@@ -94,7 +94,7 @@ mod tests {
             insert_proof_state_to_database(
                 &data_layer.db,
                 &proof_id,
-                proof_state::ProofRequestState::Pending,
+                proof_state::ProofRequestState::Created,
             )
             .await
             .unwrap();
@@ -125,7 +125,7 @@ mod tests {
             .get_proof_details(&test_data.proof_id)
             .await;
         assert!(proof.is_ok());
-        assert_eq!(ProofRequestState::Offered, proof.unwrap().state);
+        assert_eq!(ProofRequestState::Pending, proof.unwrap().state);
     }
 
     #[tokio::test]

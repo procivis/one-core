@@ -182,10 +182,7 @@ mod tests {
             let organisation_id = insert_organisation_to_database(&data_layer.db, None)
                 .await
                 .unwrap();
-            let issuer_did =
-                insert_did(&data_layer.db, "did name", "did:issuer:1", &organisation_id)
-                    .await
-                    .unwrap();
+
             let verifier_did = insert_did(
                 &data_layer.db,
                 "did name",
@@ -221,12 +218,7 @@ mod tests {
             .await
             .unwrap();
 
-            let credential_id =
-                insert_credential(&data_layer.db, &credential_schema_id, &issuer_did)
-                    .await
-                    .unwrap();
-
-            let proof_schema_id = insert_proof_schema_with_claims_to_database(
+            let proof_schema_id1 = insert_proof_schema_with_claims_to_database(
                 &data_layer.db,
                 None,
                 &new_claim_schemas,
@@ -246,25 +238,26 @@ mod tests {
             .await
             .unwrap();
 
-            let claims = &new_claim_schemas
+            let claims1 = &new_claim_schemas
                 .iter()
-                .map(|cs| (cs.0, "value".to_string()))
+                .map(|cs| (Uuid::new_v4(), cs.0, "value".to_string()))
                 .collect();
 
-            insert_many_claims_to_database(&data_layer.db, &credential_id, claims)
-                .await
-                .unwrap();
-
-            let proof_id = insert_proof_request_to_database_with_claims(
+            let proof_id1 = insert_proof_request_to_database_with_claims(
                 &data_layer.db,
                 &verifier_did,
                 None,
-                &proof_schema_id,
+                &proof_schema_id1,
                 proof_state::ProofRequestState::Created,
-                &claims.iter().map(|c| c.0.to_owned()).collect(),
+                claims1,
             )
             .await
             .unwrap();
+
+            let claims2 = &new_claim_schemas
+                .iter()
+                .map(|cs| (Uuid::new_v4(), cs.0, "value2".to_string()))
+                .collect();
 
             let proof_id2 = insert_proof_request_to_database_with_claims(
                 &data_layer.db,
@@ -272,7 +265,7 @@ mod tests {
                 None,
                 &proof_schema_id2,
                 proof_state::ProofRequestState::Accepted,
-                &claims.iter().map(|c| c.0.to_owned()).collect(),
+                claims2,
             )
             .await
             .unwrap();
@@ -282,10 +275,10 @@ mod tests {
                 organisation_id,
                 proofs: vec![
                     (
-                        proof_id,
+                        proof_id1,
                         "did:verifier:1".to_owned(),
                         proof_state::ProofRequestState::Created,
-                        proof_schema_id,
+                        proof_schema_id1,
                     ),
                     (
                         proof_id2,

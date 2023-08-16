@@ -38,7 +38,9 @@ reqwest = { version = "0.11.18", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tracing = "0.1"
+tracing-test = "0.2"
 
 [build-dependencies]
 shadow-rs.workspace = true

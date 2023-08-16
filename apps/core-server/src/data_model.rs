@@ -1031,8 +1031,7 @@ pub(crate) struct ProofRequestQueryParams {
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofRequestDTO {
     pub proof_schema_id: Uuid,
-    #[validate(length(min = 1))]
-    pub verifier_did: String,
+    pub verifier_did: Uuid,
     pub transport: Transport,
 }
 
@@ -1046,7 +1045,7 @@ impl From<CreateProofRequestDTO> for CreateProofRequest {
     fn from(value: CreateProofRequestDTO) -> Self {
         Self {
             proof_schema_id: value.proof_schema_id,
-            verifier_did: value.verifier_did,
+            verifier_did_id: value.verifier_did,
             transport: value.transport.into(),
         }
     }
@@ -1280,11 +1279,4 @@ impl From<ProofsDetailResponse> for ProofsDetailResponseDTO {
             schema: value.schema.into(),
         }
     }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct VerifierSubmitRequestDTO {
-    pub proof: Uuid,
-    pub proof_submit_request: String,
 }

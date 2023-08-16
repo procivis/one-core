@@ -21,6 +21,8 @@ pub enum FormatterError {
     CouldNotExtractCredentials(String),
     #[error("Could not extract presentation: `{0}`")]
     CouldNotExtractPresentation(String),
+    #[error("Could not extract claims from presentation: `{0}`")]
+    CouldNotExtractClaimsFromPresentation(String),
     #[error("Incorrect signature")]
     IncorrectSignature,
 }

@@ -29,7 +29,7 @@ use crate::{
 
 fn parse_query(url: &str) -> Result<HandleInvitationQueryRequest, OneCoreError> {
     let query: HashMap<String, String> = reqwest::Url::parse(url)
-        .map_err(|_| OneCoreError::SSIError(SSIError::IncorrectParameters))?
+        .map_err(|e| OneCoreError::SSIError(SSIError::IncorrectParameters(e.to_string())))?
         .query_pairs()
         .map(|(key, value)| (key.to_string(), value.to_string()))
         .collect();
@@ -44,7 +44,9 @@ fn parse_query(url: &str) -> Result<HandleInvitationQueryRequest, OneCoreError> 
     Ok(HandleInvitationQueryRequest {
         protocol: query
             .get("protocol")
-            .ok_or(OneCoreError::SSIError(SSIError::IncorrectParameters))?
+            .ok_or(OneCoreError::SSIError(SSIError::IncorrectParameters(
+                "Incorrect protocol".to_owned(),
+            )))?
             .to_owned(),
         credential: option_parse_uuid(query.get("credential"))?,
         proof: option_parse_uuid(query.get("proof"))?,
@@ -99,7 +101,9 @@ impl FromStr for Datatype {
             "STRING" => Ok(Datatype::String),
             "DATE" => Ok(Datatype::Date),
             "NUMBER" => Ok(Datatype::Number),
-            _ => Err(OneCoreError::SSIError(SSIError::IncorrectParameters)),
+            _ => Err(OneCoreError::SSIError(SSIError::IncorrectParameters(
+                "Wrong data type".to_owned(),
+            ))),
         }
     }
 }
@@ -165,14 +169,15 @@ impl OneCore {
                 proof_id,
                 proof_request,
             } => {
-                let url_parsed = reqwest::Url::parse(url)
-                    .map_err(|_| OneCoreError::SSIError(SSIError::IncorrectParameters))?;
+                let url_parsed = reqwest::Url::parse(url).map_err(|e| {
+                    OneCoreError::SSIError(SSIError::IncorrectParameters(e.to_string()))
+                })?;
                 let base_url = format!(
                     "{}://{}",
                     url_parsed.scheme(),
-                    url_parsed
-                        .host_str()
-                        .ok_or(OneCoreError::SSIError(SSIError::IncorrectParameters))?
+                    url_parsed.host_str().ok_or(OneCoreError::SSIError(
+                        SSIError::IncorrectParameters("Missing host".to_string())
+                    ))?
                 );
 
                 return Ok(InvitationResponse::ProofRequest {

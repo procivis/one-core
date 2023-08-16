@@ -36,7 +36,7 @@ pub mod update_proof;
 
 pub mod list_query;
 
-pub(super) mod entities;
+pub mod entities;
 
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum DataLayerError {
@@ -72,4 +72,4 @@ impl DataLayer {
 }
 
 #[cfg(test)]
-mod test_utilities;
+pub mod test_utilities;
