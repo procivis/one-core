@@ -43,6 +43,10 @@ pub(super) fn process_and_validate_config(
         postprocess_format_entities(config.format).map_err(ConfigParseError::JsonError)?;
     config.exchange =
         postprocess_exchange_entities(config.exchange).map_err(ConfigParseError::JsonError)?;
+    config.transport =
+        postprocess_transport_entities(config.transport).map_err(ConfigParseError::JsonError)?;
+    config.revocation =
+        postprocess_revocation_entities(config.revocation).map_err(ConfigParseError::JsonError)?;
     config.did = postprocess_did_entities(config.did).map_err(ConfigParseError::JsonError)?;
     config.datatype =
         postprocess_datatype_entities(config.datatype).map_err(ConfigParseError::JsonError)?;

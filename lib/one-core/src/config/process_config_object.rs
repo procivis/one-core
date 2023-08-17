@@ -5,7 +5,7 @@ use serde::de::Error;
 use crate::config::data_structure::{
     AccessModifier, DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams,
     DatatypeParams, DatatypeStringParams, DatatypeType, DidEntity, DidKeyParams, DidParams,
-    DidType, ExchangeEntity, FormatEntity, ParamsEnum,
+    DidType, ExchangeEntity, FormatEntity, ParamsEnum, RevocationEntity, TransportEntity,
 };
 
 fn convert_param_to_param_map(
@@ -119,6 +119,56 @@ fn postprocess_exchange_entity(
     })
 }
 
+fn postprocess_transport_entity(
+    entity: TransportEntity,
+) -> Result<TransportEntity, serde_json::Error> {
+    let parsed_params = match entity.params {
+        None => None,
+        Some(value) => match value {
+            ParamsEnum::Unparsed(value) => {
+                let public = value["public"].to_owned();
+                let private = value["private"].to_owned();
+                Some(ParamsEnum::Parsed(process_public_and_private(
+                    public, private,
+                )?))
+            }
+            ParamsEnum::Parsed(value) => Some(ParamsEnum::Parsed(value)),
+        },
+    };
+
+    Ok(TransportEntity {
+        r#type: entity.r#type,
+        display: entity.display,
+        order: entity.order,
+        params: parsed_params,
+    })
+}
+
+fn postprocess_revocation_entity(
+    entity: RevocationEntity,
+) -> Result<RevocationEntity, serde_json::Error> {
+    let parsed_params = match entity.params {
+        None => None,
+        Some(value) => match value {
+            ParamsEnum::Unparsed(value) => {
+                let public = value["public"].to_owned();
+                let private = value["private"].to_owned();
+                Some(ParamsEnum::Parsed(process_public_and_private(
+                    public, private,
+                )?))
+            }
+            ParamsEnum::Parsed(value) => Some(ParamsEnum::Parsed(value)),
+        },
+    };
+
+    Ok(RevocationEntity {
+        r#type: entity.r#type,
+        display: entity.display,
+        order: entity.order,
+        params: parsed_params,
+    })
+}
+
 fn postprocess_did_entity(entity: DidEntity) -> Result<DidEntity, serde_json::Error> {
     let parsed_params = match entity.params {
         None => None,
@@ -202,6 +252,24 @@ pub fn postprocess_exchange_entities(
     entities
         .into_iter()
         .map(|(k, v)| Ok((k, postprocess_exchange_entity(v)?)))
+        .collect()
+}
+
+pub fn postprocess_transport_entities(
+    entities: HashMap<String, TransportEntity>,
+) -> Result<HashMap<String, TransportEntity>, serde_json::Error> {
+    entities
+        .into_iter()
+        .map(|(k, v)| Ok((k, postprocess_transport_entity(v)?)))
+        .collect()
+}
+
+pub fn postprocess_revocation_entities(
+    entities: HashMap<String, RevocationEntity>,
+) -> Result<HashMap<String, RevocationEntity>, serde_json::Error> {
+    entities
+        .into_iter()
+        .map(|(k, v)| Ok((k, postprocess_revocation_entity(v)?)))
         .collect()
 }
 

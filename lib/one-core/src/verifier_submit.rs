@@ -285,6 +285,7 @@ mod tests {
         let minimal_config = r#"{
           "format": {},
           "exchange": {},
+          "transport": {},
           "revocation": {},
           "did": {},
           "datatype": {}
