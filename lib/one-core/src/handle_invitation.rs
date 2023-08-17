@@ -10,7 +10,7 @@ use crate::data_layer::data_model::{
 };
 use crate::data_model::ConnectVerifierResponse;
 use crate::error::SSIError;
-use crate::local_did_helpers::{get_first_did, get_first_organisation_id};
+use crate::local_did_helpers::{get_first_local_did, get_first_organisation_id};
 use crate::transport_protocol::TransportProtocolError;
 use crate::{
     data_layer::{
@@ -122,7 +122,7 @@ impl OneCore {
 
         // FIXME - these two should be fetched correctly
         let organisation_id = get_first_organisation_id(&self.data_layer).await?;
-        let expected_holder_did = get_first_did(&self.data_layer, &organisation_id).await?;
+        let expected_holder_did = get_first_local_did(&self.data_layer, &organisation_id).await?;
 
         let connect_response = self
             .get_transport_protocol(&url_query_params.protocol)?
@@ -422,7 +422,7 @@ mod tests {
                 name: "holder".to_string(),
                 organisation_id: organisation_id.to_owned(),
                 did: holder_did_value.to_owned(),
-                did_type: Default::default(),
+                did_type: data_layer::data_model::DidType::Local,
                 method: Default::default(),
             })
             .await
