@@ -39,7 +39,11 @@ pub(crate) async fn post_credential(
             DataLayerError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
             DataLayerError::DatatypeValidationError(error) => {
                 tracing::error!("Datatype validation error: {:?}", error);
-                StatusCode::BAD_REQUEST.into_response()
+                (
+                    StatusCode::BAD_REQUEST,
+                    format!("Datatype validation error: {:?}", error),
+                )
+                    .into_response()
             }
             _ => {
                 tracing::error!("Error while getting credential: {:?}", error);
