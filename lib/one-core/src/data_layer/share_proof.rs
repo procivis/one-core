@@ -36,11 +36,7 @@ mod tests {
     use crate::data_layer::common_queries::insert_proof_state;
     use crate::data_layer::data_model::ProofRequestState;
     use crate::data_layer::entities::proof_state;
-    use crate::data_layer::{
-        entities::{claim_schema::Datatype, ProofState},
-        test_utilities::*,
-        DataLayer,
-    };
+    use crate::data_layer::{entities::ProofState, test_utilities::*, DataLayer};
     use sea_orm::EntityTrait;
     use std::ops::Add;
     use time::{Duration, OffsetDateTime};
@@ -75,8 +71,8 @@ mod tests {
                     .await
                     .unwrap();
 
-            let new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..4)
-                .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+            let new_claims: Vec<(Uuid, bool, u32, &str)> = (0..4)
+                .map(|i| (Uuid::new_v4(), i % 2 == 0, i, "STRING"))
                 .collect();
             insert_many_claims_schema_to_database(
                 &data_layer.db,

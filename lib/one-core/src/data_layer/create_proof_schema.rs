@@ -65,9 +65,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::data_layer::data_model::{ClaimProofSchemaRequest, CreateProofSchemaRequest};
-    use crate::data_layer::entities::{
-        claim_schema::Datatype, ProofSchema, ProofSchemaClaimSchema,
-    };
+    use crate::data_layer::entities::{ProofSchema, ProofSchemaClaimSchema};
     use crate::data_layer::test_utilities::{
         insert_credential_schema_to_database, insert_many_claims_schema_to_database,
         insert_organisation_to_database, setup_test_data_layer_and_connection,
@@ -199,8 +197,8 @@ mod tests {
             .len();
         assert_eq!(0, proof_schema_claim_count);
 
-        let new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..50)
-            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+        let new_claims: Vec<(Uuid, bool, u32, &str)> = (0..50)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, "STRING"))
             .collect();
 
         let organisation_id = Uuid::new_v4();

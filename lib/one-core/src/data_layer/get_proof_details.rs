@@ -117,7 +117,7 @@ mod tests {
     use uuid::Uuid;
 
     use crate::data_layer::{
-        entities::{claim_schema::Datatype, proof_state::ProofRequestState},
+        entities::proof_state::ProofRequestState,
         test_utilities::{
             insert_credential_schema_to_database, insert_did,
             insert_many_claims_schema_to_database, insert_organisation_to_database,
@@ -146,8 +146,8 @@ mod tests {
             insert_credential_schema_to_database(&data_layer.db, None, &organisation_id, "test123")
                 .await
                 .unwrap();
-        let new_claim_schemas: Vec<(Uuid, bool, u32, Datatype)> = (0..4)
-            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+        let new_claim_schemas: Vec<(Uuid, bool, u32, &str)> = (0..4)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, "STRING"))
             .collect();
         insert_many_claims_schema_to_database(
             &data_layer.db,

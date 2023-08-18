@@ -121,35 +121,6 @@ impl From<super::entities::credential_schema::RevocationMethod> for RevocationMe
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")] // serialization necessary for wallet to parse JSON API response
-pub enum Datatype {
-    #[default]
-    String,
-    Date,
-    Number,
-}
-
-impl From<Datatype> for super::entities::claim_schema::Datatype {
-    fn from(value: Datatype) -> Self {
-        match value {
-            Datatype::String => claim_schema::Datatype::String,
-            Datatype::Date => claim_schema::Datatype::Date,
-            Datatype::Number => claim_schema::Datatype::Number,
-        }
-    }
-}
-
-impl From<super::entities::claim_schema::Datatype> for Datatype {
-    fn from(value: super::entities::claim_schema::Datatype) -> Self {
-        match value {
-            claim_schema::Datatype::String => Datatype::String,
-            claim_schema::Datatype::Date => Datatype::Date,
-            claim_schema::Datatype::Number => Datatype::Number,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SortDirection {
     Ascending,
@@ -222,7 +193,7 @@ pub struct CreateCredentialSchemaFromJwtRequest {
 pub struct CredentialClaimSchemaFromJwtRequest {
     pub id: Uuid,
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
 }
 
 #[derive(Clone, Debug)]
@@ -233,7 +204,7 @@ pub struct CreateCredentialSchemaResponse {
 #[derive(Clone, Debug)]
 pub struct CredentialClaimSchemaRequest {
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
 }
 
 #[derive(Clone, Debug)]
@@ -256,7 +227,7 @@ pub struct CredentialClaimSchemaResponse {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
 }
 
 impl From<CredentialSchemaClaimSchemaCombined> for CredentialClaimSchemaResponse {
@@ -266,7 +237,7 @@ impl From<CredentialSchemaClaimSchemaCombined> for CredentialClaimSchemaResponse
             created_date: value.created_date,
             last_modified: value.last_modified,
             key: value.key.clone(),
-            datatype: value.datatype.into(),
+            datatype: value.datatype,
         }
     }
 }
@@ -315,7 +286,7 @@ pub(crate) struct ProofSchemaClaimSchemaCombined {
     pub claim_key: String,
     pub claim_created_date: OffsetDateTime,
     pub claim_last_modified: OffsetDateTime,
-    pub claim_datatype: claim_schema::Datatype,
+    pub claim_datatype: String,
     pub credential_schema_id: String,
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_last_modified: OffsetDateTime,
@@ -331,7 +302,7 @@ pub(crate) struct CredentialSchemaClaimSchemaCombined {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub key: String,
-    pub datatype: claim_schema::Datatype,
+    pub datatype: String,
     pub credential_schema_id: String,
 }
 
@@ -342,7 +313,7 @@ pub struct ProofClaimSchemaResponse {
     pub key: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub datatype: claim_schema::Datatype,
+    pub datatype: String,
     pub credential_schema: ListCredentialSchemaResponse,
 }
 
@@ -659,7 +630,7 @@ pub(crate) struct ClaimClaimSchemaCombined {
     pub last_modified: OffsetDateTime,
     pub value: String,
     pub key: String,
-    pub datatype: claim_schema::Datatype,
+    pub datatype: String,
 }
 
 impl From<ClaimClaimSchemaCombined> for DetailCredentialClaimResponse {
@@ -670,7 +641,7 @@ impl From<ClaimClaimSchemaCombined> for DetailCredentialClaimResponse {
                 created_date: value.created_date,
                 last_modified: value.last_modified,
                 key: value.key,
-                datatype: value.datatype.into(),
+                datatype: value.datatype,
             },
             value: value.value,
         }
@@ -846,7 +817,7 @@ impl DetailProofClaim {
 pub struct DetailProofClaimSchema {
     pub id: String,
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub credential_schema: ListCredentialSchemaResponse,
@@ -859,7 +830,7 @@ impl DetailProofClaimSchema {
         Self {
             id: claim_schema.id,
             key: claim_schema.key,
-            datatype: claim_schema.datatype.into(),
+            datatype: claim_schema.datatype,
             created_date: claim_schema.created_date,
             last_modified: claim_schema.last_modified,
             credential_schema: credential_schema.into(),

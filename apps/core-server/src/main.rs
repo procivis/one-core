@@ -119,7 +119,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     data_model::HandleInvitationRequestDTO,
                     data_model::GetProofsResponseDTO,
                     data_model::Format,
-                    data_model::Datatype,
                     data_model::DidType,
                     data_model::DidMethod,
                     data_model::ProofRequestState,

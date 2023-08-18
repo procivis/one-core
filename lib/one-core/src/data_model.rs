@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::data_layer::data_model::{Datatype, ListCredentialSchemaResponse};
+use crate::data_layer::data_model::ListCredentialSchemaResponse;
 
 #[derive(Deserialize)]
 pub struct ConnectIssuerRequest {
@@ -35,7 +35,7 @@ pub struct ProofClaimSchema {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
     pub required: bool,
     pub credential_schema: ListCredentialSchemaResponse,
 }

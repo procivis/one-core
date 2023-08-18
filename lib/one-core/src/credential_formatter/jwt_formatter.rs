@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::data_layer::data_model::{Datatype, DetailCredentialResponse};
+use crate::data_layer::data_model::DetailCredentialResponse;
 
 use base64::{engine::general_purpose, Engine};
 use jwt_simple::prelude::*;
@@ -168,11 +168,7 @@ impl From<&DetailCredentialResponse> for VC {
                             .map(|claim| VCCredentialClaimSchemaResponse {
                                 key: claim.schema.key.clone(),
                                 id: claim.schema.id.clone(),
-                                datatype: match claim.schema.datatype {
-                                    Datatype::String => "STRING".to_owned(),
-                                    Datatype::Date => "DATE".to_owned(),
-                                    Datatype::Number => "NUMBER".to_owned(),
-                                },
+                                datatype: claim.schema.datatype.to_owned(),
                             })
                             .collect(),
                     },

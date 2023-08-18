@@ -30,7 +30,7 @@ impl DataLayer {
 #[cfg(test)]
 mod tests {
 
-    use crate::data_layer::{entities::claim_schema::Datatype, test_utilities::*, DataLayerError};
+    use crate::data_layer::{test_utilities::*, DataLayerError};
 
     use uuid::Uuid;
 
@@ -74,8 +74,8 @@ mod tests {
 
         let claims_count: usize = 50;
 
-        let mut new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..claims_count)
-            .map(|i| (Uuid::new_v4(), i % 2 == 0, i as u32, Datatype::String))
+        let mut new_claims: Vec<(Uuid, bool, u32, &str)> = (0..claims_count)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i as u32, "STRING"))
             .collect();
 
         // Seems that sqlite keeps the order of insertion. We sort by UUID to mimic

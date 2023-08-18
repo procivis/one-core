@@ -1,19 +1,35 @@
+use std::collections::HashMap;
+
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, SqlErr};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::data_layer::{
-    data_model::{CreateCredentialSchemaRequest, CreateCredentialSchemaResponse},
-    entities::{claim_schema, credential_schema, credential_schema_claim_schema},
-    DataLayer, DataLayerError,
+use crate::{
+    config::{data_structure::DatatypeEntity, validator::datatype::validate_datatypes},
+    data_layer::{
+        data_model::{CreateCredentialSchemaRequest, CreateCredentialSchemaResponse},
+        entities::{claim_schema, credential_schema, credential_schema_claim_schema},
+        DataLayer, DataLayerError,
+    },
 };
 
 impl DataLayer {
     pub async fn create_credential_schema(
         &self,
         request: CreateCredentialSchemaRequest,
+        datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<CreateCredentialSchemaResponse, DataLayerError> {
         let now = OffsetDateTime::now_utc();
+
+        validate_datatypes(
+            &request
+                .claims
+                .iter()
+                .map(|f| &f.datatype)
+                .collect::<Vec<&String>>(),
+            datatypes,
+        )
+        .map_err(DataLayerError::DatatypeValidationError)?;
 
         let credential_schema = credential_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
@@ -43,7 +59,7 @@ impl DataLayer {
                     created_date: Set(now),
                     last_modified: Set(now),
                     key: Set(claim_data.key.clone()),
-                    datatype: Set(claim_data.datatype.clone().into()),
+                    datatype: Set(claim_data.datatype.clone()),
                 })
                 .collect();
 
@@ -85,7 +101,6 @@ impl DataLayer {
 mod tests {
     use sea_orm::EntityTrait;
 
-    use crate::data_layer::entities::claim_schema::Datatype;
     use crate::data_layer::entities::credential_schema::{Format, RevocationMethod};
     use crate::data_layer::entities::{
         claim_schema, credential_schema, ClaimSchema, CredentialSchema,
@@ -104,11 +119,11 @@ mod tests {
             claims: vec![
                 CredentialClaimSchemaRequest {
                     key: "1".to_string(),
-                    datatype: Datatype::String.into(),
+                    datatype: "STRING".into(),
                 },
                 CredentialClaimSchemaRequest {
                     key: "2".to_string(),
-                    datatype: Datatype::Number.into(),
+                    datatype: "NUMBER".into(),
                 },
             ],
         }
@@ -117,6 +132,7 @@ mod tests {
     #[tokio::test]
     async fn create_credential_schema_test_simple_without_claims() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let datatypes = get_datatypes();
 
         let credential_schemas_count = CredentialSchema::find()
             .all(&data_layer.db)
@@ -134,7 +150,10 @@ mod tests {
         let mut schema = create_schema(&organisation_id, "Credential1");
         schema.claims.clear();
 
-        assert!(data_layer.create_credential_schema(schema).await.is_ok());
+        assert!(data_layer
+            .create_credential_schema(schema, &datatypes)
+            .await
+            .is_ok());
 
         let credential_schemas_count = CredentialSchema::find()
             .all(&data_layer.db)
@@ -149,6 +168,7 @@ mod tests {
     #[ignore]
     async fn create_credential_schema_test_simple_without_claims_duplicated_name() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let datatypes = get_datatypes();
 
         let organisation_id = Uuid::new_v4();
         let organisation_id2 = Uuid::new_v4();
@@ -162,27 +182,30 @@ mod tests {
             .unwrap();
 
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential1"))
+            .create_credential_schema(create_schema(&organisation_id, "Credential1"), &datatypes)
             .await
             .is_ok());
 
         // The same name is not allowed
         assert!(matches!(
             data_layer
-                .create_credential_schema(create_schema(&organisation_id, "Credential1"))
+                .create_credential_schema(
+                    create_schema(&organisation_id, "Credential1"),
+                    &datatypes
+                )
                 .await,
             Err(DataLayerError::AlreadyExists)
         ));
 
         // Case sensitive
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "credential1"))
+            .create_credential_schema(create_schema(&organisation_id, "credential1"), &datatypes)
             .await
             .is_ok());
 
         // Same name for different organisation is ok
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id2, "Credential1"))
+            .create_credential_schema(create_schema(&organisation_id2, "Credential1"), &datatypes)
             .await
             .is_ok());
     }
@@ -190,6 +213,7 @@ mod tests {
     #[tokio::test]
     async fn create_credential_schema_test_simple_with_claims() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let datatypes = get_datatypes();
 
         let credential_schemas_count = CredentialSchema::find()
             .all(&data_layer.db)
@@ -207,7 +231,7 @@ mod tests {
             .unwrap();
 
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential1"))
+            .create_credential_schema(create_schema(&organisation_id, "Credential1"), &datatypes)
             .await
             .is_ok());
 
@@ -224,6 +248,7 @@ mod tests {
     #[tokio::test]
     async fn create_credential_schema_test_related_claims() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let datatypes = get_datatypes();
 
         let organisation_id = Uuid::new_v4();
 
@@ -232,15 +257,15 @@ mod tests {
             .unwrap();
 
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential1"))
+            .create_credential_schema(create_schema(&organisation_id, "Credential1"), &datatypes)
             .await
             .is_ok());
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential2"))
+            .create_credential_schema(create_schema(&organisation_id, "Credential2"), &datatypes)
             .await
             .is_ok());
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential3"))
+            .create_credential_schema(create_schema(&organisation_id, "Credential3"), &datatypes)
             .await
             .is_ok());
 

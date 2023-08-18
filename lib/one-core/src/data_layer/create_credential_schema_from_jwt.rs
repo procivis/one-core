@@ -1,18 +1,34 @@
+use std::collections::HashMap;
+
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, SqlErr};
 use time::OffsetDateTime;
 
-use crate::data_layer::{
-    data_model::{CreateCredentialSchemaFromJwtRequest, CreateCredentialSchemaResponse},
-    entities::{claim_schema, credential_schema, credential_schema_claim_schema},
-    DataLayer, DataLayerError,
+use crate::{
+    config::{data_structure::DatatypeEntity, validator::datatype::validate_datatypes},
+    data_layer::{
+        data_model::{CreateCredentialSchemaFromJwtRequest, CreateCredentialSchemaResponse},
+        entities::{claim_schema, credential_schema, credential_schema_claim_schema},
+        DataLayer, DataLayerError,
+    },
 };
 
 impl DataLayer {
     pub async fn create_credential_schema_from_jwt(
         &self,
         request: CreateCredentialSchemaFromJwtRequest,
+        datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<CreateCredentialSchemaResponse, DataLayerError> {
         let now = OffsetDateTime::now_utc();
+
+        validate_datatypes(
+            &request
+                .claims
+                .iter()
+                .map(|f| &f.datatype)
+                .collect::<Vec<&String>>(),
+            datatypes,
+        )
+        .map_err(DataLayerError::DatatypeValidationError)?;
 
         let credential_schema = credential_schema::ActiveModel {
             id: Set(request.id.to_string()),
@@ -42,7 +58,7 @@ impl DataLayer {
                     created_date: Set(now),
                     last_modified: Set(now),
                     key: Set(claim_data.key.clone()),
-                    datatype: Set(claim_data.datatype.clone().into()),
+                    datatype: Set(claim_data.datatype.clone()),
                 })
                 .collect();
 

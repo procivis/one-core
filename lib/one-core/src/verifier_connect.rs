@@ -72,7 +72,7 @@ impl OneCore {
                     key: claim.key,
                     created_date: claim.created_date,
                     last_modified: claim.last_modified,
-                    datatype: claim.datatype.into(),
+                    datatype: claim.datatype,
                     required: claim.is_required,
                     credential_schema: claim.credential_schema,
                 })

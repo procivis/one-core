@@ -1,5 +1,7 @@
+use crate::config::data_structure::{DatatypeEntity, DatatypeType, TranslatableString};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
+use std::collections::HashMap;
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -79,7 +81,7 @@ pub async fn insert_credential_schema_to_database(
 pub async fn insert_many_claims_schema_to_database(
     database: &DatabaseConnection,
     credential_schema_id: &str,
-    claims: &Vec<(Uuid, bool, u32, claim_schema::Datatype)>,
+    claims: &Vec<(Uuid, bool, u32, &str)>,
 ) -> Result<(), DbErr> {
     for (id, required, order, datatype) in claims {
         claim_schema::ActiveModel {
@@ -87,7 +89,7 @@ pub async fn insert_many_claims_schema_to_database(
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             key: Set("TestKey".to_string()),
-            datatype: Set(datatype.to_owned()),
+            datatype: Set(datatype.to_string()),
         }
         .insert(database)
         .await?;
@@ -260,7 +262,7 @@ pub async fn insert_proof_request_to_database_with_claims(
 pub async fn insert_proof_schema_with_claims_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    claims: &Vec<(Uuid, bool, u32, claim_schema::Datatype)>,
+    claims: &Vec<(Uuid, bool, u32, &str)>,
     organisation_id: &str,
     name: &str,
 ) -> Result<String, DbErr> {
@@ -367,6 +369,38 @@ pub async fn insert_did(
     .await?;
 
     Ok(did.id)
+}
+
+pub fn get_datatypes() -> HashMap<String, DatatypeEntity> {
+    HashMap::from([
+        (
+            "STRING".to_string(),
+            DatatypeEntity {
+                r#type: DatatypeType::String,
+                display: TranslatableString::Value("Display".to_string()),
+                order: None,
+                params: None,
+            },
+        ),
+        (
+            "NUMBER".to_string(),
+            DatatypeEntity {
+                r#type: DatatypeType::Number,
+                display: TranslatableString::Value("Display".to_string()),
+                order: None,
+                params: None,
+            },
+        ),
+        (
+            "DATE".to_string(),
+            DatatypeEntity {
+                r#type: DatatypeType::Date,
+                display: TranslatableString::Value("Display".to_string()),
+                order: None,
+                params: None,
+            },
+        ),
+    ])
 }
 
 pub async fn setup_test_data_layer_and_connection() -> Result<DataLayer, DbErr> {

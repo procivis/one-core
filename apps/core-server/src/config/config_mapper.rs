@@ -38,7 +38,7 @@ fn filter_config_entity(mut value: Value) -> Value {
     }
 }
 
-fn unpack_and_filter_json_values(params: serde_json::Value) -> serde_json::Value {
+fn unpack_and_filter_json_values(params: Value) -> Value {
     match params.as_object() {
         None => params,
         Some(value) => {
@@ -53,8 +53,8 @@ fn unpack_and_filter_json_values(params: serde_json::Value) -> serde_json::Value
     }
 }
 
-fn unpack_and_filter_json_value(param: serde_json::Value) -> Option<serde_json::Value> {
-    let deserialized: Param<serde_json::Value> = serde_json::from_value(param).ok()?;
+fn unpack_and_filter_json_value(param: Value) -> Option<Value> {
+    let deserialized: Param<Value> = serde_json::from_value(param).ok()?;
     match deserialized.access {
         AccessModifier::Public => Some(deserialized.value),
         AccessModifier::Private => None,

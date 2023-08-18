@@ -259,7 +259,6 @@ mod tests {
     use crate::{
         config::data_structure::{ConfigKind, UnparsedConfig},
         data_layer::{
-            self,
             data_model::{
                 ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
                 CreateCredentialSchemaRequest, CreateDidRequest, CreateOrganisationRequest,
@@ -267,6 +266,7 @@ mod tests {
                 CredentialClaimSchemaRequest, Format, ProofRequestState, RevocationMethod,
                 Transport,
             },
+            test_utilities::get_datatypes,
         },
         data_model::VerifierSubmitRequest,
         OneCore,
@@ -297,9 +297,10 @@ mod tests {
             content: minimal_config,
             kind: ConfigKind::Json,
         };
-        let one_core = OneCore::new("sqlite::memory:", unparsed_config)
+        let mut one_core = OneCore::new("sqlite::memory:", unparsed_config)
             .await
             .unwrap();
+        one_core.config.datatype = get_datatypes();
 
         let organisation_id = one_core
             .data_layer
@@ -352,16 +353,19 @@ mod tests {
 
         let credential_schema_id = one_core
             .data_layer
-            .create_credential_schema(CreateCredentialSchemaRequest {
-                name: "CREDENTIAL_SCHEMA".to_string(),
-                format: Format::Jwt,
-                revocation_method: RevocationMethod::None,
-                organisation_id: Uuid::from_str(&organisation_id).unwrap(),
-                claims: vec![CredentialClaimSchemaRequest {
-                    key: "Something".to_string(),
-                    datatype: data_layer::data_model::Datatype::String,
-                }],
-            })
+            .create_credential_schema(
+                CreateCredentialSchemaRequest {
+                    name: "CREDENTIAL_SCHEMA".to_string(),
+                    format: Format::Jwt,
+                    revocation_method: RevocationMethod::None,
+                    organisation_id: Uuid::from_str(&organisation_id).unwrap(),
+                    claims: vec![CredentialClaimSchemaRequest {
+                        key: "Something".to_string(),
+                        datatype: "STRING".to_string(),
+                    }],
+                },
+                &one_core.config.datatype,
+            )
             .await
             .unwrap()
             .id;
@@ -374,22 +378,25 @@ mod tests {
 
         let credential_response = one_core
             .data_layer
-            .create_credential(CreateCredentialRequest {
-                credential_id: None,
-                credential_schema_id: Uuid::from_str(&credential_schema.id).unwrap(),
-                issuer_did: Uuid::from_str(&issuer_did_id).unwrap(),
-                transport: Transport::ProcivisTemporary,
-                claim_values: credential_schema
-                    .claims
-                    .iter()
-                    .map(|claim| CreateCredentialRequestClaim {
-                        claim_id: Uuid::from_str(&claim.id).unwrap(),
-                        value: "test".to_owned(),
-                    })
-                    .collect(),
-                receiver_did_id: Some(Uuid::from_str(&holder_did_id).unwrap()),
-                credential: None,
-            })
+            .create_credential(
+                CreateCredentialRequest {
+                    credential_id: None,
+                    credential_schema_id: Uuid::from_str(&credential_schema.id).unwrap(),
+                    issuer_did: Uuid::from_str(&issuer_did_id).unwrap(),
+                    transport: Transport::ProcivisTemporary,
+                    claim_values: credential_schema
+                        .claims
+                        .iter()
+                        .map(|claim| CreateCredentialRequestClaim {
+                            claim_id: Uuid::from_str(&claim.id).unwrap(),
+                            value: "test".to_owned(),
+                        })
+                        .collect(),
+                    receiver_did_id: Some(Uuid::from_str(&holder_did_id).unwrap()),
+                    credential: None,
+                },
+                &one_core.config.datatype,
+            )
             .await
             .unwrap();
 

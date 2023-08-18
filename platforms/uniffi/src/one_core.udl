@@ -10,7 +10,7 @@ enum ConfigParseError {
 
 [Error]
 enum DataLayerError {
-  "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "RecordNotFound", "RecordNotUpdated", "Other"
+  "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "DatatypeValidationError", "RecordNotFound", "RecordNotUpdated", "Other"
 };
 
 [Error]
@@ -40,10 +40,6 @@ enum CredentialFormat {
   "Jwt", "SdJwt", "JsonLd", "Mdoc"
 };
 
-enum ClaimDataType {
-  "String", "Date", "Number"
-};
-
 dictionary CredentialSchema {
   string id;
   string created_date;
@@ -57,7 +53,7 @@ dictionary CredentialSchema {
 dictionary Claim {
   string id;
   string key;
-  ClaimDataType data_type;
+  string data_type;
   string value;
 };
 
@@ -77,7 +73,7 @@ dictionary ProofRequestClaim {
     string created_date;
     string last_modified;
     string key;
-    ClaimDataType data_type;
+    string data_type;
     boolean required;
     CredentialSchema credential_schema;
 };

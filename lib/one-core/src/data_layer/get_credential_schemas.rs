@@ -90,7 +90,7 @@ mod tests {
 
     use super::{credential_schema, GetCredentialSchemaQuery, SortableCredentialSchemaColumn};
 
-    use crate::data_layer::{entities::claim_schema::Datatype, test_utilities::*};
+    use crate::data_layer::test_utilities::*;
 
     #[tokio::test]
     async fn test_get_credential_schemas_simple() {
@@ -129,8 +129,8 @@ mod tests {
 
         let claims_count: usize = 50;
 
-        let mut new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..claims_count)
-            .map(|i| (Uuid::new_v4(), i % 2 == 0, i as u32, Datatype::String))
+        let mut new_claims: Vec<(Uuid, bool, u32, &str)> = (0..claims_count)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i as u32, "STRING"))
             .collect();
 
         // Seems that sqlite keeps the order of insertion. We sort by UUID to mimic
@@ -568,8 +568,8 @@ mod tests {
         .await
         .unwrap();
 
-        let new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..4)
-            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+        let new_claims: Vec<(Uuid, bool, u32, &str)> = (0..4)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, "STRING"))
             .collect();
 
         insert_many_claims_schema_to_database(&data_layer.db, &id, &new_claims)

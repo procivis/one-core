@@ -1,35 +1,25 @@
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, EntityTrait};
-use time::macros::format_description;
-use time::{OffsetDateTime, PrimitiveDateTime};
+use std::collections::HashMap;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::data_layer::entities::credential_state;
-use crate::data_layer::{
-    common_queries::{fetch_credential_schema_claim_schemas, insert_credential_state},
-    data_model::{CreateCredentialRequest, CredentialSchemaClaimSchemaCombined, EntityResponse},
-    entities::{
-        claim, claim_schema::Datatype, credential, credential_claim, CredentialSchema, Did,
+use crate::{
+    config::{data_structure::DatatypeEntity, validator::datatype::validate_value},
+    data_layer::{
+        common_queries::{fetch_credential_schema_claim_schemas, insert_credential_state},
+        data_model::{
+            CreateCredentialRequest, CredentialSchemaClaimSchemaCombined, EntityResponse,
+        },
+        entities::{claim, credential, credential_claim, credential_state, CredentialSchema, Did},
+        DataLayer, DataLayerError,
     },
-    DataLayer, DataLayerError,
 };
-
-fn is_valid_data(value: &str, datatype: Datatype) -> bool {
-    match datatype {
-        Datatype::String => true,
-        Datatype::Date => {
-            let format =
-                format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
-            PrimitiveDateTime::parse(value, &format).is_ok()
-        }
-        Datatype::Number => value.parse::<f64>().is_ok(),
-    }
-}
 
 fn get_datatype(
     claim_schema_id: &str,
     schemas_combined: &[CredentialSchemaClaimSchemaCombined],
-) -> Result<Datatype, DataLayerError> {
+) -> Result<String, DataLayerError> {
     match schemas_combined.iter().find(|f| f.id == claim_schema_id) {
         None => Err(DataLayerError::RecordNotFound),
         Some(value) => Ok(value.datatype.to_owned()),
@@ -40,6 +30,7 @@ impl DataLayer {
     pub async fn create_credential(
         &self,
         request: CreateCredentialRequest,
+        datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<EntityResponse, DataLayerError> {
         let did: super::entities::did::Model = Did::find_by_id(request.issuer_did.to_string())
             .one(&self.db)
@@ -61,9 +52,8 @@ impl DataLayer {
             let schema_id = request_claim.claim_id;
             let datatype = get_datatype(&schema_id.to_string(), &schemas_combined)?;
 
-            if !is_valid_data(&request_claim.value, datatype) {
-                return Err(DataLayerError::IncorrectParameters);
-            }
+            validate_value(&request_claim.value, &datatype, datatypes)
+                .map_err(DataLayerError::DatatypeValidationError)?;
         }
 
         let now = OffsetDateTime::now_utc();
@@ -140,6 +130,7 @@ mod tests {
     #[tokio::test]
     async fn create_credential_test_simple() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let datatypes = get_datatypes();
 
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
@@ -152,8 +143,8 @@ mod tests {
                 .await
                 .unwrap();
 
-        let new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..4)
-            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+        let new_claims: Vec<(Uuid, bool, u32, &str)> = (0..4)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, "STRING"))
             .collect();
         insert_many_claims_schema_to_database(&data_layer.db, &credential_schema_id, &new_claims)
             .await
@@ -171,18 +162,21 @@ mod tests {
         assert_eq!(0, credential_state_count);
 
         let result = data_layer
-            .create_credential(CreateCredentialRequest {
-                credential_id: None,
-                credential_schema_id: credential_schema_id.parse().unwrap(),
-                issuer_did: did.parse().unwrap(),
-                transport: Transport::ProcivisTemporary,
-                claim_values: vec![CreateCredentialRequestClaim {
-                    claim_id: new_claims[0].0,
-                    value: "placeholder".to_string(),
-                }],
-                receiver_did_id: None,
-                credential: None,
-            })
+            .create_credential(
+                CreateCredentialRequest {
+                    credential_id: None,
+                    credential_schema_id: credential_schema_id.parse().unwrap(),
+                    issuer_did: did.parse().unwrap(),
+                    transport: Transport::ProcivisTemporary,
+                    claim_values: vec![CreateCredentialRequestClaim {
+                        claim_id: new_claims[0].0,
+                        value: "placeholder".to_string(),
+                    }],
+                    receiver_did_id: None,
+                    credential: None,
+                },
+                &datatypes,
+            )
             .await;
         assert!(result.is_ok());
 
@@ -201,6 +195,7 @@ mod tests {
     #[tokio::test]
     async fn create_credential_test_claim_data_validation() {
         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let datatypes = get_datatypes();
 
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
@@ -213,9 +208,9 @@ mod tests {
                 .await
                 .unwrap();
 
-        let new_claims: Vec<(Uuid, bool, u32, Datatype)> = vec![
-            (Uuid::new_v4(), false, 0, Datatype::Number),
-            (Uuid::new_v4(), true, 1, Datatype::Date),
+        let new_claims: Vec<(Uuid, bool, u32, &str)> = vec![
+            (Uuid::new_v4(), false, 0, "NUMBER"),
+            (Uuid::new_v4(), true, 1, "DATE"),
         ];
         insert_many_claims_schema_to_database(&data_layer.db, &credential_schema_id, &new_claims)
             .await
@@ -233,36 +228,44 @@ mod tests {
         assert_eq!(0, credential_state_count);
 
         let failed_to_verify_number = data_layer
-            .create_credential(CreateCredentialRequest {
-                credential_id: None,
-                credential_schema_id: credential_schema_id.parse().unwrap(),
-                issuer_did: did.parse().unwrap(),
-                transport: Transport::ProcivisTemporary,
-                claim_values: vec![CreateCredentialRequestClaim {
-                    claim_id: new_claims[0].0,
-                    value: "this is not a number".to_string(),
-                }],
-                receiver_did_id: None,
-                credential: None,
-            })
+            .create_credential(
+                CreateCredentialRequest {
+                    credential_id: None,
+                    credential_schema_id: credential_schema_id.parse().unwrap(),
+                    issuer_did: did.parse().unwrap(),
+                    transport: Transport::ProcivisTemporary,
+                    claim_values: vec![CreateCredentialRequestClaim {
+                        claim_id: new_claims[0].0,
+                        value: "this is not a number".to_string(),
+                    }],
+                    receiver_did_id: None,
+                    credential: None,
+                },
+                &datatypes,
+            )
             .await;
-        assert!(failed_to_verify_number.is_err_and(|e| e == DataLayerError::IncorrectParameters));
+        assert!(failed_to_verify_number
+            .is_err_and(|e| matches!(e, DataLayerError::DatatypeValidationError(_))));
 
         let failed_to_verify_date = data_layer
-            .create_credential(CreateCredentialRequest {
-                credential_id: None,
-                credential_schema_id: credential_schema_id.parse().unwrap(),
-                issuer_did: did.parse().unwrap(),
-                transport: Transport::ProcivisTemporary,
-                claim_values: vec![CreateCredentialRequestClaim {
-                    claim_id: new_claims[1].0,
-                    value: "this is not a date".to_string(),
-                }],
-                receiver_did_id: None,
-                credential: None,
-            })
+            .create_credential(
+                CreateCredentialRequest {
+                    credential_id: None,
+                    credential_schema_id: credential_schema_id.parse().unwrap(),
+                    issuer_did: did.parse().unwrap(),
+                    transport: Transport::ProcivisTemporary,
+                    claim_values: vec![CreateCredentialRequestClaim {
+                        claim_id: new_claims[1].0,
+                        value: "this is not a date".to_string(),
+                    }],
+                    receiver_did_id: None,
+                    credential: None,
+                },
+                &datatypes,
+            )
             .await;
-        assert!(failed_to_verify_date.is_err_and(|e| e == DataLayerError::IncorrectParameters));
+        assert!(failed_to_verify_date
+            .is_err_and(|e| matches!(e, DataLayerError::DatatypeValidationError(_))));
 
         let claim_count = Claim::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(0, claim_count);
@@ -276,24 +279,27 @@ mod tests {
         assert_eq!(0, credential_state_count);
 
         let correct_insert = data_layer
-            .create_credential(CreateCredentialRequest {
-                credential_id: None,
-                credential_schema_id: credential_schema_id.parse().unwrap(),
-                issuer_did: did.parse().unwrap(),
-                transport: Transport::ProcivisTemporary,
-                claim_values: vec![
-                    CreateCredentialRequestClaim {
-                        claim_id: new_claims[0].0,
-                        value: "123".to_string(),
-                    },
-                    CreateCredentialRequestClaim {
-                        claim_id: new_claims[1].0,
-                        value: "2005-04-02T21:37:42.069Z".to_string(),
-                    },
-                ],
-                receiver_did_id: None,
-                credential: None,
-            })
+            .create_credential(
+                CreateCredentialRequest {
+                    credential_id: None,
+                    credential_schema_id: credential_schema_id.parse().unwrap(),
+                    issuer_did: did.parse().unwrap(),
+                    transport: Transport::ProcivisTemporary,
+                    claim_values: vec![
+                        CreateCredentialRequestClaim {
+                            claim_id: new_claims[0].0,
+                            value: "123".to_string(),
+                        },
+                        CreateCredentialRequestClaim {
+                            claim_id: new_claims[1].0,
+                            value: "2005-04-02T21:37:42.069Z".to_string(),
+                        },
+                    ],
+                    receiver_did_id: None,
+                    credential: None,
+                },
+                &datatypes,
+            )
             .await;
         assert!(correct_insert.is_ok());
 

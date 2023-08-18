@@ -10,7 +10,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -68,15 +68,3 @@ impl Related<super::proof_schema::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-pub enum Datatype {
-    #[default]
-    #[sea_orm(string_value = "STRING")]
-    String,
-    #[sea_orm(string_value = "DATE")]
-    Date,
-    #[sea_orm(string_value = "NUMBER")]
-    Number,
-}

@@ -1165,7 +1165,7 @@ pub enum CredentialClaim {
     CredentialId,
 }
 
-struct CustomDateTime(sea_orm::DatabaseBackend);
+pub struct CustomDateTime(pub sea_orm::DatabaseBackend);
 
 impl Iden for CustomDateTime {
     fn unquoted(&self, s: &mut dyn fmt::Write) {
