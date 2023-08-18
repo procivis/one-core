@@ -18,12 +18,15 @@ pub mod data_model;
 pub mod error;
 pub mod handle_invitation;
 pub mod holder_reject_proof_request;
+pub mod holder_submit_proof;
 pub mod issuer_connect;
 pub mod signature_provider;
 pub mod transport_protocol;
 pub mod verifier_connect;
 pub mod verifier_reject_proof_request;
 pub mod verifier_submit;
+
+mod local_did_helpers;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 

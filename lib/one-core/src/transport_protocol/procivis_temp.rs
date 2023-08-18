@@ -86,14 +86,43 @@ impl TransportProtocol for ProcivisTemp {
         proof_id: &str,
     ) -> Result<(), TransportProtocolError> {
         let mut url = reqwest::Url::parse(base_url)
-            .map_err(|_e| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+            .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
         url.set_path("/ssi/temporary-verifier/v1/reject");
         url.set_query(Some(&format!("proof={proof_id}")));
 
-        self.client
+        let response = self
+            .client
             .post(url)
             .send()
             .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+        response
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?;
+
+        Ok(())
+    }
+
+    async fn submit_proof(
+        &self,
+        base_url: &str,
+        proof_id: &str,
+        presentation: &str,
+    ) -> Result<(), TransportProtocolError> {
+        let mut url = reqwest::Url::parse(base_url)
+            .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+        url.set_path("/ssi/temporary-verifier/v1/submit");
+        url.set_query(Some(&format!("proof={proof_id}")));
+
+        let response = self
+            .client
+            .post(url)
+            .body(presentation.to_owned())
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+        response
+            .error_for_status()
             .map_err(TransportProtocolError::HttpRequestError)?;
 
         Ok(())

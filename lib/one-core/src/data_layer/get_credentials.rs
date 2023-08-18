@@ -44,6 +44,7 @@ fn get_select_credentials_query(
             credential::Column::CreatedDate,
             credential::Column::LastModified,
             credential::Column::IssuanceDate,
+            credential::Column::Credential,
         ])
         .columns([did::Column::Did])
         .columns([credential_state::Column::State])

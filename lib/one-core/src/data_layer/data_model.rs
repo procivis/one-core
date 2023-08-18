@@ -551,6 +551,7 @@ pub struct DetailCredentialResponse {
     pub schema: ListCredentialSchemaResponse,
     pub issuer_did: Option<String>,
     pub claims: Vec<DetailCredentialClaimResponse>,
+    pub credential: Vec<u8>,
 }
 
 pub type GetCredentialsResponse = GetListResponse<DetailCredentialResponse>;
@@ -683,6 +684,7 @@ pub(crate) struct CredentialDidCredentialSchemaCombined {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
+    pub credential: Vec<u8>,
 
     // did table
     pub did: Option<String>,
@@ -745,6 +747,7 @@ impl DetailCredentialResponse {
                 .filter(|claim| claim.credential_id == value.id)
                 .map(|claim| claim.clone().into())
                 .collect(),
+            credential: value.credential.clone(),
             schema: value.into(),
         })
     }

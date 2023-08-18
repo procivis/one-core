@@ -7,6 +7,9 @@ pub use handle_invitation::*;
 mod holder_reject_proof;
 pub use holder_reject_proof::*;
 
+mod holder_submit_proof;
+pub use holder_submit_proof::*;
+
 mod get_credentials;
 pub use get_credentials::*;
 

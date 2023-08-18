@@ -10,17 +10,17 @@ use crate::data_layer::data_model::{
 };
 use crate::data_model::ConnectVerifierResponse;
 use crate::error::SSIError;
+use crate::local_did_helpers::{get_first_did, get_first_organisation_id};
 use crate::transport_protocol::TransportProtocolError;
 use crate::{
     data_layer::{
         data_model::{
             CreateCredentialSchemaFromJwtRequest, CreateDidRequest,
             CredentialClaimSchemaFromJwtRequest, Datatype, DidMethod, DidType, Format,
-            GetDidDetailsResponse, RevocationMethod,
+            RevocationMethod,
         },
         entities::credential_state::CredentialState,
-        get_dids::GetDidQuery,
-        DataLayer, DataLayerError,
+        DataLayerError,
     },
     data_model::HandleInvitationQueryRequest,
     error::OneCoreError,
@@ -51,40 +51,6 @@ fn parse_query(url: &str) -> Result<HandleInvitationQueryRequest, OneCoreError> 
         credential: option_parse_uuid(query.get("credential"))?,
         proof: option_parse_uuid(query.get("proof"))?,
     })
-}
-
-async fn get_first_organisation_id(data_layer: &DataLayer) -> Result<String, OneCoreError> {
-    let organisations = data_layer
-        .get_organisations()
-        .await
-        .map_err(OneCoreError::DataLayerError)?;
-    Ok(organisations
-        .first()
-        .ok_or(OneCoreError::DataLayerError(DataLayerError::RecordNotFound))?
-        .id
-        .to_owned())
-}
-
-async fn get_first_did(
-    data_layer: &DataLayer,
-    organisation_id: &str,
-) -> Result<GetDidDetailsResponse, OneCoreError> {
-    let dids = data_layer
-        .get_dids(GetDidQuery {
-            page: 0,
-            page_size: 1,
-            sort: None,
-            sort_direction: None,
-            name: None,
-            organisation_id: organisation_id.to_string(),
-        })
-        .await
-        .map_err(OneCoreError::DataLayerError)?;
-    Ok(dids
-        .values
-        .first()
-        .ok_or(OneCoreError::DataLayerError(DataLayerError::RecordNotFound))?
-        .to_owned())
 }
 
 fn string_to_uuid(value: &str) -> Result<Uuid, OneCoreError> {
@@ -396,6 +362,15 @@ mod tests {
         ) -> Result<(), TransportProtocolError> {
             Err(TransportProtocolError::Failed("Error".to_owned()))
         }
+
+        async fn submit_proof(
+            &self,
+            _base_url: &str,
+            _proof_id: &str,
+            _presentation: &str,
+        ) -> Result<(), TransportProtocolError> {
+            Err(TransportProtocolError::Failed("Error".to_owned()))
+        }
     }
 
     struct TestData {
@@ -507,6 +482,7 @@ mod tests {
                     value: "Test".to_string(),
                 })
                 .collect(),
+            credential: vec![],
         };
 
         let correct_url = format!("http://127.0.0.1/ssi/temporary-issuer/v1/connect?protocol=StubTransportProtocol&credential={credential_id}");
