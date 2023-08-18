@@ -1702,6 +1702,7 @@ dependencies = [
  "envmnt",
  "jwt-simple",
  "migration",
+ "regex",
  "reqwest",
  "sea-orm",
  "serde",

@@ -29,7 +29,7 @@ pub(crate) async fn post_credential(
     let result = state
         .core
         .data_layer
-        .create_credential(request.into())
+        .create_credential(request.into(), &state.core.config.datatype)
         .await;
 
     match result {
@@ -37,6 +37,10 @@ pub(crate) async fn post_credential(
         Err(error) => match error {
             DataLayerError::RecordNotFound => StatusCode::NOT_FOUND.into_response(),
             DataLayerError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
+            DataLayerError::DatatypeValidationError(error) => {
+                tracing::error!("Datatype validation error: {:?}", error);
+                StatusCode::BAD_REQUEST.into_response()
+            }
             _ => {
                 tracing::error!("Error while getting credential: {:?}", error);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()

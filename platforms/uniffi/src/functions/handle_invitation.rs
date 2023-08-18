@@ -9,7 +9,7 @@ use one_core::{
     handle_invitation::InvitationResponse,
 };
 
-use super::{ClaimDataType, CredentialSchema};
+use super::CredentialSchema;
 
 pub struct ProofRequest {
     pub claims: Vec<ProofRequestClaim>,
@@ -28,7 +28,7 @@ pub struct ProofRequestClaim {
     pub created_date: String,
     pub last_modified: String,
     pub key: String,
-    pub data_type: ClaimDataType,
+    pub data_type: String,
     pub required: bool,
     pub credential_schema: CredentialSchema,
 }

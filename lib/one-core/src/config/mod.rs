@@ -5,6 +5,7 @@ use crate::{config::data_structure::CoreConfig, OneCore};
 pub mod config_provider;
 pub mod data_structure;
 pub mod json_config_provider;
+pub mod validator;
 pub mod yaml_config_provider;
 
 mod process_config_object;

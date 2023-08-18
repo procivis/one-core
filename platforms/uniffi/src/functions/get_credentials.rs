@@ -4,7 +4,7 @@ use crate::{
 };
 use one_core::data_layer::{
     data_model::{
-        Datatype, DetailCredentialClaimResponse, DetailCredentialResponse, Format,
+        DetailCredentialClaimResponse, DetailCredentialResponse, Format,
         ListCredentialSchemaResponse,
     },
     DataLayer,
@@ -15,7 +15,6 @@ pub use one_core::data_layer::{
     DataLayerError,
 };
 pub type CredentialFormat = Format;
-pub type ClaimDataType = Datatype;
 
 pub struct CredentialSchema {
     pub id: String,
@@ -44,7 +43,7 @@ impl From<ListCredentialSchemaResponse> for CredentialSchema {
 pub struct Claim {
     pub id: String,
     pub key: String,
-    pub data_type: ClaimDataType,
+    pub data_type: String,
     pub value: String,
 }
 

@@ -162,7 +162,7 @@ mod tests {
     use crate::data_layer::{
         common_queries::insert_proof_state,
         data_model::{ProofRequestState, SortDirection, SortableProofColumn},
-        entities::{claim_schema::Datatype, proof_state},
+        entities::proof_state,
         get_proofs::GetProofsQuery,
         test_utilities::*,
         DataLayer,
@@ -207,8 +207,8 @@ mod tests {
             )
             .await
             .unwrap();
-            let new_claim_schemas: Vec<(Uuid, bool, u32, Datatype)> = (0..4)
-                .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+            let new_claim_schemas: Vec<(Uuid, bool, u32, &str)> = (0..4)
+                .map(|i| (Uuid::new_v4(), i % 2 == 0, i, "STRING"))
                 .collect();
             insert_many_claims_schema_to_database(
                 &data_layer.db,

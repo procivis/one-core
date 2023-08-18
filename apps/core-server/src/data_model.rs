@@ -114,35 +114,6 @@ impl From<one_core::data_layer::data_model::RevocationMethod> for RevocationMeth
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum Datatype {
-    #[default]
-    String,
-    Date,
-    Number,
-}
-
-impl From<Datatype> for one_core::data_layer::data_model::Datatype {
-    fn from(value: Datatype) -> Self {
-        match value {
-            Datatype::String => one_core::data_layer::data_model::Datatype::String,
-            Datatype::Date => one_core::data_layer::data_model::Datatype::Date,
-            Datatype::Number => one_core::data_layer::data_model::Datatype::Number,
-        }
-    }
-}
-
-impl From<one_core::data_layer::data_model::Datatype> for Datatype {
-    fn from(value: one_core::data_layer::data_model::Datatype) -> Self {
-        match value {
-            one_core::data_layer::data_model::Datatype::String => Datatype::String,
-            one_core::data_layer::data_model::Datatype::Date => Datatype::Date,
-            one_core::data_layer::data_model::Datatype::Number => Datatype::Number,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
 pub enum SortDirection {
     #[serde(rename = "ASC")]
@@ -288,7 +259,7 @@ impl From<CredentialClaimSchemaRequestDTO> for CredentialClaimSchemaRequest {
     fn from(value: CredentialClaimSchemaRequestDTO) -> Self {
         CredentialClaimSchemaRequest {
             key: value.key,
-            datatype: value.datatype.into(),
+            datatype: value.datatype,
         }
     }
 }
@@ -296,7 +267,7 @@ impl From<CredentialClaimSchemaRequestDTO> for CredentialClaimSchemaRequest {
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 pub struct CredentialClaimSchemaRequestDTO {
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -358,7 +329,7 @@ pub struct CredentialClaimSchemaResponseDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
 }
 
 impl From<CredentialSchemaResponse> for CredentialSchemaResponseDTO {
@@ -383,7 +354,7 @@ impl From<CredentialClaimSchemaResponse> for CredentialClaimSchemaResponseDTO {
             created_date: value.created_date,
             last_modified: value.last_modified,
             key: value.key,
-            datatype: value.datatype.into(),
+            datatype: value.datatype,
         }
     }
 }
@@ -977,7 +948,7 @@ pub struct ProofClaimResponseDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
     pub required: bool,
     pub credential_schema: ListCredentialSchemaResponseDTO,
 }
@@ -989,7 +960,7 @@ impl From<ProofClaimSchema> for ProofClaimResponseDTO {
             created_date: value.created_date,
             last_modified: value.last_modified,
             key: value.key,
-            datatype: value.datatype.into(),
+            datatype: value.datatype,
             required: value.required,
             credential_schema: value.credential_schema.into(),
         }
@@ -1114,7 +1085,7 @@ pub struct DetailProofClaimDTO {
 pub struct DetailProofClaimSchemaDTO {
     pub id: String,
     pub key: String,
-    pub datatype: Datatype,
+    pub datatype: String,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
@@ -1166,7 +1137,7 @@ impl From<DetailProofClaimSchema> for DetailProofClaimSchemaDTO {
         Self {
             id: value.id,
             key: value.key,
-            datatype: value.datatype.into(),
+            datatype: value.datatype,
             created_date: value.created_date,
             last_modified: value.last_modified,
             credential_schema: value.credential_schema.into(),

@@ -39,13 +39,17 @@ pub(crate) async fn post_credential_schema(
     let result = state
         .core
         .data_layer
-        .create_credential_schema(request.into())
+        .create_credential_schema(request.into(), &state.core.config.datatype)
         .await;
 
     match result {
         Err(DataLayerError::AlreadyExists) => {
             tracing::error!("Credential schema already exists");
             StatusCode::CONFLICT.into_response()
+        }
+        Err(DataLayerError::DatatypeValidationError(error)) => {
+            tracing::error!("Datatype validation error: {:?}", error);
+            StatusCode::BAD_REQUEST.into_response()
         }
         Err(error) => {
             tracing::error!("Error while inserting credential: {:?}", error);

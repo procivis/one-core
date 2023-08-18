@@ -16,8 +16,7 @@ use crate::{
     data_layer::{
         data_model::{
             CreateCredentialSchemaFromJwtRequest, CreateDidRequest,
-            CredentialClaimSchemaFromJwtRequest, Datatype, DidMethod, DidType, Format,
-            RevocationMethod,
+            CredentialClaimSchemaFromJwtRequest, DidMethod, DidType, Format, RevocationMethod,
         },
         entities::credential_state::CredentialState,
         DataLayerError,
@@ -59,28 +58,13 @@ fn string_to_uuid(value: &str) -> Result<Uuid, OneCoreError> {
     })
 }
 
-impl FromStr for Datatype {
-    type Err = OneCoreError;
-
-    fn from_str(s: &str) -> Result<Self, OneCoreError> {
-        match s {
-            "STRING" => Ok(Datatype::String),
-            "DATE" => Ok(Datatype::Date),
-            "NUMBER" => Ok(Datatype::Number),
-            _ => Err(OneCoreError::SSIError(SSIError::IncorrectParameters(
-                "Wrong data type".to_owned(),
-            ))),
-        }
-    }
-}
-
 fn credential_claim_schema_request_from_jwt(
     claim: &VCCredentialClaimSchemaResponse,
 ) -> Result<CredentialClaimSchemaFromJwtRequest, OneCoreError> {
     Ok(CredentialClaimSchemaFromJwtRequest {
         id: string_to_uuid(&claim.id)?,
         key: claim.key.to_owned(),
-        datatype: Datatype::from_str(&claim.datatype)?,
+        datatype: claim.datatype.to_owned(),
     })
 }
 
@@ -216,7 +200,10 @@ impl OneCore {
             create_credential_schema_request_from_jwt(schema, &organisation_id)?;
         let result = self
             .data_layer
-            .create_credential_schema_from_jwt(credential_schema_request.clone())
+            .create_credential_schema_from_jwt(
+                credential_schema_request.clone(),
+                &self.config.datatype,
+            )
             .await;
         if let Err(error) = result {
             if error != DataLayerError::AlreadyExists {
@@ -269,15 +256,18 @@ impl OneCore {
             .collect();
 
         self.data_layer
-            .create_credential(CreateCredentialRequest {
-                credential_id: Some(expected_credential_id.to_owned()),
-                credential_schema_id: string_to_uuid(&credential_schema_id)?,
-                issuer_did: string_to_uuid(&issuer_did_id)?,
-                transport: Transport::ProcivisTemporary,
-                claim_values: claim_values?,
-                receiver_did_id: Some(string_to_uuid(&expected_holder_did.id)?),
-                credential: Some(raw_credential.bytes().collect()),
-            })
+            .create_credential(
+                CreateCredentialRequest {
+                    credential_id: Some(expected_credential_id.to_owned()),
+                    credential_schema_id: string_to_uuid(&credential_schema_id)?,
+                    issuer_did: string_to_uuid(&issuer_did_id)?,
+                    transport: Transport::ProcivisTemporary,
+                    claim_values: claim_values?,
+                    receiver_did_id: Some(string_to_uuid(&expected_holder_did.id)?),
+                    credential: Some(raw_credential.bytes().collect()),
+                },
+                &self.config.datatype,
+            )
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
@@ -296,14 +286,15 @@ impl OneCore {
 mod tests {
     use crate::{
         config::data_structure::{ConfigKind, UnparsedConfig},
-        data_layer::data_model::{
-            CreateCredentialSchemaRequest, CreateDidRequest, CreateOrganisationRequest,
-            CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialState,
-            DetailCredentialClaimResponse, Format, ListCredentialSchemaResponse, RevocationMethod,
-        },
         data_layer::{
             self,
-            data_model::{Datatype, DetailCredentialResponse},
+            data_model::{
+                CreateCredentialSchemaRequest, CreateDidRequest, CreateOrganisationRequest,
+                CredentialClaimSchemaRequest, CredentialClaimSchemaResponse, CredentialState,
+                DetailCredentialClaimResponse, DetailCredentialResponse, Format,
+                ListCredentialSchemaResponse, RevocationMethod,
+            },
+            test_utilities::get_datatypes,
         },
         data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
         error::{OneCoreError, SSIError},
@@ -402,6 +393,7 @@ mod tests {
         let mut one_core = OneCore::new("sqlite::memory:", unparsed_config)
             .await
             .unwrap();
+        one_core.config.datatype = get_datatypes();
         let stub_transport_protocol = Arc::new(StubTransportProtocol::default());
         one_core.transport_protocols.push((
             "StubTransportProtocol".to_string(),
@@ -431,16 +423,19 @@ mod tests {
 
         let credential_schema_id = one_core
             .data_layer
-            .create_credential_schema(CreateCredentialSchemaRequest {
-                name: "CREDENTIAL_SCHEMA".to_string(),
-                format: Format::Jwt,
-                revocation_method: RevocationMethod::None,
-                organisation_id: Uuid::from_str(&organisation_id).unwrap(),
-                claims: vec![CredentialClaimSchemaRequest {
-                    key: "Something".to_string(),
-                    datatype: data_layer::data_model::Datatype::String,
-                }],
-            })
+            .create_credential_schema(
+                CreateCredentialSchemaRequest {
+                    name: "CREDENTIAL_SCHEMA".to_string(),
+                    format: Format::Jwt,
+                    revocation_method: RevocationMethod::None,
+                    organisation_id: Uuid::from_str(&organisation_id).unwrap(),
+                    claims: vec![CredentialClaimSchemaRequest {
+                        key: "Something".to_string(),
+                        datatype: "STRING".to_string(),
+                    }],
+                },
+                &one_core.config.datatype,
+            )
             .await
             .unwrap()
             .id;
@@ -639,7 +634,7 @@ mod tests {
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
                             key: "key".to_string(),
-                            datatype: Datatype::String,
+                            datatype: "STRING".to_string(),
                             required: true,
                             credential_schema: ListCredentialSchemaResponse {
                                 id: "schema-id".to_string(),

@@ -2,6 +2,8 @@ use migration::{Migrator, MigratorTrait};
 use sea_orm::DatabaseConnection;
 use thiserror::Error;
 
+use crate::config::validator::datatype::DatatypeValidationError;
+
 pub mod common;
 mod common_queries;
 pub mod create_credential;
@@ -39,12 +41,14 @@ pub mod list_query;
 
 pub mod entities;
 
-#[derive(Debug, PartialEq, Eq, Error)]
+#[derive(Debug, PartialEq, Error)]
 pub enum DataLayerError {
     #[error("General Data Layer error `{0}`")]
     GeneralRuntimeError(String),
     #[error("Already exists")]
     AlreadyExists,
+    #[error("Datatype validation error `{0}`")]
+    DatatypeValidationError(DatatypeValidationError),
     #[error("Wrong parameters")]
     IncorrectParameters,
     #[error("Record not found")]

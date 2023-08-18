@@ -64,7 +64,6 @@ mod tests {
 
     use crate::data_layer::common_queries::get_proof_state;
     use crate::data_layer::data_model::{CreateProofRequest, Transport};
-    use crate::data_layer::entities::claim_schema::Datatype;
     use crate::data_layer::entities::proof;
     use crate::data_layer::entities::proof_state::ProofRequestState;
     use crate::data_layer::test_utilities::{
@@ -91,8 +90,8 @@ mod tests {
         .await
         .unwrap();
 
-        let new_claims: Vec<(Uuid, bool, u32, Datatype)> = (0..10)
-            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, Datatype::String))
+        let new_claims: Vec<(Uuid, bool, u32, &str)> = (0..10)
+            .map(|i| (Uuid::new_v4(), i % 2 == 0, i, "STRING"))
             .collect();
 
         insert_many_claims_schema_to_database(&data_layer.db, &credential_id, &new_claims)
