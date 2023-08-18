@@ -62,6 +62,7 @@ impl DataLayer {
             },
             issuer_did: did,
             claims: claims.into_iter().map(|combined| combined.into()).collect(),
+            credential: credential.credential,
         })
     }
 }

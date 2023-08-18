@@ -39,4 +39,11 @@ pub trait TransportProtocol {
         base_url: &str,
         proof_id: &str,
     ) -> Result<(), TransportProtocolError>;
+
+    async fn submit_proof(
+        &self,
+        base_url: &str,
+        proof_id: &str,
+        presentation: &str,
+    ) -> Result<(), TransportProtocolError>;
 }
