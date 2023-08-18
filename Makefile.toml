@@ -13,7 +13,7 @@ args = ["clean"]
 
 [tasks.build]
 command = "cargo"
-args = ["build",  "-p", "core-server"]
+args = ["build", "-p", "core-server"]
 
 [tasks.run]
 command = "cargo"
@@ -30,16 +30,16 @@ args = ["test"]
 
 [tasks.dbstart]
 command = "docker-compose"
-args = ["-f", "docker/db.yml", "up", "-d" ]
+args = ["-f", "docker/db.yml", "up", "-d"]
 
 [tasks.dbstop]
 command = "docker-compose"
-args = ["-f", "docker/db.yml", "down" ]
+args = ["-f", "docker/db.yml", "down"]
 
 [tasks.dbdrop]
 script = [
-    "docker rm --force docker-mariadb-1",
-    "docker volume rm docker_mariadb_data",
+  "docker rm --force docker-mariadb-1",
+  "docker volume rm docker_mariadb_data",
 ]
 
 [tasks.install_seaormcli]
@@ -61,15 +61,16 @@ args = ["generate", "entity", "--date-time-crate" , "time", "-o", "lib/one-core/
 
 ############################################################### ANDROID-UNIFFI
 [tasks.add_android_targets]
+# x86_64 is skipped due to: https://github.com/rust-lang/rust/issues/109717
 command = "rustup"
-args = ["target", "add", "x86_64-linux-android", "i686-linux-android", "armv7-linux-androideabi", "aarch64-linux-android"]
+args = ["target", "add", "i686-linux-android", "armv7-linux-androideabi", "aarch64-linux-android"]
 
 [tasks.install_cross]
 command = "cargo"
 args = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--rev", "1aab4cf"]
 
 [tasks.generateuniffi_android]
-script='''
+script = '''
 cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate -l kotlin -o target/android_tmp platforms/uniffi/src/one_core.udl
 mkdir -p target/uniffi/android/java/one_core/
 mv target/android_tmp/uniffi/one_core/* target/uniffi/android/java/one_core
@@ -77,23 +78,23 @@ rm -rf target/android_tmp
 '''
 
 [tasks.build_android_targets]
-script='''
-cross build -p one-core-uniffi --target x86_64-linux-android --release
-cross build -p one-core-uniffi --target i686-linux-android --release
-cross build -p one-core-uniffi --target armv7-linux-androideabi --release
-cross build -p one-core-uniffi --target aarch64-linux-android --release
+script = '''
+for target in "i686-linux-android" "armv7-linux-androideabi" "aarch64-linux-android"
+do
+  cross build -p one-core-uniffi --target $target --release
+done
 '''
 
 [tasks.collect_android_libs]
-script='''
-mkdir -p target/uniffi/android/jniLibs/x86_64/
-cp target/x86_64-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/x86_64/libuniffi_one_core.so
-mkdir -p target/uniffi/android/jniLibs/x86/
-cp target/i686-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/x86/libuniffi_one_core.so
-mkdir -p target/uniffi/android/jniLibs/armeabi-v7a/
-cp target/armv7-linux-androideabi/release/libone_core_uniffi.so target/uniffi/android/jniLibs/armeabi-v7a/libuniffi_one_core.so
-mkdir -p target/uniffi/android/jniLibs/arm64-v8a/
-cp target/aarch64-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/arm64-v8a/libuniffi_one_core.so
+script = '''
+for arch in "i686-linux-android;x86" "armv7-linux-androideabi;armeabi-v7a" "aarch64-linux-android;arm64-v8a"
+do
+  args=(${arch//;/ })
+  targetDir=target/${args[0]}/release
+  libDir=target/uniffi/android/jniLibs/${args[1]}
+  mkdir -p $libDir
+  cp $targetDir/libone_core_uniffi.so $libDir/libuniffi_one_core.so
+done
 '''
 
 [tasks.build_android_uniffi]
@@ -102,7 +103,7 @@ dependencies = ["install_cross", "generateuniffi_android", "build_android_target
 ############################################################### ANDROID-GRADLE
 [tasks.prepare_gradle_build_directory]
 dependencies = ["build_android_uniffi"]
-script='''
+script = '''
 mkdir -p target/platforms/android
 cp -r platforms/android/* target/platforms/android/
 cp -r target/uniffi/android/* target/platforms/android/onecore/src/main/
@@ -110,26 +111,26 @@ cp -r target/uniffi/android/* target/platforms/android/onecore/src/main/
 
 [tasks.build_android_gradle]
 dependencies = ["prepare_gradle_build_directory"]
-script='''
+script = '''
 cd target/platforms/android
 ./gradlew assemble
 '''
 
 [tasks.build_android]
 dependencies = ["build_android_gradle"]
-script='''
+script = '''
 mkdir -p target/bindings/android/
 cp -r target/platforms/android/onecore/build/outputs/aar/* target/bindings/android/
 '''
 
 ############################################################### iOS
 [tasks.generateuniffi_ios]
-script='''
+script = '''
 cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate -l swift -o target/uniffi/ios/ platforms/uniffi/src/one_core.udl
 '''
 
 [tasks.add_ios_targets]
-script='''
+script = '''
 rustup toolchain install nightly
 rustup target add aarch64-apple-ios-sim --toolchain nightly
 rustup target add aarch64-apple-ios x86_64-apple-ios
@@ -137,14 +138,14 @@ rustup component add rust-src --toolchain nightly
 '''
 
 [tasks.build_ios_code]
-script='''
+script = '''
 cargo build --package one-core-uniffi --lib --release --target x86_64-apple-ios
 cargo +nightly build --package one-core-uniffi --lib --release --target aarch64-apple-ios-sim
 cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios
 '''
 
 [tasks.collect_ios_libs]
-script="""
+script = """
 sed -i '' 's/^module\\ one_coreFFI/framework\\ module\\ one_coreFFI/' target/uniffi/ios/one_coreFFI.modulemap
 
 find . -type d -name one_coreFFI.framework -exec rm -rf {} \\; 2>/dev/null || true
@@ -163,14 +164,14 @@ done
 """
 
 [tasks.create_xc_framework]
-script='''
+script = '''
 lipo -create target/x86_64-apple-ios/release/one_coreFFI.framework/one_coreFFI target/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI -output target/aarch64-apple-ios-sim/release/one_coreFFI.framework/one_coreFFI
 rm -rf target/one_coreFFI.xcframework || echo 'skip removing'
 xcodebuild -create-xcframework -framework target/aarch64-apple-ios/release/one_coreFFI.framework -framework target/aarch64-apple-ios-sim/release/one_coreFFI.framework -output target/one_coreFFI.xcframework
 '''
 
 [tasks.package_ios_bindings]
-script='''
+script = '''
 pushd target >/dev/null
 rm -rf bindings/ios && mkdir -p bindings/ios/one_core/Sources/one_core
 cp -r one_coreFFI.xcframework bindings/ios/one_core/Sources/
@@ -180,4 +181,4 @@ cp ../platforms/ios/Package.swift bindings/ios/one_core/Package.swift
 
 [tasks.build_ios]
 dependencies = ["generateuniffi_ios", "add_ios_targets", "build_ios_code", "collect_ios_libs", "create_xc_framework", "package_ios_bindings"]
-script='echo "--- output available in target/bindings/ios ---"'
+script = 'echo "--- output available in target/bindings/ios ---"'
