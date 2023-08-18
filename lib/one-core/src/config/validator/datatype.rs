@@ -339,30 +339,58 @@ mod tests {
 
     #[test]
     fn test_validate_values_string_is_an_email() {
-        let datatypes: HashMap<String, DatatypeEntity> = HashMap::from([(
-            "EMAIL".to_string(),
-            DatatypeEntity {
-                r#type: DatatypeType::String,
-                display: TranslatableString::Value("Display".to_string()),
-                order: None,
-                params: Some(ParamsEnum::Parsed(DatatypeParams::String(
-                    DatatypeStringParams {
-                        autocomplete: None,
-                        placeholder: None,
-                        error: None,
-                        pattern: Some(Param {
-                            access: AccessModifier::Public,
-                            value: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$".to_string(),
-                        }),
-                    },
-                ))),
-            },
-        )]);
+        let datatypes: HashMap<String, DatatypeEntity> = HashMap::from([
+            (
+                "EMAIL".to_string(),
+                DatatypeEntity {
+                    r#type: DatatypeType::String,
+                    display: TranslatableString::Value("Display".to_string()),
+                    order: None,
+                    params: Some(ParamsEnum::Parsed(DatatypeParams::String(
+                        DatatypeStringParams {
+                            autocomplete: None,
+                            placeholder: None,
+                            error: None,
+                            pattern: Some(Param {
+                                access: AccessModifier::Public,
+                                value: "^[\\w\\-\\.]+@([\\w\\-]+\\.)+[\\w\\-]{2,4}$".to_string(),
+                            }),
+                        },
+                    ))),
+                },
+            ),
+            (
+                "EMAIL_INVALID_REGEX".to_string(),
+                DatatypeEntity {
+                    r#type: DatatypeType::String,
+                    display: TranslatableString::Value("Display".to_string()),
+                    order: None,
+                    params: Some(ParamsEnum::Parsed(DatatypeParams::String(
+                        DatatypeStringParams {
+                            autocomplete: None,
+                            placeholder: None,
+                            error: None,
+                            pattern: Some(Param {
+                                access: AccessModifier::Public,
+                                value: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$".to_string(),
+                            }),
+                        },
+                    ))),
+                },
+            ),
+        ]);
 
-        // FIXME - our email pattern doesn't even parse
-        let our_email_regex_is_invalid = validate_value("not_an_email", "EMAIL", &datatypes);
-        assert!(our_email_regex_is_invalid
-            .is_err_and(|f| matches!(f, DatatypeValidationError::StringInvalidPattern(_))));
+        let invalid_regex_pattern =
+            validate_value("abc@abc.com", "EMAIL_INVALID_REGEX", &datatypes);
+        assert!(invalid_regex_pattern
+            .is_err_and(|e| matches!(e, DatatypeValidationError::StringInvalidPattern(_))));
+
+        let valid_email = validate_value("abc@abc.com", "EMAIL", &datatypes);
+        assert!(valid_email.is_ok());
+
+        let invalid_email = validate_value("not an email", "EMAIL", &datatypes);
+        assert!(invalid_email
+            .is_err_and(|e| matches!(e, DatatypeValidationError::StringNotMatchingPattern(_, _))));
     }
 
     #[test]
