@@ -87,14 +87,12 @@ done
 
 [tasks.collect_android_libs]
 script = '''
-for arch in "i686-linux-android;x86" "armv7-linux-androideabi;armeabi-v7a" "aarch64-linux-android;arm64-v8a"
-do
-  args=(${arch//;/ })
-  targetDir=target/${args[0]}/release
-  libDir=target/uniffi/android/jniLibs/${args[1]}
-  mkdir -p $libDir
-  cp $targetDir/libone_core_uniffi.so $libDir/libuniffi_one_core.so
-done
+mkdir -p target/uniffi/android/jniLibs/x86/
+cp target/i686-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/x86/libuniffi_one_core.so
+mkdir -p target/uniffi/android/jniLibs/armeabi-v7a/
+cp target/armv7-linux-androideabi/release/libone_core_uniffi.so target/uniffi/android/jniLibs/armeabi-v7a/libuniffi_one_core.so
+mkdir -p target/uniffi/android/jniLibs/arm64-v8a/
+cp target/aarch64-linux-android/release/libone_core_uniffi.so target/uniffi/android/jniLibs/arm64-v8a/libuniffi_one_core.so
 '''
 
 [tasks.build_android_uniffi]
