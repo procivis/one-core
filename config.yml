@@ -60,7 +60,7 @@ datatype:
         error: # optional
           de: "Please provide email like abc@abc.com"
           en: "Please provide email like abc@abc.com"
-        pattern: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$" # optional
+        pattern: '^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$' # optional
   COUNT:
     display: "datatype.count"
     type: "NUMBER"
