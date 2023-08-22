@@ -27,7 +27,10 @@ impl OldProvider {
 
         let query = Did::find()
             .with_organisation_id(&query_params, &did::Column::OrganisationId)
-            .with_list_query(&query_params, &Some(vec![did::Column::Name]))
+            .with_list_query(
+                &query_params,
+                &Some(vec![did::Column::Name, did::Column::Did]),
+            )
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);
 
@@ -168,6 +171,67 @@ mod tests {
         assert_eq!(50, response.total_items);
         assert_eq!(5, response.total_pages);
         assert_eq!(0, response.values.len());
+    }
+
+    #[tokio::test]
+    async fn test_filtering() {
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
+
+        let did_name = "name";
+        let did_value = "did:value";
+
+        insert_did(&data_layer.db, did_name, did_value, &organisation_id)
+            .await
+            .unwrap();
+
+        // not found
+        let result = data_layer
+            .get_dids(GetDidQuery {
+                page: 0,
+                page_size: 2,
+                sort: None,
+                sort_direction: None,
+                name: Some("nothing".to_owned()),
+                organisation_id: organisation_id.to_owned(),
+            })
+            .await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(0, response.values.len());
+
+        // by name
+        let result = data_layer
+            .get_dids(GetDidQuery {
+                page: 0,
+                page_size: 2,
+                sort: None,
+                sort_direction: None,
+                name: Some(did_name.to_owned()),
+                organisation_id: organisation_id.to_owned(),
+            })
+            .await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(1, response.values.len());
+
+        // by value
+        let result = data_layer
+            .get_dids(GetDidQuery {
+                page: 0,
+                page_size: 2,
+                sort: None,
+                sort_direction: None,
+                name: Some(did_value.to_owned()),
+                organisation_id: organisation_id.to_owned(),
+            })
+            .await;
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(1, response.values.len());
     }
 
     #[tokio::test]
