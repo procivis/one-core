@@ -69,6 +69,7 @@ datatype:
       public:
         min: 0 # optional
         max: 9999 # optional
+        error: "datatype.count_error"
   BIRTH_DATE:
     display: "datatype.birth_date"
     type: "DATE"

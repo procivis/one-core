@@ -377,7 +377,7 @@ pub fn get_datatypes() -> HashMap<String, DatatypeEntity> {
             "STRING".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::String,
-                display: TranslatableString::Value("Display".to_string()),
+                display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: None,
             },
@@ -386,7 +386,7 @@ pub fn get_datatypes() -> HashMap<String, DatatypeEntity> {
             "NUMBER".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::Number,
-                display: TranslatableString::Value("Display".to_string()),
+                display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: None,
             },
@@ -395,7 +395,7 @@ pub fn get_datatypes() -> HashMap<String, DatatypeEntity> {
             "DATE".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::Date,
-                display: TranslatableString::Value("Display".to_string()),
+                display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: None,
             },

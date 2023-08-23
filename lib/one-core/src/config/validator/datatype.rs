@@ -297,7 +297,7 @@ mod tests {
                 "STRING".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
-                    display: TranslatableString::Value("Display".to_string()),
+                    display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
                 },
@@ -306,7 +306,7 @@ mod tests {
                 "NUMBER".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::Number,
-                    display: TranslatableString::Value("Display".to_string()),
+                    display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
                 },
@@ -327,7 +327,7 @@ mod tests {
             "STRING".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::String,
-                display: TranslatableString::Value("Display".to_string()),
+                display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: None,
             },
@@ -344,7 +344,7 @@ mod tests {
                 "EMAIL".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
-                    display: TranslatableString::Value("Display".to_string()),
+                    display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: Some(ParamsEnum::Parsed(DatatypeParams::String(
                         DatatypeStringParams {
@@ -363,7 +363,7 @@ mod tests {
                 "EMAIL_INVALID_REGEX".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
-                    display: TranslatableString::Value("Display".to_string()),
+                    display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: Some(ParamsEnum::Parsed(DatatypeParams::String(
                         DatatypeStringParams {
@@ -399,7 +399,7 @@ mod tests {
             "NUMBER".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::Number,
-                display: TranslatableString::Value("Display".to_string()),
+                display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(DatatypeParams::Number(
                     DatatypeNumberParams {
@@ -411,6 +411,7 @@ mod tests {
                             access: AccessModifier::Public,
                             value: 15.0,
                         }),
+                        error: None,
                     },
                 ))),
             },
@@ -438,7 +439,7 @@ mod tests {
             "DATE".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::Date,
-                display: TranslatableString::Value("Display".to_string()),
+                display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(DatatypeParams::Date(
                     DatatypeDateParams {
@@ -450,6 +451,7 @@ mod tests {
                             access: AccessModifier::Public,
                             value: "2023-01-02".to_string(),
                         }),
+                        error: None,
                     },
                 ))),
             },
@@ -474,7 +476,7 @@ mod tests {
             "COUNTRY".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::Enum,
-                display: TranslatableString::Value("Display".to_string()),
+                display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(DatatypeParams::Enum(
                     DatatypeEnumParams {
@@ -493,6 +495,7 @@ mod tests {
                                 },
                             ],
                         }),
+                        error: None,
                     },
                 ))),
             },
