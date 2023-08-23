@@ -55,7 +55,7 @@ pub struct ConfigEntity<TypeEnum, ParamsType> {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum TranslatableString {
-    Value(String),
+    Key(String),
     Map(HashMap<String, String>),
 }
 
@@ -107,17 +107,20 @@ pub struct DatatypeStringParams {
 pub struct DatatypeNumberParams {
     pub min: Option<Param<f64>>,
     pub max: Option<Param<f64>>,
+    pub error: Option<Param<TranslatableString>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DatatypeDateParams {
     pub min: Option<Param<String>>,
     pub max: Option<Param<String>>,
+    pub error: Option<Param<TranslatableString>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DatatypeEnumParams {
     pub values: Option<Param<Vec<EnumValue>>>,
+    pub error: Option<Param<TranslatableString>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

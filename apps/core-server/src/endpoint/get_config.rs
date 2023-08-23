@@ -52,7 +52,7 @@ mod tests {
                 "test".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
-                    display: TranslatableString::Value("display".to_string()),
+                    display: TranslatableString::Key("display".to_string()),
                     order: None,
                     params: Some(ParamsEnum::Parsed(DatatypeParams::String(
                         DatatypeStringParams {
@@ -105,7 +105,7 @@ mod tests {
                 "test".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
-                    display: TranslatableString::Value("display".to_string()),
+                    display: TranslatableString::Key("display".to_string()),
                     order: None,
                     params: Some(ParamsEnum::Parsed(DatatypeParams::String(
                         DatatypeStringParams {
