@@ -872,6 +872,8 @@ pub struct ProofDetailsResponseDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
+    pub verifier_did: String,
+    pub transport: String,
     pub state: ProofRequestState,
     pub organisation_id: String,
     pub claims: Vec<DetailProofClaimDTO>,
@@ -922,6 +924,8 @@ impl From<ProofDetailsResponse> for ProofDetailsResponseDTO {
             issuance_date: value.issuance_date,
             requested_date: value.requested_date,
             completed_date: value.completed_date,
+            verifier_did: value.verifier_did,
+            transport: value.transport,
             state: value.state.into(),
             organisation_id: value.organisation_id,
             claims: value.claims.iter().map(|i| i.clone().into()).collect(),

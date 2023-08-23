@@ -576,7 +576,7 @@ impl MigrationTrait for Migration {
                         ForeignKey::create()
                             .name("fk-Proof-ReceiverDidId")
                             .from_tbl(Proof::Table)
-                            .from_col(Proof::VerifierDidId)
+                            .from_col(Proof::ReceiverDidId)
                             .to_tbl(Did::Table)
                             .to_col(Did::Id),
                     )

@@ -34,6 +34,7 @@ impl OldProvider {
             created_date: Set(now),
             last_modified: Set(now),
             issuance_date: Set(now),
+            transport: Set(request.transport),
             verifier_did_id: Set(request.verifier_did_id.to_string()),
             receiver_did_id: Set(None),
             proof_schema_id: Set(request.proof_schema_id.to_string()),
