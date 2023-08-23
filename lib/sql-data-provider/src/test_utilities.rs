@@ -1,18 +1,22 @@
-use crate::entity::credential::{self, Transport};
-use crate::entity::{
-    claim_schema, credential_schema, credential_schema_claim_schema, credential_state, did,
-    organisation, proof, proof_schema, proof_schema_claim_schema, proof_state,
-};
-use crate::{DataLayer, OldProvider};
 use migration::{Migrator, MigratorTrait};
-use one_core::config::data_structure::{DatatypeEntity, DatatypeType, TranslatableString};
+use one_core::config::data_structure::{
+    DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
+    TranslatableString,
+};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use std::collections::HashMap;
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::entity::proof_state::ProofRequestState;
-use super::entity::{claim, credential_claim, proof_claim};
+use crate::{
+    entity::{
+        claim, claim_schema, credential, credential_claim, credential_schema,
+        credential_schema_claim_schema, credential_state, did, organisation, proof, proof_claim,
+        proof_schema, proof_schema_claim_schema,
+        proof_state::{self, ProofRequestState},
+    },
+    DataLayer, OldProvider,
+};
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
@@ -32,7 +36,7 @@ pub async fn insert_credential(
         last_modified: Set(now),
         issuance_date: Set(now),
         deleted_at: Set(None),
-        transport: Set(Transport::ProcivisTemporary),
+        transport: Set("PROCIVIS_TEMPORARY".to_string()),
         credential: Set(vec![0, 0, 0, 0]),
         issuer_did_id: Set(did_id.to_string()),
         receiver_did_id: Set(None),
@@ -362,7 +366,7 @@ pub async fn insert_did(
         last_modified: Set(now),
         name: Set(name.to_owned()),
         type_field: Set(did::DidType::Local),
-        method: Set(did::DidMethod::Key),
+        method: Set("KEY".to_string()),
         organisation_id: Set(organisation_id.to_owned()),
     }
     .insert(database)
@@ -409,6 +413,70 @@ pub(crate) async fn setup_test_data_provider_and_connection() -> Result<OldProvi
 
 pub async fn setup_test_data_layer_and_connection() -> DataLayer {
     setup_test_data_layer_and_connection_with_custom_url("sqlite::memory:").await
+}
+
+pub fn get_exchange() -> HashMap<String, ExchangeEntity> {
+    HashMap::from([(
+        "PROCIVIS_TEMPORARY".to_string(),
+        serde_yaml::from_str(
+            r#"display: "exchange.procivis"
+type: "PROCIVIS_TEMPORARY"
+order: 0 # optional to force ordering
+params: null"#,
+        )
+        .unwrap(),
+    )])
+}
+
+pub fn get_did_methods() -> HashMap<String, DidEntity> {
+    HashMap::from([(
+        "KEY".to_string(),
+        serde_yaml::from_str(
+            r#"display: "did.key"
+type: "KEY"
+order: 1
+params: null"#,
+        )
+        .unwrap(),
+    )])
+}
+
+pub fn get_formats() -> HashMap<String, FormatEntity> {
+    HashMap::from([(
+        "JWT".to_string(),
+        serde_yaml::from_str(
+            r#"display: "format.jwt"
+type: "JWT"
+order: 0
+params: null"#,
+        )
+        .unwrap(),
+    )])
+}
+
+pub fn get_revocation_methods() -> HashMap<String, RevocationEntity> {
+    HashMap::from([
+        (
+            "NONE".to_string(),
+            serde_yaml::from_str(
+                r#"display: "revocation.none"
+type: "NONE"
+order: 1
+params: null"#,
+            )
+            .unwrap(),
+        ),
+        (
+            "STATUSLIST2021".to_string(),
+            serde_yaml::from_str(
+                r#"display: "revocation.statuslist2021"
+type: "STATUSLIST2021"
+order: 10
+params: null"#,
+            )
+            .unwrap(),
+        ),
+    ])
 }
 
 pub fn are_datetimes_within_minute(d1: OffsetDateTime, d2: OffsetDateTime) -> bool {

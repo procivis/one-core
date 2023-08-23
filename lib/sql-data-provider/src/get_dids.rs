@@ -249,7 +249,7 @@ mod tests {
             last_modified: Set(get_dummy_date()),
             name: Set("a".to_owned()),
             type_field: Set(did::DidType::Local),
-            method: Set(did::DidMethod::Key),
+            method: Set("KEY".to_string()),
             organisation_id: Set(organisation_id.to_owned()),
         }
         .insert(&data_layer.db)
@@ -263,7 +263,7 @@ mod tests {
             last_modified: Set(get_dummy_date()),
             name: Set("b".to_owned()),
             type_field: Set(did::DidType::Local),
-            method: Set(did::DidMethod::Key),
+            method: Set("KEY".to_string()),
             organisation_id: Set(organisation_id.to_owned()),
         }
         .insert(&data_layer.db)

@@ -6,34 +6,17 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::data_structure::DatatypeEntity;
+use crate::config::data_structure::{
+    DatatypeEntity, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
+};
 
 use super::error::DataLayerError;
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")] // serialization necessary for wallet to parse JSON API response
-pub enum Format {
-    #[default]
-    Jwt,
-    SdJwt,
-    JsonLd,
-    Mdoc,
-}
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum DidType {
     #[default]
     Remote,
     Local,
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")] // serialization necessary for wallet to parse JSON API response
-pub enum RevocationMethod {
-    #[default]
-    None,
-    StatusList2021,
-    Lvvc,
 }
 
 #[derive(Clone, Debug)]
@@ -51,8 +34,8 @@ pub struct CredentialSchemaResponse {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: Format,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
     pub organisation_id: String,
     pub claims: Vec<CredentialClaimSchemaResponse>,
 }
@@ -103,7 +86,7 @@ pub struct CreateCredentialRequest {
     pub credential_id: Option<String>,
     pub credential_schema_id: Uuid,
     pub issuer_did: Uuid,
-    pub transport: Transport,
+    pub transport: String,
     pub claim_values: Vec<CreateCredentialRequestClaim>,
     pub receiver_did_id: Option<Uuid>,
     pub credential: Option<Vec<u8>>,
@@ -131,7 +114,7 @@ pub struct CreateDidRequest {
     pub name: String,
     pub organisation_id: String,
     pub did: String,
-    pub method: DidMethod,
+    pub method: String,
     pub did_type: DidType,
 }
 
@@ -149,19 +132,19 @@ pub struct GetDidDetailsResponse {
     pub organisation_id: String,
     pub did: String,
     pub did_type: DidType,
-    pub did_method: DidMethod,
+    pub did_method: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct CredentialShareResponse {
     pub credential_id: String,
-    pub transport: Transport,
+    pub transport: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct ProofShareResponse {
     pub proof_id: String,
-    pub transport: Transport,
+    pub transport: String,
 }
 
 #[derive(Clone, Debug)]
@@ -186,8 +169,8 @@ pub struct ListCredentialSchemaResponse {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: Format,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
     pub organisation_id: String,
 }
 
@@ -235,7 +218,7 @@ pub struct DetailProofClaimSchema {
 pub struct CreateProofRequest {
     pub proof_schema_id: Uuid,
     pub verifier_did_id: Uuid,
-    pub transport: Transport,
+    pub transport: String,
 }
 
 #[derive(Clone, Debug)]
@@ -248,8 +231,8 @@ pub struct GetListResponse<ResponseItem> {
 #[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaRequest {
     pub name: String,
-    pub format: Format,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<CredentialClaimSchemaRequest>,
 }
@@ -258,8 +241,8 @@ pub struct CreateCredentialSchemaRequest {
 pub struct CreateCredentialSchemaFromJwtRequest {
     pub id: Uuid,
     pub name: String,
-    pub format: Format,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<CredentialClaimSchemaFromJwtRequest>,
 }
@@ -309,13 +292,6 @@ pub enum SortableProofColumn {
     State,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub enum DidMethod {
-    #[default]
-    Key,
-    Web,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum ProofRequestState {
     Created,
@@ -341,12 +317,6 @@ pub enum CredentialState {
     Rejected,
     Revoked,
     Error,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Transport {
-    ProcivisTemporary,
-    OpenId4Vc,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -414,12 +384,16 @@ pub trait DataProvider {
     async fn create_credential_schema_from_jwt(
         &self,
         request: CreateCredentialSchemaFromJwtRequest,
+        formats: &HashMap<String, FormatEntity>,
+        revocation_methods: &HashMap<String, RevocationEntity>,
         datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<CreateCredentialSchemaResponse, DataLayerError>;
 
     async fn create_credential_schema(
         &self,
         request: CreateCredentialSchemaRequest,
+        formats: &HashMap<String, FormatEntity>,
+        revocation_methods: &HashMap<String, RevocationEntity>,
         datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<CreateCredentialSchemaResponse, DataLayerError>;
 
@@ -427,11 +401,13 @@ pub trait DataProvider {
         &self,
         request: CreateCredentialRequest,
         datatypes: &HashMap<String, DatatypeEntity>,
+        exchanges: &HashMap<String, ExchangeEntity>,
     ) -> Result<EntityResponse, DataLayerError>;
 
     async fn create_did(
         &self,
         request: CreateDidRequest,
+        did_methods: &HashMap<String, DidEntity>,
     ) -> Result<CreateDidResponse, DataLayerError>;
 
     async fn create_proof_schema(

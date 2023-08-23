@@ -2,10 +2,9 @@ use one_core::repository::{
     data_provider::{
         CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialState,
         DetailCredentialClaimResponse, DetailCredentialResponse, DetailProofClaim,
-        DetailProofClaimSchema, DetailProofSchema, DidMethod, DidType, Format,
-        GetDidDetailsResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
-        ProofDetailsResponse, ProofRequestState, ProofSchemaResponse, ProofsDetailResponse,
-        RevocationMethod, SortDirection, Transport,
+        DetailProofClaimSchema, DetailProofSchema, DidType, GetDidDetailsResponse,
+        ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofDetailsResponse,
+        ProofRequestState, ProofSchemaResponse, ProofsDetailResponse, SortDirection,
     },
     error::DataLayerError,
 };
@@ -44,64 +43,6 @@ impl From<super::entity::did::DidType> for DidType {
     }
 }
 
-impl From<DidMethod> for super::entity::did::DidMethod {
-    fn from(value: DidMethod) -> Self {
-        match value {
-            DidMethod::Key => did::DidMethod::Key,
-            DidMethod::Web => did::DidMethod::Web,
-        }
-    }
-}
-
-impl From<super::entity::did::DidMethod> for DidMethod {
-    fn from(value: super::entity::did::DidMethod) -> Self {
-        match value {
-            did::DidMethod::Key => DidMethod::Key,
-            did::DidMethod::Web => DidMethod::Web,
-        }
-    }
-}
-
-impl From<RevocationMethod> for super::entity::credential_schema::RevocationMethod {
-    fn from(value: RevocationMethod) -> Self {
-        match value {
-            RevocationMethod::StatusList2021 => credential_schema::RevocationMethod::StatusList2021,
-            RevocationMethod::Lvvc => credential_schema::RevocationMethod::Lvvc,
-            RevocationMethod::None => credential_schema::RevocationMethod::None,
-        }
-    }
-}
-
-impl From<super::entity::credential_schema::RevocationMethod> for RevocationMethod {
-    fn from(value: super::entity::credential_schema::RevocationMethod) -> Self {
-        match value {
-            credential_schema::RevocationMethod::StatusList2021 => RevocationMethod::StatusList2021,
-            credential_schema::RevocationMethod::Lvvc => RevocationMethod::Lvvc,
-            credential_schema::RevocationMethod::None => RevocationMethod::None,
-        }
-    }
-}
-
-impl From<Format> for super::entity::credential_schema::Format {
-    fn from(value: Format) -> Self {
-        match value {
-            Format::Jwt => credential_schema::Format::Jwt,
-            Format::SdJwt => credential_schema::Format::SdJwt,
-            Format::JsonLd => credential_schema::Format::JsonLd,
-            Format::Mdoc => credential_schema::Format::Mdoc,
-        }
-    }
-}
-
-pub fn convert_format(format: super::entity::credential_schema::Format) -> Format {
-    match format {
-        credential_schema::Format::Jwt => Format::Jwt,
-        credential_schema::Format::SdJwt => Format::SdJwt,
-        credential_schema::Format::JsonLd => Format::JsonLd,
-        credential_schema::Format::Mdoc => Format::Mdoc,
-    }
-}
-
 #[derive(Debug, Clone, FromQueryResult)]
 pub(crate) struct ProofSchemaClaimSchemaCombined {
     pub claim_schema_id: String,
@@ -115,8 +56,8 @@ pub(crate) struct ProofSchemaClaimSchemaCombined {
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_last_modified: OffsetDateTime,
     pub credential_schema_name: String,
-    pub credential_schema_format: credential_schema::Format,
-    pub credential_schema_revocation_method: credential_schema::RevocationMethod,
+    pub credential_schema_format: String,
+    pub credential_schema_revocation_method: String,
     pub credential_schema_organisation_id: String,
 }
 
@@ -168,23 +109,14 @@ pub(super) fn credential_schema_response_from_model(
         created_date: value.created_date,
         last_modified: value.last_modified,
         name: value.name,
-        format: convert_format(value.format),
-        revocation_method: value.revocation_method.into(),
+        format: value.format,
+        revocation_method: value.revocation_method,
         organisation_id: value.organisation_id,
         claims: claim_schemas
             .iter()
             .filter(|claim| claim.credential_schema_id == value.id)
             .map(credential_claim_schema_response_from_model)
             .collect(),
-    }
-}
-
-impl From<Transport> for super::entity::credential::Transport {
-    fn from(value: Transport) -> Self {
-        match value {
-            Transport::ProcivisTemporary => super::entity::credential::Transport::ProcivisTemporary,
-            Transport::OpenId4Vc => super::entity::credential::Transport::OpenId4Vc,
-        }
     }
 }
 
@@ -198,7 +130,7 @@ impl From<did::Model> for GetDidDetailsResponse {
             organisation_id: value.organisation_id,
             did: value.did,
             did_type: value.type_field.into(),
-            did_method: value.method.into(),
+            did_method: value.method,
         }
     }
 }
@@ -288,8 +220,8 @@ pub(crate) struct CredentialDidCredentialSchemaCombined {
     // credential_schema table
     pub schema_id: String,
     pub schema_name: String,
-    pub schema_format: credential_schema::Format,
-    pub schema_revocation_method: credential_schema::RevocationMethod,
+    pub schema_format: String,
+    pub schema_revocation_method: String,
     pub schema_organisation_id: String,
     pub schema_created_date: OffsetDateTime,
     pub schema_last_modified: OffsetDateTime,
@@ -303,8 +235,8 @@ fn list_credential_schema_response_from_model_combined(
         created_date: value.schema_created_date,
         last_modified: value.schema_last_modified,
         name: value.schema_name,
-        format: convert_format(value.schema_format),
-        revocation_method: value.schema_revocation_method.into(),
+        format: value.schema_format,
+        revocation_method: value.schema_revocation_method,
         organisation_id: value.schema_organisation_id,
     }
 }
@@ -317,8 +249,8 @@ fn list_credential_schema_response_from_model(
         created_date: value.created_date,
         last_modified: value.last_modified,
         name: value.name,
-        format: convert_format(value.format),
-        revocation_method: value.revocation_method.into(),
+        format: value.format,
+        revocation_method: value.revocation_method,
         organisation_id: value.organisation_id,
     }
 }
@@ -493,8 +425,8 @@ pub(super) fn proof_claim_schema_from_model(
             created_date: value.credential_schema_created_date,
             last_modified: value.credential_schema_last_modified,
             name: value.credential_schema_name,
-            format: convert_format(value.credential_schema_format),
-            revocation_method: value.credential_schema_revocation_method.into(),
+            format: value.credential_schema_format,
+            revocation_method: value.credential_schema_revocation_method,
             organisation_id: value.credential_schema_organisation_id,
         },
     }

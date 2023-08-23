@@ -10,7 +10,7 @@ enum ConfigParseError {
 
 [Error]
 enum DataLayerError {
-  "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "DatatypeValidationError", "RecordNotFound", "RecordNotUpdated", "MappingError", "Other"
+  "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "ConfigValidationError", "RecordNotFound", "RecordNotUpdated", "MappingError", "Other"
 };
 
 [Error]
@@ -37,22 +37,14 @@ enum CredentialState {
   "Created", "Pending", "Offered", "Accepted", "Rejected", "Revoked", "Error"
 };
 
-enum RevocationMethod {
-  "None", "StatusList2021", "Lvvc"
-};
-
-enum CredentialFormat {
-  "Jwt", "SdJwt", "JsonLd", "Mdoc"
-};
-
 dictionary CredentialSchema {
   string id;
   string created_date;
   string last_modified;
   string name;
   string organisation_id;
-  CredentialFormat format;
-  RevocationMethod revocation_method;
+  string format;
+  string revocation_method;
 };
 
 dictionary Claim {

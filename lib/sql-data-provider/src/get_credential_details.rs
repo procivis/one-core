@@ -6,9 +6,7 @@ use sea_orm::{DatabaseConnection, EntityTrait};
 
 use crate::{
     common_queries::{fetch_claim_claim_schemas, get_credential_state},
-    data_model::{
-        convert_credential_state, convert_format, detail_credential_claim_response_from_model,
-    },
+    data_model::{convert_credential_state, detail_credential_claim_response_from_model},
     entity::{credential, credential_schema, Credential, CredentialSchema, Did},
     OldProvider,
 };
@@ -62,8 +60,8 @@ impl OldProvider {
                 created_date: schema.created_date,
                 last_modified: schema.last_modified,
                 name: schema.name,
-                format: convert_format(schema.format),
-                revocation_method: schema.revocation_method.into(),
+                format: schema.format,
+                revocation_method: schema.revocation_method,
                 organisation_id: schema.organisation_id.to_owned(),
             },
             issuer_did: did,

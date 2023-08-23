@@ -27,7 +27,7 @@ impl From<DataLayerError> for ServiceError {
         match value {
             DataLayerError::GeneralRuntimeError(e) => ServiceError::GeneralRuntimeError(e),
             DataLayerError::AlreadyExists => ServiceError::AlreadyExists,
-            DataLayerError::DatatypeValidationError(e) => {
+            DataLayerError::ConfigValidationError(e) => {
                 ServiceError::ValidationError(e.to_string())
             }
             DataLayerError::IncorrectParameters => ServiceError::IncorrectParameters,

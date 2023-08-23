@@ -1,7 +1,12 @@
 use std::collections::HashMap;
 
 use one_core::{
-    config::{data_structure::DatatypeEntity, validator::datatype::validate_datatypes},
+    config::{
+        data_structure::{DatatypeEntity, FormatEntity, RevocationEntity},
+        validator::{
+            datatype::validate_datatypes, format::validate_format, revocation::validate_revocation,
+        },
+    },
     repository::{
         data_provider::{CreateCredentialSchemaRequest, CreateCredentialSchemaResponse},
         error::DataLayerError,
@@ -20,11 +25,15 @@ impl OldProvider {
     pub async fn create_credential_schema(
         &self,
         request: CreateCredentialSchemaRequest,
+        formats: &HashMap<String, FormatEntity>,
+        revocation_methods: &HashMap<String, RevocationEntity>,
         datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<CreateCredentialSchemaResponse, DataLayerError> {
         let now = OffsetDateTime::now_utc();
 
         // move this to the credential service
+        validate_format(&request.format, formats)?;
+        validate_revocation(&request.revocation_method, revocation_methods)?;
         validate_datatypes(
             &request
                 .claims
@@ -33,16 +42,16 @@ impl OldProvider {
                 .collect::<Vec<&String>>(),
             datatypes,
         )
-        .map_err(DataLayerError::DatatypeValidationError)?;
+        .map_err(DataLayerError::ConfigValidationError)?;
 
         let credential_schema = credential_schema::ActiveModel {
             id: Set(Uuid::new_v4().to_string()),
             name: Set(request.name),
             created_date: Set(now),
             last_modified: Set(now),
-            format: Set(request.format.into()),
+            format: Set(request.format),
             deleted_at: Set(None),
-            revocation_method: Set(request.revocation_method.into()),
+            revocation_method: Set(request.revocation_method),
             organisation_id: Set(request.organisation_id.to_string()),
         }
         .insert(&self.db)
@@ -103,7 +112,6 @@ impl OldProvider {
 
 #[cfg(test)]
 mod tests {
-    use one_core::repository::data_provider::{Format, RevocationMethod};
     use sea_orm::EntityTrait;
 
     use crate::test_utilities::*;
@@ -116,8 +124,8 @@ mod tests {
     fn create_schema(organization_id: &Uuid, name: &str) -> CreateCredentialSchemaRequest {
         CreateCredentialSchemaRequest {
             name: name.to_owned(),
-            format: Format::Jwt,
-            revocation_method: RevocationMethod::StatusList2021,
+            format: "JWT".to_string(),
+            revocation_method: "STATUSLIST2021".to_owned(),
             organisation_id: organization_id.to_owned(),
             claims: vec![
                 CredentialClaimSchemaRequest {
@@ -135,6 +143,8 @@ mod tests {
     #[tokio::test]
     async fn create_credential_schema_test_simple_without_claims() {
         let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+        let formats = get_formats();
+        let revocation_methods = get_revocation_methods();
         let datatypes = get_datatypes();
 
         let credential_schemas_count = CredentialSchema::find()
@@ -154,7 +164,7 @@ mod tests {
         schema.claims.clear();
 
         assert!(data_layer
-            .create_credential_schema(schema, &datatypes)
+            .create_credential_schema(schema, &formats, &revocation_methods, &datatypes)
             .await
             .is_ok());
 
@@ -171,6 +181,8 @@ mod tests {
     #[ignore]
     async fn create_credential_schema_test_simple_without_claims_duplicated_name() {
         let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+        let formats = get_formats();
+        let revocation_methods = get_revocation_methods();
         let datatypes = get_datatypes();
 
         let organisation_id = Uuid::new_v4();
@@ -185,7 +197,12 @@ mod tests {
             .unwrap();
 
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential1"), &datatypes)
+            .create_credential_schema(
+                create_schema(&organisation_id, "Credential1"),
+                &formats,
+                &revocation_methods,
+                &datatypes
+            )
             .await
             .is_ok());
 
@@ -194,6 +211,8 @@ mod tests {
             data_layer
                 .create_credential_schema(
                     create_schema(&organisation_id, "Credential1"),
+                    &formats,
+                    &revocation_methods,
                     &datatypes
                 )
                 .await,
@@ -202,13 +221,23 @@ mod tests {
 
         // Case sensitive
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "credential1"), &datatypes)
+            .create_credential_schema(
+                create_schema(&organisation_id, "credential1"),
+                &formats,
+                &revocation_methods,
+                &datatypes
+            )
             .await
             .is_ok());
 
         // Same name for different organisation is ok
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id2, "Credential1"), &datatypes)
+            .create_credential_schema(
+                create_schema(&organisation_id2, "Credential1"),
+                &formats,
+                &revocation_methods,
+                &datatypes
+            )
             .await
             .is_ok());
     }
@@ -216,6 +245,8 @@ mod tests {
     #[tokio::test]
     async fn create_credential_schema_test_simple_with_claims() {
         let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+        let formats = get_formats();
+        let revocation_methods = get_revocation_methods();
         let datatypes = get_datatypes();
 
         let credential_schemas_count = CredentialSchema::find()
@@ -234,7 +265,12 @@ mod tests {
             .unwrap();
 
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential1"), &datatypes)
+            .create_credential_schema(
+                create_schema(&organisation_id, "Credential1"),
+                &formats,
+                &revocation_methods,
+                &datatypes
+            )
             .await
             .is_ok());
 
@@ -251,6 +287,8 @@ mod tests {
     #[tokio::test]
     async fn create_credential_schema_test_related_claims() {
         let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+        let formats = get_formats();
+        let revocation_methods = get_revocation_methods();
         let datatypes = get_datatypes();
 
         let organisation_id = Uuid::new_v4();
@@ -260,15 +298,30 @@ mod tests {
             .unwrap();
 
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential1"), &datatypes)
+            .create_credential_schema(
+                create_schema(&organisation_id, "Credential1"),
+                &formats,
+                &revocation_methods,
+                &datatypes
+            )
             .await
             .is_ok());
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential2"), &datatypes)
+            .create_credential_schema(
+                create_schema(&organisation_id, "Credential2"),
+                &formats,
+                &revocation_methods,
+                &datatypes
+            )
             .await
             .is_ok());
         assert!(data_layer
-            .create_credential_schema(create_schema(&organisation_id, "Credential3"), &datatypes)
+            .create_credential_schema(
+                create_schema(&organisation_id, "Credential3"),
+                &formats,
+                &revocation_methods,
+                &datatypes
+            )
             .await
             .is_ok());
 

@@ -13,7 +13,7 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_name = "type")]
     pub type_field: DidType,
-    pub method: DidMethod,
+    pub method: String,
     pub organisation_id: String,
 }
 
@@ -62,14 +62,4 @@ pub enum DidType {
     Remote,
     #[sea_orm(string_value = "LOCAL")]
     Local,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-pub enum DidMethod {
-    #[default]
-    #[sea_orm(string_value = "KEY")]
-    Key,
-    #[sea_orm(string_value = "WEB")]
-    Web,
 }

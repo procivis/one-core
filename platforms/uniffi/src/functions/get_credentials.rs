@@ -6,14 +6,13 @@ use crate::{
 };
 pub use one_core::error::OneCoreError;
 use one_core::repository::data_provider::{
-    DataProvider, DetailCredentialClaimResponse, DetailCredentialResponse, Format,
+    DataProvider, DetailCredentialClaimResponse, DetailCredentialResponse,
     ListCredentialSchemaResponse,
 };
 
 pub use one_core::repository::error::DataLayerError;
 
-pub use one_core::repository::data_provider::{CredentialState, RevocationMethod};
-pub type CredentialFormat = Format;
+pub use one_core::repository::data_provider::CredentialState;
 
 pub struct CredentialSchema {
     pub id: String,
@@ -21,8 +20,8 @@ pub struct CredentialSchema {
     pub last_modified: String,
     pub name: String,
     pub organisation_id: String,
-    pub format: CredentialFormat,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
 }
 
 impl From<ListCredentialSchemaResponse> for CredentialSchema {

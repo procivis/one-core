@@ -23,7 +23,7 @@ impl OldProvider {
             last_modified: Set(now),
             name: Set("TODO".to_owned()),
             type_field: Set(did::DidType::Remote),
-            method: Set(did::DidMethod::Key),
+            method: Set("KEY".to_string()),
             organisation_id: Set(organisation_id.to_owned()),
         })
         .exec(&self.db)

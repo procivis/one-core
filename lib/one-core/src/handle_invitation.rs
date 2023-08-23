@@ -9,7 +9,7 @@ use crate::data_model::ConnectVerifierResponse;
 use crate::error::SSIError;
 use crate::local_did_helpers::{get_first_local_did, get_first_organisation_id};
 use crate::repository::data_provider::{
-    CreateCredentialRequest, CreateCredentialRequestClaim, CredentialState, Transport,
+    CreateCredentialRequest, CreateCredentialRequestClaim, CredentialState,
 };
 use crate::repository::error::DataLayerError;
 use crate::transport_protocol::TransportProtocolError;
@@ -18,7 +18,7 @@ use crate::{
     error::OneCoreError,
     repository::data_provider::{
         CreateCredentialSchemaFromJwtRequest, CreateDidRequest,
-        CredentialClaimSchemaFromJwtRequest, DidMethod, DidType, Format, RevocationMethod,
+        CredentialClaimSchemaFromJwtRequest, DidType,
     },
     OneCore,
 };
@@ -78,8 +78,8 @@ fn create_credential_schema_request_from_jwt(
     Ok(CreateCredentialSchemaFromJwtRequest {
         id: string_to_uuid(&schema.id)?,
         name: schema.name,
-        format: Format::Jwt,
-        revocation_method: RevocationMethod::None,
+        format: "JWT".to_string(),
+        revocation_method: "NONE".to_string(),
         organisation_id: string_to_uuid(organisation_id)?,
         claims: claims?,
     })
@@ -199,6 +199,8 @@ impl OneCore {
             .data_layer
             .create_credential_schema_from_jwt(
                 credential_schema_request.clone(),
+                &self.config.format,
+                &self.config.revocation,
                 &self.config.datatype,
             )
             .await;
@@ -211,13 +213,16 @@ impl OneCore {
         // insert issuer did if not yet known
         let did_insert_result = self
             .data_layer
-            .create_did(CreateDidRequest {
-                name: "NEW_DID_FIXME".to_string(),
-                organisation_id: organisation_id.to_string(),
-                did: issuer_did_value.to_owned(),
-                did_type: DidType::Remote,
-                method: DidMethod::Key,
-            })
+            .create_did(
+                CreateDidRequest {
+                    name: "NEW_DID_FIXME".to_string(),
+                    organisation_id: organisation_id.to_string(),
+                    did: issuer_did_value.to_owned(),
+                    did_type: DidType::Remote,
+                    method: "KEY".to_string(),
+                },
+                &self.config.did,
+            )
             .await;
         let issuer_did_id = match did_insert_result {
             Ok(did) => did.id,
@@ -258,12 +263,13 @@ impl OneCore {
                     credential_id: Some(expected_credential_id.to_owned()),
                     credential_schema_id: string_to_uuid(&credential_schema_id)?,
                     issuer_did: string_to_uuid(&issuer_did_id)?,
-                    transport: Transport::ProcivisTemporary,
+                    transport: "PROCIVIS_TEMPORARY".to_string(),
                     claim_values: claim_values?,
                     receiver_did_id: Some(string_to_uuid(&expected_holder_did.id)?),
                     credential: Some(raw_credential.bytes().collect()),
                 },
                 &self.config.datatype,
+                &self.config.exchange,
             )
             .await
             .map_err(OneCoreError::DataLayerError)?;

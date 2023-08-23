@@ -14,7 +14,7 @@ pub struct Model {
 
     pub public_key: String,
     pub private_key: String,
-    pub storage_type: StorageType,
+    pub storage_type: String,
     pub key_type: KeyType,
 
     pub credential_id: Option<String>,
@@ -52,18 +52,6 @@ impl Related<super::did::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Did.def()
     }
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-pub enum StorageType {
-    #[default]
-    #[sea_orm(string_value = "INTERN")]
-    Intern,
-    #[sea_orm(string_value = "EXTERN")]
-    Extern,
-    #[sea_orm(string_value = "INTERN_HSM")]
-    InternHsm,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
