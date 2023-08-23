@@ -11,6 +11,7 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
 
+    pub transport: String,
     pub verifier_did_id: String,
     pub receiver_did_id: Option<String>,
     pub proof_schema_id: String,

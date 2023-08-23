@@ -184,6 +184,8 @@ pub struct ProofDetailsResponse {
     pub completed_date: Option<OffsetDateTime>,
     pub state: ProofRequestState,
     pub organisation_id: String,
+    pub verifier_did: String,
+    pub transport: String,
     pub receiver_did_id: Option<String>,
     pub claims: Vec<DetailProofClaim>,
     pub schema: DetailProofSchema,

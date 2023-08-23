@@ -5,7 +5,7 @@ use crate::{
     data_model::proof_detail_response_from_models_with_claims,
     entity::{
         claim, claim_schema, credential_schema, proof_schema_claim_schema, Claim, ClaimSchema,
-        CredentialSchema, CredentialSchemaClaimSchema, Proof, ProofSchema, ProofState,
+        CredentialSchema, CredentialSchemaClaimSchema, Did, Proof, ProofSchema, ProofState,
     },
     OldProvider,
 };
@@ -103,8 +103,15 @@ impl OldProvider {
                 DataLayerError::GeneralRuntimeError(e.to_string())
             })?;
 
+        let verifier_did = Did::find_by_id(&proof.verifier_did_id)
+            .one(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .ok_or(DataLayerError::RecordNotFound)?;
+
         Ok(proof_detail_response_from_models_with_claims(
             proof,
+            verifier_did,
             history,
             proof_schema,
             claims,

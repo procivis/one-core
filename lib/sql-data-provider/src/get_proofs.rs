@@ -35,6 +35,7 @@ fn get_select_proofs_query(
         .columns([
             proof::Column::Id,
             proof::Column::IssuanceDate,
+            proof::Column::Transport,
             proof::Column::CreatedDate,
             proof::Column::LastModified,
         ])

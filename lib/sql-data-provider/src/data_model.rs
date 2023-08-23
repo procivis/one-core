@@ -306,6 +306,7 @@ pub(crate) struct ClaimClaimSchemaCombined {
 
 pub(super) fn proof_detail_response_from_models_with_claims(
     proof: proof::Model,
+    verifier_did: did::Model,
     history: Vec<proof_state::Model>,
     proof_schema: proof_schema::Model,
     claims: Vec<(claim::Model, claim_schema::Model, credential_schema::Model)>,
@@ -319,6 +320,8 @@ pub(super) fn proof_detail_response_from_models_with_claims(
         completed_date: get_proof_completed_date(&history),
         organisation_id: proof_schema.organisation_id.clone(),
         state: get_current_proof_state(&history),
+        verifier_did: verifier_did.did,
+        transport: proof.transport,
         receiver_did_id: proof.receiver_did_id,
         schema: DetailProofSchema {
             id: proof_schema.id,
@@ -373,6 +376,7 @@ pub(crate) struct ProofsCombined {
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
     pub organisation_id: String,
+    pub transport: String,
 
     // state
     pub state: entity::proof_state::ProofRequestState,
@@ -541,6 +545,7 @@ impl From<&ProofsCombined> for proof::Model {
             created_date: value.created_date,
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
+            transport: value.transport.clone(),
             verifier_did_id: value.verifier_did.clone(),
             receiver_did_id: None,
             proof_schema_id: value.schema_id.clone(),
