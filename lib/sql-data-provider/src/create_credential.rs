@@ -1,7 +1,6 @@
-use crate::common_queries::{fetch_credential_schema_claim_schemas, insert_credential_state};
-use crate::entity::{claim, credential, credential_claim, credential_state, CredentialSchema, Did};
-use one_core::config::data_structure::DatatypeEntity;
+use one_core::config::data_structure::{DatatypeEntity, ExchangeEntity};
 use one_core::config::validator::datatype::validate_value;
+use one_core::config::validator::exchange::validate_exchange_type;
 use one_core::repository::data_provider::{CreateCredentialRequest, EntityResponse};
 use one_core::repository::error::DataLayerError;
 use sea_orm::ActiveValue::Set;
@@ -10,8 +9,12 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::data_model::CredentialSchemaClaimSchemaCombined;
-use crate::OldProvider;
+use crate::{
+    common_queries::{fetch_credential_schema_claim_schemas, insert_credential_state},
+    data_model::CredentialSchemaClaimSchemaCombined,
+    entity::{claim, credential, credential_claim, credential_state, CredentialSchema, Did},
+    OldProvider,
+};
 
 fn get_datatype(
     claim_schema_id: &str,
@@ -28,7 +31,11 @@ impl OldProvider {
         &self,
         request: CreateCredentialRequest,
         datatypes: &HashMap<String, DatatypeEntity>,
+        exchanges: &HashMap<String, ExchangeEntity>,
     ) -> Result<EntityResponse, DataLayerError> {
+        // todo: move this to the credential service
+        validate_exchange_type(&request.transport, exchanges)?;
+
         let did: super::entity::did::Model = Did::find_by_id(request.issuer_did.to_string())
             .one(&self.db)
             .await
@@ -50,7 +57,7 @@ impl OldProvider {
             let datatype = get_datatype(&schema_id.to_string(), &schemas_combined)?;
 
             validate_value(&request_claim.value, &datatype, datatypes)
-                .map_err(DataLayerError::DatatypeValidationError)?;
+                .map_err(DataLayerError::ConfigValidationError)?;
         }
 
         let now = OffsetDateTime::now_utc();
@@ -62,7 +69,7 @@ impl OldProvider {
             last_modified: Set(now),
             issuance_date: Set(now),
             deleted_at: Set(None),
-            transport: Set(request.transport.into()),
+            transport: Set(request.transport),
             credential: Set(request.credential.unwrap_or(vec![])),
             issuer_did_id: Set(did.id),
             receiver_did_id: Set(request.receiver_did_id.map(|uuid| uuid.to_string())),
@@ -120,7 +127,10 @@ mod tests {
         entity::{Claim, Credential, CredentialState},
         test_utilities::*,
     };
-    use one_core::repository::data_provider::{CreateCredentialRequestClaim, Transport};
+    use one_core::{
+        config::validator::ConfigValidationError,
+        repository::data_provider::CreateCredentialRequestClaim,
+    };
 
     use super::*;
 
@@ -128,6 +138,7 @@ mod tests {
     async fn create_credential_test_simple() {
         let data_layer = setup_test_data_provider_and_connection().await.unwrap();
         let datatypes = get_datatypes();
+        let exchange = get_exchange();
 
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
@@ -164,7 +175,7 @@ mod tests {
                     credential_id: None,
                     credential_schema_id: credential_schema_id.parse().unwrap(),
                     issuer_did: did.parse().unwrap(),
-                    transport: Transport::ProcivisTemporary,
+                    transport: "PROCIVIS_TEMPORARY".to_string(),
                     claim_values: vec![CreateCredentialRequestClaim {
                         claim_id: new_claims[0].0,
                         value: "placeholder".to_string(),
@@ -173,6 +184,7 @@ mod tests {
                     credential: None,
                 },
                 &datatypes,
+                &exchange,
             )
             .await;
         assert!(result.is_ok());
@@ -193,6 +205,7 @@ mod tests {
     async fn create_credential_test_claim_data_validation() {
         let data_layer = setup_test_data_provider_and_connection().await.unwrap();
         let datatypes = get_datatypes();
+        let exchange = get_exchange();
 
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
@@ -230,7 +243,7 @@ mod tests {
                     credential_id: None,
                     credential_schema_id: credential_schema_id.parse().unwrap(),
                     issuer_did: did.parse().unwrap(),
-                    transport: Transport::ProcivisTemporary,
+                    transport: "PROCIVIS_TEMPORARY".to_string(),
                     claim_values: vec![CreateCredentialRequestClaim {
                         claim_id: new_claims[0].0,
                         value: "this is not a number".to_string(),
@@ -239,10 +252,15 @@ mod tests {
                     credential: None,
                 },
                 &datatypes,
+                &exchange,
             )
             .await;
-        assert!(failed_to_verify_number
-            .is_err_and(|e| matches!(e, DataLayerError::DatatypeValidationError(_))));
+        assert!(failed_to_verify_number.is_err_and(|e| matches!(
+            e,
+            DataLayerError::ConfigValidationError(ConfigValidationError::DatatypeValidationError(
+                _
+            ))
+        )));
 
         let failed_to_verify_date = data_layer
             .create_credential(
@@ -250,7 +268,7 @@ mod tests {
                     credential_id: None,
                     credential_schema_id: credential_schema_id.parse().unwrap(),
                     issuer_did: did.parse().unwrap(),
-                    transport: Transport::ProcivisTemporary,
+                    transport: "PROCIVIS_TEMPORARY".to_string(),
                     claim_values: vec![CreateCredentialRequestClaim {
                         claim_id: new_claims[1].0,
                         value: "this is not a date".to_string(),
@@ -259,10 +277,15 @@ mod tests {
                     credential: None,
                 },
                 &datatypes,
+                &exchange,
             )
             .await;
-        assert!(failed_to_verify_date
-            .is_err_and(|e| matches!(e, DataLayerError::DatatypeValidationError(_))));
+        assert!(failed_to_verify_date.is_err_and(|e| matches!(
+            e,
+            DataLayerError::ConfigValidationError(ConfigValidationError::DatatypeValidationError(
+                _
+            ))
+        )));
 
         let claim_count = Claim::find().all(&data_layer.db).await.unwrap().len();
         assert_eq!(0, claim_count);
@@ -281,7 +304,7 @@ mod tests {
                     credential_id: None,
                     credential_schema_id: credential_schema_id.parse().unwrap(),
                     issuer_did: did.parse().unwrap(),
-                    transport: Transport::ProcivisTemporary,
+                    transport: "PROCIVIS_TEMPORARY".to_string(),
                     claim_values: vec![
                         CreateCredentialRequestClaim {
                             claim_id: new_claims[0].0,
@@ -296,6 +319,7 @@ mod tests {
                     credential: None,
                 },
                 &datatypes,
+                &exchange,
             )
             .await;
         assert!(correct_insert.is_ok());

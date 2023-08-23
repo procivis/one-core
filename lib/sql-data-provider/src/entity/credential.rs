@@ -15,7 +15,7 @@ pub struct Model {
     pub issuance_date: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
 
-    pub transport: Transport,
+    pub transport: String,
 
     #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
     pub credential: Vec<u8>,
@@ -91,14 +91,4 @@ impl Related<super::did::Entity> for Entity {
     fn via() -> Option<RelationDef> {
         Some(super::key::Relation::Credential.def().rev())
     }
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-pub enum Transport {
-    #[default]
-    #[sea_orm(string_value = "PROCIVIS_TEMPORARY")]
-    ProcivisTemporary,
-    #[sea_orm(string_value = "OPENID4VC")]
-    OpenId4Vc,
 }

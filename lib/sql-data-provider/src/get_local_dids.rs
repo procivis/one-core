@@ -114,7 +114,7 @@ mod tests {
             last_modified: Set(get_dummy_date()),
             name: Set("remote".to_string()),
             type_field: Set(did::DidType::Remote),
-            method: Set(did::DidMethod::Key),
+            method: Set("KEY".to_string()),
             organisation_id: Set(organisation_id.to_owned()),
         }
         .insert(&data_layer.db)

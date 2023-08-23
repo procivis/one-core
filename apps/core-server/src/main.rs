@@ -104,7 +104,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 data_model::CreateProofRequestDTO,
                 data_model::CreateProofResponseDTO,
                 data_model::ClaimProofSchemaRequestDTO,
-                data_model::RevocationMethod,
                 data_model::ProofSchemaResponseDTO,
                 data_model::GetProofSchemaResponseDTO,
                 data_model::ProofClaimSchemaResponseDTO,
@@ -124,9 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 data_model::ProofRequestQueryParams,
                 data_model::HandleInvitationRequestDTO,
                 data_model::GetProofsResponseDTO,
-                data_model::Format,
                 data_model::DidType,
-                data_model::DidMethod,
                 data_model::ProofRequestState,
                 data_model::SortDirection,
                 dto::response::config::ConfigDTO

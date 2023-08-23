@@ -30,13 +30,7 @@ impl OneCore {
             return Err(OneCoreError::SSIError(SSIError::IncorrectCredentialState));
         }
 
-        // This will later be replaced by a string format in the database
-        let format = match credential.schema.format {
-            crate::repository::data_provider::Format::Jwt => "JWT",
-            crate::repository::data_provider::Format::SdJwt => "SD-JWT",
-            crate::repository::data_provider::Format::JsonLd => "JSON-LD",
-            crate::repository::data_provider::Format::Mdoc => "MDOC",
-        };
+        let format = &credential.schema.format;
 
         let formatter = self.get_formatter(format)?;
 

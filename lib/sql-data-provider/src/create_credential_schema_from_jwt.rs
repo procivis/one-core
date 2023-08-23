@@ -1,7 +1,12 @@
 use std::collections::HashMap;
 
 use one_core::{
-    config::{data_structure::DatatypeEntity, validator::datatype::validate_datatypes},
+    config::{
+        data_structure::{DatatypeEntity, FormatEntity, RevocationEntity},
+        validator::{
+            datatype::validate_datatypes, format::validate_format, revocation::validate_revocation,
+        },
+    },
     repository::{
         data_provider::{CreateCredentialSchemaFromJwtRequest, CreateCredentialSchemaResponse},
         error::DataLayerError,
@@ -19,11 +24,15 @@ impl OldProvider {
     pub async fn create_credential_schema_from_jwt(
         &self,
         request: CreateCredentialSchemaFromJwtRequest,
+        formats: &HashMap<String, FormatEntity>,
+        revocation_methods: &HashMap<String, RevocationEntity>,
         datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<CreateCredentialSchemaResponse, DataLayerError> {
         let now = OffsetDateTime::now_utc();
 
         // To be moved to credential service
+        validate_format(&request.format, formats)?;
+        validate_revocation(&request.revocation_method, revocation_methods)?;
         validate_datatypes(
             &request
                 .claims
@@ -32,16 +41,16 @@ impl OldProvider {
                 .collect::<Vec<&String>>(),
             datatypes,
         )
-        .map_err(DataLayerError::DatatypeValidationError)?;
+        .map_err(DataLayerError::ConfigValidationError)?;
 
         let credential_schema = credential_schema::ActiveModel {
             id: Set(request.id.to_string()),
             name: Set(request.name),
             created_date: Set(now),
             last_modified: Set(now),
-            format: Set(request.format.into()),
+            format: Set(request.format),
             deleted_at: Set(None),
-            revocation_method: Set(request.revocation_method.into()),
+            revocation_method: Set(request.revocation_method),
             organisation_id: Set(request.organisation_id.to_string()),
         }
         .insert(&self.db)

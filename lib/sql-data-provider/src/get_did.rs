@@ -37,10 +37,7 @@ impl OldProvider {
 
 #[cfg(test)]
 mod tests {
-    use one_core::repository::{
-        data_provider::{DidMethod, DidType},
-        error::DataLayerError,
-    };
+    use one_core::repository::{data_provider::DidType, error::DataLayerError};
     use uuid::Uuid;
 
     use crate::test_utilities::*;
@@ -64,7 +61,7 @@ mod tests {
 
         let content = result.unwrap();
         assert_eq!(content.id, id);
-        assert_eq!(content.did_method, DidMethod::Key);
+        assert_eq!(content.did_method, "KEY");
         assert_eq!(content.did_type, DidType::Local);
         assert_eq!(content.did, did);
         assert_eq!(content.name, did_name);
@@ -90,7 +87,7 @@ mod tests {
 
         let content = result.unwrap();
         assert_eq!(content.id, id);
-        assert_eq!(content.did_method, DidMethod::Key);
+        assert_eq!(content.did_method, "KEY");
         assert_eq!(content.did_type, DidType::Local);
         assert_eq!(content.did, did);
         assert_eq!(content.name, did_name);

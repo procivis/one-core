@@ -1,7 +1,4 @@
-use one_core::repository::{
-    data_provider::{ProofShareResponse, Transport},
-    error::DataLayerError,
-};
+use one_core::repository::{data_provider::ProofShareResponse, error::DataLayerError};
 use time::OffsetDateTime;
 
 use crate::{
@@ -25,7 +22,7 @@ impl OldProvider {
 
                 Ok(ProofShareResponse {
                     proof_id: proof_id.to_string(),
-                    transport: Transport::ProcivisTemporary,
+                    transport: "PROCIVIS_TEMPORARY".to_string(),
                 })
             }
             _ => Err(DataLayerError::AlreadyExists),

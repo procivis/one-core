@@ -9,12 +9,12 @@ async-trait = "0.1.68"
 serde_yaml = "0.9.25"
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true
 time.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 shadow-rs.workspace = true
-thiserror.workspace = true
-tokio.workspace = true
 
 jwt-simple = "0.11.6"
 base64 = "0.21.2"

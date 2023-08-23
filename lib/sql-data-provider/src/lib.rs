@@ -5,7 +5,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_core::{
-    config::data_structure::DatatypeEntity,
+    config::data_structure::{
+        DatatypeEntity, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
+    },
     repository::{
         data_provider::{
             CreateCredentialRequest, CreateCredentialSchemaFromJwtRequest,
@@ -106,9 +108,11 @@ impl DataProvider for OldProvider {
     async fn create_credential_schema_from_jwt(
         &self,
         request: CreateCredentialSchemaFromJwtRequest,
+        formats: &HashMap<String, FormatEntity>,
+        revocation_methods: &HashMap<String, RevocationEntity>,
         datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<CreateCredentialSchemaResponse, DataLayerError> {
-        self.create_credential_schema_from_jwt(request, datatypes)
+        self.create_credential_schema_from_jwt(request, formats, revocation_methods, datatypes)
             .await
     }
 
@@ -146,24 +150,29 @@ impl DataProvider for OldProvider {
     async fn create_credential_schema(
         &self,
         request: CreateCredentialSchemaRequest,
+        formats: &HashMap<String, FormatEntity>,
+        revocation_methods: &HashMap<String, RevocationEntity>,
         datatypes: &HashMap<String, DatatypeEntity>,
     ) -> Result<CreateCredentialSchemaResponse, DataLayerError> {
-        self.create_credential_schema(request, datatypes).await
+        self.create_credential_schema(request, formats, revocation_methods, datatypes)
+            .await
     }
 
     async fn create_credential(
         &self,
         request: CreateCredentialRequest,
         datatypes: &HashMap<String, DatatypeEntity>,
+        exchanges: &HashMap<String, ExchangeEntity>,
     ) -> Result<EntityResponse, DataLayerError> {
-        self.create_credential(request, datatypes).await
+        self.create_credential(request, datatypes, exchanges).await
     }
 
     async fn create_did(
         &self,
         request: CreateDidRequest,
+        did_methods: &HashMap<String, DidEntity>,
     ) -> Result<CreateDidResponse, DataLayerError> {
-        self.create_did(request).await
+        self.create_did(request, did_methods).await
     }
 
     async fn create_proof_schema(

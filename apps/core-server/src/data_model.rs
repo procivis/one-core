@@ -23,71 +23,6 @@ use validator::Validate;
 
 use crate::endpoint::common_data_models::{front_time, front_time_option};
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Format {
-    #[default]
-    Jwt,
-    SdJwt,
-    JsonLd,
-    Mdoc,
-}
-
-impl From<Format> for one_core::repository::data_provider::Format {
-    fn from(value: Format) -> Self {
-        match value {
-            Format::Jwt => one_core::repository::data_provider::Format::Jwt,
-            Format::SdJwt => one_core::repository::data_provider::Format::SdJwt,
-            Format::JsonLd => one_core::repository::data_provider::Format::JsonLd,
-            Format::Mdoc => one_core::repository::data_provider::Format::Mdoc,
-        }
-    }
-}
-
-impl From<one_core::repository::data_provider::Format> for Format {
-    fn from(value: one_core::repository::data_provider::Format) -> Self {
-        match value {
-            one_core::repository::data_provider::Format::Jwt => Format::Jwt,
-            one_core::repository::data_provider::Format::SdJwt => Format::SdJwt,
-            one_core::repository::data_provider::Format::JsonLd => Format::JsonLd,
-            one_core::repository::data_provider::Format::Mdoc => Format::Mdoc,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum RevocationMethod {
-    #[default]
-    None,
-    StatusList2021,
-    Lvvc,
-}
-
-impl From<RevocationMethod> for one_core::repository::data_provider::RevocationMethod {
-    fn from(value: RevocationMethod) -> Self {
-        match value {
-            RevocationMethod::StatusList2021 => {
-                one_core::repository::data_provider::RevocationMethod::StatusList2021
-            }
-            RevocationMethod::Lvvc => one_core::repository::data_provider::RevocationMethod::Lvvc,
-            RevocationMethod::None => one_core::repository::data_provider::RevocationMethod::None,
-        }
-    }
-}
-
-impl From<one_core::repository::data_provider::RevocationMethod> for RevocationMethod {
-    fn from(value: one_core::repository::data_provider::RevocationMethod) -> Self {
-        match value {
-            one_core::repository::data_provider::RevocationMethod::StatusList2021 => {
-                RevocationMethod::StatusList2021
-            }
-            one_core::repository::data_provider::RevocationMethod::Lvvc => RevocationMethod::Lvvc,
-            one_core::repository::data_provider::RevocationMethod::None => RevocationMethod::None,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
 pub enum SortDirection {
     #[serde(rename = "ASC")]
@@ -201,8 +136,8 @@ impl From<SortableProofSchemaColumn>
 pub struct CreateCredentialSchemaRequestDTO {
     #[validate(length(min = 1))]
     pub name: String,
-    pub format: Format,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
     pub organisation_id: Uuid,
     #[validate(length(min = 1))]
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
@@ -212,8 +147,8 @@ impl From<CreateCredentialSchemaRequestDTO> for CreateCredentialSchemaRequest {
     fn from(value: CreateCredentialSchemaRequestDTO) -> Self {
         CreateCredentialSchemaRequest {
             name: value.name,
-            format: value.format.into(),
-            revocation_method: value.revocation_method.into(),
+            format: value.format,
+            revocation_method: value.revocation_method,
             organisation_id: value.organisation_id,
             claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
         }
@@ -289,8 +224,8 @@ pub struct CredentialSchemaResponseDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: Format,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
     pub organisation_id: String,
     pub claims: Vec<CredentialClaimSchemaResponseDTO>,
 }
@@ -316,8 +251,8 @@ impl From<CredentialSchemaResponse> for CredentialSchemaResponseDTO {
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
-            format: value.format.into(),
-            revocation_method: value.revocation_method.into(),
+            format: value.format,
+            revocation_method: value.revocation_method,
             organisation_id: value.organisation_id,
             claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
         }
@@ -446,7 +381,7 @@ impl From<CreateProofSchemaResponse> for CreateProofSchemaResponseDTO {
 pub struct CredentialRequestDTO {
     pub credential_schema_id: Uuid,
     pub issuer_did: Uuid,
-    pub transport: Transport,
+    pub transport: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
 }
 
@@ -477,7 +412,7 @@ impl From<CredentialRequestDTO> for CreateCredentialRequest {
             credential_id: None,
             credential_schema_id: value.credential_schema_id,
             issuer_did: value.issuer_did,
-            transport: value.transport.into(),
+            transport: value.transport,
             claim_values: value
                 .claim_values
                 .into_iter()
@@ -494,28 +429,6 @@ impl From<CredentialRequestClaimDTO> for CreateCredentialRequestClaim {
         Self {
             claim_id: value.claim_id,
             value: value.value,
-        }
-    }
-}
-
-impl From<Transport> for one_core::repository::data_provider::Transport {
-    fn from(value: Transport) -> Self {
-        match value {
-            Transport::ProcivisTemporary => {
-                one_core::repository::data_provider::Transport::ProcivisTemporary
-            }
-            Transport::OpenId4Vc => one_core::repository::data_provider::Transport::OpenId4Vc,
-        }
-    }
-}
-
-impl From<one_core::repository::data_provider::Transport> for Transport {
-    fn from(value: one_core::repository::data_provider::Transport) -> Self {
-        match value {
-            one_core::repository::data_provider::Transport::ProcivisTemporary => {
-                Transport::ProcivisTemporary
-            }
-            one_core::repository::data_provider::Transport::OpenId4Vc => Transport::OpenId4Vc,
         }
     }
 }
@@ -552,32 +465,6 @@ impl From<one_core::repository::data_provider::DidType> for DidType {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum DidMethod {
-    #[default]
-    Key,
-    Web,
-}
-
-impl From<DidMethod> for one_core::repository::data_provider::DidMethod {
-    fn from(value: DidMethod) -> Self {
-        match value {
-            DidMethod::Key => one_core::repository::data_provider::DidMethod::Key,
-            DidMethod::Web => one_core::repository::data_provider::DidMethod::Web,
-        }
-    }
-}
-
-impl From<one_core::repository::data_provider::DidMethod> for DidMethod {
-    fn from(value: one_core::repository::data_provider::DidMethod) -> Self {
-        match value {
-            one_core::repository::data_provider::DidMethod::Key => DidMethod::Key,
-            one_core::repository::data_provider::DidMethod::Web => DidMethod::Web,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GetDidDetailsResponseDTO {
@@ -594,7 +481,7 @@ pub struct GetDidDetailsResponseDTO {
     #[serde(rename = "type")]
     pub did_type: DidType,
     #[serde(rename = "method")]
-    pub did_method: DidMethod,
+    pub did_method: String,
 }
 
 impl From<GetDidDetailsResponse> for GetDidDetailsResponseDTO {
@@ -607,7 +494,7 @@ impl From<GetDidDetailsResponse> for GetDidDetailsResponseDTO {
             organisation_id: value.organisation_id,
             did: value.did,
             did_type: value.did_type.into(),
-            did_method: value.did_method.into(),
+            did_method: value.did_method,
         }
     }
 }
@@ -650,8 +537,7 @@ fn get_core_base_url() -> String {
 
 impl From<CredentialShareResponse> for EntityShareResponseDTO {
     fn from(value: CredentialShareResponse) -> Self {
-        let protocol =
-            serde_variant::to_variant_name(&Transport::from(value.transport)).unwrap_or("UNKNOWN");
+        let protocol = &value.transport;
         Self {
             url: format!(
                 "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
@@ -665,8 +551,7 @@ impl From<CredentialShareResponse> for EntityShareResponseDTO {
 
 impl From<ProofShareResponse> for EntityShareResponseDTO {
     fn from(value: ProofShareResponse) -> Self {
-        let protocol =
-            serde_variant::to_variant_name(&Transport::from(value.transport)).unwrap_or("UNKNOWN");
+        let protocol = &value.transport;
         Self {
             url: format!(
                 "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
@@ -708,8 +593,8 @@ pub struct ListCredentialSchemaResponseDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: Format,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
     pub organisation_id: String,
 }
 
@@ -754,8 +639,8 @@ impl From<ListCredentialSchemaResponse> for ListCredentialSchemaResponseDTO {
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
-            format: value.format.into(),
-            revocation_method: value.revocation_method.into(),
+            format: value.format,
+            revocation_method: value.revocation_method,
             organisation_id: value.organisation_id,
         }
     }
@@ -906,7 +791,7 @@ pub(crate) struct CreateDidRequest {
     pub name: String,
     pub organisation_id: Uuid,
     pub did: String,
-    pub method: DidMethod,
+    pub method: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
@@ -921,7 +806,7 @@ impl From<CreateDidRequest> for one_core::repository::data_provider::CreateDidRe
             organisation_id: value.organisation_id.to_string(),
             did: value.did,
             did_type: DidType::Local.into(),
-            method: value.method.into(),
+            method: value.method,
         }
     }
 }
@@ -936,7 +821,7 @@ pub(crate) struct ProofRequestQueryParams {
 pub struct CreateProofRequestDTO {
     pub proof_schema_id: Uuid,
     pub verifier_did: Uuid,
-    pub transport: Transport,
+    pub transport: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
@@ -950,7 +835,7 @@ impl From<CreateProofRequestDTO> for CreateProofRequest {
         Self {
             proof_schema_id: value.proof_schema_id,
             verifier_did_id: value.verifier_did,
-            transport: value.transport.into(),
+            transport: value.transport,
         }
     }
 }

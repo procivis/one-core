@@ -6,21 +6,16 @@ use time::error::{ComponentRange, Parse, TryFromParsed};
 use time::macros::format_description;
 use time::{Date, Month, OffsetDateTime, PrimitiveDateTime};
 
-use crate::config::data_structure::{
-    DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams, DatatypeParams,
-    DatatypeStringParams, DatatypeType, EnumValue, ParamsEnum,
+use crate::config::{
+    data_structure::{
+        DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams,
+        DatatypeParams, DatatypeStringParams, DatatypeType, EnumValue, ParamsEnum,
+    },
+    validator::ConfigValidationError,
 };
 
 #[derive(Debug, PartialEq, Error)]
 pub enum DatatypeValidationError {
-    // general
-    #[error("Mismatched value type and params type")]
-    MismatchedValueTypeAndParamsType,
-    #[error("Unknown type: `{0}`")]
-    UnknownType(String),
-    #[error("Unparsed parameter tree")]
-    UnparsedParameterTree,
-
     // string
     #[error("String invalid pattern: `{0}`")]
     StringInvalidPattern(regex::Error),
@@ -55,20 +50,20 @@ pub enum DatatypeValidationError {
 pub fn validate_datatypes(
     query_datatypes: &[&String],
     datatypes: &HashMap<String, DatatypeEntity>,
-) -> Result<(), DatatypeValidationError> {
+) -> Result<(), ConfigValidationError> {
     match query_datatypes
         .iter()
         .find(|datatype| !datatypes.contains_key(&***datatype))
     {
         None => Ok(()),
-        Some(value) => Err(DatatypeValidationError::UnknownType((*value).to_owned())),
+        Some(value) => Err(ConfigValidationError::KeyNotFound((*value).to_owned())),
     }
 }
 
 fn validate_value_type_and_params_type(
     value_type: DatatypeType,
     params: Option<&DatatypeParams>,
-) -> Result<(), DatatypeValidationError> {
+) -> Result<(), ConfigValidationError> {
     match params {
         None => Ok(()),
         Some(params) => match params {
@@ -76,28 +71,28 @@ fn validate_value_type_and_params_type(
                 if value_type == DatatypeType::String {
                     Ok(())
                 } else {
-                    Err(DatatypeValidationError::MismatchedValueTypeAndParamsType)
+                    Err(ConfigValidationError::MismatchedValueTypeAndParamsType)
                 }
             }
             DatatypeParams::Number(_) => {
                 if value_type == DatatypeType::Number {
                     Ok(())
                 } else {
-                    Err(DatatypeValidationError::MismatchedValueTypeAndParamsType)
+                    Err(ConfigValidationError::MismatchedValueTypeAndParamsType)
                 }
             }
             DatatypeParams::Date(_) => {
                 if value_type == DatatypeType::Date {
                     Ok(())
                 } else {
-                    Err(DatatypeValidationError::MismatchedValueTypeAndParamsType)
+                    Err(ConfigValidationError::MismatchedValueTypeAndParamsType)
                 }
             }
             DatatypeParams::Enum(_) => {
                 if value_type == DatatypeType::Enum {
                     Ok(())
                 } else {
-                    Err(DatatypeValidationError::MismatchedValueTypeAndParamsType)
+                    Err(ConfigValidationError::MismatchedValueTypeAndParamsType)
                 }
             }
         },
@@ -241,21 +236,21 @@ fn match_value(
     value: &str,
     value_type: DatatypeType,
     params: Option<&DatatypeParams>,
-) -> Result<(), DatatypeValidationError> {
+) -> Result<(), ConfigValidationError> {
     validate_value_type_and_params_type(value_type.to_owned(), params)?;
 
     match params {
         None => match value_type {
-            DatatypeType::String => validate_string(value, None),
-            DatatypeType::Number => validate_number(value, None),
-            DatatypeType::Date => validate_date(value, None),
-            DatatypeType::Enum => validate_enum(value, None),
+            DatatypeType::String => Ok(validate_string(value, None)?),
+            DatatypeType::Number => Ok(validate_number(value, None)?),
+            DatatypeType::Date => Ok(validate_date(value, None)?),
+            DatatypeType::Enum => Ok(validate_enum(value, None)?),
         },
         Some(params) => match params {
-            DatatypeParams::String(params) => validate_string(value, Some(params)),
-            DatatypeParams::Number(params) => validate_number(value, Some(params)),
-            DatatypeParams::Date(params) => validate_date(value, Some(params)),
-            DatatypeParams::Enum(params) => validate_enum(value, Some(params)),
+            DatatypeParams::String(params) => Ok(validate_string(value, Some(params))?),
+            DatatypeParams::Number(params) => Ok(validate_number(value, Some(params))?),
+            DatatypeParams::Date(params) => Ok(validate_date(value, Some(params))?),
+            DatatypeParams::Enum(params) => Ok(validate_enum(value, Some(params))?),
         },
     }
 }
@@ -264,17 +259,17 @@ pub fn validate_value(
     value: &str,
     datatype: &str,
     datatypes: &HashMap<String, DatatypeEntity>,
-) -> Result<(), DatatypeValidationError> {
+) -> Result<(), ConfigValidationError> {
     let (_, entity) = datatypes
         .iter()
         .find(|(key, _)| *key == datatype)
-        .ok_or(DatatypeValidationError::UnknownType(datatype.to_string()))?;
+        .ok_or(ConfigValidationError::UnknownType(datatype.to_string()))?;
     match &entity.params {
-        None => match_value(value, entity.r#type.to_owned(), None),
+        None => Ok(match_value(value, entity.r#type.to_owned(), None)?),
         Some(params_enum) => match params_enum {
-            ParamsEnum::Unparsed(_) => Err(DatatypeValidationError::UnparsedParameterTree),
+            ParamsEnum::Unparsed(_) => Err(ConfigValidationError::UnparsedParameterTree),
             ParamsEnum::Parsed(params) => {
-                match_value(value, entity.r#type.to_owned(), Some(params))
+                Ok(match_value(value, entity.r#type.to_owned(), Some(params))?)
             }
         },
     }
@@ -382,15 +377,23 @@ mod tests {
 
         let invalid_regex_pattern =
             validate_value("abc@abc.com", "EMAIL_INVALID_REGEX", &datatypes);
-        assert!(invalid_regex_pattern
-            .is_err_and(|e| matches!(e, DatatypeValidationError::StringInvalidPattern(_))));
+        assert!(invalid_regex_pattern.is_err_and(|e| matches!(
+            e,
+            ConfigValidationError::DatatypeValidationError(
+                DatatypeValidationError::StringInvalidPattern(_)
+            )
+        )));
 
         let valid_email = validate_value("abc@abc.com", "EMAIL", &datatypes);
         assert!(valid_email.is_ok());
 
         let invalid_email = validate_value("not an email", "EMAIL", &datatypes);
-        assert!(invalid_email
-            .is_err_and(|e| matches!(e, DatatypeValidationError::StringNotMatchingPattern(_, _))));
+        assert!(invalid_email.is_err_and(|e| matches!(
+            e,
+            ConfigValidationError::DatatypeValidationError(
+                DatatypeValidationError::StringNotMatchingPattern(_, _)
+            )
+        )));
     }
 
     #[test]
@@ -418,16 +421,29 @@ mod tests {
         )]);
 
         let parse_failure = validate_value("not_a_number", "NUMBER", &datatypes);
-        assert!(parse_failure
-            .is_err_and(|f| matches!(f, DatatypeValidationError::NumberParseFailure(_))));
+        assert!(parse_failure.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidationError(
+                DatatypeValidationError::NumberParseFailure(_)
+            )
+        )));
 
         let too_small = validate_value("6", "NUMBER", &datatypes);
-        assert!(
-            too_small.is_err_and(|f| matches!(f, DatatypeValidationError::NumberTooSmall(_, _)))
-        );
+        assert!(too_small.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidationError(
+                DatatypeValidationError::NumberTooSmall(_, _)
+            )
+        )));
 
         let too_big = validate_value("23", "NUMBER", &datatypes);
-        assert!(too_big.is_err_and(|f| matches!(f, DatatypeValidationError::NumberTooBig(_, _))));
+        assert!(too_big.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidationError(DatatypeValidationError::NumberTooBig(
+                _,
+                _
+            ))
+        )));
 
         let fine = validate_value("11", "NUMBER", &datatypes);
         assert!(fine.is_ok());
@@ -461,13 +477,30 @@ mod tests {
         assert!(valid.is_ok());
 
         let too_early = validate_value("2022-01-01T17:45:00.0123456Z", "DATE", &datatypes);
-        assert!(too_early.is_err_and(|f| matches!(f, DatatypeValidationError::DateTooEarly(_, _))));
+        assert!(too_early.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidationError(DatatypeValidationError::DateTooEarly(
+                _,
+                _
+            ))
+        )));
 
         let too_late = validate_value("2023-01-02T17:45:00.0123456Z", "DATE", &datatypes);
-        assert!(too_late.is_err_and(|f| matches!(f, DatatypeValidationError::DateTooLate(_, _))));
+        assert!(too_late.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidationError(DatatypeValidationError::DateTooLate(
+                _,
+                _
+            ))
+        )));
 
         let invalid = validate_value("2023-01-01", "DATE", &datatypes);
-        assert!(invalid.is_err_and(|f| matches!(f, DatatypeValidationError::DateParseFailure(_))));
+        assert!(invalid.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidationError(
+                DatatypeValidationError::DateParseFailure(_)
+            )
+        )));
     }
 
     #[test]
@@ -508,6 +541,11 @@ mod tests {
         assert!(enum_valid_value_two.is_ok());
 
         let invalid = validate_value("AC", "COUNTRY", &datatypes);
-        assert!(invalid.is_err_and(|f| matches!(f, DatatypeValidationError::EnumInvalidValue(_))));
+        assert!(invalid.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidationError(
+                DatatypeValidationError::EnumInvalidValue(_)
+            )
+        )));
     }
 }

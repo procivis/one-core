@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::config::validator::datatype::DatatypeValidationError;
+use crate::config::validator::ConfigValidationError;
 
 #[derive(Debug, PartialEq, Error)]
 pub enum DataLayerError {
@@ -8,8 +8,8 @@ pub enum DataLayerError {
     GeneralRuntimeError(String),
     #[error("Already exists")]
     AlreadyExists,
-    #[error("Datatype validation error `{0}`")]
-    DatatypeValidationError(#[from] DatatypeValidationError),
+    #[error("Config validation error `{0}`")]
+    ConfigValidationError(#[from] ConfigValidationError),
     #[error("Wrong parameters")]
     IncorrectParameters,
     #[error("Record not found")]

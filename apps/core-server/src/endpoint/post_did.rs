@@ -27,7 +27,11 @@ pub(crate) async fn post_did(
     state: State<AppState>,
     Json(request): Json<CreateDidRequest>,
 ) -> Response {
-    let result = state.core.data_layer.create_did(request.into()).await;
+    let result = state
+        .core
+        .data_layer
+        .create_did(request.into(), &state.core.config.did)
+        .await;
 
     match result {
         Err(DataLayerError::AlreadyExists) => {

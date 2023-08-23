@@ -60,10 +60,7 @@ impl OldProvider {
 mod tests {
     use std::str::FromStr;
 
-    use one_core::repository::{
-        data_provider::{CreateProofRequest, Transport},
-        error::DataLayerError,
-    };
+    use one_core::repository::{data_provider::CreateProofRequest, error::DataLayerError};
     use sea_orm::EntityTrait;
     use time::OffsetDateTime;
     use uuid::Uuid;
@@ -126,7 +123,7 @@ mod tests {
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
-            transport: Transport::ProcivisTemporary,
+            transport: "PROCIVIS_TEMPORARY".to_string(),
             verifier_did_id: Uuid::from_str(&verifier_did_id).unwrap(),
         };
 
@@ -161,7 +158,7 @@ mod tests {
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
-            transport: Transport::ProcivisTemporary,
+            transport: "PROCIVIS_TEMPORARY".to_string(),
             verifier_did_id: Uuid::from_str(&verifier_did_id).unwrap(),
         };
 
@@ -186,7 +183,7 @@ mod tests {
 
         let request = CreateProofRequest {
             proof_schema_id,
-            transport: Transport::ProcivisTemporary,
+            transport: "PROCIVIS_TEMPORARY".to_string(),
             verifier_did_id: Uuid::from_str(&verifier_did_id).unwrap(),
         };
 
@@ -209,7 +206,7 @@ mod tests {
 
         let request = CreateProofRequest {
             proof_schema_id: Uuid::from_str(&proof_schema_id).unwrap(),
-            transport: Transport::ProcivisTemporary,
+            transport: "PROCIVIS_TEMPORARY".to_string(),
             verifier_did_id: Uuid::from_str(&verifier_did_id).unwrap(),
         };
 

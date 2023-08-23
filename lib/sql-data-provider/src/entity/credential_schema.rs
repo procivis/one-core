@@ -10,8 +10,8 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: Format,
-    pub revocation_method: RevocationMethod,
+    pub format: String,
+    pub revocation_method: String,
 
     pub organisation_id: String,
 }
@@ -64,29 +64,3 @@ impl Related<super::claim_schema::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-pub enum RevocationMethod {
-    #[sea_orm(string_value = "NONE")]
-    None,
-    #[default]
-    #[sea_orm(string_value = "STATUSLIST2021")]
-    StatusList2021,
-    #[sea_orm(string_value = "LVVC")]
-    Lvvc,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-pub enum Format {
-    #[default]
-    #[sea_orm(string_value = "JWT")]
-    Jwt,
-    #[sea_orm(string_value = "SD_JWT")]
-    SdJwt,
-    #[sea_orm(string_value = "JSON_LD")]
-    JsonLd,
-    #[sea_orm(string_value = "MDOC")]
-    Mdoc,
-}
