@@ -5,15 +5,17 @@ use std::sync::Arc;
 use crate::config::ConfigParseError;
 use credential_formatter::jwt_formatter::JWTFormatter;
 use credential_formatter::CredentialFormatter;
-use data_layer::DataLayer;
 use error::OneCoreError;
+use repository::{
+    data_provider::DataProvider, organisation_repository::OrganisationRepository, DataRepository,
+};
+use service::organisation::OrganisationService;
 use signature_provider::SignatureProvider;
 use transport_protocol::procivis_temp::ProcivisTemp;
 use transport_protocol::TransportProtocol;
 
 pub mod config;
 pub mod credential_formatter;
-pub mod data_layer;
 pub mod data_model;
 pub mod error;
 pub mod handle_invitation;
@@ -26,6 +28,10 @@ pub mod verifier_connect;
 pub mod verifier_reject_proof_request;
 pub mod verifier_submit;
 
+pub mod model;
+pub mod repository;
+pub mod service;
+
 mod local_did_helpers;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
@@ -33,16 +39,20 @@ use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
-    pub data_layer: DataLayer,
+    //data_repository: Arc<dyn DataRepository>,
+    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    // FIXME: data_layer will be removed
+    pub data_layer: Arc<dyn DataProvider + Send + Sync>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub signature_providers: Vec<(String, Arc<dyn SignatureProvider + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
+    pub organisation_service: OrganisationService,
     pub config: CoreConfig,
 }
 
 impl OneCore {
-    pub async fn new(
-        database_url: &str,
+    pub fn new(
+        data_provider: Arc<dyn DataRepository>,
         unparsed_config: UnparsedConfig,
     ) -> Result<OneCore, ConfigParseError> {
         // For now we will just put them here.
@@ -67,10 +77,15 @@ impl OneCore {
         )?;
 
         Ok(OneCore {
-            data_layer: DataLayer::create(database_url).await,
+            //data_repository: data_provider.clone(),
+            organisation_repository: data_provider.get_organisation_repository(),
+            data_layer: data_provider.get_data_provider(),
             transport_protocols,
             signature_providers: vec![],
             credential_formatters,
+            organisation_service: OrganisationService::new(
+                data_provider.get_organisation_repository(),
+            ),
             config,
         })
     }

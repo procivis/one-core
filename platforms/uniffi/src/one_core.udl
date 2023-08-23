@@ -10,7 +10,12 @@ enum ConfigParseError {
 
 [Error]
 enum DataLayerError {
-  "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "DatatypeValidationError", "RecordNotFound", "RecordNotUpdated", "Other"
+  "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "DatatypeValidationError", "RecordNotFound", "RecordNotUpdated", "MappingError", "Other"
+};
+
+[Error]
+enum ServiceError {
+  "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "Other",
 };
 
 [Error]
@@ -91,7 +96,7 @@ interface HandleInvitationResponse {
 interface OneCore {
   Version version();
 
-  [Throws=DataLayerError]
+  [Throws=ServiceError]
   string create_organisation(string? uuid);
 
   [Throws=DataLayerError]

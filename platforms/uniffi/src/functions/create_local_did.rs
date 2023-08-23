@@ -1,8 +1,7 @@
+use one_core::repository::data_provider::{CreateDidRequest, DidMethod, DidType};
+
 use crate::{utils::run_sync, OneCore};
-
-use one_core::data_layer::data_model::{CreateDidRequest, DidMethod, DidType};
-
-pub use one_core::data_layer::DataLayerError;
+pub use one_core::repository::error::DataLayerError;
 
 impl OneCore {
     pub fn create_local_did(

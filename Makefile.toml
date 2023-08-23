@@ -56,7 +56,7 @@ args = ["run", "-p", "migration", "--", "down", "-n1"]
 
 [tasks.dbtempent]
 command = "sea-orm-cli"
-args = ["generate", "entity", "--date-time-crate" , "time", "-o", "lib/one-core/src/data_layer/entities_new/" ]
+args = ["generate", "entity", "--date-time-crate" , "time", "-o", "lib/sql-data-provider/src/entity_new/" ]
 
 
 ############################################################### ANDROID-UNIFFI

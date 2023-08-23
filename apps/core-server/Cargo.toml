@@ -9,7 +9,8 @@ build = "build.rs"
 strict = []
 
 [dependencies]
-one-core = { path = "../../lib/one-core", features = ["mysql"] }
+one-core = { path = "../../lib/one-core" }
+sql-data-provider = { path = "../../lib/sql-data-provider", features = ["mysql"] }
 
 axum.workspace = true
 serde.workspace = true

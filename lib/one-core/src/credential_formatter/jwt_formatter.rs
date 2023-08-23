@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::data_layer::data_model::DetailCredentialResponse;
+use crate::repository::data_provider::DetailCredentialResponse;
 
 use base64::{engine::general_purpose, Engine};
 use jwt_simple::prelude::*;

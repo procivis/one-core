@@ -3,6 +3,7 @@
 use std::net::{IpAddr, SocketAddr};
 use std::panic;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use axum::http::{HeaderValue, Request, Response, StatusCode};
@@ -11,6 +12,7 @@ use axum::routing::{delete, get, post};
 use axum::Router;
 use one_core::OneCore;
 use shadow_rs::shadow;
+use sql_data_provider::DataLayer;
 use tower_http::trace::TraceLayer;
 use tracing::{info, info_span, Span};
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -21,16 +23,17 @@ use utoipa_swagger_ui::SwaggerUi;
 mod config;
 mod data_model;
 mod dto;
-mod endpoints;
+mod endpoint;
 
-use endpoints::{
+use endpoint::{
     delete_credential_schema, delete_proof_schema, get_config, get_credential,
-    get_credential_schema, get_did, get_organisation, get_proof, get_proof_schema, misc,
-    post_credential, post_credential_schema, post_did, post_organisation, post_proof,
-    post_proof_schema, share_credential, share_proof, ssi_post_handle_invitation,
-    ssi_post_issuer_connect, ssi_post_verifier_connect, ssi_post_verifier_reject_proof_request,
-    ssi_post_verifier_submit,
+    get_credential_schema, get_did, get_proof, get_proof_schema, misc, post_credential,
+    post_credential_schema, post_did, post_proof, post_proof_schema, share_credential, share_proof,
+    ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
+    ssi_post_verifier_reject_proof_request, ssi_post_verifier_submit,
 };
+
+use crate::endpoint::organisation;
 
 #[derive(Clone)]
 struct AppState {
@@ -42,88 +45,92 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(OpenApi)]
     #[openapi(
         paths(
-            endpoints::get_config::get_config,
-            endpoints::get_credential::get_credentials,
-            endpoints::get_credential::get_credential_details,
-            endpoints::post_credential::post_credential,
-            endpoints::share_credential::share_credential,
-            endpoints::share_proof::share_proof,
-            endpoints::delete_credential_schema::delete_credential_schema,
-            endpoints::get_credential_schema::get_credential_schema_details,
-            endpoints::get_credential_schema::get_credential_schema,
-            endpoints::post_credential_schema::post_credential_schema,
-            endpoints::post_proof_schema::post_proof_schema,
-            endpoints::post_proof::post_proof,
-            endpoints::get_proof_schema::get_proof_schema_details,
-            endpoints::get_proof_schema::get_proof_schemas,
-            endpoints::delete_proof_schema::delete_proof_schema,
-            endpoints::post_organisation::post_organisation,
-            endpoints::get_organisation::get_organisation_details,
-            endpoints::get_organisation::get_organisations,
-            endpoints::get_did::get_did_details,
-            endpoints::get_did::get_dids,
-            endpoints::get_proof::get_proof_details,
-            endpoints::get_proof::get_proofs,
-            endpoints::misc::get_build_info,
-            endpoints::ssi_post_handle_invitation::ssi_post_handle_invitation,
-            endpoints::ssi_post_issuer_connect::ssi_issuer_connect,
-            endpoints::ssi_post_verifier_connect::ssi_verifier_connect,
-            endpoints::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
-            endpoints::ssi_post_verifier_submit::ssi_verifier_submit,
-            endpoints::post_did::post_did
+            endpoint::organisation::controller::post_organisation,
+            endpoint::organisation::controller::get_organisation,
+            endpoint::organisation::controller::get_organisations,
+
+            endpoint::get_config::get_config,
+            endpoint::get_credential::get_credentials,
+            endpoint::get_credential::get_credential_details,
+            endpoint::post_credential::post_credential,
+            endpoint::share_credential::share_credential,
+            endpoint::share_proof::share_proof,
+            endpoint::delete_credential_schema::delete_credential_schema,
+            endpoint::get_credential_schema::get_credential_schema_details,
+            endpoint::get_credential_schema::get_credential_schema,
+            endpoint::post_credential_schema::post_credential_schema,
+            endpoint::post_proof_schema::post_proof_schema,
+            endpoint::post_proof::post_proof,
+            endpoint::get_proof_schema::get_proof_schema_details,
+            endpoint::get_proof_schema::get_proof_schemas,
+            endpoint::delete_proof_schema::delete_proof_schema,
+            endpoint::get_did::get_did_details,
+            endpoint::get_did::get_dids,
+            endpoint::get_proof::get_proof_details,
+            endpoint::get_proof::get_proofs,
+            endpoint::misc::get_build_info,
+            endpoint::ssi_post_handle_invitation::ssi_post_handle_invitation,
+            endpoint::ssi_post_issuer_connect::ssi_issuer_connect,
+            endpoint::ssi_post_verifier_connect::ssi_verifier_connect,
+            endpoint::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
+            endpoint::ssi_post_verifier_submit::ssi_verifier_submit,
+            endpoint::post_did::post_did
         ),
         components(
-            schemas(data_model::DetailCredentialResponseDTO,
-                    data_model::GetCredentialsResponseDTO,
-                    data_model::ListCredentialSchemaResponseDTO,
-                    data_model::DetailCredentialClaimResponseDTO,
-                    data_model::CredentialClaimSchemaResponseDTO,
-                    data_model::CredentialState,
-                    data_model::CredentialRequestDTO,
-                    data_model::EntityResponseDTO,
-                    data_model::EntityShareResponseDTO,
-                    data_model::CredentialRequestClaimDTO,
-                    data_model::Transport,
-                    data_model::CreateCredentialSchemaRequestDTO,
-                    data_model::CreateCredentialSchemaResponseDTO,
-                    data_model::CredentialClaimSchemaRequestDTO,
-                    data_model::GetCredentialClaimSchemaResponseDTO,
-                    data_model::CredentialSchemaResponseDTO,
-                    data_model::CredentialClaimSchemaResponseDTO,
-                    data_model::CreateProofSchemaRequestDTO,
-                    data_model::CreateProofSchemaResponseDTO,
-                    data_model::CreateProofRequestDTO,
-                    data_model::CreateProofResponseDTO,
-                    data_model::ClaimProofSchemaRequestDTO,
-                    data_model::RevocationMethod,
-                    data_model::ProofSchemaResponseDTO,
-                    data_model::GetProofSchemaResponseDTO,
-                    data_model::ProofClaimSchemaResponseDTO,
-                    data_model::ProofsDetailResponseDTO,
-                    data_model::CreateOrganisationRequestDTO,
-                    data_model::CreateOrganisationResponseDTO,
-                    data_model::GetOrganisationDetailsResponseDTO,
-                    data_model::GetDidDetailsResponseDTO,
-                    data_model::GetDidsResponseDTO,
-                    data_model::ConnectIssuerResponseDTO,
-                    data_model::ConnectVerifierResponseDTO,
-                    data_model::ProofClaimResponseDTO,
-                    data_model::ProofDetailsResponseDTO,
-                    data_model::ConnectRequestDTO,
-                    data_model::DetailProofClaimDTO,
-                    data_model::DetailProofSchemaDTO,
-                    data_model::DetailProofClaimSchemaDTO,
-                    data_model::CreateDidRequest,
-                    data_model::CreateDidResponse,
-                    data_model::ProofRequestQueryParams,
-                    data_model::HandleInvitationRequestDTO,
-                    data_model::GetProofsResponseDTO,
-                    data_model::Format,
-                    data_model::DidType,
-                    data_model::DidMethod,
-                    data_model::ProofRequestState,
-                    data_model::SortDirection,
-                    dto::response::config::ConfigDTO)
+            schemas(
+                endpoint::organisation::dto::CreateOrganisationRequestRestDTO,
+                endpoint::organisation::dto::CreateOrganisationResponseRestDTO,
+                endpoint::organisation::dto::GetOrganisationDetailsResponseRestDTO,
+
+                data_model::DetailCredentialResponseDTO,
+                data_model::GetCredentialsResponseDTO,
+                data_model::ListCredentialSchemaResponseDTO,
+                data_model::DetailCredentialClaimResponseDTO,
+                data_model::CredentialClaimSchemaResponseDTO,
+                data_model::CredentialState,
+                data_model::CredentialRequestDTO,
+                data_model::EntityResponseDTO,
+                data_model::EntityShareResponseDTO,
+                data_model::CredentialRequestClaimDTO,
+                data_model::Transport,
+                data_model::CreateCredentialSchemaRequestDTO,
+                data_model::CreateCredentialSchemaResponseDTO,
+                data_model::CredentialClaimSchemaRequestDTO,
+                data_model::GetCredentialClaimSchemaResponseDTO,
+                data_model::CredentialSchemaResponseDTO,
+                data_model::CredentialClaimSchemaResponseDTO,
+                data_model::CreateProofSchemaRequestDTO,
+                data_model::CreateProofSchemaResponseDTO,
+                data_model::CreateProofRequestDTO,
+                data_model::CreateProofResponseDTO,
+                data_model::ClaimProofSchemaRequestDTO,
+                data_model::RevocationMethod,
+                data_model::ProofSchemaResponseDTO,
+                data_model::GetProofSchemaResponseDTO,
+                data_model::ProofClaimSchemaResponseDTO,
+                data_model::ProofsDetailResponseDTO,
+                data_model::GetDidDetailsResponseDTO,
+                data_model::GetDidsResponseDTO,
+                data_model::ConnectIssuerResponseDTO,
+                data_model::ConnectVerifierResponseDTO,
+                data_model::ProofClaimResponseDTO,
+                data_model::ProofDetailsResponseDTO,
+                data_model::ConnectRequestDTO,
+                data_model::DetailProofClaimDTO,
+                data_model::DetailProofSchemaDTO,
+                data_model::DetailProofClaimSchemaDTO,
+                data_model::CreateDidRequest,
+                data_model::CreateDidResponse,
+                data_model::ProofRequestQueryParams,
+                data_model::HandleInvitationRequestDTO,
+                data_model::GetProofsResponseDTO,
+                data_model::Format,
+                data_model::DidType,
+                data_model::DidMethod,
+                data_model::ProofRequestState,
+                data_model::SortDirection,
+                dto::response::config::ConfigDTO
+            )
         ),
         modifiers(),
         tags(
@@ -165,9 +172,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_path = PathBuf::from(envmnt::get_or_panic("CONFIG_FILE"));
     let unparsed_config = config::load_config(&config_path).expect("Failed to load config.yml");
     let database_url = envmnt::get_or_panic("DATABASE_URL");
-    let core = OneCore::new(&database_url, unparsed_config)
-        .await
-        .expect("Failed to parse config");
+    let core = OneCore::new(
+        Arc::new(DataLayer::create(&database_url).await),
+        unparsed_config,
+    )
+    .expect("Failed to parse config");
 
     let state = AppState { core };
 
@@ -218,11 +227,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route(
             "/api/organisation/v1",
-            get(get_organisation::get_organisations).post(post_organisation::post_organisation),
+            get(organisation::controller::get_organisations)
+                .post(organisation::controller::post_organisation),
         )
         .route(
             "/api/organisation/v1/:id",
-            get(get_organisation::get_organisation_details),
+            get(organisation::controller::get_organisation),
         )
         .route("/api/did/v1/:id", get(get_did::get_did_details))
         .route("/api/did/v1", get(get_did::get_dids))

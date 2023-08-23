@@ -2,52 +2,26 @@ use core::fmt;
 
 use envmnt::errors::EnvmntError;
 use one_core::{
-    data_layer::data_model::{
+    data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
+    repository::data_provider::{
         ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
-        CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateOrganisationRequest,
-        CreateOrganisationResponse, CreateProofRequest, CreateProofSchemaRequest,
-        CreateProofSchemaResponse, CredentialClaimSchemaRequest, CredentialClaimSchemaResponse,
-        CredentialSchemaResponse, CredentialShareResponse, DetailCredentialClaimResponse,
-        DetailCredentialResponse, DetailProofClaim, DetailProofClaimSchema, DetailProofSchema,
-        EntityResponse, GetDidDetailsResponse, GetOrganisationDetailsResponse,
+        CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateProofRequest,
+        CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
+        CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialShareResponse,
+        DetailCredentialClaimResponse, DetailCredentialResponse, DetailProofClaim,
+        DetailProofClaimSchema, DetailProofSchema, EntityResponse, GetDidDetailsResponse,
         ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofDetailsResponse,
         ProofSchemaResponse, ProofShareResponse, ProofsDetailResponse,
     },
-    data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
 };
 
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
-fn front_time<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let formatted = format!(
-        "{}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
-        dt.year(),
-        dt.month() as i32,
-        dt.day(),
-        dt.hour(),
-        dt.minute(),
-        dt.second(),
-        dt.millisecond()
-    );
-    formatted.serialize(s)
-}
-
-fn front_time_option<S>(dt: &Option<OffsetDateTime>, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match dt {
-        Some(dt) => front_time(dt, s),
-        None => s.serialize_none(),
-    }
-}
+use crate::endpoint::common_data_models::{front_time, front_time_option};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -59,24 +33,24 @@ pub enum Format {
     Mdoc,
 }
 
-impl From<Format> for one_core::data_layer::data_model::Format {
+impl From<Format> for one_core::repository::data_provider::Format {
     fn from(value: Format) -> Self {
         match value {
-            Format::Jwt => one_core::data_layer::data_model::Format::Jwt,
-            Format::SdJwt => one_core::data_layer::data_model::Format::SdJwt,
-            Format::JsonLd => one_core::data_layer::data_model::Format::JsonLd,
-            Format::Mdoc => one_core::data_layer::data_model::Format::Mdoc,
+            Format::Jwt => one_core::repository::data_provider::Format::Jwt,
+            Format::SdJwt => one_core::repository::data_provider::Format::SdJwt,
+            Format::JsonLd => one_core::repository::data_provider::Format::JsonLd,
+            Format::Mdoc => one_core::repository::data_provider::Format::Mdoc,
         }
     }
 }
 
-impl From<one_core::data_layer::data_model::Format> for Format {
-    fn from(value: one_core::data_layer::data_model::Format) -> Self {
+impl From<one_core::repository::data_provider::Format> for Format {
+    fn from(value: one_core::repository::data_provider::Format) -> Self {
         match value {
-            one_core::data_layer::data_model::Format::Jwt => Format::Jwt,
-            one_core::data_layer::data_model::Format::SdJwt => Format::SdJwt,
-            one_core::data_layer::data_model::Format::JsonLd => Format::JsonLd,
-            one_core::data_layer::data_model::Format::Mdoc => Format::Mdoc,
+            one_core::repository::data_provider::Format::Jwt => Format::Jwt,
+            one_core::repository::data_provider::Format::SdJwt => Format::SdJwt,
+            one_core::repository::data_provider::Format::JsonLd => Format::JsonLd,
+            one_core::repository::data_provider::Format::Mdoc => Format::Mdoc,
         }
     }
 }
@@ -90,26 +64,26 @@ pub enum RevocationMethod {
     Lvvc,
 }
 
-impl From<RevocationMethod> for one_core::data_layer::data_model::RevocationMethod {
+impl From<RevocationMethod> for one_core::repository::data_provider::RevocationMethod {
     fn from(value: RevocationMethod) -> Self {
         match value {
             RevocationMethod::StatusList2021 => {
-                one_core::data_layer::data_model::RevocationMethod::StatusList2021
+                one_core::repository::data_provider::RevocationMethod::StatusList2021
             }
-            RevocationMethod::Lvvc => one_core::data_layer::data_model::RevocationMethod::Lvvc,
-            RevocationMethod::None => one_core::data_layer::data_model::RevocationMethod::None,
+            RevocationMethod::Lvvc => one_core::repository::data_provider::RevocationMethod::Lvvc,
+            RevocationMethod::None => one_core::repository::data_provider::RevocationMethod::None,
         }
     }
 }
 
-impl From<one_core::data_layer::data_model::RevocationMethod> for RevocationMethod {
-    fn from(value: one_core::data_layer::data_model::RevocationMethod) -> Self {
+impl From<one_core::repository::data_provider::RevocationMethod> for RevocationMethod {
+    fn from(value: one_core::repository::data_provider::RevocationMethod) -> Self {
         match value {
-            one_core::data_layer::data_model::RevocationMethod::StatusList2021 => {
+            one_core::repository::data_provider::RevocationMethod::StatusList2021 => {
                 RevocationMethod::StatusList2021
             }
-            one_core::data_layer::data_model::RevocationMethod::Lvvc => RevocationMethod::Lvvc,
-            one_core::data_layer::data_model::RevocationMethod::None => RevocationMethod::None,
+            one_core::repository::data_provider::RevocationMethod::Lvvc => RevocationMethod::Lvvc,
+            one_core::repository::data_provider::RevocationMethod::None => RevocationMethod::None,
         }
     }
 }
@@ -122,12 +96,14 @@ pub enum SortDirection {
     Descending,
 }
 
-impl From<SortDirection> for one_core::data_layer::data_model::SortDirection {
+impl From<SortDirection> for one_core::repository::data_provider::SortDirection {
     fn from(value: SortDirection) -> Self {
         match value {
-            SortDirection::Ascending => one_core::data_layer::data_model::SortDirection::Ascending,
+            SortDirection::Ascending => {
+                one_core::repository::data_provider::SortDirection::Ascending
+            }
             SortDirection::Descending => {
-                one_core::data_layer::data_model::SortDirection::Descending
+                one_core::repository::data_provider::SortDirection::Descending
             }
         }
     }
@@ -151,7 +127,8 @@ pub struct GetListQueryParams<T> {
     pub organisation_id: String,
 }
 
-impl<T, K> From<GetListQueryParams<T>> for one_core::data_layer::data_model::GetListQueryParams<K>
+impl<T, K> From<GetListQueryParams<T>>
+    for one_core::repository::data_provider::GetListQueryParams<K>
 where
     K: From<T>,
 {
@@ -178,18 +155,18 @@ pub enum SortableCredentialSchemaColumn {
 }
 
 impl From<SortableCredentialSchemaColumn>
-    for one_core::data_layer::data_model::SortableCredentialSchemaColumn
+    for one_core::repository::data_provider::SortableCredentialSchemaColumn
 {
     fn from(value: SortableCredentialSchemaColumn) -> Self {
         match value {
             SortableCredentialSchemaColumn::Name => {
-                one_core::data_layer::data_model::SortableCredentialSchemaColumn::Name
+                one_core::repository::data_provider::SortableCredentialSchemaColumn::Name
             }
             SortableCredentialSchemaColumn::Format => {
-                one_core::data_layer::data_model::SortableCredentialSchemaColumn::Format
+                one_core::repository::data_provider::SortableCredentialSchemaColumn::Format
             }
             SortableCredentialSchemaColumn::CreatedDate => {
-                one_core::data_layer::data_model::SortableCredentialSchemaColumn::CreatedDate
+                one_core::repository::data_provider::SortableCredentialSchemaColumn::CreatedDate
             }
         }
     }
@@ -205,15 +182,15 @@ pub enum SortableProofSchemaColumn {
 }
 
 impl From<SortableProofSchemaColumn>
-    for one_core::data_layer::data_model::SortableProofSchemaColumn
+    for one_core::repository::data_provider::SortableProofSchemaColumn
 {
     fn from(value: SortableProofSchemaColumn) -> Self {
         match value {
             SortableProofSchemaColumn::Name => {
-                one_core::data_layer::data_model::SortableProofSchemaColumn::Name
+                one_core::repository::data_provider::SortableProofSchemaColumn::Name
             }
             SortableProofSchemaColumn::CreatedDate => {
-                one_core::data_layer::data_model::SortableProofSchemaColumn::CreatedDate
+                one_core::repository::data_provider::SortableProofSchemaColumn::CreatedDate
             }
         }
     }
@@ -288,11 +265,11 @@ where
     pub total_items: u64,
 }
 
-impl<T, K> From<one_core::data_layer::data_model::GetListResponse<K>> for GetListResponseDTO<T>
+impl<T, K> From<one_core::repository::data_provider::GetListResponse<K>> for GetListResponseDTO<T>
 where
     T: From<K> + Clone + fmt::Debug + Serialize,
 {
-    fn from(value: one_core::data_layer::data_model::GetListResponse<K>) -> Self {
+    fn from(value: one_core::repository::data_provider::GetListResponse<K>) -> Self {
         Self {
             values: value.values.into_iter().map(|item| item.into()).collect(),
             total_pages: value.total_pages,
@@ -464,52 +441,6 @@ impl From<CreateProofSchemaResponse> for CreateProofSchemaResponseDTO {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateOrganisationRequestDTO {
-    pub id: Option<Uuid>,
-}
-
-impl From<CreateOrganisationRequestDTO> for CreateOrganisationRequest {
-    fn from(value: CreateOrganisationRequestDTO) -> Self {
-        Self { id: value.id }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateOrganisationResponseDTO {
-    pub id: String,
-}
-
-impl From<CreateOrganisationResponse> for CreateOrganisationResponseDTO {
-    fn from(value: CreateOrganisationResponse) -> Self {
-        Self { id: value.id }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GetOrganisationDetailsResponseDTO {
-    pub id: String,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-}
-
-impl From<GetOrganisationDetailsResponse> for GetOrganisationDetailsResponseDTO {
-    fn from(value: GetOrganisationDetailsResponse) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialRequestDTO {
@@ -567,29 +498,29 @@ impl From<CredentialRequestClaimDTO> for CreateCredentialRequestClaim {
     }
 }
 
-impl From<Transport> for one_core::data_layer::data_model::Transport {
+impl From<Transport> for one_core::repository::data_provider::Transport {
     fn from(value: Transport) -> Self {
         match value {
             Transport::ProcivisTemporary => {
-                one_core::data_layer::data_model::Transport::ProcivisTemporary
+                one_core::repository::data_provider::Transport::ProcivisTemporary
             }
-            Transport::OpenId4Vc => one_core::data_layer::data_model::Transport::OpenId4Vc,
+            Transport::OpenId4Vc => one_core::repository::data_provider::Transport::OpenId4Vc,
         }
     }
 }
 
-impl From<one_core::data_layer::data_model::Transport> for Transport {
-    fn from(value: one_core::data_layer::data_model::Transport) -> Self {
+impl From<one_core::repository::data_provider::Transport> for Transport {
+    fn from(value: one_core::repository::data_provider::Transport) -> Self {
         match value {
-            one_core::data_layer::data_model::Transport::ProcivisTemporary => {
+            one_core::repository::data_provider::Transport::ProcivisTemporary => {
                 Transport::ProcivisTemporary
             }
-            one_core::data_layer::data_model::Transport::OpenId4Vc => Transport::OpenId4Vc,
+            one_core::repository::data_provider::Transport::OpenId4Vc => Transport::OpenId4Vc,
         }
     }
 }
 
-impl From<one_core::data_layer::data_model::EntityResponse> for EntityResponseDTO {
+impl From<one_core::repository::data_provider::EntityResponse> for EntityResponseDTO {
     fn from(value: EntityResponse) -> Self {
         Self { id: value.id }
     }
@@ -603,20 +534,20 @@ pub enum DidType {
     Local,
 }
 
-impl From<DidType> for one_core::data_layer::data_model::DidType {
+impl From<DidType> for one_core::repository::data_provider::DidType {
     fn from(value: DidType) -> Self {
         match value {
-            DidType::Remote => one_core::data_layer::data_model::DidType::Remote,
-            DidType::Local => one_core::data_layer::data_model::DidType::Local,
+            DidType::Remote => one_core::repository::data_provider::DidType::Remote,
+            DidType::Local => one_core::repository::data_provider::DidType::Local,
         }
     }
 }
 
-impl From<one_core::data_layer::data_model::DidType> for DidType {
-    fn from(value: one_core::data_layer::data_model::DidType) -> Self {
+impl From<one_core::repository::data_provider::DidType> for DidType {
+    fn from(value: one_core::repository::data_provider::DidType) -> Self {
         match value {
-            one_core::data_layer::data_model::DidType::Remote => DidType::Remote,
-            one_core::data_layer::data_model::DidType::Local => DidType::Local,
+            one_core::repository::data_provider::DidType::Remote => DidType::Remote,
+            one_core::repository::data_provider::DidType::Local => DidType::Local,
         }
     }
 }
@@ -629,20 +560,20 @@ pub enum DidMethod {
     Web,
 }
 
-impl From<DidMethod> for one_core::data_layer::data_model::DidMethod {
+impl From<DidMethod> for one_core::repository::data_provider::DidMethod {
     fn from(value: DidMethod) -> Self {
         match value {
-            DidMethod::Key => one_core::data_layer::data_model::DidMethod::Key,
-            DidMethod::Web => one_core::data_layer::data_model::DidMethod::Web,
+            DidMethod::Key => one_core::repository::data_provider::DidMethod::Key,
+            DidMethod::Web => one_core::repository::data_provider::DidMethod::Web,
         }
     }
 }
 
-impl From<one_core::data_layer::data_model::DidMethod> for DidMethod {
-    fn from(value: one_core::data_layer::data_model::DidMethod) -> Self {
+impl From<one_core::repository::data_provider::DidMethod> for DidMethod {
+    fn from(value: one_core::repository::data_provider::DidMethod) -> Self {
         match value {
-            one_core::data_layer::data_model::DidMethod::Key => DidMethod::Key,
-            one_core::data_layer::data_model::DidMethod::Web => DidMethod::Web,
+            one_core::repository::data_provider::DidMethod::Key => DidMethod::Key,
+            one_core::repository::data_provider::DidMethod::Web => DidMethod::Web,
         }
     }
 }
@@ -689,12 +620,12 @@ pub enum SortableDidColumn {
     CreatedDate,
 }
 
-impl From<SortableDidColumn> for one_core::data_layer::data_model::SortableDidColumn {
+impl From<SortableDidColumn> for one_core::repository::data_provider::SortableDidColumn {
     fn from(value: SortableDidColumn) -> Self {
         match value {
-            SortableDidColumn::Name => one_core::data_layer::data_model::SortableDidColumn::Name,
+            SortableDidColumn::Name => one_core::repository::data_provider::SortableDidColumn::Name,
             SortableDidColumn::CreatedDate => {
-                one_core::data_layer::data_model::SortableDidColumn::CreatedDate
+                one_core::repository::data_provider::SortableDidColumn::CreatedDate
             }
         }
     }
@@ -839,9 +770,9 @@ impl From<DetailCredentialClaimResponse> for DetailCredentialClaimResponseDTO {
     }
 }
 
-impl From<one_core::data_layer::data_model::CredentialState> for CredentialState {
-    fn from(value: one_core::data_layer::data_model::CredentialState) -> Self {
-        use one_core::data_layer::data_model::CredentialState as cs;
+impl From<one_core::repository::data_provider::CredentialState> for CredentialState {
+    fn from(value: one_core::repository::data_provider::CredentialState) -> Self {
+        use one_core::repository::data_provider::CredentialState as cs;
         match value {
             cs::Created => CredentialState::Created,
             cs::Pending => CredentialState::Pending,
@@ -866,20 +797,22 @@ pub enum SortableCredentialColumn {
     State,
 }
 
-impl From<SortableCredentialColumn> for one_core::data_layer::data_model::SortableCredentialColumn {
+impl From<SortableCredentialColumn>
+    for one_core::repository::data_provider::SortableCredentialColumn
+{
     fn from(value: SortableCredentialColumn) -> Self {
         match value {
             SortableCredentialColumn::CreatedDate => {
-                one_core::data_layer::data_model::SortableCredentialColumn::CreatedDate
+                one_core::repository::data_provider::SortableCredentialColumn::CreatedDate
             }
             SortableCredentialColumn::SchemaName => {
-                one_core::data_layer::data_model::SortableCredentialColumn::SchemaName
+                one_core::repository::data_provider::SortableCredentialColumn::SchemaName
             }
             SortableCredentialColumn::IssuerDid => {
-                one_core::data_layer::data_model::SortableCredentialColumn::IssuerDid
+                one_core::repository::data_provider::SortableCredentialColumn::IssuerDid
             }
             SortableCredentialColumn::State => {
-                one_core::data_layer::data_model::SortableCredentialColumn::State
+                one_core::repository::data_provider::SortableCredentialColumn::State
             }
         }
     }
@@ -981,7 +914,7 @@ pub(crate) struct CreateDidResponse {
     pub id: String,
 }
 
-impl From<CreateDidRequest> for one_core::data_layer::data_model::CreateDidRequest {
+impl From<CreateDidRequest> for one_core::repository::data_provider::CreateDidRequest {
     fn from(value: CreateDidRequest) -> Self {
         Self {
             name: value.name,
@@ -1157,9 +1090,9 @@ pub enum ProofRequestState {
     Error,
 }
 
-impl From<one_core::data_layer::data_model::ProofRequestState> for ProofRequestState {
-    fn from(value: one_core::data_layer::data_model::ProofRequestState) -> Self {
-        use one_core::data_layer::data_model::ProofRequestState as cs;
+impl From<one_core::repository::data_provider::ProofRequestState> for ProofRequestState {
+    fn from(value: one_core::repository::data_provider::ProofRequestState) -> Self {
+        use one_core::repository::data_provider::ProofRequestState as cs;
         match value {
             cs::Created => ProofRequestState::Created,
             cs::Pending => ProofRequestState::Pending,
@@ -1183,20 +1116,20 @@ pub enum SortableProofColumn {
     State,
 }
 
-impl From<SortableProofColumn> for one_core::data_layer::data_model::SortableProofColumn {
+impl From<SortableProofColumn> for one_core::repository::data_provider::SortableProofColumn {
     fn from(value: SortableProofColumn) -> Self {
         match value {
             SortableProofColumn::CreatedDate => {
-                one_core::data_layer::data_model::SortableProofColumn::CreatedDate
+                one_core::repository::data_provider::SortableProofColumn::CreatedDate
             }
             SortableProofColumn::ProofSchemaName => {
-                one_core::data_layer::data_model::SortableProofColumn::ProofSchemaName
+                one_core::repository::data_provider::SortableProofColumn::ProofSchemaName
             }
             SortableProofColumn::VerifierDid => {
-                one_core::data_layer::data_model::SortableProofColumn::VerifierDid
+                one_core::repository::data_provider::SortableProofColumn::VerifierDid
             }
             SortableProofColumn::State => {
-                one_core::data_layer::data_model::SortableProofColumn::State
+                one_core::repository::data_provider::SortableProofColumn::State
             }
         }
     }

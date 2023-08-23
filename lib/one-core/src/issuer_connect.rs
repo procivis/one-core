@@ -1,7 +1,7 @@
 use crate::{
-    data_layer::{data_model::CredentialState, DataLayerError},
     data_model::{ConnectIssuerRequest, ConnectIssuerResponse},
     error::{OneCoreError, SSIError},
+    repository::{data_provider::CredentialState, error::DataLayerError},
     OneCore,
 };
 
@@ -32,10 +32,10 @@ impl OneCore {
 
         // This will later be replaced by a string format in the database
         let format = match credential.schema.format {
-            crate::data_layer::data_model::Format::Jwt => "JWT",
-            crate::data_layer::data_model::Format::SdJwt => "SD-JWT",
-            crate::data_layer::data_model::Format::JsonLd => "JSON-LD",
-            crate::data_layer::data_model::Format::Mdoc => "MDOC",
+            crate::repository::data_provider::Format::Jwt => "JWT",
+            crate::repository::data_provider::Format::SdJwt => "SD-JWT",
+            crate::repository::data_provider::Format::JsonLd => "JSON-LD",
+            crate::repository::data_provider::Format::Mdoc => "MDOC",
         };
 
         let formatter = self.get_formatter(format)?;
