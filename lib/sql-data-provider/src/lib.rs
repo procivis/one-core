@@ -31,7 +31,7 @@ mod create_credential;
 mod create_credential_schema;
 mod create_credential_schema_from_jwt;
 mod create_did;
-//mod create_organisation;
+mod create_proof;
 mod create_proof_schema;
 mod data_model;
 mod delete_credential_schema;

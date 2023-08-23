@@ -1,13 +1,15 @@
+use one_core::repository::{
+    data_provider::{CreateProofRequest, CreateProofResponse},
+    error::DataLayerError,
+};
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, SqlErr};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use one_core::repository::data_provider::{DataLayerError, OldProvider};
-
-use super::{
+use crate::{
     common_queries::insert_proof_state,
-    data_model::{CreateProofRequest, CreateProofResponse},
-    entities::{proof, proof_schema, proof_state::ProofRequestState},
+    entity::{proof, proof_schema, proof_state::ProofRequestState},
+    OldProvider,
 };
 
 impl OldProvider {
@@ -58,12 +60,23 @@ impl OldProvider {
 mod tests {
     use std::str::FromStr;
 
+    use one_core::repository::{
+        data_provider::{CreateProofRequest, Transport},
+        error::DataLayerError,
+    };
     use sea_orm::EntityTrait;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
+    use crate::{
+        common_queries::get_proof_state,
+        entity::{proof, proof_state::ProofRequestState},
+        test_utilities::*,
+        OldProvider,
+    };
+
     async fn prepare_env(
-        data_layer: &DataLayer,
+        data_layer: &OldProvider,
         proof_schema_deleted_at: Option<OffsetDateTime>,
     ) -> (String, String) {
         let organisation_id = insert_organisation_to_database(&data_layer.db, None)
@@ -102,7 +115,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_proof() {
-        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
 
         let (organisation_id, proof_schema_id) = prepare_env(&data_layer, None).await;
 
@@ -139,7 +152,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_proof_incorrect_did() {
-        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
 
         let (_organisation_id, proof_schema_id) = prepare_env(&data_layer, None).await;
 
@@ -159,7 +172,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_proof_incorrect_schema() {
-        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
 
         let (organisation_id, _proof_schema_id) = prepare_env(&data_layer, None).await;
 
@@ -184,7 +197,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_proof_for_deleted_schema() {
-        let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
 
         let (organisation_id, proof_schema_id) =
             prepare_env(&data_layer, Some(get_dummy_date())).await;
