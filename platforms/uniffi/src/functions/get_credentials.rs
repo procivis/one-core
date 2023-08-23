@@ -1,19 +1,18 @@
+use std::sync::Arc;
+
 use crate::{
     utils::{run_sync, TimestampFormat},
     OneCore,
 };
-use one_core::data_layer::{
-    data_model::{
-        DetailCredentialClaimResponse, DetailCredentialResponse, Format,
-        ListCredentialSchemaResponse,
-    },
-    DataLayer,
+pub use one_core::error::OneCoreError;
+use one_core::repository::data_provider::{
+    DataProvider, DetailCredentialClaimResponse, DetailCredentialResponse, Format,
+    ListCredentialSchemaResponse,
 };
 
-pub use one_core::data_layer::{
-    data_model::{CredentialState, RevocationMethod},
-    DataLayerError,
-};
+pub use one_core::repository::error::DataLayerError;
+
+pub use one_core::repository::data_provider::{CredentialState, RevocationMethod};
 pub type CredentialFormat = Format;
 
 pub struct CredentialSchema {
@@ -84,7 +83,9 @@ impl From<DetailCredentialResponse> for Credential {
     }
 }
 
-async fn get_credentials(data_layer: &DataLayer) -> Result<Vec<Credential>, DataLayerError> {
+async fn get_credentials(
+    data_layer: Arc<dyn DataProvider + Sync + Send>,
+) -> Result<Vec<Credential>, DataLayerError> {
     let response = data_layer.get_all_credentials().await;
     response.map(|list| {
         list.into_iter()
@@ -95,6 +96,6 @@ async fn get_credentials(data_layer: &DataLayer) -> Result<Vec<Credential>, Data
 
 impl OneCore {
     pub fn get_credentials(&self) -> Result<Vec<Credential>, DataLayerError> {
-        run_sync(async { get_credentials(&self.inner.data_layer).await })
+        run_sync(async { get_credentials(self.inner.data_layer.clone()).await })
     }
 }

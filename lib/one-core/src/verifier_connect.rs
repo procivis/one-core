@@ -1,7 +1,7 @@
 use crate::{
-    data_layer::{data_model::ProofRequestState, DataLayerError},
     data_model::{ConnectVerifierRequest, ConnectVerifierResponse, ProofClaimSchema},
     error::{OneCoreError, SSIError},
+    repository::{data_provider::ProofRequestState, error::DataLayerError},
     OneCore,
 };
 

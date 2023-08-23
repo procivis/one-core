@@ -4,22 +4,8 @@ version = "0.1.0"
 edition = "2021"
 build = "build.rs"
 
-[features]
-# Treat build warnings as error
-strict = []
-mysql = ["migration/mysql", "sea-orm/sqlx-mysql"]
-
 [dependencies]
 async-trait = "0.1.68"
-migration = { path = "../../apps/migration", default-features = false }
-sea-orm = { version = "0.12.1", default-features = false, features = [
-    "sqlx-sqlite",
-    "runtime-tokio-rustls",
-    "macros",
-    "with-time",
-    "with-uuid",
-    "with-json",
-] }
 serde_yaml = "0.9.25"
 serde.workspace = true
 serde_json.workspace = true

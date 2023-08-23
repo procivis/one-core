@@ -11,7 +11,7 @@ impl OneCore {
         credential_ids: &[String],
     ) -> Result<(), OneCoreError> {
         // FIXME - these two should be fetched correctly
-        let organisation_id = get_first_organisation_id(&self.data_layer).await?;
+        let organisation_id = get_first_organisation_id(&self.organisation_repository).await?;
         let holder_did = get_first_local_did(&self.data_layer, &organisation_id).await?;
 
         // FIXME - pick correct formatter

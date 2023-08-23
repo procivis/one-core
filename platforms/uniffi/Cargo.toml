@@ -12,6 +12,7 @@ strict = []
 
 [dependencies]
 one-core = { path = "../../lib/one-core" }
+sql-data-provider = { path = "../../lib/sql-data-provider", features = ["mysql"] }
 serde.workspace = true
 serde_json.workspace = true
 uniffi.workspace = true

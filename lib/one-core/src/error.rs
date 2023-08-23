@@ -2,18 +2,18 @@ use thiserror::Error;
 
 use crate::{
     credential_formatter::{FormatterError, ParseError},
-    data_layer::DataLayerError,
+    repository::error::DataLayerError,
     transport_protocol::TransportProtocolError,
 };
 
 #[derive(Debug, Error)]
 pub enum OneCoreError {
     #[error("Data layer error: `{0}`")]
-    DataLayerError(DataLayerError),
+    DataLayerError(#[from] DataLayerError),
     #[error("SSI error: `{0}`")]
-    SSIError(SSIError),
+    SSIError(#[from] SSIError),
     #[error("Formatter error: `{0}`")]
-    FormatterError(FormatterError),
+    FormatterError(#[from] FormatterError),
 }
 
 #[derive(Debug, Error)]
@@ -33,29 +33,11 @@ pub enum SSIError {
     #[error("Missing proof")]
     MissingProof,
     #[error("Parse error: `{0}`")]
-    ParseError(ParseError),
+    ParseError(#[from] ParseError),
     #[error("Transport protocol error: `{0}`")]
-    TransportProtocolError(TransportProtocolError),
+    TransportProtocolError(#[from] TransportProtocolError),
     #[error("Unsupported credential format")]
     UnsupportedCredentialFormat,
     #[error("Unsupported transport protocol")]
     UnsupportedTransportProtocol,
-}
-
-impl From<SSIError> for OneCoreError {
-    fn from(value: SSIError) -> Self {
-        OneCoreError::SSIError(value)
-    }
-}
-
-impl From<FormatterError> for OneCoreError {
-    fn from(value: FormatterError) -> Self {
-        OneCoreError::FormatterError(value)
-    }
-}
-
-impl From<DataLayerError> for OneCoreError {
-    fn from(value: DataLayerError) -> Self {
-        OneCoreError::DataLayerError(value)
-    }
 }

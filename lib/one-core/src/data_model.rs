@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::data_layer::data_model::ListCredentialSchemaResponse;
+use crate::repository::data_provider::ListCredentialSchemaResponse;
 
 #[derive(Deserialize)]
 pub struct ConnectIssuerRequest {
@@ -44,7 +44,7 @@ pub struct ProofClaimSchema {
 pub struct HandleInvitationQueryRequest {
     pub credential: Option<Uuid>,
     pub proof: Option<Uuid>,
-    pub protocol: String, // As far as I know we will get rid of enums
+    pub protocol: String,
 }
 
 #[derive(Serialize)]

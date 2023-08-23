@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 mod utils;
+use sql_data_provider::DataLayer;
 use tokio::sync::RwLock;
 use utils::run_sync;
 
@@ -34,10 +35,14 @@ fn initialize_core(data_dir_path: String) -> Result<Arc<OneCore>, ConfigParseErr
     };
     let core = run_sync(async {
         one_core::OneCore::new(
-            format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc").as_str(),
+            Arc::new(
+                DataLayer::create(
+                    format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc").as_str(),
+                )
+                .await,
+            ),
             placeholder_config,
         )
-        .await
     })?;
     Ok(Arc::new(OneCore {
         inner: core,
