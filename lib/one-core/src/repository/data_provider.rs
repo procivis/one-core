@@ -203,7 +203,7 @@ pub struct DetailProofSchema {
 #[derive(Debug, Clone)]
 pub struct DetailProofClaim {
     pub schema: DetailProofClaimSchema,
-    pub value: String,
+    pub value: Option<String>,
 }
 
 #[derive(Debug, Clone)]

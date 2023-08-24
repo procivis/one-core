@@ -1,11 +1,12 @@
 use one_core::repository::{data_provider::ProofDetailsResponse, error::DataLayerError};
-use sea_orm::{EntityTrait, LoaderTrait, ModelTrait, QueryOrder, QuerySelect, RelationTrait};
+use sea_orm::{EntityTrait, LoaderTrait, ModelTrait, QueryOrder};
 
 use crate::{
     data_model::proof_detail_response_from_models_with_claims,
     entity::{
         claim, claim_schema, credential_schema, proof_schema_claim_schema, Claim, ClaimSchema,
-        CredentialSchema, CredentialSchemaClaimSchema, Did, Proof, ProofSchema, ProofState,
+        CredentialSchema, CredentialSchemaClaimSchema, Did, Proof, ProofSchema,
+        ProofSchemaClaimSchema, ProofState,
     },
     OldProvider,
 };
@@ -31,33 +32,39 @@ impl OldProvider {
 
         let proof_schema = proof_schema.ok_or(DataLayerError::RecordNotFound)?;
 
-        let claims = proof
-            .find_related(Claim)
-            .find_also_related(ClaimSchema)
+        let proof_claim_schemas = proof_schema
+            .find_related(ProofSchemaClaimSchema)
             .order_by(
                 proof_schema_claim_schema::Column::Order,
                 sea_orm::Order::Asc,
             )
-            .join_rev(
-                sea_orm::JoinType::LeftJoin,
-                proof_schema_claim_schema::Relation::ClaimSchema.def(),
-            )
-            .group_by(claim::Column::Id)
             .all(&self.db)
             .await
             .map_err(|e| {
                 tracing::error!(
-                    "Error while fetching claims for proof {}. Error: {}",
+                    "Error while fetching proof claims for proof {}. Error: {}",
                     uuid,
                     e.to_string()
                 );
                 DataLayerError::GeneralRuntimeError(e.to_string())
             })?;
 
-        let (claims, claim_schemas): (Vec<_>, Vec<_>) = claims.into_iter().unzip();
-        let claim_schemas: Vec<claim_schema::Model> = claim_schemas.into_iter().flatten().collect();
+        let claim_schemas: Vec<claim_schema::Model> = proof_claim_schemas
+            .load_one(ClaimSchema, &self.db)
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    "Error while fetching claim schemas for proof {}. Error: {}",
+                    uuid,
+                    e.to_string()
+                );
+                DataLayerError::GeneralRuntimeError(e.to_string())
+            })?
+            .into_iter()
+            .flatten()
+            .collect();
 
-        let mut credential_schemas = claim_schemas
+        let credential_schemas: Vec<credential_schema::Model> = claim_schemas
             .load_many_to_many(CredentialSchema, CredentialSchemaClaimSchema, &self.db)
             .await
             .map_err(|e| {
@@ -67,26 +74,52 @@ impl OldProvider {
                     e.to_string()
                 );
                 DataLayerError::GeneralRuntimeError(e.to_string())
-            })?;
-
-        let credential_schemas: Vec<credential_schema::Model> = credential_schemas
+            })?
             .iter_mut()
             .filter_map(|schemas| schemas.pop())
             .collect();
 
-        if claims.len() != claim_schemas.len() || claim_schemas.len() != credential_schemas.len() {
+        let claim_schemas_with_credential_schemas: Vec<(
+            claim_schema::Model,
+            credential_schema::Model,
+        )> = claim_schemas
+            .into_iter()
+            .zip(credential_schemas.into_iter())
+            .collect();
+
+        let claims = proof.find_related(Claim).all(&self.db).await.map_err(|e| {
+            tracing::error!(
+                "Error while fetching claims for proof {}. Error: {}",
+                uuid,
+                e.to_string()
+            );
+            DataLayerError::GeneralRuntimeError(e.to_string())
+        })?;
+
+        if claims.len() > claim_schemas_with_credential_schemas.len() {
             // Due to the fact that we have a hard relation between entities this should not happen
             // as long as database integrity is intact.
-            tracing::debug!("Inconsistent lengths of responses. Data is missing.");
-            return Err(DataLayerError::RecordNotFound);
+            tracing::error!("Inconsistent lengths of claims and claim_schemas!");
+            return Err(DataLayerError::GeneralRuntimeError(
+                "Inconsistent lengths of claims and claim_schemas!".to_string(),
+            ));
         }
 
-        let claims = claims
+        let claims: Vec<(
+            Option<claim::Model>,
+            claim_schema::Model,
+            credential_schema::Model,
+        )> = claim_schemas_with_credential_schemas
             .into_iter()
-            .zip(claim_schemas.into_iter())
-            .zip(credential_schemas.into_iter())
-            .map(|((claim, claim_schema), credential_schema)| {
-                (claim, claim_schema, credential_schema)
+            .map(|(claim_schema, credential_schema)| {
+                (
+                    claims
+                        .iter()
+                        .find(|claim| claim.claim_schema_id == claim_schema.id)
+                        .map(|claim| claim.to_owned()),
+                    claim_schema,
+                    credential_schema,
+                )
             })
             .collect();
 
@@ -194,7 +227,7 @@ mod tests {
         assert_eq!(response.organisation_id, organisation_id);
         assert_eq!(response.schema.id, proof_schema_id);
         assert_eq!(response.schema.name, proof_schema_name);
-        assert_eq!(response.claims[0].value, "value");
+        assert_eq!(response.claims[0].value, Some("value".to_string()));
         assert_eq!(
             response.claims[0].schema.id,
             new_claim_schemas[0].0.to_string()
