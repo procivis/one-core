@@ -309,7 +309,11 @@ pub(super) fn proof_detail_response_from_models_with_claims(
     verifier_did: did::Model,
     history: Vec<proof_state::Model>,
     proof_schema: proof_schema::Model,
-    claims: Vec<(claim::Model, claim_schema::Model, credential_schema::Model)>,
+    claims: Vec<(
+        Option<claim::Model>,
+        claim_schema::Model,
+        credential_schema::Model,
+    )>,
 ) -> ProofDetailsResponse {
     ProofDetailsResponse {
         id: proof.id,
@@ -484,14 +488,14 @@ pub(crate) fn detail_credential_from_combined_credential_did_and_credential_sche
 
 pub(crate) fn proof_detail_claim_from_models(
     (claim, claim_schema, credential_schema): (
-        claim::Model,
+        Option<claim::Model>,
         claim_schema::Model,
         credential_schema::Model,
     ),
 ) -> DetailProofClaim {
     DetailProofClaim {
         schema: detail_proof_claim_schema_from_models(claim_schema, credential_schema),
-        value: claim.value,
+        value: claim.map(|c| c.value),
     }
 }
 

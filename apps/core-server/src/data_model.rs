@@ -897,7 +897,7 @@ pub struct DetailProofSchemaDTO {
 #[serde(rename_all = "camelCase")]
 pub struct DetailProofClaimDTO {
     pub schema: DetailProofClaimSchemaDTO,
-    pub value: String,
+    pub value: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
