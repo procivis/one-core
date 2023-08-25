@@ -10,11 +10,13 @@ pub(crate) mod mapper;
 
 #[derive(Clone)]
 pub struct OrganisationService {
-    repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
 }
 
 impl OrganisationService {
     pub fn new(repository: Arc<dyn OrganisationRepository + Send + Sync>) -> Self {
-        Self { repository }
+        Self {
+            organisation_repository: repository,
+        }
     }
 }

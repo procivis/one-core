@@ -1,3 +1,4 @@
+use did::DidProvider;
 use migration::{Migrator, MigratorTrait};
 use organisation::OrganisationProvider;
 use sea_orm::DatabaseConnection;
@@ -5,22 +6,20 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use one_core::{
-    config::data_structure::{
-        DatatypeEntity, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
-    },
+    config::data_structure::{DatatypeEntity, ExchangeEntity, FormatEntity, RevocationEntity},
     repository::{
         data_provider::{
             CreateCredentialRequest, CreateCredentialSchemaFromJwtRequest,
-            CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateDidRequest,
-            CreateDidResponse, CreateProofClaimRequest, CreateProofRequest, CreateProofResponse,
-            CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialSchemaResponse,
-            CredentialShareResponse, CredentialState, DataProvider, DetailCredentialResponse,
-            EntityResponse, GetCredentialClaimSchemaResponse, GetCredentialSchemaQuery,
-            GetCredentialsQuery, GetCredentialsResponse, GetDidDetailsResponse, GetDidQuery,
-            GetDidsResponse, GetProofSchemaQuery, GetProofSchemaResponse, GetProofsQuery,
-            GetProofsResponse, ProofDetailsResponse, ProofRequestState, ProofSchemaResponse,
-            ProofShareResponse,
+            CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateProofClaimRequest,
+            CreateProofRequest, CreateProofResponse, CreateProofSchemaRequest,
+            CreateProofSchemaResponse, CredentialSchemaResponse, CredentialShareResponse,
+            CredentialState, DataProvider, DetailCredentialResponse, EntityResponse,
+            GetCredentialClaimSchemaResponse, GetCredentialSchemaQuery, GetCredentialsQuery,
+            GetCredentialsResponse, GetDidDetailsResponse, GetProofSchemaQuery,
+            GetProofSchemaResponse, GetProofsQuery, GetProofsResponse, ProofDetailsResponse,
+            ProofRequestState, ProofSchemaResponse, ProofShareResponse,
         },
+        did_repository::DidRepository,
         error::DataLayerError,
         organisation_repository::OrganisationRepository,
         DataRepository,
@@ -32,7 +31,6 @@ mod common_queries;
 mod create_credential;
 mod create_credential_schema;
 mod create_credential_schema_from_jwt;
-mod create_did;
 mod create_proof;
 mod create_proof_schema;
 mod data_model;
@@ -44,8 +42,6 @@ mod get_credential_details;
 mod get_credential_schema_details;
 mod get_credential_schemas;
 mod get_credentials;
-mod get_did;
-mod get_dids;
 mod get_local_dids;
 mod get_proof_details;
 mod get_proof_schema_details;
@@ -60,6 +56,8 @@ mod update_proof;
 
 mod list_query;
 
+// New implementations
+pub mod did;
 pub mod organisation;
 
 mod error_mapper;
@@ -71,6 +69,7 @@ pub struct DataLayer {
     db: DatabaseConnection,
     data_provider: Arc<dyn DataProvider + Send + Sync>, // FIXME to be removed
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    did_repository: Arc<dyn DidRepository + Send + Sync>,
 }
 
 impl DataLayer {
@@ -84,6 +83,7 @@ impl DataLayer {
         Self {
             data_provider: Arc::new(OldProvider { db: db.clone() }),
             organisation_repository: Arc::new(OrganisationProvider { db: db.clone() }),
+            did_repository: Arc::new(DidProvider { db: db.clone() }),
             db,
         }
     }
@@ -96,6 +96,9 @@ impl DataRepository for DataLayer {
     }
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository + Send + Sync> {
         self.organisation_repository.clone()
+    }
+    fn get_did_repository(&self) -> Arc<dyn DidRepository + Send + Sync> {
+        self.did_repository.clone()
     }
 }
 
@@ -167,14 +170,6 @@ impl DataProvider for OldProvider {
         self.create_credential(request, datatypes, exchanges).await
     }
 
-    async fn create_did(
-        &self,
-        request: CreateDidRequest,
-        did_methods: &HashMap<String, DidEntity>,
-    ) -> Result<CreateDidResponse, DataLayerError> {
-        self.create_did(request, did_methods).await
-    }
-
     async fn create_proof_schema(
         &self,
         request: CreateProofSchemaRequest,
@@ -232,21 +227,6 @@ impl DataProvider for OldProvider {
 
     async fn get_all_credentials(&self) -> Result<Vec<DetailCredentialResponse>, DataLayerError> {
         self.get_all_credentials().await
-    }
-
-    async fn get_did_details_by_value(
-        &self,
-        value: &str,
-    ) -> Result<GetDidDetailsResponse, DataLayerError> {
-        self.get_did_details_by_value(value).await
-    }
-
-    async fn get_did_details(&self, uuid: &str) -> Result<GetDidDetailsResponse, DataLayerError> {
-        self.get_did_details(uuid).await
-    }
-
-    async fn get_dids(&self, query_params: GetDidQuery) -> Result<GetDidsResponse, DataLayerError> {
-        self.get_dids(query_params).await
     }
 
     async fn get_proof_schema_details(

@@ -6,9 +6,8 @@ use one_core::repository::error::DataLayerError;
 
 use uuid::Uuid;
 
-use crate::data_model::{
-    CredentialSchemaResponseDTO, GetCredentialClaimSchemaResponseDTO, GetCredentialSchemaQuery,
-};
+use crate::data_model::{CredentialSchemaResponseDTO, GetCredentialSchemaQuery};
+use crate::dto::common::GetCredentialClaimSchemaResponseDTO;
 use crate::AppState;
 
 #[utoipa::path(

@@ -84,7 +84,7 @@ fn get_base_query() -> Select<ProofSchema> {
 
 #[cfg(test)]
 mod tests {
-    use one_core::repository::data_provider::SortDirection;
+    use one_core::model::common::SortDirection;
     use sea_orm::{ActiveModelTrait, Set};
     use time::macros::datetime;
     use uuid::Uuid;

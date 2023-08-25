@@ -6,18 +6,15 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::data_structure::{
-    DatatypeEntity, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
+use crate::{
+    config::data_structure::{DatatypeEntity, ExchangeEntity, FormatEntity, RevocationEntity},
+    model::{
+        common::{GetListQueryParams, GetListResponse},
+        did::DidType,
+    },
 };
 
 use super::error::DataLayerError;
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub enum DidType {
-    #[default]
-    Remote,
-    Local,
-}
 
 #[derive(Clone, Debug)]
 pub struct CredentialClaimSchemaResponse {
@@ -106,20 +103,6 @@ pub struct CreateCredentialRequestClaim {
 
 #[derive(Clone, Debug)]
 pub struct EntityResponse {
-    pub id: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateDidRequest {
-    pub name: String,
-    pub organisation_id: String,
-    pub did: String,
-    pub method: String,
-    pub did_type: DidType,
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateDidResponse {
     pub id: String,
 }
 
@@ -224,13 +207,6 @@ pub struct CreateProofRequest {
 }
 
 #[derive(Clone, Debug)]
-pub struct GetListResponse<ResponseItem> {
-    pub values: Vec<ResponseItem>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
-
-#[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaRequest {
     pub name: String,
     pub format: String,
@@ -266,7 +242,6 @@ pub struct CredentialClaimSchemaRequest {
     pub key: String,
     pub datatype: String,
 }
-
 #[derive(Clone, Debug)]
 pub struct CreateProofResponse {
     pub id: String,
@@ -321,38 +296,21 @@ pub enum CredentialState {
     Error,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SortDirection {
-    Ascending,
-    Descending,
-}
-
-#[derive(Clone, Debug)]
-pub struct GetListQueryParams<SortableColumn> {
-    // pagination
-    pub page: u32,
-    pub page_size: u32,
-
-    // sorting
-    pub sort: Option<SortableColumn>,
-    pub sort_direction: Option<SortDirection>,
-
-    // filtering
-    pub name: Option<String>,
-    pub organisation_id: String,
-}
-
 pub type GetProofsResponse = GetListResponse<ProofsDetailResponse>;
 pub type GetCredentialsResponse = GetListResponse<DetailCredentialResponse>;
 pub type GetCredentialClaimSchemaResponse = GetListResponse<CredentialSchemaResponse>;
-pub type GetDidsResponse = GetListResponse<GetDidDetailsResponse>;
 pub type GetProofSchemaResponse = GetListResponse<ProofSchemaResponse>;
 
 pub type GetProofsQuery = GetListQueryParams<SortableProofColumn>;
 pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumn>;
 pub type GetCredentialsQuery = GetListQueryParams<SortableCredentialColumn>;
-pub type GetDidQuery = GetListQueryParams<SortableDidColumn>;
 pub type GetProofSchemaQuery = GetListQueryParams<SortableProofSchemaColumn>;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Transport {
+    ProcivisTemporary,
+    OpenId4Vc,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableCredentialSchemaColumn {
@@ -371,12 +329,6 @@ pub enum SortableCredentialColumn {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableProofSchemaColumn {
-    Name,
-    CreatedDate,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum SortableDidColumn {
     Name,
     CreatedDate,
 }
@@ -405,12 +357,6 @@ pub trait DataProvider {
         datatypes: &HashMap<String, DatatypeEntity>,
         exchanges: &HashMap<String, ExchangeEntity>,
     ) -> Result<EntityResponse, DataLayerError>;
-
-    async fn create_did(
-        &self,
-        request: CreateDidRequest,
-        did_methods: &HashMap<String, DidEntity>,
-    ) -> Result<CreateDidResponse, DataLayerError>;
 
     async fn create_proof_schema(
         &self,
@@ -451,15 +397,6 @@ pub trait DataProvider {
         &self,
         query_params: GetCredentialsQuery,
     ) -> Result<GetCredentialsResponse, DataLayerError>;
-
-    async fn get_did_details(&self, uuid: &str) -> Result<GetDidDetailsResponse, DataLayerError>;
-
-    async fn get_did_details_by_value(
-        &self,
-        value: &str,
-    ) -> Result<GetDidDetailsResponse, DataLayerError>;
-
-    async fn get_dids(&self, query_params: GetDidQuery) -> Result<GetDidsResponse, DataLayerError>;
 
     async fn get_proof_details(&self, uuid: &str) -> Result<ProofDetailsResponse, DataLayerError>;
 

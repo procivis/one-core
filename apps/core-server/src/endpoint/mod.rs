@@ -3,7 +3,6 @@ pub mod delete_proof_schema;
 pub mod get_config;
 pub mod get_credential;
 pub mod get_credential_schema;
-pub mod get_did;
 pub mod get_proof;
 pub mod get_proof_schema;
 pub mod misc;
@@ -14,8 +13,8 @@ pub mod post_proof_schema;
 pub mod share_credential;
 pub mod share_proof;
 
-pub mod common_data_models;
-
+// New implementations
+pub mod did;
 pub mod organisation;
 
 // SSI
@@ -24,6 +23,3 @@ pub mod ssi_post_issuer_connect;
 pub mod ssi_post_verifier_connect;
 pub mod ssi_post_verifier_reject_proof_request;
 pub mod ssi_post_verifier_submit;
-
-// TEMP
-pub mod post_did;

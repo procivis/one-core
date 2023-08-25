@@ -1,5 +1,3 @@
-use core::fmt;
-
 use envmnt::errors::EnvmntError;
 use one_core::{
     data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
@@ -9,9 +7,9 @@ use one_core::{
         CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
         CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialShareResponse,
         DetailCredentialClaimResponse, DetailCredentialResponse, DetailProofClaim,
-        DetailProofClaimSchema, DetailProofSchema, EntityResponse, GetDidDetailsResponse,
-        ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofDetailsResponse,
-        ProofSchemaResponse, ProofShareResponse, ProofsDetailResponse,
+        DetailProofClaimSchema, DetailProofSchema, EntityResponse, ListCredentialSchemaResponse,
+        ProofClaimSchemaResponse, ProofDetailsResponse, ProofSchemaResponse, ProofShareResponse,
+        ProofsDetailResponse,
     },
 };
 
@@ -21,63 +19,10 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::endpoint::common_data_models::{front_time, front_time_option};
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
-pub enum SortDirection {
-    #[serde(rename = "ASC")]
-    Ascending,
-    #[serde(rename = "DESC")]
-    Descending,
-}
-
-impl From<SortDirection> for one_core::repository::data_provider::SortDirection {
-    fn from(value: SortDirection) -> Self {
-        match value {
-            SortDirection::Ascending => {
-                one_core::repository::data_provider::SortDirection::Ascending
-            }
-            SortDirection::Descending => {
-                one_core::repository::data_provider::SortDirection::Descending
-            }
-        }
-    }
-}
-
-#[derive(Clone, Deserialize, IntoParams)]
-#[into_params(parameter_in = Query)]
-#[serde(rename_all = "camelCase")]
-pub struct GetListQueryParams<T> {
-    // pagination
-    pub page: u32,
-    pub page_size: u32,
-
-    // sorting
-    #[param(value_type = Option<String>)]
-    pub sort: Option<T>,
-    pub sort_direction: Option<SortDirection>,
-
-    // filtering
-    pub name: Option<String>,
-    pub organisation_id: String,
-}
-
-impl<T, K> From<GetListQueryParams<T>>
-    for one_core::repository::data_provider::GetListQueryParams<K>
-where
-    K: From<T>,
-{
-    fn from(value: GetListQueryParams<T>) -> Self {
-        Self {
-            page: value.page,
-            page_size: value.page_size,
-            sort: value.sort.map(|sort| sort.into()),
-            sort_direction: value.sort_direction.map(|dir| dir.into()),
-            name: value.name,
-            organisation_id: value.organisation_id,
-        }
-    }
-}
+use crate::{
+    dto::common::GetListQueryParams,
+    serialize::{front_time, front_time_option},
+};
 
 pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumn>;
 
@@ -180,37 +125,6 @@ impl From<CredentialClaimSchemaRequestDTO> for CredentialClaimSchemaRequest {
 pub struct CredentialClaimSchemaRequestDTO {
     pub key: String,
     pub datatype: String,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-// ToSchema is properly generated thanks to that
-#[aliases(
-    GetProofsResponseDTO = GetListResponseDTO<ProofsDetailResponseDTO>,
-    GetCredentialClaimSchemaResponseDTO = GetListResponseDTO<CredentialSchemaResponseDTO>,
-    GetProofSchemaResponseDTO = GetListResponseDTO<ProofSchemaResponseDTO>,
-    GetDidsResponseDTO = GetListResponseDTO<GetDidDetailsResponseDTO>,
-    GetCredentialsResponseDTO = GetListResponseDTO<DetailCredentialResponseDTO>)]
-pub struct GetListResponseDTO<T>
-where
-    T: Clone + fmt::Debug + Serialize,
-{
-    pub values: Vec<T>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
-
-impl<T, K> From<one_core::repository::data_provider::GetListResponse<K>> for GetListResponseDTO<T>
-where
-    T: From<K> + Clone + fmt::Debug + Serialize,
-{
-    fn from(value: one_core::repository::data_provider::GetListResponse<K>) -> Self {
-        Self {
-            values: value.values.into_iter().map(|item| item.into()).collect(),
-            total_pages: value.total_pages,
-            total_items: value.total_items,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -436,85 +350,6 @@ impl From<CredentialRequestClaimDTO> for CreateCredentialRequestClaim {
 impl From<one_core::repository::data_provider::EntityResponse> for EntityResponseDTO {
     fn from(value: EntityResponse) -> Self {
         Self { id: value.id }
-    }
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum DidType {
-    #[default]
-    Remote,
-    Local,
-}
-
-impl From<DidType> for one_core::repository::data_provider::DidType {
-    fn from(value: DidType) -> Self {
-        match value {
-            DidType::Remote => one_core::repository::data_provider::DidType::Remote,
-            DidType::Local => one_core::repository::data_provider::DidType::Local,
-        }
-    }
-}
-
-impl From<one_core::repository::data_provider::DidType> for DidType {
-    fn from(value: one_core::repository::data_provider::DidType) -> Self {
-        match value {
-            one_core::repository::data_provider::DidType::Remote => DidType::Remote,
-            one_core::repository::data_provider::DidType::Local => DidType::Local,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GetDidDetailsResponseDTO {
-    id: String,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub organisation_id: String,
-    pub did: String,
-    #[serde(rename = "type")]
-    pub did_type: DidType,
-    #[serde(rename = "method")]
-    pub did_method: String,
-}
-
-impl From<GetDidDetailsResponse> for GetDidDetailsResponseDTO {
-    fn from(value: GetDidDetailsResponse) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            organisation_id: value.organisation_id,
-            did: value.did,
-            did_type: value.did_type.into(),
-            did_method: value.did_method,
-        }
-    }
-}
-
-pub type GetDidQuery = GetListQueryParams<SortableDidColumn>;
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum SortableDidColumn {
-    Name,
-    CreatedDate,
-}
-
-impl From<SortableDidColumn> for one_core::repository::data_provider::SortableDidColumn {
-    fn from(value: SortableDidColumn) -> Self {
-        match value {
-            SortableDidColumn::Name => one_core::repository::data_provider::SortableDidColumn::Name,
-            SortableDidColumn::CreatedDate => {
-                one_core::repository::data_provider::SortableDidColumn::CreatedDate
-            }
-        }
     }
 }
 
@@ -781,32 +616,6 @@ impl From<ProofClaimSchema> for ProofClaimResponseDTO {
             datatype: value.datatype,
             required: value.required,
             credential_schema: value.credential_schema.into(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CreateDidRequest {
-    pub name: String,
-    pub organisation_id: Uuid,
-    pub did: String,
-    pub method: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
-pub(crate) struct CreateDidResponse {
-    pub id: String,
-}
-
-impl From<CreateDidRequest> for one_core::repository::data_provider::CreateDidRequest {
-    fn from(value: CreateDidRequest) -> Self {
-        Self {
-            name: value.name,
-            organisation_id: value.organisation_id.to_string(),
-            did: value.did,
-            did_type: DidType::Local.into(),
-            method: value.method,
         }
     }
 }

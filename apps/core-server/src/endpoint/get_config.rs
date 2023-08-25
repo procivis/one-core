@@ -32,7 +32,7 @@ pub(crate) async fn get_config(state: State<AppState>) -> Response {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, sync::Arc};
 
     use crate::dto::response::config::ConfigDTO;
     use one_core::config::data_structure::{
@@ -68,7 +68,7 @@ mod tests {
                 },
             )]),
         };
-        let output = ConfigDTO::try_from(config).unwrap();
+        let output = ConfigDTO::try_from(Arc::new(config)).unwrap();
         let text_output = serde_json::to_string_pretty(&output).unwrap();
 
         assert_eq!(
@@ -122,7 +122,7 @@ mod tests {
             )]),
         };
 
-        let output = ConfigDTO::try_from(config).unwrap();
+        let output = ConfigDTO::try_from(Arc::new(config)).unwrap();
         let text_output = serde_json::to_string_pretty(&output).unwrap();
 
         assert_eq!(

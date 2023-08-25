@@ -15,7 +15,7 @@ impl OrganisationService {
         &self,
     ) -> Result<Vec<GetOrganisationDetailsResponseDTO>, ServiceError> {
         let result = self
-            .repository
+            .organisation_repository
             .get_organisation_list()
             .await
             .map_err(ServiceError::from)?;
@@ -36,7 +36,7 @@ impl OrganisationService {
         id: &OrganisationId,
     ) -> Result<GetOrganisationDetailsResponseDTO, ServiceError> {
         let result = self
-            .repository
+            .organisation_repository
             .get_organisation(id)
             .await
             .map_err(ServiceError::from)?;
@@ -58,7 +58,7 @@ impl OrganisationService {
 
         // Check if it already exists
         if let Some(id) = id {
-            if organisation_already_exists(&self.repository, &id).await? {
+            if organisation_already_exists(&self.organisation_repository, &id).await? {
                 return Err(ServiceError::AlreadyExists);
             }
         }
@@ -70,7 +70,7 @@ impl OrganisationService {
         };
 
         let uuid = self
-            .repository
+            .organisation_repository
             .create_organisation(request)
             .await
             .map_err(ServiceError::from)?;

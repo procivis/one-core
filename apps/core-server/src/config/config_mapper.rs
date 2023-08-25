@@ -1,13 +1,15 @@
 use serde_json::Value;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::dto::response::config::ConfigDTO;
 use one_core::config::data_structure::{AccessModifier, Param};
 
-impl TryFrom<one_core::config::data_structure::CoreConfig> for ConfigDTO {
+impl TryFrom<Arc<one_core::config::data_structure::CoreConfig>> for ConfigDTO {
     type Error = serde_json::Error;
 
-    fn try_from(config: one_core::config::data_structure::CoreConfig) -> Result<Self, Self::Error> {
+    fn try_from(
+        config: Arc<one_core::config::data_structure::CoreConfig>,
+    ) -> Result<Self, Self::Error> {
         let value = serde_json::to_value(config)?;
         let mut dto: ConfigDTO = serde_json::from_value(value)?;
 

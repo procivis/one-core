@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::repository::error::DataLayerError;
+use crate::{config::validator::ConfigValidationError, repository::error::DataLayerError};
 
 #[derive(Debug, PartialEq, Error)]
 pub enum ServiceError {
@@ -18,6 +18,8 @@ pub enum ServiceError {
     NotUpdated,
     #[error("Validation errror: `{0}`")]
     ValidationError(String),
+    #[error("Config validation error `{0}`")]
+    ConfigValidationError(#[from] ConfigValidationError),
     #[error("Other Repository error: `{0}`")]
     Other(String),
 }

@@ -15,12 +15,12 @@ enum DataLayerError {
 
 [Error]
 enum ServiceError {
-  "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "Other",
+  "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "ConfigValidationError", "Other",
 };
 
 [Error]
 enum OneCoreError {
-  "DataLayerError", "SSIError", "FormatterError"
+  "DataLayerError", "ServiceError", "SSIError", "FormatterError"
 };
 
 dictionary Version {
@@ -91,7 +91,7 @@ interface OneCore {
   [Throws=ServiceError]
   string create_organisation(string? uuid);
 
-  [Throws=DataLayerError]
+  [Throws=ServiceError]
   string create_local_did(string did, string organisation_id);
 
   [Throws=OneCoreError]

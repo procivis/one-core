@@ -1,7 +1,13 @@
+use std::str::FromStr;
+
+use uuid::Uuid;
+
 use crate::{
     data_model::{ConnectVerifierRequest, ConnectVerifierResponse, ProofClaimSchema},
     error::{OneCoreError, SSIError},
+    model::did::DidType,
     repository::{data_provider::ProofRequestState, error::DataLayerError},
+    service::{did::dto::CreateDidRequestDTO, error::ServiceError},
     OneCore,
 };
 
@@ -29,26 +35,35 @@ impl OneCore {
             return Err(OneCoreError::SSIError(SSIError::IncorrectProofState));
         }
 
-        let did_id = match self.data_layer.get_did_details_by_value(&request.did).await {
+        let did_id = match self.did_service.get_did_by_value(&request.did).await {
             Ok(did) => did.id,
-            Err(DataLayerError::RecordNotFound) => self
-                .data_layer
-                .insert_remote_did(&request.did, &proof_request.organisation_id)
-                .await
-                .map_err(OneCoreError::DataLayerError)?,
+            Err(ServiceError::NotFound) => {
+                self.did_service
+                    .create_did(CreateDidRequestDTO {
+                        name: "TODO".to_string(),
+                        organisation_id: Uuid::from_str(&proof_request.schema.organisation_id)
+                            .map_err(|_| {
+                                ServiceError::MappingError("Could not convert to UUID".to_string())
+                            })?,
+                        did: request.did.clone(),
+                        did_method: "KEY".to_string(),
+                        did_type: DidType::Remote,
+                    })
+                    .await?
+            }
             Err(e) => {
-                return Err(OneCoreError::DataLayerError(e));
+                return Err(OneCoreError::ServiceError(e));
             }
         };
 
         if let Some(proof_receiver_did_id) = proof_request.receiver_did_id {
-            if proof_receiver_did_id != did_id {
+            if proof_receiver_did_id != did_id.to_string() {
                 // repeated connection using a different holder did
                 return Err(OneCoreError::SSIError(SSIError::IncorrectProofState));
             }
         } else {
             self.data_layer
-                .set_proof_receiver_did_id(&proof_request_id, &did_id)
+                .set_proof_receiver_did_id(&proof_request_id, &did_id.to_string())
                 .await
                 .map_err(OneCoreError::DataLayerError)?;
         }

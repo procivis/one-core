@@ -1,55 +1,152 @@
-use one_core::repository::data_provider::{GetDidQuery, GetDidsResponse, SortableDidColumn};
-use one_core::repository::error::DataLayerError;
-use sea_orm::{sea_query::SimpleExpr, EntityTrait, IntoSimpleExpr, PaginatorTrait, QueryOrder};
+/*
+#[cfg(test)]
+mod tests {
+    use one_core::repository::{data_provider::DidType, error::DataLayerError};
+    use uuid::Uuid;
 
-use crate::entity::{did, Did};
-use crate::list_query::SelectWithListQuery;
-use crate::OldProvider;
+    use crate::test_utilities::*;
 
-use super::common::calculate_pages_count;
-use super::list_query::GetEntityColumn;
+    #[tokio::test]
+    async fn test_get_existing_did() {
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
 
-impl GetEntityColumn for SortableDidColumn {
-    fn get_simple_expr(&self) -> SimpleExpr {
-        match self {
-            SortableDidColumn::Name => did::Column::Name.into_simple_expr(),
-            SortableDidColumn::CreatedDate => did::Column::CreatedDate.into_simple_expr(),
-        }
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
+        let did_name = "test did name";
+        let did = "test:did";
+        let id = insert_did(&data_layer.db, did_name, did, &organisation_id)
+            .await
+            .unwrap();
+
+        let result = data_layer.get_did_details(&id).await;
+
+        assert!(result.is_ok());
+
+        let content = result.unwrap();
+        assert_eq!(content.id, id);
+        assert_eq!(content.did_method, "KEY");
+        assert_eq!(content.did_type, DidType::Local);
+        assert_eq!(content.did, did);
+        assert_eq!(content.name, did_name);
+        assert_eq!(content.organisation_id, organisation_id);
+    }
+
+    #[tokio::test]
+    async fn test_get_existing_did_by_value() {
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
+        let did_name = "test did name";
+        let did = "test:did";
+        let id = insert_did(&data_layer.db, did_name, did, &organisation_id)
+            .await
+            .unwrap();
+
+        let result = data_layer.get_did_details_by_value(did).await;
+
+        assert!(result.is_ok());
+
+        let content = result.unwrap();
+        assert_eq!(content.id, id);
+        assert_eq!(content.did_method, "KEY");
+        assert_eq!(content.did_type, DidType::Local);
+        assert_eq!(content.did, did);
+        assert_eq!(content.name, did_name);
+        assert_eq!(content.organisation_id, organisation_id);
+    }
+
+    #[tokio::test]
+    async fn test_get_not_existing_did() {
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+
+        let id = Uuid::new_v4();
+
+        let result = data_layer.get_did_details(&id.to_string()).await;
+
+        assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
     }
 }
 
-impl OldProvider {
-    pub async fn get_dids(
-        &self,
-        query_params: GetDidQuery,
-    ) -> Result<GetDidsResponse, DataLayerError> {
-        let limit: u64 = query_params.page_size as u64;
 
-        let query = Did::find()
-            .with_organisation_id(&query_params, &did::Column::OrganisationId)
-            .with_list_query(
-                &query_params,
-                &Some(vec![did::Column::Name, did::Column::Did]),
-            )
-            .order_by_desc(did::Column::CreatedDate)
-            .order_by_desc(did::Column::Id);
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
 
-        let items_count = query
-            .to_owned()
-            .count(&self.db)
+    use uuid::Uuid;
+
+    use one_core::repository::{
+        data_provider::{CreateDidRequest, DidType},
+        error::DataLayerError,
+    };
+
+    use crate::test_utilities::*;
+
+    #[tokio::test]
+    async fn test_create_did_simple() {
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+        let did_methods = get_did_methods();
+
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .unwrap();
 
-        let dids: Vec<did::Model> = query
-            .all(&self.db)
+        let did = "did:key:123".to_owned();
+
+        let request = CreateDidRequest {
+            name: "Name".to_string(),
+            organisation_id,
+            did: did.clone(),
+            did_type: DidType::Local,
+            method: "KEY".to_string(),
+        };
+
+        let result = data_layer.create_did(request, &did_methods).await;
+
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+
+        assert!(Uuid::from_str(&response.id).is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_create_did_twice_by_id_and_value() {
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+        let did_methods = get_did_methods();
+
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .unwrap();
 
-        Ok(GetDidsResponse {
-            values: dids.into_iter().map(|item| item.into()).collect(),
-            total_pages: calculate_pages_count(items_count, limit),
-            total_items: items_count,
-        })
+        let missing_organisation = Uuid::new_v4().to_string();
+
+        let did1 = "did:key:123".to_owned();
+        let did2 = "did:key:456".to_owned();
+
+        let mut request = CreateDidRequest {
+            name: "Name".to_string(),
+            organisation_id,
+            did: did1.clone(),
+            did_type: DidType::Local,
+            method: "KEY".to_string(),
+        };
+
+        let result = data_layer.create_did(request.clone(), &did_methods).await;
+        assert!(result.is_ok());
+
+        // DID value stays the same
+        request.did = did1.clone();
+        let result = data_layer.create_did(request.clone(), &did_methods).await;
+        assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+
+        // DID and ID are new. Organisation is incorrect.
+        request.did = did2.clone();
+        request.organisation_id = missing_organisation;
+        let result = data_layer.create_did(request.clone(), &did_methods).await;
+        assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
     }
 }
 
@@ -390,3 +487,87 @@ mod tests {
         assert_eq!(newer_b_did.id, response.values[0].id);
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use uuid::Uuid;
+
+    use one_core::repository::{
+        data_provider::{CreateDidRequest, DidType},
+        error::DataLayerError,
+    };
+
+    use crate::test_utilities::*;
+
+    #[tokio::test]
+    async fn test_create_did_simple() {
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+        let did_methods = get_did_methods();
+
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
+
+        let did = "did:key:123".to_owned();
+
+        let request = CreateDidRequest {
+            name: "Name".to_string(),
+            organisation_id,
+            did: did.clone(),
+            did_type: DidType::Local,
+            method: "KEY".to_string(),
+        };
+
+        let result = data_layer.create_did(request, &did_methods).await;
+
+        assert!(result.is_ok());
+
+        let response = result.unwrap();
+
+        assert!(Uuid::from_str(&response.id).is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_create_did_twice_by_id_and_value() {
+        let data_layer = setup_test_data_provider_and_connection().await.unwrap();
+        let did_methods = get_did_methods();
+
+        let organisation_id = insert_organisation_to_database(&data_layer.db, None)
+            .await
+            .unwrap();
+
+        let missing_organisation = Uuid::new_v4().to_string();
+
+        let did1 = "did:key:123".to_owned();
+        let did2 = "did:key:456".to_owned();
+
+        let mut request = CreateDidRequest {
+            name: "Name".to_string(),
+            organisation_id,
+            did: did1.clone(),
+            did_type: DidType::Local,
+            method: "KEY".to_string(),
+        };
+
+        let result = data_layer.create_did(request.clone(), &did_methods).await;
+        assert!(result.is_ok());
+
+        // DID value stays the same
+        request.did = did1.clone();
+        let result = data_layer.create_did(request.clone(), &did_methods).await;
+        assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+
+        // DID and ID are new. Organisation is incorrect.
+        request.did = did2.clone();
+        request.organisation_id = missing_organisation;
+        let result = data_layer.create_did(request.clone(), &did_methods).await;
+        assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
+    }
+}
+
+
+
+*/

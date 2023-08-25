@@ -6,7 +6,8 @@ use uuid::Uuid;
 
 use one_core::repository::error::DataLayerError;
 
-use crate::data_model::{GetProofQuery, GetProofsResponseDTO, ProofDetailsResponseDTO};
+use crate::data_model::{GetProofQuery, ProofDetailsResponseDTO};
+use crate::dto::common::GetProofsResponseDTO;
 use crate::AppState;
 
 #[utoipa::path(
