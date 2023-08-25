@@ -20,3 +20,6 @@ impl OrganisationService {
         }
     }
 }
+
+#[cfg(test)]
+mod test;
