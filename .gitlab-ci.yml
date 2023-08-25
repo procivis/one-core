@@ -129,6 +129,7 @@ publish:
 
 bitrise_ios_sdk:
   stage: sdk_build
+  image: registry.gitlab.procivis.ch/procivis/one/one-operations/bitrise-builder:0.1.0
   needs:
     - build
     - tests
@@ -136,12 +137,9 @@ bitrise_ios_sdk:
     # ONE-wallet project on Bitrise
     BITRISE_PROJECT_SLUG: 6ee8c26f-6d7b-4bcb-8ddc-be1ba3cd2687
     BITRISE_WORKFLOW: iOS_Core_SDK
-  before_script:
-    # dependencies of gitrise
-    - apt-get update && apt-get install curl jq -y
   script:
     - >
-      ./etc/gitrise.sh
+      /etc/gitrise.sh
       --access-token $BITRISE_API_ACCESS_TOKEN
       --slug $BITRISE_PROJECT_SLUG
       --workflow $BITRISE_WORKFLOW
