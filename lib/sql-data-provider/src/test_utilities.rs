@@ -430,6 +430,8 @@ params: null"#,
     )])
 }
 
+// We will bring it back with service unit tests
+#[allow(dead_code)]
 pub fn get_did_methods() -> HashMap<String, DidEntity> {
     HashMap::from([(
         "KEY".to_string(),

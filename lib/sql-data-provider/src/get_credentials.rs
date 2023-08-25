@@ -186,8 +186,11 @@ impl OldProvider {
 
 #[cfg(test)]
 mod tests {
-    use one_core::repository::data_provider::{
-        CredentialState, GetCredentialsQuery, SortDirection, SortableCredentialColumn,
+    use one_core::{
+        model::common::SortDirection,
+        repository::data_provider::{
+            CredentialState, GetCredentialsQuery, SortableCredentialColumn,
+        },
     };
     use time::OffsetDateTime;
     use uuid::Uuid;

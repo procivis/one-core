@@ -8,8 +8,8 @@ use one_core::repository::error::DataLayerError;
 
 use crate::data_model::{
     DetailCredentialResponseDTO, GetCredentialQuery, GetCredentialSchemaQuery,
-    GetCredentialsResponseDTO,
 };
+use crate::dto::common::GetCredentialsResponseDTO;
 use crate::AppState;
 
 #[utoipa::path(

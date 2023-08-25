@@ -1,4 +1,4 @@
-use one_core::repository::data_provider::{GetListQueryParams, SortDirection};
+use one_core::model::common::{GetListQueryParams, SortDirection};
 use sea_orm::{entity::*, query::*, sea_query::SimpleExpr, EntityTrait, QueryOrder, QuerySelect};
 
 use crate::data_model::order_from_sort_direction;

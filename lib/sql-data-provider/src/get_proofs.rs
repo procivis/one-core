@@ -155,8 +155,9 @@ impl OldProvider {
 
 #[cfg(test)]
 mod tests {
-    use one_core::repository::data_provider::{
-        GetProofsQuery, ProofRequestState, SortDirection, SortableProofColumn,
+    use one_core::{
+        model::common::SortDirection,
+        repository::data_provider::{GetProofsQuery, ProofRequestState, SortableProofColumn},
     };
     use time::OffsetDateTime;
     use uuid::Uuid;

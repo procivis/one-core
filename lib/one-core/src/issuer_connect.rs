@@ -1,7 +1,13 @@
+use std::str::FromStr;
+
+use uuid::Uuid;
+
 use crate::{
     data_model::{ConnectIssuerRequest, ConnectIssuerResponse},
     error::{OneCoreError, SSIError},
+    model::did::DidType,
     repository::{data_provider::CredentialState, error::DataLayerError},
+    service::{did::dto::CreateDidRequestDTO, error::ServiceError},
     OneCore,
 };
 
@@ -34,20 +40,29 @@ impl OneCore {
 
         let formatter = self.get_formatter(format)?;
 
-        let did_id = match self.data_layer.get_did_details_by_value(&request.did).await {
+        let did_id = match self.did_service.get_did_by_value(&request.did).await {
             Ok(did) => did.id,
-            Err(DataLayerError::RecordNotFound) => self
-                .data_layer
-                .insert_remote_did(&request.did, &credential.schema.organisation_id)
-                .await
-                .map_err(OneCoreError::DataLayerError)?,
+            Err(ServiceError::NotFound) => {
+                self.did_service
+                    .create_did(CreateDidRequestDTO {
+                        name: "TODO".to_string(),
+                        organisation_id: Uuid::from_str(&credential.schema.organisation_id)
+                            .map_err(|_| {
+                                ServiceError::MappingError("Could not convert to UUID".to_string())
+                            })?,
+                        did: request.did.clone(),
+                        did_method: "KEY".to_string(),
+                        did_type: DidType::Remote,
+                    })
+                    .await?
+            }
             Err(e) => {
-                return Err(OneCoreError::DataLayerError(e));
+                return Err(OneCoreError::ServiceError(e));
             }
         };
 
         self.data_layer
-            .update_credential_received_did(&credential_id, &did_id)
+            .update_credential_received_did(&credential_id, &did_id.to_string())
             .await
             .map_err(OneCoreError::DataLayerError)?;
 

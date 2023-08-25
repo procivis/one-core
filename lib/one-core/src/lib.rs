@@ -7,9 +7,10 @@ use credential_formatter::jwt_formatter::JWTFormatter;
 use credential_formatter::CredentialFormatter;
 use error::OneCoreError;
 use repository::{
-    data_provider::DataProvider, organisation_repository::OrganisationRepository, DataRepository,
+    data_provider::DataProvider, did_repository::DidRepository,
+    organisation_repository::OrganisationRepository, DataRepository,
 };
-use service::organisation::OrganisationService;
+use service::{did::DidService, organisation::OrganisationService};
 use signature_provider::SignatureProvider;
 use transport_protocol::procivis_temp::ProcivisTemp;
 use transport_protocol::TransportProtocol;
@@ -39,15 +40,16 @@ use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
-    //data_repository: Arc<dyn DataRepository>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    did_repository: Arc<dyn DidRepository + Send + Sync>,
     // FIXME: data_layer will be removed
     pub data_layer: Arc<dyn DataProvider + Send + Sync>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub signature_providers: Vec<(String, Arc<dyn SignatureProvider + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
     pub organisation_service: OrganisationService,
-    pub config: CoreConfig,
+    pub did_service: DidService,
+    pub config: Arc<CoreConfig>,
 }
 
 impl OneCore {
@@ -76,9 +78,11 @@ impl OneCore {
                 .collect::<Vec<String>>(),
         )?;
 
+        let config = Arc::new(config);
+
         Ok(OneCore {
-            //data_repository: data_provider.clone(),
             organisation_repository: data_provider.get_organisation_repository(),
+            did_repository: data_provider.get_did_repository(),
             data_layer: data_provider.get_data_provider(),
             transport_protocols,
             signature_providers: vec![],
@@ -86,6 +90,7 @@ impl OneCore {
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
             ),
+            did_service: DidService::new(data_provider.get_did_repository(), config.clone()),
             config,
         })
     }

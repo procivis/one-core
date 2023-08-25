@@ -1,12 +1,15 @@
-use one_core::repository::{
-    data_provider::{
-        CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialState,
-        DetailCredentialClaimResponse, DetailCredentialResponse, DetailProofClaim,
-        DetailProofClaimSchema, DetailProofSchema, DidType, GetDidDetailsResponse,
-        ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofDetailsResponse,
-        ProofRequestState, ProofSchemaResponse, ProofsDetailResponse, SortDirection,
+use one_core::{
+    model::common::SortDirection,
+    repository::{
+        data_provider::{
+            CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialState,
+            DetailCredentialClaimResponse, DetailCredentialResponse, DetailProofClaim,
+            DetailProofClaimSchema, DetailProofSchema, GetDidDetailsResponse,
+            ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofDetailsResponse,
+            ProofRequestState, ProofSchemaResponse, ProofsDetailResponse,
+        },
+        error::DataLayerError,
     },
-    error::DataLayerError,
 };
 use sea_orm::{FromQueryResult, Order};
 
@@ -22,24 +25,6 @@ pub fn order_from_sort_direction(direction: SortDirection) -> Order {
     match direction {
         SortDirection::Ascending => Order::Asc,
         SortDirection::Descending => Order::Desc,
-    }
-}
-
-impl From<DidType> for super::entity::did::DidType {
-    fn from(value: DidType) -> Self {
-        match value {
-            DidType::Remote => did::DidType::Remote,
-            DidType::Local => did::DidType::Local,
-        }
-    }
-}
-
-impl From<super::entity::did::DidType> for DidType {
-    fn from(value: super::entity::did::DidType) -> Self {
-        match value {
-            did::DidType::Remote => DidType::Remote,
-            did::DidType::Local => DidType::Local,
-        }
     }
 }
 
@@ -265,44 +250,6 @@ pub(crate) struct ClaimClaimSchemaCombined {
     pub key: String,
     pub datatype: String,
 }
-
-// impl From<ClaimClaimSchemaCombined> for DetailCredentialClaimResponse {
-//     fn from(value: ClaimClaimSchemaCombined) -> Self {
-//         Self {
-//             schema: CredentialClaimSchemaResponse {
-//                 id: value.id,
-//                 created_date: value.created_date,
-//                 last_modified: value.last_modified,
-//                 key: value.key,
-//                 datatype: value.datatype,
-//             },
-//             value: value.value,
-//         }
-//     }
-// }
-
-// impl DetailCredentialResponse {
-//     pub(crate) fn from_combined_credential_did_and_credential_schema(
-//         value: CredentialDidCredentialSchemaCombined,
-//         claims: &[ClaimClaimSchemaCombined],
-//     ) -> Result<Self, DataLayerError> {
-//         Ok(DetailCredentialResponse {
-//             id: value.id.to_owned(),
-//             created_date: value.created_date,
-//             issuance_date: value.issuance_date,
-//             state: value.state.into(),
-//             last_modified: value.last_modified,
-//             issuer_did: value.did.to_owned(),
-//             claims: claims
-//                 .iter()
-//                 .filter(|claim| claim.credential_id == value.id)
-//                 .map(|claim| claim.clone().into())
-//                 .collect(),
-//             credential: value.credential.clone(),
-//             schema: value.into(),
-//         })
-//     }
-// }
 
 pub(super) fn proof_detail_response_from_models_with_claims(
     proof: proof::Model,

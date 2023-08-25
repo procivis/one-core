@@ -83,8 +83,9 @@ fn get_base_query() -> Select<CredentialSchema> {
 
 #[cfg(test)]
 mod tests {
-    use one_core::repository::data_provider::{
-        GetCredentialSchemaQuery, SortDirection, SortableCredentialSchemaColumn,
+    use one_core::{
+        model::common::SortDirection,
+        repository::data_provider::{GetCredentialSchemaQuery, SortableCredentialSchemaColumn},
     };
     use sea_orm::{ActiveModelTrait, Set};
     use time::macros::datetime;
@@ -150,12 +151,7 @@ mod tests {
             .await
             .unwrap();
 
-        let result: Result<
-            one_core::repository::data_provider::GetListResponse<
-                one_core::repository::data_provider::CredentialSchemaResponse,
-            >,
-            one_core::repository::error::DataLayerError,
-        > = data_layer
+        let result = data_layer
             .get_credential_schemas(from_pagination(0, 1, organisation_id.to_owned()))
             .await;
         assert!(result.is_ok());

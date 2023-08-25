@@ -21,19 +21,21 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 mod config;
-mod data_model;
-mod dto;
-mod endpoint;
+pub(crate) mod data_model;
+pub(crate) mod dto;
+pub(crate) mod endpoint;
+pub(crate) mod mapper;
+pub(crate) mod serialize;
 
 use endpoint::{
     delete_credential_schema, delete_proof_schema, get_config, get_credential,
-    get_credential_schema, get_did, get_proof, get_proof_schema, misc, post_credential,
-    post_credential_schema, post_did, post_proof, post_proof_schema, share_credential, share_proof,
+    get_credential_schema, get_proof, get_proof_schema, misc, post_credential,
+    post_credential_schema, post_proof, post_proof_schema, share_credential, share_proof,
     ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
     ssi_post_verifier_reject_proof_request, ssi_post_verifier_submit,
 };
 
-use crate::endpoint::organisation;
+use crate::endpoint::{did, organisation};
 
 #[derive(Clone)]
 struct AppState {
@@ -48,6 +50,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::organisation::controller::post_organisation,
             endpoint::organisation::controller::get_organisation,
             endpoint::organisation::controller::get_organisations,
+
+            endpoint::did::controller::get_did,
+            endpoint::did::controller::get_did_list,
+            endpoint::did::controller::post_did,
 
             endpoint::get_config::get_config,
             endpoint::get_credential::get_credentials,
@@ -64,8 +70,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::get_proof_schema::get_proof_schema_details,
             endpoint::get_proof_schema::get_proof_schemas,
             endpoint::delete_proof_schema::delete_proof_schema,
-            endpoint::get_did::get_did_details,
-            endpoint::get_did::get_dids,
             endpoint::get_proof::get_proof_details,
             endpoint::get_proof::get_proofs,
             endpoint::misc::get_build_info,
@@ -74,16 +78,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::ssi_post_verifier_connect::ssi_verifier_connect,
             endpoint::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
             endpoint::ssi_post_verifier_submit::ssi_verifier_submit,
-            endpoint::post_did::post_did
         ),
         components(
             schemas(
                 endpoint::organisation::dto::CreateOrganisationRequestRestDTO,
                 endpoint::organisation::dto::CreateOrganisationResponseRestDTO,
                 endpoint::organisation::dto::GetOrganisationDetailsResponseRestDTO,
+                endpoint::did::dto::CreateDidRequestRestDTO,
+                endpoint::did::dto::CreateDidResponseRestDTO,
+                endpoint::did::dto::GetDidResponseRestDTO,
+                endpoint::did::dto::DidType,
+                dto::common::GetDidsResponseRestDTO,
+
+                dto::common::GetCredentialsResponseDTO,
+                dto::common::GetCredentialClaimSchemaResponseDTO,
+                dto::common::GetProofSchemaResponseDTO,
+                dto::common::GetProofsResponseDTO,
+                dto::common::GetCredentialClaimSchemaResponseDTO,
+                dto::common::GetCredentialClaimSchemaResponseDTO,
+
+                dto::common::SortDirection,
 
                 data_model::DetailCredentialResponseDTO,
-                data_model::GetCredentialsResponseDTO,
                 data_model::ListCredentialSchemaResponseDTO,
                 data_model::DetailCredentialClaimResponseDTO,
                 data_model::CredentialClaimSchemaResponseDTO,
@@ -96,7 +112,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 data_model::CreateCredentialSchemaRequestDTO,
                 data_model::CreateCredentialSchemaResponseDTO,
                 data_model::CredentialClaimSchemaRequestDTO,
-                data_model::GetCredentialClaimSchemaResponseDTO,
                 data_model::CredentialSchemaResponseDTO,
                 data_model::CredentialClaimSchemaResponseDTO,
                 data_model::CreateProofSchemaRequestDTO,
@@ -105,11 +120,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 data_model::CreateProofResponseDTO,
                 data_model::ClaimProofSchemaRequestDTO,
                 data_model::ProofSchemaResponseDTO,
-                data_model::GetProofSchemaResponseDTO,
                 data_model::ProofClaimSchemaResponseDTO,
                 data_model::ProofsDetailResponseDTO,
-                data_model::GetDidDetailsResponseDTO,
-                data_model::GetDidsResponseDTO,
+
                 data_model::ConnectIssuerResponseDTO,
                 data_model::ConnectVerifierResponseDTO,
                 data_model::ProofClaimResponseDTO,
@@ -118,14 +131,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 data_model::DetailProofClaimDTO,
                 data_model::DetailProofSchemaDTO,
                 data_model::DetailProofClaimSchemaDTO,
-                data_model::CreateDidRequest,
-                data_model::CreateDidResponse,
                 data_model::ProofRequestQueryParams,
                 data_model::HandleInvitationRequestDTO,
-                data_model::GetProofsResponseDTO,
-                data_model::DidType,
                 data_model::ProofRequestState,
-                data_model::SortDirection,
                 dto::response::config::ConfigDTO
             )
         ),
@@ -231,9 +239,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/api/organisation/v1/:id",
             get(organisation::controller::get_organisation),
         )
-        .route("/api/did/v1/:id", get(get_did::get_did_details))
-        .route("/api/did/v1", get(get_did::get_dids))
-        .route("/api/did/v1", post(post_did::post_did))
+        .route("/api/did/v1/:id", get(did::controller::get_did))
+        .route("/api/did/v1", get(did::controller::get_did_list))
+        .route("/api/did/v1", post(did::controller::post_did))
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new()

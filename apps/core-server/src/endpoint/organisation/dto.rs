@@ -3,7 +3,7 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::endpoint::common_data_models::front_time;
+use crate::serialize::front_time;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]

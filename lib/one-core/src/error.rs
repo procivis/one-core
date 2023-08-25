@@ -3,6 +3,7 @@ use thiserror::Error;
 use crate::{
     credential_formatter::{FormatterError, ParseError},
     repository::error::DataLayerError,
+    service::error::ServiceError,
     transport_protocol::TransportProtocolError,
 };
 
@@ -10,6 +11,8 @@ use crate::{
 pub enum OneCoreError {
     #[error("Data layer error: `{0}`")]
     DataLayerError(#[from] DataLayerError),
+    #[error("Service error: `{0}`")]
+    ServiceError(#[from] ServiceError),
     #[error("SSI error: `{0}`")]
     SSIError(#[from] SSIError),
     #[error("Formatter error: `{0}`")]

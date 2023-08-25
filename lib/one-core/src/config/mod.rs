@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use thiserror::Error;
 
 use crate::{config::data_structure::CoreConfig, OneCore};
@@ -20,7 +22,7 @@ pub enum ConfigParseError {
 }
 
 impl OneCore {
-    pub async fn get_config(&self) -> CoreConfig {
-        self.config.to_owned()
+    pub async fn get_config(&self) -> Arc<CoreConfig> {
+        self.config.clone()
     }
 }

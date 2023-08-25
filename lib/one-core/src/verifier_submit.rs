@@ -1,7 +1,9 @@
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use std::{
     collections::{HashMap, HashSet},
+    str::FromStr,
     sync::Arc,
 };
 
@@ -9,10 +11,9 @@ use crate::{
     credential_formatter::{CredentialFormatter, FormatterError, ParseError},
     data_model::VerifierSubmitRequest,
     error::{OneCoreError, SSIError},
+    model::did::Did,
     repository::{
-        data_provider::{
-            CreateProofClaimRequest, GetDidDetailsResponse, ProofRequestState, ProofSchemaResponse,
-        },
+        data_provider::{CreateProofClaimRequest, ProofRequestState, ProofSchemaResponse},
         error::DataLayerError,
     },
     OneCore,
@@ -46,7 +47,7 @@ fn validate_expiration_time(expires_at: Option<OffsetDateTime>) -> Result<(), On
 
 fn validate_proof(
     proof_schema: ProofSchemaResponse,
-    holder_did: &GetDidDetailsResponse,
+    holder_did: &Did,
     presentation: &str,
     formatter: &Arc<dyn CredentialFormatter + Send + Sync>,
 ) -> Result<Vec<CreateProofClaimRequest>, OneCoreError> {
@@ -206,8 +207,8 @@ impl OneCore {
                 return Err(SSIError::IncorrectParameters("Holder DID missing".to_owned()).into());
             }
             Some(holder_did_id) => self
-                .data_layer
-                .get_did_details(holder_did_id)
+                .did_repository
+                .get_did(&Uuid::from_str(holder_did_id).expect("Failed to convert to UUID"))
                 .await
                 .map_err(OneCoreError::DataLayerError)?,
         };

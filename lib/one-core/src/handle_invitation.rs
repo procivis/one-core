@@ -8,17 +8,19 @@ use crate::credential_formatter::{
 use crate::data_model::ConnectVerifierResponse;
 use crate::error::SSIError;
 use crate::local_did_helpers::{get_first_local_did, get_first_organisation_id};
+use crate::model::did::DidType;
 use crate::repository::data_provider::{
     CreateCredentialRequest, CreateCredentialRequestClaim, CredentialState,
 };
 use crate::repository::error::DataLayerError;
+use crate::service::did::dto::CreateDidRequestDTO;
+use crate::service::error::ServiceError;
 use crate::transport_protocol::TransportProtocolError;
 use crate::{
     data_model::HandleInvitationQueryRequest,
     error::OneCoreError,
     repository::data_provider::{
-        CreateCredentialSchemaFromJwtRequest, CreateDidRequest,
-        CredentialClaimSchemaFromJwtRequest, DidType,
+        CreateCredentialSchemaFromJwtRequest, CredentialClaimSchemaFromJwtRequest,
     },
     OneCore,
 };
@@ -212,28 +214,25 @@ impl OneCore {
 
         // insert issuer did if not yet known
         let did_insert_result = self
-            .data_layer
-            .create_did(
-                CreateDidRequest {
-                    name: "NEW_DID_FIXME".to_string(),
-                    organisation_id: organisation_id.to_string(),
-                    did: issuer_did_value.to_owned(),
-                    did_type: DidType::Remote,
-                    method: "KEY".to_string(),
-                },
-                &self.config.did,
-            )
+            .did_service
+            .create_did(CreateDidRequestDTO {
+                name: "NEW_DID_FIXME".to_string(),
+                organisation_id,
+                did: issuer_did_value.to_owned(),
+                did_type: DidType::Remote,
+                did_method: "KEY".to_string(),
+            })
             .await;
         let issuer_did_id = match did_insert_result {
-            Ok(did) => did.id,
-            Err(DataLayerError::AlreadyExists) => {
-                self.data_layer
-                    .get_did_details_by_value(&issuer_did_value)
+            Ok(did_id) => did_id,
+            Err(ServiceError::AlreadyExists) => {
+                self.did_service
+                    .get_did_by_value(&issuer_did_value)
                     .await
-                    .map_err(OneCoreError::DataLayerError)?
+                    .map_err(OneCoreError::ServiceError)?
                     .id
             }
-            Err(e) => return Err(OneCoreError::DataLayerError(e)),
+            Err(e) => return Err(OneCoreError::ServiceError(e)),
         };
 
         // create credential
@@ -262,7 +261,7 @@ impl OneCore {
                 CreateCredentialRequest {
                     credential_id: Some(expected_credential_id.to_owned()),
                     credential_schema_id: string_to_uuid(&credential_schema_id)?,
-                    issuer_did: string_to_uuid(&issuer_did_id)?,
+                    issuer_did: issuer_did_id,
                     transport: "PROCIVIS_TEMPORARY".to_string(),
                     claim_values: claim_values?,
                     receiver_did_id: Some(string_to_uuid(&expected_holder_did.id)?),
