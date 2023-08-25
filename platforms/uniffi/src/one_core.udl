@@ -5,7 +5,7 @@ namespace one_core {
 
 [Error]
 enum ConfigParseError {
-  "JsonError", "InvalidType"
+  "JsonError", "InvalidType", "MissingErrorMessage"
 };
 
 [Error]
