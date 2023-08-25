@@ -18,3 +18,6 @@ pub trait DataRepository {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository + Send + Sync>;
     fn get_did_repository(&self) -> Arc<dyn DidRepository + Send + Sync>;
 }
+
+#[cfg(test)]
+pub mod mock;
