@@ -11,14 +11,17 @@ pub mod validator;
 pub mod yaml_config_provider;
 
 mod process_config_object;
+mod validate_error_param_presence;
 mod validate_types;
 
 #[derive(Debug, Error)]
 pub enum ConfigParseError {
     #[error("JSON error: `{0}`")]
-    JsonError(serde_json::Error),
+    JsonError(#[from] serde_json::Error),
     #[error("Invalid type `{1}` on field `{0}`")]
     InvalidType(String, String),
+    #[error("Missing error key in params of `{0}`")]
+    MissingErrorMessage(String),
 }
 
 impl OneCore {

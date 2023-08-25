@@ -1,7 +1,8 @@
-use crate::config::validate_types::validate_types;
 use crate::config::{
     data_structure::{ConfigKind, CoreConfig, UnparsedConfig},
     process_config_object::*,
+    validate_error_param_presence::validate_error_param_presence,
+    validate_types::validate_types,
     ConfigParseError,
     {json_config_provider::JsonConfigProvider, yaml_config_provider::YamlConfigProvider},
 };
@@ -39,6 +40,8 @@ pub(super) fn process_and_validate_config(
     transport_protocols: &[String],
     credential_formatters: &[String],
 ) -> Result<CoreConfig, ConfigParseError> {
+    validate_error_param_presence(&config)?;
+
     config.format =
         postprocess_format_entities(config.format).map_err(ConfigParseError::JsonError)?;
     config.exchange =

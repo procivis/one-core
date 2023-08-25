@@ -39,7 +39,7 @@ fn convert_params_to_param_map(
     serde_json::to_value(result?)
 }
 
-fn process_public_and_private(
+pub(super) fn merge_public_and_private(
     public: serde_json::Value,
     private: serde_json::Value,
 ) -> Result<serde_json::Value, serde_json::Error> {
@@ -78,7 +78,7 @@ fn postprocess_format_entity(entity: FormatEntity) -> Result<FormatEntity, serde
             ParamsEnum::Unparsed(value) => {
                 let public = value["public"].to_owned();
                 let private = value["private"].to_owned();
-                Some(ParamsEnum::Parsed(process_public_and_private(
+                Some(ParamsEnum::Parsed(merge_public_and_private(
                     public, private,
                 )?))
             }
@@ -103,7 +103,7 @@ fn postprocess_exchange_entity(
             ParamsEnum::Unparsed(value) => {
                 let public = value["public"].to_owned();
                 let private = value["private"].to_owned();
-                Some(ParamsEnum::Parsed(process_public_and_private(
+                Some(ParamsEnum::Parsed(merge_public_and_private(
                     public, private,
                 )?))
             }
@@ -128,7 +128,7 @@ fn postprocess_transport_entity(
             ParamsEnum::Unparsed(value) => {
                 let public = value["public"].to_owned();
                 let private = value["private"].to_owned();
-                Some(ParamsEnum::Parsed(process_public_and_private(
+                Some(ParamsEnum::Parsed(merge_public_and_private(
                     public, private,
                 )?))
             }
@@ -153,7 +153,7 @@ fn postprocess_revocation_entity(
             ParamsEnum::Unparsed(value) => {
                 let public = value["public"].to_owned();
                 let private = value["private"].to_owned();
-                Some(ParamsEnum::Parsed(process_public_and_private(
+                Some(ParamsEnum::Parsed(merge_public_and_private(
                     public, private,
                 )?))
             }
@@ -177,7 +177,7 @@ fn postprocess_did_entity(entity: DidEntity) -> Result<DidEntity, serde_json::Er
                 DidType::Key => {
                     let public = value["public"].to_owned();
                     let private = value["private"].to_owned();
-                    let merged = process_public_and_private(public, private)?;
+                    let merged = merge_public_and_private(public, private)?;
 
                     let params: DidKeyParams = serde_json::from_value(merged)?;
                     Some(ParamsEnum::Parsed(DidParams::Key(params)))
@@ -204,7 +204,7 @@ fn postprocess_datatype_entity(
             ParamsEnum::Unparsed(value) => {
                 let public = value["public"].to_owned();
                 let private = value["private"].to_owned();
-                let merged = process_public_and_private(public, private)?;
+                let merged = merge_public_and_private(public, private)?;
 
                 match entity.r#type {
                     DatatypeType::String => {

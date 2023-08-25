@@ -78,6 +78,7 @@ datatype:
       public:
         min: 1900-01-01 # optional
         max: "NOW" # optional
+        error: "datatype.birth_date_error"
   # COUNTRY:
   #   display: "datatype.country"
   #   type: "ENUM" # not supported yet
