@@ -80,10 +80,15 @@ impl DataLayer {
 
         Migrator::up(&db, None).await.unwrap();
 
+        let did_provider = Arc::new(DidProvider { db: db.clone() });
+
         Self {
             data_provider: Arc::new(OldProvider { db: db.clone() }),
-            organisation_repository: Arc::new(OrganisationProvider { db: db.clone() }),
-            did_repository: Arc::new(DidProvider { db: db.clone() }),
+            did_repository: did_provider.clone(),
+            organisation_repository: Arc::new(OrganisationProvider {
+                db: db.clone(),
+                did_repository: did_provider,
+            }),
             db,
         }
     }

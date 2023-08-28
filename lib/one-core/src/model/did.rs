@@ -35,3 +35,6 @@ pub enum SortableDidColumn {
 
 pub type GetDidList = GetListResponse<Did>;
 pub type GetDidQuery = GetListQueryParams<SortableDidColumn>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct DidRelations {}

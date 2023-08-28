@@ -1,4 +1,4 @@
-use crate::model::organisation::{Organisation, OrganisationId};
+use crate::model::organisation::{Organisation, OrganisationId, OrganisationRelations};
 
 use super::error::DataLayerError;
 
@@ -9,7 +9,11 @@ pub trait OrganisationRepository {
         request: Organisation,
     ) -> Result<OrganisationId, DataLayerError>;
 
-    async fn get_organisation(&self, id: &OrganisationId) -> Result<Organisation, DataLayerError>;
+    async fn get_organisation(
+        &self,
+        id: &OrganisationId,
+        relations: &OrganisationRelations,
+    ) -> Result<Organisation, DataLayerError>;
 
     async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError>;
 }

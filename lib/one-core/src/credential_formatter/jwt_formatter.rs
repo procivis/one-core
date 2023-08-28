@@ -59,13 +59,7 @@ fn get_temp_keys() -> Ed25519KeyPair {
         .decode("rTa2X5z9tCT9eVFG0yKDR5w4k89fwHohWxcd1I2LDsQ=")
         .unwrap();
 
-    Ed25519KeyPair::from_bytes(
-        &private
-            .into_iter()
-            .chain(public.into_iter())
-            .collect::<Vec<u8>>(),
-    )
-    .unwrap()
+    Ed25519KeyPair::from_bytes(&private.into_iter().chain(public).collect::<Vec<u8>>()).unwrap()
 }
 
 impl CredentialFormatter for JWTFormatter {

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
+    model::did::DidRelations,
     repository::{did_repository::DidRepository, error::DataLayerError},
     service::error::ServiceError,
 };
@@ -9,7 +10,9 @@ pub(crate) async fn did_already_exists(
     repository: &Arc<dyn DidRepository + Send + Sync>,
     did_value: &str,
 ) -> Result<bool, ServiceError> {
-    let result = repository.get_did_by_value(&did_value.to_string()).await;
+    let result = repository
+        .get_did_by_value(&did_value.to_string(), &DidRelations::default())
+        .await;
 
     match result {
         Ok(_) => Ok(true),
