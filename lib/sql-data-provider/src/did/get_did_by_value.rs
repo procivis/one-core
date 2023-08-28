@@ -1,13 +1,17 @@
 use super::DidProvider;
 use crate::entity::did;
 use one_core::{
-    model::did::{Did, DidValue},
+    model::did::{Did, DidRelations, DidValue},
     repository::error::DataLayerError,
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 impl DidProvider {
-    pub async fn get_did_by_value_impl(&self, value: &DidValue) -> Result<Did, DataLayerError> {
+    pub async fn get_did_by_value_impl(
+        &self,
+        value: &DidValue,
+        _relations: &DidRelations,
+    ) -> Result<Did, DataLayerError> {
         let did: did::Model = did::Entity::find()
             .filter(did::Column::Did.eq(value))
             .one(&self.db)
@@ -24,7 +28,7 @@ mod tests {
 
     use crate::did::test_utilities::*;
     use one_core::{
-        model::did::DidType,
+        model::did::{DidRelations, DidType},
         repository::{did_repository::DidRepository, error::DataLayerError},
     };
 
@@ -39,7 +43,9 @@ mod tests {
             ..
         } = setup_with_did().await;
 
-        let result = provider.get_did_by_value(&did_value.to_string()).await;
+        let result = provider
+            .get_did_by_value(&did_value.to_string(), &DidRelations::default())
+            .await;
 
         assert!(result.is_ok());
 
@@ -56,7 +62,9 @@ mod tests {
     async fn test_get_did_by_value_missing() {
         let TestSetupWithDid { provider, .. } = setup_with_did().await;
 
-        let result = provider.get_did_by_value(&"missing".to_string()).await;
+        let result = provider
+            .get_did_by_value(&"missing".to_string(), &DidRelations::default())
+            .await;
 
         assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
     }

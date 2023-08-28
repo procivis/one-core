@@ -11,7 +11,7 @@ use crate::{
     credential_formatter::{CredentialFormatter, FormatterError, ParseError},
     data_model::VerifierSubmitRequest,
     error::{OneCoreError, SSIError},
-    model::did::Did,
+    model::did::{Did, DidRelations},
     repository::{
         data_provider::{CreateProofClaimRequest, ProofRequestState, ProofSchemaResponse},
         error::DataLayerError,
@@ -208,7 +208,10 @@ impl OneCore {
             }
             Some(holder_did_id) => self
                 .did_repository
-                .get_did(&Uuid::from_str(holder_did_id).expect("Failed to convert to UUID"))
+                .get_did(
+                    &Uuid::from_str(holder_did_id).expect("Failed to convert to UUID"),
+                    &DidRelations::default(),
+                )
                 .await
                 .map_err(OneCoreError::DataLayerError)?,
         };

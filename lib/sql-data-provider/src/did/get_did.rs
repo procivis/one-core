@@ -1,13 +1,17 @@
 use super::DidProvider;
 use crate::entity::did;
 use one_core::{
-    model::did::{Did, DidId},
+    model::did::{Did, DidId, DidRelations},
     repository::error::DataLayerError,
 };
 use sea_orm::EntityTrait;
 
 impl DidProvider {
-    pub async fn get_did_impl(&self, id: &DidId) -> Result<Did, DataLayerError> {
+    pub async fn get_did_impl(
+        &self,
+        id: &DidId,
+        _relations: &DidRelations,
+    ) -> Result<Did, DataLayerError> {
         let did = did::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
@@ -23,7 +27,7 @@ mod tests {
 
     use crate::did::test_utilities::*;
     use one_core::{
-        model::did::DidType,
+        model::did::{DidRelations, DidType},
         repository::{did_repository::DidRepository, error::DataLayerError},
     };
     use uuid::Uuid;
@@ -39,7 +43,7 @@ mod tests {
             ..
         } = setup_with_did().await;
 
-        let result = provider.get_did(&did_id).await;
+        let result = provider.get_did(&did_id, &DidRelations::default()).await;
 
         assert!(result.is_ok());
 
@@ -56,7 +60,9 @@ mod tests {
     async fn test_get_did_not_existing() {
         let TestSetup { provider, .. } = setup_empty().await;
 
-        let result = provider.get_did(&Uuid::new_v4()).await;
+        let result = provider
+            .get_did(&Uuid::new_v4(), &DidRelations::default())
+            .await;
 
         assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
     }

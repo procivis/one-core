@@ -1,16 +1,22 @@
 use std::str::FromStr;
 
-use sea_orm::EntityTrait;
+use sea_orm::{EntityTrait, ModelTrait};
 use uuid::Uuid;
 
 use one_core::{
-    model::organisation::{Organisation, OrganisationId},
+    model::{
+        did::Did,
+        organisation::{Organisation, OrganisationId, OrganisationRelations},
+    },
     repository::{error::DataLayerError, organisation_repository::OrganisationRepository},
 };
 
-use crate::{entity::organisation, error_mapper::to_data_layer_error};
+use crate::{
+    entity::{did, organisation},
+    error_mapper::to_data_layer_error,
+};
 
-use super::OrganisationProvider;
+use super::{mapper::organisation_from_models, OrganisationProvider};
 
 #[async_trait::async_trait]
 impl OrganisationRepository for OrganisationProvider {
@@ -27,14 +33,36 @@ impl OrganisationRepository for OrganisationProvider {
         Uuid::from_str(&organisation.last_insert_id).map_err(|_| DataLayerError::MappingError)
     }
 
-    async fn get_organisation(&self, id: &OrganisationId) -> Result<Organisation, DataLayerError> {
-        let organisation: organisation::Model = organisation::Entity::find_by_id(id.to_string())
+    async fn get_organisation(
+        &self,
+        id: &OrganisationId,
+        relations: &OrganisationRelations,
+    ) -> Result<Organisation, DataLayerError> {
+        let organisation = organisation::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?
             .ok_or(DataLayerError::RecordNotFound)?;
 
-        organisation.try_into()
+        let did_list = if let Some(did_relations) = &relations.did {
+            let did_models = organisation
+                .find_related(did::Entity)
+                .all(&self.db)
+                .await
+                .map_err(to_data_layer_error)?;
+
+            let mut did_list = Vec::with_capacity(did_models.len());
+            for model in did_models {
+                let did: Did = model.try_into()?;
+                let did_details = self.did_repository.get_did(&did.id, did_relations).await?;
+                did_list.push(did_details);
+            }
+            Some(did_list)
+        } else {
+            None
+        };
+
+        organisation_from_models(organisation, did_list)
     }
 
     async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError> {
@@ -45,7 +73,7 @@ impl OrganisationRepository for OrganisationProvider {
 
         Ok(organisations
             .into_iter()
-            .filter_map(|org| org.try_into().ok())
+            .filter_map(|organisation| organisation_from_models(organisation, None).ok())
             .collect())
     }
 }

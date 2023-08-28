@@ -18,6 +18,7 @@ async fn create_organisation_id_provided() {
         id: org_id,
         created_date: now,
         last_modified: now,
+        did: None,
     };
 
     let response = data_layer

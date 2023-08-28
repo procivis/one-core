@@ -2,7 +2,7 @@ use time::OffsetDateTime;
 
 use crate::{
     config::validator::did::validate_did_method,
-    model::did::DidValue,
+    model::did::{DidRelations, DidValue},
     service::{did::validator::did_already_exists, error::ServiceError},
 };
 
@@ -21,7 +21,7 @@ impl DidService {
     pub async fn get_did(&self, id: &DidId) -> Result<GetDidResponseDTO, ServiceError> {
         let result = self
             .did_repository
-            .get_did(id)
+            .get_did(id, &DidRelations::default())
             .await
             .map_err(ServiceError::from)?;
         Ok(result.into())
@@ -38,7 +38,7 @@ impl DidService {
     ) -> Result<GetDidResponseDTO, ServiceError> {
         let result = self
             .did_repository
-            .get_did_by_value(value)
+            .get_did_by_value(value, &DidRelations::default())
             .await
             .map_err(ServiceError::from)?;
         Ok(result.into())
