@@ -1,4 +1,3 @@
-use envmnt::errors::EnvmntError;
 use one_core::{
     data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
     repository::data_provider::{
@@ -358,43 +357,29 @@ pub struct EntityShareResponseDTO {
     pub url: String,
 }
 
-fn get_core_base_url() -> String {
-    let env_url: Result<String, EnvmntError> = envmnt::get_parse("CORE_BASE_URL");
-    match env_url {
-        Ok(base_url) => base_url,
-        Err(_) => {
-            let ip = envmnt::get_or("SERVER_IP", "0.0.0.0");
-            let port = envmnt::get_u16("SERVER_PORT", 3000);
-            format!("http://{ip}:{port}")
-        }
+pub(crate) fn share_credentials_to_entity_share_response(
+    value: CredentialShareResponse,
+    base_url: &String,
+) -> EntityShareResponseDTO {
+    let protocol = &value.transport;
+    EntityShareResponseDTO {
+        url: format!(
+            "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
+            base_url, protocol, value.credential_id
+        ),
     }
 }
 
-impl From<CredentialShareResponse> for EntityShareResponseDTO {
-    fn from(value: CredentialShareResponse) -> Self {
-        let protocol = &value.transport;
-        Self {
-            url: format!(
-                "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
-                get_core_base_url(),
-                protocol,
-                value.credential_id
-            ),
-        }
-    }
-}
-
-impl From<ProofShareResponse> for EntityShareResponseDTO {
-    fn from(value: ProofShareResponse) -> Self {
-        let protocol = &value.transport;
-        Self {
-            url: format!(
-                "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
-                get_core_base_url(),
-                protocol,
-                value.proof_id
-            ),
-        }
+pub(crate) fn share_proof_to_entity_share_response(
+    value: ProofShareResponse,
+    base_url: &String,
+) -> EntityShareResponseDTO {
+    let protocol = &value.transport;
+    EntityShareResponseDTO {
+        url: format!(
+            "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
+            base_url, protocol, value.proof_id
+        ),
     }
 }
 

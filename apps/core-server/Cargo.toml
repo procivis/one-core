@@ -22,14 +22,14 @@ tracing-subscriber.workspace = true
 utoipa.workspace = true
 uuid.workspace = true
 validator.workspace = true
+figment.workspace = true
 
 tower-http = { version = "0.4", features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 utoipa-swagger-ui = { version = "3.0", features = ["axum"] }
-envmnt = "0.10.4"
 panic-handler = "2.1.2"
 serde_variant = "0.1.2"
+envy = "0.4.2"
 
 [build-dependencies]
 shadow-rs.workspace = true
-envmnt = "0.10.4"

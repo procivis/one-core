@@ -34,3 +34,4 @@ validator = { version = "0.16.0", features = ["derive"] }
 uniffi = { version = "0.24.1", features = ["cli"] }
 thiserror = "1.0"
 tokio = "1.26"
+figment = { version = "0.10.10", features = ["env"] }

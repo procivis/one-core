@@ -195,6 +195,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c59bdb34bc650a32731b31bd8f0829cc15d24a708ee31559e0bb34f2bc320cba"
+
+[[package]]
 name = "autocfg"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -535,7 +541,8 @@ name = "core-server"
 version = "0.1.0"
 dependencies = [
  "axum",
- "envmnt",
+ "envy",
+ "figment",
  "one-core",
  "panic-handler",
  "serde",
@@ -727,12 +734,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1435fa1053d8b2fbbe9be7e97eca7f33d37b28409959813daefc1446a14247f1"
 
 [[package]]
-name = "dunce"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56ce8c6da7551ec6c462cbaf3bfbc75131ebbfa1c944aeaa9dab51ca1c5f0c3b"
-
-[[package]]
 name = "ecdsa"
 version = "0.16.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -796,13 +797,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "envmnt"
-version = "0.10.4"
+name = "envy"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d73999a2b8871e74c8b8bc23759ee9f3d85011b24fafc91a4b3b5c8cc8185501"
+checksum = "3f47e0157f2cb54f5ae1bd371b30a2ae4311e1c028f575cd4e81de7353215965"
 dependencies = [
- "fsio",
- "indexmap 1.9.3",
+ "serde",
 ]
 
 [[package]]
@@ -866,6 +866,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "figment"
+version = "0.10.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4547e226f4c9ab860571e070a9034192b3175580ecea38da34fcdb53a018c9a5"
+dependencies = [
+ "atomic",
+ "pear",
+ "serde",
+ "uncased",
+ "version_check",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -922,15 +935,6 @@ name = "fs-err"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0845fa252299212f0389d64ba26f34fa32cfe41588355f21ed507c59a0f64541"
-
-[[package]]
-name = "fsio"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dad0ce30be0cc441b325c5d705c8b613a0ca0d92b6a8953d41bd236dc09a36d0"
-dependencies = [
- "dunce",
-]
 
 [[package]]
 name = "futures"
@@ -1366,6 +1370,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "inlinable_string"
+version = "0.1.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8fae54786f62fb2918dcfae3d568594e50eb9b5c25bf04371af6fe7516452fb"
+
+[[package]]
 name = "ipnet"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1760,7 +1770,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64",
- "envmnt",
  "jwt-simple",
  "mockall",
  "regex",
@@ -1898,6 +1907,29 @@ name = "paste"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
+
+[[package]]
+name = "pear"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61a386cd715229d399604b50d1361683fe687066f42d56f54be995bc6868f71c"
+dependencies = [
+ "inlinable_string",
+ "pear_codegen",
+ "yansi",
+]
+
+[[package]]
+name = "pear_codegen"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da9f0f13dac8069c139e8300a6510e3f4143ecf5259c60b116a9b271b4ca0d54"
+dependencies = [
+ "proc-macro2",
+ "proc-macro2-diagnostics",
+ "quote",
+ "syn 2.0.29",
+]
 
 [[package]]
 name = "pem-rfc7468"
@@ -2086,6 +2118,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "proc-macro2-diagnostics"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af066a9c399a26e020ada66a034357a868728e72cd426f3adcd35f80d88d88c8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.29",
+ "version_check",
+ "yansi",
 ]
 
 [[package]]
@@ -3533,6 +3578,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "uncased"
+version = "0.9.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b9bc53168a4be7402ab86c3aad243a84dd7381d09be0eddc81280c1da95ca68"
+dependencies = [
+ "version_check",
+]
+
+[[package]]
 name = "unicase"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4099,6 +4153,12 @@ dependencies = [
  "cfg-if",
  "windows-sys",
 ]
+
+[[package]]
+name = "yansi"
+version = "1.0.0-rc"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ee746ad3851dd3bc40e4a028ab3b00b99278d929e48957bcb2d111874a7e43e"
 
 [[package]]
 name = "zeroize"

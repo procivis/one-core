@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::panic;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -9,8 +9,10 @@ use std::time::Duration;
 use axum::http::{HeaderValue, Request, Response, StatusCode};
 use axum::middleware::{self, Next};
 use axum::routing::{delete, get, post};
-use axum::Router;
+use axum::{Extension, Router};
+use figment::{providers::Env, Figment};
 use one_core::OneCore;
+use serde::Deserialize;
 use shadow_rs::shadow;
 use sql_data_provider::DataLayer;
 use tower_http::trace::TraceLayer;
@@ -40,6 +42,17 @@ use crate::endpoint::{did, organisation};
 #[derive(Clone)]
 struct AppState {
     pub core: OneCore,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct Config {
+    config_file: String,
+    database_url: String,
+    server_ip: Option<IpAddr>,
+    server_port: Option<u16>,
+    trace_json: Option<bool>,
+    auth_token: String,
+    core_base_url: String,
 }
 
 #[tokio::main]
@@ -165,7 +178,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    config_tracing();
+    let config: Config = Figment::new()
+        .merge(Env::raw())
+        .extract()
+        .unwrap_or_else(|e| {
+            panic!("Failed to parse config: {}", e);
+        });
+
+    config_tracing(&config);
     log_build_info();
 
     shadow!(build);
@@ -174,11 +194,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_version = build::APP_VERSION.unwrap_or(&local_version);
     documentation.info.version = app_version.to_owned();
 
-    let config_path = PathBuf::from(envmnt::get_or_panic("CONFIG_FILE"));
+    let config_path = PathBuf::from(&config.config_file);
     let unparsed_config = config::load_config(&config_path).expect("Failed to load config.yml");
-    let database_url = envmnt::get_or_panic("DATABASE_URL");
     let core = OneCore::new(
-        Arc::new(DataLayer::create(&database_url).await),
+        Arc::new(DataLayer::create(&config.database_url).await),
         unparsed_config,
     )
     .expect("Failed to parse config");
@@ -317,13 +336,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", documentation))
         .merge(technical_endpoints)
+        .layer(Extension(config.clone()))
         .with_state(state);
 
-    let ip: IpAddr = envmnt::get_or("SERVER_IP", "0.0.0.0")
-        .parse()
-        .expect("SERVER_IP parsing failed");
+    let ip = config
+        .server_ip
+        .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
 
-    let port = envmnt::get_u16("SERVER_PORT", 3000);
+    let port = config.server_port.unwrap_or(3000);
 
     let addr = SocketAddr::new(ip, port);
 
@@ -348,14 +368,18 @@ fn log_build_info() {
     info!("Pipeline ID: {}", build::CI_PIPELINE_ID);
 }
 
-fn config_tracing() {
+fn config_tracing(config: &Config) {
     // Create a filter based on the log level
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .or_else(|_| tracing_subscriber::EnvFilter::try_new("debug"))
         .expect("Failed to create env filter");
 
-    if envmnt::is_or("TRACE_JSON", false) {
-        let subscriber = tracing_subscriber::fmt()
+    if config.trace_json.unwrap_or_default() {
+        let subscriber: tracing_subscriber::FmtSubscriber<
+            tracing_subscriber::fmt::format::JsonFields,
+            tracing_subscriber::fmt::format::Format<tracing_subscriber::fmt::format::Json>,
+            tracing_subscriber::EnvFilter,
+        > = tracing_subscriber::fmt()
             .with_env_filter(filter)
             .with_span_events(FmtSpan::CLOSE)
             .json()
@@ -383,6 +407,7 @@ fn config_tracing() {
 pub struct Authorized {}
 
 async fn bearer_check<B>(
+    Extension(config): Extension<Config>,
     mut request: Request<B>,
     next: Next<B>,
 ) -> Result<axum::response::Response, StatusCode> {
@@ -402,7 +427,7 @@ async fn bearer_check<B>(
     let auth_type = split.next().unwrap_or_default();
     let token = split.next().unwrap_or_default();
 
-    if auth_type == "Bearer" && !token.is_empty() && token == envmnt::get_or("AUTH_TOKEN", "") {
+    if auth_type == "Bearer" && !token.is_empty() && token == config.auth_token {
         request.extensions_mut().insert(Authorized {});
     } else {
         tracing::error!("Could not authorize request. Incorrect authorization method or token.");

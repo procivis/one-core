@@ -32,4 +32,3 @@ tracing-test = "0.2"
 
 [build-dependencies]
 shadow-rs.workspace = true
-envmnt = "0.10.4"

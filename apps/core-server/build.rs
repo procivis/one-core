@@ -1,4 +1,5 @@
 use shadow_rs::SdResult;
+use std::env;
 use std::fs::File;
 use std::io::Write;
 
@@ -7,7 +8,7 @@ fn main() -> SdResult<()> {
 }
 
 fn get_app_version_string() -> String {
-    let value = envmnt::get_or("APP_VERSION", "");
+    let value = env::var("APP_VERSION").unwrap_or(String::default());
     if value.is_empty() {
         "None".to_string()
     } else {
@@ -18,7 +19,7 @@ fn get_app_version_string() -> String {
 fn hook(mut file: &File) -> SdResult<()> {
     // Here we need to extract and put variables to the file one by one.
     let app_version = get_app_version_string();
-    let ci_pipeline_id = envmnt::get_or("CI_PIPELINE_ID", "NOT PROVIDED");
+    let ci_pipeline_id = env::var("CI_PIPELINE_ID").unwrap_or("NOT PROVIDED".to_owned());
     let hook_const: &str = &format!(
         r#"#[allow(dead_code)] pub const APP_VERSION: Option<&str> = {app_version};
            #[allow(dead_code)] pub const CI_PIPELINE_ID: &str = "{ci_pipeline_id}";"#
