@@ -1,3 +1,4 @@
+use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
 use migration::{Migrator, MigratorTrait};
 use organisation::OrganisationProvider;
@@ -8,6 +9,7 @@ use std::sync::Arc;
 use one_core::{
     config::data_structure::{DatatypeEntity, ExchangeEntity, FormatEntity, RevocationEntity},
     repository::{
+        claim_schema_repository::ClaimSchemaRepository,
         data_provider::{
             CreateCredentialRequest, CreateCredentialSchemaFromJwtRequest,
             CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateProofClaimRequest,
@@ -57,6 +59,7 @@ mod update_proof;
 mod list_query;
 
 // New implementations
+pub mod claim_schema;
 pub mod did;
 pub mod organisation;
 
@@ -70,6 +73,7 @@ pub struct DataLayer {
     data_provider: Arc<dyn DataProvider + Send + Sync>, // FIXME to be removed
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
+    claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
 }
 
 impl DataLayer {
@@ -85,6 +89,7 @@ impl DataLayer {
         Self {
             data_provider: Arc::new(OldProvider { db: db.clone() }),
             did_repository: did_provider.clone(),
+            claim_schema_repository: Arc::new(ClaimSchemaProvider { db: db.clone() }),
             organisation_repository: Arc::new(OrganisationProvider {
                 db: db.clone(),
                 did_repository: did_provider,
@@ -104,6 +109,9 @@ impl DataRepository for DataLayer {
     }
     fn get_did_repository(&self) -> Arc<dyn DidRepository + Send + Sync> {
         self.did_repository.clone()
+    }
+    fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository + Send + Sync> {
+        self.claim_schema_repository.clone()
     }
 }
 
