@@ -2,10 +2,12 @@ use crate::{
     dto::common::{GetListQueryParams, SortDirection},
     endpoint::did::dto::{DidType, SortableDidColumnRestDTO},
 };
+use utoipa::ToSchema;
 
 impl<T, K> From<GetListQueryParams<T>> for one_core::model::common::GetListQueryParams<K>
 where
     K: From<T>,
+    T: for<'a> ToSchema<'a>,
 {
     fn from(value: GetListQueryParams<T>) -> Self {
         Self {

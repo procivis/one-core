@@ -32,13 +32,13 @@ where
 #[derive(Clone, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
-pub struct GetListQueryParams<T> {
+pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
     // pagination
     pub page: u32,
     pub page_size: u32,
 
     // sorting
-    #[param(value_type = Option<String>)]
+    #[param(inline)]
     pub sort: Option<T>,
     pub sort_direction: Option<SortDirection>,
 
