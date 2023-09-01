@@ -1,18 +1,14 @@
+use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
+use credential_schema::CredentialSchemaProvider;
 use did::DidProvider;
 use migration::{Migrator, MigratorTrait};
-use organisation::OrganisationProvider;
-use sea_orm::DatabaseConnection;
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use crate::credential_schema::CredentialSchemaProvider;
-use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
-
 use one_core::{
     config::data_structure::{DatatypeEntity, ExchangeEntity},
     repository::{
+        claim_repository::ClaimRepository,
         claim_schema_repository::ClaimSchemaRepository,
+        credential_schema_repository::CredentialSchemaRepository,
         data_provider::{
             CreateCredentialRequest, CreateProofClaimRequest, CreateProofRequest,
             CreateProofResponse, CreateProofSchemaRequest, CreateProofSchemaResponse,
@@ -27,6 +23,10 @@ use one_core::{
         DataRepository,
     },
 };
+use organisation::OrganisationProvider;
+use sea_orm::DatabaseConnection;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 mod common;
 mod common_queries;
@@ -54,6 +54,7 @@ mod update_proof;
 mod list_query;
 
 // New implementations
+pub mod claim;
 pub mod claim_schema;
 pub mod credential_schema;
 pub mod did;
@@ -69,6 +70,7 @@ pub struct DataLayer {
     data_provider: Arc<dyn DataProvider + Send + Sync>, // FIXME to be removed
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
+    claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
     claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
 }
@@ -81,23 +83,29 @@ impl DataLayer {
 
         Migrator::up(&db, None).await.unwrap();
 
-        let did_provider = Arc::new(DidProvider { db: db.clone() });
+        let did_repository = Arc::new(DidProvider { db: db.clone() });
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
         let organisation_repository = Arc::new(OrganisationProvider {
             db: db.clone(),
-            did_repository: did_provider.clone(),
+            did_repository: did_repository.clone(),
+        });
+        let claim_repository = Arc::new(ClaimProvider {
+            db: db.clone(),
+            claim_schema_repository: claim_schema_repository.clone(),
+        });
+        let credential_schema_repository = Arc::new(CredentialSchemaProvider {
+            db: db.clone(),
+            claim_schema_repository: claim_schema_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
         });
 
         Self {
             data_provider: Arc::new(OldProvider { db: db.clone() }),
-            did_repository: did_provider,
-            claim_schema_repository: claim_schema_repository.clone(),
-            organisation_repository: organisation_repository.clone(),
-            credential_schema_repository: Arc::new(CredentialSchemaProvider {
-                db: db.clone(),
-                claim_schema_repository,
-                organisation_repository,
-            }),
+            did_repository,
+            claim_repository,
+            claim_schema_repository,
+            organisation_repository,
+            credential_schema_repository,
             db,
         }
     }
@@ -113,6 +121,9 @@ impl DataRepository for DataLayer {
     }
     fn get_did_repository(&self) -> Arc<dyn DidRepository + Send + Sync> {
         self.did_repository.clone()
+    }
+    fn get_claim_repository(&self) -> Arc<dyn ClaimRepository + Send + Sync> {
+        self.claim_repository.clone()
     }
     fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository + Send + Sync> {
         self.claim_schema_repository.clone()

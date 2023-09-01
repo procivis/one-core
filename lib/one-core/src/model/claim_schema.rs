@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 pub type ClaimSchemaId = Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ClaimSchema {
     pub id: ClaimSchemaId,
     pub key: String,
@@ -12,4 +12,5 @@ pub struct ClaimSchema {
     pub last_modified: OffsetDateTime,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ClaimSchemaRelations {}
