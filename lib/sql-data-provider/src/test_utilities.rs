@@ -142,14 +142,14 @@ pub async fn insert_many_credential_claims_to_database(
     Ok(())
 }
 
-pub async fn get_credential_schema_by_id(
-    database: &DatabaseConnection,
-    id: &str,
-) -> Result<Option<credential_schema::Model>, DbErr> {
-    credential_schema::Entity::find_by_id(id)
-        .one(database)
-        .await
-}
+// pub async fn get_credential_schema_by_id(
+//     database: &DatabaseConnection,
+//     id: &str,
+// ) -> Result<Option<credential_schema::Model>, DbErr> {
+//     credential_schema::Entity::find_by_id(id)
+//         .one(database)
+//         .await
+// }
 
 pub async fn get_credential_by_id(
     database: &DatabaseConnection,
@@ -377,6 +377,8 @@ pub async fn insert_did(
     Ok(did.id)
 }
 
+// We will bring it back with service unit tests
+#[allow(dead_code)]
 pub fn get_datatypes() -> HashMap<String, DatatypeEntity> {
     HashMap::from([
         (
@@ -417,6 +419,8 @@ pub async fn setup_test_data_layer_and_connection() -> DataLayer {
     setup_test_data_layer_and_connection_with_custom_url("sqlite::memory:").await
 }
 
+// We will bring it back with service unit tests
+#[allow(dead_code)]
 pub fn get_exchange() -> HashMap<String, ExchangeEntity> {
     HashMap::from([(
         "PROCIVIS_TEMPORARY".to_string(),
@@ -445,6 +449,8 @@ params: null"#,
     )])
 }
 
+// We will bring it back with service unit tests
+#[allow(dead_code)]
 pub fn get_formats() -> HashMap<String, FormatEntity> {
     HashMap::from([(
         "JWT".to_string(),
@@ -458,6 +464,8 @@ params: null"#,
     )])
 }
 
+// We will bring it back with service unit tests
+#[allow(dead_code)]
 pub fn get_revocation_methods() -> HashMap<String, RevocationEntity> {
     HashMap::from([
         (

@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    config::data_structure::{DatatypeEntity, ExchangeEntity, FormatEntity, RevocationEntity},
+    config::data_structure::{DatatypeEntity, ExchangeEntity},
     model::{
         common::{GetListQueryParams, GetListResponse},
         did::DidType,
@@ -207,42 +207,6 @@ pub struct CreateProofRequest {
 }
 
 #[derive(Clone, Debug)]
-pub struct CreateCredentialSchemaRequest {
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    pub organisation_id: Uuid,
-    pub claims: Vec<CredentialClaimSchemaRequest>,
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateCredentialSchemaFromJwtRequest {
-    pub id: Uuid,
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    pub organisation_id: Uuid,
-    pub claims: Vec<CredentialClaimSchemaFromJwtRequest>,
-}
-
-#[derive(Clone, Debug)]
-pub struct CredentialClaimSchemaFromJwtRequest {
-    pub id: Uuid,
-    pub key: String,
-    pub datatype: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateCredentialSchemaResponse {
-    pub id: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct CredentialClaimSchemaRequest {
-    pub key: String,
-    pub datatype: String,
-}
-#[derive(Clone, Debug)]
 pub struct CreateProofResponse {
     pub id: String,
 }
@@ -335,22 +299,6 @@ pub enum SortableProofSchemaColumn {
 
 #[async_trait::async_trait]
 pub trait DataProvider {
-    async fn create_credential_schema_from_jwt(
-        &self,
-        request: CreateCredentialSchemaFromJwtRequest,
-        formats: &HashMap<String, FormatEntity>,
-        revocation_methods: &HashMap<String, RevocationEntity>,
-        datatypes: &HashMap<String, DatatypeEntity>,
-    ) -> Result<CreateCredentialSchemaResponse, DataLayerError>;
-
-    async fn create_credential_schema(
-        &self,
-        request: CreateCredentialSchemaRequest,
-        formats: &HashMap<String, FormatEntity>,
-        revocation_methods: &HashMap<String, RevocationEntity>,
-        datatypes: &HashMap<String, DatatypeEntity>,
-    ) -> Result<CreateCredentialSchemaResponse, DataLayerError>;
-
     async fn create_credential(
         &self,
         request: CreateCredentialRequest,
@@ -368,8 +316,6 @@ pub trait DataProvider {
         request: CreateProofRequest,
     ) -> Result<CreateProofResponse, DataLayerError>;
 
-    async fn delete_credential_schema(&self, id: &str) -> Result<(), DataLayerError>;
-
     async fn delete_proof_schema(&self, id: &str) -> Result<(), DataLayerError>;
 
     async fn insert_remote_did(
@@ -382,16 +328,6 @@ pub trait DataProvider {
         &self,
         uuid: &str,
     ) -> Result<DetailCredentialResponse, DataLayerError>;
-
-    async fn get_credential_schema_details(
-        &self,
-        uuid: &str,
-    ) -> Result<CredentialSchemaResponse, DataLayerError>;
-
-    async fn get_credential_schemas(
-        &self,
-        query_params: GetCredentialSchemaQuery,
-    ) -> Result<GetCredentialClaimSchemaResponse, DataLayerError>;
 
     async fn get_credentials(
         &self,

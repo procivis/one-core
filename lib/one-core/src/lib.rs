@@ -36,6 +36,7 @@ pub mod service;
 mod local_did_helpers;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
+use crate::service::credential_schema::CredentialSchemaService;
 
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
@@ -49,6 +50,7 @@ pub struct OneCore {
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
+    pub credential_schema_service: CredentialSchemaService,
     pub config: Arc<CoreConfig>,
 }
 
@@ -91,6 +93,11 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
             ),
             did_service: DidService::new(data_provider.get_did_repository(), config.clone()),
+            credential_schema_service: CredentialSchemaService::new(
+                data_provider.get_credential_schema_repository(),
+                data_provider.get_organisation_repository(),
+                config.clone(),
+            ),
             config,
         })
     }

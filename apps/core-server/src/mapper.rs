@@ -1,3 +1,4 @@
+use crate::endpoint::credential_schema::dto::SortableCredentialSchemaColumnRestEnum;
 use crate::{
     dto::common::{GetListQueryParams, SortDirection},
     endpoint::did::dto::{DidType, SortableDidColumnRestDTO},
@@ -54,6 +55,24 @@ impl From<SortableDidColumnRestDTO> for one_core::model::did::SortableDidColumn 
             SortableDidColumnRestDTO::Name => one_core::model::did::SortableDidColumn::Name,
             SortableDidColumnRestDTO::CreatedDate => {
                 one_core::model::did::SortableDidColumn::CreatedDate
+            }
+        }
+    }
+}
+
+impl From<SortableCredentialSchemaColumnRestEnum>
+    for one_core::model::credential_schema::SortableCredentialSchemaColumn
+{
+    fn from(value: SortableCredentialSchemaColumnRestEnum) -> Self {
+        match value {
+            SortableCredentialSchemaColumnRestEnum::Name => {
+                one_core::model::credential_schema::SortableCredentialSchemaColumn::Name
+            }
+            SortableCredentialSchemaColumnRestEnum::Format => {
+                one_core::model::credential_schema::SortableCredentialSchemaColumn::Format
+            }
+            SortableCredentialSchemaColumnRestEnum::CreatedDate => {
+                one_core::model::credential_schema::SortableCredentialSchemaColumn::CreatedDate
             }
         }
     }

@@ -2,11 +2,10 @@ use one_core::{
     model::common::SortDirection,
     repository::{
         data_provider::{
-            CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialState,
-            DetailCredentialClaimResponse, DetailCredentialResponse, DetailProofClaim,
-            DetailProofClaimSchema, DetailProofSchema, GetDidDetailsResponse,
-            ListCredentialSchemaResponse, ProofClaimSchemaResponse, ProofDetailsResponse,
-            ProofRequestState, ProofSchemaResponse, ProofsDetailResponse,
+            CredentialClaimSchemaResponse, CredentialState, DetailCredentialClaimResponse,
+            DetailCredentialResponse, DetailProofClaim, DetailProofClaimSchema, DetailProofSchema,
+            GetDidDetailsResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
+            ProofDetailsResponse, ProofRequestState, ProofSchemaResponse, ProofsDetailResponse,
         },
         error::DataLayerError,
     },
@@ -61,48 +60,10 @@ pub struct GetListQueryParams<SortableColumn> {
     pub organisation_id: String,
 }
 
-pub(crate) fn credential_claim_schema_response_from_model(
-    value: &CredentialSchemaClaimSchemaCombined,
-) -> CredentialClaimSchemaResponse {
-    CredentialClaimSchemaResponse {
-        id: value.id.clone(),
-        created_date: value.created_date,
-        last_modified: value.last_modified,
-        key: value.key.clone(),
-        datatype: value.datatype.clone(),
-    }
-}
-
 #[derive(Debug, Clone, FromQueryResult)]
 pub(crate) struct CredentialSchemaClaimSchemaCombined {
     pub id: String,
-    pub created_date: OffsetDateTime,
-    pub last_modified: OffsetDateTime,
-    pub key: String,
     pub datatype: String,
-    pub credential_schema_id: String,
-}
-
-#[allow(clippy::ptr_arg)]
-
-pub(super) fn credential_schema_response_from_model(
-    value: credential_schema::Model,
-    claim_schemas: &Vec<CredentialSchemaClaimSchemaCombined>,
-) -> CredentialSchemaResponse {
-    CredentialSchemaResponse {
-        id: value.id.clone(),
-        created_date: value.created_date,
-        last_modified: value.last_modified,
-        name: value.name,
-        format: value.format,
-        revocation_method: value.revocation_method,
-        organisation_id: value.organisation_id,
-        claims: claim_schemas
-            .iter()
-            .filter(|claim| claim.credential_schema_id == value.id)
-            .map(credential_claim_schema_response_from_model)
-            .collect(),
-    }
 }
 
 impl From<did::Model> for GetDidDetailsResponse {

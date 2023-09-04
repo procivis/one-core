@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 pub type ClaimSchemaId = Uuid;
 
+#[derive(Clone)]
 pub struct ClaimSchema {
     pub id: ClaimSchemaId,
     pub key: String,

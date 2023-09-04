@@ -6,9 +6,7 @@ use uuid::Uuid;
 
 use one_core::repository::error::DataLayerError;
 
-use crate::data_model::{
-    DetailCredentialResponseDTO, GetCredentialQuery, GetCredentialSchemaQuery,
-};
+use crate::data_model::{DetailCredentialResponseDTO, GetCredentialQuery};
 use crate::dto::common::GetCredentialsResponseDTO;
 use crate::AppState;
 
@@ -63,7 +61,7 @@ pub(crate) async fn get_credential_details(
         (status = 404, description = "Credential not found"),
     ),
     params(
-        GetCredentialSchemaQuery
+        GetCredentialQuery
     ),
     tag = "credential_management",
     security(

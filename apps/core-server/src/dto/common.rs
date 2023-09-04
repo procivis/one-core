@@ -4,10 +4,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::{
-    data_model::{
-        CredentialSchemaResponseDTO, DetailCredentialResponseDTO, ProofSchemaResponseDTO,
-        ProofsDetailResponseDTO,
-    },
+    data_model::{DetailCredentialResponseDTO, ProofSchemaResponseDTO, ProofsDetailResponseDTO},
+    endpoint::credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
     endpoint::did::dto::GetDidResponseRestDTO,
 };
 
@@ -16,7 +14,7 @@ use crate::{
 // ToSchema is properly generated thanks to that
 #[aliases(
     GetProofsResponseDTO = GetListResponseRestDTO<ProofsDetailResponseDTO>,
-    GetCredentialClaimSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaResponseDTO>,
+    GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListValueResponseRestDTO>,
     GetProofSchemaResponseDTO = GetListResponseRestDTO<ProofSchemaResponseDTO>,
     GetDidsResponseRestDTO = GetListResponseRestDTO<GetDidResponseRestDTO>,
     GetCredentialsResponseDTO = GetListResponseRestDTO<DetailCredentialResponseDTO>)]
@@ -32,13 +30,13 @@ where
 #[derive(Clone, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
-pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
+pub struct GetListQueryParams<T> {
     // pagination
     pub page: u32,
     pub page_size: u32,
 
     // sorting
-    #[param(inline)]
+    #[param(value_type = Option<String>)]
     pub sort: Option<T>,
     pub sort_direction: Option<SortDirection>,
 

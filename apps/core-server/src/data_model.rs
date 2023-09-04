@@ -2,13 +2,11 @@ use one_core::{
     data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
     repository::data_provider::{
         ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
-        CreateCredentialSchemaRequest, CreateCredentialSchemaResponse, CreateProofRequest,
-        CreateProofSchemaRequest, CreateProofSchemaResponse, CredentialClaimSchemaRequest,
-        CredentialClaimSchemaResponse, CredentialSchemaResponse, CredentialShareResponse,
-        DetailCredentialClaimResponse, DetailCredentialResponse, DetailProofClaim,
-        DetailProofClaimSchema, DetailProofSchema, EntityResponse, ListCredentialSchemaResponse,
-        ProofClaimSchemaResponse, ProofDetailsResponse, ProofSchemaResponse, ProofShareResponse,
-        ProofsDetailResponse,
+        CreateProofRequest, CreateProofSchemaRequest, CreateProofSchemaResponse,
+        CredentialClaimSchemaResponse, CredentialShareResponse, DetailCredentialClaimResponse,
+        DetailCredentialResponse, DetailProofClaim, DetailProofClaimSchema, DetailProofSchema,
+        EntityResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
+        ProofDetailsResponse, ProofSchemaResponse, ProofShareResponse, ProofsDetailResponse,
     },
 };
 
@@ -18,38 +16,11 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::endpoint::credential_schema::dto::CredentialClaimSchemaResponseRestDTO;
 use crate::{
     dto::common::GetListQueryParams,
     serialize::{front_time, front_time_option},
 };
-
-pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumn>;
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum SortableCredentialSchemaColumn {
-    Name,
-    Format,
-    CreatedDate,
-}
-
-impl From<SortableCredentialSchemaColumn>
-    for one_core::repository::data_provider::SortableCredentialSchemaColumn
-{
-    fn from(value: SortableCredentialSchemaColumn) -> Self {
-        match value {
-            SortableCredentialSchemaColumn::Name => {
-                one_core::repository::data_provider::SortableCredentialSchemaColumn::Name
-            }
-            SortableCredentialSchemaColumn::Format => {
-                one_core::repository::data_provider::SortableCredentialSchemaColumn::Format
-            }
-            SortableCredentialSchemaColumn::CreatedDate => {
-                one_core::repository::data_provider::SortableCredentialSchemaColumn::CreatedDate
-            }
-        }
-    }
-}
 
 pub type GetProofSchemaQuery = GetListQueryParams<SortableProofSchemaColumn>;
 
@@ -71,115 +42,6 @@ impl From<SortableProofSchemaColumn>
             SortableProofSchemaColumn::CreatedDate => {
                 one_core::repository::data_provider::SortableProofSchemaColumn::CreatedDate
             }
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateCredentialSchemaRequestDTO {
-    #[validate(length(min = 1))]
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    pub organisation_id: Uuid,
-    #[validate(length(min = 1))]
-    pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-}
-
-impl From<CreateCredentialSchemaRequestDTO> for CreateCredentialSchemaRequest {
-    fn from(value: CreateCredentialSchemaRequestDTO) -> Self {
-        CreateCredentialSchemaRequest {
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-            organisation_id: value.organisation_id,
-            claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateCredentialSchemaResponseDTO {
-    pub id: String,
-}
-
-impl From<CreateCredentialSchemaResponse> for CreateCredentialSchemaResponseDTO {
-    fn from(value: CreateCredentialSchemaResponse) -> Self {
-        CreateCredentialSchemaResponseDTO { id: value.id }
-    }
-}
-
-impl From<CredentialClaimSchemaRequestDTO> for CredentialClaimSchemaRequest {
-    fn from(value: CredentialClaimSchemaRequestDTO) -> Self {
-        CredentialClaimSchemaRequest {
-            key: value.key,
-            datatype: value.datatype,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-pub struct CredentialClaimSchemaRequestDTO {
-    pub key: String,
-    pub datatype: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CredentialSchemaResponseDTO {
-    pub id: String,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    pub organisation_id: String,
-    pub claims: Vec<CredentialClaimSchemaResponseDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CredentialClaimSchemaResponseDTO {
-    pub id: String,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-    pub key: String,
-    pub datatype: String,
-}
-
-impl From<CredentialSchemaResponse> for CredentialSchemaResponseDTO {
-    fn from(value: CredentialSchemaResponse) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-            organisation_id: value.organisation_id,
-            claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
-        }
-    }
-}
-
-impl From<CredentialClaimSchemaResponse> for CredentialClaimSchemaResponseDTO {
-    fn from(value: CredentialClaimSchemaResponse) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            key: value.key,
-            datatype: value.datatype,
         }
     }
 }
@@ -421,7 +283,7 @@ pub struct ListCredentialSchemaResponseDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialClaimResponseDTO {
-    pub schema: CredentialClaimSchemaResponseDTO,
+    pub schema: crate::endpoint::credential_schema::dto::CredentialClaimSchemaResponseRestDTO,
     pub value: String,
 }
 
@@ -462,6 +324,18 @@ impl From<ListCredentialSchemaResponse> for ListCredentialSchemaResponseDTO {
             format: value.format,
             revocation_method: value.revocation_method,
             organisation_id: value.organisation_id,
+        }
+    }
+}
+
+impl From<CredentialClaimSchemaResponse> for CredentialClaimSchemaResponseRestDTO {
+    fn from(value: CredentialClaimSchemaResponse) -> Self {
+        Self {
+            id: value.id.parse().unwrap(),
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            key: value.key,
+            datatype: value.datatype,
         }
     }
 }
