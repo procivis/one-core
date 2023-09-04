@@ -1,7 +1,9 @@
-use crate::endpoint::credential_schema::dto::SortableCredentialSchemaColumnRestEnum;
 use crate::{
     dto::common::{GetListQueryParams, SortDirection},
-    endpoint::did::dto::{DidType, SortableDidColumnRestDTO},
+    endpoint::{
+        credential_schema::dto::SortableCredentialSchemaColumnRestEnum,
+        did::dto::{DidType, SortableDidColumnRestDTO},
+    },
 };
 use utoipa::ToSchema;
 
