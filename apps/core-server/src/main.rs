@@ -30,14 +30,13 @@ pub(crate) mod mapper;
 pub(crate) mod serialize;
 
 use endpoint::{
-    delete_credential_schema, delete_proof_schema, get_config, get_credential,
-    get_credential_schema, get_proof, get_proof_schema, misc, post_credential,
-    post_credential_schema, post_proof, post_proof_schema, share_credential, share_proof,
+    delete_proof_schema, get_config, get_credential, get_proof, get_proof_schema, misc,
+    post_credential, post_proof, post_proof_schema, share_credential, share_proof,
     ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
     ssi_post_verifier_reject_proof_request, ssi_post_verifier_submit,
 };
 
-use crate::endpoint::{did, organisation};
+use crate::endpoint::{credential_schema, did, organisation};
 
 #[derive(Clone)]
 struct AppState {
@@ -64,6 +63,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::organisation::controller::get_organisation,
             endpoint::organisation::controller::get_organisations,
 
+            endpoint::credential_schema::controller::delete_credential_schema,
+            endpoint::credential_schema::controller::get_credential_schema,
+            endpoint::credential_schema::controller::get_credential_schema_list,
+            endpoint::credential_schema::controller::post_credential_schema,
+
             endpoint::did::controller::get_did,
             endpoint::did::controller::get_did_list,
             endpoint::did::controller::post_did,
@@ -74,10 +78,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::post_credential::post_credential,
             endpoint::share_credential::share_credential,
             endpoint::share_proof::share_proof,
-            endpoint::delete_credential_schema::delete_credential_schema,
-            endpoint::get_credential_schema::get_credential_schema_details,
-            endpoint::get_credential_schema::get_credential_schema,
-            endpoint::post_credential_schema::post_credential_schema,
             endpoint::post_proof_schema::post_proof_schema,
             endpoint::post_proof::post_proof,
             endpoint::get_proof_schema::get_proof_schema_details,
@@ -97,6 +97,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::organisation::dto::CreateOrganisationRequestRestDTO,
                 endpoint::organisation::dto::CreateOrganisationResponseRestDTO,
                 endpoint::organisation::dto::GetOrganisationDetailsResponseRestDTO,
+
+                endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO,
+                endpoint::credential_schema::dto::CreateCredentialSchemaResponseRestDTO,
+                endpoint::credential_schema::dto::CredentialClaimSchemaRequestRestDTO,
+                endpoint::credential_schema::dto::CredentialClaimSchemaResponseRestDTO,
+                endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO,
+                endpoint::credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
+
                 endpoint::did::dto::CreateDidRequestRestDTO,
                 endpoint::did::dto::CreateDidResponseRestDTO,
                 endpoint::did::dto::GetDidResponseRestDTO,
@@ -104,29 +112,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 dto::common::GetDidsResponseRestDTO,
 
                 dto::common::GetCredentialsResponseDTO,
-                dto::common::GetCredentialClaimSchemaResponseDTO,
+                dto::common::GetCredentialSchemaResponseDTO,
                 dto::common::GetProofSchemaResponseDTO,
                 dto::common::GetProofsResponseDTO,
-                dto::common::GetCredentialClaimSchemaResponseDTO,
-                dto::common::GetCredentialClaimSchemaResponseDTO,
 
                 dto::common::SortDirection,
 
                 data_model::DetailCredentialResponseDTO,
                 data_model::ListCredentialSchemaResponseDTO,
                 data_model::DetailCredentialClaimResponseDTO,
-                data_model::CredentialClaimSchemaResponseDTO,
                 data_model::CredentialState,
                 data_model::CredentialRequestDTO,
                 data_model::EntityResponseDTO,
                 data_model::EntityShareResponseDTO,
                 data_model::CredentialRequestClaimDTO,
                 data_model::Transport,
-                data_model::CreateCredentialSchemaRequestDTO,
-                data_model::CreateCredentialSchemaResponseDTO,
-                data_model::CredentialClaimSchemaRequestDTO,
-                data_model::CredentialSchemaResponseDTO,
-                data_model::CredentialClaimSchemaResponseDTO,
                 data_model::CreateProofSchemaRequestDTO,
                 data_model::CreateProofSchemaResponseDTO,
                 data_model::CreateProofRequestDTO,
@@ -224,13 +224,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route(
             "/api/credential-schema/v1/:id",
-            delete(delete_credential_schema::delete_credential_schema)
-                .get(get_credential_schema::get_credential_schema_details),
+            delete(credential_schema::controller::delete_credential_schema)
+                .get(credential_schema::controller::get_credential_schema),
         )
         .route(
             "/api/credential-schema/v1",
-            get(get_credential_schema::get_credential_schema)
-                .post(post_credential_schema::post_credential_schema),
+            get(credential_schema::controller::get_credential_schema_list)
+                .post(credential_schema::controller::post_credential_schema),
         )
         .route(
             "/api/proof-schema/v1/:id",

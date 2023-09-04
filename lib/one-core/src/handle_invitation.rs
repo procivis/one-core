@@ -12,18 +12,14 @@ use crate::model::did::DidType;
 use crate::repository::data_provider::{
     CreateCredentialRequest, CreateCredentialRequestClaim, CredentialState,
 };
-use crate::repository::error::DataLayerError;
+
+use crate::service::credential_schema::dto::{
+    CreateCredentialSchemaFromJwtRequestDTO, CredentialClaimSchemaFromJwtRequestDTO,
+};
 use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::error::ServiceError;
 use crate::transport_protocol::TransportProtocolError;
-use crate::{
-    data_model::HandleInvitationQueryRequest,
-    error::OneCoreError,
-    repository::data_provider::{
-        CreateCredentialSchemaFromJwtRequest, CredentialClaimSchemaFromJwtRequest,
-    },
-    OneCore,
-};
+use crate::{data_model::HandleInvitationQueryRequest, error::OneCoreError, OneCore};
 
 fn parse_query(url: &str) -> Result<HandleInvitationQueryRequest, OneCoreError> {
     let query: HashMap<String, String> = reqwest::Url::parse(url)
@@ -59,8 +55,8 @@ fn string_to_uuid(value: &str) -> Result<Uuid, OneCoreError> {
 
 fn credential_claim_schema_request_from_jwt(
     claim: &VCCredentialClaimSchemaResponse,
-) -> Result<CredentialClaimSchemaFromJwtRequest, OneCoreError> {
-    Ok(CredentialClaimSchemaFromJwtRequest {
+) -> Result<CredentialClaimSchemaFromJwtRequestDTO, OneCoreError> {
+    Ok(CredentialClaimSchemaFromJwtRequestDTO {
         id: string_to_uuid(&claim.id)?,
         key: claim.key.to_owned(),
         datatype: claim.datatype.to_owned(),
@@ -70,14 +66,14 @@ fn credential_claim_schema_request_from_jwt(
 fn create_credential_schema_request_from_jwt(
     schema: VCCredentialSchemaResponse,
     organisation_id: &str,
-) -> Result<CreateCredentialSchemaFromJwtRequest, OneCoreError> {
-    let claims: Result<Vec<CredentialClaimSchemaFromJwtRequest>, OneCoreError> = schema
+) -> Result<CreateCredentialSchemaFromJwtRequestDTO, OneCoreError> {
+    let claims: Result<Vec<CredentialClaimSchemaFromJwtRequestDTO>, OneCoreError> = schema
         .claims
         .iter()
         .map(credential_claim_schema_request_from_jwt)
         .collect();
 
-    Ok(CreateCredentialSchemaFromJwtRequest {
+    Ok(CreateCredentialSchemaFromJwtRequestDTO {
         id: string_to_uuid(&schema.id)?,
         name: schema.name,
         format: "JWT".to_string(),
@@ -198,17 +194,12 @@ impl OneCore {
         let credential_schema_request =
             create_credential_schema_request_from_jwt(schema, &organisation_id.to_string())?;
         let result = self
-            .data_layer
-            .create_credential_schema_from_jwt(
-                credential_schema_request.clone(),
-                &self.config.format,
-                &self.config.revocation,
-                &self.config.datatype,
-            )
+            .credential_schema_service
+            .create_credential_schema_from_jwt(credential_schema_request.clone())
             .await;
         if let Err(error) = result {
-            if error != DataLayerError::AlreadyExists {
-                return Err(OneCoreError::DataLayerError(error));
+            if error != ServiceError::AlreadyExists {
+                return Err(OneCoreError::ServiceError(error));
             }
         }
 

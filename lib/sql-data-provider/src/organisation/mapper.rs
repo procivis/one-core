@@ -33,3 +33,18 @@ impl From<Organisation> for organisation::ActiveModel {
         }
     }
 }
+
+impl TryFrom<organisation::Model> for Organisation {
+    type Error = DataLayerError;
+
+    fn try_from(value: organisation::Model) -> Result<Self, Self::Error> {
+        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
+
+        Ok(Self {
+            id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            did: None,
+        })
+    }
+}
