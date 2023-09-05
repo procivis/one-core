@@ -13,8 +13,12 @@ use crate::{
     error::{OneCoreError, SSIError},
     model::did::{Did, DidRelations},
     repository::{
-        data_provider::{CreateProofClaimRequest, ProofRequestState, ProofSchemaResponse},
+        data_provider::{CreateProofClaimRequest, ProofRequestState},
         error::DataLayerError,
+    },
+    service::{
+        credential_schema::dto::{ClaimSchemaId, CredentialSchemaId},
+        proof_schema::dto::GetProofSchemaResponseDTO,
     },
     OneCore,
 };
@@ -46,7 +50,7 @@ fn validate_expiration_time(expires_at: Option<OffsetDateTime>) -> Result<(), On
 }
 
 fn validate_proof(
-    proof_schema: ProofSchemaResponse,
+    proof_schema: GetProofSchemaResponseDTO,
     holder_did: &Did,
     presentation: &str,
     formatter: &Arc<dyn CredentialFormatter + Send + Sync>,
@@ -61,32 +65,30 @@ fn validate_proof(
     validate_issuance_time(presentation.issued_at)?;
     validate_expiration_time(presentation.expires_at)?;
 
-    let requested_cred_schema_ids: HashSet<String> = proof_schema
+    let requested_cred_schema_ids: HashSet<CredentialSchemaId> = proof_schema
         .claim_schemas
         .iter()
-        .map(|claim| claim.credential_schema.id.to_owned())
+        .map(|claim| claim.credential_schema.id)
         .collect();
 
-    let mut remaining_requested_claims: HashMap<
-        String, /* credetial_schema_id */
-        Vec<String /* claim_schema_id*/>,
-    > = HashMap::new();
-    requested_cred_schema_ids.iter().for_each(|cred_schema_id| {
-        remaining_requested_claims.insert(
-            cred_schema_id.to_owned(),
-            proof_schema
-                .claim_schemas
-                .iter()
-                .filter(|claim_schema| &claim_schema.credential_schema.id == cred_schema_id)
-                .map(|claim_schema| claim_schema.id.to_owned())
-                .collect(),
-        );
-    });
+    let mut remaining_requested_claims: HashMap<CredentialSchemaId, Vec<ClaimSchemaId>> =
+        HashMap::new();
+    requested_cred_schema_ids
+        .into_iter()
+        .for_each(|cred_schema_id| {
+            remaining_requested_claims.insert(
+                cred_schema_id,
+                proof_schema
+                    .claim_schemas
+                    .iter()
+                    .filter(|claim_schema| claim_schema.credential_schema.id == cred_schema_id)
+                    .map(|claim_schema| claim_schema.id)
+                    .collect(),
+            );
+        });
 
-    let mut proved_credentials: HashMap<
-        String, /* cred_schema_id */
-        Vec<CreateProofClaimRequest>,
-    > = HashMap::new();
+    let mut proved_credentials: HashMap<CredentialSchemaId, Vec<CreateProofClaimRequest>> =
+        HashMap::new();
 
     for credential in presentation.credentials {
         let claim = formatter
@@ -113,11 +115,12 @@ fn validate_proof(
         }
 
         // check if this credential was requested
-        let credential_schema_id = &claim.claims.one_credential_schema.id;
-        let requested_claims: Result<Vec<String>, SSIError> =
-            match remaining_requested_claims.remove_entry(credential_schema_id) {
+        let credential_schema_id = Uuid::from_str(&claim.claims.one_credential_schema.id)
+            .map_err(|_| OneCoreError::DataLayerError(DataLayerError::MappingError))?;
+        let requested_claims: Result<Vec<ClaimSchemaId>, SSIError> =
+            match remaining_requested_claims.remove_entry(&credential_schema_id) {
                 None => {
-                    if proved_credentials.contains_key(credential_schema_id) {
+                    if proved_credentials.contains_key(&credential_schema_id) {
                         Err(SSIError::IncorrectParameters(format!(
                             "Duplicit credential for schema '{credential_schema_id}' received"
                         )))
@@ -151,14 +154,14 @@ fn validate_proof(
                     )))?;
 
             collected_proved_claims.push(CreateProofClaimRequest {
-                claim_schema_id: requested_claim_schema_id,
+                claim_schema_id: requested_claim_schema_id.to_string(),
                 value: value.to_owned(),
             });
         }
 
         // TODO Validate collected_proved_claims when validators are ready
 
-        proved_credentials.insert(credential_schema_id.to_owned(), collected_proved_claims);
+        proved_credentials.insert(credential_schema_id, collected_proved_claims);
     }
 
     if !remaining_requested_claims.is_empty() {
@@ -209,18 +212,21 @@ impl OneCore {
             Some(holder_did_id) => self
                 .did_repository
                 .get_did(
-                    &Uuid::from_str(holder_did_id).expect("Failed to convert to UUID"),
+                    &Uuid::from_str(holder_did_id)
+                        .map_err(|_| OneCoreError::DataLayerError(DataLayerError::MappingError))?,
                     &DidRelations::default(),
                 )
                 .await
                 .map_err(OneCoreError::DataLayerError)?,
         };
 
+        let proof_schema_id = Uuid::from_str(&proof_request.schema.id)
+            .map_err(|_| OneCoreError::DataLayerError(DataLayerError::MappingError))?;
         let proof_schema = self
-            .data_layer
-            .get_proof_schema_details(&proof_request.schema.id)
+            .proof_schema_service
+            .get_proof_schema(&proof_schema_id)
             .await
-            .map_err(OneCoreError::DataLayerError)?;
+            .map_err(OneCoreError::ServiceError)?;
 
         // FIXME What's the format?
         let format = "JWT";

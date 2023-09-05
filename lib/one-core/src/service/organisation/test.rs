@@ -1,7 +1,9 @@
 use super::OrganisationService;
 use crate::{
     model::organisation::{Organisation, OrganisationRelations},
-    repository::{error::DataLayerError, mock::MockOrganisationRepository},
+    repository::{
+        error::DataLayerError, mock::organisation_repository::MockOrganisationRepository,
+    },
     service::error::ServiceError,
 };
 use mockall::{predicate::eq, Sequence};
@@ -63,7 +65,6 @@ async fn test_create_organisation_already_exists() {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                did: None,
             })
         });
 
@@ -82,7 +83,6 @@ async fn test_get_organisation_success() {
         id: Uuid::new_v4(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        did: None,
     };
     let org_clone = organisation.clone();
     organisation_repository
@@ -129,7 +129,6 @@ async fn test_get_organisation_list_success() {
                 id: Uuid::new_v4(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                did: None,
             }])
         });
 

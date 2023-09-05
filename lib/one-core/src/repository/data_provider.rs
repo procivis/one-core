@@ -38,47 +38,6 @@ pub struct CredentialSchemaResponse {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProofSchemaResponse {
-    pub id: String,
-    pub created_date: OffsetDateTime,
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub expire_duration: u32,
-    pub organisation_id: String,
-    pub claim_schemas: Vec<ProofClaimSchemaResponse>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ProofClaimSchemaResponse {
-    pub id: String,
-    pub is_required: bool,
-    pub key: String,
-    pub created_date: OffsetDateTime,
-    pub last_modified: OffsetDateTime,
-    pub datatype: String,
-    pub credential_schema: ListCredentialSchemaResponse,
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateProofSchemaRequest {
-    pub name: String,
-    pub organisation_id: Uuid,
-    pub expire_duration: u32,
-    pub claim_schemas: Vec<ClaimProofSchemaRequest>,
-}
-
-#[derive(Clone, Debug)]
-pub struct ClaimProofSchemaRequest {
-    pub id: Uuid,
-    //pub is_required: bool, // Todo: Bring it back later
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateProofSchemaResponse {
-    pub id: String,
-}
-
-#[derive(Clone, Debug)]
 pub struct CreateCredentialRequest {
     pub credential_id: Option<String>,
     pub credential_schema_id: Uuid,
@@ -263,12 +222,10 @@ pub enum CredentialState {
 pub type GetProofsResponse = GetListResponse<ProofsDetailResponse>;
 pub type GetCredentialsResponse = GetListResponse<DetailCredentialResponse>;
 pub type GetCredentialClaimSchemaResponse = GetListResponse<CredentialSchemaResponse>;
-pub type GetProofSchemaResponse = GetListResponse<ProofSchemaResponse>;
 
 pub type GetProofsQuery = GetListQueryParams<SortableProofColumn>;
 pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumn>;
 pub type GetCredentialsQuery = GetListQueryParams<SortableCredentialColumn>;
-pub type GetProofSchemaQuery = GetListQueryParams<SortableProofSchemaColumn>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Transport {
@@ -291,12 +248,6 @@ pub enum SortableCredentialColumn {
     State,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum SortableProofSchemaColumn {
-    Name,
-    CreatedDate,
-}
-
 #[async_trait::async_trait]
 pub trait DataProvider {
     async fn create_credential(
@@ -306,17 +257,10 @@ pub trait DataProvider {
         exchanges: &HashMap<String, ExchangeEntity>,
     ) -> Result<EntityResponse, DataLayerError>;
 
-    async fn create_proof_schema(
-        &self,
-        request: CreateProofSchemaRequest,
-    ) -> Result<CreateProofSchemaResponse, DataLayerError>;
-
     async fn create_proof(
         &self,
         request: CreateProofRequest,
     ) -> Result<CreateProofResponse, DataLayerError>;
-
-    async fn delete_proof_schema(&self, id: &str) -> Result<(), DataLayerError>;
 
     async fn insert_remote_did(
         &self,
@@ -335,16 +279,6 @@ pub trait DataProvider {
     ) -> Result<GetCredentialsResponse, DataLayerError>;
 
     async fn get_proof_details(&self, uuid: &str) -> Result<ProofDetailsResponse, DataLayerError>;
-
-    async fn get_proof_schema_details(
-        &self,
-        uuid: &str,
-    ) -> Result<ProofSchemaResponse, DataLayerError>;
-
-    async fn get_proof_schemas(
-        &self,
-        query_params: GetProofSchemaQuery,
-    ) -> Result<GetProofSchemaResponse, DataLayerError>;
 
     async fn get_proofs(
         &self,

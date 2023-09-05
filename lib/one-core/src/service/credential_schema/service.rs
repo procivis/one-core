@@ -29,10 +29,7 @@ impl CredentialSchemaService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation(
-                &request.organisation_id,
-                &OrganisationRelations { did: None },
-            )
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
             .await
             .map_err(ServiceError::from)?;
         let credential_schema = from_create_request(request, organisation)?;
@@ -58,10 +55,7 @@ impl CredentialSchemaService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation(
-                &request.organisation_id,
-                &OrganisationRelations { did: None },
-            )
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
             .await
             .map_err(ServiceError::from)?;
         let credential_schema = from_create_request(request, organisation)?;
@@ -103,8 +97,8 @@ impl CredentialSchemaService {
             .get_credential_schema(
                 credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schema: Some(ClaimSchemaRelations {}),
-                    organisation: Some(OrganisationRelations { did: None }),
+                    claim_schema: Some(ClaimSchemaRelations::default()),
+                    organisation: Some(OrganisationRelations::default()),
                 },
             )
             .await

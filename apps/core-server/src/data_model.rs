@@ -1,12 +1,11 @@
 use one_core::{
     data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
     repository::data_provider::{
-        ClaimProofSchemaRequest, CreateCredentialRequest, CreateCredentialRequestClaim,
-        CreateProofRequest, CreateProofSchemaRequest, CreateProofSchemaResponse,
+        CreateCredentialRequest, CreateCredentialRequestClaim, CreateProofRequest,
         CredentialClaimSchemaResponse, CredentialShareResponse, DetailCredentialClaimResponse,
         DetailCredentialResponse, DetailProofClaim, DetailProofClaimSchema, DetailProofSchema,
-        EntityResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
-        ProofDetailsResponse, ProofSchemaResponse, ProofShareResponse, ProofsDetailResponse,
+        EntityResponse, ListCredentialSchemaResponse, ProofDetailsResponse, ProofShareResponse,
+        ProofsDetailResponse,
     },
 };
 
@@ -21,135 +20,6 @@ use crate::{
     dto::common::GetListQueryParams,
     serialize::{front_time, front_time_option},
 };
-
-pub type GetProofSchemaQuery = GetListQueryParams<SortableProofSchemaColumn>;
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum SortableProofSchemaColumn {
-    Name,
-    CreatedDate,
-}
-
-impl From<SortableProofSchemaColumn>
-    for one_core::repository::data_provider::SortableProofSchemaColumn
-{
-    fn from(value: SortableProofSchemaColumn) -> Self {
-        match value {
-            SortableProofSchemaColumn::Name => {
-                one_core::repository::data_provider::SortableProofSchemaColumn::Name
-            }
-            SortableProofSchemaColumn::CreatedDate => {
-                one_core::repository::data_provider::SortableProofSchemaColumn::CreatedDate
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ProofSchemaResponseDTO {
-    pub id: String,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub expire_duration: u32,
-    pub organisation_id: String,
-    pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ProofClaimSchemaResponseDTO {
-    pub id: String,
-    pub is_required: bool,
-    pub key: String,
-    pub credential_schema: ListCredentialSchemaResponseDTO,
-}
-
-impl From<ProofSchemaResponse> for ProofSchemaResponseDTO {
-    fn from(value: ProofSchemaResponse) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            organisation_id: value.organisation_id,
-            expire_duration: value.expire_duration,
-            claim_schemas: value
-                .claim_schemas
-                .into_iter()
-                .map(|claim| claim.into())
-                .collect(),
-        }
-    }
-}
-
-impl From<ProofClaimSchemaResponse> for ProofClaimSchemaResponseDTO {
-    fn from(value: ProofClaimSchemaResponse) -> Self {
-        Self {
-            id: value.id,
-            is_required: value.is_required,
-            key: value.key,
-            credential_schema: value.credential_schema.into(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateProofSchemaRequestDTO {
-    #[validate(length(min = 1))]
-    pub name: String,
-    pub organisation_id: Uuid,
-    pub expire_duration: u32,
-    #[validate(length(min = 1))]
-    pub claim_schemas: Vec<ClaimProofSchemaRequestDTO>,
-}
-
-impl From<CreateProofSchemaRequestDTO> for CreateProofSchemaRequest {
-    fn from(value: CreateProofSchemaRequestDTO) -> Self {
-        Self {
-            name: value.name,
-            organisation_id: value.organisation_id,
-            expire_duration: value.expire_duration,
-            claim_schemas: value
-                .claim_schemas
-                .into_iter()
-                .map(|claim| claim.into())
-                .collect(),
-        }
-    }
-}
-
-impl From<ClaimProofSchemaRequestDTO> for ClaimProofSchemaRequest {
-    fn from(value: ClaimProofSchemaRequestDTO) -> Self {
-        Self { id: value.id }
-    }
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ClaimProofSchemaRequestDTO {
-    pub id: Uuid,
-    //pub is_required: bool, // Todo: Bring it back later
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateProofSchemaResponseDTO {
-    pub id: String,
-}
-
-impl From<CreateProofSchemaResponse> for CreateProofSchemaResponseDTO {
-    fn from(value: CreateProofSchemaResponse) -> Self {
-        Self { id: value.id }
-    }
-}
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]

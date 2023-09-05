@@ -4,8 +4,8 @@ use one_core::{
         data_provider::{
             CredentialClaimSchemaResponse, CredentialState, DetailCredentialClaimResponse,
             DetailCredentialResponse, DetailProofClaim, DetailProofClaimSchema, DetailProofSchema,
-            GetDidDetailsResponse, ListCredentialSchemaResponse, ProofClaimSchemaResponse,
-            ProofDetailsResponse, ProofRequestState, ProofSchemaResponse, ProofsDetailResponse,
+            GetDidDetailsResponse, ListCredentialSchemaResponse, ProofDetailsResponse,
+            ProofRequestState, ProofsDetailResponse,
         },
         error::DataLayerError,
     },
@@ -25,24 +25,6 @@ pub fn order_from_sort_direction(direction: SortDirection) -> Order {
         SortDirection::Ascending => Order::Asc,
         SortDirection::Descending => Order::Desc,
     }
-}
-
-#[derive(Debug, Clone, FromQueryResult)]
-pub(crate) struct ProofSchemaClaimSchemaCombined {
-    pub claim_schema_id: String,
-    pub proof_schema_id: String,
-    pub required: bool,
-    pub claim_key: String,
-    pub claim_created_date: OffsetDateTime,
-    pub claim_last_modified: OffsetDateTime,
-    pub claim_datatype: String,
-    pub credential_schema_id: String,
-    pub credential_schema_created_date: OffsetDateTime,
-    pub credential_schema_last_modified: OffsetDateTime,
-    pub credential_schema_name: String,
-    pub credential_schema_format: String,
-    pub credential_schema_revocation_method: String,
-    pub credential_schema_organisation_id: String,
 }
 
 #[derive(Clone, Debug)]
@@ -323,52 +305,6 @@ pub(super) fn proof_detail_response_from_models(
             last_modified: value.schema_last_modified,
             organisation_id: value.organisation_id,
         },
-    }
-}
-
-pub(super) fn proof_claim_schema_from_model(
-    value: ProofSchemaClaimSchemaCombined,
-) -> ProofClaimSchemaResponse {
-    ProofClaimSchemaResponse {
-        id: value.claim_schema_id,
-        key: value.claim_key,
-        is_required: value.required,
-        created_date: value.claim_created_date,
-        last_modified: value.claim_last_modified,
-        datatype: value.claim_datatype,
-        credential_schema: ListCredentialSchemaResponse {
-            id: value.credential_schema_id,
-            created_date: value.credential_schema_created_date,
-            last_modified: value.credential_schema_last_modified,
-            name: value.credential_schema_name,
-            format: value.credential_schema_format,
-            revocation_method: value.credential_schema_revocation_method,
-            organisation_id: value.credential_schema_organisation_id,
-        },
-    }
-}
-
-pub(super) fn proof_claim_schema_from_vec(
-    value: Vec<ProofSchemaClaimSchemaCombined>,
-) -> Vec<ProofClaimSchemaResponse> {
-    value
-        .into_iter()
-        .map(proof_claim_schema_from_model)
-        .collect()
-}
-
-pub(super) fn proof_schema_from_model(
-    value: proof_schema::Model,
-    claim_schemas: Vec<ProofSchemaClaimSchemaCombined>,
-) -> ProofSchemaResponse {
-    ProofSchemaResponse {
-        id: value.id,
-        created_date: value.created_date,
-        last_modified: value.last_modified,
-        name: value.name,
-        organisation_id: value.organisation_id,
-        expire_duration: value.expire_duration,
-        claim_schemas: proof_claim_schema_from_vec(claim_schemas),
     }
 }
 

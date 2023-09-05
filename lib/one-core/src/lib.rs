@@ -10,7 +10,9 @@ use repository::{
     data_provider::DataProvider, did_repository::DidRepository,
     organisation_repository::OrganisationRepository, DataRepository,
 };
-use service::{did::DidService, organisation::OrganisationService};
+use service::{
+    did::DidService, organisation::OrganisationService, proof_schema::ProofSchemaService,
+};
 use signature_provider::SignatureProvider;
 use transport_protocol::procivis_temp::ProcivisTemp;
 use transport_protocol::TransportProtocol;
@@ -33,6 +35,8 @@ pub mod model;
 pub mod repository;
 pub mod service;
 
+pub mod common_mapper;
+
 mod local_did_helpers;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
@@ -51,6 +55,7 @@ pub struct OneCore {
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
     pub credential_schema_service: CredentialSchemaService,
+    pub proof_schema_service: ProofSchemaService,
     pub config: Arc<CoreConfig>,
 }
 
@@ -97,6 +102,11 @@ impl OneCore {
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_organisation_repository(),
                 config.clone(),
+            ),
+            proof_schema_service: ProofSchemaService::new(
+                data_provider.get_proof_schema_repository(),
+                data_provider.get_claim_schema_repository(),
+                data_provider.get_organisation_repository(),
             ),
             config,
         })

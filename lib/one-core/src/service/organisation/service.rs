@@ -69,7 +69,6 @@ impl OrganisationService {
             id: id.unwrap_or(Uuid::new_v4()),
             created_date: now,
             last_modified: now,
-            did: None,
         };
 
         let uuid = self

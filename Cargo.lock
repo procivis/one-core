@@ -2943,6 +2943,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "migration",
+ "mockall",
  "one-core",
  "sea-orm",
  "serde",

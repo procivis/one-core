@@ -1,15 +1,13 @@
 use one_core::repository::error::DataLayerError;
 use sea_orm::{
-    ActiveValue::Set, ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter,
-    QueryOrder, QuerySelect, RelationTrait,
+    ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder,
+    QuerySelect, RelationTrait,
 };
 use time::OffsetDateTime;
 
 use crate::entity::*;
 
-use crate::data_model::{
-    ClaimClaimSchemaCombined, CredentialSchemaClaimSchemaCombined, ProofSchemaClaimSchemaCombined,
-};
+use crate::data_model::{ClaimClaimSchemaCombined, CredentialSchemaClaimSchemaCombined};
 
 pub(crate) async fn fetch_claim_claim_schemas(
     db: &DatabaseConnection,
@@ -73,70 +71,6 @@ pub(crate) async fn fetch_credential_schema_claim_schemas(
         )
         .order_by_asc(credential_schema_claim_schema::Column::Order)
         .into_model::<CredentialSchemaClaimSchemaCombined>()
-        .all(db)
-        .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-    Ok(claims)
-}
-
-pub(crate) async fn fetch_proof_schema_claim_schemas(
-    db: &DatabaseConnection,
-    proof_ids: &[String],
-) -> Result<Vec<ProofSchemaClaimSchemaCombined>, DataLayerError> {
-    let claims = ProofSchemaClaimSchema::find()
-        .filter(
-            Condition::all().add(proof_schema_claim_schema::Column::ProofSchemaId.is_in(proof_ids)),
-        )
-        .select_only()
-        .columns([
-            proof_schema_claim_schema::Column::ClaimSchemaId,
-            proof_schema_claim_schema::Column::ProofSchemaId,
-            proof_schema_claim_schema::Column::Required,
-        ])
-        .column_as(claim_schema::Column::Key, "claim_key")
-        .column_as(claim_schema::Column::CreatedDate, "claim_created_date")
-        .column_as(claim_schema::Column::LastModified, "claim_last_modified")
-        .column_as(claim_schema::Column::Datatype, "claim_datatype")
-        .column_as(credential_schema::Column::Id, "credential_schema_id")
-        .column_as(
-            credential_schema::Column::CreatedDate,
-            "credential_schema_created_date",
-        )
-        .column_as(
-            credential_schema::Column::LastModified,
-            "credential_schema_last_modified",
-        )
-        .column_as(credential_schema::Column::Name, "credential_schema_name")
-        .column_as(
-            credential_schema::Column::Format,
-            "credential_schema_format",
-        )
-        .column_as(
-            credential_schema::Column::RevocationMethod,
-            "credential_schema_revocation_method",
-        )
-        .column_as(
-            credential_schema::Column::OrganisationId,
-            "credential_schema_organisation_id",
-        )
-        .join(
-            sea_orm::JoinType::LeftJoin,
-            proof_schema_claim_schema::Relation::ClaimSchema.def(),
-        )
-        .join_rev(
-            sea_orm::JoinType::LeftJoin,
-            credential_schema_claim_schema::Relation::ClaimSchema.def(),
-        )
-        .join(
-            sea_orm::JoinType::LeftJoin,
-            credential_schema_claim_schema::Relation::CredentialSchema.def(),
-        )
-        .order_by(
-            proof_schema_claim_schema::Column::Order,
-            sea_orm::Order::Asc,
-        )
-        .into_model::<ProofSchemaClaimSchemaCombined>()
         .all(db)
         .await
         .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
