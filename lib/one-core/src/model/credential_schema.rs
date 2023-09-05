@@ -11,7 +11,7 @@ pub type Format = String;
 pub type RevocationMethod = String;
 pub type OrganisationId = Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CredentialSchema {
     pub id: CredentialSchemaId,
     pub deleted_at: Option<OffsetDateTime>,
@@ -26,7 +26,7 @@ pub struct CredentialSchema {
     pub organisation: Option<Organisation>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct CredentialSchemaRelations {
     pub claim_schema: Option<ClaimSchemaRelations>,
     pub organisation: Option<OrganisationRelations>,

@@ -23,3 +23,6 @@ impl DidService {
         }
     }
 }
+
+#[cfg(test)]
+mod test;

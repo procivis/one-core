@@ -30,4 +30,6 @@ thiserror.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+mockall.workspace = true
+one-core = { path = "../../lib/one-core", features = ["mock"] }
 tokio = { workspace = true, features = ["macros"] }

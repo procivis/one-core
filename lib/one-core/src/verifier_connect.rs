@@ -68,11 +68,14 @@ impl OneCore {
                 .map_err(OneCoreError::DataLayerError)?;
         }
 
+        let proof_schema_id = Uuid::from_str(&proof_request.schema.id)
+            .map_err(|_| OneCoreError::DataLayerError(DataLayerError::MappingError))?;
+
         let proof_schema = self
-            .data_layer
-            .get_proof_schema_details(&proof_request.schema.id)
+            .proof_schema_service
+            .get_proof_schema(&proof_schema_id)
             .await
-            .map_err(OneCoreError::DataLayerError)?;
+            .map_err(OneCoreError::ServiceError)?;
 
         self.data_layer
             .set_proof_state(&proof_request_id, ProofRequestState::Offered)
@@ -83,13 +86,13 @@ impl OneCore {
                 .claim_schemas
                 .into_iter()
                 .map(|claim| ProofClaimSchema {
-                    id: claim.id,
+                    id: claim.id.to_string(),
                     key: claim.key,
-                    created_date: claim.created_date,
-                    last_modified: claim.last_modified,
-                    datatype: claim.datatype,
-                    required: claim.is_required,
-                    credential_schema: claim.credential_schema,
+                    created_date: claim.credential_schema.created_date,
+                    last_modified: claim.credential_schema.last_modified,
+                    datatype: claim.data_type,
+                    required: claim.required,
+                    credential_schema: claim.credential_schema.into(),
                 })
                 .collect(),
         })

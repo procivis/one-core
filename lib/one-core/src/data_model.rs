@@ -1,8 +1,10 @@
+use crate::{
+    repository::data_provider::ListCredentialSchemaResponse,
+    service::credential_schema::dto::GetCredentialSchemaListValueResponseDTO,
+};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use crate::repository::data_provider::ListCredentialSchemaResponse;
 
 #[derive(Deserialize)]
 pub struct ConnectIssuerRequest {
@@ -55,4 +57,18 @@ pub struct HandleInvitationConnectRequest {
 pub struct VerifierSubmitRequest {
     pub proof: Uuid,
     pub proof_submit_request: String,
+}
+
+impl From<GetCredentialSchemaListValueResponseDTO> for ListCredentialSchemaResponse {
+    fn from(value: GetCredentialSchemaListValueResponseDTO) -> Self {
+        Self {
+            id: value.id.to_string(),
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            format: value.format,
+            revocation_method: value.revocation_method,
+            organisation_id: "unknown".to_string(), // FIXME
+        }
+    }
 }

@@ -1,36 +1,47 @@
-use sea_orm::EntityTrait;
+use super::OrganisationProvider;
+use crate::test_utilities::*;
+use one_core::{
+    model::organisation::{Organisation, OrganisationRelations},
+    repository::{error::DataLayerError, organisation_repository::OrganisationRepository},
+};
+use sea_orm::{DatabaseConnection, EntityTrait};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use one_core::model;
+struct TestSetup {
+    pub db: DatabaseConnection,
+    pub repository: Box<dyn OrganisationRepository>,
+}
 
-use crate::entity::Organisation;
-use crate::test_utilities::*;
+async fn setup() -> TestSetup {
+    let data_layer = setup_test_data_layer_and_connection().await;
+    let db = data_layer.db;
+    TestSetup {
+        repository: Box::new(OrganisationProvider { db: db.clone() }),
+        db,
+    }
+}
 
 #[tokio::test]
-async fn create_organisation_id_provided() {
-    let data_layer = setup_test_data_layer_and_connection().await;
+async fn test_create_organisation() {
+    let TestSetup { db, repository } = setup().await;
 
     let org_id = Uuid::new_v4();
     let now = OffsetDateTime::now_utc();
 
-    let organisation = model::organisation::Organisation {
+    let organisation = Organisation {
         id: org_id,
         created_date: now,
         last_modified: now,
-        did: None,
     };
 
-    let response = data_layer
-        .organisation_repository
-        .create_organisation(organisation)
-        .await;
-    assert!(response.is_ok());
-    assert_eq!(response.unwrap(), org_id);
+    let result = repository.create_organisation(organisation).await;
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), org_id);
 
     assert_eq!(
-        Organisation::find()
-            .all(&data_layer.db)
+        crate::entity::Organisation::find()
+            .all(&db)
             .await
             .unwrap()
             .len(),
@@ -38,79 +49,47 @@ async fn create_organisation_id_provided() {
     );
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::test_utilities::*;
-//     use one_core::repository::error::DataLayerError;
-//     use uuid::Uuid;
+#[tokio::test]
+async fn test_get_organisation_missing() {
+    let TestSetup { repository, .. } = setup().await;
 
-//     #[tokio::test]
-//     async fn test_get_organisations() {
-//         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+    let result = repository
+        .get_organisation(&Uuid::new_v4(), &OrganisationRelations::default())
+        .await;
+    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+}
 
-//         let org_uuid = Uuid::new_v4();
+#[tokio::test]
+async fn test_get_organisation_success() {
+    let TestSetup { repository, db } = setup().await;
 
-//         insert_organisation_to_database(&data_layer.db, Some(org_uuid))
-//             .await
-//             .unwrap();
+    let org_id = Uuid::new_v4();
+    insert_organisation_to_database(&db, Some(org_id))
+        .await
+        .unwrap();
 
-//         let details = data_layer
-//             .get_organisation_details(&org_uuid.to_string())
-//             .await;
+    let result = repository
+        .get_organisation(&org_id, &OrganisationRelations::default())
+        .await;
 
-//         assert!(details.is_ok());
-//         assert_eq!(details.unwrap().id, org_uuid.to_string());
-//     }
+    assert!(result.is_ok());
+    let organisation = result.unwrap();
+    assert_eq!(organisation.id, org_id);
+}
 
-//     #[tokio::test]
-//     async fn test_get_not_existing_organisation() {
-//         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
+#[tokio::test]
+async fn test_get_organisation_list() {
+    let TestSetup { repository, db } = setup().await;
 
-//         let org_uuid = Uuid::new_v4();
+    let org_id = Uuid::new_v4();
+    insert_organisation_to_database(&db, Some(org_id))
+        .await
+        .unwrap();
 
-//         let details = data_layer
-//             .get_organisation_details(&org_uuid.to_string())
-//             .await;
+    let result = repository.get_organisation_list().await;
 
-//         assert!(details.is_err());
-//         assert_eq!(details, Err(DataLayerError::RecordNotFound));
-//     }
-// }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::test_utilities::*;
-//     use uuid::Uuid;
-
-//     #[tokio::test]
-//     async fn test_get_organisations() {
-//         let data_layer = setup_test_data_layer_and_connection().await.unwrap();
-
-//         let details = data_layer.get_organisations().await;
-//         assert!(details.is_ok());
-//         assert_eq!(details.unwrap().len(), 0);
-
-//         let uuid = [Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
-
-//         insert_organisation_to_database(&data_layer.db, Some(uuid[0]))
-//             .await
-//             .unwrap();
-
-//         let details = data_layer.get_organisations().await;
-//         assert!(details.is_ok());
-//         assert_eq!(details.as_ref().unwrap().len(), 1);
-//         assert_eq!(details.unwrap()[0].id, uuid[0]);
-
-//         insert_organisation_to_database(&data_layer.db, Some(uuid[1]))
-//             .await
-//             .unwrap();
-//         insert_organisation_to_database(&data_layer.db, Some(uuid[2]))
-//             .await
-//             .unwrap();
-
-//         let details = data_layer.get_organisations().await;
-//         assert!(details.is_ok());
-//         assert_eq!(details.as_ref().unwrap().len(), 3);
-//         assert!(details.unwrap().iter().all(|org| uuid.contains(&org.id)));
-//     }
-// }
+    assert!(result.is_ok());
+    let organisations = result.unwrap();
+    assert_eq!(organisations.len(), 1);
+    assert_eq!(organisations[0].id, org_id);
+}

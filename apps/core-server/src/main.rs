@@ -30,13 +30,12 @@ pub(crate) mod mapper;
 pub(crate) mod serialize;
 
 use endpoint::{
-    delete_proof_schema, get_config, get_credential, get_proof, get_proof_schema, misc,
-    post_credential, post_proof, post_proof_schema, share_credential, share_proof,
-    ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
+    get_config, get_credential, get_proof, misc, post_credential, post_proof, share_credential,
+    share_proof, ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
     ssi_post_verifier_reject_proof_request, ssi_post_verifier_submit,
 };
 
-use crate::endpoint::{credential_schema, did, organisation};
+use crate::endpoint::{credential_schema, did, organisation, proof_schema};
 
 #[derive(Clone)]
 struct AppState {
@@ -72,17 +71,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::did::controller::get_did_list,
             endpoint::did::controller::post_did,
 
+            endpoint::proof_schema::controller::post_proof_schema,
+            endpoint::proof_schema::controller::get_proof_schemas,
+            endpoint::proof_schema::controller::get_proof_schema_detail,
+            endpoint::proof_schema::controller::delete_proof_schema,
+
             endpoint::get_config::get_config,
             endpoint::get_credential::get_credentials,
             endpoint::get_credential::get_credential_details,
             endpoint::post_credential::post_credential,
             endpoint::share_credential::share_credential,
             endpoint::share_proof::share_proof,
-            endpoint::post_proof_schema::post_proof_schema,
             endpoint::post_proof::post_proof,
-            endpoint::get_proof_schema::get_proof_schema_details,
-            endpoint::get_proof_schema::get_proof_schemas,
-            endpoint::delete_proof_schema::delete_proof_schema,
             endpoint::get_proof::get_proof_details,
             endpoint::get_proof::get_proofs,
             endpoint::misc::get_build_info,
@@ -109,11 +109,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::did::dto::CreateDidResponseRestDTO,
                 endpoint::did::dto::GetDidResponseRestDTO,
                 endpoint::did::dto::DidType,
+                endpoint::proof_schema::dto::CreateProofSchemaRequestRestDTO,
+                endpoint::proof_schema::dto::ClaimProofSchemaRequestRestDTO,
+                endpoint::proof_schema::dto::CreateProofSchemaResponseRestDTO,
+                endpoint::proof_schema::dto::SortableProofSchemaColumnRestEnum,
+                endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
+                endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO,
+                endpoint::proof_schema::dto::ProofClaimSchemaResponseRestDTO,
                 dto::common::GetDidsResponseRestDTO,
+                dto::common::GetProofSchemaListResponseRestDTO,
 
                 dto::common::GetCredentialsResponseDTO,
                 dto::common::GetCredentialSchemaResponseDTO,
-                dto::common::GetProofSchemaResponseDTO,
                 dto::common::GetProofsResponseDTO,
 
                 dto::common::SortDirection,
@@ -127,13 +134,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 data_model::EntityShareResponseDTO,
                 data_model::CredentialRequestClaimDTO,
                 data_model::Transport,
-                data_model::CreateProofSchemaRequestDTO,
-                data_model::CreateProofSchemaResponseDTO,
                 data_model::CreateProofRequestDTO,
                 data_model::CreateProofResponseDTO,
-                data_model::ClaimProofSchemaRequestDTO,
-                data_model::ProofSchemaResponseDTO,
-                data_model::ProofClaimSchemaResponseDTO,
                 data_model::ProofsDetailResponseDTO,
 
                 data_model::ConnectIssuerResponseDTO,
@@ -234,12 +236,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route(
             "/api/proof-schema/v1/:id",
-            delete(delete_proof_schema::delete_proof_schema)
-                .get(get_proof_schema::get_proof_schema_details),
+            delete(proof_schema::controller::delete_proof_schema)
+                .get(proof_schema::controller::get_proof_schema_detail),
         )
         .route(
             "/api/proof-schema/v1",
-            get(get_proof_schema::get_proof_schemas).post(post_proof_schema::post_proof_schema),
+            get(proof_schema::controller::get_proof_schemas)
+                .post(proof_schema::controller::post_proof_schema),
         )
         .route(
             "/api/proof-request/v1",

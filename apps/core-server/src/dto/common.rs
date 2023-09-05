@@ -4,9 +4,11 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::{
-    data_model::{DetailCredentialResponseDTO, ProofSchemaResponseDTO, ProofsDetailResponseDTO},
-    endpoint::credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
-    endpoint::did::dto::GetDidResponseRestDTO,
+    data_model::{DetailCredentialResponseDTO, ProofsDetailResponseDTO},
+    endpoint::{
+        credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
+        did::dto::GetDidResponseRestDTO, proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
+    },
 };
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -15,9 +17,9 @@ use crate::{
 #[aliases(
     GetProofsResponseDTO = GetListResponseRestDTO<ProofsDetailResponseDTO>,
     GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListValueResponseRestDTO>,
-    GetProofSchemaResponseDTO = GetListResponseRestDTO<ProofSchemaResponseDTO>,
     GetDidsResponseRestDTO = GetListResponseRestDTO<GetDidResponseRestDTO>,
-    GetCredentialsResponseDTO = GetListResponseRestDTO<DetailCredentialResponseDTO>)]
+    GetCredentialsResponseDTO = GetListResponseRestDTO<DetailCredentialResponseDTO>,
+    GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>)]
 pub struct GetListResponseRestDTO<T>
 where
     T: Clone + fmt::Debug + Serialize,
