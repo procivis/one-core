@@ -22,3 +22,13 @@ pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListRe
         total_items: input.total_items,
     }
 }
+
+pub fn list_response_try_into<T, F: TryInto<T>>(
+    input: GetListResponse<F>,
+) -> Result<GetListResponse<T>, <F as TryInto<T>>::Error> {
+    Ok(GetListResponse::<T> {
+        values: vector_try_into(input.values)?,
+        total_pages: input.total_pages,
+        total_items: input.total_items,
+    })
+}

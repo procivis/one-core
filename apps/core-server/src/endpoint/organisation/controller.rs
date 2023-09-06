@@ -122,7 +122,7 @@ pub(crate) async fn post_organisation(
             StatusCode::CONFLICT.into_response()
         }
         Err(e) => {
-            tracing::error!("Error while getting credential: {:?}", e);
+            tracing::error!("Error while creating organisation: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
         Ok(value) => (

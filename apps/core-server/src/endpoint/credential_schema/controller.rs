@@ -45,7 +45,7 @@ pub(crate) async fn delete_credential_schema(
         return match error {
             ServiceError::NotFound => StatusCode::NOT_FOUND,
             _ => {
-                tracing::error!("Error while deleting credential: {:?}", error);
+                tracing::error!("Error while deleting credential schema: {:?}", error);
                 StatusCode::INTERNAL_SERVER_ERROR
             }
         };
@@ -85,7 +85,7 @@ pub(crate) async fn get_credential_schema(
         Err(error) => match error {
             ServiceError::NotFound => (StatusCode::NOT_FOUND).into_response(),
             _ => {
-                tracing::error!("Error while getting did details: {:?}", error);
+                tracing::error!("Error while getting credential schema: {:?}", error);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
             }
         },
@@ -125,7 +125,7 @@ pub(crate) async fn get_credential_schema_list(
 
     match result {
         Err(error) => {
-            tracing::error!("Error while getting credential: {:?}", error);
+            tracing::error!("Error while getting credential schemas: {:?}", error);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
         Ok(value) => (
@@ -176,7 +176,7 @@ pub(crate) async fn post_credential_schema(
             StatusCode::BAD_REQUEST.into_response()
         }
         Err(error) => {
-            tracing::error!("Error while inserting credential: {:?}", error);
+            tracing::error!("Error while inserting credential schema: {:?}", error);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
         Ok(value) => (

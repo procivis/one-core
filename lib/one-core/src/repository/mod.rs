@@ -9,6 +9,7 @@ pub mod claim_schema_repository;
 pub mod credential_schema_repository;
 pub mod did_repository;
 pub mod organisation_repository;
+pub mod proof_repository;
 pub mod proof_schema_repository;
 
 use std::sync::Arc;
@@ -22,6 +23,7 @@ use claim_schema_repository::ClaimSchemaRepository;
 use credential_schema_repository::CredentialSchemaRepository;
 use did_repository::DidRepository;
 use organisation_repository::OrganisationRepository;
+use proof_repository::ProofRepository;
 use proof_schema_repository::ProofSchemaRepository;
 
 pub trait DataRepository {
@@ -33,6 +35,7 @@ pub trait DataRepository {
     fn get_credential_schema_repository(&self)
         -> Arc<dyn CredentialSchemaRepository + Send + Sync>;
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository + Send + Sync>;
+    fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync>;
 }
 
 #[cfg(any(test, feature = "mock"))]

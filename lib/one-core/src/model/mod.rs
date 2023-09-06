@@ -4,4 +4,5 @@ pub mod common;
 pub mod credential_schema;
 pub mod did;
 pub mod organisation;
+pub mod proof;
 pub mod proof_schema;

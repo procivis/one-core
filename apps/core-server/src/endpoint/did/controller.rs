@@ -68,7 +68,7 @@ pub(crate) async fn get_did_list(
 
     match result {
         Err(error) => {
-            tracing::error!("Error while getting credential: {:?}", error);
+            tracing::error!("Error while getting dids: {:?}", error);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
         Ok(value) => (StatusCode::OK, Json(GetDidsResponseRestDTO::from(value))).into_response(),
@@ -107,7 +107,7 @@ pub(crate) async fn post_did(
             StatusCode::NOT_FOUND.into_response()
         }
         Err(e) => {
-            tracing::error!("Error while getting credential: {:?}", e);
+            tracing::error!("Error while creating did: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
         Ok(id) => (StatusCode::CREATED, Json(CreateDidResponseRestDTO { id })).into_response(),

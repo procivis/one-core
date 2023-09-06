@@ -40,7 +40,7 @@ pub(crate) async fn ssi_verifier_connect(
         did: request.did,
     };
 
-    let result = state.core.verifier_connect(&query.protocol, &request).await;
+    let result = state.core.verifier_connect(&request).await;
 
     match result {
         Ok(result) => (

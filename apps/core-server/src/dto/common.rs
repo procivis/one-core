@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::{
-    data_model::{DetailCredentialResponseDTO, ProofsDetailResponseDTO},
+    data_model::DetailCredentialResponseDTO,
     endpoint::{
         credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
-        did::dto::GetDidResponseRestDTO, proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
+        did::dto::GetDidResponseRestDTO, proof::dto::ProofListItemResponseRestDTO,
+        proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
     },
 };
 
@@ -15,7 +16,7 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 // ToSchema is properly generated thanks to that
 #[aliases(
-    GetProofsResponseDTO = GetListResponseRestDTO<ProofsDetailResponseDTO>,
+    GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>,
     GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListValueResponseRestDTO>,
     GetDidsResponseRestDTO = GetListResponseRestDTO<GetDidResponseRestDTO>,
     GetCredentialsResponseDTO = GetListResponseRestDTO<DetailCredentialResponseDTO>,

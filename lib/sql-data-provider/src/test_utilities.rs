@@ -158,6 +158,7 @@ pub async fn get_credential_by_id(
     credential::Entity::find_by_id(id).one(database).await
 }
 
+#[allow(dead_code)]
 pub async fn get_proof_by_id(
     database: &DatabaseConnection,
     id: &str,
@@ -202,7 +203,7 @@ pub async fn insert_proof_state_to_database(
     Ok(())
 }
 
-#[allow(clippy::ptr_arg)]
+#[allow(clippy::ptr_arg, dead_code)]
 pub async fn insert_proof_request_to_database_with_claims(
     database: &DatabaseConnection,
     verifier_did_id: &str,
