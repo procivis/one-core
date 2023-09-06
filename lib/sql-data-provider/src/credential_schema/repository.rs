@@ -9,7 +9,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use one_core::{
+    common_mapper::vector_try_into,
     model::{
+        claim_schema::ClaimSchemaId,
         credential_schema::{
             CredentialSchema, CredentialSchemaId, CredentialSchemaRelations,
             GetCredentialSchemaList, GetCredentialSchemaQuery,
@@ -22,8 +24,8 @@ use one_core::{
 use crate::{
     credential_schema::{
         mapper::{
-            claim_schema_models_to_id_list, claim_schemas_to_model_vec, create_list_response,
-            credential_schema_from_models, models_to_relations,
+            claim_schemas_to_model_vec, create_list_response, credential_schema_from_models,
+            models_to_relations,
         },
         CredentialSchemaProvider,
     },
@@ -122,13 +124,16 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .ok_or(DataLayerError::RecordNotFound)?;
 
         let claim_schemas = if let Some(claim_schema_relations) = &relations.claim_schema {
-            let models = credential_schema
-                .find_related(claim_schema::Entity)
+            let models = credential_schema_claim_schema::Entity::find()
+                .filter(
+                    credential_schema_claim_schema::Column::CredentialSchemaId.eq(id.to_string()),
+                )
+                .order_by_asc(credential_schema_claim_schema::Column::Order)
                 .all(&self.db)
                 .await
                 .map_err(to_data_layer_error)?;
 
-            let claim_schema_ids = claim_schema_models_to_id_list(models)?;
+            let claim_schema_ids: Vec<ClaimSchemaId> = vector_try_into(models)?;
 
             Some(
                 self.claim_schema_repository
