@@ -1,11 +1,20 @@
-use crate::{
-    dto::common::{GetListQueryParams, SortDirection},
-    endpoint::{
-        credential_schema::dto::SortableCredentialSchemaColumnRestEnum,
-        did::dto::{DidType, SortableDidColumnRestDTO},
-    },
-};
+use crate::dto::common::{GetListQueryParams, GetListResponseRestDTO, SortDirection};
+use serde::Serialize;
+use std::fmt;
 use utoipa::ToSchema;
+
+impl<T, K> From<one_core::model::common::GetListResponse<K>> for GetListResponseRestDTO<T>
+where
+    T: From<K> + Clone + fmt::Debug + Serialize,
+{
+    fn from(value: one_core::model::common::GetListResponse<K>) -> Self {
+        Self {
+            values: value.values.into_iter().map(|item| item.into()).collect(),
+            total_pages: value.total_pages,
+            total_items: value.total_items,
+        }
+    }
+}
 
 impl<T, K> From<GetListQueryParams<T>> for one_core::model::common::GetListQueryParams<K>
 where
@@ -29,53 +38,6 @@ impl From<SortDirection> for one_core::model::common::SortDirection {
         match value {
             SortDirection::Ascending => one_core::model::common::SortDirection::Ascending,
             SortDirection::Descending => one_core::model::common::SortDirection::Descending,
-        }
-    }
-}
-
-impl From<DidType> for one_core::model::did::DidType {
-    fn from(value: DidType) -> Self {
-        match value {
-            DidType::Remote => one_core::model::did::DidType::Remote,
-            DidType::Local => one_core::model::did::DidType::Local,
-        }
-    }
-}
-
-impl From<one_core::model::did::DidType> for DidType {
-    fn from(value: one_core::model::did::DidType) -> Self {
-        match value {
-            one_core::model::did::DidType::Remote => DidType::Remote,
-            one_core::model::did::DidType::Local => DidType::Local,
-        }
-    }
-}
-
-impl From<SortableDidColumnRestDTO> for one_core::model::did::SortableDidColumn {
-    fn from(value: SortableDidColumnRestDTO) -> Self {
-        match value {
-            SortableDidColumnRestDTO::Name => one_core::model::did::SortableDidColumn::Name,
-            SortableDidColumnRestDTO::CreatedDate => {
-                one_core::model::did::SortableDidColumn::CreatedDate
-            }
-        }
-    }
-}
-
-impl From<SortableCredentialSchemaColumnRestEnum>
-    for one_core::model::credential_schema::SortableCredentialSchemaColumn
-{
-    fn from(value: SortableCredentialSchemaColumnRestEnum) -> Self {
-        match value {
-            SortableCredentialSchemaColumnRestEnum::Name => {
-                one_core::model::credential_schema::SortableCredentialSchemaColumn::Name
-            }
-            SortableCredentialSchemaColumnRestEnum::Format => {
-                one_core::model::credential_schema::SortableCredentialSchemaColumn::Format
-            }
-            SortableCredentialSchemaColumnRestEnum::CreatedDate => {
-                one_core::model::credential_schema::SortableCredentialSchemaColumn::CreatedDate
-            }
         }
     }
 }

@@ -1,11 +1,8 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use utoipa::ToSchema;
+use std::collections::HashMap;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[schema(example = json!({"format": {}, "exchange": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}}))]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ConfigDTO {
     pub format: HashMap<String, Value>,
     pub exchange: HashMap<String, Value>,

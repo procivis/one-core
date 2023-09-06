@@ -1,9 +1,7 @@
-use one_core::{
-    model::did::DidType,
-    service::did::dto::{CreateDidRequestDTO, GetDidResponseDTO},
+use super::dto::{
+    CreateDidRequestRestDTO, DidType, GetDidResponseRestDTO, SortableDidColumnRestDTO,
 };
-
-use super::dto::{CreateDidRequestRestDTO, GetDidResponseRestDTO};
+use one_core::service::did::dto::{CreateDidRequestDTO, GetDidResponseDTO};
 
 impl From<GetDidResponseDTO> for GetDidResponseRestDTO {
     fn from(value: GetDidResponseDTO) -> Self {
@@ -27,7 +25,36 @@ impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
             organisation_id: value.organisation_id,
             did: value.did,
             did_method: value.method,
-            did_type: DidType::Local,
+            did_type: one_core::model::did::DidType::Local,
+        }
+    }
+}
+
+impl From<DidType> for one_core::model::did::DidType {
+    fn from(value: DidType) -> Self {
+        match value {
+            DidType::Remote => one_core::model::did::DidType::Remote,
+            DidType::Local => one_core::model::did::DidType::Local,
+        }
+    }
+}
+
+impl From<one_core::model::did::DidType> for DidType {
+    fn from(value: one_core::model::did::DidType) -> Self {
+        match value {
+            one_core::model::did::DidType::Remote => DidType::Remote,
+            one_core::model::did::DidType::Local => DidType::Local,
+        }
+    }
+}
+
+impl From<SortableDidColumnRestDTO> for one_core::model::did::SortableDidColumn {
+    fn from(value: SortableDidColumnRestDTO) -> Self {
+        match value {
+            SortableDidColumnRestDTO::Name => one_core::model::did::SortableDidColumn::Name,
+            SortableDidColumnRestDTO::CreatedDate => {
+                one_core::model::did::SortableDidColumn::CreatedDate
+            }
         }
     }
 }
