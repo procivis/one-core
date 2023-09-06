@@ -116,23 +116,6 @@ pub struct ListCredentialSchemaResponse {
     pub organisation_id: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct ProofDetailsResponse {
-    pub id: String,
-    pub created_date: OffsetDateTime,
-    pub last_modified: OffsetDateTime,
-    pub issuance_date: OffsetDateTime,
-    pub requested_date: Option<OffsetDateTime>,
-    pub completed_date: Option<OffsetDateTime>,
-    pub state: ProofRequestState,
-    pub organisation_id: String,
-    pub verifier_did: String,
-    pub transport: String,
-    pub receiver_did_id: Option<String>,
-    pub claims: Vec<DetailProofClaim>,
-    pub schema: DetailProofSchema,
-}
-
 #[derive(Debug, Clone)]
 pub struct DetailProofSchema {
     pub id: String,
@@ -170,36 +153,12 @@ pub struct CreateProofResponse {
     pub id: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct ProofsDetailResponse {
-    pub id: String,
-    pub created_date: OffsetDateTime,
-    pub last_modified: OffsetDateTime,
-    pub issuance_date: OffsetDateTime,
-    pub requested_date: Option<OffsetDateTime>,
-    pub completed_date: Option<OffsetDateTime>,
-    pub state: ProofRequestState,
-    pub organisation_id: String,
-    pub verifier_did: String,
-    pub schema: DetailProofSchema,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableProofColumn {
     ProofSchemaName,
     VerifierDid,
     CreatedDate,
     State,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum ProofRequestState {
-    Created,
-    Pending,
-    Offered,
-    Accepted,
-    Rejected,
-    Error,
 }
 
 #[derive(Clone, Debug)]
@@ -219,7 +178,6 @@ pub enum CredentialState {
     Error,
 }
 
-pub type GetProofsResponse = GetListResponse<ProofsDetailResponse>;
 pub type GetCredentialsResponse = GetListResponse<DetailCredentialResponse>;
 pub type GetCredentialClaimSchemaResponse = GetListResponse<CredentialSchemaResponse>;
 
@@ -257,11 +215,6 @@ pub trait DataProvider {
         exchanges: &HashMap<String, ExchangeEntity>,
     ) -> Result<EntityResponse, DataLayerError>;
 
-    async fn create_proof(
-        &self,
-        request: CreateProofRequest,
-    ) -> Result<CreateProofResponse, DataLayerError>;
-
     async fn insert_remote_did(
         &self,
         did_value: &str,
@@ -278,15 +231,6 @@ pub trait DataProvider {
         query_params: GetCredentialsQuery,
     ) -> Result<GetCredentialsResponse, DataLayerError>;
 
-    async fn get_proof_details(&self, uuid: &str) -> Result<ProofDetailsResponse, DataLayerError>;
-
-    async fn get_proofs(
-        &self,
-        query_params: GetProofsQuery,
-    ) -> Result<GetProofsResponse, DataLayerError>;
-
-    async fn reject_proof_request(&self, proof_request_id: &str) -> Result<(), DataLayerError>;
-
     async fn set_credential_state(
         &self,
         credential_id: &str,
@@ -297,8 +241,6 @@ pub trait DataProvider {
         &self,
         credential_id: &str,
     ) -> Result<CredentialShareResponse, DataLayerError>;
-
-    async fn share_proof(&self, proof_id: &str) -> Result<ProofShareResponse, DataLayerError>;
 
     async fn update_credential_issuer_did(
         &self,
@@ -320,26 +262,8 @@ pub trait DataProvider {
 
     async fn get_all_credentials(&self) -> Result<Vec<DetailCredentialResponse>, DataLayerError>;
 
-    async fn set_proof_receiver_did_id(
-        &self,
-        proof_request_id: &str,
-        did_id: &str,
-    ) -> Result<(), DataLayerError>;
-
     async fn get_local_dids(
         &self,
         organisation_id: &str,
     ) -> Result<Vec<GetDidDetailsResponse>, DataLayerError>;
-
-    async fn set_proof_state(
-        &self,
-        proof_request_id: &str,
-        state: ProofRequestState,
-    ) -> Result<(), DataLayerError>;
-
-    async fn set_proof_claims(
-        &self,
-        proof_request_id: &str,
-        claims: Vec<CreateProofClaimRequest>,
-    ) -> Result<(), DataLayerError>;
 }

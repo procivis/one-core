@@ -10,6 +10,7 @@ use repository::{
     data_provider::DataProvider, did_repository::DidRepository,
     organisation_repository::OrganisationRepository, DataRepository,
 };
+use service::proof::ProofService;
 use service::{
     did::DidService, organisation::OrganisationService, proof_schema::ProofSchemaService,
 };
@@ -28,7 +29,6 @@ pub mod issuer_connect;
 pub mod signature_provider;
 pub mod transport_protocol;
 pub mod verifier_connect;
-pub mod verifier_reject_proof_request;
 pub mod verifier_submit;
 
 pub mod model;
@@ -56,6 +56,7 @@ pub struct OneCore {
     pub did_service: DidService,
     pub credential_schema_service: CredentialSchemaService,
     pub proof_schema_service: ProofSchemaService,
+    pub proof_service: ProofService,
     pub config: Arc<CoreConfig>,
 }
 
@@ -107,6 +108,12 @@ impl OneCore {
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_claim_schema_repository(),
                 data_provider.get_organisation_repository(),
+            ),
+            proof_service: ProofService::new(
+                data_provider.get_claim_schema_repository(),
+                data_provider.get_proof_repository(),
+                data_provider.get_proof_schema_repository(),
+                data_provider.get_did_repository(),
             ),
             config,
         })

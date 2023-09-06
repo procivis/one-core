@@ -92,7 +92,7 @@ pub(crate) async fn get_proof_schemas(
 
     match result {
         Err(error) => {
-            tracing::error!("Error while getting credential: {:?}", error);
+            tracing::error!("Error while getting proof schemas: {:?}", error);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
         Ok(value) => (
@@ -130,7 +130,7 @@ pub(crate) async fn get_proof_schema_detail(
         Err(error) => match error {
             ServiceError::NotFound => (StatusCode::NOT_FOUND).into_response(),
             _ => {
-                tracing::error!("Error while getting credential: {:?}", error);
+                tracing::error!("Error while getting proof schema: {:?}", error);
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
             }
         },

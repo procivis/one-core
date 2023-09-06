@@ -8,16 +8,18 @@ use std::{
 };
 
 use crate::{
-    credential_formatter::{CredentialFormatter, FormatterError, ParseError},
+    credential_formatter::{CredentialFormatter, ParseError},
     data_model::VerifierSubmitRequest,
     error::{OneCoreError, SSIError},
-    model::did::{Did, DidRelations},
-    repository::{
-        data_provider::{CreateProofClaimRequest, ProofRequestState},
-        error::DataLayerError,
+    model::{
+        did::{Did, DidRelations},
+        proof::ProofStateEnum,
     },
+    repository::error::DataLayerError,
     service::{
         credential_schema::dto::{ClaimSchemaId, CredentialSchemaId},
+        error::ServiceError,
+        proof::dto::CreateProofClaimRequestDTO,
         proof_schema::dto::GetProofSchemaResponseDTO,
     },
     OneCore,
@@ -54,7 +56,7 @@ fn validate_proof(
     holder_did: &Did,
     presentation: &str,
     formatter: &Arc<dyn CredentialFormatter + Send + Sync>,
-) -> Result<Vec<CreateProofClaimRequest>, OneCoreError> {
+) -> Result<Vec<CreateProofClaimRequestDTO>, OneCoreError> {
     // TODO Check if the signature of the ProofSubmitRequestDTO(JWT) is signed with did of the issuer property (holder did)
     // Add when key management introduced. For now we use the same pair of keys for everything.
     // If it's extracted - it's properly signed
@@ -87,7 +89,7 @@ fn validate_proof(
             );
         });
 
-    let mut proved_credentials: HashMap<CredentialSchemaId, Vec<CreateProofClaimRequest>> =
+    let mut proved_credentials: HashMap<CredentialSchemaId, Vec<CreateProofClaimRequestDTO>> =
         HashMap::new();
 
     for credential in presentation.credentials {
@@ -133,7 +135,7 @@ fn validate_proof(
                 Some((.., value)) => Ok(value),
             };
 
-        let mut collected_proved_claims: Vec<CreateProofClaimRequest> = vec![];
+        let mut collected_proved_claims: Vec<CreateProofClaimRequestDTO> = vec![];
         for requested_claim_schema_id in requested_claims.map_err(OneCoreError::SSIError)? {
             let claim_schema = proof_schema
                 .claim_schemas
@@ -153,8 +155,8 @@ fn validate_proof(
                         &claim_schema.key
                     )))?;
 
-            collected_proved_claims.push(CreateProofClaimRequest {
-                claim_schema_id: requested_claim_schema_id.to_string(),
+            collected_proved_claims.push(CreateProofClaimRequestDTO {
+                claim_schema_id: requested_claim_schema_id,
                 value: value.to_owned(),
             });
         }
@@ -185,46 +187,39 @@ impl OneCore {
         // Not used for now
         //let _transport = self.get_transport_protocol(transport_protocol)?;
 
-        let proof_request_id = request.proof.to_string();
-
-        let proof_request = self
-            .data_layer
-            .get_proof_details(&proof_request_id)
+        let proof_id = &request.proof;
+        let proof = self
+            .proof_service
+            .get_proof(proof_id)
             .await
             .map_err(|e| match e {
-                DataLayerError::RecordNotFound => OneCoreError::SSIError(SSIError::MissingProof),
-                e => OneCoreError::DataLayerError(e),
+                ServiceError::NotFound => OneCoreError::SSIError(SSIError::MissingProof),
+                e => OneCoreError::ServiceError(e),
             })?;
 
         // Check if proof request is in “OFFERED” state
-        if proof_request.state != ProofRequestState::Offered {
+        if proof.state != ProofStateEnum::Offered {
             tracing::error!(
                 "Incorrect proof state. Was: {:?}; Expected: Offered",
-                proof_request.state
+                proof.state
             );
             return Err(OneCoreError::SSIError(SSIError::IncorrectProofState));
         }
 
-        let holder_did = match &proof_request.receiver_did_id {
+        let holder_did = match &proof.receiver_did_id {
             None => {
                 return Err(SSIError::IncorrectParameters("Holder DID missing".to_owned()).into());
             }
             Some(holder_did_id) => self
                 .did_repository
-                .get_did(
-                    &Uuid::from_str(holder_did_id)
-                        .map_err(|_| OneCoreError::DataLayerError(DataLayerError::MappingError))?,
-                    &DidRelations::default(),
-                )
+                .get_did(holder_did_id, &DidRelations::default())
                 .await
                 .map_err(OneCoreError::DataLayerError)?,
         };
 
-        let proof_schema_id = Uuid::from_str(&proof_request.schema.id)
-            .map_err(|_| OneCoreError::DataLayerError(DataLayerError::MappingError))?;
         let proof_schema = self
             .proof_schema_service
-            .get_proof_schema(&proof_schema_id)
+            .get_proof_schema(&proof.schema.id)
             .await
             .map_err(OneCoreError::ServiceError)?;
 
@@ -240,22 +235,13 @@ impl OneCore {
         ) {
             Ok(claims) => claims,
             Err(e) => {
-                self
-                    .data_layer
-                    .set_proof_state(&proof_request_id, ProofRequestState::Error)
-                    .await.map_err(|status_error|
-                        FormatterError::CouldNotExtractPresentation(format!("Error: {e}; Error while setting proof state {proof_request_id} as well; Error:{status_error}")))?;
-
+                self.proof_service.fail_proof(proof_id).await?;
                 return Err(e);
             }
         };
 
-        self.data_layer
-            .set_proof_claims(&proof_request_id, proved_claims)
-            .await?;
-
-        self.data_layer
-            .set_proof_state(&proof_request_id, ProofRequestState::Accepted)
+        self.proof_service
+            .accept_proof(proof_id, proved_claims)
             .await?;
 
         Ok(())

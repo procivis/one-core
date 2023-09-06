@@ -1,11 +1,9 @@
 use one_core::{
     data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
     repository::data_provider::{
-        CreateCredentialRequest, CreateCredentialRequestClaim, CreateProofRequest,
-        CredentialClaimSchemaResponse, CredentialShareResponse, DetailCredentialClaimResponse,
-        DetailCredentialResponse, DetailProofClaim, DetailProofClaimSchema, DetailProofSchema,
-        EntityResponse, ListCredentialSchemaResponse, ProofDetailsResponse, ProofShareResponse,
-        ProofsDetailResponse,
+        CreateCredentialRequest, CreateCredentialRequestClaim, CredentialClaimSchemaResponse,
+        CredentialShareResponse, DetailCredentialClaimResponse, DetailCredentialResponse,
+        EntityResponse, ListCredentialSchemaResponse,
     },
 };
 
@@ -13,13 +11,9 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
-use validator::Validate;
 
 use crate::endpoint::credential_schema::dto::CredentialClaimSchemaResponseRestDTO;
-use crate::{
-    dto::common::GetListQueryParams,
-    serialize::{front_time, front_time_option},
-};
+use crate::{dto::common::GetListQueryParams, serialize::front_time};
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -28,15 +22,6 @@ pub struct CredentialRequestDTO {
     pub issuer_did: Uuid,
     pub transport: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Transport {
-    #[default]
-    ProcivisTemporary,
-    #[serde(rename = "OPENID4VC")]
-    OpenId4Vc,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -98,19 +83,6 @@ pub(crate) fn share_credentials_to_entity_share_response(
         url: format!(
             "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
             base_url, protocol, value.credential_id
-        ),
-    }
-}
-
-pub(crate) fn share_proof_to_entity_share_response(
-    value: ProofShareResponse,
-    base_url: &String,
-) -> EntityShareResponseDTO {
-    let protocol = &value.transport;
-    EntityShareResponseDTO {
-        url: format!(
-            "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
-            base_url, protocol, value.proof_id
         ),
     }
 }
@@ -354,260 +326,7 @@ pub(crate) struct ProofRequestQueryParams {
     pub proof: Uuid,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateProofRequestDTO {
-    pub proof_schema_id: Uuid,
-    pub verifier_did: Uuid,
-    pub transport: String,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateProofResponseDTO {
-    pub id: String,
-}
-
-impl From<CreateProofRequestDTO> for CreateProofRequest {
-    fn from(value: CreateProofRequestDTO) -> Self {
-        Self {
-            proof_schema_id: value.proof_schema_id,
-            verifier_did_id: value.verifier_did,
-            transport: value.transport,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct HandleInvitationRequestDTO {
     pub url: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct ProofDetailsResponseDTO {
-    pub id: String,
-
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub issuance_date: OffsetDateTime,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub requested_date: Option<OffsetDateTime>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub completed_date: Option<OffsetDateTime>,
-
-    pub verifier_did: String,
-    pub transport: String,
-    pub state: ProofRequestState,
-    pub organisation_id: String,
-    pub claims: Vec<DetailProofClaimDTO>,
-    pub schema: DetailProofSchemaDTO,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct DetailProofSchemaDTO {
-    pub id: String,
-    pub name: String,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct DetailProofClaimDTO {
-    pub schema: DetailProofClaimSchemaDTO,
-    pub value: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct DetailProofClaimSchemaDTO {
-    pub id: String,
-    pub key: String,
-    pub datatype: String,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-    pub credential_schema: ListCredentialSchemaResponseDTO,
-}
-
-impl From<ProofDetailsResponse> for ProofDetailsResponseDTO {
-    fn from(value: ProofDetailsResponse) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            issuance_date: value.issuance_date,
-            requested_date: value.requested_date,
-            completed_date: value.completed_date,
-            verifier_did: value.verifier_did,
-            transport: value.transport,
-            state: value.state.into(),
-            organisation_id: value.organisation_id,
-            claims: value.claims.iter().map(|i| i.clone().into()).collect(),
-            schema: value.schema.into(),
-        }
-    }
-}
-
-impl From<DetailProofSchema> for DetailProofSchemaDTO {
-    fn from(value: DetailProofSchema) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-        }
-    }
-}
-
-impl From<DetailProofClaim> for DetailProofClaimDTO {
-    fn from(value: DetailProofClaim) -> Self {
-        Self {
-            schema: value.schema.into(),
-            value: value.value,
-        }
-    }
-}
-
-impl From<DetailProofClaimSchema> for DetailProofClaimSchemaDTO {
-    fn from(value: DetailProofClaimSchema) -> Self {
-        Self {
-            id: value.id,
-            key: value.key,
-            datatype: value.datatype,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            credential_schema: value.credential_schema.into(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum ProofRequestState {
-    Created,
-    Pending,
-    Offered,
-    Accepted,
-    Rejected,
-    Revoked,
-    Error,
-}
-
-impl From<one_core::repository::data_provider::ProofRequestState> for ProofRequestState {
-    fn from(value: one_core::repository::data_provider::ProofRequestState) -> Self {
-        use one_core::repository::data_provider::ProofRequestState as cs;
-        match value {
-            cs::Created => ProofRequestState::Created,
-            cs::Pending => ProofRequestState::Pending,
-            cs::Offered => ProofRequestState::Offered,
-            cs::Accepted => ProofRequestState::Accepted,
-            cs::Rejected => ProofRequestState::Rejected,
-            cs::Error => ProofRequestState::Error,
-        }
-    }
-}
-
-pub type GetProofQuery = GetListQueryParams<SortableProofColumn>;
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub enum SortableProofColumn {
-    #[serde(rename = "schema.name")]
-    ProofSchemaName,
-    VerifierDid,
-    CreatedDate,
-    State,
-}
-
-impl From<SortableProofColumn> for one_core::repository::data_provider::SortableProofColumn {
-    fn from(value: SortableProofColumn) -> Self {
-        match value {
-            SortableProofColumn::CreatedDate => {
-                one_core::repository::data_provider::SortableProofColumn::CreatedDate
-            }
-            SortableProofColumn::ProofSchemaName => {
-                one_core::repository::data_provider::SortableProofColumn::ProofSchemaName
-            }
-            SortableProofColumn::VerifierDid => {
-                one_core::repository::data_provider::SortableProofColumn::VerifierDid
-            }
-            SortableProofColumn::State => {
-                one_core::repository::data_provider::SortableProofColumn::State
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ProofsDetailResponseDTO {
-    pub id: String,
-
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub created_date: OffsetDateTime,
-
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub last_modified: OffsetDateTime,
-
-    #[serde(serialize_with = "front_time")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub issuance_date: OffsetDateTime,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub requested_date: Option<OffsetDateTime>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
-    pub completed_date: Option<OffsetDateTime>,
-
-    pub state: ProofRequestState,
-    pub organisation_id: String,
-    pub verifier_did: String,
-    pub schema: DetailProofSchemaDTO,
-}
-
-impl From<ProofsDetailResponse> for ProofsDetailResponseDTO {
-    fn from(value: ProofsDetailResponse) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            issuance_date: value.issuance_date,
-            requested_date: value.requested_date,
-            completed_date: value.completed_date,
-            state: value.state.into(),
-            organisation_id: value.organisation_id,
-            verifier_did: value.verifier_did,
-            schema: value.schema.into(),
-        }
-    }
 }
