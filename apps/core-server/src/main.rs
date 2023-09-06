@@ -11,7 +11,10 @@ use axum::middleware::{self, Next};
 use axum::routing::{delete, get, post};
 use axum::{Extension, Router};
 use figment::{providers::Env, Figment};
-use one_core::OneCore;
+use one_core::{
+    config::data_structure::{ConfigKind, UnparsedConfig},
+    OneCore,
+};
 use serde::Deserialize;
 use shadow_rs::shadow;
 use sql_data_provider::DataLayer;
@@ -22,7 +25,6 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-mod config;
 pub(crate) mod data_model;
 pub(crate) mod dto;
 pub(crate) mod endpoint;
@@ -30,12 +32,12 @@ pub(crate) mod mapper;
 pub(crate) mod serialize;
 
 use endpoint::{
-    get_config, get_credential, misc, post_credential, share_credential,
-    ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
-    ssi_post_verifier_reject_proof_request, ssi_post_verifier_submit,
+    get_credential, misc, post_credential, share_credential, ssi_post_handle_invitation,
+    ssi_post_issuer_connect, ssi_post_verifier_connect, ssi_post_verifier_reject_proof_request,
+    ssi_post_verifier_submit,
 };
 
-use crate::endpoint::{credential_schema, did, organisation, proof, proof_schema};
+use crate::endpoint::{config, credential_schema, did, organisation, proof, proof_schema};
 
 #[derive(Clone)]
 struct AppState {
@@ -58,6 +60,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(OpenApi)]
     #[openapi(
         paths(
+            endpoint::config::controller::get_config,
+
             endpoint::organisation::controller::post_organisation,
             endpoint::organisation::controller::get_organisation,
             endpoint::organisation::controller::get_organisations,
@@ -81,7 +85,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::proof::controller::post_proof,
             endpoint::proof::controller::share_proof,
 
-            endpoint::get_config::get_config,
             endpoint::get_credential::get_credentials,
             endpoint::get_credential::get_credential_details,
             endpoint::post_credential::post_credential,
@@ -95,6 +98,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         components(
             schemas(
+                endpoint::config::dto::ConfigRestDTO,
+
                 endpoint::organisation::dto::CreateOrganisationRequestRestDTO,
                 endpoint::organisation::dto::CreateOrganisationResponseRestDTO,
                 endpoint::organisation::dto::GetOrganisationDetailsResponseRestDTO,
@@ -149,8 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 data_model::ProofClaimResponseDTO,
                 data_model::ConnectRequestDTO,
                 data_model::ProofRequestQueryParams,
-                data_model::HandleInvitationRequestDTO,
-                dto::response::config::ConfigDTO
+                data_model::HandleInvitationRequestDTO
             )
         ),
         modifiers(),
@@ -198,7 +202,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     documentation.info.version = app_version.to_owned();
 
     let config_path = PathBuf::from(&config.config_file);
-    let unparsed_config = config::load_config(&config_path).expect("Failed to load config.yml");
+    let unparsed_config = load_config(&config_path).expect("Failed to load config.yml");
     let core = OneCore::new(
         Arc::new(DataLayer::create(&config.database_url).await),
         unparsed_config,
@@ -208,7 +212,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState { core };
 
     let protected = Router::new()
-        .route("/api/config/v1", get(get_config::get_config))
+        .route("/api/config/v1", get(config::controller::get_config))
         .route(
             "/api/credential/v1",
             get(get_credential::get_credentials).post(post_credential::post_credential),
@@ -370,6 +374,20 @@ fn log_build_info() {
     info!("Commit: {}", build::COMMIT_HASH);
     info!("Rust version: {}", build::RUST_VERSION);
     info!("Pipeline ID: {}", build::CI_PIPELINE_ID);
+}
+
+fn load_config(path: &std::path::Path) -> Result<UnparsedConfig, std::io::Error> {
+    let content = std::fs::read_to_string(path)?;
+
+    let kind = match path.extension() {
+        None => ConfigKind::Yaml,
+        Some(value) => match value.to_str() {
+            Some("json") => ConfigKind::Json,
+            _ => ConfigKind::Yaml,
+        },
+    };
+
+    Ok(UnparsedConfig { content, kind })
 }
 
 fn config_tracing(config: &Config) {

@@ -7,7 +7,7 @@ use crate::config::{
     {json_config_provider::JsonConfigProvider, yaml_config_provider::YamlConfigProvider},
 };
 
-pub trait ConfigProvider {
+pub(super) trait ConfigProvider {
     fn parse_config(
         &self,
         value: &str,

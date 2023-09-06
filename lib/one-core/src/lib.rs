@@ -10,9 +10,9 @@ use repository::{
     data_provider::DataProvider, did_repository::DidRepository,
     organisation_repository::OrganisationRepository, DataRepository,
 };
-use service::proof::ProofService;
 use service::{
-    did::DidService, organisation::OrganisationService, proof_schema::ProofSchemaService,
+    config::ConfigService, did::DidService, organisation::OrganisationService, proof::ProofService,
+    proof_schema::ProofSchemaService,
 };
 use signature_provider::SignatureProvider;
 use transport_protocol::procivis_temp::ProcivisTemp;
@@ -57,6 +57,7 @@ pub struct OneCore {
     pub credential_schema_service: CredentialSchemaService,
     pub proof_schema_service: ProofSchemaService,
     pub proof_service: ProofService,
+    pub config_service: ConfigService,
     pub config: Arc<CoreConfig>,
 }
 
@@ -115,6 +116,7 @@ impl OneCore {
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_did_repository(),
             ),
+            config_service: ConfigService::new(config.clone()),
             config,
         })
     }

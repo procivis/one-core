@@ -1,22 +1,5 @@
-use std::fmt;
-
 use serde::{Serialize, Serializer};
 use time::OffsetDateTime;
-
-use crate::dto::common::GetListResponseRestDTO;
-
-impl<T, K> From<one_core::model::common::GetListResponse<K>> for GetListResponseRestDTO<T>
-where
-    T: From<K> + Clone + fmt::Debug + Serialize,
-{
-    fn from(value: one_core::model::common::GetListResponse<K>) -> Self {
-        Self {
-            values: value.values.into_iter().map(|item| item.into()).collect(),
-            total_pages: value.total_pages,
-            total_items: value.total_items,
-        }
-    }
-}
 
 pub fn front_time<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
 where

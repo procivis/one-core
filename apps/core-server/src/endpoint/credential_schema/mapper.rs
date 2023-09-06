@@ -8,6 +8,7 @@ use crate::endpoint::credential_schema::dto::{
     CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaResponseRestDTO,
     CredentialClaimSchemaRequestRestDTO, CredentialClaimSchemaResponseRestDTO,
     CredentialSchemaListValueResponseRestDTO, CredentialSchemaResponseRestDTO,
+    SortableCredentialSchemaColumnRestEnum,
 };
 
 impl From<GetCredentialSchemaListValueResponseDTO> for CredentialSchemaListValueResponseRestDTO {
@@ -75,6 +76,24 @@ impl From<CredentialClaimSchemaRequestRestDTO> for CredentialClaimSchemaRequestD
         CredentialClaimSchemaRequestDTO {
             key: value.key,
             datatype: value.datatype,
+        }
+    }
+}
+
+impl From<SortableCredentialSchemaColumnRestEnum>
+    for one_core::model::credential_schema::SortableCredentialSchemaColumn
+{
+    fn from(value: SortableCredentialSchemaColumnRestEnum) -> Self {
+        match value {
+            SortableCredentialSchemaColumnRestEnum::Name => {
+                one_core::model::credential_schema::SortableCredentialSchemaColumn::Name
+            }
+            SortableCredentialSchemaColumnRestEnum::Format => {
+                one_core::model::credential_schema::SortableCredentialSchemaColumn::Format
+            }
+            SortableCredentialSchemaColumnRestEnum::CreatedDate => {
+                one_core::model::credential_schema::SortableCredentialSchemaColumn::CreatedDate
+            }
         }
     }
 }
