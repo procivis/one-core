@@ -39,11 +39,11 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
     }
 }
 
-impl TryFrom<claim_schema::Model> for ClaimSchemaId {
+impl TryFrom<credential_schema_claim_schema::Model> for ClaimSchemaId {
     type Error = DataLayerError;
 
-    fn try_from(value: claim_schema::Model) -> Result<Self, Self::Error> {
-        Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)
+    fn try_from(value: credential_schema_claim_schema::Model) -> Result<Self, Self::Error> {
+        Uuid::from_str(&value.claim_schema_id).map_err(|_| DataLayerError::MappingError)
     }
 }
 
@@ -66,16 +66,6 @@ fn entity_model_to_credential_schema(
         claim_schemas: None,
         organisation,
     })
-}
-
-pub(super) fn claim_schema_models_to_id_list(
-    models: Vec<claim_schema::Model>,
-) -> Result<Vec<ClaimSchemaId>, DataLayerError> {
-    let result: Vec<ClaimSchemaId> = models
-        .into_iter()
-        .map(<claim_schema::Model as TryInto<ClaimSchemaId>>::try_into)
-        .collect::<Result<Vec<_>, DataLayerError>>()?;
-    Ok(result)
 }
 
 pub(crate) fn create_list_response(
