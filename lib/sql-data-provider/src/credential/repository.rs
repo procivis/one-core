@@ -267,7 +267,10 @@ impl CredentialRepository for CredentialProvider {
         let credential = request_to_active_model(&request, schema, issuer_did, holder_did_id)
             .insert(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| match e.sql_err() {
+                Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
+                _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            })?;
 
         self.claim_repository
             .create_claim_list(claims.to_owned())
