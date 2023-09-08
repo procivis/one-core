@@ -15,3 +15,6 @@ pub(crate) struct CredentialProvider {
     pub claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
     pub did_repository: Arc<dyn DidRepository + Send + Sync>,
 }
+
+#[cfg(test)]
+mod test;
