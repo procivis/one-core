@@ -1,17 +1,6 @@
-use std::str::FromStr;
-use std::sync::Arc;
-use uuid::Uuid;
-
-use sea_orm::sea_query::IntoCondition;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
-    Unchanged,
-};
-
-use one_core::common_mapper::vector_into;
-use one_core::model::credential::{CredentialState, CredentialStateRelations};
 use one_core::{
+    common_mapper::vector_into,
+    model::credential::{CredentialState, CredentialStateRelations},
     model::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
@@ -27,6 +16,14 @@ use one_core::{
         error::DataLayerError,
     },
 };
+use sea_orm::{
+    sea_query::{Alias, Expr, IntoCondition, Query},
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
+    Unchanged,
+};
+use std::{str::FromStr, sync::Arc};
+use uuid::Uuid;
 
 use crate::credential::mapper::{
     entities_to_credential, get_credential_state_active_model, request_to_active_model,
@@ -178,11 +175,8 @@ impl CredentialProvider {
     }
 }
 
-fn get_select_credentials_query(
-    base_query: Select<credential::Entity>,
-    organisation_id: Option<String>,
-) -> Select<credential::Entity> {
-    base_query
+fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credential::Entity> {
+    credential::Entity::find()
         .select_only()
         .columns([
             credential::Column::Id,
@@ -196,19 +190,50 @@ fn get_select_credentials_query(
             credential::Column::HolderDidId,
             credential::Column::CredentialSchemaId,
         ])
-        // add related schema
-        .join_rev(
+        // add related schema (to enable sorting by schema name)
+        .join(
             sea_orm::JoinType::InnerJoin,
-            credential::Relation::CredentialSchema
-                .def()
-                .rev()
-                .on_condition(move |_left, _right| match &organisation_id {
-                    None => Condition::all(),
-                    Some(id) => credential_schema::Column::OrganisationId
-                        .eq(id)
-                        .into_condition(),
-                }),
+            credential::Relation::CredentialSchema.def(),
         )
+        // add related issuer did (to enable sorting)
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            credential::Relation::IssuerDid.def(),
+        )
+        // find most recent state (to enable sorting)
+        .join(
+            sea_orm::JoinType::InnerJoin,
+            credential::Relation::CredentialState.def(),
+        )
+        .filter(
+            credential_state::Column::CreatedDate
+                .in_subquery(
+                    Query::select()
+                        .expr(
+                            Expr::col((
+                                Alias::new("inner_state"),
+                                credential_state::Column::CreatedDate,
+                            ))
+                            .max(),
+                        )
+                        .from_as(credential_state::Entity, Alias::new("inner_state"))
+                        .cond_where(
+                            Expr::col((
+                                Alias::new("inner_state"),
+                                credential_state::Column::CredentialId,
+                            ))
+                            .equals((
+                                credential_state::Entity,
+                                credential_state::Column::CredentialId,
+                            )),
+                        )
+                        .to_owned(),
+                )
+                .into_condition(),
+        )
+        // list query
+        .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
+        .with_organisation_id(&query_params, &credential_schema::Column::OrganisationId)
         // fallback ordering
         .order_by_desc(credential::Column::CreatedDate)
         .order_by_desc(credential::Column::Id)
@@ -306,11 +331,7 @@ impl CredentialRepository for CredentialProvider {
     ) -> Result<GetCredentialList, DataLayerError> {
         let limit: u64 = query_params.page_size as u64;
 
-        let query = get_select_credentials_query(
-            credential::Entity::find()
-                .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name])),
-            Some(query_params.organisation_id),
-        );
+        let query = get_credential_list_query(query_params);
 
         let items_count = query
             .to_owned()
@@ -319,7 +340,6 @@ impl CredentialRepository for CredentialProvider {
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
         let credentials = query
-            .to_owned()
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
