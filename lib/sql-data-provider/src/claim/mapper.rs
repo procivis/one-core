@@ -40,26 +40,21 @@ impl TryFrom<claim::Model> for Claim {
     }
 }
 
-pub(super) fn try_to_claim_list(
+pub(super) fn sort_claim_models(
     id_order: &[ClaimId],
-    models: Vec<claim::Model>,
-) -> Result<Vec<Claim>, DataLayerError> {
+    models: &mut Vec<claim::Model>,
+) -> Result<(), DataLayerError> {
     if id_order.len() != models.len() {
         return Err(DataLayerError::RecordNotFound);
     }
 
-    let id_to_index: HashMap<&ClaimId, usize> = id_order
+    let id_to_index: HashMap<String, usize> = id_order
         .iter()
         .enumerate()
-        .map(|(index, id)| (id, index))
+        .map(|(index, id)| (id.to_string(), index))
         .collect();
 
-    let mut claims = models
-        .into_iter()
-        .map(|schema| schema.try_into())
-        .collect::<Result<Vec<Claim>, DataLayerError>>()?;
+    models.sort_by(|a, b| id_to_index[&a.id].cmp(&id_to_index[&b.id]));
 
-    claims.sort_by(|a, b| id_to_index[&a.id].cmp(&id_to_index[&b.id]));
-
-    Ok(claims)
+    Ok(())
 }

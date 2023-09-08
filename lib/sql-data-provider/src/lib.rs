@@ -170,12 +170,12 @@ impl DataProvider for OldProvider {
             .await
     }
 
-    async fn update_credential_received_did(
+    async fn update_credential_holder_did(
         &self,
         credential_id: &str,
         did_id: &str,
     ) -> Result<(), DataLayerError> {
-        self.update_credential_received_did(credential_id, did_id)
+        self.update_credential_holder_did(credential_id, did_id)
             .await
     }
 

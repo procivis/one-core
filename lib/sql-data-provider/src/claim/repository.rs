@@ -1,6 +1,7 @@
-use super::{mapper::try_to_claim_list, ClaimProvider};
+use super::{mapper::sort_claim_models, ClaimProvider};
 use crate::{entity::claim, error_mapper::to_data_layer_error};
 use one_core::{
+    common_mapper::vector_try_into,
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::ClaimSchemaId,
@@ -33,11 +34,12 @@ impl ClaimRepository for ClaimProvider {
         relations: &ClaimRelations,
     ) -> Result<Vec<Claim>, DataLayerError> {
         let ids_string: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-        let models = claim::Entity::find()
+        let mut models = claim::Entity::find()
             .filter(claim::Column::Id.is_in(ids_string))
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;
+        sort_claim_models(&ids, &mut models)?;
 
         if let Some(claim_schema_relations) = &relations.schema {
             let claim_schema_ids = models
@@ -52,7 +54,7 @@ impl ClaimRepository for ClaimProvider {
                 .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
                 .await?;
 
-            let claims = try_to_claim_list(&ids, models)?;
+            let claims: Vec<Claim> = vector_try_into(models)?;
 
             Ok(claims
                 .into_iter()
@@ -63,7 +65,7 @@ impl ClaimRepository for ClaimProvider {
                 })
                 .collect())
         } else {
-            try_to_claim_list(&ids, models)
+            vector_try_into(models)
         }
     }
 }

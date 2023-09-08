@@ -36,10 +36,10 @@ pub struct CredentialSchemaResponse {
 pub struct CreateCredentialRequest {
     pub credential_id: Option<String>,
     pub credential_schema_id: Uuid,
-    pub issuer_did: Uuid,
+    pub issuer_did_id: Uuid,
     pub transport: String,
     pub claim_values: Vec<CreateCredentialRequestClaim>,
-    pub receiver_did_id: Option<Uuid>,
+    pub holder_did_id: Option<Uuid>,
     pub credential: Option<Vec<u8>>,
 }
 
@@ -184,7 +184,7 @@ pub trait DataProvider {
         issuer: &str,
     ) -> Result<(), DataLayerError>;
 
-    async fn update_credential_received_did(
+    async fn update_credential_holder_did(
         &self,
         credential_id: &str,
         did_id: &str,

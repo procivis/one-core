@@ -83,8 +83,8 @@ pub struct CredentialRequestClaimDTO {
 pub struct CreateCredentialFromJwtRequestDTO {
     pub id: Uuid,
     pub credential_schema_id: Uuid,
-    pub receiver_did: Option<Uuid>,
-    pub issuer_did: Uuid,
+    pub holder_did_id: Option<Uuid>,
+    pub issuer_did_id: Uuid,
     pub transport: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub credential: Option<Vec<u8>>,

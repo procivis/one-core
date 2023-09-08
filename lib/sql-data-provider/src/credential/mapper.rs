@@ -8,7 +8,7 @@ use one_core::model::credential::{
     Credential, CredentialId, CredentialState, CredentialStateEnum, SortableCredentialColumn,
 };
 use one_core::model::credential_schema::CredentialSchema;
-use one_core::model::did::Did;
+use one_core::model::did::{Did, DidId};
 
 use crate::{
     entity::{self, credential, credential_schema, credential_state, did},
@@ -83,7 +83,7 @@ pub(super) fn entities_to_credential(
     credential: credential::Model,
     states: Option<Vec<CredentialState>>,
     issuer_did: Option<Did>,
-    receiver_did: Option<Did>,
+    holder_did: Option<Did>,
     claims: Option<Vec<Claim>>,
     schema: Option<CredentialSchema>,
 ) -> Credential {
@@ -94,7 +94,7 @@ pub(super) fn entities_to_credential(
         state: states,
         last_modified: credential.last_modified,
         issuer_did,
-        receiver_did,
+        holder_did,
         credential: credential.credential,
         claims,
         schema,
@@ -106,7 +106,7 @@ pub(super) fn request_to_active_model(
     request: &Credential,
     schema: CredentialSchema,
     issuer_did: Did,
-    receiver_did: Option<String>,
+    holder_did_id: Option<DidId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id.to_string()),
@@ -118,6 +118,6 @@ pub(super) fn request_to_active_model(
         transport: Set(request.transport.to_owned()),
         credential: Set(request.credential.to_owned()),
         issuer_did_id: Set(issuer_did.id.to_string()),
-        receiver_did_id: Set(receiver_did),
+        holder_did_id: Set(holder_did_id.map(|did_id| did_id.to_string())),
     }
 }

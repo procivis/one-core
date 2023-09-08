@@ -26,10 +26,10 @@ pub trait ProofRepository {
         state: ProofState,
     ) -> Result<(), DataLayerError>;
 
-    async fn set_proof_receiver_did(
+    async fn set_proof_holder_did(
         &self,
         proof_id: &ProofId,
-        receiver_did: Did,
+        holder_did: Did,
     ) -> Result<(), DataLayerError>;
 
     async fn set_proof_claims(

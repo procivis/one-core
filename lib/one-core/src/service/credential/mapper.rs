@@ -207,7 +207,7 @@ pub(super) fn from_create_request(
         transport: request.transport,
         claims: Some(claims),
         issuer_did: Some(issuer_did),
-        receiver_did: None,
+        holder_did: None,
         schema: Some(schema),
     }
 }
@@ -215,7 +215,7 @@ pub(super) fn from_create_request(
 pub(super) fn from_jwt_create_request(
     request: CreateCredentialFromJwtRequestDTO,
     claims: Vec<Claim>,
-    receiver_did: Option<Did>,
+    holder_did: Option<Did>,
     issuer_did: Did,
     schema: CredentialSchema,
 ) -> Credential {
@@ -238,7 +238,7 @@ pub(super) fn from_jwt_create_request(
         transport: request.transport,
         claims: Some(claims),
         issuer_did: Some(issuer_did),
-        receiver_did,
+        holder_did,
         schema: Some(schema),
     }
 }

@@ -32,3 +32,6 @@ impl ProofService {
         }
     }
 }
+
+#[cfg(test)]
+mod test;

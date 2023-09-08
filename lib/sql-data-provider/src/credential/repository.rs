@@ -103,12 +103,12 @@ impl CredentialProvider {
         )
         .await?;
 
-        let receiver_did = match &credential.receiver_did_id {
+        let holder_did = match &credential.holder_did_id {
             None => None,
-            Some(receiver_did_id) => {
+            Some(holder_did_id) => {
                 let uuid =
-                    Uuid::from_str(receiver_did_id).map_err(|_| DataLayerError::MappingError)?;
-                get_did(&uuid, &relations.receiver_did, self.did_repository.clone()).await?
+                    Uuid::from_str(holder_did_id).map_err(|_| DataLayerError::MappingError)?;
+                get_did(&uuid, &relations.holder_did, self.did_repository.clone()).await?
             }
         };
 
@@ -155,7 +155,7 @@ impl CredentialProvider {
             credential,
             states,
             issuer_did,
-            receiver_did,
+            holder_did,
             claims,
             schema,
         ))
@@ -193,7 +193,7 @@ fn get_select_credentials_query(
             credential::Column::Transport,
             credential::Column::Credential,
             credential::Column::IssuerDidId,
-            credential::Column::ReceiverDidId,
+            credential::Column::HolderDidId,
             credential::Column::CredentialSchemaId,
         ])
         // add related schema
@@ -221,9 +221,9 @@ impl CredentialRepository for CredentialProvider {
             .issuer_did
             .to_owned()
             .ok_or(DataLayerError::MappingError)?;
-        let receiver_did = match request.receiver_did.to_owned() {
+        let holder_did_id = match request.holder_did.to_owned() {
             None => None,
-            Some(did) => Some(did.id.to_string()),
+            Some(did) => Some(did.id),
         };
         let schema = request
             .schema
@@ -234,7 +234,7 @@ impl CredentialRepository for CredentialProvider {
             .to_owned()
             .ok_or(DataLayerError::MappingError)?;
 
-        let credential = request_to_active_model(&request, schema, issuer_did, receiver_did)
+        let credential = request_to_active_model(&request, schema, issuer_did, holder_did_id)
             .insert(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
@@ -274,7 +274,7 @@ impl CredentialRepository for CredentialProvider {
             state: Some(CredentialStateRelations {}),
             claims: None,
             issuer_did: Some(DidRelations {}),
-            receiver_did: Some(DidRelations {}),
+            holder_did: Some(DidRelations {}),
             schema: Some(CredentialSchemaRelations {
                 claim_schema: Some(ClaimSchemaRelations {}),
                 organisation: Some(OrganisationRelations {}),
@@ -332,7 +332,7 @@ impl CredentialRepository for CredentialProvider {
                         state: Some(CredentialStateRelations {}),
                         claims: None,
                         issuer_did: Some(DidRelations {}),
-                        receiver_did: Some(DidRelations {}),
+                        holder_did: Some(DidRelations {}),
                         schema: Some(CredentialSchemaRelations {
                             claim_schema: Some(ClaimSchemaRelations {}),
                             organisation: Some(OrganisationRelations {}),

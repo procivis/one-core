@@ -13,7 +13,7 @@ pub struct Model {
 
     pub transport: String,
     pub verifier_did_id: String,
-    pub receiver_did_id: Option<String>,
+    pub holder_did_id: Option<String>,
     pub proof_schema_id: String,
 }
 
@@ -31,7 +31,7 @@ pub enum Relation {
     VerifierDid,
     #[sea_orm(
         belongs_to = "super::did::Entity",
-        from = "Column::ReceiverDidId",
+        from = "Column::HolderDidId",
         to = "super::did::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"

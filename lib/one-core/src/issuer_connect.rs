@@ -54,7 +54,7 @@ impl OneCore {
         };
 
         self.data_layer
-            .update_credential_received_did(&credential_id.to_string(), &did_id.to_string())
+            .update_credential_holder_did(&credential_id.to_string(), &did_id.to_string())
             .await
             .map_err(OneCoreError::DataLayerError)?;
 

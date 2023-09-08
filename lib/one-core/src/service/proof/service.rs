@@ -46,7 +46,7 @@ impl ProofService {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
                     verifier_did: Some(DidRelations::default()),
-                    receiver_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
                 },
             )
             .await
@@ -200,7 +200,7 @@ impl ProofService {
         };
 
         self.proof_repository
-            .set_proof_receiver_did(id, holder_did)
+            .set_proof_holder_did(id, holder_did)
             .await?;
 
         self.proof_repository

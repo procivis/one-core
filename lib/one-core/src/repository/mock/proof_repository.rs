@@ -32,10 +32,10 @@ mock! {
             state: ProofState,
         ) -> Result<(), DataLayerError>;
 
-        pub fn set_proof_receiver_did(
+        pub fn set_proof_holder_did(
             &self,
             proof_id: &ProofId,
-            receiver_did: Did,
+            holder_did: Did,
         ) -> Result<(), DataLayerError>;
 
         pub fn set_proof_claims(
@@ -75,12 +75,12 @@ impl crate::repository::proof_repository::ProofRepository for MockProofRepositor
         self.set_proof_state(proof_id, state)
     }
 
-    async fn set_proof_receiver_did(
+    async fn set_proof_holder_did(
         &self,
         proof_id: &ProofId,
-        receiver_did: Did,
+        holder_did: Did,
     ) -> Result<(), DataLayerError> {
-        self.set_proof_receiver_did(proof_id, receiver_did)
+        self.set_proof_holder_did(proof_id, holder_did)
     }
 
     async fn set_proof_claims(

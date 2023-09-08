@@ -59,7 +59,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 did_type: value.verifier_did_type.into(),
                 did_method: value.verifier_did_method,
             }),
-            receiver_did: None,
+            holder_did: None,
         })
     }
 }
@@ -80,7 +80,7 @@ impl TryFrom<proof::Model> for Proof {
             schema: None,
             claims: None,
             verifier_did: None,
-            receiver_did: None,
+            holder_did: None,
         })
     }
 }
@@ -100,7 +100,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
                 .ok_or(DataLayerError::IncorrectParameters)?
                 .id
                 .to_string()),
-            receiver_did_id: Set(value.receiver_did.map(|did| did.id.to_string())),
+            holder_did_id: Set(value.holder_did.map(|did| did.id.to_string())),
             proof_schema_id: Set(value
                 .schema
                 .ok_or(DataLayerError::IncorrectParameters)?
