@@ -1,10 +1,9 @@
-pub mod get_credential;
 pub mod misc;
-pub mod post_credential;
 pub mod share_credential;
 
 // New implementations
 pub mod config;
+pub mod credential;
 pub mod credential_schema;
 pub mod did;
 pub mod organisation;

@@ -1,45 +1,34 @@
+use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
 use migration::{Migrator, MigratorTrait};
-use one_core::{
-    config::data_structure::{DatatypeEntity, ExchangeEntity},
-    repository::{
-        claim_repository::ClaimRepository,
-        claim_schema_repository::ClaimSchemaRepository,
-        credential_schema_repository::CredentialSchemaRepository,
-        data_provider::{
-            CreateCredentialRequest, CredentialShareResponse, CredentialState, DataProvider,
-            DetailCredentialResponse, EntityResponse, GetCredentialsQuery, GetCredentialsResponse,
-            GetDidDetailsResponse,
-        },
-        did_repository::DidRepository,
-        error::DataLayerError,
-        organisation_repository::OrganisationRepository,
-        proof_repository::ProofRepository,
-        proof_schema_repository::ProofSchemaRepository,
-        DataRepository,
-    },
+use one_core::repository::{
+    claim_repository::ClaimRepository,
+    claim_schema_repository::ClaimSchemaRepository,
+    credential_repository::CredentialRepository,
+    credential_schema_repository::CredentialSchemaRepository,
+    data_provider::{DataProvider, GetDidDetailsResponse},
+    did_repository::DidRepository,
+    error::DataLayerError,
+    organisation_repository::OrganisationRepository,
+    proof_repository::ProofRepository,
+    proof_schema_repository::ProofSchemaRepository,
+    DataRepository,
 };
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::DatabaseConnection;
-use std::collections::HashMap;
+
 use std::sync::Arc;
 
 mod common;
-mod common_queries;
-mod create_credential;
 mod data_model;
 mod did_manipulation;
 mod entity;
-mod get_credential_details;
-mod get_credentials;
 mod get_local_dids;
-mod set_credential_state;
-mod share_credential;
 mod update_credential;
 
 mod list_query;
@@ -47,6 +36,7 @@ mod list_query;
 // New implementations
 pub mod claim;
 pub mod claim_schema;
+pub mod credential;
 pub mod credential_schema;
 pub mod did;
 pub mod organisation;
@@ -65,6 +55,7 @@ pub struct DataLayer {
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
     claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
@@ -102,9 +93,16 @@ impl DataLayer {
             proof_schema_repository: proof_schema_repository.clone(),
             did_repository: did_repository.clone(),
         });
+        let credential_repository = Arc::new(CredentialProvider {
+            db: db.clone(),
+            credential_schema_repository: credential_schema_repository.clone(),
+            claim_repository: claim_repository.clone(),
+            did_repository: did_repository.clone(),
+        });
         Self {
             data_provider: Arc::new(OldProvider { db: db.clone() }),
             organisation_repository,
+            credential_repository,
             credential_schema_repository,
             proof_schema_repository,
             proof_repository,
@@ -133,6 +131,9 @@ impl DataRepository for DataLayer {
     fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository + Send + Sync> {
         self.claim_schema_repository.clone()
     }
+    fn get_credential_repository(&self) -> Arc<dyn CredentialRepository + Send + Sync> {
+        self.credential_repository.clone()
+    }
     fn get_credential_schema_repository(
         &self,
     ) -> Arc<dyn CredentialSchemaRepository + Send + Sync> {
@@ -152,54 +153,12 @@ pub(crate) struct OldProvider {
 
 #[async_trait::async_trait]
 impl DataProvider for OldProvider {
-    async fn create_credential(
-        &self,
-        request: CreateCredentialRequest,
-        datatypes: &HashMap<String, DatatypeEntity>,
-        exchanges: &HashMap<String, ExchangeEntity>,
-    ) -> Result<EntityResponse, DataLayerError> {
-        self.create_credential(request, datatypes, exchanges).await
-    }
-
     async fn insert_remote_did(
         &self,
         did_value: &str,
         organisation_id: &str,
     ) -> Result<String, DataLayerError> {
         self.insert_remote_did(did_value, organisation_id).await
-    }
-
-    async fn get_credential_details(
-        &self,
-        uuid: &str,
-    ) -> Result<DetailCredentialResponse, DataLayerError> {
-        self.get_credential_details(uuid).await
-    }
-
-    async fn get_credentials(
-        &self,
-        query_params: GetCredentialsQuery,
-    ) -> Result<GetCredentialsResponse, DataLayerError> {
-        self.get_credentials(query_params).await
-    }
-
-    async fn get_all_credentials(&self) -> Result<Vec<DetailCredentialResponse>, DataLayerError> {
-        self.get_all_credentials().await
-    }
-
-    async fn set_credential_state(
-        &self,
-        credential_id: &str,
-        new_state: CredentialState,
-    ) -> Result<(), DataLayerError> {
-        self.set_credential_state(credential_id, new_state).await
-    }
-
-    async fn share_credential(
-        &self,
-        credential_id: &str,
-    ) -> Result<CredentialShareResponse, DataLayerError> {
-        self.share_credential(credential_id).await
     }
 
     async fn update_credential_issuer_did(

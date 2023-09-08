@@ -107,6 +107,7 @@ pub async fn insert_many_claims_schema_to_database(
 }
 
 #[allow(clippy::ptr_arg)]
+#[allow(dead_code)]
 pub async fn insert_many_credential_claims_to_database(
     database: &DatabaseConnection,
     credential_id: &str,

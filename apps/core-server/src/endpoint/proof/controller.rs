@@ -1,7 +1,7 @@
 use super::dto::{
-    CreateProofRequestRestDTO, CreateProofResponseRestDTO, GetProofQuery,
-    ProofDetailResponseRestDTO, ShareProofResponseRestDTO,
+    CreateProofRequestRestDTO, GetProofQuery, ProofDetailResponseRestDTO, ShareProofResponseRestDTO,
 };
+use crate::dto::common::EntityResponseRestDTO;
 use crate::AppState;
 use crate::{dto::common::GetProofsResponseRestDTO, Config};
 use axum::{
@@ -85,7 +85,7 @@ pub(crate) async fn get_proofs(
     path = "/api/proof-request/v1",
     request_body = CreateProofRequestRestDTO,
     responses(
-        (status = 200, description = "Created", body = CreateProofResponseRestDTO),
+        (status = 200, description = "Created", body = EntityResponseRestDTO),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Not found"),
@@ -115,7 +115,7 @@ pub(crate) async fn post_proof(
             tracing::error!("Error while creating proof {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-        Ok(id) => (StatusCode::CREATED, Json(CreateProofResponseRestDTO { id })).into_response(),
+        Ok(id) => (StatusCode::CREATED, Json(EntityResponseRestDTO { id })).into_response(),
     }
 }
 

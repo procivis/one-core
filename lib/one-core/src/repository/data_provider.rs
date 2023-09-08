@@ -1,17 +1,12 @@
 // This is an old approach and will be slowly removed.
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    config::data_structure::{DatatypeEntity, ExchangeEntity},
-    model::{
-        common::{GetListQueryParams, GetListResponse},
-        did::DidType,
-    },
+use crate::model::{
+    common::{GetListQueryParams, GetListResponse},
+    did::DidType,
 };
 
 use super::error::DataLayerError;
@@ -78,28 +73,9 @@ pub struct GetDidDetailsResponse {
 }
 
 #[derive(Clone, Debug)]
-pub struct CredentialShareResponse {
-    pub credential_id: String,
-    pub transport: String,
-}
-
-#[derive(Clone, Debug)]
 pub struct ProofShareResponse {
     pub proof_id: String,
     pub transport: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct DetailCredentialResponse {
-    pub id: String,
-    pub created_date: OffsetDateTime,
-    pub issuance_date: OffsetDateTime,
-    pub state: CredentialState,
-    pub last_modified: OffsetDateTime,
-    pub schema: ListCredentialSchemaResponse,
-    pub issuer_did: Option<String>,
-    pub claims: Vec<DetailCredentialClaimResponse>,
-    pub credential: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -167,18 +143,6 @@ pub struct DetailCredentialClaimResponse {
     pub value: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum CredentialState {
-    Created,
-    Pending,
-    Offered,
-    Accepted,
-    Rejected,
-    Revoked,
-    Error,
-}
-
-pub type GetCredentialsResponse = GetListResponse<DetailCredentialResponse>;
 pub type GetCredentialClaimSchemaResponse = GetListResponse<CredentialSchemaResponse>;
 
 pub type GetProofsQuery = GetListQueryParams<SortableProofColumn>;
@@ -208,39 +172,11 @@ pub enum SortableCredentialColumn {
 
 #[async_trait::async_trait]
 pub trait DataProvider {
-    async fn create_credential(
-        &self,
-        request: CreateCredentialRequest,
-        datatypes: &HashMap<String, DatatypeEntity>,
-        exchanges: &HashMap<String, ExchangeEntity>,
-    ) -> Result<EntityResponse, DataLayerError>;
-
     async fn insert_remote_did(
         &self,
         did_value: &str,
         organisation_id: &str,
     ) -> Result<String, DataLayerError>;
-
-    async fn get_credential_details(
-        &self,
-        uuid: &str,
-    ) -> Result<DetailCredentialResponse, DataLayerError>;
-
-    async fn get_credentials(
-        &self,
-        query_params: GetCredentialsQuery,
-    ) -> Result<GetCredentialsResponse, DataLayerError>;
-
-    async fn set_credential_state(
-        &self,
-        credential_id: &str,
-        new_state: CredentialState,
-    ) -> Result<(), DataLayerError>;
-
-    async fn share_credential(
-        &self,
-        credential_id: &str,
-    ) -> Result<CredentialShareResponse, DataLayerError>;
 
     async fn update_credential_issuer_did(
         &self,
@@ -259,8 +195,6 @@ pub trait DataProvider {
         credential_id: &str,
         token: Vec<u8>,
     ) -> Result<(), DataLayerError>;
-
-    async fn get_all_credentials(&self) -> Result<Vec<DetailCredentialResponse>, DataLayerError>;
 
     async fn get_local_dids(
         &self,

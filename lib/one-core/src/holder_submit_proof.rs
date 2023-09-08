@@ -1,6 +1,12 @@
-use crate::error::SSIError;
+use std::str::FromStr;
+use uuid::Uuid;
+
 use crate::local_did_helpers::{get_first_local_did, get_first_organisation_id};
-use crate::{error::OneCoreError, OneCore};
+use crate::service::error::ServiceError;
+use crate::{
+    error::{OneCoreError, SSIError},
+    OneCore,
+};
 
 impl OneCore {
     pub async fn holder_submit_proof(
@@ -19,9 +25,14 @@ impl OneCore {
 
         let mut credentials: Vec<String> = vec![];
         for credential_id in credential_ids {
+            let uuid = Uuid::from_str(credential_id).map_err(|_| {
+                OneCoreError::ServiceError(ServiceError::MappingError(format!(
+                    "{credential_id} is not UUID"
+                )))
+            })?;
             let credential_data = self
-                .data_layer
-                .get_credential_details(credential_id)
+                .credential_service
+                .get_credential(&uuid)
                 .await?
                 .credential;
 
