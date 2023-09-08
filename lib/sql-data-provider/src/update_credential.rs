@@ -27,14 +27,14 @@ impl OldProvider {
         Ok(())
     }
 
-    pub async fn update_credential_received_did(
+    pub async fn update_credential_holder_did(
         &self,
         credential_id: &str,
         did_id: &str,
     ) -> Result<(), DataLayerError> {
         let model = credential::ActiveModel {
             id: Unchanged(credential_id.to_owned()),
-            receiver_did_id: Set(Some(did_id.to_owned())),
+            holder_did_id: Set(Some(did_id.to_owned())),
             last_modified: Set(OffsetDateTime::now_utc()),
             ..Default::default()
         };
@@ -102,7 +102,7 @@ mod tests {
             .unwrap();
 
         let result = data_layer
-            .update_credential_received_did(&credential_id, &did_id)
+            .update_credential_holder_did(&credential_id, &did_id)
             .await;
 
         assert!(result.is_ok());
@@ -112,7 +112,7 @@ mod tests {
             .unwrap()
             .expect("Credential doesn't exist");
 
-        assert_eq!(credential_model.receiver_did_id, Some(did_id.to_owned()));
+        assert_eq!(credential_model.holder_did_id, Some(did_id.to_owned()));
     }
 
     #[tokio::test]
@@ -144,7 +144,7 @@ mod tests {
             .unwrap();
 
         let result = data_layer
-            .update_credential_received_did(&credential_id, &did_id)
+            .update_credential_holder_did(&credential_id, &did_id)
             .await;
 
         assert!(result.is_ok());
@@ -154,7 +154,7 @@ mod tests {
             .unwrap()
             .expect("Credential doesn't exist");
 
-        assert_eq!(credential_model.receiver_did_id, Some(did_id.to_owned()));
+        assert_eq!(credential_model.holder_did_id, Some(did_id.to_owned()));
         assert_ne!(credential_model.last_modified, get_dummy_date());
     }
 

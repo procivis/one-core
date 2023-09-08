@@ -23,7 +23,7 @@ pub struct Credential {
     pub state: Option<Vec<CredentialState>>,
     pub claims: Option<Vec<Claim>>,
     pub issuer_did: Option<Did>,
-    pub receiver_did: Option<Did>,
+    pub holder_did: Option<Did>,
     pub schema: Option<CredentialSchema>,
 }
 
@@ -32,7 +32,7 @@ pub struct CredentialRelations {
     pub state: Option<CredentialStateRelations>,
     pub claims: Option<ClaimRelations>,
     pub issuer_did: Option<DidRelations>,
-    pub receiver_did: Option<DidRelations>,
+    pub holder_did: Option<DidRelations>,
     pub schema: Option<CredentialSchemaRelations>,
 }
 

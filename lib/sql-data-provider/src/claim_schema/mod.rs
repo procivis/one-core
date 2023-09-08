@@ -6,3 +6,6 @@ pub mod repository;
 pub(crate) struct ClaimSchemaProvider {
     pub db: DatabaseConnection,
 }
+
+#[cfg(test)]
+mod test;

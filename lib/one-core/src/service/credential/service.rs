@@ -87,14 +87,14 @@ impl CredentialService {
     ) -> Result<CredentialId, ServiceError> {
         let issuer_did = self
             .did_repository
-            .get_did(&request.issuer_did, &DidRelations {})
+            .get_did(&request.issuer_did_id, &DidRelations {})
             .await
             .map_err(ServiceError::from)?;
-        let receiver_did = match &request.receiver_did {
+        let holder_did = match &request.holder_did_id {
             None => None,
-            Some(receiver_did_id) => Some(
+            Some(holder_did_id) => Some(
                 self.did_repository
-                    .get_did(receiver_did_id, &DidRelations {})
+                    .get_did(holder_did_id, &DidRelations {})
                     .await
                     .map_err(ServiceError::from)?,
             ),
@@ -126,7 +126,7 @@ impl CredentialService {
         )?;
 
         let claims = claims_from_create_request(request.claim_values.clone(), &claim_schemas)?;
-        let credential = from_jwt_create_request(request, claims, receiver_did, issuer_did, schema);
+        let credential = from_jwt_create_request(request, claims, holder_did, issuer_did, schema);
 
         let result = self
             .credential_repository
@@ -180,7 +180,7 @@ impl CredentialService {
                         organisation: Some(OrganisationRelations {}),
                     }),
                     issuer_did: Some(DidRelations {}),
-                    receiver_did: Some(DidRelations {}),
+                    holder_did: Some(DidRelations {}),
                 },
             )
             .await

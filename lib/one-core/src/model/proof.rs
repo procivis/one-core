@@ -23,7 +23,7 @@ pub struct Proof {
     pub schema: Option<ProofSchema>,
     pub claims: Option<Vec<Claim>>,
     pub verifier_did: Option<Did>,
-    pub receiver_did: Option<Did>, // empty either because relation not specified or not set in database
+    pub holder_did: Option<Did>, // empty either because relation not specified or not set in database
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -60,7 +60,7 @@ pub struct ProofRelations {
     pub claims: Option<ClaimRelations>,
     pub schema: Option<ProofSchemaRelations>,
     pub verifier_did: Option<DidRelations>,
-    pub receiver_did: Option<DidRelations>,
+    pub holder_did: Option<DidRelations>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

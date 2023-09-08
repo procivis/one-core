@@ -206,7 +206,7 @@ impl OneCore {
             return Err(OneCoreError::SSIError(SSIError::IncorrectProofState));
         }
 
-        let holder_did = match &proof.receiver_did_id {
+        let holder_did = match &proof.holder_did_id {
             None => {
                 return Err(SSIError::IncorrectParameters("Holder DID missing".to_owned()).into());
             }

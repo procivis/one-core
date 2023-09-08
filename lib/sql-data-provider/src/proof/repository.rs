@@ -118,14 +118,14 @@ impl ProofRepository for ProofProvider {
             );
         }
 
-        if let Some(did_relations) = &relations.receiver_did {
-            if let Some(receiver_did_id) = &proof_model.receiver_did_id {
-                let receiver_did_id =
-                    Uuid::from_str(receiver_did_id).map_err(|_| DataLayerError::MappingError)?;
+        if let Some(did_relations) = &relations.holder_did {
+            if let Some(holder_did_id) = &proof_model.holder_did_id {
+                let holder_did_id =
+                    Uuid::from_str(holder_did_id).map_err(|_| DataLayerError::MappingError)?;
 
-                proof.receiver_did = Some(
+                proof.holder_did = Some(
                     self.did_repository
-                        .get_did(&receiver_did_id, did_relations)
+                        .get_did(&holder_did_id, did_relations)
                         .await?,
                 );
             }
@@ -227,16 +227,16 @@ impl ProofRepository for ProofProvider {
         Ok(())
     }
 
-    async fn set_proof_receiver_did(
+    async fn set_proof_holder_did(
         &self,
         proof_id: &ProofId,
-        receiver_did: Did,
+        holder_did: Did,
     ) -> Result<(), DataLayerError> {
         let now = OffsetDateTime::now_utc();
 
         let model = proof::ActiveModel {
             id: Unchanged(proof_id.to_string()),
-            receiver_did_id: Set(Some(receiver_did.id.to_string())),
+            holder_did_id: Set(Some(holder_did.id.to_string())),
             last_modified: Set(now),
             ..Default::default()
         };

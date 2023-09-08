@@ -39,7 +39,7 @@ pub async fn insert_credential(
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
         credential: Set(vec![0, 0, 0, 0]),
         issuer_did_id: Set(did_id.to_string()),
-        receiver_did_id: Set(None),
+        holder_did_id: Set(None),
     }
     .insert(db)
     .await?;
@@ -170,7 +170,7 @@ pub async fn get_proof_by_id(
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
     verifier_did_id: &str,
-    receiver_did_id: Option<String>,
+    holder_did_id: Option<String>,
     proof_schema_id: &str,
 ) -> Result<String, DbErr> {
     let proof = proof::ActiveModel {
@@ -180,7 +180,7 @@ pub async fn insert_proof_request_to_database(
         issuance_date: Set(get_dummy_date()),
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
         verifier_did_id: Set(verifier_did_id.to_string()),
-        receiver_did_id: Set(receiver_did_id),
+        holder_did_id: Set(holder_did_id),
         proof_schema_id: Set(proof_schema_id.to_string()),
     }
     .insert(database)
@@ -208,7 +208,7 @@ pub async fn insert_proof_state_to_database(
 pub async fn insert_proof_request_to_database_with_claims(
     database: &DatabaseConnection,
     verifier_did_id: &str,
-    receiver_did_id: Option<String>,
+    holder_did_id: Option<String>,
     proof_schema_id: &str,
     state: ProofRequestState,
     claims: &Vec<(Uuid, Uuid, String)>,
@@ -220,7 +220,7 @@ pub async fn insert_proof_request_to_database_with_claims(
         issuance_date: Set(get_dummy_date()),
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
         verifier_did_id: Set(verifier_did_id.to_string()),
-        receiver_did_id: Set(receiver_did_id),
+        holder_did_id: Set(holder_did_id),
         proof_schema_id: Set(proof_schema_id.to_string()),
     }
     .insert(database)

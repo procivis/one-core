@@ -37,6 +37,6 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(to_claim_schema_list(&ids, models))
+        to_claim_schema_list(&ids, models)
     }
 }

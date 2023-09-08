@@ -36,7 +36,11 @@ impl TryFrom<claim_schema::Model> for ClaimSchema {
 pub(super) fn to_claim_schema_list(
     ids: &[Uuid],
     models: Vec<claim_schema::Model>,
-) -> Vec<ClaimSchema> {
+) -> Result<Vec<ClaimSchema>, DataLayerError> {
+    if ids.len() > models.len() {
+        return Err(DataLayerError::RecordNotFound);
+    }
+
     let id_to_index: HashMap<&Uuid, usize> = ids
         .iter()
         .enumerate()
@@ -50,5 +54,5 @@ pub(super) fn to_claim_schema_list(
 
     schemas.sort_by(|a, b| id_to_index[&a.id].cmp(&id_to_index[&b.id]));
 
-    schemas
+    Ok(schemas)
 }

@@ -52,7 +52,7 @@ impl TryFrom<Proof> for ProofDetailResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: Proof) -> Result<Self, Self::Error> {
-        let receiver_did_id = value.receiver_did.as_ref().map(|did| did.id).to_owned();
+        let holder_did_id = value.holder_did.as_ref().map(|did| did.id).to_owned();
         let schema = value.schema.as_ref().ok_or(ServiceError::NotFound)?;
         let claims = value.claims.as_ref().ok_or(ServiceError::NotFound)?;
         let proof_claim_schemas = schema
@@ -89,7 +89,7 @@ impl TryFrom<Proof> for ProofDetailResponseDTO {
             requested_date: list_item_response.requested_date,
             completed_date: list_item_response.completed_date,
             verifier_did: list_item_response.verifier_did,
-            receiver_did_id,
+            holder_did_id,
             transport: list_item_response.transport,
             state: list_item_response.state,
             organisation_id,
@@ -128,6 +128,6 @@ pub fn proof_from_create_request(
         schema: Some(schema),
         claims: None,
         verifier_did: Some(verifier_did),
-        receiver_did: None,
+        holder_did: None,
     }
 }

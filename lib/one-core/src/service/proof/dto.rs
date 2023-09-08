@@ -39,7 +39,7 @@ pub struct ProofDetailResponseDTO {
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
     pub verifier_did: DidValue,
-    pub receiver_did_id: Option<DidId>,
+    pub holder_did_id: Option<DidId>,
     pub transport: String,
     pub state: ProofStateEnum,
     pub organisation_id: OrganisationId,

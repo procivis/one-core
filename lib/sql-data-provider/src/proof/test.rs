@@ -1,8 +1,16 @@
 use super::ProofProvider;
-use crate::{list_query::from_pagination, test_utilities::*};
+use crate::{
+    entity::{
+        claim,
+        proof_state::{self, ProofRequestState},
+    },
+    list_query::from_pagination,
+    test_utilities::*,
+};
 use one_core::{
     model::{
-        claim::ClaimRelations,
+        claim::{Claim, ClaimRelations},
+        claim_schema::ClaimSchemaId,
         did::{Did, DidId, DidRelations, DidType},
         organisation::OrganisationId,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
@@ -20,8 +28,9 @@ use one_core::{
         proof_schema_repository::ProofSchemaRepository,
     },
 };
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
 use std::sync::Arc;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 struct TestSetup {
@@ -30,6 +39,7 @@ struct TestSetup {
     pub organisation_id: OrganisationId,
     pub proof_schema_id: ProofSchemaId,
     pub did_id: DidId,
+    pub claim_schema_ids: Vec<ClaimSchemaId>,
 }
 
 async fn setup(
@@ -99,6 +109,7 @@ async fn setup(
         organisation_id,
         proof_schema_id,
         did_id,
+        claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.0).collect(),
     }
 }
 
@@ -108,6 +119,8 @@ struct TestSetupWithProof {
     pub proof_schema_id: ProofSchemaId,
     pub did_id: DidId,
     pub proof_id: ProofId,
+    pub db: DatabaseConnection,
+    pub claim_schema_ids: Vec<ClaimSchemaId>,
 }
 
 async fn setup_with_proof(
@@ -121,6 +134,7 @@ async fn setup_with_proof(
         proof_schema_id,
         did_id,
         organisation_id,
+        claim_schema_ids,
         ..
     } = setup(proof_schema_repository, claim_repository, did_repository).await;
 
@@ -150,6 +164,8 @@ async fn setup_with_proof(
         proof_schema_id,
         did_id,
         proof_id,
+        db,
+        claim_schema_ids,
     }
 }
 
@@ -213,7 +229,7 @@ async fn test_create_proof_success() {
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
         }),
-        receiver_did: None,
+        holder_did: None,
     };
 
     let result = repository.create_proof(proof).await;
@@ -350,7 +366,7 @@ async fn test_get_proof_with_relations() {
                 claims: Some(ClaimRelations::default()),
                 schema: Some(ProofSchemaRelations::default()),
                 verifier_did: Some(DidRelations::default()),
-                receiver_did: Some(DidRelations::default()),
+                holder_did: Some(DidRelations::default()),
             },
         )
         .await;
@@ -359,6 +375,136 @@ async fn test_get_proof_with_relations() {
     assert_eq!(proof.id, proof_id);
     assert_eq!(proof.schema.unwrap().id, proof_schema_id);
     assert_eq!(proof.verifier_did.unwrap().id, did_id);
+    assert!(proof.holder_did.is_none());
 }
 
-// FIXME: add setter tests
+#[tokio::test]
+async fn test_set_proof_state() {
+    let TestSetupWithProof {
+        repository,
+        proof_id,
+        db,
+        ..
+    } = setup_with_proof(
+        get_proof_schema_repository_mock(),
+        get_claim_repository_mock(),
+        get_did_repository_mock(),
+    )
+    .await;
+
+    let result = repository
+        .set_proof_state(
+            &proof_id,
+            ProofState {
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                state: ProofStateEnum::Pending,
+            },
+        )
+        .await;
+
+    assert!(result.is_ok());
+    let db_states = crate::entity::ProofState::find()
+        .order_by_desc(proof_state::Column::CreatedDate)
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(db_states.len(), 2);
+    assert_eq!(db_states[0].state, ProofRequestState::Pending);
+}
+
+#[tokio::test]
+async fn test_set_proof_holder_did() {
+    let TestSetupWithProof {
+        repository,
+        proof_id,
+        organisation_id,
+        db,
+        ..
+    } = setup_with_proof(
+        get_proof_schema_repository_mock(),
+        get_claim_repository_mock(),
+        get_did_repository_mock(),
+    )
+    .await;
+
+    let holder_did_id = Uuid::parse_str(
+        &insert_did(&db, "holder", "did:holder", &organisation_id.to_string())
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+
+    let result = repository
+        .set_proof_holder_did(
+            &proof_id,
+            Did {
+                id: holder_did_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "holder".to_string(),
+                organisation_id,
+                did: "did:holder".to_string(),
+                did_type: DidType::Remote,
+                did_method: "KEY".to_string(),
+            },
+        )
+        .await;
+
+    assert!(result.is_ok());
+
+    let proof = get_proof_by_id(&db, &proof_id.to_string())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(proof.holder_did_id.is_some());
+    assert_eq!(proof.holder_did_id.unwrap(), holder_did_id.to_string());
+}
+
+#[tokio::test]
+async fn test_set_proof_claims_success() {
+    let claim = Claim {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        value: "value".to_string(),
+        schema: None,
+    };
+
+    let mut claim_repository = MockClaimRepository::default();
+    claim_repository
+        .expect_create_claim_list()
+        .times(1)
+        .returning(|_| Ok(()));
+
+    let TestSetupWithProof {
+        repository,
+        proof_id,
+        db,
+        claim_schema_ids,
+        ..
+    } = setup_with_proof(
+        get_proof_schema_repository_mock(),
+        Arc::from(claim_repository),
+        get_did_repository_mock(),
+    )
+    .await;
+
+    // necessary to pass db consistency checks
+    claim::ActiveModel {
+        id: Set(claim.id.to_string()),
+        claim_schema_id: Set(claim_schema_ids[0].to_string()),
+        value: Set("value".to_string()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let result = repository.set_proof_claims(&proof_id, vec![claim]).await;
+    assert!(result.is_ok());
+
+    let db_proof_claims = crate::entity::ProofClaim::find().all(&db).await.unwrap();
+    assert_eq!(db_proof_claims.len(), 1);
+}

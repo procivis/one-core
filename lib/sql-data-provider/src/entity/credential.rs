@@ -21,7 +21,7 @@ pub struct Model {
     pub credential: Vec<u8>,
 
     pub issuer_did_id: String,
-    pub receiver_did_id: Option<String>,
+    pub holder_did_id: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -50,12 +50,12 @@ pub enum Relation {
     IssuerDid,
     #[sea_orm(
         belongs_to = "super::did::Entity",
-        from = "Column::ReceiverDidId",
+        from = "Column::HolderDidId",
         to = "super::did::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    ReceiverDidId,
+    HolderDidId,
     #[sea_orm(has_many = "super::key::Entity")]
     Key,
 }

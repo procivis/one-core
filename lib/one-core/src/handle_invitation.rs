@@ -253,10 +253,10 @@ impl OneCore {
             .create_credential_from_jwt(CreateCredentialFromJwtRequestDTO {
                 id: expected_credential_id.to_owned(),
                 credential_schema_id: string_to_uuid(&credential_schema_id)?,
-                issuer_did: issuer_did_id,
+                issuer_did_id,
                 transport: "PROCIVIS_TEMPORARY".to_string(),
                 claim_values: claim_values?,
-                receiver_did: Some(string_to_uuid(&expected_holder_did.id)?),
+                holder_did_id: Some(string_to_uuid(&expected_holder_did.id)?),
                 credential: Some(raw_credential.bytes().collect()),
             })
             .await

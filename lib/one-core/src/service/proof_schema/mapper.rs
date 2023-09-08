@@ -50,7 +50,10 @@ impl TryFrom<ProofSchemaClaim> for ProofClaimSchemaResponseDTO {
             required: value.required,
             key: value.schema.key,
             data_type: value.schema.data_type,
-            credential_schema: value.credential_schema.unwrap().try_into()?,
+            credential_schema: value
+                .credential_schema
+                .ok_or(ServiceError::NotFound)?
+                .try_into()?,
         })
     }
 }
