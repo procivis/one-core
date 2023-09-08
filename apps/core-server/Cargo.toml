@@ -13,6 +13,7 @@ one-core = { path = "../../lib/one-core" }
 sql-data-provider = { path = "../../lib/sql-data-provider", features = ["mysql"] }
 
 axum.workspace = true
+dto_derive.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 shadow-rs.workspace = true

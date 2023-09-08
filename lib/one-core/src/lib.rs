@@ -11,8 +11,8 @@ use repository::{
     organisation_repository::OrganisationRepository, DataRepository,
 };
 use service::{
-    config::ConfigService, did::DidService, organisation::OrganisationService, proof::ProofService,
-    proof_schema::ProofSchemaService,
+    config::ConfigService, credential::CredentialService, did::DidService,
+    organisation::OrganisationService, proof::ProofService, proof_schema::ProofSchemaService,
 };
 use signature_provider::SignatureProvider;
 use transport_protocol::procivis_temp::ProcivisTemp;
@@ -40,11 +40,13 @@ pub mod common_mapper;
 mod local_did_helpers;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
+use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential_schema::CredentialSchemaService;
 
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
+    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     // FIXME: data_layer will be removed
@@ -54,6 +56,7 @@ pub struct OneCore {
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
+    pub credential_service: CredentialService,
     pub credential_schema_service: CredentialSchemaService,
     pub proof_schema_service: ProofSchemaService,
     pub proof_service: ProofService,
@@ -90,6 +93,7 @@ impl OneCore {
         let config = Arc::new(config);
 
         Ok(OneCore {
+            credential_repository: data_provider.get_credential_repository(),
             organisation_repository: data_provider.get_organisation_repository(),
             did_repository: data_provider.get_did_repository(),
             data_layer: data_provider.get_data_provider(),
@@ -98,6 +102,12 @@ impl OneCore {
             credential_formatters,
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
+            ),
+            credential_service: CredentialService::new(
+                data_provider.get_credential_repository(),
+                data_provider.get_credential_schema_repository(),
+                data_provider.get_did_repository(),
+                config.clone(),
             ),
             did_service: DidService::new(data_provider.get_did_repository(), config.clone()),
             credential_schema_service: CredentialSchemaService::new(

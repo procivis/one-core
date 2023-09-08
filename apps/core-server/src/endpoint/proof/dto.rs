@@ -29,12 +29,6 @@ pub struct CreateProofRequestRestDTO {
     pub transport: String,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateProofResponseRestDTO {
-    pub id: Uuid,
-}
-
 // list endpoint
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]

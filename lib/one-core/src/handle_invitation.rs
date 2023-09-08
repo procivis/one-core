@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::str::FromStr;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::credential_formatter::{
@@ -9,10 +10,11 @@ use crate::data_model::ConnectVerifierResponse;
 use crate::error::SSIError;
 use crate::local_did_helpers::{get_first_local_did, get_first_organisation_id};
 use crate::model::did::DidType;
-use crate::repository::data_provider::{
-    CreateCredentialRequest, CreateCredentialRequestClaim, CredentialState,
-};
 
+use crate::model::credential::{CredentialState, CredentialStateEnum};
+use crate::service::credential::dto::{
+    CreateCredentialFromJwtRequestDTO, CredentialRequestClaimDTO,
+};
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaFromJwtRequestDTO, CredentialClaimSchemaFromJwtRequestDTO,
 };
@@ -159,11 +161,11 @@ impl OneCore {
                     ParseError::Failed("Credential ID missing".to_owned()),
                 )));
             }
-            Some(uuid) => uuid.to_string(),
+            Some(uuid) => uuid,
         };
 
         if let Some(credential_id) = credential.id {
-            if credential_id != expected_credential_id {
+            if credential_id != expected_credential_id.to_string() {
                 return Err(OneCoreError::SSIError(SSIError::TransportProtocolError(
                     TransportProtocolError::Failed("Credential ID mismatch".to_owned()),
                 )));
@@ -228,14 +230,14 @@ impl OneCore {
 
         // create credential
         let incoming_claims = credential.claims.values;
-        let claim_values: Result<Vec<CreateCredentialRequestClaim>, _> = credential_schema_request
+        let claim_values: Result<Vec<CredentialRequestClaimDTO>, _> = credential_schema_request
             .claims
             .iter()
             .map(
-                |claim_schema| -> Result<CreateCredentialRequestClaim, OneCoreError> {
+                |claim_schema| -> Result<CredentialRequestClaimDTO, OneCoreError> {
                     if let Some(value) = incoming_claims.get(&claim_schema.key) {
-                        Ok(CreateCredentialRequestClaim {
-                            claim_id: claim_schema.id,
+                        Ok(CredentialRequestClaimDTO {
+                            claim_schema_id: claim_schema.id,
                             value: value.to_owned(),
                         })
                     } else {
@@ -247,30 +249,33 @@ impl OneCore {
             )
             .collect();
 
-        self.data_layer
-            .create_credential(
-                CreateCredentialRequest {
-                    credential_id: Some(expected_credential_id.to_owned()),
-                    credential_schema_id: string_to_uuid(&credential_schema_id)?,
-                    issuer_did: issuer_did_id,
-                    transport: "PROCIVIS_TEMPORARY".to_string(),
-                    claim_values: claim_values?,
-                    receiver_did_id: Some(string_to_uuid(&expected_holder_did.id)?),
-                    credential: Some(raw_credential.bytes().collect()),
+        self.credential_service
+            .create_credential_from_jwt(CreateCredentialFromJwtRequestDTO {
+                id: expected_credential_id.to_owned(),
+                credential_schema_id: string_to_uuid(&credential_schema_id)?,
+                issuer_did: issuer_did_id,
+                transport: "PROCIVIS_TEMPORARY".to_string(),
+                claim_values: claim_values?,
+                receiver_did: Some(string_to_uuid(&expected_holder_did.id)?),
+                credential: Some(raw_credential.bytes().collect()),
+            })
+            .await
+            .map_err(OneCoreError::ServiceError)?;
+
+        let now = OffsetDateTime::now_utc();
+        self.credential_repository
+            .set_credential_state(
+                &expected_credential_id,
+                CredentialState {
+                    created_date: now,
+                    state: CredentialStateEnum::Created,
                 },
-                &self.config.datatype,
-                &self.config.exchange,
             )
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
-        self.data_layer
-            .set_credential_state(&expected_credential_id, CredentialState::Accepted)
-            .await
-            .map_err(OneCoreError::DataLayerError)?;
-
         Ok(InvitationResponse::Credential {
-            issued_credential_id: expected_credential_id,
+            issued_credential_id: expected_credential_id.to_string(),
         })
     }
 }

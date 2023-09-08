@@ -2,14 +2,13 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
+use uuid::Uuid;
 
-use crate::{
-    data_model::DetailCredentialResponseDTO,
-    endpoint::{
-        credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
-        did::dto::GetDidResponseRestDTO, proof::dto::ProofListItemResponseRestDTO,
-        proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
-    },
+use crate::endpoint::{
+    credential::dto::CredentialListValueResponseRestDTO,
+    credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
+    did::dto::GetDidResponseRestDTO, proof::dto::ProofListItemResponseRestDTO,
+    proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
 };
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -19,7 +18,7 @@ use crate::{
     GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>,
     GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListValueResponseRestDTO>,
     GetDidsResponseRestDTO = GetListResponseRestDTO<GetDidResponseRestDTO>,
-    GetCredentialsResponseDTO = GetListResponseRestDTO<DetailCredentialResponseDTO>,
+    GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListValueResponseRestDTO>,
     GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>)]
 pub struct GetListResponseRestDTO<T>
 where
@@ -54,4 +53,10 @@ pub enum SortDirection {
     Ascending,
     #[serde(rename = "DESC")]
     Descending,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct EntityResponseRestDTO {
+    pub id: Uuid,
 }

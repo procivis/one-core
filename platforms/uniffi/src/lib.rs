@@ -14,6 +14,8 @@ use one_core::config::{
     ConfigParseError,
 };
 
+use utils::dto::CredentialState;
+
 uniffi::include_scaffolding!("one_core");
 
 pub struct ActiveProof {

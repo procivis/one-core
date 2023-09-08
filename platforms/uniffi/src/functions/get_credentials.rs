@@ -1,18 +1,19 @@
-use std::sync::Arc;
-
 use crate::{
     utils::{run_sync, TimestampFormat},
     OneCore,
 };
 pub use one_core::error::OneCoreError;
 use one_core::repository::data_provider::{
-    DataProvider, DetailCredentialClaimResponse, DetailCredentialResponse,
-    ListCredentialSchemaResponse,
+    DetailCredentialClaimResponse, ListCredentialSchemaResponse,
 };
 
 pub use one_core::repository::error::DataLayerError;
 
-pub use one_core::repository::data_provider::CredentialState;
+use one_core::service::credential::dto::CredentialSchemaResponseDTO;
+use one_core::service::credential::CredentialService;
+use one_core::service::error::ServiceError;
+
+use crate::utils::dto::CredentialState;
 
 pub struct CredentialSchema {
     pub id: String,
@@ -27,11 +28,25 @@ pub struct CredentialSchema {
 impl From<ListCredentialSchemaResponse> for CredentialSchema {
     fn from(value: ListCredentialSchemaResponse) -> Self {
         Self {
-            id: value.id,
+            id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             name: value.name,
-            organisation_id: value.organisation_id,
+            organisation_id: value.organisation_id.to_string(),
+            format: value.format,
+            revocation_method: value.revocation_method,
+        }
+    }
+}
+
+impl From<CredentialSchemaResponseDTO> for CredentialSchema {
+    fn from(value: CredentialSchemaResponseDTO) -> Self {
+        Self {
+            id: value.id.to_string(),
+            created_date: value.created_date.format_timestamp(),
+            last_modified: value.last_modified.format_timestamp(),
+            name: value.name,
+            organisation_id: value.organisation_id.to_string(),
             format: value.format,
             revocation_method: value.revocation_method,
         }
@@ -67,34 +82,16 @@ pub struct Credential {
     pub schema: CredentialSchema,
 }
 
-impl From<DetailCredentialResponse> for Credential {
-    fn from(value: DetailCredentialResponse) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date.format_timestamp(),
-            last_modified: value.last_modified.format_timestamp(),
-            issuance_date: value.issuance_date.format_timestamp(),
-            issuer_did: value.issuer_did,
-            state: value.state,
-            claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
-            schema: value.schema.into(),
-        }
-    }
-}
-
-async fn get_credentials(
-    data_layer: Arc<dyn DataProvider + Sync + Send>,
-) -> Result<Vec<Credential>, DataLayerError> {
-    let response = data_layer.get_all_credentials().await;
-    response.map(|list| {
-        list.into_iter()
-            .map(|credential| credential.into())
-            .collect()
-    })
+async fn get_credentials(data_layer: &CredentialService) -> Result<Vec<Credential>, ServiceError> {
+    let response = data_layer.get_all_credential_list().await?;
+    Ok(response
+        .into_iter()
+        .map(|credential| credential.into())
+        .collect())
 }
 
 impl OneCore {
-    pub fn get_credentials(&self) -> Result<Vec<Credential>, DataLayerError> {
-        run_sync(async { get_credentials(self.inner.data_layer.clone()).await })
+    pub fn get_credentials(&self) -> Result<Vec<Credential>, ServiceError> {
+        run_sync(async { get_credentials(&self.inner.credential_service).await })
     }
 }

@@ -103,6 +103,6 @@ interface OneCore {
   [Throws=OneCoreError]
   void holder_submit_proof(sequence<string> credential_ids);
 
-  [Throws=DataLayerError]
+  [Throws=ServiceError]
   sequence<Credential> get_credentials();
 };

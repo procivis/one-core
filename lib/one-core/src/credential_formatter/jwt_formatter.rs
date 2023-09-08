@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use crate::repository::data_provider::DetailCredentialResponse;
-
+use crate::service::credential::dto::CredentialResponseDTO;
 use base64::{engine::general_purpose, Engine};
 use jwt_simple::prelude::*;
 use time::OffsetDateTime;
@@ -65,7 +64,7 @@ fn get_temp_keys() -> Ed25519KeyPair {
 impl CredentialFormatter for JWTFormatter {
     fn format_credentials(
         &self,
-        credentials: &DetailCredentialResponse, // Todo define input/output format
+        credentials: &CredentialResponseDTO, // Todo define input/output format
         holder_did: &str,
     ) -> Result<String, FormatterError> {
         let key = get_temp_keys();
@@ -139,8 +138,8 @@ impl CredentialFormatter for JWTFormatter {
 }
 
 // Format credentials
-impl From<&DetailCredentialResponse> for VC {
-    fn from(value: &DetailCredentialResponse) -> Self {
+impl From<&CredentialResponseDTO> for VC {
+    fn from(value: &CredentialResponseDTO) -> Self {
         let claims: HashMap<String, String> = value
             .claims
             .iter()
@@ -155,13 +154,13 @@ impl From<&DetailCredentialResponse> for VC {
                     values: claims,
                     one_credential_schema: VCCredentialSchemaResponse {
                         name: value.schema.name.clone(),
-                        id: value.schema.id.clone(),
+                        id: value.schema.id.to_string(),
                         claims: value
                             .claims
                             .iter()
                             .map(|claim| VCCredentialClaimSchemaResponse {
                                 key: claim.schema.key.clone(),
-                                id: claim.schema.id.clone(),
+                                id: claim.schema.id.to_string(),
                                 datatype: claim.schema.datatype.to_owned(),
                             })
                             .collect(),

@@ -1,13 +1,10 @@
-use std::str::FromStr;
-
-use uuid::Uuid;
-
 use crate::{
     data_model::{ConnectIssuerRequest, ConnectIssuerResponse},
     error::{OneCoreError, SSIError},
     model::did::DidType,
-    repository::{data_provider::CredentialState, error::DataLayerError},
-    service::{did::dto::CreateDidRequestDTO, error::ServiceError},
+    service::{
+        credential::dto::CredentialStateEnum, did::dto::CreateDidRequestDTO, error::ServiceError,
+    },
     OneCore,
 };
 
@@ -20,19 +17,17 @@ impl OneCore {
         // Not used for now
         let _transport = self.get_transport_protocol(transport_protocol)?;
 
-        let credential_id = request.credential.to_string();
+        let credential_id = &request.credential;
         let credential = self
-            .data_layer
-            .get_credential_details(&credential_id)
+            .credential_service
+            .get_credential(credential_id)
             .await
             .map_err(|e| match e {
-                DataLayerError::RecordNotFound => {
-                    OneCoreError::SSIError(SSIError::MissingCredential)
-                }
-                e => OneCoreError::DataLayerError(e),
+                ServiceError::NotFound => OneCoreError::SSIError(SSIError::MissingCredential),
+                e => OneCoreError::ServiceError(e),
             })?;
 
-        if credential.state != CredentialState::Offered {
+        if credential.state != CredentialStateEnum::Offered {
             return Err(OneCoreError::SSIError(SSIError::IncorrectCredentialState));
         }
 
@@ -46,10 +41,7 @@ impl OneCore {
                 self.did_service
                     .create_did(CreateDidRequestDTO {
                         name: "TODO".to_string(),
-                        organisation_id: Uuid::from_str(&credential.schema.organisation_id)
-                            .map_err(|_| {
-                                ServiceError::MappingError("Could not convert to UUID".to_string())
-                            })?,
+                        organisation_id: credential.schema.organisation_id,
                         did: request.did.clone(),
                         did_method: "KEY".to_string(),
                         did_type: DidType::Remote,
@@ -62,7 +54,7 @@ impl OneCore {
         };
 
         self.data_layer
-            .update_credential_received_did(&credential_id, &did_id.to_string())
+            .update_credential_received_did(&credential_id.to_string(), &did_id.to_string())
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
@@ -71,7 +63,7 @@ impl OneCore {
             .map_err(OneCoreError::FormatterError)?;
 
         self.data_layer
-            .update_credential_token(&credential_id, token.bytes().collect())
+            .update_credential_token(&credential_id.to_string(), token.bytes().collect())
             .await
             .map_err(OneCoreError::DataLayerError)?;
 

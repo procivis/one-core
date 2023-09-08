@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-use crate::repository::data_provider::DetailCredentialResponse;
-
 // Implementations
 pub mod jwt_formatter;
 
+use crate::service::credential::dto::CredentialResponseDTO;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
@@ -80,7 +79,7 @@ pub struct CredentialPresentation {
 pub trait CredentialFormatter {
     fn format_credentials(
         &self,
-        credentials: &DetailCredentialResponse,
+        credentials: &CredentialResponseDTO,
         holder_did: &str,
     ) -> Result<String, FormatterError>;
 

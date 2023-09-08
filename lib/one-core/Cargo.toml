@@ -7,6 +7,7 @@ build = "build.rs"
 [dependencies]
 async-trait = "0.1.68"
 serde_yaml = "0.9.25"
+dto_derive.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
