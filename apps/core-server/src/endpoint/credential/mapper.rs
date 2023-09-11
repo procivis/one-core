@@ -90,27 +90,6 @@ impl From<CreateCredentialRequestRestDTO> for CreateCredentialRequestDTO {
     }
 }
 
-impl From<SortableCredentialColumnRestEnum>
-    for one_core::repository::data_provider::SortableCredentialColumn
-{
-    fn from(value: SortableCredentialColumnRestEnum) -> Self {
-        match value {
-            SortableCredentialColumnRestEnum::CreatedDate => {
-                one_core::repository::data_provider::SortableCredentialColumn::CreatedDate
-            }
-            SortableCredentialColumnRestEnum::SchemaName => {
-                one_core::repository::data_provider::SortableCredentialColumn::SchemaName
-            }
-            SortableCredentialColumnRestEnum::IssuerDid => {
-                one_core::repository::data_provider::SortableCredentialColumn::IssuerDid
-            }
-            SortableCredentialColumnRestEnum::State => {
-                one_core::repository::data_provider::SortableCredentialColumn::State
-            }
-        }
-    }
-}
-
 pub(crate) fn share_credentials_to_entity_share_response(
     value: EntityShareResponseDTO,
     base_url: &String,

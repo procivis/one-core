@@ -1,10 +1,13 @@
+use one_core::model::credential::UpdateCredentialRequest;
 use one_core::{
     common_mapper::vector_into,
-    model::credential::{CredentialState, CredentialStateRelations},
     model::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
-        credential::{Credential, CredentialId, CredentialRelations},
+        credential::{
+            Credential, CredentialId, CredentialRelations, CredentialState,
+            CredentialStateRelations,
+        },
         credential::{GetCredentialList, GetCredentialQuery},
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
@@ -23,6 +26,8 @@ use sea_orm::{
     Unchanged,
 };
 use std::{str::FromStr, sync::Arc};
+use time::OffsetDateTime;
+
 use uuid::Uuid;
 
 use crate::credential::mapper::{
@@ -282,7 +287,13 @@ impl CredentialRepository for CredentialProvider {
 
         if let Some(states) = request.state {
             for state in states {
-                self.set_credential_state(&request.id, state).await?;
+                self.update_credential(UpdateCredentialRequest {
+                    id: request.id.to_owned(),
+                    credential: None,
+                    holder_did_id: None,
+                    state: Some(state),
+                })
+                .await?;
             }
         }
 
@@ -365,24 +376,41 @@ impl CredentialRepository for CredentialProvider {
         })
     }
 
-    async fn set_credential_state(
+    async fn update_credential(
         &self,
-        id: &CredentialId,
-        state: CredentialState,
+        request: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError> {
+        let id = &request.id;
+
+        let holder_did_id = match request.holder_did_id {
+            None => Unchanged(Default::default()),
+            Some(holder_did) => Set(Some(holder_did.to_string())),
+        };
+
+        let credential = match request.credential {
+            None => Unchanged(Default::default()),
+            Some(token) => Set(token),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(id.to_string()),
-            last_modified: Set(state.created_date),
+            last_modified: Set(OffsetDateTime::now_utc()),
+            holder_did_id,
+            credential,
             ..Default::default()
         };
 
-        credential_state::Entity::insert(get_credential_state_active_model(id, state))
-            .exec(&self.db)
-            .await
-            .map_err(|e| match e.sql_err() {
-                Some(SqlErr::ForeignKeyConstraintViolation(_)) => DataLayerError::RecordNotFound,
-                _ => DataLayerError::GeneralRuntimeError(e.to_string()),
-            })?;
+        if let Some(state) = request.state {
+            credential_state::Entity::insert(get_credential_state_active_model(id, state))
+                .exec(&self.db)
+                .await
+                .map_err(|e| match e.sql_err() {
+                    Some(SqlErr::ForeignKeyConstraintViolation(_)) => {
+                        DataLayerError::RecordNotFound
+                    }
+                    _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+                })?;
+        }
 
         update_model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,

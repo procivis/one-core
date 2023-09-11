@@ -1,14 +1,18 @@
 use uuid::Uuid;
 
-use crate::error::OneCoreError;
-use crate::repository::data_provider::DataProvider;
-use crate::repository::organisation_repository::OrganisationRepository;
-use crate::repository::{data_provider::GetDidDetailsResponse, error::DataLayerError};
+use crate::{
+    error::OneCoreError,
+    model::did::Did,
+    repository::{
+        did_repository::DidRepository, error::DataLayerError,
+        organisation_repository::OrganisationRepository,
+    },
+};
 
 pub async fn get_first_organisation_id(
-    data_layer: &std::sync::Arc<dyn OrganisationRepository + Send + Sync>,
+    organisation_repository: &std::sync::Arc<dyn OrganisationRepository + Send + Sync>,
 ) -> Result<Uuid, OneCoreError> {
-    let organisations = data_layer
+    let organisations = organisation_repository
         .get_organisation_list()
         .await
         .map_err(OneCoreError::DataLayerError)?;
@@ -19,11 +23,11 @@ pub async fn get_first_organisation_id(
 }
 
 pub async fn get_first_local_did(
-    data_layer: &std::sync::Arc<dyn DataProvider + Send + Sync>,
+    did_repository: &std::sync::Arc<dyn DidRepository + Send + Sync>,
     organisation_id: &Uuid,
-) -> Result<GetDidDetailsResponse, OneCoreError> {
-    let dids = data_layer
-        .get_local_dids(&organisation_id.to_string())
+) -> Result<Did, OneCoreError> {
+    let dids = did_repository
+        .get_local_dids(organisation_id)
         .await
         .map_err(OneCoreError::DataLayerError)?;
     Ok(dids

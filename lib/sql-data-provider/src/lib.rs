@@ -5,17 +5,11 @@ use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
 use migration::{Migrator, MigratorTrait};
 use one_core::repository::{
-    claim_repository::ClaimRepository,
-    claim_schema_repository::ClaimSchemaRepository,
+    claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
     credential_repository::CredentialRepository,
-    credential_schema_repository::CredentialSchemaRepository,
-    data_provider::{DataProvider, GetDidDetailsResponse},
-    did_repository::DidRepository,
-    error::DataLayerError,
-    organisation_repository::OrganisationRepository,
-    proof_repository::ProofRepository,
-    proof_schema_repository::ProofSchemaRepository,
-    DataRepository,
+    credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
+    organisation_repository::OrganisationRepository, proof_repository::ProofRepository,
+    proof_schema_repository::ProofSchemaRepository, DataRepository,
 };
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
@@ -26,10 +20,7 @@ use std::sync::Arc;
 
 mod common;
 mod data_model;
-mod did_manipulation;
 mod entity;
-mod get_local_dids;
-mod update_credential;
 
 mod list_query;
 
@@ -50,7 +41,6 @@ pub struct DataLayer {
     // Used for tests for now
     #[allow(unused)]
     db: DatabaseConnection,
-    data_provider: Arc<dyn DataProvider + Send + Sync>, // FIXME to be removed
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
@@ -100,7 +90,6 @@ impl DataLayer {
             did_repository: did_repository.clone(),
         });
         Self {
-            data_provider: Arc::new(OldProvider { db: db.clone() }),
             organisation_repository,
             credential_repository,
             credential_schema_repository,
@@ -116,9 +105,6 @@ impl DataLayer {
 
 #[async_trait::async_trait]
 impl DataRepository for DataLayer {
-    fn get_data_provider(&self) -> Arc<dyn DataProvider + Send + Sync> {
-        self.data_provider.clone()
-    }
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository + Send + Sync> {
         self.organisation_repository.clone()
     }
@@ -144,54 +130,6 @@ impl DataRepository for DataLayer {
     }
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync> {
         self.proof_repository.clone()
-    }
-}
-
-pub(crate) struct OldProvider {
-    pub db: DatabaseConnection,
-}
-
-#[async_trait::async_trait]
-impl DataProvider for OldProvider {
-    async fn insert_remote_did(
-        &self,
-        did_value: &str,
-        organisation_id: &str,
-    ) -> Result<String, DataLayerError> {
-        self.insert_remote_did(did_value, organisation_id).await
-    }
-
-    async fn update_credential_issuer_did(
-        &self,
-        credential_id: &str,
-        issuer: &str,
-    ) -> Result<(), DataLayerError> {
-        self.update_credential_issuer_did(credential_id, issuer)
-            .await
-    }
-
-    async fn update_credential_holder_did(
-        &self,
-        credential_id: &str,
-        did_id: &str,
-    ) -> Result<(), DataLayerError> {
-        self.update_credential_holder_did(credential_id, did_id)
-            .await
-    }
-
-    async fn update_credential_token(
-        &self,
-        credential_id: &str,
-        token: Vec<u8>,
-    ) -> Result<(), DataLayerError> {
-        self.update_credential_token(credential_id, token).await
-    }
-
-    async fn get_local_dids(
-        &self,
-        organisation_id: &str,
-    ) -> Result<Vec<GetDidDetailsResponse>, DataLayerError> {
-        self.get_local_dids(organisation_id).await
     }
 }
 

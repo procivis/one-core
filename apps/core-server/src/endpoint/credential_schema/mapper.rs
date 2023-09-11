@@ -1,4 +1,4 @@
-use one_core::repository::data_provider::ListCredentialSchemaResponse;
+use one_core::data_model::ListCredentialSchemaResponse;
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO, CredentialClaimSchemaDTO,
     CredentialClaimSchemaRequestDTO, GetCredentialSchemaListValueResponseDTO,

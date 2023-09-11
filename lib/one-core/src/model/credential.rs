@@ -1,4 +1,5 @@
 use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::did::DidId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -65,3 +66,11 @@ pub enum SortableCredentialColumn {
 
 pub type GetCredentialList = GetListResponse<Credential>;
 pub type GetCredentialQuery = GetListQueryParams<SortableCredentialColumn>;
+
+pub struct UpdateCredentialRequest {
+    pub id: CredentialId,
+
+    pub credential: Option<Vec<u8>>,
+    pub holder_did_id: Option<DidId>,
+    pub state: Option<CredentialState>,
+}

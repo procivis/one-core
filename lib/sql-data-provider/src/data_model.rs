@@ -1,7 +1,5 @@
-use one_core::{model::common::SortDirection, repository::data_provider::GetDidDetailsResponse};
+use one_core::model::common::SortDirection;
 use sea_orm::Order;
-
-use super::entity::did;
 
 pub fn order_from_sort_direction(direction: SortDirection) -> Order {
     match direction {
@@ -23,19 +21,4 @@ pub struct GetListQueryParams<SortableColumn> {
     // filtering
     pub name: Option<String>,
     pub organisation_id: String,
-}
-
-impl From<did::Model> for GetDidDetailsResponse {
-    fn from(value: did::Model) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            organisation_id: value.organisation_id,
-            did: value.did,
-            did_type: value.type_field.into(),
-            did_method: value.method,
-        }
-    }
 }

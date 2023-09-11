@@ -1,37 +1,15 @@
-use one_core::{
-    data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema},
-    repository::data_provider::{CredentialClaimSchemaResponse, EntityResponse},
-};
+use one_core::data_model::{ConnectIssuerResponse, ConnectVerifierResponse, ProofClaimSchema};
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::endpoint::credential_schema::dto::CredentialClaimSchemaResponseRestDTO;
 use crate::{endpoint, serialize::front_time};
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct EntityResponseDTO {
     pub id: String,
-}
-
-impl From<one_core::repository::data_provider::EntityResponse> for EntityResponseDTO {
-    fn from(value: EntityResponse) -> Self {
-        Self { id: value.id }
-    }
-}
-
-impl From<CredentialClaimSchemaResponse> for CredentialClaimSchemaResponseRestDTO {
-    fn from(value: CredentialClaimSchemaResponse) -> Self {
-        Self {
-            id: value.id.parse().unwrap(),
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            key: value.key,
-            datatype: value.datatype,
-        }
-    }
 }
 
 #[derive(Deserialize, IntoParams)]

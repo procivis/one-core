@@ -1,3 +1,5 @@
+use crate::model::credential::UpdateCredentialRequest;
+
 use crate::{
     data_model::{ConnectIssuerRequest, ConnectIssuerResponse},
     error::{OneCoreError, SSIError},
@@ -53,17 +55,17 @@ impl OneCore {
             }
         };
 
-        self.data_layer
-            .update_credential_holder_did(&credential_id.to_string(), &did_id.to_string())
-            .await
-            .map_err(OneCoreError::DataLayerError)?;
-
         let token = formatter
             .format_credentials(&credential, &request.did)
             .map_err(OneCoreError::FormatterError)?;
 
-        self.data_layer
-            .update_credential_token(&credential_id.to_string(), token.bytes().collect())
+        self.credential_repository
+            .update_credential(UpdateCredentialRequest {
+                id: credential_id.to_owned(),
+                credential: Some(token.bytes().collect()),
+                holder_did_id: Some(did_id.to_owned()),
+                state: None,
+            })
             .await
             .map_err(OneCoreError::DataLayerError)?;
 
