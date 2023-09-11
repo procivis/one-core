@@ -11,7 +11,7 @@ use crate::error::SSIError;
 use crate::local_did_helpers::{get_first_local_did, get_first_organisation_id};
 use crate::model::did::DidType;
 
-use crate::model::credential::{CredentialState, CredentialStateEnum};
+use crate::model::credential::{CredentialState, CredentialStateEnum, UpdateCredentialRequest};
 use crate::service::credential::dto::{
     CreateCredentialFromJwtRequestDTO, CredentialRequestClaimDTO,
 };
@@ -103,7 +103,8 @@ impl OneCore {
 
         // FIXME - these two should be fetched correctly
         let organisation_id = get_first_organisation_id(&self.organisation_repository).await?;
-        let expected_holder_did = get_first_local_did(&self.data_layer, &organisation_id).await?;
+        let expected_holder_did =
+            get_first_local_did(&self.did_repository, &organisation_id).await?;
 
         let connect_response = self
             .get_transport_protocol(&url_query_params.protocol)?
@@ -256,7 +257,7 @@ impl OneCore {
                 issuer_did_id,
                 transport: "PROCIVIS_TEMPORARY".to_string(),
                 claim_values: claim_values?,
-                holder_did_id: Some(string_to_uuid(&expected_holder_did.id)?),
+                holder_did_id: Some(expected_holder_did.id),
                 credential: Some(raw_credential.bytes().collect()),
             })
             .await
@@ -264,13 +265,15 @@ impl OneCore {
 
         let now = OffsetDateTime::now_utc();
         self.credential_repository
-            .set_credential_state(
-                &expected_credential_id,
-                CredentialState {
+            .update_credential(UpdateCredentialRequest {
+                id: expected_credential_id.to_owned(),
+                credential: None,
+                holder_did_id: None,
+                state: Some(CredentialState {
                     created_date: now,
                     state: CredentialStateEnum::Created,
-                },
-            )
+                }),
+            })
             .await
             .map_err(OneCoreError::DataLayerError)?;
 

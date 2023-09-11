@@ -2,14 +2,14 @@ use crate::{
     utils::{run_sync, TimestampFormat},
     OneCore,
 };
+use one_core::data_model::ListCredentialSchemaResponse;
 pub use one_core::error::OneCoreError;
-use one_core::repository::data_provider::{
-    DetailCredentialClaimResponse, ListCredentialSchemaResponse,
-};
 
 pub use one_core::repository::error::DataLayerError;
 
-use one_core::service::credential::dto::CredentialSchemaResponseDTO;
+use one_core::service::credential::dto::{
+    CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO,
+};
 use one_core::service::credential::CredentialService;
 use one_core::service::error::ServiceError;
 
@@ -60,10 +60,10 @@ pub struct Claim {
     pub value: String,
 }
 
-impl From<DetailCredentialClaimResponse> for Claim {
-    fn from(value: DetailCredentialClaimResponse) -> Self {
+impl From<DetailCredentialClaimResponseDTO> for Claim {
+    fn from(value: DetailCredentialClaimResponseDTO) -> Self {
         Self {
-            id: value.schema.id,
+            id: value.schema.id.to_string(),
             key: value.schema.key,
             data_type: value.schema.datatype,
             value: value.value,

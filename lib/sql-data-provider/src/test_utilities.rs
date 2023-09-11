@@ -1,4 +1,3 @@
-use migration::{Migrator, MigratorTrait};
 use one_core::config::data_structure::{
     DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
     TranslatableString,
@@ -15,13 +14,14 @@ use crate::{
         proof_schema, proof_schema_claim_schema,
         proof_state::{self, ProofRequestState},
     },
-    DataLayer, OldProvider,
+    DataLayer,
 };
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
 }
 
+#[allow(dead_code)]
 pub async fn insert_credential(
     db: &DatabaseConnection,
     credential_schema_id: &str,
@@ -152,6 +152,7 @@ pub async fn insert_many_credential_claims_to_database(
 //         .await
 // }
 
+#[allow(dead_code)]
 pub async fn get_credential_by_id(
     database: &DatabaseConnection,
     id: &str,
@@ -339,18 +340,6 @@ pub async fn get_proof_schema_with_id(
     proof_schema::Entity::find_by_id(id).one(database).await
 }
 
-pub(crate) async fn setup_test_data_provider_and_connection_with_custom_url(
-    database_url: &str,
-) -> Result<OldProvider, DbErr> {
-    let db = sea_orm::Database::connect(database_url)
-        .await
-        .expect("Database Connected");
-
-    Migrator::up(&db, None).await.unwrap();
-
-    Ok(OldProvider { db })
-}
-
 pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: &str) -> DataLayer {
     DataLayer::create(database_url).await
 }
@@ -411,10 +400,6 @@ pub fn get_datatypes() -> HashMap<String, DatatypeEntity> {
             },
         ),
     ])
-}
-
-pub(crate) async fn setup_test_data_provider_and_connection() -> Result<OldProvider, DbErr> {
-    setup_test_data_provider_and_connection_with_custom_url("sqlite::memory:").await
 }
 
 pub async fn setup_test_data_layer_and_connection() -> DataLayer {

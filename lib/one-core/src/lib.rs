@@ -7,8 +7,7 @@ use credential_formatter::jwt_formatter::JWTFormatter;
 use credential_formatter::CredentialFormatter;
 use error::OneCoreError;
 use repository::{
-    data_provider::DataProvider, did_repository::DidRepository,
-    organisation_repository::OrganisationRepository, DataRepository,
+    did_repository::DidRepository, organisation_repository::OrganisationRepository, DataRepository,
 };
 use service::{
     config::ConfigService, credential::CredentialService, did::DidService,
@@ -49,8 +48,6 @@ pub struct OneCore {
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
-    // FIXME: data_layer will be removed
-    pub data_layer: Arc<dyn DataProvider + Send + Sync>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub signature_providers: Vec<(String, Arc<dyn SignatureProvider + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
@@ -96,7 +93,6 @@ impl OneCore {
             credential_repository: data_provider.get_credential_repository(),
             organisation_repository: data_provider.get_organisation_repository(),
             did_repository: data_provider.get_did_repository(),
-            data_layer: data_provider.get_data_provider(),
             transport_protocols,
             signature_providers: vec![],
             credential_formatters,

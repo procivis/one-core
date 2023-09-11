@@ -1,5 +1,7 @@
 use crate::model::credential;
-use crate::model::credential::{CredentialState, CredentialStateRelations};
+use crate::model::credential::{
+    CredentialState, CredentialStateRelations, UpdateCredentialRequest,
+};
 use crate::service::credential::dto::{
     CreateCredentialFromJwtRequestDTO, CredentialStateEnum, EntityShareResponseDTO,
 };
@@ -225,14 +227,17 @@ impl CredentialService {
 
                 if current_state == CredentialStateEnum::Created {
                     self.credential_repository
-                        .set_credential_state(
-                            credential_id,
-                            CredentialState {
+                        .update_credential(UpdateCredentialRequest {
+                            id: credential_id.to_owned(),
+                            credential: None,
+                            holder_did_id: None,
+                            state: Some(CredentialState {
                                 created_date: now,
                                 state: credential::CredentialStateEnum::Created,
-                            },
-                        )
-                        .await?;
+                            }),
+                        })
+                        .await
+                        .map_err(ServiceError::from)?;
                 }
 
                 Ok(EntityShareResponseDTO {

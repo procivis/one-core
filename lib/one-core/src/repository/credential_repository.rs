@@ -1,6 +1,6 @@
 use crate::model::credential::{
-    Credential, CredentialId, CredentialRelations, CredentialState, GetCredentialList,
-    GetCredentialQuery,
+    Credential, CredentialId, CredentialRelations, GetCredentialList, GetCredentialQuery,
+    UpdateCredentialRequest,
 };
 
 use super::error::DataLayerError;
@@ -22,9 +22,8 @@ pub trait CredentialRepository {
         query_params: GetCredentialQuery,
     ) -> Result<GetCredentialList, DataLayerError>;
 
-    async fn set_credential_state(
+    async fn update_credential(
         &self,
-        id: &CredentialId,
-        state: CredentialState,
+        credential: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError>;
 }

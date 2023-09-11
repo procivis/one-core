@@ -1,7 +1,4 @@
-use crate::{
-    repository::data_provider::ListCredentialSchemaResponse,
-    service::credential_schema::dto::GetCredentialSchemaListValueResponseDTO,
-};
+use crate::service::credential_schema::dto::GetCredentialSchemaListValueResponseDTO;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -57,6 +54,20 @@ pub struct HandleInvitationConnectRequest {
 pub struct VerifierSubmitRequest {
     pub proof: Uuid,
     pub proof_submit_request: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")] // serialization necessary for wallet to parse JSON API response
+pub struct ListCredentialSchemaResponse {
+    pub id: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub format: String,
+    pub revocation_method: String,
+    pub organisation_id: String,
 }
 
 impl From<GetCredentialSchemaListValueResponseDTO> for ListCredentialSchemaResponse {
