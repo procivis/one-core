@@ -17,10 +17,16 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: Proof) -> Result<Self, Self::Error> {
-        let schema = value.schema.ok_or(ServiceError::NotFound)?;
+        let schema = value
+            .schema
+            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
-        let states = value.state.ok_or(ServiceError::NotFound)?;
-        let latest_state = states.get(0).ok_or(ServiceError::NotFound)?;
+        let states = value
+            .state
+            .ok_or(ServiceError::MappingError("state is None".to_string()))?;
+        let latest_state = states
+            .get(0)
+            .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
         let requested_date = states
             .iter()
             .find(|state| state.state == ProofStateEnum::Offered)
@@ -40,7 +46,12 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             issuance_date: value.issuance_date,
             requested_date,
             completed_date,
-            verifier_did: value.verifier_did.ok_or(ServiceError::NotFound)?.did,
+            verifier_did: value
+                .verifier_did
+                .ok_or(ServiceError::MappingError(
+                    "verifier_did is None".to_string(),
+                ))?
+                .did,
             transport: value.transport,
             state: latest_state.state.clone(),
             schema: schema.into(),
@@ -53,16 +64,27 @@ impl TryFrom<Proof> for ProofDetailResponseDTO {
 
     fn try_from(value: Proof) -> Result<Self, Self::Error> {
         let holder_did_id = value.holder_did.as_ref().map(|did| did.id).to_owned();
-        let schema = value.schema.as_ref().ok_or(ServiceError::NotFound)?;
-        let claims = value.claims.as_ref().ok_or(ServiceError::NotFound)?;
-        let proof_claim_schemas = schema
-            .claim_schemas
+        let schema = value
+            .schema
             .as_ref()
-            .ok_or(ServiceError::NotFound)?;
+            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+        let claims = value
+            .claims
+            .as_ref()
+            .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
+        let proof_claim_schemas =
+            schema
+                .claim_schemas
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "claim_schemas is None".to_string(),
+                ))?;
         let organisation_id = schema
             .organisation
             .as_ref()
-            .ok_or(ServiceError::NotFound)?
+            .ok_or(ServiceError::MappingError(
+                "organisation is None".to_string(),
+            ))?
             .id;
         let claims = proof_claim_schemas
             .iter()

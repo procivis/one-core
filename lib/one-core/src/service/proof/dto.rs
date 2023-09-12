@@ -7,7 +7,6 @@ use crate::{
         proof::{ProofStateEnum, SortableProofColumn},
     },
     service::{
-        credential_schema::dto::ClaimSchemaId,
         did::dto::{DidId, DidValue},
         organisation::dto::OrganisationId,
         proof_schema::dto::{
@@ -73,10 +72,4 @@ pub type GetProofQueryDTO = GetListQueryParams<SortableProofColumn>;
 #[derive(Clone, Debug)]
 pub struct ShareProofResponseDTO {
     pub url: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateProofClaimRequestDTO {
-    pub claim_schema_id: ClaimSchemaId,
-    pub value: String,
 }

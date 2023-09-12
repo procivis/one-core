@@ -23,9 +23,16 @@ impl TryFrom<ProofSchema> for GetProofSchemaResponseDTO {
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
-            organisation_id: value.organisation.ok_or(ServiceError::NotFound)?.id,
+            organisation_id: value
+                .organisation
+                .ok_or(ServiceError::MappingError(
+                    "organisation is None".to_string(),
+                ))?
+                .id,
             expire_duration: value.expire_duration,
-            claim_schemas: vector_try_into(value.claim_schemas.ok_or(ServiceError::NotFound)?)?,
+            claim_schemas: vector_try_into(value.claim_schemas.ok_or(
+                ServiceError::MappingError("claim_schemas is None".to_string()),
+            )?)?,
         })
     }
 }
@@ -52,7 +59,9 @@ impl TryFrom<ProofSchemaClaim> for ProofClaimSchemaResponseDTO {
             data_type: value.schema.data_type,
             credential_schema: value
                 .credential_schema
-                .ok_or(ServiceError::NotFound)?
+                .ok_or(ServiceError::MappingError(
+                    "credential_schema is None".to_string(),
+                ))?
                 .try_into()?,
         })
     }

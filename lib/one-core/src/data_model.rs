@@ -3,21 +3,10 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Deserialize)]
-pub struct ConnectIssuerRequest {
-    pub credential: Uuid,
-    pub did: String,
-}
-
 #[derive(Clone, Deserialize)]
 pub struct ConnectIssuerResponse {
     pub credential: String,
     pub format: String, // As far as I know we will get rid of enums
-}
-
-pub struct ConnectVerifierRequest {
-    pub proof: Uuid,
-    pub did: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)] // serialization necessary for wallet to parse JSON API response
@@ -49,11 +38,6 @@ pub struct HandleInvitationQueryRequest {
 #[derive(Serialize)]
 pub struct HandleInvitationConnectRequest {
     pub did: String,
-}
-
-pub struct VerifierSubmitRequest {
-    pub proof: Uuid,
-    pub proof_submit_request: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
