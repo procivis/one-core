@@ -1,9 +1,7 @@
-use crate::OneCore;
+use crate::{dto::VersionBindingDTO, OneCoreBinding};
 
-pub type Version = one_core::Version;
-
-impl OneCore {
-    pub fn version(&self) -> Version {
+impl OneCoreBinding {
+    pub fn version(&self) -> VersionBindingDTO {
         one_core::OneCore::version()
     }
 }

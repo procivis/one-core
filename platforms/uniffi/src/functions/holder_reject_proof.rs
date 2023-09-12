@@ -1,8 +1,7 @@
-use crate::{utils::run_sync, ActiveProof, OneCore};
+use crate::{utils::run_sync, ActiveProof, OneCoreBinding};
+use one_core::service::error::ServiceError;
 
-pub use one_core::service::error::ServiceError;
-
-impl OneCore {
+impl OneCoreBinding {
     pub fn holder_reject_proof(&self) -> Result<(), ServiceError> {
         run_sync(async {
             let active_proof = self.active_proof.read().await;

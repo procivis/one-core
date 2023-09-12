@@ -1,11 +1,12 @@
-use crate::{utils::run_sync, OneCore};
-use one_core::{model::did::DidType, service::did::dto::CreateDidRequestDTO};
+use crate::{utils::run_sync, OneCoreBinding};
+use one_core::{
+    model::did::DidType,
+    service::{did::dto::CreateDidRequestDTO, error::ServiceError},
+};
 use std::str::FromStr;
 use uuid::Uuid;
 
-pub use one_core::service::error::ServiceError;
-
-impl OneCore {
+impl OneCoreBinding {
     pub fn create_local_did(
         &self,
         did: String,

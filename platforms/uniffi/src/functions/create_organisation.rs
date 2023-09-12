@@ -1,9 +1,8 @@
-use crate::{utils::run_sync, OneCore};
+use crate::{utils::run_sync, OneCoreBinding};
+use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
-pub use one_core::service::error::ServiceError;
-
-impl OneCore {
+impl OneCoreBinding {
     pub fn create_organisation(&self, uuid: Option<String>) -> Result<String, ServiceError> {
         let id = match uuid {
             None => None,
