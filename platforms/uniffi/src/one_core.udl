@@ -1,6 +1,6 @@
 namespace one_core {
   [Throws=ConfigParseError]
-  OneCore initialize_core(string data_dir_path);
+  OneCoreBinding initialize_core(string data_dir_path);
 };
 
 [Error]
@@ -13,7 +13,7 @@ enum ServiceError {
   "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "ConfigValidationError", "TransportProtocolError", "FormatterError", "Other",
 };
 
-dictionary Version {
+dictionary VersionBindingDTO {
   string target;
   string build_time;
   string branch;
@@ -23,11 +23,11 @@ dictionary Version {
   string pipeline_id;
 };
 
-enum CredentialState {
+enum CredentialStateBindingEnum {
   "Created", "Pending", "Offered", "Accepted", "Rejected", "Revoked", "Error"
 };
 
-dictionary CredentialSchema {
+dictionary CredentialSchemaBindingDTO {
   string id;
   string created_date;
   string last_modified;
@@ -36,46 +36,68 @@ dictionary CredentialSchema {
   string revocation_method;
 };
 
-dictionary Claim {
+dictionary ClaimBindingDTO {
   string id;
   string key;
   string data_type;
   string value;
 };
 
-dictionary Credential {
+dictionary CredentialListItemBindingDTO {
   string id;
   string created_date;
   string issuance_date;
   string last_modified;
   string? issuer_did;
-  CredentialState state;
-  sequence<Claim> claims;
-  CredentialSchema schema;
+  CredentialStateBindingEnum state;
+  CredentialSchemaBindingDTO schema;
 };
 
-dictionary ProofRequestClaim {
+dictionary CredentialDetailBindingDTO {
+  string id;
+  string created_date;
+  string issuance_date;
+  string last_modified;
+  string? issuer_did;
+  CredentialStateBindingEnum state;
+  sequence<ClaimBindingDTO> claims;
+  CredentialSchemaBindingDTO schema;
+};
+
+dictionary ProofRequestClaimBindingDTO {
     string id;
     string created_date;
     string last_modified;
     string key;
     string data_type;
     boolean required;
-    CredentialSchema credential_schema;
+    CredentialSchemaBindingDTO credential_schema;
 };
 
-dictionary ProofRequest {
-    sequence<ProofRequestClaim> claims;
+dictionary ProofRequestBindingDTO {
+    sequence<ProofRequestClaimBindingDTO> claims;
 };
 
 [Enum]
-interface HandleInvitationResponse {
-  InvitationResponseCredentialIssuance(string issued_credential_id);
-  InvitationResponseProofRequest(ProofRequest proof_request);
+interface HandleInvitationResponseBindingEnum {
+  CredentialIssuance(string issued_credential_id);
+  ProofRequest(ProofRequestBindingDTO proof_request);
 };
 
-interface OneCore {
-  Version version();
+dictionary ListQueryBindingDTO {
+    u32 page;
+    u32 page_size;
+    string organisation_id;
+};
+
+dictionary CredentialListBindingDTO {
+    sequence<CredentialListItemBindingDTO> values;
+    u64 total_pages;
+    u64 total_items;
+};
+
+interface OneCoreBinding {
+  VersionBindingDTO version();
 
   [Throws=ServiceError]
   string create_organisation(string? uuid);
@@ -84,7 +106,7 @@ interface OneCore {
   string create_local_did(string did, string organisation_id);
 
   [Throws=ServiceError]
-  HandleInvitationResponse handle_invitation(string url, string did_id);
+  HandleInvitationResponseBindingEnum handle_invitation(string url, string did_id);
 
   [Throws=ServiceError]
   void holder_reject_proof();
@@ -93,5 +115,8 @@ interface OneCore {
   void holder_submit_proof(sequence<string> credential_ids);
 
   [Throws=ServiceError]
-  sequence<Credential> get_credentials();
+  CredentialListBindingDTO get_credentials([ByRef] ListQueryBindingDTO query);
+
+  [Throws=ServiceError]
+  CredentialDetailBindingDTO get_credential(string credential_id);
 };

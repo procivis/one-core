@@ -1,88 +1,25 @@
-use crate::utils::dto::CredentialState;
-use crate::{
-    utils::{run_sync, TimestampFormat},
-    OneCore,
-};
-use one_core::common_mapper::vector_into;
-use one_core::service::{
-    credential::dto::{CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO},
-    credential::CredentialService,
-    credential_schema::dto::GetCredentialSchemaListValueResponseDTO,
-};
+use crate::{utils::run_sync, CredentialListBindingDTO, ListQueryBindingDTO, OneCoreBinding};
+use one_core::service::{credential::dto::GetCredentialQueryDTO, error::ServiceError};
 
-pub use one_core::service::error::ServiceError;
-
-pub struct CredentialSchema {
-    pub id: String,
-    pub created_date: String,
-    pub last_modified: String,
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-}
-
-impl From<GetCredentialSchemaListValueResponseDTO> for CredentialSchema {
-    fn from(value: GetCredentialSchemaListValueResponseDTO) -> Self {
-        Self {
-            id: value.id.to_string(),
-            created_date: value.created_date.format_timestamp(),
-            last_modified: value.last_modified.format_timestamp(),
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-        }
-    }
-}
-
-impl From<CredentialSchemaResponseDTO> for CredentialSchema {
-    fn from(value: CredentialSchemaResponseDTO) -> Self {
-        Self {
-            id: value.id.to_string(),
-            created_date: value.created_date.format_timestamp(),
-            last_modified: value.last_modified.format_timestamp(),
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-        }
-    }
-}
-
-pub struct Claim {
-    pub id: String,
-    pub key: String,
-    pub data_type: String,
-    pub value: String,
-}
-
-impl From<DetailCredentialClaimResponseDTO> for Claim {
-    fn from(value: DetailCredentialClaimResponseDTO) -> Self {
-        Self {
-            id: value.schema.id.to_string(),
-            key: value.schema.key,
-            data_type: value.schema.datatype,
-            value: value.value,
-        }
-    }
-}
-
-pub struct Credential {
-    pub id: String,
-    pub created_date: String,
-    pub issuance_date: String,
-    pub last_modified: String,
-    pub issuer_did: Option<String>,
-    pub state: CredentialState,
-    pub claims: Vec<Claim>,
-    pub schema: CredentialSchema,
-}
-
-async fn get_credentials(service: &CredentialService) -> Result<Vec<Credential>, ServiceError> {
-    let response = service.get_all_credential_list().await?;
-    Ok(vector_into(response))
-}
-
-impl OneCore {
-    pub fn get_credentials(&self) -> Result<Vec<Credential>, ServiceError> {
-        run_sync(async { get_credentials(&self.inner.credential_service).await })
+impl OneCoreBinding {
+    pub fn get_credentials(
+        &self,
+        query: &ListQueryBindingDTO,
+    ) -> Result<CredentialListBindingDTO, ServiceError> {
+        run_sync(async {
+            Ok(self
+                .inner
+                .credential_service
+                .get_credential_list(GetCredentialQueryDTO {
+                    page: query.page,
+                    page_size: query.page_size,
+                    sort: None,
+                    sort_direction: None,
+                    name: None,
+                    organisation_id: query.organisation_id.to_owned(),
+                })
+                .await?
+                .into())
+        })
     }
 }

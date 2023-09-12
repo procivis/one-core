@@ -1,24 +1,23 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
-use std::sync::Arc;
-mod utils;
-use sql_data_provider::DataLayer;
-use tokio::sync::RwLock;
-use utils::run_sync;
-
-mod functions;
-use functions::*;
-
 use one_core::{
     config::{
         data_structure::{ConfigKind, UnparsedConfig},
         ConfigParseError,
     },
-    service::{did::dto::DidId, proof::dto::ProofId},
+    service::{did::dto::DidId, error::ServiceError, proof::dto::ProofId},
 };
+use sql_data_provider::DataLayer;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use utils::run_sync;
 
-use utils::dto::CredentialState;
+mod dto;
+mod functions;
+mod mapper;
+mod utils;
 
+use dto::*;
 uniffi::include_scaffolding!("one_core");
 
 pub struct ActiveProof {
@@ -27,14 +26,14 @@ pub struct ActiveProof {
     did_id: DidId,
 }
 
-pub struct OneCore {
+pub struct OneCoreBinding {
     inner: one_core::OneCore,
 
     // FIXME: temporary solution for proof submit/reject until interaction is developed
     active_proof: RwLock<Option<ActiveProof>>,
 }
 
-fn initialize_core(data_dir_path: String) -> Result<Arc<OneCore>, ConfigParseError> {
+fn initialize_core(data_dir_path: String) -> Result<Arc<OneCoreBinding>, ConfigParseError> {
     let placeholder_config = UnparsedConfig {
         content: include_str!("../../../config.yml").to_string(),
         kind: ConfigKind::Yaml,
@@ -50,7 +49,7 @@ fn initialize_core(data_dir_path: String) -> Result<Arc<OneCore>, ConfigParseErr
             placeholder_config,
         )
     })?;
-    Ok(Arc::new(OneCore {
+    Ok(Arc::new(OneCoreBinding {
         inner: core,
         active_proof: RwLock::new(None),
     }))
