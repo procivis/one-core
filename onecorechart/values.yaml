@@ -73,6 +73,8 @@ mariadb:
     username: "core_user"
     rootPassword: ""
     password: ""
+  metrics:
+    enabled: true
   primary:
     persistence:
       size: 8Gi
