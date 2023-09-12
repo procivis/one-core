@@ -4,8 +4,8 @@ use crate::{
         claim::ClaimRelations,
         claim_schema::ClaimSchemaRelations,
         credential::{
-            CredentialId, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
-            UpdateCredentialRequest,
+            CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
+            CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
         did::{Did, DidId, DidRelations, DidType},
@@ -46,7 +46,7 @@ impl SSIIssuerService {
             .ok_or(ServiceError::MappingError("state is None".to_string()))?
             .get(0)
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
-        if latest_state.state != CredentialStateEnum::Offered {
+        if latest_state.state != CredentialStateEnum::Pending {
             return Err(ServiceError::AlreadyExists);
         }
 
@@ -95,7 +95,10 @@ impl SSIIssuerService {
                 id: credential_id.to_owned(),
                 credential: Some(token.bytes().collect()),
                 holder_did_id: Some(holder_did.id),
-                state: None,
+                state: Some(CredentialState {
+                    created_date: OffsetDateTime::now_utc(),
+                    state: CredentialStateEnum::Accepted, // simplified issuance flow: Accepted automatically
+                }),
             })
             .await?;
 

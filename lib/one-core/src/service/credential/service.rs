@@ -220,9 +220,7 @@ impl CredentialService {
         let current_state = self.get_credential(credential_id).await?.state;
 
         match current_state {
-            CredentialStateEnum::Created
-            | CredentialStateEnum::Offered
-            | CredentialStateEnum::Pending => {
+            CredentialStateEnum::Created | CredentialStateEnum::Pending => {
                 let now = OffsetDateTime::now_utc();
 
                 if current_state == CredentialStateEnum::Created {
@@ -233,7 +231,7 @@ impl CredentialService {
                             holder_did_id: None,
                             state: Some(CredentialState {
                                 created_date: now,
-                                state: credential::CredentialStateEnum::Created,
+                                state: credential::CredentialStateEnum::Pending,
                             }),
                         })
                         .await
