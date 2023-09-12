@@ -35,3 +35,6 @@ impl CredentialService {
         }
     }
 }
+
+#[cfg(test)]
+mod test;
