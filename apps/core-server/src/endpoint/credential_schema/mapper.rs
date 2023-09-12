@@ -1,15 +1,13 @@
-use one_core::data_model::ListCredentialSchemaResponse;
-use one_core::service::credential_schema::dto::{
-    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO, CredentialClaimSchemaDTO,
-    CredentialClaimSchemaRequestDTO, GetCredentialSchemaListValueResponseDTO,
-    GetCredentialSchemaResponseDTO,
-};
-
 use crate::endpoint::credential_schema::dto::{
     CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaResponseRestDTO,
     CredentialClaimSchemaRequestRestDTO, CredentialClaimSchemaResponseRestDTO,
     CredentialSchemaListValueResponseRestDTO, CredentialSchemaResponseRestDTO,
     SortableCredentialSchemaColumnRestEnum,
+};
+use one_core::service::credential_schema::dto::{
+    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO, CredentialClaimSchemaDTO,
+    CredentialClaimSchemaRequestDTO, GetCredentialSchemaListValueResponseDTO,
+    GetCredentialSchemaResponseDTO,
 };
 
 impl From<GetCredentialSchemaListValueResponseDTO> for CredentialSchemaListValueResponseRestDTO {
@@ -95,21 +93,6 @@ impl From<SortableCredentialSchemaColumnRestEnum>
             SortableCredentialSchemaColumnRestEnum::CreatedDate => {
                 one_core::model::credential_schema::SortableCredentialSchemaColumn::CreatedDate
             }
-        }
-    }
-}
-
-impl From<ListCredentialSchemaResponse> for CredentialSchemaResponseRestDTO {
-    fn from(value: ListCredentialSchemaResponse) -> Self {
-        Self {
-            id: value.id.parse().unwrap(),
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-            organisation_id: value.organisation_id.parse().unwrap(),
-            claims: vec![],
         }
     }
 }

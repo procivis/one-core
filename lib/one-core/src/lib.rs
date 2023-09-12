@@ -6,26 +6,19 @@ use crate::config::ConfigParseError;
 use credential_formatter::jwt_formatter::JWTFormatter;
 use credential_formatter::provider::CredentialFormatterProviderImpl;
 use credential_formatter::CredentialFormatter;
-use error::OneCoreError;
-use repository::{
-    did_repository::DidRepository, organisation_repository::OrganisationRepository, DataRepository,
-};
+use repository::DataRepository;
 use service::{
     config::ConfigService, credential::CredentialService, did::DidService,
     organisation::OrganisationService, proof::ProofService, proof_schema::ProofSchemaService,
-    ssi_issuer::SSIIssuerService, ssi_verifier::SSIVerifierService,
+    ssi_holder::SSIHolderService, ssi_issuer::SSIIssuerService, ssi_verifier::SSIVerifierService,
 };
 use signature_provider::SignatureProvider;
-use transport_protocol::procivis_temp::ProcivisTemp;
-use transport_protocol::TransportProtocol;
+use transport_protocol::{
+    procivis_temp::ProcivisTemp, provider::TransportProtocolProviderImpl, TransportProtocol,
+};
 
 pub mod config;
 pub mod credential_formatter;
-pub mod data_model;
-pub mod error;
-pub mod handle_invitation;
-pub mod holder_reject_proof_request;
-pub mod holder_submit_proof;
 pub mod signature_provider;
 pub mod transport_protocol;
 
@@ -35,18 +28,12 @@ pub mod service;
 
 pub mod common_mapper;
 
-mod local_did_helpers;
-
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
-use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential_schema::CredentialSchemaService;
 
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub signature_providers: Vec<(String, Arc<dyn SignatureProvider + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
@@ -59,6 +46,7 @@ pub struct OneCore {
     pub config_service: ConfigService,
     pub ssi_verifier_service: SSIVerifierService,
     pub ssi_issuer_service: SSIIssuerService,
+    pub ssi_holder_service: SSIHolderService,
     pub config: Arc<CoreConfig>,
 }
 
@@ -93,13 +81,13 @@ impl OneCore {
         let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
             credential_formatters.to_owned(),
         ));
+        let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
+            transport_protocols.to_owned(),
+        ));
 
         let config = Arc::new(config);
 
         Ok(OneCore {
-            credential_repository: data_provider.get_credential_repository(),
-            organisation_repository: data_provider.get_organisation_repository(),
-            did_repository: data_provider.get_did_repository(),
             transport_protocols,
             signature_providers: vec![],
             credential_formatters,
@@ -137,7 +125,15 @@ impl OneCore {
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_did_repository(),
+                formatter_provider.clone(),
+            ),
+            ssi_holder_service: SSIHolderService::new(
+                data_provider.get_organisation_repository(),
+                data_provider.get_credential_schema_repository(),
+                data_provider.get_credential_repository(),
+                data_provider.get_did_repository(),
                 formatter_provider,
+                protocol_provider,
             ),
             config_service: ConfigService::new(config.clone()),
             config,
@@ -158,32 +154,6 @@ impl OneCore {
             rust_version: build::RUST_VERSION.to_owned(),
             pipeline_id: build::CI_PIPELINE_ID.to_owned(),
         }
-    }
-
-    fn get_transport_protocol(
-        &self,
-        protocol: &str,
-    ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, OneCoreError> {
-        self.transport_protocols
-            .iter()
-            .find(|(key, _)| key == protocol)
-            .map(|(_, transport)| transport.clone())
-            .ok_or(OneCoreError::SSIError(
-                error::SSIError::UnsupportedTransportProtocol,
-            ))
-    }
-
-    fn get_formatter(
-        &self,
-        format: &str,
-    ) -> Result<Arc<dyn CredentialFormatter + Send + Sync>, OneCoreError> {
-        self.credential_formatters
-            .iter()
-            .find(|(key, _)| key == format)
-            .map(|(_, formatter)| formatter.clone())
-            .ok_or(OneCoreError::SSIError(
-                error::SSIError::UnsupportedCredentialFormat,
-            ))
     }
 }
 

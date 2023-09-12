@@ -9,18 +9,8 @@ enum ConfigParseError {
 };
 
 [Error]
-enum DataLayerError {
-  "GeneralRuntimeError", "AlreadyExists", "IncorrectParameters", "ConfigValidationError", "RecordNotFound", "RecordNotUpdated", "MappingError", "Other"
-};
-
-[Error]
 enum ServiceError {
-  "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "ConfigValidationError", "Other",
-};
-
-[Error]
-enum OneCoreError {
-  "DataLayerError", "ServiceError", "SSIError", "FormatterError"
+  "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "ConfigValidationError", "TransportProtocolError", "FormatterError", "Other",
 };
 
 dictionary Version {
@@ -42,7 +32,6 @@ dictionary CredentialSchema {
   string created_date;
   string last_modified;
   string name;
-  string organisation_id;
   string format;
   string revocation_method;
 };
@@ -94,13 +83,13 @@ interface OneCore {
   [Throws=ServiceError]
   string create_local_did(string did, string organisation_id);
 
-  [Throws=OneCoreError]
-  HandleInvitationResponse handle_invitation(string url);
+  [Throws=ServiceError]
+  HandleInvitationResponse handle_invitation(string url, string did_id);
 
-  [Throws=OneCoreError]
+  [Throws=ServiceError]
   void holder_reject_proof();
 
-  [Throws=OneCoreError]
+  [Throws=ServiceError]
   void holder_submit_proof(sequence<string> credential_ids);
 
   [Throws=ServiceError]

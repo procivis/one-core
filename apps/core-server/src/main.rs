@@ -25,7 +25,6 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-pub(crate) mod data_model;
 pub(crate) mod dto;
 pub(crate) mod endpoint;
 pub(crate) mod mapper;
@@ -33,7 +32,6 @@ pub(crate) mod serialize;
 
 use endpoint::{
     config, credential, credential_schema, did, misc, organisation, proof, proof_schema, ssi,
-    ssi_post_handle_invitation,
 };
 
 #[derive(Clone)]
@@ -91,9 +89,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::ssi::controller::ssi_verifier_submit_proof,
             endpoint::ssi::controller::ssi_verifier_reject_proof,
             endpoint::ssi::controller::ssi_issuer_connect,
+            endpoint::ssi::controller::ssi_holder_handle_invitation,
 
             endpoint::misc::get_build_info,
-            endpoint::ssi_post_handle_invitation::ssi_post_handle_invitation,
         ),
         components(
             schemas(
@@ -143,6 +141,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::ssi::dto::ConnectVerifierResponseRestDTO,
                 endpoint::ssi::dto::ProofRequestClaimRestDTO,
                 endpoint::ssi::dto::ConnectIssuerResponseRestDTO,
+                endpoint::ssi::dto::HandleInvitationRequestRestDTO,
+                endpoint::ssi::dto::HandleInvitationResponseRestDTO,
 
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
@@ -154,9 +154,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 dto::common::EntityResponseRestDTO,
 
                 dto::common::SortDirection,
-
-                data_model::ConnectRequestDTO,
-                data_model::HandleInvitationRequestDTO
             )
         ),
         modifiers(),
@@ -277,7 +274,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let unprotected = Router::new()
         .route(
             "/ssi/handle-invitation/v1",
-            post(ssi_post_handle_invitation::ssi_post_handle_invitation),
+            post(ssi::controller::ssi_holder_handle_invitation),
         )
         .route(
             "/ssi/temporary-issuer/v1/connect",

@@ -1,9 +1,11 @@
 use super::dto::{
-    ConnectIssuerResponseRestDTO, ConnectVerifierResponseRestDTO, ProofRequestClaimRestDTO,
+    ConnectIssuerResponseRestDTO, ConnectVerifierResponseRestDTO, HandleInvitationResponseRestDTO,
+    ProofRequestClaimRestDTO,
 };
 use one_core::{
     common_mapper::vector_into,
     service::{
+        ssi_holder::dto::InvitationResponseDTO,
         ssi_issuer::dto::ConnectIssuerResponseDTO,
         ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
     },
@@ -36,6 +38,27 @@ impl From<ConnectIssuerResponseDTO> for ConnectIssuerResponseRestDTO {
         Self {
             credential: value.credential,
             format: value.format,
+        }
+    }
+}
+
+impl From<InvitationResponseDTO> for HandleInvitationResponseRestDTO {
+    fn from(value: InvitationResponseDTO) -> Self {
+        match value {
+            InvitationResponseDTO::Credential {
+                issued_credential_id,
+            } => Self::Credential {
+                issued_credential_id,
+            },
+            InvitationResponseDTO::ProofRequest {
+                proof_request,
+                proof_id,
+                base_url,
+            } => Self::ProofRequest {
+                proof_request: proof_request.into(),
+                proof_id,
+                base_url,
+            },
         }
     }
 }

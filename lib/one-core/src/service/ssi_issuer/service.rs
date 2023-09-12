@@ -88,8 +88,7 @@ impl SSIIssuerService {
         let token = self
             .formatter_provider
             .get_formatter(&credential_schema.format)?
-            .format_credentials(&credential.try_into()?, holder_did_value)
-            .map_err(|_| ServiceError::IncorrectParameters)?;
+            .format_credentials(&credential.try_into()?, holder_did_value)?;
 
         self.credential_repository
             .update_credential(UpdateCredentialRequest {

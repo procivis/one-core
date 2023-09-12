@@ -1,9 +1,8 @@
-use std::str::FromStr;
-
+use crate::{utils::run_sync, OneCore};
 use one_core::{model::did::DidType, service::did::dto::CreateDidRequestDTO};
+use std::str::FromStr;
 use uuid::Uuid;
 
-use crate::{utils::run_sync, OneCore};
 pub use one_core::service::error::ServiceError;
 
 impl OneCore {

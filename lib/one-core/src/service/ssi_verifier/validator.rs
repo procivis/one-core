@@ -26,9 +26,7 @@ pub(super) fn validate_proof(
     // Add when key management introduced. For now we use the same pair of keys for everything.
     // If it's extracted - it's properly signed
     // This will change when we started using external signature providers
-    let presentation = formatter
-        .extract_presentation(presentation)
-        .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
+    let presentation = formatter.extract_presentation(presentation)?;
 
     // Check if presentation is expired
     validate_issuance_time(presentation.issued_at)?;
@@ -83,9 +81,7 @@ pub(super) fn validate_proof(
         HashMap::new();
 
     for credential in presentation.credentials {
-        let claim = formatter
-            .extract_credentials(&credential)
-            .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
+        let claim = formatter.extract_credentials(&credential)?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
         validate_issuance_time(claim.invalid_before)?;
