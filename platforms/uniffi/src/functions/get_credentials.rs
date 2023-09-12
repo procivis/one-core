@@ -1,38 +1,33 @@
+use crate::utils::dto::CredentialState;
 use crate::{
     utils::{run_sync, TimestampFormat},
     OneCore,
 };
-use one_core::data_model::ListCredentialSchemaResponse;
-pub use one_core::error::OneCoreError;
-
-pub use one_core::repository::error::DataLayerError;
-
-use one_core::service::credential::dto::{
-    CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO,
+use one_core::common_mapper::vector_into;
+use one_core::service::{
+    credential::dto::{CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO},
+    credential::CredentialService,
+    credential_schema::dto::GetCredentialSchemaListValueResponseDTO,
 };
-use one_core::service::credential::CredentialService;
-use one_core::service::error::ServiceError;
 
-use crate::utils::dto::CredentialState;
+pub use one_core::service::error::ServiceError;
 
 pub struct CredentialSchema {
     pub id: String,
     pub created_date: String,
     pub last_modified: String,
     pub name: String,
-    pub organisation_id: String,
     pub format: String,
     pub revocation_method: String,
 }
 
-impl From<ListCredentialSchemaResponse> for CredentialSchema {
-    fn from(value: ListCredentialSchemaResponse) -> Self {
+impl From<GetCredentialSchemaListValueResponseDTO> for CredentialSchema {
+    fn from(value: GetCredentialSchemaListValueResponseDTO) -> Self {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             name: value.name,
-            organisation_id: value.organisation_id.to_string(),
             format: value.format,
             revocation_method: value.revocation_method,
         }
@@ -46,7 +41,6 @@ impl From<CredentialSchemaResponseDTO> for CredentialSchema {
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             name: value.name,
-            organisation_id: value.organisation_id.to_string(),
             format: value.format,
             revocation_method: value.revocation_method,
         }
@@ -82,12 +76,9 @@ pub struct Credential {
     pub schema: CredentialSchema,
 }
 
-async fn get_credentials(data_layer: &CredentialService) -> Result<Vec<Credential>, ServiceError> {
-    let response = data_layer.get_all_credential_list().await?;
-    Ok(response
-        .into_iter()
-        .map(|credential| credential.into())
-        .collect())
+async fn get_credentials(service: &CredentialService) -> Result<Vec<Credential>, ServiceError> {
+    let response = service.get_all_credential_list().await?;
+    Ok(vector_into(response))
 }
 
 impl OneCore {

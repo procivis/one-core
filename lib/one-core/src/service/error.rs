@@ -1,8 +1,11 @@
 use thiserror::Error;
 
-use crate::{config::validator::ConfigValidationError, repository::error::DataLayerError};
+use crate::{
+    config::validator::ConfigValidationError, credential_formatter::FormatterError,
+    repository::error::DataLayerError, transport_protocol::TransportProtocolError,
+};
 
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, Error)]
 pub enum ServiceError {
     #[error("General repository error `{0}`")]
     GeneralRuntimeError(String),
@@ -20,6 +23,10 @@ pub enum ServiceError {
     ValidationError(String),
     #[error("Config validation error `{0}`")]
     ConfigValidationError(#[from] ConfigValidationError),
+    #[error("Transport protocol error `{0}`")]
+    TransportProtocolError(#[from] TransportProtocolError),
+    #[error("Formatter error `{0}`")]
+    FormatterError(#[from] FormatterError),
     #[error("Other Repository error: `{0}`")]
     Other(String),
 }

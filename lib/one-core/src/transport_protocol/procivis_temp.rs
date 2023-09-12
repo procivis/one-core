@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-
+use super::{
+    dto::{HandleInvitationConnectRequest, InvitationResponse},
+    TransportProtocol, TransportProtocolError,
+};
 use async_trait::async_trait;
-
-use super::{InvitationResponse, TransportProtocol, TransportProtocolError};
-use crate::data_model::HandleInvitationConnectRequest;
+use std::collections::HashMap;
 
 pub struct ProcivisTemp {
     client: reqwest::Client,

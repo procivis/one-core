@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 // Implementations
 pub mod jwt_formatter;
-pub mod provider;
+pub(crate) mod provider;
 
 use crate::service::credential::dto::CredentialResponseDTO;
 use serde::{Deserialize, Serialize};

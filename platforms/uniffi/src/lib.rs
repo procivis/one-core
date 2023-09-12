@@ -9,9 +9,12 @@ use utils::run_sync;
 mod functions;
 use functions::*;
 
-use one_core::config::{
-    data_structure::{ConfigKind, UnparsedConfig},
-    ConfigParseError,
+use one_core::{
+    config::{
+        data_structure::{ConfigKind, UnparsedConfig},
+        ConfigParseError,
+    },
+    service::{did::dto::DidId, proof::dto::ProofId},
 };
 
 use utils::dto::CredentialState;
@@ -19,8 +22,9 @@ use utils::dto::CredentialState;
 uniffi::include_scaffolding!("one_core");
 
 pub struct ActiveProof {
-    id: String,
+    id: ProofId,
     base_url: String,
+    did_id: DidId,
 }
 
 pub struct OneCore {

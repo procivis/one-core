@@ -1,7 +1,9 @@
-use crate::data_model::{ConnectIssuerResponse, ConnectVerifierResponse};
+use self::dto::InvitationResponse;
 use async_trait::async_trait;
-
 use thiserror::Error;
+
+pub mod dto;
+pub(crate) mod provider;
 
 pub mod procivis_temp;
 
@@ -13,15 +15,6 @@ pub enum TransportProtocolError {
     HttpRequestError(reqwest::Error),
     #[error("JSON error: `{0}`")]
     JsonError(serde_json::Error),
-}
-
-#[derive(Clone)]
-pub enum InvitationResponse {
-    Credential(ConnectIssuerResponse),
-    Proof {
-        proof_request: ConnectVerifierResponse,
-        proof_id: String,
-    },
 }
 
 // This is just a proposition.

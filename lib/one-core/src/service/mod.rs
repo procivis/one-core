@@ -7,5 +7,6 @@ pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
 
+pub mod ssi_holder;
 pub mod ssi_issuer;
 pub mod ssi_verifier;

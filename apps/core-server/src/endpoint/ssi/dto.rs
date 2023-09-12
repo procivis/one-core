@@ -66,3 +66,22 @@ pub struct ConnectIssuerResponseRestDTO {
     pub credential: String,
     pub format: String,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct HandleInvitationRequestRestDTO {
+    pub url: String,
+    pub did_id: Uuid,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema)]
+pub enum HandleInvitationResponseRestDTO {
+    Credential {
+        issued_credential_id: Uuid,
+    },
+    ProofRequest {
+        proof_request: ConnectVerifierResponseRestDTO,
+        proof_id: Uuid,
+        base_url: String,
+    },
+}

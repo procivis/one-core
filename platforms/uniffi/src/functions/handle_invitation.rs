@@ -1,22 +1,22 @@
+use super::CredentialSchema;
 use crate::{
     utils::{run_sync, TimestampFormat},
     ActiveProof, OneCore,
 };
-
-pub use one_core::error::OneCoreError;
-use one_core::{
-    data_model::{ConnectVerifierResponse, ProofClaimSchema},
-    handle_invitation::InvitationResponse,
+use one_core::service::{
+    ssi_holder::dto::InvitationResponseDTO,
+    ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
 };
+use uuid::Uuid;
 
-use super::CredentialSchema;
+pub use one_core::service::error::ServiceError;
 
 pub struct ProofRequest {
     pub claims: Vec<ProofRequestClaim>,
 }
 
-impl From<ConnectVerifierResponse> for ProofRequest {
-    fn from(value: ConnectVerifierResponse) -> Self {
+impl From<ConnectVerifierResponseDTO> for ProofRequest {
+    fn from(value: ConnectVerifierResponseDTO) -> Self {
         Self {
             claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
         }
@@ -33,10 +33,10 @@ pub struct ProofRequestClaim {
     pub credential_schema: CredentialSchema,
 }
 
-impl From<ProofClaimSchema> for ProofRequestClaim {
-    fn from(value: ProofClaimSchema) -> Self {
+impl From<ProofRequestClaimDTO> for ProofRequestClaim {
+    fn from(value: ProofRequestClaimDTO) -> Self {
         Self {
-            id: value.id,
+            id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             key: value.key,
@@ -53,30 +53,45 @@ pub enum HandleInvitationResponse {
 }
 
 impl OneCore {
-    pub fn handle_invitation(&self, url: String) -> Result<HandleInvitationResponse, OneCoreError> {
-        run_sync(async {
-            Ok(match self.inner.handle_invitation(&url).await? {
-                InvitationResponse::Credential {
-                    issued_credential_id,
-                } => HandleInvitationResponse::InvitationResponseCredentialIssuance {
-                    issued_credential_id,
-                },
-                InvitationResponse::ProofRequest {
-                    proof_id,
-                    proof_request,
-                    base_url,
-                } => {
-                    let mut active_proof = self.active_proof.write().await;
-                    *active_proof = Some(ActiveProof {
-                        id: proof_id,
-                        base_url,
-                    });
+    pub fn handle_invitation(
+        &self,
+        url: String,
+        did_id: String,
+    ) -> Result<HandleInvitationResponse, ServiceError> {
+        let did_id = Uuid::parse_str(&did_id)
+            .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
 
-                    HandleInvitationResponse::InvitationResponseProofRequest {
-                        proof_request: proof_request.into(),
+        run_sync(async {
+            Ok(
+                match self
+                    .inner
+                    .ssi_holder_service
+                    .handle_invitation(&url, &did_id)
+                    .await?
+                {
+                    InvitationResponseDTO::Credential {
+                        issued_credential_id,
+                    } => HandleInvitationResponse::InvitationResponseCredentialIssuance {
+                        issued_credential_id: issued_credential_id.to_string(),
+                    },
+                    InvitationResponseDTO::ProofRequest {
+                        proof_id,
+                        proof_request,
+                        base_url,
+                    } => {
+                        let mut active_proof = self.active_proof.write().await;
+                        *active_proof = Some(ActiveProof {
+                            id: proof_id,
+                            base_url,
+                            did_id,
+                        });
+
+                        HandleInvitationResponse::InvitationResponseProofRequest {
+                            proof_request: proof_request.into(),
+                        }
                     }
-                }
-            })
+                },
+            )
         })
     }
 }
