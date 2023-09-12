@@ -36,7 +36,12 @@ impl TryFrom<Credential> for CredentialResponseDTO {
         let states = value
             .state
             .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-        let latest_state = states.get(0).ok_or(ServiceError::NotFound)?.to_owned();
+        let latest_state = states
+            .get(0)
+            .ok_or(ServiceError::MappingError(
+                "latest state not found".to_string(),
+            ))?
+            .to_owned();
 
         Ok(Self {
             id: value.id,
@@ -171,7 +176,12 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
         let states = value
             .state
             .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-        let latest_state = states.get(0).ok_or(ServiceError::NotFound)?.to_owned();
+        let latest_state = states
+            .get(0)
+            .ok_or(ServiceError::MappingError(
+                "latest state not found".to_string(),
+            ))?
+            .to_owned();
 
         Ok(Self {
             id: value.id,

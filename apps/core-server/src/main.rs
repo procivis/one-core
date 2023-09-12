@@ -32,9 +32,8 @@ pub(crate) mod mapper;
 pub(crate) mod serialize;
 
 use endpoint::{
-    config, credential, credential_schema, did, misc, organisation, proof, proof_schema,
-    ssi_post_handle_invitation, ssi_post_issuer_connect, ssi_post_verifier_connect,
-    ssi_post_verifier_reject_proof_request, ssi_post_verifier_submit,
+    config, credential, credential_schema, did, misc, organisation, proof, proof_schema, ssi,
+    ssi_post_handle_invitation,
 };
 
 #[derive(Clone)]
@@ -88,12 +87,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::proof::controller::post_proof,
             endpoint::proof::controller::share_proof,
 
+            endpoint::ssi::controller::ssi_verifier_connect,
+            endpoint::ssi::controller::ssi_verifier_submit_proof,
+            endpoint::ssi::controller::ssi_verifier_reject_proof,
+            endpoint::ssi::controller::ssi_issuer_connect,
+
             endpoint::misc::get_build_info,
             endpoint::ssi_post_handle_invitation::ssi_post_handle_invitation,
-            endpoint::ssi_post_issuer_connect::ssi_issuer_connect,
-            endpoint::ssi_post_verifier_connect::ssi_verifier_connect,
-            endpoint::ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request,
-            endpoint::ssi_post_verifier_submit::ssi_verifier_submit,
         ),
         components(
             schemas(
@@ -138,6 +138,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
                 endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO,
                 endpoint::proof_schema::dto::ProofClaimSchemaResponseRestDTO,
+
+                endpoint::ssi::dto::ConnectRequestRestDTO,
+                endpoint::ssi::dto::ConnectVerifierResponseRestDTO,
+                endpoint::ssi::dto::ProofRequestClaimRestDTO,
+                endpoint::ssi::dto::ConnectIssuerResponseRestDTO,
+
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
 
@@ -149,13 +155,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 dto::common::SortDirection,
 
-                data_model::EntityResponseDTO,
-
-                data_model::ConnectIssuerResponseDTO,
-                data_model::ConnectVerifierResponseDTO,
-                data_model::ProofClaimResponseDTO,
                 data_model::ConnectRequestDTO,
-                data_model::ProofRequestQueryParams,
                 data_model::HandleInvitationRequestDTO
             )
         ),
@@ -281,19 +281,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route(
             "/ssi/temporary-issuer/v1/connect",
-            post(ssi_post_issuer_connect::ssi_issuer_connect),
+            post(ssi::controller::ssi_issuer_connect),
         )
         .route(
             "/ssi/temporary-verifier/v1/connect",
-            post(ssi_post_verifier_connect::ssi_verifier_connect),
+            post(ssi::controller::ssi_verifier_connect),
         )
         .route(
             "/ssi/temporary-verifier/v1/submit",
-            post(ssi_post_verifier_submit::ssi_verifier_submit),
+            post(ssi::controller::ssi_verifier_submit_proof),
         )
         .route(
             "/ssi/temporary-verifier/v1/reject",
-            post(ssi_post_verifier_reject_proof_request::ssi_post_verifier_reject_proof_request),
+            post(ssi::controller::ssi_verifier_reject_proof),
         );
 
     let technical_endpoints = Router::new()

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 // Implementations
 pub mod jwt_formatter;
+pub mod provider;
 
 use crate::service::credential::dto::CredentialResponseDTO;
 use serde::{Deserialize, Serialize};
@@ -74,8 +75,6 @@ pub struct CredentialPresentation {
     pub credentials: Vec<String>,
 }
 
-// This is just a proposition.
-// Will be  developed in future.
 pub trait CredentialFormatter {
     fn format_credentials(
         &self,
