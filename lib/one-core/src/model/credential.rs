@@ -11,7 +11,7 @@ use super::{
 
 pub type CredentialId = Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Credential {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
@@ -67,6 +67,7 @@ pub enum SortableCredentialColumn {
 pub type GetCredentialList = GetListResponse<Credential>;
 pub type GetCredentialQuery = GetListQueryParams<SortableCredentialColumn>;
 
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateCredentialRequest {
     pub id: CredentialId,
 

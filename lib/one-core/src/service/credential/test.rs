@@ -1,0 +1,359 @@
+use super::CredentialService;
+use crate::{
+    config::data_structure::CoreConfig,
+    model::{
+        claim::Claim,
+        claim_schema::ClaimSchema,
+        credential::{Credential, CredentialState, CredentialStateEnum, GetCredentialList},
+        credential_schema::CredentialSchema,
+        did::{Did, DidType},
+        organisation::Organisation,
+    },
+    repository::mock::{
+        credential_repository::MockCredentialRepository,
+        credential_schema_repository::MockCredentialSchemaRepository,
+        did_repository::MockDidRepository,
+    },
+    service::{
+        credential::dto::{
+            CreateCredentialRequestDTO, CredentialRequestClaimDTO, GetCredentialQueryDTO,
+        },
+        error::ServiceError,
+        test_utilities::generic_config,
+    },
+};
+use mockall::predicate::*;
+use std::sync::Arc;
+use time::OffsetDateTime;
+use uuid::Uuid;
+
+fn setup_service(
+    repository: MockCredentialRepository,
+    credential_schema_repository: MockCredentialSchemaRepository,
+    did_repository: MockDidRepository,
+    config: CoreConfig,
+) -> CredentialService {
+    CredentialService::new(
+        Arc::new(repository),
+        Arc::new(credential_schema_repository),
+        Arc::new(did_repository),
+        Arc::new(config),
+    )
+}
+
+fn generic_credential() -> Credential {
+    let now = OffsetDateTime::now_utc();
+
+    let claim_schema = ClaimSchema {
+        id: Uuid::new_v4(),
+        key: "NUMBER".to_string(),
+        data_type: "NUMBER".to_string(),
+        created_date: now,
+        last_modified: now,
+    };
+    let organisation = Organisation {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+    };
+
+    Credential {
+        id: Uuid::new_v4(),
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        credential: vec![],
+        transport: "PROCIVIS_TEMPORARY".to_string(),
+        state: Some(vec![CredentialState {
+            created_date: now,
+            state: CredentialStateEnum::Created,
+        }]),
+        claims: Some(vec![Claim {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            value: "123".to_string(),
+            schema: Some(claim_schema.clone()),
+        }]),
+        issuer_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation_id: organisation.id.to_owned(),
+            did: "did1".to_string(),
+            did_type: DidType::Remote,
+            did_method: "KEY".to_string(),
+        }),
+        holder_did: None,
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            claim_schemas: Some(vec![claim_schema]),
+            organisation: Some(organisation),
+        }),
+    }
+}
+
+#[tokio::test]
+async fn test_get_all_credential_list_success() {
+    let mut repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+
+    let credentials = vec![generic_credential()];
+    {
+        let clone = credentials.clone();
+        repository
+            .expect_get_all_credential_list()
+            .times(1)
+            .returning(move || Ok(clone.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let result = service.get_all_credential_list().await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(1, result.len());
+    assert_eq!(credentials[0].id, result[0].id);
+}
+
+#[tokio::test]
+async fn test_get_credential_list_success() {
+    let mut repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+
+    let credentials = GetCredentialList {
+        values: vec![generic_credential()],
+        total_pages: 1,
+        total_items: 1,
+    };
+    {
+        let clone = credentials.clone();
+        repository
+            .expect_get_credential_list()
+            .times(1)
+            .returning(move |_| Ok(clone.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let result = service
+        .get_credential_list(GetCredentialQueryDTO {
+            page: 0,
+            page_size: 5,
+            sort: None,
+            sort_direction: None,
+            name: None,
+            organisation_id: credentials.values[0]
+                .schema
+                .clone()
+                .unwrap()
+                .organisation
+                .unwrap()
+                .id
+                .to_string(),
+        })
+        .await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(1, result.total_items);
+    assert_eq!(1, result.total_pages);
+    assert_eq!(1, result.values.len());
+    assert_eq!(credentials.values[0].id, result.values[0].id);
+}
+
+#[tokio::test]
+async fn test_get_credential_success() {
+    let mut repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    {
+        let clone = credential.clone();
+        repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(clone.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let result = service.get_credential(&credential.id).await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(credential.id, result.id);
+}
+
+#[tokio::test]
+async fn test_get_credential_fail_credential_schema_is_none() {
+    let mut repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+
+    let mut credential = generic_credential();
+    credential.schema = None;
+    {
+        let clone = credential.clone();
+        repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(clone.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let result = service.get_credential(&credential.id).await;
+    assert!(result.is_err_and(|e| matches!(e, ServiceError::MappingError(_))));
+}
+
+#[tokio::test]
+async fn test_share_credential_success() {
+    let mut repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    {
+        let clone = credential.clone();
+        repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(clone.clone()));
+        repository
+            .expect_update_credential()
+            .times(1)
+            .returning(move |_| Ok(()));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let result = service.share_credential(&credential.id).await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(credential.id.to_string(), result.credential_id);
+    assert_eq!("PROCIVIS_TEMPORARY", result.transport);
+}
+
+#[tokio::test]
+async fn test_share_credential_failed_invalid_state() {
+    let mut repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+
+    let mut credential = generic_credential();
+    credential.state.as_mut().unwrap()[0].state = CredentialStateEnum::Accepted;
+    {
+        let clone = credential.clone();
+        repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(clone.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let result = service.share_credential(&credential.id).await;
+    assert!(result.is_err_and(|e| matches!(e, ServiceError::AlreadyExists)));
+}
+
+#[tokio::test]
+async fn test_create_credential_success() {
+    let mut repository = MockCredentialRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    {
+        let clone = credential.clone();
+        let issuer_did = credential.issuer_did.clone().unwrap();
+        let credential_schema = credential.schema.clone().unwrap();
+
+        did_repository
+            .expect_get_did()
+            .times(1)
+            .returning(move |_, _| Ok(issuer_did.clone()));
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .returning(move |_, _| Ok(credential_schema.clone()));
+
+        repository
+            .expect_create_credential()
+            .times(1)
+            .returning(move |_| Ok(clone.id));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+            transport: "PROCIVIS_TEMPORARY".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: credential.claims.as_ref().unwrap()[0]
+                    .schema
+                    .as_ref()
+                    .unwrap()
+                    .id
+                    .to_owned(),
+                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+            }],
+        })
+        .await;
+
+    assert!(result.is_ok());
+}

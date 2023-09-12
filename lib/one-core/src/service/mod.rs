@@ -10,3 +10,6 @@ pub mod proof_schema;
 pub mod ssi_holder;
 pub mod ssi_issuer;
 pub mod ssi_verifier;
+
+#[cfg(test)]
+pub mod test_utilities;

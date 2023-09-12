@@ -38,7 +38,7 @@ impl TryFrom<CredentialSchema> for GetCredentialSchemaResponseDTO {
         };
 
         let organisation_id = match value.organisation {
-            None => Err(ServiceError::GeneralRuntimeError(
+            None => Err(ServiceError::MappingError(
                 "Organisation has not been fetched".to_string(),
             )),
             Some(value) => Ok(value.id),
