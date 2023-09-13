@@ -71,7 +71,12 @@ impl SSIVerifierService {
             .get_proof_with_state(
                 proof_id,
                 ProofRelations {
-                    schema: Some(ProofSchemaRelations::default()),
+                    schema: Some(ProofSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations {
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
+                        ..Default::default()
+                    }),
                     holder_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
@@ -81,8 +86,12 @@ impl SSIVerifierService {
             return Err(ServiceError::AlreadyExists);
         }
 
-        let proof_schema = proof.schema.ok_or(ServiceError::IncorrectParameters)?;
-        let holder_did = proof.holder_did.ok_or(ServiceError::IncorrectParameters)?;
+        let proof_schema = proof.schema.ok_or(ServiceError::MappingError(
+            "proof schema is None".to_string(),
+        ))?;
+        let holder_did = proof
+            .holder_did
+            .ok_or(ServiceError::MappingError("holder did is None".to_string()))?;
         let proved_claims = match validate_proof(
             proof_schema,
             holder_did,
