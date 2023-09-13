@@ -1,4 +1,4 @@
-image: rust:1.70.0-slim-buster
+image: rust:1.72.0-slim-buster
 
 variables:
   DOCKER_DRIVER: overlay2
