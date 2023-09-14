@@ -1,7 +1,5 @@
-use crate::model::did::{Did, DidId, DidRelations, DidValue, GetDidList, GetDidQuery};
-use crate::model::organisation::OrganisationId;
-
 use super::error::DataLayerError;
+use crate::model::did::{Did, DidId, DidRelations, DidValue, GetDidList, GetDidQuery};
 
 #[async_trait::async_trait]
 pub trait DidRepository {
@@ -16,9 +14,4 @@ pub trait DidRepository {
     ) -> Result<Did, DataLayerError>;
 
     async fn get_did_list(&self, query_params: GetDidQuery) -> Result<GetDidList, DataLayerError>;
-
-    async fn get_local_dids(
-        &self,
-        organisation_id: &OrganisationId,
-    ) -> Result<Vec<Did>, DataLayerError>;
 }

@@ -1,24 +1,22 @@
-use crate::model::credential;
-use crate::model::credential::{
-    CredentialState, CredentialStateRelations, UpdateCredentialRequest,
-};
-use crate::service::credential::dto::{
-    CreateCredentialFromJwtRequestDTO, CredentialStateEnum, EntityShareResponseDTO,
-};
-use crate::service::credential::mapper::{claims_from_create_request, from_jwt_create_request};
 use crate::{
     model::{
-        claim::ClaimRelations, claim_schema::ClaimSchemaRelations, credential::CredentialId,
-        credential::CredentialRelations, credential_schema::CredentialSchemaRelations,
-        did::DidRelations, organisation::OrganisationRelations,
+        claim::ClaimRelations,
+        claim_schema::ClaimSchemaRelations,
+        credential::{
+            self, CredentialId, CredentialRelations, CredentialState, CredentialStateRelations,
+            UpdateCredentialRequest,
+        },
+        credential_schema::CredentialSchemaRelations,
+        did::DidRelations,
+        organisation::OrganisationRelations,
     },
     service::{
         credential::{
             dto::{
-                CreateCredentialRequestDTO, CredentialListItemResponseDTO, CredentialResponseDTO,
-                GetCredentialListResponseDTO, GetCredentialQueryDTO,
+                CreateCredentialRequestDTO, CredentialResponseDTO, CredentialStateEnum,
+                EntityShareResponseDTO, GetCredentialListResponseDTO, GetCredentialQueryDTO,
             },
-            mapper::from_create_request,
+            mapper::{claims_from_create_request, from_create_request},
             CredentialService,
         },
         error::ServiceError,
@@ -76,87 +74,6 @@ impl CredentialService {
             .await
             .map_err(ServiceError::from)?;
         Ok(result)
-    }
-
-    /// Creates a credential according to request
-    ///
-    /// # Arguments
-    ///
-    /// * `request` - create credential request
-    pub async fn create_credential_from_jwt(
-        &self,
-        request: CreateCredentialFromJwtRequestDTO,
-    ) -> Result<CredentialId, ServiceError> {
-        let issuer_did = self
-            .did_repository
-            .get_did(&request.issuer_did_id, &DidRelations {})
-            .await
-            .map_err(ServiceError::from)?;
-        let holder_did = match &request.holder_did_id {
-            None => None,
-            Some(holder_did_id) => Some(
-                self.did_repository
-                    .get_did(holder_did_id, &DidRelations {})
-                    .await
-                    .map_err(ServiceError::from)?,
-            ),
-        };
-        let schema = self
-            .credential_schema_repository
-            .get_credential_schema(
-                &request.credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schema: Some(ClaimSchemaRelations {}),
-                    organisation: None,
-                },
-            )
-            .await
-            .map_err(ServiceError::from)?;
-
-        let claim_schemas = schema
-            .claim_schemas
-            .to_owned()
-            .ok_or(ServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
-
-        super::validator::validate_create_request(
-            &request.transport,
-            &request.claim_values,
-            &schema,
-            &self.config,
-        )?;
-
-        let claims = claims_from_create_request(request.claim_values.clone(), &claim_schemas)?;
-        let credential = from_jwt_create_request(request, claims, holder_did, issuer_did, schema);
-
-        let result = self
-            .credential_repository
-            .create_credential(credential)
-            .await
-            .map_err(ServiceError::from)?;
-        Ok(result)
-    }
-
-    /// Returns list of all credentials
-    ///
-    /// # Arguments
-    ///
-    /// * `query` - query parameters
-    pub async fn get_all_credential_list(
-        &self,
-    ) -> Result<Vec<CredentialListItemResponseDTO>, ServiceError> {
-        let credentials = self
-            .credential_repository
-            .get_all_credential_list()
-            .await
-            .map_err(ServiceError::from)?;
-
-        credentials
-            .into_iter()
-            .map(|credential| credential.try_into().map_err(ServiceError::from))
-            .collect::<Result<Vec<CredentialListItemResponseDTO>, ServiceError>>()
-            .map_err(ServiceError::from)
     }
 
     /// Returns details of a credential

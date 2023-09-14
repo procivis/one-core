@@ -80,17 +80,6 @@ pub struct CredentialRequestClaimDTO {
 }
 
 #[derive(Clone, Debug)]
-pub struct CreateCredentialFromJwtRequestDTO {
-    pub id: Uuid,
-    pub credential_schema_id: Uuid,
-    pub holder_did_id: Option<Uuid>,
-    pub issuer_did_id: Uuid,
-    pub transport: String,
-    pub claim_values: Vec<CredentialRequestClaimDTO>,
-    pub credential: Option<Vec<u8>>,
-}
-
-#[derive(Clone, Debug)]
 pub struct EntityShareResponseDTO {
     pub credential_id: String,
     pub transport: String,

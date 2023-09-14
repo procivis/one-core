@@ -5,11 +5,11 @@ use crate::{
             datatype::validate_datatypes, format::validate_format, revocation::validate_revocation,
         },
     },
-    service::{credential_schema::dto::CreateCredentialSchemaRequestWithIds, error::ServiceError},
+    service::{credential_schema::dto::CreateCredentialSchemaRequestDTO, error::ServiceError},
 };
 
 pub(crate) fn validate_create_request(
-    request: &CreateCredentialSchemaRequestWithIds,
+    request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
     validate_format(&request.format, &config.format)?;

@@ -6,8 +6,8 @@ use one_core::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialStateEnum,
-            CredentialStateRelations, GetCredentialQuery, UpdateCredentialRequest,
+            Credential, CredentialId, CredentialRelations, CredentialStateRelations,
+            GetCredentialQuery, UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
@@ -280,105 +280,6 @@ async fn test_create_credential_already_exists() {
         .await;
 
     assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
-}
-
-#[tokio::test]
-async fn test_get_all_credential_list_success() {
-    let claim_repository = MockClaimRepository::default();
-    let mut did_repository = MockDidRepository::default();
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-
-    let TestSetup {
-        credential_schema,
-        did,
-        db,
-        ..
-    } = setup_empty().await;
-
-    let did_clone = did.clone();
-    did_repository
-        .expect_get_did()
-        .times(2)
-        .with(eq(did_clone.id.to_owned()), always())
-        .returning(move |_, _| Ok(did_clone.clone()));
-
-    let credential_one_id =
-        insert_credential(&db, &credential_schema.id.to_string(), &did.id.to_string())
-            .await
-            .unwrap();
-    let credential_two_id =
-        insert_credential(&db, &credential_schema.id.to_string(), &did.id.to_string())
-            .await
-            .unwrap();
-
-    let credential_schema_clone = credential_schema.clone();
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(2)
-        .returning(move |_, _| Ok(credential_schema_clone.clone()));
-
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(credential_schema_repository),
-        claim_repository: Arc::from(claim_repository),
-        did_repository: Arc::from(did_repository),
-    };
-
-    let credentials = provider.get_all_credential_list().await;
-    assert!(credentials.is_ok());
-    let credentials = credentials.unwrap();
-    assert_eq!(2, credentials.len());
-    assert_eq!(credential_one_id, credentials[0].id.to_string());
-    assert_eq!(
-        CredentialStateEnum::Created,
-        credentials[0].state.as_ref().unwrap()[0].state
-    );
-    assert_eq!(credential_two_id, credentials[1].id.to_string());
-    assert_eq!(
-        CredentialStateEnum::Created,
-        credentials[1].state.as_ref().unwrap()[0].state
-    );
-}
-
-#[tokio::test]
-async fn test_get_all_credential_failure_credential_schema_not_found() {
-    let claim_repository = MockClaimRepository::default();
-    let mut did_repository = MockDidRepository::default();
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-
-    let TestSetup {
-        credential_schema,
-        did,
-        db,
-        ..
-    } = setup_empty().await;
-
-    let did_clone = did.clone();
-    did_repository
-        .expect_get_did()
-        .times(1)
-        .with(eq(did_clone.id.to_owned()), always())
-        .returning(move |_, _| Ok(did_clone.clone()));
-
-    let _credential_one_id =
-        insert_credential(&db, &credential_schema.id.to_string(), &did.id.to_string())
-            .await
-            .unwrap();
-
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_, _| Err(DataLayerError::RecordNotFound));
-
-    let provider = CredentialProvider {
-        db: db.clone(),
-        credential_schema_repository: Arc::from(credential_schema_repository),
-        claim_repository: Arc::from(claim_repository),
-        did_repository: Arc::from(did_repository),
-    };
-
-    let credentials = provider.get_all_credential_list().await;
-    assert!(credentials.is_err_and(|e| matches!(e, DataLayerError::RecordNotFound)));
 }
 
 #[tokio::test]

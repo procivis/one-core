@@ -14,8 +14,6 @@ mock! {
     pub CredentialRepository {
         pub fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
 
-        pub fn get_all_credential_list(&self) -> Result<Vec<Credential>, DataLayerError>;
-
         pub fn get_credential(
             &self,
             id: &CredentialId,
@@ -38,10 +36,6 @@ mock! {
 impl crate::repository::credential_repository::CredentialRepository for MockCredentialRepository {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
         self.create_credential(request)
-    }
-
-    async fn get_all_credential_list(&self) -> Result<Vec<Credential>, DataLayerError> {
-        self.get_all_credential_list()
     }
 
     async fn get_credential(

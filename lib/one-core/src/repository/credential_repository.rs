@@ -9,8 +9,6 @@ use super::error::DataLayerError;
 pub trait CredentialRepository {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
 
-    async fn get_all_credential_list(&self) -> Result<Vec<Credential>, DataLayerError>;
-
     async fn get_credential(
         &self,
         id: &CredentialId,

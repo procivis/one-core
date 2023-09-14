@@ -1,17 +1,20 @@
-use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchema, GetCredentialSchemaList};
-use crate::model::organisation::Organisation;
+use crate::{
+    model::{
+        claim_schema::ClaimSchema,
+        credential_schema::{CredentialSchema, GetCredentialSchemaList},
+        organisation::Organisation,
+    },
+    service::{
+        credential_schema::dto::{
+            CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
+            CredentialClaimSchemaRequestDTO, GetCredentialSchemaListResponseDTO,
+            GetCredentialSchemaListValueResponseDTO, GetCredentialSchemaResponseDTO,
+        },
+        error::ServiceError,
+    },
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use crate::service::credential_schema::dto::{
-    CreateCredentialSchemaRequestWithIds, CreateCredentialSchemaRequestWithoutIds,
-    CredentialClaimSchemaDTO, CredentialClaimSchemaWithIds, CredentialClaimSchemaWithoutIds,
-    GetCredentialSchemaListResponseDTO, GetCredentialSchemaListValueResponseDTO,
-};
-use crate::service::error::ServiceError;
-
-use super::dto::GetCredentialSchemaResponseDTO;
 
 impl TryFrom<CredentialSchema> for GetCredentialSchemaListValueResponseDTO {
     type Error = ServiceError;
@@ -88,7 +91,7 @@ impl TryFrom<GetCredentialSchemaList> for GetCredentialSchemaListResponseDTO {
 }
 
 pub(super) fn from_create_request(
-    request: CreateCredentialSchemaRequestWithIds,
+    request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
 ) -> Result<CredentialSchema, ServiceError> {
     if request.claims.is_empty() {
@@ -100,7 +103,7 @@ pub(super) fn from_create_request(
     let now = OffsetDateTime::now_utc();
 
     Ok(CredentialSchema {
-        id: request.id,
+        id: Uuid::new_v4(),
         deleted_at: None,
         created_date: now,
         last_modified: now,
@@ -119,43 +122,14 @@ pub(super) fn from_create_request(
 }
 
 fn from_jwt_request_claim_schema(
-    claim_schema: CredentialClaimSchemaWithIds,
+    claim_schema: CredentialClaimSchemaRequestDTO,
     now: OffsetDateTime,
 ) -> ClaimSchema {
     ClaimSchema {
-        id: claim_schema.id,
+        id: Uuid::new_v4(),
         key: claim_schema.key,
         data_type: claim_schema.datatype,
         created_date: now,
         last_modified: now,
-    }
-}
-
-impl From<CreateCredentialSchemaRequestWithoutIds> for CreateCredentialSchemaRequestWithIds {
-    fn from(
-        value: CreateCredentialSchemaRequestWithoutIds,
-    ) -> CreateCredentialSchemaRequestWithIds {
-        CreateCredentialSchemaRequestWithIds {
-            id: Uuid::new_v4(),
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-            organisation_id: value.organisation_id,
-            claims: value
-                .claims
-                .into_iter()
-                .map(|claim_schema| claim_schema.into())
-                .collect(),
-        }
-    }
-}
-
-impl From<CredentialClaimSchemaWithoutIds> for CredentialClaimSchemaWithIds {
-    fn from(value: CredentialClaimSchemaWithoutIds) -> CredentialClaimSchemaWithIds {
-        CredentialClaimSchemaWithIds {
-            id: Uuid::new_v4(),
-            key: value.key,
-            datatype: value.datatype,
-        }
     }
 }

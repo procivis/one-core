@@ -1,16 +1,20 @@
-use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::organisation::OrganisationRelations;
-use crate::service::credential_schema::dto::{
-    CreateCredentialSchemaFromJwtRequestDTO, CreateCredentialSchemaRequestDTO,
-    CreateCredentialSchemaResponseDTO, GetCredentialSchemaListResponseDTO,
-    GetCredentialSchemaQueryDTO,
-};
-use crate::service::credential_schema::mapper::from_create_request;
-use crate::service::credential_schema::CredentialSchemaService;
-use crate::{model::credential_schema::CredentialSchemaRelations, service::error::ServiceError};
-
-use super::dto::{
-    CreateCredentialSchemaRequestWithIds, CredentialSchemaId, GetCredentialSchemaResponseDTO,
+use crate::{
+    model::{
+        claim_schema::ClaimSchemaRelations, credential_schema::CredentialSchemaRelations,
+        organisation::OrganisationRelations,
+    },
+    service::{
+        credential_schema::{
+            dto::{
+                CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO,
+                CredentialSchemaId, GetCredentialSchemaListResponseDTO,
+                GetCredentialSchemaQueryDTO, GetCredentialSchemaResponseDTO,
+            },
+            mapper::from_create_request,
+            CredentialSchemaService,
+        },
+        error::ServiceError,
+    },
 };
 
 impl CredentialSchemaService {
@@ -22,34 +26,6 @@ impl CredentialSchemaService {
     pub async fn create_credential_schema(
         &self,
         request: CreateCredentialSchemaRequestDTO,
-    ) -> Result<CreateCredentialSchemaResponseDTO, ServiceError> {
-        let request: CreateCredentialSchemaRequestWithIds = request.into();
-
-        super::validator::validate_create_request(&request, &self.config)?;
-
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
-        let credential_schema = from_create_request(request, organisation)?;
-
-        let result = self
-            .credential_schema_repository
-            .create_credential_schema(credential_schema)
-            .await
-            .map_err(ServiceError::from)?;
-        Ok(CreateCredentialSchemaResponseDTO { id: result })
-    }
-
-    /// Creates a credential according to JWT request
-    ///
-    /// # Arguments
-    ///
-    /// * `request` - create credential schema request
-    pub async fn create_credential_schema_from_jwt(
-        &self,
-        request: CreateCredentialSchemaFromJwtRequestDTO,
     ) -> Result<CreateCredentialSchemaResponseDTO, ServiceError> {
         super::validator::validate_create_request(&request, &self.config)?;
 

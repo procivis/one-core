@@ -1,4 +1,3 @@
-use crate::model::organisation::OrganisationId;
 use crate::{
     model::did::{Did, DidId, DidRelations, DidValue, GetDidList, GetDidQuery},
     repository::error::DataLayerError,
@@ -21,11 +20,6 @@ mock! {
         ) -> Result<Did, DataLayerError>;
 
         pub fn get_did_list(&self, query_params: GetDidQuery) -> Result<GetDidList, DataLayerError>;
-
-        pub fn get_local_dids(
-            &self,
-            organisation_id: &OrganisationId,
-        ) -> Result<Vec<Did>, DataLayerError>;
     }
 }
 
@@ -49,12 +43,5 @@ impl crate::repository::did_repository::DidRepository for MockDidRepository {
 
     async fn get_did_list(&self, query_params: GetDidQuery) -> Result<GetDidList, DataLayerError> {
         self.get_did_list(query_params)
-    }
-
-    async fn get_local_dids(
-        &self,
-        organisation_id: &OrganisationId,
-    ) -> Result<Vec<Did>, DataLayerError> {
-        self.get_local_dids(organisation_id)
     }
 }
