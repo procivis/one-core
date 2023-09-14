@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 #[derive(Clone, Debug)]
 pub struct ConnectVerifierResponseDTO {
     pub claims: Vec<ProofRequestClaimDTO>,
+    pub verifier_did: String,
 }
 
 #[derive(Clone, Debug)]

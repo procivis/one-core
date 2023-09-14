@@ -18,9 +18,11 @@ pub struct ConnectIssuerResponse {
 }
 
 #[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 /// deserializes matching `ConnectVerifierResponseRestDTO`
 pub struct ConnectVerifierResponse {
     pub claims: Vec<ProofClaimSchema>,
+    pub verifier_did: String,
 }
 
 #[derive(Clone, Deserialize)]

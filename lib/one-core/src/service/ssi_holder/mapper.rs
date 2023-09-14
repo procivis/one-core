@@ -99,6 +99,7 @@ impl TryFrom<ConnectVerifierResponse> for ConnectVerifierResponseDTO {
     fn try_from(value: ConnectVerifierResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             claims: vector_try_into(value.claims)?,
+            verifier_did: value.verifier_did,
         })
     }
 }

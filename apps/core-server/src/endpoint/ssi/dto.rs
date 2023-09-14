@@ -33,6 +33,7 @@ pub struct PostSsiVerifierConnectQueryParams {
 #[serde(rename_all = "camelCase")]
 pub struct ConnectVerifierResponseRestDTO {
     pub claims: Vec<ProofRequestClaimRestDTO>,
+    pub verifier_did: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]

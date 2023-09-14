@@ -76,6 +76,7 @@ dictionary ProofRequestClaimBindingDTO {
 
 dictionary ProofRequestBindingDTO {
     sequence<ProofRequestClaimBindingDTO> claims;
+    string verifier_did;
 };
 
 [Enum]
