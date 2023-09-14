@@ -99,6 +99,7 @@ impl From<ConnectVerifierResponseDTO> for ProofRequestBindingDTO {
     fn from(value: ConnectVerifierResponseDTO) -> Self {
         Self {
             claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
+            verifier_did: value.verifier_did,
         }
     }
 }

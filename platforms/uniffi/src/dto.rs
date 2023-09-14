@@ -70,6 +70,7 @@ pub enum HandleInvitationResponseBindingEnum {
 
 pub struct ProofRequestBindingDTO {
     pub claims: Vec<ProofRequestClaimBindingDTO>,
+    pub verifier_did: String,
 }
 
 pub struct ProofRequestClaimBindingDTO {

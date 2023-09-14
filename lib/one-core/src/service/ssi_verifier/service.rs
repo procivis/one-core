@@ -1,5 +1,6 @@
 use super::{
     dto::{ConnectVerifierResponseDTO, ValidatedProofClaimDTO},
+    mapper::proof_verifier_to_connect_verifier_response,
     validator::validate_proof,
     SSIVerifierService,
 };
@@ -41,15 +42,21 @@ impl SSIVerifierService {
                         }),
                         ..Default::default()
                     }),
+                    verifier_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
             )
             .await?;
 
-        let result: ConnectVerifierResponseDTO = proof
+        let did = proof.verifier_did.ok_or(ServiceError::MappingError(
+            "verifier_did is None".to_string(),
+        ))?;
+
+        let proof_schema = proof
             .schema
-            .ok_or(ServiceError::MappingError("schema is None".to_string()))?
-            .try_into()?;
+            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+
+        let result = proof_verifier_to_connect_verifier_response(proof_schema, did)?;
 
         self.set_holder_connected(proof_id, holder_did_value)
             .await?;

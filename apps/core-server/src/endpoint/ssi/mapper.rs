@@ -15,6 +15,7 @@ impl From<ConnectVerifierResponseDTO> for ConnectVerifierResponseRestDTO {
     fn from(value: ConnectVerifierResponseDTO) -> Self {
         Self {
             claims: vector_into(value.claims),
+            verifier_did: value.verifier_did,
         }
     }
 }
