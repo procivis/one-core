@@ -1,12 +1,11 @@
 use super::{mapper::create_list_response, DidProvider};
 use crate::{entity::did, error_mapper::to_data_layer_error, list_query::SelectWithListQuery};
-use one_core::model::organisation::OrganisationId;
 use one_core::{
     model::did::{Did, DidId, DidRelations, DidValue, GetDidList, GetDidQuery},
     repository::{did_repository::DidRepository, error::DataLayerError},
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
 };
 use std::str::FromStr;
 use uuid::Uuid;
@@ -71,29 +70,5 @@ impl DidRepository for DidProvider {
             .map_err(to_data_layer_error)?;
 
         Uuid::from_str(&did.id).map_err(|_| DataLayerError::MappingError)
-    }
-
-    async fn get_local_dids(
-        &self,
-        organisation_id: &OrganisationId,
-    ) -> Result<Vec<Did>, DataLayerError> {
-        let query = did::Entity::find()
-            .filter(
-                Condition::all()
-                    .add(did::Column::TypeField.eq(did::DidType::Local))
-                    .add(did::Column::OrganisationId.eq(organisation_id.to_string())),
-            )
-            .order_by_desc(did::Column::CreatedDate)
-            .order_by_desc(did::Column::Id);
-
-        let dids: Vec<did::Model> = query
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-        Ok(dids
-            .into_iter()
-            .map(|item| item.try_into())
-            .collect::<Result<Vec<_>, _>>()?)
     }
 }

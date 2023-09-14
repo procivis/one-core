@@ -303,27 +303,6 @@ impl CredentialRepository for CredentialProvider {
         Ok(request.id)
     }
 
-    async fn get_all_credential_list(&self) -> Result<Vec<Credential>, DataLayerError> {
-        let credentials = credential::Entity::find()
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-        let relations = CredentialRelations {
-            state: Some(CredentialStateRelations {}),
-            claims: None,
-            issuer_did: Some(DidRelations {}),
-            holder_did: Some(DidRelations {}),
-            schema: Some(CredentialSchemaRelations {
-                claim_schema: Some(ClaimSchemaRelations {}),
-                organisation: Some(OrganisationRelations {}),
-            }),
-        };
-
-        self.credentials_to_repository(credentials, &relations)
-            .await
-    }
-
     async fn get_credential(
         &self,
         id: &CredentialId,

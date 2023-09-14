@@ -1,23 +1,22 @@
-use crate::model;
-use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{
-    Credential, CredentialState, CredentialStateEnum, GetCredentialList,
+use crate::model::{
+    self,
+    claim::Claim,
+    claim_schema::ClaimSchema,
+    credential::{Credential, CredentialState, CredentialStateEnum, GetCredentialList},
+    credential_schema::CredentialSchema,
+    did::Did,
 };
-use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::Did;
+use crate::service::{
+    credential::dto::{
+        CreateCredentialRequestDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
+        CredentialResponseDTO, CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO,
+        GetCredentialListResponseDTO,
+    },
+    credential_schema::dto::CredentialClaimSchemaDTO,
+    error::ServiceError,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use crate::service::credential::dto::{
-    CreateCredentialFromJwtRequestDTO, CreateCredentialRequestDTO, CredentialListItemResponseDTO,
-    CredentialRequestClaimDTO, CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO,
-    GetCredentialListResponseDTO,
-};
-use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::service::error::ServiceError;
-
-use super::dto::CredentialResponseDTO;
 
 impl TryFrom<Credential> for CredentialResponseDTO {
     type Error = ServiceError;
@@ -218,37 +217,6 @@ pub(super) fn from_create_request(
         claims: Some(claims),
         issuer_did: Some(issuer_did),
         holder_did: None,
-        schema: Some(schema),
-    }
-}
-
-pub(super) fn from_jwt_create_request(
-    request: CreateCredentialFromJwtRequestDTO,
-    claims: Vec<Claim>,
-    holder_did: Option<Did>,
-    issuer_did: Did,
-    schema: CredentialSchema,
-) -> Credential {
-    let now = OffsetDateTime::now_utc();
-    let credential = match request.credential {
-        None => vec![],
-        Some(value) => value,
-    };
-
-    Credential {
-        id: request.id,
-        created_date: now,
-        issuance_date: now,
-        state: Some(vec![CredentialState {
-            created_date: now,
-            state: CredentialStateEnum::Created,
-        }]),
-        last_modified: now,
-        credential,
-        transport: request.transport,
-        claims: Some(claims),
-        issuer_did: Some(issuer_did),
-        holder_did,
         schema: Some(schema),
     }
 }

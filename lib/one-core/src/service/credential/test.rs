@@ -101,36 +101,6 @@ fn generic_credential() -> Credential {
 }
 
 #[tokio::test]
-async fn test_get_all_credential_list_success() {
-    let mut repository = MockCredentialRepository::default();
-    let credential_schema_repository = MockCredentialSchemaRepository::default();
-    let did_repository = MockDidRepository::default();
-
-    let credentials = vec![generic_credential()];
-    {
-        let clone = credentials.clone();
-        repository
-            .expect_get_all_credential_list()
-            .times(1)
-            .returning(move || Ok(clone.clone()));
-    }
-
-    let service = setup_service(
-        repository,
-        credential_schema_repository,
-        did_repository,
-        generic_config(),
-    );
-
-    let result = service.get_all_credential_list().await;
-
-    assert!(result.is_ok());
-    let result = result.unwrap();
-    assert_eq!(1, result.len());
-    assert_eq!(credentials[0].id, result[0].id);
-}
-
-#[tokio::test]
 async fn test_get_credential_list_success() {
     let mut repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();

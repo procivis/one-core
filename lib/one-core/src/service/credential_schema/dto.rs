@@ -47,11 +47,6 @@ pub type GetCredentialSchemaListResponseDTO =
     GetListResponse<GetCredentialSchemaListValueResponseDTO>;
 pub type GetCredentialSchemaQueryDTO = GetListQueryParams<SortableCredentialSchemaColumn>;
 
-pub type CreateCredentialSchemaRequestWithoutIds = CreateCredentialSchemaRequestDTO;
-pub type CreateCredentialSchemaRequestWithIds = CreateCredentialSchemaFromJwtRequestDTO;
-pub type CredentialClaimSchemaWithIds = CredentialClaimSchemaFromJwtRequestDTO;
-pub type CredentialClaimSchemaWithoutIds = CredentialClaimSchemaRequestDTO;
-
 #[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
@@ -59,23 +54,6 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateCredentialSchemaFromJwtRequestDTO {
-    pub id: Uuid,
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    pub organisation_id: Uuid,
-    pub claims: Vec<CredentialClaimSchemaFromJwtRequestDTO>,
-}
-
-#[derive(Clone, Debug)]
-pub struct CredentialClaimSchemaFromJwtRequestDTO {
-    pub id: Uuid,
-    pub key: String,
-    pub datatype: String,
 }
 
 #[derive(Clone, Debug)]
