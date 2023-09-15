@@ -52,6 +52,7 @@ pub struct CredentialClaimSchemaResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: String,
+    pub required: bool,
 }
 
 pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumnRestEnum>;
@@ -86,4 +87,5 @@ pub struct CreateCredentialSchemaResponseRestDTO {
 pub struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
     pub datatype: String,
+    pub required: bool,
 }

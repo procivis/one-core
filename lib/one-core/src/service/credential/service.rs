@@ -1,4 +1,5 @@
 use crate::{
+    common_mapper::list_response_try_into,
     model::{
         claim::ClaimRelations,
         claim_schema::ClaimSchemaRelations,
@@ -44,19 +45,12 @@ impl CredentialService {
             .get_credential_schema(
                 &request.credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schema: Some(ClaimSchemaRelations {}),
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
                     organisation: None,
                 },
             )
             .await
             .map_err(ServiceError::from)?;
-
-        let claim_schemas = schema
-            .claim_schemas
-            .to_owned()
-            .ok_or(ServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?;
 
         super::validator::validate_create_request(
             &request.transport,
@@ -64,6 +58,13 @@ impl CredentialService {
             &schema,
             &self.config,
         )?;
+
+        let claim_schemas = schema
+            .claim_schemas
+            .to_owned()
+            .ok_or(ServiceError::MappingError(
+                "claim_schemas is None".to_string(),
+            ))?;
 
         let claims = claims_from_create_request(request.claim_values.clone(), &claim_schemas)?;
         let credential = from_create_request(request, claims, did, schema);
@@ -95,7 +96,7 @@ impl CredentialService {
                         schema: Some(ClaimSchemaRelations {}),
                     }),
                     schema: Some(CredentialSchemaRelations {
-                        claim_schema: None,
+                        claim_schemas: None,
                         organisation: Some(OrganisationRelations {}),
                     }),
                     issuer_did: Some(DidRelations {}),
@@ -122,7 +123,7 @@ impl CredentialService {
             .get_credential_list(query)
             .await
             .map_err(ServiceError::from)?;
-        result.try_into()
+        list_response_try_into(result)
     }
 
     /// Returns URL of shared credential

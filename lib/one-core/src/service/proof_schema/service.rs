@@ -36,7 +36,7 @@ impl ProofSchemaService {
                 &ProofSchemaRelations {
                     claim_schemas: Some(ProofSchemaClaimRelations {
                         credential_schema: Some(CredentialSchemaRelations {
-                            claim_schema: None,
+                            claim_schemas: None,
                             organisation: None,
                         }),
                     }),

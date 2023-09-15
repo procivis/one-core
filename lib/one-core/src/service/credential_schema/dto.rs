@@ -41,6 +41,7 @@ pub struct CredentialClaimSchemaDTO {
     pub last_modified: OffsetDateTime,
     pub key: Key,
     pub datatype: Datatype,
+    pub required: bool,
 }
 
 pub type GetCredentialSchemaListResponseDTO =
@@ -65,4 +66,5 @@ pub struct CreateCredentialSchemaResponseDTO {
 pub struct CredentialClaimSchemaRequestDTO {
     pub key: String,
     pub datatype: String,
+    pub required: bool,
 }

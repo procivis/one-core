@@ -22,13 +22,19 @@ pub struct CredentialSchema {
     pub revocation_method: RevocationMethod,
 
     // Relations
-    pub claim_schemas: Option<Vec<ClaimSchema>>,
+    pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     pub organisation: Option<Organisation>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CredentialSchemaClaim {
+    pub schema: ClaimSchema,
+    pub required: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct CredentialSchemaRelations {
-    pub claim_schema: Option<ClaimSchemaRelations>,
+    pub claim_schemas: Option<ClaimSchemaRelations>,
     pub organisation: Option<OrganisationRelations>,
 }
 

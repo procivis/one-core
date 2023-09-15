@@ -171,6 +171,7 @@ pub(crate) async fn post_credential_schema(
             tracing::error!("Credential schema already exists");
             StatusCode::CONFLICT.into_response()
         }
+        Err(ServiceError::IncorrectParameters) => StatusCode::BAD_REQUEST.into_response(),
         Err(ServiceError::ConfigValidationError(error)) => {
             tracing::error!("Config validation error: {:?}", error);
             StatusCode::BAD_REQUEST.into_response()

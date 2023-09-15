@@ -1,10 +1,9 @@
-use std::str::FromStr;
-
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
     PaginatorTrait, QueryFilter, QueryOrder, SqlErr,
 };
+use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -13,7 +12,7 @@ use one_core::{
     model::{
         claim_schema::ClaimSchemaId,
         credential_schema::{
-            CredentialSchema, CredentialSchemaId, CredentialSchemaRelations,
+            CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
             GetCredentialSchemaList, GetCredentialSchemaQuery,
         },
         organisation::Organisation,
@@ -24,8 +23,8 @@ use one_core::{
 use crate::{
     credential_schema::{
         mapper::{
-            claim_schemas_to_model_vec, create_list_response, credential_schema_from_models,
-            models_to_relations,
+            claim_schemas_to_model_vec, claim_schemas_to_relations, create_list_response,
+            credential_schema_from_models,
         },
         CredentialSchemaProvider,
     },
@@ -72,9 +71,9 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 })?;
 
         if !claim_schemas.is_empty() {
-            let claim_schema_models = claim_schemas_to_model_vec(claim_schemas);
             let credential_schema_claim_schema_relations =
-                models_to_relations(&claim_schema_models, &credential_schema.id);
+                claim_schemas_to_relations(&claim_schemas, &credential_schema.id);
+            let claim_schema_models = claim_schemas_to_model_vec(claim_schemas);
 
             claim_schema::Entity::insert_many(claim_schema_models)
                 .exec(&self.db)
@@ -123,7 +122,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .map_err(to_data_layer_error)?
             .ok_or(DataLayerError::RecordNotFound)?;
 
-        let claim_schemas = if let Some(claim_schema_relations) = &relations.claim_schema {
+        let claim_schemas = if let Some(claim_schema_relations) = &relations.claim_schemas {
             let models = credential_schema_claim_schema::Entity::find()
                 .filter(
                     credential_schema_claim_schema::Column::CredentialSchemaId.eq(id.to_string()),
@@ -133,12 +132,21 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .await
                 .map_err(to_data_layer_error)?;
 
-            let claim_schema_ids: Vec<ClaimSchemaId> = vector_try_into(models)?;
+            let claim_schema_ids: Vec<ClaimSchemaId> = vector_try_into(models.clone())?;
+            let claim_schemas = self
+                .claim_schema_repository
+                .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
+                .await?;
 
             Some(
-                self.claim_schema_repository
-                    .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
-                    .await?,
+                claim_schemas
+                    .into_iter()
+                    .zip(models)
+                    .map(|(claim_schema, model)| CredentialSchemaClaim {
+                        schema: claim_schema,
+                        required: model.required,
+                    })
+                    .collect(),
             )
         } else {
             None

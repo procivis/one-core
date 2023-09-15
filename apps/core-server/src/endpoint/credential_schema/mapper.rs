@@ -46,6 +46,7 @@ impl From<CredentialClaimSchemaDTO> for CredentialClaimSchemaResponseRestDTO {
             last_modified: value.last_modified,
             key: value.key,
             datatype: value.datatype,
+            required: value.required,
         }
     }
 }
@@ -75,6 +76,7 @@ impl From<CredentialClaimSchemaRequestRestDTO> for CredentialClaimSchemaRequestD
         CredentialClaimSchemaRequestDTO {
             key: value.key,
             datatype: value.datatype,
+            required: value.required,
         }
     }
 }

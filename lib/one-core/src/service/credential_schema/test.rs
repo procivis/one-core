@@ -7,7 +7,10 @@ use crate::{
     config::data_structure::CoreConfig,
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
-        credential_schema::{CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList},
+        credential_schema::{
+            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
+            GetCredentialSchemaList,
+        },
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
@@ -52,12 +55,15 @@ fn generic_credential_schema() -> CredentialSchema {
         name: "".to_string(),
         format: "".to_string(),
         revocation_method: "".to_string(),
-        claim_schemas: Some(vec![ClaimSchema {
-            id: Uuid::new_v4(),
-            key: "".to_string(),
-            data_type: "".to_string(),
-            created_date: now,
-            last_modified: now,
+        claim_schemas: Some(vec![CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::new_v4(),
+                key: "".to_string(),
+                data_type: "".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
         }]),
         organisation: Some(Organisation {
             id: Uuid::new_v4(),
@@ -72,7 +78,7 @@ async fn test_get_credential_schema_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let relations = CredentialSchemaRelations {
-        claim_schema: Some(ClaimSchemaRelations::default()),
+        claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
     };
 
@@ -100,7 +106,7 @@ async fn test_get_credential_schema_fail() {
     let mut repository = MockCredentialSchemaRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let relations = CredentialSchemaRelations {
-        claim_schema: Some(ClaimSchemaRelations::default()),
+        claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
     };
 
@@ -235,6 +241,7 @@ async fn test_create_credential_schema_success() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
+                required: true,
             }],
         })
         .await;
@@ -258,6 +265,7 @@ async fn test_create_credential_schema_fail_validation() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
+                required: true,
             }],
         })
         .await;
@@ -272,6 +280,7 @@ async fn test_create_credential_schema_fail_validation() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
+                required: true,
             }],
         })
         .await;
@@ -287,10 +296,22 @@ async fn test_create_credential_schema_fail_validation() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "BLABLA".to_string(),
+                required: true,
             }],
         })
         .await;
     assert!(wrong_datatype.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
+
+    let no_claims = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4(),
+            claims: vec![],
+        })
+        .await;
+    assert!(no_claims.is_err_and(|e| matches!(e, ServiceError::IncorrectParameters)));
 }
 
 #[tokio::test]
@@ -316,6 +337,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
+                required: true,
             }],
         })
         .await;

@@ -7,9 +7,9 @@ use uuid::Uuid;
 
 use crate::common::calculate_pages_count;
 
-use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential_schema::{
-    CredentialSchema, GetCredentialSchemaList, SortableCredentialSchemaColumn,
+    CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList,
+    SortableCredentialSchemaColumn,
 };
 use one_core::model::organisation::Organisation;
 use one_core::{model::claim_schema::ClaimSchemaId, repository::error::DataLayerError};
@@ -100,32 +100,32 @@ impl GetEntityColumn for SortableCredentialSchemaColumn {
 }
 
 pub(super) fn claim_schemas_to_model_vec(
-    claim_schemas: Vec<ClaimSchema>,
+    claim_schemas: Vec<CredentialSchemaClaim>,
 ) -> Vec<claim_schema::ActiveModel> {
     claim_schemas
-        .iter()
+        .into_iter()
         .map(|claim_schema| claim_schema::ActiveModel {
-            id: Set(claim_schema.id.to_string()),
-            created_date: Set(claim_schema.created_date),
-            last_modified: Set(claim_schema.last_modified),
-            key: Set(claim_schema.key.clone()),
-            datatype: Set(claim_schema.data_type.clone()),
+            id: Set(claim_schema.schema.id.to_string()),
+            created_date: Set(claim_schema.schema.created_date),
+            last_modified: Set(claim_schema.schema.last_modified),
+            key: Set(claim_schema.schema.key),
+            datatype: Set(claim_schema.schema.data_type),
         })
         .collect()
 }
 
-pub(super) fn models_to_relations(
-    claim_schema_models: &[claim_schema::ActiveModel],
+pub(super) fn claim_schemas_to_relations(
+    claim_schemas: &[CredentialSchemaClaim],
     credential_schema_id: &str,
 ) -> Vec<credential_schema_claim_schema::ActiveModel> {
-    claim_schema_models
+    claim_schemas
         .iter()
         .enumerate()
         .map(
             |(i, claim_schema)| credential_schema_claim_schema::ActiveModel {
-                claim_schema_id: claim_schema.id.clone(),
+                claim_schema_id: Set(claim_schema.schema.id.to_string()),
                 credential_schema_id: Set(credential_schema_id.to_string()),
-                required: Set(false),
+                required: Set(claim_schema.required),
                 order: Set(i as u32),
             },
         )
@@ -134,7 +134,7 @@ pub(super) fn models_to_relations(
 
 pub(crate) fn credential_schema_from_models(
     credential_schema: credential_schema::Model,
-    claim_schemas: Option<Vec<ClaimSchema>>,
+    claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     organisation: Option<Organisation>,
 ) -> Result<CredentialSchema, DataLayerError> {
     Uuid::from_str(&credential_schema.id)

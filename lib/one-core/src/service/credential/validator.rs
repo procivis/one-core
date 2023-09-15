@@ -17,22 +17,23 @@ pub(crate) fn validate_create_request(
 
     let claim_schemas = &schema
         .claim_schemas
-        .to_owned()
+        .as_ref()
         .ok_or(ServiceError::MappingError(
             "claim_schemas is None".to_string(),
         ))?;
 
+    // check all claims have valid content
     claims
         .iter()
         .map(|claim| {
             let schema = claim_schemas
                 .iter()
-                .find(|schema| schema.id == claim.claim_schema_id);
+                .find(|schema| schema.schema.id == claim.claim_schema_id);
             match schema {
                 None => Err(ServiceError::NotFound),
                 Some(schema) => {
                     {
-                        validate_value(&claim.value, &schema.data_type, &config.datatype)
+                        validate_value(&claim.value, &schema.schema.data_type, &config.datatype)
                             .map_err(ServiceError::ConfigValidationError)?
                     }
                     Ok(())
@@ -40,6 +41,20 @@ pub(crate) fn validate_create_request(
             }
         })
         .collect::<Result<Vec<_>, _>>()?;
+
+    // check all required claims are present
+    claim_schemas
+        .iter()
+        .map(|claim_schema| {
+            if claim_schema.required {
+                claims
+                    .iter()
+                    .find(|claim| claim.claim_schema_id == claim_schema.schema.id)
+                    .ok_or(ServiceError::IncorrectParameters)?;
+            }
+            Ok(())
+        })
+        .collect::<Result<Vec<_>, ServiceError>>()?;
 
     Ok(())
 }

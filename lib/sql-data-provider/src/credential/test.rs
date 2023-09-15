@@ -1,5 +1,8 @@
 use super::CredentialProvider;
-use crate::{entity::claim, test_utilities::*};
+use crate::{
+    entity::{claim, credential_claim},
+    test_utilities::*,
+};
 use mockall::predicate::{always, eq};
 use one_core::{
     model::{
@@ -9,7 +12,7 @@ use one_core::{
             Credential, CredentialId, CredentialRelations, CredentialStateRelations,
             GetCredentialQuery, UpdateCredentialRequest,
         },
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations},
         did::{Did, DidRelations},
         organisation::{Organisation, OrganisationRelations},
     },
@@ -74,12 +77,15 @@ async fn setup_empty() -> TestSetup {
         claim_schemas: Some(
             new_claim_schemas
                 .into_iter()
-                .map(|schema| ClaimSchema {
-                    id: schema.0,
-                    key: "key".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
+                .map(|schema| CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: schema.0,
+                        key: "key".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                    },
+                    required: true,
                 })
                 .collect(),
         ),
@@ -174,14 +180,22 @@ async fn test_create_credential_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value1".to_string(),
-            schema: Some(credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned()),
+            schema: Some(
+                credential_schema.claim_schemas.as_ref().unwrap()[0]
+                    .to_owned()
+                    .schema,
+            ),
         },
         Claim {
             id: ClaimId::new_v4(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value2".to_string(),
-            schema: Some(credential_schema.claim_schemas.as_ref().unwrap()[1].to_owned()),
+            schema: Some(
+                credential_schema.claim_schemas.as_ref().unwrap()[1]
+                    .to_owned()
+                    .schema,
+            ),
         },
     ];
 
@@ -260,7 +274,11 @@ async fn test_create_credential_already_exists() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: "value1".to_string(),
-        schema: Some(credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned()),
+        schema: Some(
+            credential_schema.claim_schemas.as_ref().unwrap()[0]
+                .to_owned()
+                .schema,
+        ),
     }];
 
     let result = provider
@@ -372,14 +390,23 @@ async fn test_get_credential_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value1".to_string(),
-            schema: Some(credential_schema.claim_schemas.as_ref().unwrap()[0].to_owned()),
+            schema: Some(
+                // order intentionally changed to check ordering of claims later
+                credential_schema.claim_schemas.as_ref().unwrap()[1]
+                    .to_owned()
+                    .schema,
+            ),
         },
         Claim {
             id: ClaimId::new_v4(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value2".to_string(),
-            schema: Some(credential_schema.claim_schemas.as_ref().unwrap()[1].to_owned()),
+            schema: Some(
+                credential_schema.claim_schemas.as_ref().unwrap()[0]
+                    .to_owned()
+                    .schema,
+            ),
         },
     ];
 
@@ -399,6 +426,18 @@ async fn test_get_credential_success() {
     .exec(&db)
     .await
     .unwrap();
+    credential_claim::Entity::insert_many(
+        claims
+            .iter()
+            .map(|claim| credential_claim::ActiveModel {
+                claim_id: Set(claim.id.to_string()),
+                credential_id: Set(credential_id.to_string()),
+            })
+            .collect::<Vec<credential_claim::ActiveModel>>(),
+    )
+    .exec(&db)
+    .await
+    .unwrap();
 
     let did_clone = did.clone();
     did_repository
@@ -413,10 +452,24 @@ async fn test_get_credential_success() {
         .times(1)
         .returning(move |_, _| Ok(credential_schema_clone.clone()));
 
+    let claims_clone = claims.clone();
     claim_repository
         .expect_get_claim_list()
+        .withf(|ids, _| ids.len() == 2)
         .times(1)
-        .returning(move |_, _| Ok(claims.clone()));
+        .returning(move |ids, _| {
+            // order based on the requested ids
+            Ok(ids
+                .into_iter()
+                .map(|id| {
+                    claims_clone
+                        .iter()
+                        .find(|claim| claim.id == id)
+                        .unwrap()
+                        .to_owned()
+                })
+                .collect())
+        });
 
     let provider = CredentialProvider {
         db: db.clone(),
@@ -434,7 +487,7 @@ async fn test_get_credential_success() {
                     schema: Some(ClaimSchemaRelations {}),
                 }),
                 schema: Some(CredentialSchemaRelations {
-                    claim_schema: None,
+                    claim_schemas: None,
                     organisation: Some(OrganisationRelations {}),
                 }),
                 issuer_did: Some(DidRelations {}),
@@ -447,6 +500,12 @@ async fn test_get_credential_success() {
     let credential = credential.unwrap();
     assert_eq!(credential_id, credential.id);
     assert_eq!(credential_schema, credential.schema.unwrap());
+    let credential_claims = credential.claims.unwrap();
+    assert_eq!(credential_claims.len(), 2);
+
+    // claims must be ordered in the same way as in the credential_schema
+    assert_eq!(credential_claims[0].id, claims[1].id);
+    assert_eq!(credential_claims[1].id, claims[0].id);
 
     let empty_relations_mean_no_other_repository_calls = provider
         .get_credential(&credential_id, &CredentialRelations::default())
