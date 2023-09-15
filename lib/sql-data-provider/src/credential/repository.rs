@@ -294,21 +294,23 @@ impl CredentialRepository for CredentialProvider {
                 _ => DataLayerError::GeneralRuntimeError(e.to_string()),
             })?;
 
-        self.claim_repository
-            .create_claim_list(claims.to_owned())
-            .await?;
+        if !claims.is_empty() {
+            self.claim_repository
+                .create_claim_list(claims.to_owned())
+                .await?;
 
-        let credential_claim_models: Vec<credential_claim::ActiveModel> = claims
-            .into_iter()
-            .map(|claim| credential_claim::ActiveModel {
-                claim_id: Set(claim.id.to_string()),
-                credential_id: Set(credential.id.clone()),
-            })
-            .collect();
-        credential_claim::Entity::insert_many(credential_claim_models)
-            .exec(&self.db)
-            .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            let credential_claim_models: Vec<credential_claim::ActiveModel> = claims
+                .into_iter()
+                .map(|claim| credential_claim::ActiveModel {
+                    claim_id: Set(claim.id.to_string()),
+                    credential_id: Set(credential.id.clone()),
+                })
+                .collect();
+            credential_claim::Entity::insert_many(credential_claim_models)
+                .exec(&self.db)
+                .await
+                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+        }
 
         if let Some(states) = request.state {
             for state in states {

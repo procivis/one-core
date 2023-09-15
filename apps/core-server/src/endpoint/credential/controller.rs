@@ -125,7 +125,7 @@ pub(crate) async fn post_credential(
                     .into_response()
             }
             _ => {
-                tracing::error!("Error while getting credential: {:?}", error);
+                tracing::error!("Error while creating credential: {:?}", error);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         },
