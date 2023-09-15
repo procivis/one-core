@@ -254,6 +254,60 @@ async fn test_create_credential_success() {
 }
 
 #[tokio::test]
+async fn test_create_credential_empty_claims() {
+    let TestSetup {
+        did,
+        credential_schema,
+        db,
+        ..
+    } = setup_empty().await;
+
+    let provider = CredentialProvider {
+        db: db.clone(),
+        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
+        claim_repository: Arc::from(MockClaimRepository::default()),
+        did_repository: Arc::from(MockDidRepository::default()),
+    };
+
+    let credential_id = Uuid::new_v4();
+    let result = provider
+        .create_credential(Credential {
+            id: credential_id,
+            created_date: get_dummy_date(),
+            issuance_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            credential: vec![],
+            transport: "transport".to_string(),
+            state: None,
+            claims: Some(vec![]),
+            issuer_did: Some(did),
+            holder_did: None,
+            schema: Some(credential_schema),
+        })
+        .await;
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), credential_id);
+
+    assert_eq!(
+        crate::entity::Credential::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        crate::entity::CredentialClaim::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .len(),
+        0
+    );
+}
+
+#[tokio::test]
 async fn test_create_credential_already_exists() {
     let TestSetupWithCredential {
         did,

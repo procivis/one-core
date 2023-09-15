@@ -86,7 +86,7 @@ impl CredentialService {
         &self,
         credential_id: &CredentialId,
     ) -> Result<CredentialResponseDTO, ServiceError> {
-        let schema = self
+        let credential = self
             .credential_repository
             .get_credential(
                 credential_id,
@@ -96,7 +96,7 @@ impl CredentialService {
                         schema: Some(ClaimSchemaRelations {}),
                     }),
                     schema: Some(CredentialSchemaRelations {
-                        claim_schemas: None,
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
                         organisation: Some(OrganisationRelations {}),
                     }),
                     issuer_did: Some(DidRelations {}),
@@ -106,7 +106,7 @@ impl CredentialService {
             .await
             .map_err(ServiceError::from)?;
 
-        schema.try_into()
+        credential.try_into()
     }
 
     /// Returns list of credentials according to query
