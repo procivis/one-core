@@ -1,18 +1,15 @@
 use crate::model::{
     self,
     claim::Claim,
-    claim_schema::ClaimSchema,
-    credential::{Credential, CredentialState, CredentialStateEnum, GetCredentialList},
-    credential_schema::CredentialSchema,
+    credential::{Credential, CredentialState, CredentialStateEnum},
+    credential_schema::{CredentialSchema, CredentialSchemaClaim},
     did::Did,
 };
 use crate::service::{
     credential::dto::{
         CreateCredentialRequestDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
         CredentialResponseDTO, CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO,
-        GetCredentialListResponseDTO,
     },
-    credential_schema::dto::CredentialClaimSchemaDTO,
     error::ServiceError,
 };
 use time::OffsetDateTime;
@@ -48,9 +45,9 @@ impl TryFrom<Credential> for CredentialResponseDTO {
             issuance_date: value.issuance_date,
             state: latest_state.state.into(),
             last_modified: value.last_modified,
+            claims: from_vec_claim(claims, &schema)?,
             schema: schema.try_into()?,
             issuer_did: issuer_did_value,
-            claims: from_vec_claim(claims)?,
             credential: value.credential,
         })
     }
@@ -58,18 +55,30 @@ impl TryFrom<Credential> for CredentialResponseDTO {
 
 fn from_vec_claim(
     claims: Vec<Claim>,
+    credential_schema: &CredentialSchema,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
     claims
         .into_iter()
         .map(|claim| {
-            let schema = claim
+            let claim_schema_id = claim
                 .schema
                 .ok_or(ServiceError::MappingError(
                     "claim_schema is None".to_string(),
                 ))?
-                .into();
+                .id;
+            let credential_claim_schema = credential_schema
+                .claim_schemas
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "claim_schemas is None".to_string(),
+                ))?
+                .iter()
+                .find(|claim_schema| claim_schema.schema.id == claim_schema_id)
+                .ok_or(ServiceError::MappingError(
+                    "claim_schema missing".to_string(),
+                ))?;
             Ok::<DetailCredentialClaimResponseDTO, ServiceError>(DetailCredentialClaimResponseDTO {
-                schema,
+                schema: credential_claim_schema.to_owned().into(),
                 value: claim.value,
             })
         })
@@ -118,43 +127,6 @@ impl TryFrom<model::credential_schema::CredentialSchema> for CredentialSchemaRes
             format: value.format,
             revocation_method: value.revocation_method,
             organisation_id: organisation.id,
-        })
-    }
-}
-
-impl TryFrom<model::claim::Claim> for DetailCredentialClaimResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: Claim) -> Result<Self, ServiceError> {
-        let schema = value.schema.ok_or(ServiceError::MappingError(
-            "claim schema is none".to_string(),
-        ))?;
-
-        Ok(Self {
-            schema: CredentialClaimSchemaDTO {
-                id: schema.id,
-                created_date: schema.created_date,
-                last_modified: schema.last_modified,
-                key: schema.key,
-                datatype: schema.data_type,
-            },
-            value: value.value,
-        })
-    }
-}
-
-impl TryFrom<GetCredentialList> for GetCredentialListResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: GetCredentialList) -> Result<Self, ServiceError> {
-        Ok(Self {
-            values: value
-                .values
-                .into_iter()
-                .map(|credential| credential.try_into())
-                .collect::<Result<Vec<_>, _>>()?,
-            total_pages: value.total_pages,
-            total_items: value.total_items,
         })
     }
 }
@@ -223,7 +195,7 @@ pub(super) fn from_create_request(
 
 pub(super) fn claims_from_create_request(
     claims: Vec<CredentialRequestClaimDTO>,
-    claim_schemas: &[ClaimSchema],
+    claim_schemas: &[CredentialSchemaClaim],
 ) -> Result<Vec<Claim>, ServiceError> {
     let now = OffsetDateTime::now_utc();
 
@@ -232,14 +204,14 @@ pub(super) fn claims_from_create_request(
         .map(|claim| {
             let schema = claim_schemas
                 .iter()
-                .find(|schema| schema.id == claim.claim_schema_id)
+                .find(|schema| schema.schema.id == claim.claim_schema_id)
                 .ok_or(ServiceError::NotFound)?;
             Ok(Claim {
                 id: Uuid::new_v4(),
                 created_date: now,
                 last_modified: now,
                 value: claim.value,
-                schema: Some(schema.clone()),
+                schema: Some(schema.schema.clone()),
             })
         })
         .collect::<Result<Vec<_>, _>>()

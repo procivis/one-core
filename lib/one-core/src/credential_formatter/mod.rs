@@ -49,6 +49,7 @@ pub struct VCCredentialClaimSchemaResponse {
     pub key: String,
     pub id: String,
     pub datatype: String,
+    pub required: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

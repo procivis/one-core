@@ -1,14 +1,27 @@
-use one_core::model::credential::UpdateCredentialRequest;
+use crate::{
+    common::calculate_pages_count,
+    credential::{
+        mapper::{
+            entities_to_credential, get_credential_state_active_model, request_to_active_model,
+        },
+        CredentialProvider,
+    },
+    entity::{
+        claim, claim_schema, credential, credential_claim, credential_schema,
+        credential_schema_claim_schema, credential_state,
+    },
+    list_query::SelectWithListQuery,
+};
 use one_core::{
     common_mapper::vector_into,
     model::{
-        claim::{Claim, ClaimRelations},
+        claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
         credential::{
             Credential, CredentialId, CredentialRelations, CredentialState,
-            CredentialStateRelations,
+            CredentialStateRelations, GetCredentialList, GetCredentialQuery,
+            UpdateCredentialRequest,
         },
-        credential::{GetCredentialList, GetCredentialQuery},
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
         organisation::OrganisationRelations,
@@ -21,25 +34,12 @@ use one_core::{
 };
 use sea_orm::{
     sea_query::{Alias, Expr, IntoCondition, Query},
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
 use std::{str::FromStr, sync::Arc};
 use time::OffsetDateTime;
-
 use uuid::Uuid;
-
-use crate::credential::mapper::{
-    entities_to_credential, get_credential_state_active_model, request_to_active_model,
-};
-use crate::entity::credential_state;
-use crate::list_query::SelectWithListQuery;
-use crate::{
-    common::calculate_pages_count,
-    credential::CredentialProvider,
-    entity::{credential, credential_claim, credential_schema},
-};
 
 async fn get_credential_schema(
     schema_id: &Uuid,
@@ -58,12 +58,31 @@ async fn get_credential_schema(
 
 async fn get_claims(
     credential: &credential::Model,
-    relations: &Option<ClaimRelations>,
+    relations: &ClaimRelations,
     db: &DatabaseConnection,
-    repository: Arc<dyn ClaimRepository + Send + Sync>,
-) -> Result<Option<Vec<Claim>>, DataLayerError> {
-    let ids: Vec<Uuid> = credential
-        .find_related(credential_claim::Entity)
+    claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
+) -> Result<Vec<Claim>, DataLayerError> {
+    let ids: Vec<ClaimId> = credential_claim::Entity::find()
+        .select_only()
+        .columns([
+            credential_claim::Column::ClaimId,
+            credential_claim::Column::CredentialId,
+        ])
+        .filter(credential_claim::Column::CredentialId.eq(&credential.id))
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            credential_claim::Relation::Claim.def(),
+        )
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            claim::Relation::ClaimSchema.def(),
+        )
+        .join(
+            sea_orm::JoinType::LeftJoin,
+            claim_schema::Relation::CredentialSchemaClaimSchema.def(),
+        )
+        // sorting claims according to the order from credential_schema
+        .order_by_asc(credential_schema_claim_schema::Column::Order)
         .all(db)
         .await
         .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
@@ -71,10 +90,7 @@ async fn get_claims(
         .map(|claim| Uuid::from_str(&claim.claim_id).map_err(|_| DataLayerError::MappingError))
         .collect::<Result<Vec<_>, _>>()?;
 
-    match relations {
-        None => Ok(None),
-        Some(claim_relations) => Ok(Some(repository.get_claim_list(ids, claim_relations).await?)),
-    }
+    claim_repository.get_claim_list(ids, relations).await
 }
 
 async fn get_did(
@@ -139,18 +155,24 @@ impl CredentialProvider {
             .map_err(|_| DataLayerError::MappingError)?;
         let schema = get_credential_schema(
             &schema_id,
-            &relations.schema,
+            &relations.schema.to_owned(),
             self.credential_schema_repository.clone(),
         )
         .await?;
 
-        let claims = get_claims(
-            &credential,
-            &relations.claims,
-            &self.db,
-            self.claim_repository.clone(),
-        )
-        .await?;
+        let claims = if let Some(claim_relations) = &relations.claims {
+            Some(
+                get_claims(
+                    &credential,
+                    claim_relations,
+                    &self.db,
+                    self.claim_repository.clone(),
+                )
+                .await?,
+            )
+        } else {
+            None
+        };
 
         Ok(entities_to_credential(
             credential_id,
@@ -347,7 +369,7 @@ impl CredentialRepository for CredentialProvider {
                         issuer_did: Some(DidRelations {}),
                         holder_did: Some(DidRelations {}),
                         schema: Some(CredentialSchemaRelations {
-                            claim_schema: Some(ClaimSchemaRelations {}),
+                            claim_schemas: Some(ClaimSchemaRelations {}),
                             organisation: Some(OrganisationRelations {}),
                         }),
                     },

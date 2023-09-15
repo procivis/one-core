@@ -5,7 +5,7 @@ use crate::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential::{Credential, CredentialState, CredentialStateEnum, GetCredentialList},
-        credential_schema::CredentialSchema,
+        credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidType},
         organisation::Organisation,
     },
@@ -94,7 +94,10 @@ fn generic_credential() -> Credential {
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            claim_schemas: Some(vec![claim_schema]),
+            claim_schemas: Some(vec![CredentialSchemaClaim {
+                schema: claim_schema,
+                required: true,
+            }]),
             organisation: Some(organisation),
         }),
     }
@@ -325,5 +328,103 @@ async fn test_create_credential_success() {
         })
         .await;
 
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_create_credential_one_required_claim_missing() {
+    let mut repository = MockCredentialRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    let credential_schema = CredentialSchema {
+        claim_schemas: Some(vec![
+            CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4(),
+                    key: "required".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                },
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4(),
+                    key: "optional".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                },
+                required: false,
+            },
+        ]),
+        ..credential.schema.clone().unwrap()
+    };
+
+    {
+        let clone = credential.clone();
+        let issuer_did = credential.issuer_did.clone().unwrap();
+        let credential_schema_clone = credential_schema.clone();
+        did_repository
+            .expect_get_did()
+            .returning(move |_, _| Ok(issuer_did.clone()));
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .returning(move |_, _| Ok(credential_schema_clone.clone()));
+
+        repository
+            .expect_create_credential()
+            .times(1)
+            .returning(move |_| Ok(clone.id));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let required_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[0]
+        .schema
+        .id
+        .to_owned();
+    let optional_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[1]
+        .schema
+        .id
+        .to_owned();
+    let create_request_template = CreateCredentialRequestDTO {
+        credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+        issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+        transport: "PROCIVIS_TEMPORARY".to_string(),
+        claim_values: vec![],
+    };
+
+    // create a credential with only an optional claim fails
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: optional_claim_schema_id,
+                value: "value".to_string(),
+            }],
+            ..create_request_template.clone()
+        })
+        .await;
+    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+
+    // create a credential with required claims only succeeds
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: required_claim_schema_id,
+                value: "value".to_string(),
+            }],
+            ..create_request_template
+        })
+        .await;
     assert!(result.is_ok());
 }

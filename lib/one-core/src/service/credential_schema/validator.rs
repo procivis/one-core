@@ -24,5 +24,10 @@ pub(crate) fn validate_create_request(
     )
     .map_err(ServiceError::ConfigValidationError)?;
 
+    // at least one claim must be declared
+    if request.claims.is_empty() {
+        return Err(ServiceError::IncorrectParameters);
+    }
+
     Ok(())
 }

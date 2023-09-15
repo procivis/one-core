@@ -4,7 +4,7 @@ use crate::{
     credential_formatter::{VCCredentialClaimSchemaResponse, VCCredentialSchemaResponse},
     model::{
         claim_schema::ClaimSchema,
-        credential_schema::CredentialSchema,
+        credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidId, DidType},
         organisation::{Organisation, OrganisationId},
     },
@@ -75,16 +75,19 @@ pub fn remote_did_from_value(did_value: String, organisation_id: OrganisationId)
     }
 }
 
-impl TryFrom<VCCredentialClaimSchemaResponse> for ClaimSchema {
+impl TryFrom<VCCredentialClaimSchemaResponse> for CredentialSchemaClaim {
     type Error = ServiceError;
     fn try_from(value: VCCredentialClaimSchemaResponse) -> Result<Self, Self::Error> {
         let now = OffsetDateTime::now_utc();
         Ok(Self {
-            id: string_to_uuid(&value.id)?,
-            key: value.key,
-            data_type: value.datatype,
-            created_date: now,
-            last_modified: now,
+            schema: ClaimSchema {
+                id: string_to_uuid(&value.id)?,
+                key: value.key,
+                data_type: value.datatype,
+                created_date: now,
+                last_modified: now,
+            },
+            required: value.required,
         })
     }
 }

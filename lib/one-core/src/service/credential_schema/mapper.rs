@@ -1,7 +1,7 @@
 use crate::{
     model::{
         claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, GetCredentialSchemaList},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList},
         organisation::Organisation,
     },
     service::{
@@ -60,14 +60,15 @@ impl TryFrom<CredentialSchema> for GetCredentialSchemaResponseDTO {
     }
 }
 
-impl From<ClaimSchema> for CredentialClaimSchemaDTO {
-    fn from(value: ClaimSchema) -> Self {
+impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
+    fn from(value: CredentialSchemaClaim) -> Self {
         Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            key: value.key,
-            datatype: value.data_type,
+            id: value.schema.id,
+            created_date: value.schema.created_date,
+            last_modified: value.schema.last_modified,
+            key: value.schema.key,
+            datatype: value.schema.data_type,
+            required: value.required,
         }
     }
 }
@@ -124,12 +125,15 @@ pub(super) fn from_create_request(
 fn from_jwt_request_claim_schema(
     claim_schema: CredentialClaimSchemaRequestDTO,
     now: OffsetDateTime,
-) -> ClaimSchema {
-    ClaimSchema {
-        id: Uuid::new_v4(),
-        key: claim_schema.key,
-        data_type: claim_schema.datatype,
-        created_date: now,
-        last_modified: now,
+) -> CredentialSchemaClaim {
+    CredentialSchemaClaim {
+        schema: ClaimSchema {
+            id: Uuid::new_v4(),
+            key: claim_schema.key,
+            data_type: claim_schema.datatype,
+            created_date: now,
+            last_modified: now,
+        },
+        required: claim_schema.required,
     }
 }

@@ -211,25 +211,32 @@ impl SSIHolderService {
         let claims = credential_schema
             .claim_schemas
             .as_ref()
-            .ok_or(ServiceError::NotFound)?
+            .ok_or(ServiceError::MappingError(
+                "claim_schemas is None".to_string(),
+            ))?
             .iter()
-            .map(|claim_schema| -> Result<Claim, ServiceError> {
-                if let Some(value) = incoming_claims.get(&claim_schema.key) {
-                    Ok(Claim {
-                        schema: Some(claim_schema.to_owned()),
+            .map(|claim_schema| -> Result<Option<Claim>, ServiceError> {
+                if let Some(value) = incoming_claims.get(&claim_schema.schema.key) {
+                    Ok(Some(Claim {
+                        schema: Some(claim_schema.schema.to_owned()),
                         value: value.to_owned(),
                         id: ClaimId::new_v4(),
                         created_date: now,
                         last_modified: now,
-                    })
-                } else {
+                    }))
+                } else if claim_schema.required {
                     Err(ServiceError::ValidationError(format!(
                         "Claim key {} missing",
-                        &claim_schema.key
+                        &claim_schema.schema.key
                     )))
+                } else {
+                    Ok(None) // missing optional claim
                 }
             })
-            .collect::<Result<Vec<Claim>, ServiceError>>()?;
+            .collect::<Result<Vec<Option<Claim>>, ServiceError>>()?
+            .into_iter()
+            .flatten()
+            .collect();
 
         self.credential_repository
             .create_credential(Credential {

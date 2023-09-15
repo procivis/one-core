@@ -162,6 +162,7 @@ impl From<&CredentialResponseDTO> for VC {
                                 key: claim.schema.key.clone(),
                                 id: claim.schema.id.to_string(),
                                 datatype: claim.schema.datatype.to_owned(),
+                                required: claim.schema.required,
                             })
                             .collect(),
                     },

@@ -73,7 +73,7 @@ impl CredentialSchemaService {
             .get_credential_schema(
                 credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schema: Some(ClaimSchemaRelations::default()),
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
