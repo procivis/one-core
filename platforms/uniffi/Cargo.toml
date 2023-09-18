@@ -11,8 +11,8 @@ crate-type = ["cdylib", "staticlib"]
 strict = []
 
 [dependencies]
-one-core = { path = "../../lib/one-core" }
-sql-data-provider = { path = "../../lib/sql-data-provider" }
+one-core = { version = "0.1.0", path = "../../lib/one-core" }
+sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider" }
 serde.workspace = true
 serde_json.workspace = true
 uniffi.workspace = true

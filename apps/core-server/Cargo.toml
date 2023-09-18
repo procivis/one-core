@@ -9,8 +9,8 @@ build = "build.rs"
 strict = []
 
 [dependencies]
-one-core = { path = "../../lib/one-core" }
-sql-data-provider = { path = "../../lib/sql-data-provider", features = ["mysql"] }
+one-core = { version = "0.1.0", path = "../../lib/one-core" }
+sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["mysql"] }
 
 axum.workspace = true
 dto_derive.workspace = true
