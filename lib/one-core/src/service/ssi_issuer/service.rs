@@ -158,4 +158,48 @@ impl SSIIssuerService {
             format: "JWT".to_string(),
         })
     }
+
+    pub async fn issuer_reject(&self, credential_id: &CredentialId) -> Result<(), ServiceError> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let latest_state = credential
+            .state
+            .as_ref()
+            .ok_or(ServiceError::MappingError("state is None".to_string()))?
+            .get(0)
+            .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
+        if latest_state.state != CredentialStateEnum::Offered {
+            return Err(ServiceError::AlreadyExists);
+        }
+
+        self.credential_repository
+            .update_credential(UpdateCredentialRequest {
+                id: credential_id.to_owned(),
+                credential: None,
+                holder_did_id: None,
+                state: Some(CredentialState {
+                    created_date: OffsetDateTime::now_utc(),
+                    state: CredentialStateEnum::Rejected,
+                }),
+            })
+            .await?;
+
+        Ok(())
+    }
 }

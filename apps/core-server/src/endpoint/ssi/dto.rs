@@ -86,3 +86,9 @@ pub enum HandleInvitationResponseRestDTO {
         base_url: String,
     },
 }
+
+#[derive(Clone, Debug, Deserialize, IntoParams, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PostSsiIssuerRejectQueryParams {
+    pub credential_id: Uuid,
+}
