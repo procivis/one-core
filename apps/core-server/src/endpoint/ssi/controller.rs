@@ -3,6 +3,7 @@ use super::dto::{
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO,
     PostSsiIssuerConnectQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
+use crate::endpoint::ssi::dto::PostSsiIssuerRejectQueryParams;
 use crate::AppState;
 use axum::{
     extract::{Query, State},
@@ -187,6 +188,46 @@ pub(crate) async fn ssi_issuer_connect(
         Err(ServiceError::IncorrectParameters) => {
             tracing::error!("Invalid arguments");
             (StatusCode::BAD_REQUEST, "Invalid arguments").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/ssi/temporary-issuer/v1/reject",
+    responses(
+        (status = 200, description = "OK"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        PostSsiIssuerRejectQueryParams
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn ssi_issuer_reject(
+    state: State<AppState>,
+    Query(query): Query<PostSsiIssuerRejectQueryParams>,
+) -> Response {
+    let result = state
+        .core
+        .ssi_issuer_service
+        .issuer_reject(&query.credential_id)
+        .await;
+
+    match result {
+        Ok(_) => (StatusCode::OK.into_response()).into_response(),
+        Err(ServiceError::NotFound) => {
+            tracing::error!("Missing credential");
+            (StatusCode::NOT_FOUND, "Missing credential").into_response()
+        }
+        Err(ServiceError::AlreadyExists) => {
+            tracing::error!("Invalid state");
+            (StatusCode::BAD_REQUEST, "Invalid state").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

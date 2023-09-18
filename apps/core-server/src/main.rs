@@ -90,6 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::ssi::controller::ssi_verifier_submit_proof,
             endpoint::ssi::controller::ssi_verifier_reject_proof,
             endpoint::ssi::controller::ssi_issuer_connect,
+            endpoint::ssi::controller::ssi_issuer_reject,
             endpoint::ssi::controller::ssi_issuer_submit,
             endpoint::ssi::controller::ssi_holder_handle_invitation,
 
@@ -145,6 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::ssi::dto::ConnectIssuerResponseRestDTO,
                 endpoint::ssi::dto::HandleInvitationRequestRestDTO,
                 endpoint::ssi::dto::HandleInvitationResponseRestDTO,
+                endpoint::ssi::dto::PostSsiIssuerRejectQueryParams,
 
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
@@ -281,6 +283,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/ssi/temporary-issuer/v1/connect",
             post(ssi::controller::ssi_issuer_connect),
+        )
+        .route(
+            "/ssi/temporary-issuer/v1/reject",
+            post(ssi::controller::ssi_issuer_reject),
         )
         .route(
             "/ssi/temporary-issuer/v1/submit",
