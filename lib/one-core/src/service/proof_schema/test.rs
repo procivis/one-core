@@ -273,7 +273,7 @@ async fn test_create_proof_schema_success() {
         organisation_id,
         claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
             id: claim_schema_id,
-            required: false,
+            required: true,
         }],
     };
 
@@ -324,9 +324,50 @@ async fn test_create_proof_schema_claims_dont_exist() {
             organisation_id: Uuid::new_v4(),
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_schema_id,
-                required: false,
+                required: true,
             }],
         })
         .await;
     assert!(matches!(result, Err(ServiceError::NotFound)));
+}
+
+#[tokio::test]
+async fn test_create_proof_schema_no_claims() {
+    let service = setup_service(
+        MockProofSchemaRepository::default(),
+        MockClaimSchemaRepository::default(),
+        MockOrganisationRepository::default(),
+    );
+
+    let result = service
+        .create_proof_schema(CreateProofSchemaRequestDTO {
+            name: "name".to_string(),
+            expire_duration: 0,
+            organisation_id: Uuid::new_v4(),
+            claim_schemas: vec![],
+        })
+        .await;
+    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+}
+
+#[tokio::test]
+async fn test_create_proof_schema_no_required_claims() {
+    let service = setup_service(
+        MockProofSchemaRepository::default(),
+        MockClaimSchemaRepository::default(),
+        MockOrganisationRepository::default(),
+    );
+
+    let result = service
+        .create_proof_schema(CreateProofSchemaRequestDTO {
+            name: "name".to_string(),
+            expire_duration: 0,
+            organisation_id: Uuid::new_v4(),
+            claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+                id: Uuid::new_v4(),
+                required: false,
+            }],
+        })
+        .await;
+    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
 }

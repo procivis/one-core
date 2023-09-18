@@ -60,8 +60,8 @@ tests:
   script:
     - apt-get update && apt-get install pkg-config libssl-dev -y
     - cargo install cargo-tarpaulin
-    - cargo tarpaulin --ignore-tests --all-features --release --out Xml
-  coverage: '/TOTAL.*\s+(\d+%)$/'
+    - cargo tarpaulin --ignore-tests --all-features --release --out xml
+  coverage: '/^\d+.\d+% coverage/'
   artifacts:
     expire_in: 1 hour
     paths:

@@ -2,10 +2,9 @@ use super::dto::ValidatedProofClaimDTO;
 use crate::{
     credential_formatter::CredentialFormatter,
     model::{
-        claim_schema::ClaimSchemaId,
         credential_schema::{CredentialSchema, CredentialSchemaId},
         did::Did,
-        proof_schema::ProofSchema,
+        proof_schema::{ProofSchema, ProofSchemaClaim},
     },
     service::error::ServiceError,
 };
@@ -51,28 +50,28 @@ pub(super) fn validate_proof(
         })
         .collect::<Result<HashSet<CredentialSchemaId>, ServiceError>>()?;
 
-    let claim_schema_ids_with_cred_schemas = proof_schema_claims
+    let claim_schemas_with_cred_schemas = proof_schema_claims
         .iter()
         .map(|claim| {
             claim
                 .credential_schema
                 .as_ref()
-                .map(|credential_schema| (claim.schema.id, credential_schema.to_owned()))
+                .map(|credential_schema| (claim.to_owned(), credential_schema.to_owned()))
                 .ok_or(ServiceError::MappingError(
                     "credential_schema is None".to_string(),
                 ))
         })
-        .collect::<Result<Vec<(ClaimSchemaId, CredentialSchema)>, ServiceError>>()?;
+        .collect::<Result<Vec<(ProofSchemaClaim, CredentialSchema)>, ServiceError>>()?;
 
-    let mut remaining_requested_claims: HashMap<CredentialSchemaId, Vec<ClaimSchemaId>> =
+    let mut remaining_requested_claims: HashMap<CredentialSchemaId, Vec<ProofSchemaClaim>> =
         HashMap::new();
     for credential_schema_id in requested_cred_schema_ids {
         remaining_requested_claims.insert(
             credential_schema_id,
-            claim_schema_ids_with_cred_schemas
+            claim_schemas_with_cred_schemas
                 .iter()
                 .filter(|(_, credential_schema)| credential_schema.id == credential_schema_id)
-                .map(|(claim_schema_id, _)| claim_schema_id.to_owned())
+                .map(|(proof_claim_schema, _)| proof_claim_schema.to_owned())
                 .collect(),
         );
     }
@@ -81,14 +80,14 @@ pub(super) fn validate_proof(
         HashMap::new();
 
     for credential in presentation.credentials {
-        let claim = formatter.extract_credentials(&credential)?;
+        let credential = formatter.extract_credentials(&credential)?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
-        validate_issuance_time(claim.invalid_before)?;
-        validate_expiration_time(claim.expires_at)?;
+        validate_issuance_time(credential.invalid_before)?;
+        validate_expiration_time(credential.expires_at)?;
 
         // Check if all subjects of the submitted VCs is matching the holder did.
-        let claim_subject = match claim.subject {
+        let claim_subject = match credential.subject {
             None => {
                 return Err(ServiceError::ValidationError(
                     "Claim Holder DID missing".to_owned(),
@@ -103,9 +102,9 @@ pub(super) fn validate_proof(
         }
 
         // check if this credential was requested
-        let credential_schema_id = Uuid::from_str(&claim.claims.one_credential_schema.id)
+        let credential_schema_id = Uuid::from_str(&credential.claims.one_credential_schema.id)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-        let requested_claims: Result<Vec<ClaimSchemaId>, ServiceError> =
+        let requested_proof_claims: Result<Vec<ProofSchemaClaim>, ServiceError> =
             match remaining_requested_claims.remove_entry(&credential_schema_id) {
                 None => {
                     if proved_credentials.contains_key(&credential_schema_id) {
@@ -122,23 +121,24 @@ pub(super) fn validate_proof(
             };
 
         let mut collected_proved_claims: Vec<ValidatedProofClaimDTO> = vec![];
-        for requested_claim_schema_id in requested_claims? {
-            let claim_schema = proof_schema_claims
-                .iter()
-                .find(|schema| schema.schema.id == requested_claim_schema_id)
-                .ok_or(ServiceError::GeneralRuntimeError(
-                    "Missing claim schema".to_owned(),
-                ))?;
+        for requested_proof_claim in requested_proof_claims? {
+            let value = credential
+                .claims
+                .values
+                .get(&requested_proof_claim.schema.key);
 
-            let value = claim.claims.values.get(&claim_schema.schema.key).ok_or(
-                ServiceError::ValidationError(format!(
-                    "Credential key '{}' missing",
-                    &claim_schema.schema.key
-                )),
-            )?;
+            // missing optional claim
+            if !requested_proof_claim.required && value.is_none() {
+                continue;
+            }
+
+            let value = value.ok_or(ServiceError::ValidationError(format!(
+                "Credential key '{}' missing",
+                &requested_proof_claim.schema.key
+            )))?;
 
             collected_proved_claims.push(ValidatedProofClaimDTO {
-                claim_schema_id: requested_claim_schema_id,
+                claim_schema_id: requested_proof_claim.schema.id,
                 value: value.to_owned(),
             });
         }
@@ -148,9 +148,12 @@ pub(super) fn validate_proof(
         proved_credentials.insert(credential_schema_id, collected_proved_claims);
     }
 
-    if !remaining_requested_claims.is_empty() {
+    if remaining_requested_claims
+        .iter()
+        .any(|(_, claims)| claims.iter().any(|claim| claim.required))
+    {
         return Err(ServiceError::ValidationError(
-            "Not all requested claims fulfilled".to_owned(),
+            "Not all required claims fulfilled".to_owned(),
         ));
     }
 
