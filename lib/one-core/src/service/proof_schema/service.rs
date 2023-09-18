@@ -4,7 +4,7 @@ use super::{
         GetProofSchemaResponseDTO, ProofSchemaId,
     },
     mapper::proof_schema_from_create_request,
-    validator::proof_schema_name_already_exists,
+    validator::{proof_schema_name_already_exists, validate_create_request},
     ProofSchemaService,
 };
 use crate::{
@@ -74,6 +74,8 @@ impl ProofSchemaService {
         &self,
         request: CreateProofSchemaRequestDTO,
     ) -> Result<ProofSchemaId, ServiceError> {
+        validate_create_request(&request)?;
+
         if proof_schema_name_already_exists(
             &self.proof_schema_repository,
             &request.name,

@@ -47,8 +47,8 @@ pub(crate) async fn post_proof_schema(
             tracing::error!("Name duplicated in the organisation");
             StatusCode::CONFLICT.into_response()
         }
-        Err(ServiceError::GeneralRuntimeError(e)) => {
-            tracing::error!("Database runtime error: {:?}", e);
+        Err(ServiceError::IncorrectParameters) => {
+            tracing::error!("Invalid request");
             StatusCode::BAD_REQUEST.into_response()
         }
         Err(e) => {
