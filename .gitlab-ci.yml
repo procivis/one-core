@@ -88,6 +88,14 @@ linter:rustfmt:
     - rustup component add rustfmt
     - cargo fmt --all -- --check
 
+linter:dependencies:
+  stage: test
+  script:
+    - cargo install --locked cargo-deny
+    - rustup target list --installed
+    - cargo deny check
+  allow_failure: true
+
 sonarqube-check:
   stage: test
   dependencies:

@@ -1,0 +1,137 @@
+# Cargo deny options
+
+targets = [
+    # Linux
+    { triple = "x86_64-unknown-linux-gnu" },
+    # Windows
+    { triple = "x86_64-pc-windows-gnu" },
+    # Mobile (Android)
+    { triple = "i686-linux-android" },
+    { triple = "armv7-linux-androideabi" },
+    { triple = "aarch64-linux-android" },
+    # Mobile (iOS)
+    { triple = "aarch64-apple-ios" },
+]
+
+all-features = false
+no-default-features = false
+
+
+# This section is considered when running `cargo deny check advisories`
+# More documentation for the advisories section can be found here:
+# https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
+[advisories]
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "deny"
+notice = "deny"
+ignore = []
+
+
+# This section is considered when running `cargo deny check licenses`
+# More documentation for the licenses section can be found here:
+# https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
+[licenses]
+unlicensed = "deny"
+allow = [
+    "LicenseRef-Procivis",
+    "Unicode-DFS-2016",
+]
+deny = []
+copyleft = "deny"
+allow-osi-fsf-free = "both"
+# Deny licenses not covered by allow/deny, copyleft and OSI/FSF rules
+default = "deny"
+confidence-threshold = 0.8
+
+exceptions = [
+    # Allow MPL-2.0 for webpli-roots, as we do not modify the library
+    { allow = ["MPL-2.0"], name = "webpki-roots", version = "*" },
+
+    # Allow MPL-2.0 for uniffi, as we do not modify the library
+    { allow = ["MPL-2.0"], name = "uniffi", version = "*" },
+    { allow = ["MPL-2.0"], name = "uniffi_bindgen", version = "*" },
+    { allow = ["MPL-2.0"], name = "uniffi_build", version = "*" },
+    { allow = ["MPL-2.0"], name = "uniffi_checksum_derive", version = "*" },
+    { allow = ["MPL-2.0"], name = "uniffi_core", version = "*" },
+    { allow = ["MPL-2.0"], name = "uniffi_macros", version = "*" },
+    { allow = ["MPL-2.0"], name = "uniffi_meta", version = "*" },
+    { allow = ["MPL-2.0"], name = "uniffi_testing", version = "*" },
+
+    # Allow OpenSSL for ring
+    { allow = ["OpenSSL"], name = "ring", version = "*" },
+]
+
+[licenses.private]
+ignore = false
+
+
+# Clarify ring crate license (LICENSE file not properly detected)
+[[licenses.clarify]]
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
+]
+
+# Mark our internal libraries
+[[licenses.clarify]]
+name = "one-core"
+expression = "LicenseRef-Procivis"
+license-files = [
+    { path = "build.rs", hash = 0x44b5b77d }
+]
+[[licenses.clarify]]
+name = "core-server"
+expression = "LicenseRef-Procivis"
+license-files = [
+    { path = "build.rs", hash = 0xc02c33d6 }
+]
+[[licenses.clarify]]
+name = "migration"
+expression = "LicenseRef-Procivis"
+license-files = [
+    { path = "Cargo.toml", hash = 0x359cc181 }
+]
+[[licenses.clarify]]
+name = "one-core-uniffi"
+expression = "LicenseRef-Procivis"
+license-files = [
+    { path = "build.rs", hash = 0x388ae4e5 }
+]
+[[licenses.clarify]]
+name = "uniffi-bindgen"
+expression = "LicenseRef-Procivis"
+license-files = [
+    { path = "Cargo.toml", hash = 0x2cb76165 }
+]
+[[licenses.clarify]]
+name = "sql-data-provider"
+expression = "LicenseRef-Procivis"
+license-files = [
+    { path = "Cargo.toml", hash = 0x97b24e5e }
+]
+
+
+# This section is considered when running `cargo deny check bans`.
+# More documentation about the 'bans' section can be found here:
+# https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow = []
+deny = []
+
+
+# This section is considered when running `cargo deny check sources`.
+# More documentation about the 'sources' section can be found here:
+# https://embarkstudios.github.io/cargo-deny/checks/sources/cfg.html
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
