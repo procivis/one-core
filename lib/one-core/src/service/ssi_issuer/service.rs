@@ -30,7 +30,7 @@ impl SSIIssuerService {
                     state: Some(CredentialStateRelations::default()),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
                     }),
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
