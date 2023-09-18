@@ -9,9 +9,9 @@ strict = []
 mysql = ["migration/mysql", "sea-orm/sqlx-mysql"]
 
 [dependencies]
-one-core = { path = "../../lib/one-core" }
+one-core = { version = "0.1.0", path = "../../lib/one-core" }
 async-trait = "0.1.68"
-migration = { path = "../../apps/migration", default-features = false }
+migration = { version = "0.1.0", path = "../../apps/migration", default-features = false }
 sea-orm = { version = "0.12.1", default-features = false, features = [
     "sqlx-sqlite",
     "runtime-tokio-rustls",
@@ -31,5 +31,5 @@ tokio.workspace = true
 
 [dev-dependencies]
 mockall.workspace = true
-one-core = { path = "../../lib/one-core", features = ["mock"] }
+one-core = { version = "0.1.0", path = "../../lib/one-core", features = ["mock"] }
 tokio = { workspace = true, features = ["macros"] }
