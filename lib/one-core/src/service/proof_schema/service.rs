@@ -75,17 +75,12 @@ impl ProofSchemaService {
         request: CreateProofSchemaRequestDTO,
     ) -> Result<ProofSchemaId, ServiceError> {
         validate_create_request(&request)?;
-
-        if proof_schema_name_already_exists(
+        proof_schema_name_already_exists(
             &self.proof_schema_repository,
             &request.name,
             &request.organisation_id,
         )
-        .await?
-        {
-            return Err(ServiceError::AlreadyExists);
-        }
-
+        .await?;
         let claim_schema_ids: Vec<ClaimSchemaId> =
             request.claim_schemas.iter().map(|item| item.id).collect();
 

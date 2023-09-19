@@ -29,6 +29,13 @@ impl CredentialSchemaService {
     ) -> Result<CreateCredentialSchemaResponseDTO, ServiceError> {
         super::validator::validate_create_request(&request, &self.config)?;
 
+        super::validator::credential_schema_already_exists(
+            &self.credential_schema_repository,
+            &request.name,
+            &request.organisation_id,
+        )
+        .await?;
+
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())

@@ -1,3 +1,6 @@
+use crate::model::organisation::OrganisationId;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::service::credential_schema::mapper::create_unique_name_check_request;
 use crate::{
     config::{
         data_structure::CoreConfig,
@@ -7,6 +10,22 @@ use crate::{
     },
     service::{credential_schema::dto::CreateCredentialSchemaRequestDTO, error::ServiceError},
 };
+use std::sync::Arc;
+
+pub(crate) async fn credential_schema_already_exists(
+    repository: &Arc<dyn CredentialSchemaRepository + Send + Sync>,
+    name: &str,
+    organisation_id: &OrganisationId,
+) -> Result<(), ServiceError> {
+    let credential_schemas = repository
+        .get_credential_schema_list(create_unique_name_check_request(name, organisation_id)?)
+        .await
+        .map_err(ServiceError::from)?;
+    if credential_schemas.total_items > 0 {
+        return Err(ServiceError::AlreadyExists);
+    }
+    Ok(())
+}
 
 pub(crate) fn validate_create_request(
     request: &CreateCredentialSchemaRequestDTO,

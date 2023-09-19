@@ -1,3 +1,5 @@
+use crate::model::credential_schema::OrganisationId;
+use crate::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
 use crate::{
     model::{
         claim_schema::ClaimSchema,
@@ -89,6 +91,20 @@ impl TryFrom<GetCredentialSchemaList> for GetCredentialSchemaListResponseDTO {
             total_items: value.total_items,
         })
     }
+}
+
+pub(super) fn create_unique_name_check_request(
+    name: &str,
+    organisation_id: &OrganisationId,
+) -> Result<GetCredentialSchemaQueryDTO, ServiceError> {
+    Ok(GetCredentialSchemaQueryDTO {
+        page: 0,
+        page_size: 1,
+        sort: None,
+        sort_direction: None,
+        name: Some(name.to_string()),
+        organisation_id: organisation_id.to_string(),
+    })
 }
 
 pub(super) fn from_create_request(
