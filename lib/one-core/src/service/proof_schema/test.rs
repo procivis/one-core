@@ -279,6 +279,32 @@ async fn test_create_proof_schema_success() {
 
     let create_request_clone = create_request.clone();
     let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    let proof_schema = ProofSchema {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "name".to_string(),
+        expire_duration: 0,
+        claim_schemas: Some(vec![]),
+        organisation: Some(Organisation {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
+    };
+
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .times(1)
+        .returning(move |_| {
+            Ok(GetProofSchemaList {
+                values: vec![proof_schema.clone()],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
     proof_schema_repository
         .expect_create_proof_schema()
         .times(1)
@@ -303,6 +329,58 @@ async fn test_create_proof_schema_success() {
 }
 
 #[tokio::test]
+async fn test_create_proof_schema_unique_name_error() {
+    let claim_schema_id = Uuid::new_v4();
+    let organisation_id = Uuid::new_v4();
+
+    let create_request = CreateProofSchemaRequestDTO {
+        name: "name".to_string(),
+        expire_duration: 0,
+        organisation_id,
+        claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+            id: claim_schema_id,
+            required: true,
+        }],
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    let proof_schema = ProofSchema {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "name".to_string(),
+        expire_duration: 0,
+        claim_schemas: Some(vec![]),
+        organisation: Some(Organisation {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
+    };
+
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .times(1)
+        .returning(move |_| {
+            Ok(GetProofSchemaList {
+                values: vec![proof_schema.clone()],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
+
+    let service = setup_service(
+        proof_schema_repository,
+        MockClaimSchemaRepository::default(),
+        MockOrganisationRepository::default(),
+    );
+
+    let result = service.create_proof_schema(create_request).await;
+    assert!(result.is_err_and(|e| matches!(e, ServiceError::AlreadyExists)));
+}
+
+#[tokio::test]
 async fn test_create_proof_schema_claims_dont_exist() {
     let claim_schema_id = Uuid::new_v4();
     let mut claim_schema_repository = MockClaimSchemaRepository::default();
@@ -311,8 +389,35 @@ async fn test_create_proof_schema_claims_dont_exist() {
         .times(1)
         .returning(|_, _| Err(DataLayerError::RecordNotFound));
 
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    let proof_schema = ProofSchema {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "name".to_string(),
+        expire_duration: 0,
+        claim_schemas: Some(vec![]),
+        organisation: Some(Organisation {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
+    };
+
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .times(1)
+        .returning(move |_| {
+            Ok(GetProofSchemaList {
+                values: vec![proof_schema.clone()],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
     let service = setup_service(
-        MockProofSchemaRepository::default(),
+        proof_schema_repository,
         claim_schema_repository,
         MockOrganisationRepository::default(),
     );

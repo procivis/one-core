@@ -214,6 +214,17 @@ async fn test_create_credential_schema_success() {
         last_modified: now,
     };
     let schema_id = Uuid::new_v4();
+
+    let response = GetCredentialSchemaList {
+        values: vec![
+            generic_credential_schema(),
+            generic_credential_schema(),
+            generic_credential_schema(),
+        ],
+        total_pages: 0,
+        total_items: 0,
+    };
+
     {
         let organisation = organisation.clone();
         organisation_repository
@@ -228,6 +239,11 @@ async fn test_create_credential_schema_success() {
             .expect_create_credential_schema()
             .times(1)
             .returning(move |_| Ok(schema_id.to_owned()));
+        let clone = response.clone();
+        repository
+            .expect_get_credential_schema_list()
+            .times(1)
+            .returning(move |_| Ok(clone.clone()));
     }
 
     let service = setup_service(repository, organisation_repository, generic_config());
@@ -247,6 +263,56 @@ async fn test_create_credential_schema_success() {
         .await;
     assert!(result.is_ok());
     assert_eq!(schema_id, result.unwrap().id);
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_unique_name_error() {
+    let mut repository = MockCredentialSchemaRepository::default();
+
+    let now = OffsetDateTime::now_utc();
+    let organisation = Organisation {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+    };
+
+    let response = GetCredentialSchemaList {
+        values: vec![
+            generic_credential_schema(),
+            generic_credential_schema(),
+            generic_credential_schema(),
+        ],
+        total_pages: 1,
+        total_items: 1,
+    };
+
+    {
+        repository
+            .expect_get_credential_schema_list()
+            .times(1)
+            .returning(move |_| Ok(response.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        MockOrganisationRepository::default(),
+        generic_config(),
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            organisation_id: organisation.id.to_owned(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "test".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+            }],
+        })
+        .await;
+    assert!(result.is_err_and(|e| matches!(e, ServiceError::AlreadyExists)));
 }
 
 #[tokio::test]
@@ -316,14 +382,29 @@ async fn test_create_credential_schema_fail_validation() {
 
 #[tokio::test]
 async fn test_create_credential_schema_fail_missing_organisation() {
-    let repository = MockCredentialSchemaRepository::default();
+    let mut repository = MockCredentialSchemaRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
+
+    let response = GetCredentialSchemaList {
+        values: vec![
+            generic_credential_schema(),
+            generic_credential_schema(),
+            generic_credential_schema(),
+        ],
+        total_pages: 0,
+        total_items: 0,
+    };
 
     {
         organisation_repository
             .expect_get_organisation()
             .times(1)
             .returning(move |_, _| Err(DataLayerError::RecordNotFound));
+        let clone = response.clone();
+        repository
+            .expect_get_credential_schema_list()
+            .times(1)
+            .returning(move |_| Ok(clone.clone()));
     }
 
     let service = setup_service(repository, organisation_repository, generic_config());

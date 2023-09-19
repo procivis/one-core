@@ -1,18 +1,19 @@
-use time::OffsetDateTime;
-use uuid::Uuid;
-
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO, GetProofSchemaResponseDTO,
     ProofClaimSchemaResponseDTO,
 };
+use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 use crate::{
     common_mapper::vector_try_into,
     model::{
         organisation::Organisation,
+        organisation::OrganisationId,
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
     service::error::ServiceError,
 };
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 impl TryFrom<ProofSchema> for GetProofSchemaResponseDTO {
     type Error = ServiceError;
@@ -65,6 +66,20 @@ impl TryFrom<ProofSchemaClaim> for ProofClaimSchemaResponseDTO {
                 .try_into()?,
         })
     }
+}
+
+pub fn create_unique_name_check_request(
+    name: &str,
+    organisation_id: &OrganisationId,
+) -> Result<GetProofSchemaQueryDTO, ServiceError> {
+    Ok(GetProofSchemaQueryDTO {
+        page: 0,
+        page_size: 1,
+        sort: None,
+        sort_direction: None,
+        name: Some(name.to_string()),
+        organisation_id: organisation_id.to_string(),
+    })
 }
 
 pub fn proof_schema_from_create_request(
