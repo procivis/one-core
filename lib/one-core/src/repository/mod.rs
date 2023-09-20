@@ -6,6 +6,7 @@ pub mod claim_schema_repository;
 pub mod credential_repository;
 pub mod credential_schema_repository;
 pub mod did_repository;
+pub mod interaction_repository;
 pub mod organisation_repository;
 pub mod proof_repository;
 pub mod proof_schema_repository;
@@ -22,6 +23,8 @@ use organisation_repository::OrganisationRepository;
 use proof_repository::ProofRepository;
 use proof_schema_repository::ProofSchemaRepository;
 
+use self::interaction_repository::InteractionRepository;
+
 pub trait DataRepository {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository + Send + Sync>;
     fn get_did_repository(&self) -> Arc<dyn DidRepository + Send + Sync>;
@@ -32,6 +35,7 @@ pub trait DataRepository {
         -> Arc<dyn CredentialSchemaRepository + Send + Sync>;
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository + Send + Sync>;
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync>;
+    fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository + Send + Sync>;
 }
 
 #[cfg(any(test, feature = "mock"))]

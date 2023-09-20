@@ -151,5 +151,6 @@ pub fn proof_from_create_request(
         claims: None,
         verifier_did: Some(verifier_did),
         holder_did: None,
+        interaction: None,
     }
 }

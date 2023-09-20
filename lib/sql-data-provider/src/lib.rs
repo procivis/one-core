@@ -3,13 +3,15 @@ use crate::credential_schema::CredentialSchemaProvider;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
+use interaction::InteractionProvider;
 use migration::{Migrator, MigratorTrait};
 use one_core::repository::{
     claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
     credential_repository::CredentialRepository,
     credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-    organisation_repository::OrganisationRepository, proof_repository::ProofRepository,
-    proof_schema_repository::ProofSchemaRepository, DataRepository,
+    interaction_repository::InteractionRepository, organisation_repository::OrganisationRepository,
+    proof_repository::ProofRepository, proof_schema_repository::ProofSchemaRepository,
+    DataRepository,
 };
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
@@ -30,6 +32,7 @@ pub mod claim_schema;
 pub mod credential;
 pub mod credential_schema;
 pub mod did;
+pub mod interaction;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
@@ -49,6 +52,7 @@ pub struct DataLayer {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
 }
 
 impl DataLayer {
@@ -59,6 +63,7 @@ impl DataLayer {
 
         Migrator::up(&db, None).await.unwrap();
 
+        let interaction_repository = Arc::new(InteractionProvider { db: db.clone() });
         let did_repository = Arc::new(DidProvider { db: db.clone() });
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
         let claim_repository = Arc::new(ClaimProvider {
@@ -89,6 +94,7 @@ impl DataLayer {
             claim_repository: claim_repository.clone(),
             did_repository: did_repository.clone(),
         });
+
         Self {
             organisation_repository,
             credential_repository,
@@ -99,6 +105,7 @@ impl DataLayer {
             claim_repository,
             did_repository,
             db,
+            interaction_repository,
         }
     }
 }
@@ -130,6 +137,9 @@ impl DataRepository for DataLayer {
     }
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync> {
         self.proof_repository.clone()
+    }
+    fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository + Send + Sync> {
+        self.interaction_repository.clone()
     }
 }
 

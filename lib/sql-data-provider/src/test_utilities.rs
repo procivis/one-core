@@ -1,6 +1,9 @@
-use one_core::config::data_structure::{
-    DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
-    TranslatableString,
+use one_core::{
+    config::data_structure::{
+        DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
+        TranslatableString,
+    },
+    model::interaction::InteractionId,
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use std::collections::HashMap;
@@ -10,8 +13,8 @@ use uuid::Uuid;
 use crate::{
     entity::{
         claim, claim_schema, credential, credential_claim, credential_schema,
-        credential_schema_claim_schema, credential_state, did, organisation, proof, proof_claim,
-        proof_schema, proof_schema_claim_schema,
+        credential_schema_claim_schema, credential_state, did, interaction, organisation, proof,
+        proof_claim, proof_schema, proof_schema_claim_schema,
         proof_state::{self, ProofRequestState},
     },
     DataLayer,
@@ -39,6 +42,7 @@ pub async fn insert_credential(
         credential: Set(vec![0, 0, 0, 0]),
         issuer_did_id: Set(did_id.to_string()),
         holder_did_id: Set(None),
+        interaction_id: Set(None),
     }
     .insert(db)
     .await?;
@@ -172,6 +176,7 @@ pub async fn insert_proof_request_to_database(
     verifier_did_id: &str,
     holder_did_id: Option<String>,
     proof_schema_id: &str,
+    interaction_id: Option<String>,
 ) -> Result<String, DbErr> {
     let proof = proof::ActiveModel {
         id: Set(Uuid::new_v4().to_string()),
@@ -181,7 +186,8 @@ pub async fn insert_proof_request_to_database(
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
         verifier_did_id: Set(verifier_did_id.to_string()),
         holder_did_id: Set(holder_did_id),
-        proof_schema_id: Set(proof_schema_id.to_string()),
+        proof_schema_id: Set(Some(proof_schema_id.to_string())),
+        interaction_id: Set(interaction_id),
     }
     .insert(database)
     .await?;
@@ -221,7 +227,8 @@ pub async fn insert_proof_request_to_database_with_claims(
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
         verifier_did_id: Set(verifier_did_id.to_string()),
         holder_did_id: Set(holder_did_id),
-        proof_schema_id: Set(proof_schema_id.to_string()),
+        proof_schema_id: Set(Some(proof_schema_id.to_string())),
+        interaction_id: Set(None),
     }
     .insert(database)
     .await?;
@@ -365,6 +372,39 @@ pub async fn insert_did(
     .await?;
 
     Ok(did.id)
+}
+
+pub async fn insert_interaction(
+    database: &DatabaseConnection,
+    host: &str,
+    data: &Vec<u8>,
+) -> Result<String, DbErr> {
+    let now = OffsetDateTime::now_utc();
+
+    let interaction = interaction::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        created_date: Set(now),
+        last_modified: Set(now),
+        host: Set(Some(host.to_owned())),
+        data: Set(Some(data.to_owned())),
+    }
+    .insert(database)
+    .await?;
+
+    Ok(interaction.id)
+}
+
+pub async fn get_interaction(
+    database: &DatabaseConnection,
+    id: &InteractionId,
+) -> Result<interaction::Model, DbErr> {
+    let interaction = interaction::Entity::find_by_id(id.to_string())
+        .one(database)
+        .await
+        .unwrap()
+        .unwrap();
+
+    Ok(interaction)
 }
 
 // We will bring it back with service unit tests

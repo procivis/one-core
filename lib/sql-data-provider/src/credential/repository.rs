@@ -366,10 +366,10 @@ impl CredentialRepository for CredentialProvider {
                 .credentials_to_repository(
                     credentials,
                     &CredentialRelations {
-                        state: Some(CredentialStateRelations {}),
+                        state: Some(CredentialStateRelations::default()),
                         claims: None,
-                        issuer_did: Some(DidRelations {}),
-                        holder_did: Some(DidRelations {}),
+                        issuer_did: Some(DidRelations::default()),
+                        holder_did: Some(DidRelations::default()),
                         schema: Some(CredentialSchemaRelations {
                             claim_schemas: Some(ClaimSchemaRelations {}),
                             organisation: Some(OrganisationRelations {}),

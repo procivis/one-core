@@ -14,7 +14,8 @@ pub struct Model {
     pub transport: String,
     pub verifier_did_id: String,
     pub holder_did_id: Option<String>,
-    pub proof_schema_id: String,
+    pub proof_schema_id: Option<String>,
+    pub interaction_id: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -37,6 +38,14 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     HolderDid,
+    #[sea_orm(
+        belongs_to = "super::interaction::Entity",
+        from = "Column::InteractionId",
+        to = "super::interaction::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    Interaction,
     #[sea_orm(has_many = "super::proof_claim::Entity")]
     ProofClaim,
     #[sea_orm(
@@ -49,6 +58,12 @@ pub enum Relation {
     ProofSchema,
     #[sea_orm(has_many = "super::proof_state::Entity")]
     ProofState,
+}
+
+impl Related<super::interaction::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Interaction.def()
+    }
 }
 
 impl Related<super::proof_claim::Entity> for Entity {

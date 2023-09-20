@@ -22,6 +22,7 @@ pub struct Model {
 
     pub issuer_did_id: String,
     pub holder_did_id: Option<String>,
+    pub interaction_id: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -56,6 +57,14 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     HolderDidId,
+    #[sea_orm(
+        belongs_to = "super::interaction::Entity",
+        from = "Column::InteractionId",
+        to = "super::interaction::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    Interaction,
     #[sea_orm(has_many = "super::key::Entity")]
     Key,
 }
@@ -75,6 +84,12 @@ impl Related<super::credential_schema::Entity> for Entity {
 impl Related<super::credential_state::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::CredentialState.def()
+    }
+}
+
+impl Related<super::interaction::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Interaction.def()
     }
 }
 

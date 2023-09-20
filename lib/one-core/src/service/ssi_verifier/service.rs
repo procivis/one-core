@@ -265,7 +265,7 @@ impl SSIVerifierService {
             .map_err(ServiceError::from)
     }
 
-    /// Proof submit failed or another error occured
+    /// Proof submit failed or another error occurred
     ///
     /// # Arguments
     ///

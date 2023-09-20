@@ -119,5 +119,6 @@ pub(super) fn request_to_active_model(
         credential: Set(request.credential.to_owned()),
         issuer_did_id: Set(issuer_did.id.to_string()),
         holder_did_id: Set(holder_did_id.map(|did_id| did_id.to_string())),
+        interaction_id: Set(None),
     }
 }

@@ -74,13 +74,15 @@ impl ProofRepository for ProofProvider {
         let mut proof: Proof = proof_model.clone().try_into()?;
 
         if let Some(proof_schema_relations) = &relations.schema {
-            let proof_schema_id = Uuid::from_str(&proof_model.proof_schema_id)
-                .map_err(|_| DataLayerError::MappingError)?;
-            proof.schema = Some(
-                self.proof_schema_repository
-                    .get_proof_schema(&proof_schema_id, proof_schema_relations)
-                    .await?,
-            );
+            if let Some(proof_schema_id) = proof_model.proof_schema_id {
+                let proof_schema_id =
+                    Uuid::from_str(&proof_schema_id).map_err(|_| DataLayerError::MappingError)?;
+                proof.schema = Some(
+                    self.proof_schema_repository
+                        .get_proof_schema(&proof_schema_id, proof_schema_relations)
+                        .await?,
+                );
+            }
         }
 
         if let Some(claim_relations) = &relations.claims {
@@ -149,6 +151,26 @@ impl ProofRepository for ProofProvider {
             proof.state = Some(vector_into(proof_states));
         }
 
+        if let (Some(_), Some(interaction_id)) =
+            (&relations.interaction, proof_model.interaction_id)
+        {
+            let interaction = crate::entity::interaction::Entity::find_by_id(interaction_id)
+                .one(&self.db)
+                .await
+                .map_err(|e| {
+                    tracing::error!(
+                        "Error while fetching interaction for proof {}. Error: {}",
+                        proof_id,
+                        e.to_string()
+                    );
+                    DataLayerError::GeneralRuntimeError(e.to_string())
+                })?;
+
+            if let Some(interaction) = interaction {
+                proof.interaction = Some(interaction.try_into()?);
+            }
+        }
+
         Ok(proof)
     }
 
@@ -174,6 +196,7 @@ impl ProofRepository for ProofProvider {
 
         // collect all states
         let proof_ids: Vec<String> = proofs.iter().map(|p| p.id.to_string()).collect();
+
         let proof_states = crate::entity::ProofState::find()
             .filter(proof_state::Column::ProofId.is_in(proof_ids))
             .order_by_desc(proof_state::Column::CreatedDate)
