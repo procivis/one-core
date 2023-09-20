@@ -5,6 +5,7 @@ use crate::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations, DidType},
+        interaction::InteractionRelations,
         organisation::{Organisation, OrganisationRelations},
         proof::{
             GetProofList, Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
@@ -16,7 +17,8 @@ use crate::{
     repository::{
         error::DataLayerError,
         mock::{
-            did_repository::MockDidRepository, proof_repository::MockProofRepository,
+            did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
+            proof_repository::MockProofRepository,
             proof_schema_repository::MockProofSchemaRepository,
         },
     },
@@ -35,6 +37,7 @@ struct Repositories {
     pub proof_schema_repository: MockProofSchemaRepository,
     pub proof_repository: MockProofRepository,
     pub did_repository: MockDidRepository,
+    pub interaction_repository: MockInteractionRepository,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -42,6 +45,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
+        Arc::new(repositories.interaction_repository),
     )
 }
 
@@ -70,6 +74,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             did_method: "KEY".to_string(),
         }),
         holder_did: None,
+        interaction: None,
     }
 }
 
@@ -133,6 +138,7 @@ async fn test_get_proof_exists() {
             did_method: "KEY".to_string(),
         }),
         holder_did: None,
+        interaction: None,
     };
     {
         let res_clone = proof.clone();
@@ -154,6 +160,7 @@ async fn test_get_proof_exists() {
                     }),
                     verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
                 }),
             )
             .returning(move |_, _| Ok(res_clone.clone()));
@@ -225,6 +232,7 @@ async fn test_get_proof_list_success() {
             did_method: "KEY".to_string(),
         }),
         holder_did: None,
+        interaction: None,
     };
     {
         let res_clone = proof.clone();
@@ -316,10 +324,13 @@ async fn test_create_proof() {
         .withf(move |proof| proof.transport == transport)
         .returning(move |_| Ok(proof_id));
 
+    let interaction_repository = MockInteractionRepository::default();
+
     let service = setup_service(Repositories {
         proof_repository,
         did_repository,
         proof_schema_repository,
+        interaction_repository,
     });
 
     let result = service.create_proof(request).await;

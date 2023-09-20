@@ -2,6 +2,7 @@ use super::{
     claim::{Claim, ClaimRelations},
     common::{GetListQueryParams, GetListResponse},
     did::{Did, DidRelations},
+    interaction::{Interaction, InteractionRelations},
     proof_schema::{ProofSchema, ProofSchemaRelations},
 };
 use time::OffsetDateTime;
@@ -24,6 +25,7 @@ pub struct Proof {
     pub claims: Option<Vec<Claim>>,
     pub verifier_did: Option<Did>,
     pub holder_did: Option<Did>, // empty either because relation not specified or not set in database
+    pub interaction: Option<Interaction>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -61,6 +63,7 @@ pub struct ProofRelations {
     pub schema: Option<ProofSchemaRelations>,
     pub verifier_did: Option<DidRelations>,
     pub holder_did: Option<DidRelations>,
+    pub interaction: Option<InteractionRelations>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

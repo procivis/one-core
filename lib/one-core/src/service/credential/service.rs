@@ -91,16 +91,16 @@ impl CredentialService {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations {}),
+                    state: Some(CredentialStateRelations::default()),
                     claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations {}),
+                        schema: Some(ClaimSchemaRelations::default()),
                     }),
                     schema: Some(CredentialSchemaRelations {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
-                        organisation: Some(OrganisationRelations {}),
+                        organisation: Some(OrganisationRelations::default()),
                     }),
-                    issuer_did: Some(DidRelations {}),
-                    holder_did: Some(DidRelations {}),
+                    issuer_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
                 },
             )
             .await

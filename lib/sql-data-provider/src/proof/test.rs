@@ -12,6 +12,7 @@ use one_core::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaId,
         did::{Did, DidId, DidRelations, DidType},
+        interaction::{InteractionId, InteractionRelations},
         organisation::OrganisationId,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchema, ProofSchemaId, ProofSchemaRelations},
@@ -40,6 +41,7 @@ struct TestSetup {
     pub proof_schema_id: ProofSchemaId,
     pub did_id: DidId,
     pub claim_schema_ids: Vec<ClaimSchemaId>,
+    pub interaction_id: InteractionId,
 }
 
 async fn setup(
@@ -98,6 +100,13 @@ async fn setup(
     )
     .unwrap();
 
+    let interaction_id = Uuid::parse_str(
+        &insert_interaction(&db, "host", &vec![1, 2, 3])
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+
     TestSetup {
         repository: Box::new(ProofProvider {
             db: db.clone(),
@@ -110,6 +119,7 @@ async fn setup(
         proof_schema_id,
         did_id,
         claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.0).collect(),
+        interaction_id,
     }
 }
 
@@ -121,6 +131,7 @@ struct TestSetupWithProof {
     pub proof_id: ProofId,
     pub db: DatabaseConnection,
     pub claim_schema_ids: Vec<ClaimSchemaId>,
+    pub interaction_id: InteractionId,
 }
 
 async fn setup_with_proof(
@@ -135,6 +146,7 @@ async fn setup_with_proof(
         did_id,
         organisation_id,
         claim_schema_ids,
+        interaction_id,
         ..
     } = setup(proof_schema_repository, claim_repository, did_repository).await;
 
@@ -144,6 +156,7 @@ async fn setup_with_proof(
             &did_id.to_string(),
             None,
             &proof_schema_id.to_string(),
+            Some(interaction_id.to_string()),
         )
         .await
         .unwrap(),
@@ -166,6 +179,7 @@ async fn setup_with_proof(
         proof_id,
         db,
         claim_schema_ids,
+        interaction_id,
     }
 }
 
@@ -230,6 +244,7 @@ async fn test_create_proof_success() {
             did_method: "KEY".to_string(),
         }),
         holder_did: None,
+        interaction: None,
     };
 
     let result = repository.create_proof(proof).await;
@@ -350,6 +365,7 @@ async fn test_get_proof_with_relations() {
         proof_id,
         proof_schema_id,
         did_id,
+        interaction_id,
         ..
     } = setup_with_proof(
         Arc::from(proof_schema_repository),
@@ -367,6 +383,7 @@ async fn test_get_proof_with_relations() {
                 schema: Some(ProofSchemaRelations::default()),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
+                interaction: Some(InteractionRelations::default()),
             },
         )
         .await;
@@ -376,6 +393,7 @@ async fn test_get_proof_with_relations() {
     assert_eq!(proof.schema.unwrap().id, proof_schema_id);
     assert_eq!(proof.verifier_did.unwrap().id, did_id);
     assert!(proof.holder_did.is_none());
+    assert_eq!(proof.interaction.unwrap().id, interaction_id);
 }
 
 #[tokio::test]

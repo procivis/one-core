@@ -60,6 +60,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 did_method: value.verifier_did_method,
             }),
             holder_did: None,
+            interaction: None,
         })
     }
 }
@@ -81,6 +82,7 @@ impl TryFrom<proof::Model> for Proof {
             claims: None,
             verifier_did: None,
             holder_did: None,
+            interaction: None,
         })
     }
 }
@@ -101,11 +103,14 @@ impl TryFrom<Proof> for proof::ActiveModel {
                 .id
                 .to_string()),
             holder_did_id: Set(value.holder_did.map(|did| did.id.to_string())),
-            proof_schema_id: Set(value
-                .schema
-                .ok_or(DataLayerError::IncorrectParameters)?
-                .id
-                .to_string()),
+            proof_schema_id: Set(Some(
+                value
+                    .schema
+                    .ok_or(DataLayerError::IncorrectParameters)?
+                    .id
+                    .to_string(),
+            )),
+            interaction_id: Set(None),
         })
     }
 }

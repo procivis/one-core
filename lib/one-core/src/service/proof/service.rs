@@ -13,6 +13,7 @@ use crate::{
         claim_schema::ClaimSchemaRelations,
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
+        interaction::InteractionRelations,
         organisation::OrganisationRelations,
         proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
@@ -45,6 +46,7 @@ impl ProofService {
                     }),
                     verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
+                    interaction: Some(InteractionRelations {}),
                 },
             )
             .await

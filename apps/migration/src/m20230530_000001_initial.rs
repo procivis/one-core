@@ -11,6 +11,37 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(Interaction::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Interaction::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Interaction::CreatedDate)
+                            .custom::<CustomDateTime>(CustomDateTime(
+                                manager.get_database_backend(),
+                            ))
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Interaction::LastModified)
+                            .custom::<CustomDateTime>(CustomDateTime(
+                                manager.get_database_backend(),
+                            ))
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(Interaction::Host).string())
+                    .col(ColumnDef::new(Interaction::Data).binary())
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(Organisation::Table)
                     .if_not_exists()
                     .col(
@@ -70,24 +101,10 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(CredentialSchema::Name).string().not_null())
-                    .col(
-                        ColumnDef::new(CredentialSchema::Format)
-                            .enumeration(
-                                Format::Table,
-                                [Format::Jwt, Format::SdJwt, Format::JsonLd, Format::Mdoc],
-                            )
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(CredentialSchema::Format).string().not_null())
                     .col(
                         ColumnDef::new(CredentialSchema::RevocationMethod)
-                            .enumeration(
-                                RevocationMethod::Table,
-                                [
-                                    RevocationMethod::None,
-                                    RevocationMethod::StatusList2021,
-                                    RevocationMethod::Lvvc,
-                                ],
-                            )
+                            .string()
                             .not_null(),
                     )
                     .col(
@@ -131,14 +148,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(ClaimSchema::Key).string().not_null())
-                    .col(
-                        ColumnDef::new(ClaimSchema::Datatype)
-                            .enumeration(
-                                Datatype::Table,
-                                [Datatype::String, Datatype::Date, Datatype::Number],
-                            )
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(ClaimSchema::Datatype).string().not_null())
                     .col(
                         ColumnDef::new(ClaimSchema::CreatedDate)
                             .custom::<CustomDateTime>(CustomDateTime(
@@ -364,11 +374,7 @@ impl MigrationTrait for Migration {
                             .enumeration(DidType::Table, [DidType::Remote, DidType::Local])
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(Did::Method)
-                            .enumeration(DidMethod::Table, [DidMethod::Key, DidMethod::Web])
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Did::Method).string().not_null())
                     .col(ColumnDef::new(Did::OrganisationId).char_len(36).not_null())
                     .foreign_key(
                         ForeignKey::create()
@@ -433,22 +439,20 @@ impl MigrationTrait for Migration {
                             ))
                             .null(),
                     )
-                    .col(
-                        ColumnDef::new(Credential::Transport)
-                            .enumeration(
-                                Transport::Table,
-                                [Transport::ProcivisTemporary, Transport::OpenId4Vc],
-                            )
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Credential::Transport).string().not_null())
                     .col(ColumnDef::new(Credential::Credential).binary().not_null())
                     .col(
                         ColumnDef::new(Credential::CredentialSchemaId)
                             .char_len(36)
                             .not_null(),
                     )
-                    .col(ColumnDef::new(Credential::IssuerDidId).string().not_null())
-                    .col(ColumnDef::new(Credential::ReceiverDidId).string())
+                    .col(
+                        ColumnDef::new(Credential::IssuerDidId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(Credential::HolderDidId).char_len(36))
+                    .col(ColumnDef::new(Credential::InteractionId).char_len(36))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-Credential-CredentialSchemaId")
@@ -467,11 +471,19 @@ impl MigrationTrait for Migration {
                     )
                     .foreign_key(
                         ForeignKey::create()
-                            .name("fk-Credential-ReceiverDidId")
+                            .name("fk-Credential-HolderDidId")
                             .from_tbl(Credential::Table)
-                            .from_col(Credential::ReceiverDidId)
+                            .from_col(Credential::HolderDidId)
                             .to_tbl(Did::Table)
                             .to_col(Did::Id),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-Credential-InteractionId")
+                            .from_tbl(Credential::Table)
+                            .from_col(Credential::InteractionId)
+                            .to_tbl(Interaction::Table)
+                            .to_col(Interaction::Id),
                     )
                     .to_owned(),
             )
@@ -561,9 +573,11 @@ impl MigrationTrait for Migration {
                             ))
                             .not_null(),
                     )
-                    .col(ColumnDef::new(Proof::VerifierDidId).string().not_null())
-                    .col(ColumnDef::new(Proof::ReceiverDidId).string())
-                    .col(ColumnDef::new(Proof::ProofSchemaId).char_len(36).not_null())
+                    .col(ColumnDef::new(Proof::VerifierDidId).char_len(36).not_null())
+                    .col(ColumnDef::new(Proof::HolderDidId).char_len(36))
+                    .col(ColumnDef::new(Proof::ProofSchemaId).char_len(36))
+                    .col(ColumnDef::new(Proof::Transport).string().not_null())
+                    .col(ColumnDef::new(Proof::InteractionId).char_len(36))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-Proof-VerifierDidId")
@@ -574,9 +588,9 @@ impl MigrationTrait for Migration {
                     )
                     .foreign_key(
                         ForeignKey::create()
-                            .name("fk-Proof-ReceiverDidId")
+                            .name("fk-Proof-HolderDidId")
                             .from_tbl(Proof::Table)
-                            .from_col(Proof::ReceiverDidId)
+                            .from_col(Proof::HolderDidId)
                             .to_tbl(Did::Table)
                             .to_col(Did::Id),
                     )
@@ -587,6 +601,14 @@ impl MigrationTrait for Migration {
                             .from_col(Proof::ProofSchemaId)
                             .to_tbl(ProofSchema::Table)
                             .to_col(ProofSchema::Id),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-Proof-InteractionId")
+                            .from_tbl(Proof::Table)
+                            .from_col(Proof::InteractionId)
+                            .to_tbl(Interaction::Table)
+                            .to_col(Interaction::Id),
                     )
                     .to_owned(),
             )
@@ -719,18 +741,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Key::PublicKey).string().not_null())
                     .col(ColumnDef::new(Key::PrivateKey).string().not_null())
-                    .col(
-                        ColumnDef::new(Key::StorageType)
-                            .enumeration(
-                                StorageType::Table,
-                                [
-                                    StorageType::Intern,
-                                    StorageType::Extern,
-                                    StorageType::InternHsm,
-                                ],
-                            )
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Key::StorageType).string().not_null())
                     .col(
                         ColumnDef::new(Key::KeyType)
                             .enumeration(KeyType::Table, [KeyType::Rsa4096, KeyType::Ed25519])
@@ -873,6 +884,14 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
+            .drop_table(
+                Table::drop()
+                    .table(CredentialSchemaClaimSchema::Table)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
             .drop_table(Table::drop().table(ProofSchema::Table).to_owned())
             .await?;
 
@@ -888,8 +907,22 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(Organisation::Table).to_owned())
             .await?;
 
+        manager
+            .drop_table(Table::drop().table(Interaction::Table).to_owned())
+            .await?;
+
         Ok(())
     }
+}
+
+#[derive(Iden)]
+pub enum Interaction {
+    Table,
+    Id,
+    CreatedDate,
+    LastModified,
+    Host,
+    Data,
 }
 
 #[derive(Iden)]
@@ -906,30 +939,6 @@ pub enum CredentialSchema {
 }
 
 #[derive(Iden)]
-pub enum Format {
-    Table,
-    #[iden = "JWT"]
-    Jwt,
-    #[iden = "SD_JWT"]
-    SdJwt,
-    #[iden = "JSON_LD"]
-    JsonLd,
-    #[iden = "MDOC"]
-    Mdoc,
-}
-
-#[derive(Iden)]
-pub enum RevocationMethod {
-    Table,
-    #[iden = "NONE"]
-    None,
-    #[iden = "STATUSLIST2021"]
-    StatusList2021,
-    #[iden = "LVVC"]
-    Lvvc,
-}
-
-#[derive(Iden)]
 pub enum ClaimSchema {
     Table,
     Id,
@@ -937,17 +946,6 @@ pub enum ClaimSchema {
     Key,
     CreatedDate,
     LastModified,
-}
-
-#[derive(Iden)]
-pub enum Datatype {
-    Table,
-    #[iden = "STRING"]
-    String,
-    #[iden = "DATE"]
-    Date,
-    #[iden = "NUMBER"]
-    Number,
 }
 
 #[derive(Iden)]
@@ -1000,16 +998,8 @@ pub enum Credential {
     Credential,
     CredentialSchemaId,
     IssuerDidId,
-    ReceiverDidId,
-}
-
-#[derive(Iden)]
-pub enum Transport {
-    Table,
-    #[iden = "PROCIVIS_TEMPORARY"]
-    ProcivisTemporary,
-    #[iden = "OPENID4VC"]
-    OpenId4Vc,
+    HolderDidId,
+    InteractionId,
 }
 
 #[derive(Iden)]
@@ -1062,15 +1052,6 @@ pub enum DidType {
 }
 
 #[derive(Iden)]
-pub enum DidMethod {
-    Table,
-    #[iden = "KEY"]
-    Key,
-    #[iden = "WEB"]
-    Web,
-}
-
-#[derive(Iden)]
 pub enum Proof {
     Table,
     Id,
@@ -1078,8 +1059,10 @@ pub enum Proof {
     LastModified,
     IssuanceDate,
     VerifierDidId,
-    ReceiverDidId,
+    HolderDidId,
     ProofSchemaId,
+    Transport,
+    InteractionId,
 }
 
 #[derive(Iden)]
@@ -1129,17 +1112,6 @@ pub enum Key {
     StorageType,
     KeyType,
     CredentialId,
-}
-
-#[derive(Iden)]
-pub enum StorageType {
-    Table,
-    #[iden = "INTERN"]
-    Intern,
-    #[iden = "EXTERN"]
-    Extern,
-    #[iden = "INTERN_HSM"]
-    InternHsm,
 }
 
 #[derive(Iden)]
