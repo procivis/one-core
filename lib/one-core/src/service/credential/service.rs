@@ -23,7 +23,29 @@ use crate::{
         error::ServiceError,
     },
 };
+use std::fmt::Debug;
 use time::OffsetDateTime;
+
+pub trait TraceableError {
+    fn trace_if_err(self) -> Self;
+}
+
+impl<T, E: Debug> TraceableError for Result<T, E> {
+    #[track_caller]
+    fn trace_if_err(self) -> Self {
+        if let Err(error) = &self {
+            let caller = std::panic::Location::caller();
+            tracing::error!(
+                "Traceable error: {}:{} - {:?}",
+                caller.file(),
+                caller.line(),
+                error
+            );
+        }
+
+        self
+    }
+}
 
 impl CredentialService {
     /// Creates a credential according to request
@@ -57,7 +79,8 @@ impl CredentialService {
             &request.claim_values,
             &schema,
             &self.config,
-        )?;
+        )
+        .trace_if_err()?;
 
         let claim_schemas = schema
             .claim_schemas

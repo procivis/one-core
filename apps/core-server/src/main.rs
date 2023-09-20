@@ -404,8 +404,6 @@ fn config_tracing(config: &Config) {
         > = tracing_subscriber::fmt()
             .with_env_filter(filter)
             .with_span_events(FmtSpan::CLOSE)
-            .with_file(true)
-            .with_line_number(true)
             .json()
             .flatten_event(true)
             .finish();
@@ -416,8 +414,6 @@ fn config_tracing(config: &Config) {
         let subscriber = tracing_subscriber::fmt()
             .with_env_filter(filter)
             .with_span_events(FmtSpan::CLOSE)
-            .with_file(true)
-            .with_line_number(true)
             .finish();
 
         tracing::subscriber::set_global_default(subscriber)
