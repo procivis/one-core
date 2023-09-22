@@ -6,7 +6,9 @@ use crate::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidId, DidType},
+        interaction::Interaction,
         organisation::{Organisation, OrganisationId},
+        proof::{self, Proof, ProofStateEnum},
     },
     service::{
         credential_schema::dto::GetCredentialSchemaListValueResponseDTO,
@@ -134,5 +136,44 @@ impl TryFrom<ProofCredentialSchema> for GetCredentialSchemaListValueResponseDTO 
             format: value.format,
             revocation_method: value.revocation_method,
         })
+    }
+}
+
+pub fn interaction_from_handle_invitation(
+    host: Option<&str>,
+    data: Option<Vec<u8>>,
+    now: OffsetDateTime,
+) -> Interaction {
+    Interaction {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+        host: host.map(ToOwned::to_owned),
+        data,
+    }
+}
+
+pub fn proof_from_handle_invitation(
+    protocol: &str,
+    verifier_did: Did,
+    interaction: Interaction,
+    now: OffsetDateTime,
+) -> Proof {
+    Proof {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+        issuance_date: now,
+        transport: protocol.to_owned(),
+        state: Some(vec![proof::ProofState {
+            created_date: now,
+            last_modified: now,
+            state: ProofStateEnum::Pending,
+        }]),
+        schema: None,
+        claims: None,
+        verifier_did: Some(verifier_did),
+        holder_did: None,
+        interaction: Some(interaction),
     }
 }

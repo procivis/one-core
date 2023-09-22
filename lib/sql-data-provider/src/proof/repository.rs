@@ -12,6 +12,7 @@ use one_core::{
     model::{
         claim::{Claim, ClaimId},
         did::Did,
+        interaction::InteractionRelations,
         proof::{GetProofList, GetProofQuery, Proof, ProofId, ProofRelations, ProofState},
     },
     repository::{error::DataLayerError, proof_repository::ProofRepository},
@@ -154,21 +155,14 @@ impl ProofRepository for ProofProvider {
         if let (Some(_), Some(interaction_id)) =
             (&relations.interaction, proof_model.interaction_id)
         {
-            let interaction = crate::entity::interaction::Entity::find_by_id(interaction_id)
-                .one(&self.db)
-                .await
-                .map_err(|e| {
-                    tracing::error!(
-                        "Error while fetching interaction for proof {}. Error: {}",
-                        proof_id,
-                        e.to_string()
-                    );
-                    DataLayerError::GeneralRuntimeError(e.to_string())
-                })?;
+            let interaction_id =
+                Uuid::from_str(&interaction_id).map_err(|_| DataLayerError::MappingError)?;
+            let interaction = self
+                .interaction_repository
+                .get_interaction(&interaction_id, &InteractionRelations::default())
+                .await?;
 
-            if let Some(interaction) = interaction {
-                proof.interaction = Some(interaction.try_into()?);
-            }
+            proof.interaction = Some(interaction);
         }
 
         Ok(proof)
