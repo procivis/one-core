@@ -548,6 +548,7 @@ dependencies = [
  "panic-handler",
  "serde",
  "serde_json",
+ "serde_qs",
  "serde_variant",
  "shadow-rs",
  "sql-data-provider",
@@ -1791,6 +1792,8 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "shadow-rs",
+ "strum",
+ "strum_macros",
  "thiserror",
  "time",
  "tokio",
@@ -2786,6 +2789,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_qs"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0431a35568651e363364210c91983c1da5eb29404d9f0928b67d4ebcfa7d330c"
+dependencies = [
+ "percent-encoding",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2980,6 +2994,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "strum",
  "thiserror",
  "time",
  "tokio",
@@ -3231,6 +3246,22 @@ name = "strum"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
+dependencies = [
+ "strum_macros",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8d03b598d3d0fff69bf533ee3ef19b8eeb342729596df84bcc7e1f96ec4059"
+dependencies = [
+ "heck",
+ "proc-macro2 1.0.66",
+ "quote 1.0.33",
+ "rustversion",
+ "syn 2.0.29",
+]
 
 [[package]]
 name = "subtle"

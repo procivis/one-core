@@ -1,4 +1,5 @@
 use crate::{did::DidProvider, entity::did, list_query::from_pagination, test_utilities::*};
+use one_core::model::common::ExactColumn;
 use one_core::{
     model::{
         common::SortDirection,
@@ -305,6 +306,7 @@ async fn test_get_did_list_filtering() {
             page: 0,
             page_size: 2,
             sort: None,
+            exact: None,
             sort_direction: None,
             name: Some("not-found".to_owned()),
             organisation_id: organisation_id.to_string(),
@@ -314,14 +316,15 @@ async fn test_get_did_list_filtering() {
     let response = result.unwrap();
     assert_eq!(0, response.values.len());
 
-    // by name
+    // by name starts with
     let result = provider
         .get_did_list(GetDidQuery {
             page: 0,
             page_size: 2,
             sort: None,
+            exact: None,
             sort_direction: None,
-            name: Some(did_name.to_owned()),
+            name: Some("test".to_owned()),
             organisation_id: organisation_id.to_string(),
         })
         .await;
@@ -336,6 +339,7 @@ async fn test_get_did_list_filtering() {
             page: 0,
             page_size: 2,
             sort: None,
+            exact: None,
             sort_direction: None,
             name: Some(did_value.to_owned()),
             organisation_id: organisation_id.to_string(),
@@ -343,8 +347,23 @@ async fn test_get_did_list_filtering() {
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
+    assert_eq!(0, response.values.len());
+
+    // exact
+    let result = provider
+        .get_did_list(GetDidQuery {
+            page: 0,
+            page_size: 2,
+            sort: None,
+            exact: Some(vec![ExactColumn::Name]),
+            sort_direction: None,
+            name: Some(did_name.to_owned()),
+            organisation_id: organisation_id.to_string(),
+        })
+        .await;
+    assert!(result.is_ok());
+    let response = result.unwrap();
     assert_eq!(1, response.values.len());
-    assert_eq!(did_id, response.values[0].id);
 }
 
 #[tokio::test]
@@ -389,6 +408,7 @@ async fn test_get_did_list_sorting() {
             page: 0,
             page_size: 2,
             sort: Some(SortableDidColumn::Name),
+            exact: None,
             sort_direction: None,
             name: None,
             organisation_id: organisation_id.to_string(),
@@ -407,6 +427,7 @@ async fn test_get_did_list_sorting() {
         .get_did_list(GetDidQuery {
             page: 0,
             page_size: 2,
+            exact: None,
             sort: Some(SortableDidColumn::Name),
             sort_direction: Some(SortDirection::Descending),
             name: None,
@@ -425,6 +446,7 @@ async fn test_get_did_list_sorting() {
         .get_did_list(GetDidQuery {
             page: 0,
             page_size: 2,
+            exact: None,
             sort: Some(SortableDidColumn::Name),
             sort_direction: Some(SortDirection::Ascending),
             name: None,
@@ -443,6 +465,7 @@ async fn test_get_did_list_sorting() {
         .get_did_list(GetDidQuery {
             page: 0,
             page_size: 2,
+            exact: None,
             sort: Some(SortableDidColumn::CreatedDate),
             sort_direction: None,
             name: None,
@@ -461,6 +484,7 @@ async fn test_get_did_list_sorting() {
         .get_did_list(GetDidQuery {
             page: 0,
             page_size: 2,
+            exact: None,
             sort: Some(SortableDidColumn::CreatedDate),
             sort_direction: Some(SortDirection::Descending),
             name: None,
@@ -479,6 +503,7 @@ async fn test_get_did_list_sorting() {
         .get_did_list(GetDidQuery {
             page: 0,
             page_size: 2,
+            exact: None,
             sort: Some(SortableDidColumn::CreatedDate),
             sort_direction: Some(SortDirection::Ascending),
             name: None,

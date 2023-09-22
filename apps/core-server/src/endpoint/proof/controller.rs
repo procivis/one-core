@@ -2,10 +2,11 @@ use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, ProofDetailResponseRestDTO, ShareProofResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
+use crate::extractor::Qs;
 use crate::AppState;
 use crate::{dto::common::GetProofsResponseRestDTO, Config};
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     Extension, Json,
@@ -65,10 +66,7 @@ pub(crate) async fn get_proof_details(state: State<AppState>, Path(id): Path<Uui
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn get_proofs(
-    state: State<AppState>,
-    Query(query): Query<GetProofQuery>,
-) -> Response {
+pub(crate) async fn get_proofs(state: State<AppState>, Qs(query): Qs<GetProofQuery>) -> Response {
     let result = state.core.proof_service.get_proof_list(query.into()).await;
 
     match result {

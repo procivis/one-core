@@ -1,4 +1,4 @@
-use crate::dto::common::{GetListQueryParams, GetListResponseRestDTO, SortDirection};
+use crate::dto::common::{ExactColumn, GetListQueryParams, GetListResponseRestDTO, SortDirection};
 use serde::Serialize;
 use std::fmt;
 use utoipa::ToSchema;
@@ -28,7 +28,23 @@ where
             sort: value.sort.map(|sort| sort.into()),
             sort_direction: value.sort_direction.map(|dir| dir.into()),
             name: value.name,
+            exact: Some(
+                value
+                    .exact
+                    .unwrap_or(vec![])
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            ),
             organisation_id: value.organisation_id,
+        }
+    }
+}
+
+impl From<ExactColumn> for one_core::model::common::ExactColumn {
+    fn from(value: ExactColumn) -> Self {
+        match value {
+            ExactColumn::Name => one_core::model::common::ExactColumn::Name,
         }
     }
 }

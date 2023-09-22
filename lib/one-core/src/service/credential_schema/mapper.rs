@@ -1,3 +1,4 @@
+use crate::model::common::ExactColumn;
 use crate::model::credential_schema::OrganisationId;
 use crate::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
 use crate::{
@@ -103,6 +104,7 @@ pub(super) fn create_unique_name_check_request(
         sort: None,
         sort_direction: None,
         name: Some(name.to_string()),
+        exact: Some(vec![ExactColumn::Name]),
         organisation_id: organisation_id.to_string(),
     })
 }

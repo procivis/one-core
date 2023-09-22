@@ -402,6 +402,7 @@ async fn test_get_credential_list_success() {
             page_size: 5,
             sort: None,
             sort_direction: None,
+            exact: None,
             name: None,
             organisation_id: credential_schema
                 .organisation
