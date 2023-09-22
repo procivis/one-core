@@ -1,4 +1,4 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Extension, Json};
 
@@ -11,6 +11,7 @@ use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
 };
 use crate::endpoint::credential::mapper::share_credentials_to_entity_share_response;
+use crate::extractor::Qs;
 use crate::{AppState, Config};
 
 #[utoipa::path(
@@ -66,7 +67,7 @@ pub(crate) async fn get_credential(state: State<AppState>, Path(id): Path<Uuid>)
 )]
 pub(crate) async fn get_credential_list(
     state: State<AppState>,
-    Query(query): Query<GetCredentialQuery>,
+    Qs(query): Qs<GetCredentialQuery>,
 ) -> Response {
     let result = state
         .core

@@ -136,6 +136,7 @@ async fn test_get_credential_list_success() {
             sort: None,
             sort_direction: None,
             name: None,
+            exact: None,
             organisation_id: credentials.values[0]
                 .schema
                 .clone()

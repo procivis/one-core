@@ -1,7 +1,15 @@
+use strum_macros::EnumString;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SortDirection {
     Ascending,
     Descending,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumString)]
+pub enum ExactColumn {
+    #[strum(serialize = "name")]
+    Name,
 }
 
 #[derive(Clone, Debug)]
@@ -17,6 +25,7 @@ pub struct GetListQueryParams<SortableColumn> {
     // filtering
     pub name: Option<String>,
     pub organisation_id: String,
+    pub exact: Option<Vec<ExactColumn>>,
 }
 
 #[derive(Clone, Debug)]

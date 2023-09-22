@@ -259,6 +259,7 @@ async fn test_get_proof_list_success() {
             page_size: 1,
             sort: None,
             sort_direction: None,
+            exact: None,
             name: None,
             organisation_id: Uuid::new_v4().to_string(),
         })

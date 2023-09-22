@@ -1,7 +1,7 @@
-use one_core::model::common::{GetListQueryParams, SortDirection};
-use sea_orm::{entity::*, query::*, sea_query::SimpleExpr, EntityTrait, QueryOrder, QuerySelect};
-
 use crate::data_model::order_from_sort_direction;
+use one_core::model::common::{ExactColumn, GetListQueryParams, SortDirection};
+use sea_orm::{entity::*, query::*, sea_query::SimpleExpr, EntityTrait, QueryOrder, QuerySelect};
+use std::str::FromStr;
 
 // column conversion
 pub trait GetEntityColumn {
@@ -48,7 +48,20 @@ where
                 if !filter_columns.is_empty() {
                     let mut conditions = Condition::any();
                     for column in filter_columns {
-                        conditions = conditions.add(column.starts_with(filter_name));
+                        let exact_column = ExactColumn::from_str(&column.to_string());
+                        match exact_column {
+                            Ok(col) => {
+                                if query_params.exact.clone().unwrap_or(vec![]).contains(&col) {
+                                    conditions = conditions.add(column.eq(filter_name));
+                                } else {
+                                    conditions = conditions.add(column.starts_with(filter_name));
+                                }
+                            }
+                            Err(_) => tracing::debug!(
+                                "Exact column {} not implemented",
+                                column.to_string()
+                            ),
+                        }
                     }
                     result = result.filter(conditions);
                 }
@@ -93,6 +106,7 @@ pub fn from_pagination<T: GetEntityColumn>(
         page,
         page_size,
         sort: None,
+        exact: None,
         sort_direction: None,
         name: None,
         organisation_id,

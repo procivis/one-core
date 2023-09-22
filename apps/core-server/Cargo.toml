@@ -31,6 +31,7 @@ utoipa-swagger-ui = { version = "3.0", features = ["axum"] }
 panic-handler = "2.1.2"
 serde_variant = "0.1.2"
 envy = "0.4.2"
+serde_qs = "0.12.0"
 
 [build-dependencies]
 shadow-rs.workspace = true

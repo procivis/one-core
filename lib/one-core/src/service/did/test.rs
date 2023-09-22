@@ -160,6 +160,7 @@ async fn test_get_did_list() {
             page: 0,
             page_size: 1,
             sort: None,
+            exact: None,
             sort_direction: None,
             name: None,
             organisation_id: Uuid::new_v4().to_string(),

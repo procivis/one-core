@@ -45,6 +45,9 @@ pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
     // filtering
     pub name: Option<String>,
     pub organisation_id: String,
+    // It is required to rename fields in swagger which are of type vector to <name>[]
+    #[param(rename = "exact[]")]
+    pub exact: Option<Vec<ExactColumn>>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
@@ -53,6 +56,12 @@ pub enum SortDirection {
     Ascending,
     #[serde(rename = "DESC")]
     Descending,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
+pub enum ExactColumn {
+    #[serde(rename = "name")]
+    Name,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

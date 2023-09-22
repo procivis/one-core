@@ -3,8 +3,9 @@ use super::dto::{
     GetProofSchemaResponseRestDTO,
 };
 use crate::dto::common::GetProofSchemaListResponseRestDTO;
+use crate::extractor::Qs;
 use crate::AppState;
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 use one_core::service::error::ServiceError;
@@ -82,7 +83,7 @@ pub(crate) async fn post_proof_schema(
 )]
 pub(crate) async fn get_proof_schemas(
     state: State<AppState>,
-    Query(query): Query<GetProofSchemaQuery>,
+    Qs(query): Qs<GetProofSchemaQuery>,
 ) -> Response {
     let result = state
         .core

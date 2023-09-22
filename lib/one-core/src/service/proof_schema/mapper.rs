@@ -2,6 +2,7 @@ use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO, GetProofSchemaResponseDTO,
     ProofClaimSchemaResponseDTO,
 };
+use crate::model::common::ExactColumn;
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 use crate::{
     common_mapper::vector_try_into,
@@ -77,6 +78,7 @@ pub fn create_unique_name_check_request(
         page_size: 1,
         sort: None,
         sort_direction: None,
+        exact: Some(vec![ExactColumn::Name]),
         name: Some(name.to_string()),
         organisation_id: organisation_id.to_string(),
     })

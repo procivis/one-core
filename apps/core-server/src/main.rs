@@ -27,6 +27,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 pub(crate) mod dto;
 pub(crate) mod endpoint;
+pub(crate) mod extractor;
 pub(crate) mod mapper;
 pub(crate) mod serialize;
 

@@ -16,6 +16,7 @@ tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 shadow-rs.workspace = true
+strum.workspace = true
 mockall = { workspace = true, optional = true }
 
 jwt-simple = "0.11.6"
@@ -25,6 +26,7 @@ reqwest = { version = "0.11.18", default-features = false, features = [
     "rustls-tls",
     "rustls-tls-native-roots",
 ] }
+strum_macros = "0.25.2"
 
 [dev-dependencies]
 mockall.workspace = true

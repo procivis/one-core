@@ -14,6 +14,7 @@ impl OneCoreBinding {
                     page: query.page,
                     page_size: query.page_size,
                     sort: None,
+                    exact: None,
                     sort_direction: None,
                     name: None,
                     organisation_id: query.organisation_id.to_owned(),

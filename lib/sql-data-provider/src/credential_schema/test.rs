@@ -228,6 +228,7 @@ async fn test_get_credential_schema_list_success() {
             page_size: 5,
             sort: None,
             sort_direction: None,
+            exact: None,
             name: None,
             organisation_id: organisation.id.to_string(),
         })

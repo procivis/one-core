@@ -1,4 +1,4 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 use uuid::Uuid;
@@ -10,6 +10,7 @@ use crate::dto::common::GetCredentialSchemaResponseDTO;
 use crate::endpoint::credential_schema::dto::{
     CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaResponseRestDTO,
 };
+use crate::extractor::Qs;
 use crate::AppState;
 
 use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
@@ -115,7 +116,7 @@ pub(crate) async fn get_credential_schema(
 )]
 pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,
-    Query(query): Query<GetCredentialSchemaQuery>,
+    Qs(query): Qs<GetCredentialSchemaQuery>,
 ) -> Response {
     let result = state
         .core
