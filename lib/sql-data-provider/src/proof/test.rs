@@ -12,7 +12,7 @@ use one_core::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaId,
         did::{Did, DidId, DidRelations, DidType},
-        interaction::{InteractionId, InteractionRelations},
+        interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::OrganisationId,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchema, ProofSchemaId, ProofSchemaRelations},
@@ -21,8 +21,10 @@ use one_core::{
         claim_repository::ClaimRepository,
         did_repository::DidRepository,
         error::DataLayerError,
+        interaction_repository::InteractionRepository,
         mock::{
             claim_repository::MockClaimRepository, did_repository::MockDidRepository,
+            interaction_repository::MockInteractionRepository,
             proof_schema_repository::MockProofSchemaRepository,
         },
         proof_repository::ProofRepository,
@@ -48,6 +50,7 @@ async fn setup(
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
+    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
 ) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
@@ -113,6 +116,7 @@ async fn setup(
             proof_schema_repository,
             claim_repository,
             did_repository,
+            interaction_repository,
         }),
         db,
         organisation_id,
@@ -138,6 +142,7 @@ async fn setup_with_proof(
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
+    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
 ) -> TestSetupWithProof {
     let TestSetup {
         repository,
@@ -148,7 +153,13 @@ async fn setup_with_proof(
         claim_schema_ids,
         interaction_id,
         ..
-    } = setup(proof_schema_repository, claim_repository, did_repository).await;
+    } = setup(
+        proof_schema_repository,
+        claim_repository,
+        did_repository,
+        interaction_repository,
+    )
+    .await;
 
     let proof_id = Uuid::parse_str(
         &insert_proof_request_to_database(
@@ -195,6 +206,10 @@ fn get_did_repository_mock() -> Arc<dyn DidRepository + Send + Sync> {
     Arc::from(MockDidRepository::default())
 }
 
+fn get_interaction_repository_mock() -> Arc<dyn InteractionRepository + Send + Sync> {
+    Arc::from(MockInteractionRepository::default())
+}
+
 #[tokio::test]
 async fn test_create_proof_success() {
     let TestSetup {
@@ -208,6 +223,7 @@ async fn test_create_proof_success() {
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
+        get_interaction_repository_mock(),
     )
     .await;
 
@@ -276,6 +292,7 @@ async fn test_get_proof_list() {
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
+        get_interaction_repository_mock(),
     )
     .await;
 
@@ -298,6 +315,7 @@ async fn test_get_proof_missing() {
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
+        get_interaction_repository_mock(),
     )
     .await;
 
@@ -317,6 +335,7 @@ async fn test_get_proof_no_relations() {
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
+        get_interaction_repository_mock(),
     )
     .await;
 
@@ -346,6 +365,20 @@ async fn test_get_proof_with_relations() {
             })
         });
 
+    let mut interaction_repository = MockInteractionRepository::default();
+    interaction_repository
+        .expect_get_interaction()
+        .times(1)
+        .returning(|id, _| {
+            Ok(Interaction {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(vec![1, 2, 3]),
+                host: Some("host".to_owned()),
+            })
+        });
+
     let mut did_repository = MockDidRepository::default();
     did_repository.expect_get_did().times(1).returning(|id, _| {
         Ok(Did {
@@ -371,6 +404,7 @@ async fn test_get_proof_with_relations() {
         Arc::from(proof_schema_repository),
         get_claim_repository_mock(),
         Arc::from(did_repository),
+        Arc::from(interaction_repository),
     )
     .await;
 
@@ -407,6 +441,7 @@ async fn test_set_proof_state() {
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
+        get_interaction_repository_mock(),
     )
     .await;
 
@@ -443,6 +478,7 @@ async fn test_set_proof_holder_did() {
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
+        get_interaction_repository_mock(),
     )
     .await;
 
@@ -505,6 +541,7 @@ async fn test_set_proof_claims_success() {
         get_proof_schema_repository_mock(),
         Arc::from(claim_repository),
         get_did_repository_mock(),
+        get_interaction_repository_mock(),
     )
     .await;
 

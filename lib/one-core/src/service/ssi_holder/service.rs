@@ -1,6 +1,9 @@
 use super::{
     dto::InvitationResponseDTO,
-    mapper::{credential_schema_from_jwt, parse_query, remote_did_from_value, string_to_uuid},
+    mapper::{
+        credential_schema_from_jwt, interaction_from_handle_invitation, parse_query,
+        proof_from_handle_invitation, remote_did_from_value, string_to_uuid,
+    },
     SSIHolderService,
 };
 use crate::{
@@ -10,13 +13,15 @@ use crate::{
             Credential, CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
         },
         did::{Did, DidRelations},
-        organisation::OrganisationRelations,
+        organisation::{OrganisationId, OrganisationRelations},
     },
     repository::error::DataLayerError,
     service::{did::dto::DidId, error::ServiceError, proof::dto::ProofId},
     transport_protocol::dto::{ConnectIssuerResponse, ConnectVerifierResponse, InvitationResponse},
 };
+
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 impl SSIHolderService {
     pub async fn handle_invitation(
@@ -41,7 +46,16 @@ impl SSIHolderService {
             InvitationResponse::Proof {
                 proof_id,
                 proof_request,
-            } => self.handle_proof_invitation(url, proof_id, proof_request),
+            } => {
+                self.handle_proof_invitation(
+                    url,
+                    proof_id,
+                    proof_request,
+                    &url_query_params.protocol,
+                    &holder_did.organisation_id,
+                )
+                .await
+            }
             InvitationResponse::Credential(issuer_response) => {
                 let credential_id = url_query_params
                     .credential
@@ -108,11 +122,13 @@ impl SSIHolderService {
     }
 
     // ====== private methods
-    fn handle_proof_invitation(
+    async fn handle_proof_invitation(
         &self,
         url: &str,
         proof_id: String,
         proof_request: ConnectVerifierResponse,
+        protocol: &str,
+        organisation_id: &OrganisationId,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         let url_parsed = reqwest::Url::parse(url).map_err(|_| ServiceError::IncorrectParameters)?;
         let base_url = format!(
@@ -122,6 +138,47 @@ impl SSIHolderService {
                 .host_str()
                 .ok_or(ServiceError::IncorrectParameters)?
         );
+
+        let verifier_did_result = self
+            .did_repository
+            .get_did_by_value(&proof_request.verifier_did, &DidRelations::default())
+            .await;
+
+        let now = OffsetDateTime::now_utc();
+        let verifier_did = match verifier_did_result {
+            Ok(did) => did,
+            Err(DataLayerError::RecordNotFound) => {
+                let new_did = Did {
+                    id: Uuid::new_v4(),
+                    created_date: now,
+                    last_modified: now,
+                    name: "verifier".to_owned(),
+                    organisation_id: organisation_id.to_owned(),
+                    did: proof_request.verifier_did.clone(),
+                    did_type: crate::model::did::DidType::Remote,
+                    did_method: "KEY".to_owned(),
+                };
+                self.did_repository.create_did(new_did.clone()).await?;
+                new_did
+            }
+            Err(e) => return Err(ServiceError::GeneralRuntimeError(e.to_string())),
+        };
+
+        let data = serde_json::to_string(&proof_request.claims)
+            .unwrap()
+            .as_bytes()
+            .to_vec();
+
+        let interaction =
+            interaction_from_handle_invitation(url_parsed.host_str(), Some(data), now);
+
+        self.interaction_repository
+            .create_interaction(interaction.clone())
+            .await?;
+
+        let proof = proof_from_handle_invitation(protocol, verifier_did, interaction, now);
+
+        self.proof_repository.create_proof(proof).await?;
 
         Ok(InvitationResponseDTO::ProofRequest {
             proof_id: string_to_uuid(&proof_id)?,

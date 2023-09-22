@@ -87,6 +87,7 @@ impl DataLayer {
             claim_repository: claim_repository.clone(),
             proof_schema_repository: proof_schema_repository.clone(),
             did_repository: did_repository.clone(),
+            interaction_repository: interaction_repository.clone(),
         });
         let credential_repository = Arc::new(CredentialProvider {
             db: db.clone(),

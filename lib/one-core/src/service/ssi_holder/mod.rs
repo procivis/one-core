@@ -3,7 +3,8 @@ use crate::{
     repository::{
         credential_repository::CredentialRepository,
         credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-        organisation_repository::OrganisationRepository,
+        interaction_repository::InteractionRepository,
+        organisation_repository::OrganisationRepository, proof_repository::ProofRepository,
     },
     transport_protocol::provider::TransportProtocolProvider,
 };
@@ -19,17 +20,22 @@ pub struct SSIHolderService {
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+    proof_repository: Arc<dyn ProofRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
+    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl SSIHolderService {
     pub(crate) fn new(
         organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
         credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+        proof_repository: Arc<dyn ProofRepository + Send + Sync>,
         did_repository: Arc<dyn DidRepository + Send + Sync>,
+        interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     ) -> Self {
@@ -37,7 +43,9 @@ impl SSIHolderService {
             organisation_repository,
             credential_schema_repository,
             credential_repository,
+            proof_repository,
             did_repository,
+            interaction_repository,
             formatter_provider,
             protocol_provider,
         }

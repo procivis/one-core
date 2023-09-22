@@ -10,14 +10,14 @@ pub enum InvitationResponse {
     },
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 /// deserializes matching `ConnectIssuerResponseRestDTO`
 pub struct ConnectIssuerResponse {
     pub credential: String,
     pub format: String,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// deserializes matching `ConnectVerifierResponseRestDTO`
 pub struct ConnectVerifierResponse {
@@ -25,7 +25,7 @@ pub struct ConnectVerifierResponse {
     pub verifier_did: String,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// deserializes matching `ProofRequestClaimRestDTO`
 pub struct ProofClaimSchema {
@@ -40,7 +40,7 @@ pub struct ProofClaimSchema {
     pub credential_schema: ProofCredentialSchema,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 /// deserializes matching `CredentialSchemaListValueResponseRestDTO`
 pub struct ProofCredentialSchema {

@@ -46,7 +46,7 @@ impl ProofService {
                     }),
                     verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
-                    interaction: Some(InteractionRelations {}),
+                    interaction: Some(InteractionRelations::default()),
                 },
             )
             .await
