@@ -1,4 +1,4 @@
-use super::{dto::ConnectIssuerResponseDTO, SSIIssuerService};
+use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -21,7 +21,7 @@ impl SSIIssuerService {
         &self,
         credential_id: &CredentialId,
         holder_did_value: &String,
-    ) -> Result<ConnectIssuerResponseDTO, ServiceError> {
+    ) -> Result<(), ServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -97,12 +97,63 @@ impl SSIIssuerService {
                 holder_did_id: Some(holder_did.id),
                 state: Some(CredentialState {
                     created_date: OffsetDateTime::now_utc(),
-                    state: CredentialStateEnum::Accepted, // simplified issuance flow: Accepted automatically
+                    state: CredentialStateEnum::Offered,
                 }),
             })
             .await?;
 
-        Ok(ConnectIssuerResponseDTO {
+        Ok(()) // todo: ONE-600 return updated credential
+    }
+
+    pub async fn issuer_submit(
+        &self,
+        credential_id: &CredentialId,
+    ) -> Result<IssuerResponseDTO, ServiceError> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let latest_state = credential
+            .state
+            .as_ref()
+            .ok_or(ServiceError::MappingError("state is None".to_string()))?
+            .get(0)
+            .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
+        if latest_state.state != CredentialStateEnum::Offered {
+            return Err(ServiceError::AlreadyExists);
+        }
+
+        let token = String::from_utf8(credential.credential).map_err(|_| {
+            ServiceError::MappingError("Credential is not valid UTF8 JWT token".to_string())
+        })?;
+
+        self.credential_repository
+            .update_credential(UpdateCredentialRequest {
+                id: credential_id.to_owned(),
+                credential: None,
+                holder_did_id: None,
+                state: Some(CredentialState {
+                    created_date: OffsetDateTime::now_utc(),
+                    state: CredentialStateEnum::Accepted,
+                }),
+            })
+            .await?;
+
+        Ok(IssuerResponseDTO {
             credential: token,
             format: "JWT".to_string(),
         })

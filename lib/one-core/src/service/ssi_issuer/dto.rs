@@ -1,5 +1,5 @@
 #[derive(Clone, Debug)]
-pub struct ConnectIssuerResponseDTO {
+pub struct IssuerResponseDTO {
     pub credential: String,
     pub format: String,
 }
