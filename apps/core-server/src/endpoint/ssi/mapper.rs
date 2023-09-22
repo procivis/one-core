@@ -6,7 +6,7 @@ use one_core::{
     common_mapper::vector_into,
     service::{
         ssi_holder::dto::InvitationResponseDTO,
-        ssi_issuer::dto::ConnectIssuerResponseDTO,
+        ssi_issuer::dto::IssuerResponseDTO,
         ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
     },
 };
@@ -34,8 +34,8 @@ impl From<ProofRequestClaimDTO> for ProofRequestClaimRestDTO {
     }
 }
 
-impl From<ConnectIssuerResponseDTO> for ConnectIssuerResponseRestDTO {
-    fn from(value: ConnectIssuerResponseDTO) -> Self {
+impl From<IssuerResponseDTO> for ConnectIssuerResponseRestDTO {
+    fn from(value: IssuerResponseDTO) -> Self {
         Self {
             credential: value.credential,
             format: value.format,

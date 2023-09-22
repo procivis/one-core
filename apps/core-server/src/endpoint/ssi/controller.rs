@@ -154,7 +154,7 @@ pub(crate) async fn ssi_verifier_submit_proof(
     path = "/ssi/temporary-issuer/v1/connect",
     request_body = ConnectRequestRestDTO,
     responses(
-        (status = 200, description = "OK", body = ConnectIssuerResponseRestDTO),
+        (status = 200, description = "OK"),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Server error"),
     ),
@@ -172,6 +172,52 @@ pub(crate) async fn ssi_issuer_connect(
         .core
         .ssi_issuer_service
         .issuer_connect(&query.credential, &request.did)
+        .await;
+
+    match result {
+        Ok(_) => (StatusCode::OK.into_response()).into_response(),
+        Err(ServiceError::AlreadyExists) => {
+            tracing::error!("Already issued");
+            (StatusCode::CONFLICT, "Already issued").into_response()
+        }
+        Err(ServiceError::NotFound) => {
+            tracing::error!("Missing credential");
+            (StatusCode::NOT_FOUND, "Missing credential").into_response()
+        }
+        Err(ServiceError::IncorrectParameters) => {
+            tracing::error!("Invalid arguments");
+            (StatusCode::BAD_REQUEST, "Invalid arguments").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/ssi/temporary-issuer/v1/submit",
+    responses(
+        (status = 200, description = "OK", body = ConnectIssuerResponseRestDTO),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Not found"),
+        (status = 409, description = "Already issued"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        PostSsiIssuerConnectQueryParams
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn ssi_issuer_submit(
+    state: State<AppState>,
+    Query(query): Query<PostSsiIssuerConnectQueryParams>,
+) -> Response {
+    let result = state
+        .core
+        .ssi_issuer_service
+        .issuer_submit(&query.credential)
         .await;
 
     match result {
