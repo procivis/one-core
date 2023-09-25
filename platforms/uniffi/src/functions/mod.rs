@@ -3,6 +3,8 @@ mod create_organisation;
 mod get_credential;
 mod get_credentials;
 mod handle_invitation;
+mod holder_accept_credential;
+mod holder_reject_credential;
 mod holder_reject_proof;
 mod holder_submit_proof;
 mod version;

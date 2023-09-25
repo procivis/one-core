@@ -32,7 +32,8 @@ pub(crate) mod mapper;
 pub(crate) mod serialize;
 
 use endpoint::{
-    config, credential, credential_schema, did, misc, organisation, proof, proof_schema, ssi,
+    config, credential, credential_schema, did, interaction, misc, organisation, proof,
+    proof_schema, ssi,
 };
 
 #[derive(Clone)]
@@ -90,9 +91,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::ssi::controller::ssi_verifier_submit_proof,
             endpoint::ssi::controller::ssi_verifier_reject_proof,
             endpoint::ssi::controller::ssi_issuer_connect,
-            endpoint::ssi::controller::ssi_issuer_reject,
             endpoint::ssi::controller::ssi_issuer_submit,
-            endpoint::ssi::controller::ssi_holder_handle_invitation,
+            endpoint::ssi::controller::ssi_issuer_reject,
+
+            endpoint::interaction::controller::handle_invitation,
+            endpoint::interaction::controller::issuance_submit,
+            endpoint::interaction::controller::issuance_reject,
 
             endpoint::misc::get_build_info,
         ),
@@ -144,9 +148,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::ssi::dto::ConnectVerifierResponseRestDTO,
                 endpoint::ssi::dto::ProofRequestClaimRestDTO,
                 endpoint::ssi::dto::ConnectIssuerResponseRestDTO,
-                endpoint::ssi::dto::HandleInvitationRequestRestDTO,
-                endpoint::ssi::dto::HandleInvitationResponseRestDTO,
                 endpoint::ssi::dto::PostSsiIssuerRejectQueryParams,
+
+                endpoint::interaction::dto::HandleInvitationRequestRestDTO,
+                endpoint::interaction::dto::HandleInvitationResponseRestDTO,
+                endpoint::interaction::dto::IssuanceSubmitRequestRestDTO,
+                endpoint::interaction::dto::IssuanceRejectRequestRestDTO,
 
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
@@ -273,13 +280,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/did/v1/:id", get(did::controller::get_did))
         .route("/api/did/v1", get(did::controller::get_did_list))
         .route("/api/did/v1", post(did::controller::post_did))
+        .route(
+            "/api/interaction/v1/handle-invitation",
+            post(interaction::controller::handle_invitation),
+        )
+        .route(
+            "/api/interaction/v1/issuance-submit",
+            post(interaction::controller::issuance_submit),
+        )
+        .route(
+            "/api/interaction/v1/issuance-reject",
+            post(interaction::controller::issuance_reject),
+        )
         .layer(middleware::from_fn(bearer_check));
 
     let unprotected = Router::new()
-        .route(
-            "/ssi/handle-invitation/v1",
-            post(ssi::controller::ssi_holder_handle_invitation),
-        )
         .route(
             "/ssi/temporary-issuer/v1/connect",
             post(ssi::controller::ssi_issuer_connect),

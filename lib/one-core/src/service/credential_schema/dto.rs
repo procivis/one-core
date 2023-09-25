@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -34,7 +35,7 @@ pub struct GetCredentialSchemaResponseDTO {
     pub claims: Vec<CredentialClaimSchemaDTO>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct CredentialClaimSchemaDTO {
     pub id: ClaimSchemaId,
     pub created_date: OffsetDateTime,

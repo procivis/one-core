@@ -94,6 +94,7 @@ impl DataLayer {
             credential_schema_repository: credential_schema_repository.clone(),
             claim_repository: claim_repository.clone(),
             did_repository: did_repository.clone(),
+            interaction_repository: interaction_repository.clone(),
         });
 
         Self {

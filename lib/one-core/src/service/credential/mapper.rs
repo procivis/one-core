@@ -190,6 +190,7 @@ pub(super) fn from_create_request(
         issuer_did: Some(issuer_did),
         holder_did: None,
         schema: Some(schema),
+        interaction: None,
     }
 }
 

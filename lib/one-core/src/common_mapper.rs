@@ -1,4 +1,4 @@
-use crate::model::common::GetListResponse;
+use crate::{model::common::GetListResponse, service::error::ServiceError};
 
 pub fn vector_into<T, F: Into<T>>(input: Vec<F>) -> Vec<T> {
     input.into_iter().map(|item| item.into()).collect()
@@ -31,4 +31,15 @@ pub fn list_response_try_into<T, F: TryInto<T>>(
         total_pages: input.total_pages,
         total_items: input.total_items,
     })
+}
+
+pub fn get_base_url(url: &str) -> Result<String, ServiceError> {
+    let url_parsed = reqwest::Url::parse(url).map_err(|_| ServiceError::IncorrectParameters)?;
+    Ok(format!(
+        "{}://{}",
+        url_parsed.scheme(),
+        url_parsed
+            .host_str()
+            .ok_or(ServiceError::IncorrectParameters)?
+    ))
 }

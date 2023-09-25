@@ -1,23 +1,30 @@
 use super::{
     dto::InvitationResponseDTO,
     mapper::{
-        credential_schema_from_jwt, interaction_from_handle_invitation, parse_query,
-        proof_from_handle_invitation, remote_did_from_value, string_to_uuid,
+        interaction_from_handle_invitation, parse_query, proof_from_handle_invitation,
+        remote_did_from_value, string_to_uuid,
     },
     SSIHolderService,
 };
 use crate::{
+    common_mapper::get_base_url,
     model::{
         claim::{Claim, ClaimId},
         credential::{
             Credential, CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
+            CredentialStateRelations, UpdateCredentialRequest,
         },
+        credential_schema::CredentialSchema,
         did::{Did, DidRelations},
+        interaction::{InteractionId, InteractionRelations},
         organisation::{OrganisationId, OrganisationRelations},
     },
     repository::error::DataLayerError,
-    service::{did::dto::DidId, error::ServiceError, proof::dto::ProofId},
-    transport_protocol::dto::{ConnectIssuerResponse, ConnectVerifierResponse, InvitationResponse},
+    service::{
+        credential::dto::CredentialResponseDTO, did::dto::DidId, error::ServiceError,
+        proof::dto::ProofId,
+    },
+    transport_protocol::dto::{ConnectVerifierResponse, InvitationResponse},
 };
 
 use time::OffsetDateTime;
@@ -30,6 +37,8 @@ impl SSIHolderService {
         holder_did_id: &DidId,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         let url_query_params = parse_query(url)?;
+
+        let base_url = get_base_url(url)?;
 
         let holder_did = self
             .did_repository
@@ -48,7 +57,7 @@ impl SSIHolderService {
                 proof_request,
             } => {
                 self.handle_proof_invitation(
-                    url,
+                    base_url,
                     proof_id,
                     proof_request,
                     &url_query_params.protocol,
@@ -57,11 +66,7 @@ impl SSIHolderService {
                 .await
             }
             InvitationResponse::Credential(issuer_response) => {
-                let credential_id = url_query_params
-                    .credential
-                    .ok_or(ServiceError::IncorrectParameters)?;
-
-                self.handle_credential_invitation(credential_id, holder_did, issuer_response)
+                self.handle_credential_invitation(base_url, holder_did, *issuer_response)
                     .await
             }
         }
@@ -121,24 +126,145 @@ impl SSIHolderService {
             .map_err(ServiceError::from)
     }
 
+    pub async fn accept_credential(
+        &self,
+        interaction_id: &InteractionId,
+    ) -> Result<(), ServiceError> {
+        let credentials = self
+            .credential_repository
+            .get_credentials_by_interaction_id(
+                interaction_id,
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        if credentials.is_empty() {
+            return Err(ServiceError::NotFound);
+        }
+
+        for credential in credentials {
+            let latest_state = credential
+                .state
+                .as_ref()
+                .ok_or(ServiceError::MappingError("state is None".to_string()))?
+                .get(0)
+                .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
+
+            if latest_state.state != CredentialStateEnum::Pending {
+                return Err(ServiceError::AlreadyExists);
+            }
+
+            let interaction = credential
+                .interaction
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "interaction is None".to_string(),
+                ))?;
+
+            let base_url = interaction
+                .host
+                .as_ref()
+                .ok_or(ServiceError::MappingError("host is None".to_string()))?;
+
+            let credential_content = self
+                .protocol_provider
+                .get_protocol(&credential.transport)?
+                .accept_credential(base_url, &credential.id.to_string())
+                .await?;
+
+            self.credential_repository
+                .update_credential(UpdateCredentialRequest {
+                    id: credential.id,
+                    state: Some(CredentialState {
+                        created_date: OffsetDateTime::now_utc(),
+                        state: CredentialStateEnum::Accepted,
+                    }),
+                    credential: Some(credential_content.credential.bytes().collect()),
+                    ..Default::default()
+                })
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn reject_credential(
+        &self,
+        interaction_id: &InteractionId,
+    ) -> Result<(), ServiceError> {
+        let credentials = self
+            .credential_repository
+            .get_credentials_by_interaction_id(
+                interaction_id,
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        if credentials.is_empty() {
+            return Err(ServiceError::NotFound);
+        }
+
+        for credential in credentials {
+            let latest_state = credential
+                .state
+                .as_ref()
+                .ok_or(ServiceError::MappingError("state is None".to_string()))?
+                .get(0)
+                .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
+
+            if latest_state.state != CredentialStateEnum::Pending {
+                return Err(ServiceError::AlreadyExists);
+            }
+
+            let interaction = credential
+                .interaction
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "interaction is None".to_string(),
+                ))?;
+
+            let base_url = interaction
+                .host
+                .as_ref()
+                .ok_or(ServiceError::MappingError("host is None".to_string()))?;
+
+            self.protocol_provider
+                .get_protocol(&credential.transport)?
+                .reject_credential(base_url, &credential.id.to_string())
+                .await?;
+
+            self.credential_repository
+                .update_credential(UpdateCredentialRequest {
+                    id: credential.id,
+                    state: Some(CredentialState {
+                        created_date: OffsetDateTime::now_utc(),
+                        state: CredentialStateEnum::Rejected,
+                    }),
+                    ..Default::default()
+                })
+                .await?;
+        }
+
+        Ok(())
+    }
+
     // ====== private methods
     async fn handle_proof_invitation(
         &self,
-        url: &str,
+        base_url: String,
         proof_id: String,
         proof_request: ConnectVerifierResponse,
         protocol: &str,
         organisation_id: &OrganisationId,
     ) -> Result<InvitationResponseDTO, ServiceError> {
-        let url_parsed = reqwest::Url::parse(url).map_err(|_| ServiceError::IncorrectParameters)?;
-        let base_url = format!(
-            "{}://{}",
-            url_parsed.scheme(),
-            url_parsed
-                .host_str()
-                .ok_or(ServiceError::IncorrectParameters)?
-        );
-
         let verifier_did_result = self
             .did_repository
             .get_did_by_value(&proof_request.verifier_did, &DidRelations::default())
@@ -169,10 +295,10 @@ impl SSIHolderService {
             .as_bytes()
             .to_vec();
 
-        let interaction =
-            interaction_from_handle_invitation(url_parsed.host_str(), Some(data), now);
+        let interaction = interaction_from_handle_invitation(base_url, Some(data), now);
 
-        self.interaction_repository
+        let interaction_id = self
+            .interaction_repository
             .create_interaction(interaction.clone())
             .await?;
 
@@ -181,17 +307,17 @@ impl SSIHolderService {
         self.proof_repository.create_proof(proof).await?;
 
         Ok(InvitationResponseDTO::ProofRequest {
+            interaction_id,
             proof_id: string_to_uuid(&proof_id)?,
             proof_request: proof_request.try_into()?,
-            base_url,
         })
     }
 
     async fn handle_credential_invitation(
         &self,
-        credential_id: CredentialId,
+        base_url: String,
         holder_did: Did,
-        issuer_response: ConnectIssuerResponse,
+        issuer_response: CredentialResponseDTO,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         let organisation_id = holder_did.organisation_id;
         let organisation = self
@@ -199,45 +325,15 @@ impl SSIHolderService {
             .get_organisation(&organisation_id, &OrganisationRelations::default())
             .await?;
 
-        let raw_credential = issuer_response.credential;
-        let format = issuer_response.format;
-
-        let formatter = self.formatter_provider.get_formatter(&format)?;
-
-        let credential = formatter.extract_credentials(&raw_credential)?;
-
-        // check headers
-        let issuer_did_value = credential.issuer_did.ok_or(ServiceError::ValidationError(
-            "IssuerDid missing".to_owned(),
-        ))?;
-
-        if let Some(parsed_credential_id) = credential.id {
-            if parsed_credential_id != credential_id.to_string() {
-                return Err(ServiceError::ValidationError(
-                    "Credential ID mismatch".to_owned(),
-                ));
-            }
-        } else {
-            return Err(ServiceError::ValidationError(
-                "Credential ID missing".to_owned(),
-            ));
-        }
-
-        if let Some(holder_did_value) = credential.subject {
-            if holder_did_value != holder_did.did {
-                return Err(ServiceError::ValidationError(
-                    "Holder DID mismatch".to_owned(),
-                ));
-            }
-        } else {
-            return Err(ServiceError::ValidationError(
-                "Holder ID missing".to_owned(),
-            ));
-        }
-
-        // insert credential schema if not yet known
-        let schema = credential.claims.one_credential_schema;
-        let credential_schema = credential_schema_from_jwt(schema, organisation)?;
+        let mut credential_schema: CredentialSchema = issuer_response.schema.into();
+        credential_schema.organisation = Some(organisation);
+        credential_schema.claim_schemas = Some(
+            issuer_response
+                .claims
+                .iter()
+                .map(|claim| claim.schema.to_owned().into())
+                .collect(),
+        );
 
         let result = self
             .credential_schema_repository
@@ -250,6 +346,9 @@ impl SSIHolderService {
         }
 
         // insert issuer did if not yet known
+        let issuer_did_value = issuer_response
+            .issuer_did
+            .ok_or(ServiceError::IncorrectParameters)?;
         let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation_id);
         let did_insert_result = self.did_repository.create_did(issuer_did.clone()).await;
         let issuer_did = match did_insert_result {
@@ -262,9 +361,16 @@ impl SSIHolderService {
             Err(e) => return Err(ServiceError::from(e)),
         };
 
-        // create credential
         let now = OffsetDateTime::now_utc();
-        let incoming_claims = credential.claims.values;
+
+        let interaction = interaction_from_handle_invitation(base_url, None, now);
+        let interaction_id = self
+            .interaction_repository
+            .create_interaction(interaction.clone())
+            .await?;
+
+        // create credential
+        let incoming_claims = issuer_response.claims;
         let claims = credential_schema
             .claim_schemas
             .as_ref()
@@ -273,10 +379,13 @@ impl SSIHolderService {
             ))?
             .iter()
             .map(|claim_schema| -> Result<Option<Claim>, ServiceError> {
-                if let Some(value) = incoming_claims.get(&claim_schema.schema.key) {
+                if let Some(value) = incoming_claims
+                    .iter()
+                    .find(|claim| claim.schema.key == claim_schema.schema.key)
+                {
                     Ok(Some(Claim {
                         schema: Some(claim_schema.schema.to_owned()),
-                        value: value.to_owned(),
+                        value: value.value.to_owned(),
                         id: ClaimId::new_v4(),
                         created_date: now,
                         last_modified: now,
@@ -297,25 +406,27 @@ impl SSIHolderService {
 
         self.credential_repository
             .create_credential(Credential {
-                id: credential_id.to_owned(),
+                id: issuer_response.id,
                 created_date: now,
                 issuance_date: now,
                 last_modified: now,
-                credential: raw_credential.bytes().collect(),
+                credential: vec![],
                 transport: "PROCIVIS_TEMPORARY".to_string(),
                 state: Some(vec![CredentialState {
                     created_date: now,
-                    state: CredentialStateEnum::Accepted,
+                    state: CredentialStateEnum::Pending,
                 }]),
                 claims: Some(claims),
                 issuer_did: Some(issuer_did),
                 holder_did: Some(holder_did),
                 schema: Some(credential_schema),
+                interaction: Some(interaction),
             })
             .await?;
 
         Ok(InvitationResponseDTO::Credential {
-            issued_credential_id: credential_id,
+            credential_id: issuer_response.id,
+            interaction_id,
         })
     }
 }

@@ -100,6 +100,7 @@ fn generic_credential() -> Credential {
             }]),
             organisation: Some(organisation),
         }),
+        interaction: None,
     }
 }
 

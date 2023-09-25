@@ -7,6 +7,7 @@ use super::{
     claim::{Claim, ClaimRelations},
     credential_schema::{CredentialSchema, CredentialSchemaRelations},
     did::{Did, DidRelations},
+    interaction::{Interaction, InteractionRelations},
 };
 
 pub type CredentialId = Uuid;
@@ -26,6 +27,7 @@ pub struct Credential {
     pub issuer_did: Option<Did>,
     pub holder_did: Option<Did>,
     pub schema: Option<CredentialSchema>,
+    pub interaction: Option<Interaction>,
 }
 
 #[derive(Default)]
@@ -35,6 +37,7 @@ pub struct CredentialRelations {
     pub issuer_did: Option<DidRelations>,
     pub holder_did: Option<DidRelations>,
     pub schema: Option<CredentialSchemaRelations>,
+    pub interaction: Option<InteractionRelations>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

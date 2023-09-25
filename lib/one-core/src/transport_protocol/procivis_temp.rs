@@ -1,5 +1,5 @@
 use super::{
-    dto::{HandleInvitationConnectRequest, InvitationResponse},
+    dto::{HandleInvitationConnectRequest, InvitationResponse, SubmitIssuerResponse},
     TransportProtocol, TransportProtocolError,
 };
 use async_trait::async_trait;
@@ -118,6 +118,56 @@ impl TransportProtocol for ProcivisTemp {
             .client
             .post(url)
             .body(presentation.to_owned())
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+        response
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?;
+
+        Ok(())
+    }
+
+    async fn accept_credential(
+        &self,
+        base_url: &str,
+        credential_id: &str,
+    ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
+        let mut url = reqwest::Url::parse(base_url)
+            .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+        url.set_path("/ssi/temporary-issuer/v1/submit");
+        url.set_query(Some(&format!("credentialId={credential_id}")));
+
+        let response = self
+            .client
+            .post(url)
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+        let response = response
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?;
+        let response_value = response
+            .text()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+
+        serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)
+    }
+
+    async fn reject_credential(
+        &self,
+        base_url: &str,
+        credential_id: &str,
+    ) -> Result<(), TransportProtocolError> {
+        let mut url = reqwest::Url::parse(base_url)
+            .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+        url.set_path("/ssi/temporary-issuer/v1/reject");
+        url.set_query(Some(&format!("credentialId={credential_id}")));
+
+        let response = self
+            .client
+            .post(url)
             .send()
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;

@@ -81,7 +81,7 @@ dictionary ProofRequestBindingDTO {
 
 [Enum]
 interface HandleInvitationResponseBindingEnum {
-  CredentialIssuance(string issued_credential_id);
+  CredentialIssuance(string interaction_id, sequence<CredentialDetailBindingDTO> credentials);
   ProofRequest(ProofRequestBindingDTO proof_request);
 };
 
@@ -108,6 +108,12 @@ interface OneCoreBinding {
 
   [Throws=ServiceError]
   HandleInvitationResponseBindingEnum handle_invitation(string url, string did_id);
+
+  [Throws=ServiceError]
+  void holder_accept_credential(string interaction_id);
+
+  [Throws=ServiceError]
+  void holder_reject_credential(string interaction_id);
 
   [Throws=ServiceError]
   void holder_reject_proof();

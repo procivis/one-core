@@ -1,7 +1,10 @@
 use crate::{
     dto::HandleInvitationResponseBindingEnum, utils::run_sync, ActiveProof, OneCoreBinding,
 };
-use one_core::service::{error::ServiceError, ssi_holder::dto::InvitationResponseDTO};
+use one_core::{
+    common_mapper::get_base_url,
+    service::{error::ServiceError, ssi_holder::dto::InvitationResponseDTO},
+};
 use uuid::Uuid;
 
 impl OneCoreBinding {
@@ -22,15 +25,28 @@ impl OneCoreBinding {
                     .await?
                 {
                     InvitationResponseDTO::Credential {
-                        issued_credential_id,
-                    } => HandleInvitationResponseBindingEnum::CredentialIssuance {
-                        issued_credential_id: issued_credential_id.to_string(),
-                    },
+                        credential_id,
+                        interaction_id,
+                    } => {
+                        let credential = self
+                            .inner
+                            .credential_service
+                            .get_credential(&credential_id)
+                            .await?;
+
+                        HandleInvitationResponseBindingEnum::CredentialIssuance {
+                            interaction_id: interaction_id.to_string(),
+                            credentials: vec![credential.into()],
+                        }
+                    }
                     InvitationResponseDTO::ProofRequest {
                         proof_id,
                         proof_request,
-                        base_url,
+                        ..
                     } => {
+                        // temporary workaround for interaction skip
+                        let base_url = get_base_url(&url)?;
+
                         let mut active_proof = self.active_proof.write().await;
                         *active_proof = Some(ActiveProof {
                             id: proof_id,
