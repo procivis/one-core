@@ -1,6 +1,5 @@
 use super::dto::{
     ConnectIssuerResponseRestDTO, ConnectRequestRestDTO, ConnectVerifierResponseRestDTO,
-    HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO,
     PostSsiIssuerConnectQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::endpoint::ssi::dto::PostSsiIssuerRejectQueryParams;
@@ -11,7 +10,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use one_core::{service::error::ServiceError, transport_protocol::TransportProtocolError};
+use one_core::service::error::ServiceError;
 
 #[utoipa::path(
     post,
@@ -281,53 +280,6 @@ pub(crate) async fn ssi_issuer_submit(
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-    }
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/handle-invitation/v1",
-    request_body = HandleInvitationRequestRestDTO,
-    responses(
-        (status = 200, description = "OK", body = HandleInvitationResponseRestDTO),
-        (status = 400, description = "Url missing"),
-    ),
-    tag = "ssi"
-)]
-pub(crate) async fn ssi_holder_handle_invitation(
-    state: State<AppState>,
-    Json(request): Json<HandleInvitationRequestRestDTO>,
-) -> Response {
-    let result = state
-        .core
-        .ssi_holder_service
-        .handle_invitation(&request.url, &request.did_id)
-        .await;
-
-    match result {
-        Ok(result) => (
-            StatusCode::OK,
-            Json(HandleInvitationResponseRestDTO::from(result)),
-        )
-            .into_response(),
-        Err(ServiceError::TransportProtocolError(TransportProtocolError::HttpRequestError(
-            error,
-        ))) => {
-            tracing::error!("HTTP request error: {:?}", error);
-            StatusCode::BAD_GATEWAY.into_response()
-        }
-        Err(ServiceError::TransportProtocolError(TransportProtocolError::JsonError(error))) => {
-            tracing::error!("JSON parsing error: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-        Err(ServiceError::IncorrectParameters) => {
-            tracing::error!("Invalid parameters: {:?}", result);
-            StatusCode::BAD_REQUEST.into_response()
-        }
-        Err(error) => {
-            tracing::error!("Unknown error: {:?}", error);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }

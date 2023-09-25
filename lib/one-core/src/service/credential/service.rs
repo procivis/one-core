@@ -101,6 +101,7 @@ impl CredentialService {
                     }),
                     issuer_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
+                    ..Default::default()
                 },
             )
             .await

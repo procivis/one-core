@@ -1,6 +1,9 @@
-use crate::model::credential::{
-    Credential, CredentialId, CredentialRelations, GetCredentialList, GetCredentialQuery,
-    UpdateCredentialRequest,
+use crate::model::{
+    credential::{
+        Credential, CredentialId, CredentialRelations, GetCredentialList, GetCredentialQuery,
+        UpdateCredentialRequest,
+    },
+    interaction::InteractionId,
 };
 
 use super::error::DataLayerError;
@@ -14,6 +17,12 @@ pub trait CredentialRepository {
         id: &CredentialId,
         relations: &CredentialRelations,
     ) -> Result<Credential, DataLayerError>;
+
+    async fn get_credentials_by_interaction_id(
+        &self,
+        interaction_id: &InteractionId,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError>;
 
     async fn get_credential_list(
         &self,

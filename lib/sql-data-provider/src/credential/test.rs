@@ -14,6 +14,7 @@ use one_core::{
         },
         credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations},
         did::{Did, DidRelations},
+        interaction::InteractionRelations,
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
@@ -22,7 +23,7 @@ use one_core::{
         mock::{
             claim_repository::MockClaimRepository,
             credential_schema_repository::MockCredentialSchemaRepository,
-            did_repository::MockDidRepository,
+            did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
         },
     },
 };
@@ -171,6 +172,7 @@ async fn test_create_credential_success() {
         credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(MockDidRepository::default()),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
     };
 
     let credential_id = Uuid::new_v4();
@@ -229,6 +231,7 @@ async fn test_create_credential_success() {
             issuer_did: Some(did),
             holder_did: None,
             schema: Some(credential_schema),
+            interaction: None,
         })
         .await;
 
@@ -267,6 +270,7 @@ async fn test_create_credential_empty_claims() {
         credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
         claim_repository: Arc::from(MockClaimRepository::default()),
         did_repository: Arc::from(MockDidRepository::default()),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
     };
 
     let credential_id = Uuid::new_v4();
@@ -283,6 +287,7 @@ async fn test_create_credential_empty_claims() {
             issuer_did: Some(did),
             holder_did: None,
             schema: Some(credential_schema),
+            interaction: None,
         })
         .await;
 
@@ -321,6 +326,7 @@ async fn test_create_credential_already_exists() {
         credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
         claim_repository: Arc::from(MockClaimRepository::default()),
         did_repository: Arc::from(MockDidRepository::default()),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
     };
 
     let claims = vec![Claim {
@@ -348,6 +354,7 @@ async fn test_create_credential_already_exists() {
             issuer_did: Some(did),
             holder_did: None,
             schema: Some(credential_schema),
+            interaction: None,
         })
         .await;
 
@@ -394,6 +401,7 @@ async fn test_get_credential_list_success() {
         credential_schema_repository: Arc::from(credential_schema_repository),
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
     };
 
     let credentials = provider
@@ -531,6 +539,7 @@ async fn test_get_credential_success() {
         credential_schema_repository: Arc::from(credential_schema_repository),
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
     };
 
     let credential = provider
@@ -547,6 +556,7 @@ async fn test_get_credential_success() {
                 }),
                 issuer_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
+                interaction: Some(InteractionRelations::default()),
             },
         )
         .await;
@@ -555,6 +565,7 @@ async fn test_get_credential_success() {
     let credential = credential.unwrap();
     assert_eq!(credential_id, credential.id);
     assert_eq!(credential_schema, credential.schema.unwrap());
+    assert!(credential.interaction.is_none());
     let credential_claims = credential.claims.unwrap();
     assert_eq!(credential_claims.len(), 2);
 
@@ -581,6 +592,7 @@ async fn test_get_credential_fail_not_found() {
         credential_schema_repository: Arc::from(credential_schema_repository),
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
     };
 
     let credential = provider
@@ -615,6 +627,7 @@ async fn test_update_credential_success() {
         credential_schema_repository: Arc::from(credential_schema_repository),
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
     };
 
     let credential_before_update = provider

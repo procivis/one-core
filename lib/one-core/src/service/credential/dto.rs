@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -21,7 +22,7 @@ pub struct CredentialListItemResponseDTO {
     pub credential: Vec<u8>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct CredentialResponseDTO {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
@@ -34,7 +35,7 @@ pub struct CredentialResponseDTO {
     pub credential: Vec<u8>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct CredentialSchemaResponseDTO {
     pub id: CredentialSchemaId,
     pub created_date: OffsetDateTime,
@@ -45,13 +46,13 @@ pub struct CredentialSchemaResponseDTO {
     pub organisation_id: OrganisationId,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct DetailCredentialClaimResponseDTO {
     pub schema: CredentialClaimSchemaDTO,
     pub value: String,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub enum CredentialStateEnum {
     Created,
     Pending,

@@ -1,19 +1,18 @@
-use one_core::model::claim::Claim;
-use sea_orm::sea_query::SimpleExpr;
-use sea_orm::{IntoSimpleExpr, Set};
-
-use uuid::Uuid;
-
-use one_core::model::credential::{
-    Credential, CredentialId, CredentialState, CredentialStateEnum, SortableCredentialColumn,
-};
-use one_core::model::credential_schema::CredentialSchema;
-use one_core::model::did::{Did, DidId};
-
 use crate::{
     entity::{self, credential, credential_schema, credential_state, did},
     list_query::GetEntityColumn,
 };
+use one_core::model::{
+    credential::{
+        Credential, CredentialId, CredentialState, CredentialStateEnum, SortableCredentialColumn,
+    },
+    credential_schema::CredentialSchema,
+    did::{Did, DidId},
+};
+use one_core::repository::error::DataLayerError;
+use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
+use std::str::FromStr;
+use uuid::Uuid;
 
 impl From<entity::credential_state::CredentialState> for CredentialStateEnum {
     fn from(value: entity::credential_state::CredentialState) -> Self {
@@ -78,27 +77,26 @@ impl From<entity::credential_state::Model> for one_core::model::credential::Cred
     }
 }
 
-pub(super) fn entities_to_credential(
-    credential_id: Uuid,
-    credential: credential::Model,
-    states: Option<Vec<CredentialState>>,
-    issuer_did: Option<Did>,
-    holder_did: Option<Did>,
-    claims: Option<Vec<Claim>>,
-    schema: Option<CredentialSchema>,
-) -> Credential {
-    Credential {
-        id: credential_id,
-        created_date: credential.created_date,
-        issuance_date: credential.issuance_date,
-        state: states,
-        last_modified: credential.last_modified,
-        issuer_did,
-        holder_did,
-        credential: credential.credential,
-        claims,
-        schema,
-        transport: credential.transport,
+impl TryFrom<entity::credential::Model> for Credential {
+    type Error = DataLayerError;
+    fn try_from(credential: entity::credential::Model) -> Result<Self, Self::Error> {
+        let credential_id =
+            Uuid::from_str(&credential.id).map_err(|_| DataLayerError::MappingError)?;
+
+        Ok(Self {
+            id: credential_id,
+            created_date: credential.created_date,
+            issuance_date: credential.issuance_date,
+            last_modified: credential.last_modified,
+            credential: credential.credential,
+            transport: credential.transport,
+            state: None,
+            claims: None,
+            issuer_did: None,
+            holder_did: None,
+            schema: None,
+            interaction: None,
+        })
     }
 }
 

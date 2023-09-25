@@ -61,7 +61,8 @@ pub struct ClaimBindingDTO {
 
 pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
-        issued_credential_id: String,
+        interaction_id: String,
+        credentials: Vec<CredentialDetailBindingDTO>,
     },
     ProofRequest {
         proof_request: ProofRequestBindingDTO,

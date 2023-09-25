@@ -1,7 +1,10 @@
 use crate::{
-    model::credential::{
-        Credential, CredentialId, CredentialRelations, GetCredentialList, GetCredentialQuery,
-        UpdateCredentialRequest,
+    model::{
+        credential::{
+            Credential, CredentialId, CredentialRelations, GetCredentialList, GetCredentialQuery,
+            UpdateCredentialRequest,
+        },
+        interaction::InteractionId,
     },
     repository::error::DataLayerError,
 };
@@ -19,6 +22,12 @@ mock! {
             id: &CredentialId,
             relations: &CredentialRelations,
         ) -> Result<Credential, DataLayerError>;
+
+        pub fn get_credentials_by_interaction_id(
+            &self,
+            interaction_id: &InteractionId,
+            relations: &CredentialRelations,
+        ) -> Result<Vec<Credential>, DataLayerError>;
 
         pub fn get_credential_list(
             &self,
@@ -44,6 +53,14 @@ impl crate::repository::credential_repository::CredentialRepository for MockCred
         relations: &CredentialRelations,
     ) -> Result<Credential, DataLayerError> {
         self.get_credential(id, relations)
+    }
+
+    async fn get_credentials_by_interaction_id(
+        &self,
+        interaction_id: &InteractionId,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError> {
+        self.get_credentials_by_interaction_id(interaction_id, relations)
     }
 
     async fn get_credential_list(

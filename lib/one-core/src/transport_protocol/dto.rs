@@ -1,18 +1,18 @@
+use crate::service::credential::dto::CredentialResponseDTO;
 use serde::{Deserialize, Serialize}; // serialization necessary for wallet to parse JSON API response
 use time::OffsetDateTime;
 
 #[derive(Clone)]
 pub enum InvitationResponse {
-    Credential(ConnectIssuerResponse),
+    Credential(Box<CredentialResponseDTO>),
     Proof {
         proof_request: ConnectVerifierResponse,
         proof_id: String,
     },
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-/// deserializes matching `ConnectIssuerResponseRestDTO`
-pub struct ConnectIssuerResponse {
+#[derive(Clone, Deserialize)]
+pub struct SubmitIssuerResponse {
     pub credential: String,
     pub format: String,
 }

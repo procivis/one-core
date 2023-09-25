@@ -1,4 +1,4 @@
-use self::dto::InvitationResponse;
+use self::dto::{InvitationResponse, SubmitIssuerResponse};
 use async_trait::async_trait;
 use thiserror::Error;
 
@@ -38,5 +38,17 @@ pub trait TransportProtocol {
         base_url: &str,
         proof_id: &str,
         presentation: &str,
+    ) -> Result<(), TransportProtocolError>;
+
+    async fn accept_credential(
+        &self,
+        base_url: &str,
+        credential_id: &str,
+    ) -> Result<SubmitIssuerResponse, TransportProtocolError>;
+
+    async fn reject_credential(
+        &self,
+        base_url: &str,
+        credential_id: &str,
     ) -> Result<(), TransportProtocolError>;
 }

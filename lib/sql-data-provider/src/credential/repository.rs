@@ -1,9 +1,7 @@
 use crate::{
     common::calculate_pages_count,
     credential::{
-        mapper::{
-            entities_to_credential, get_credential_state_active_model, request_to_active_model,
-        },
+        mapper::{get_credential_state_active_model, request_to_active_model},
         CredentialProvider,
     },
     entity::{
@@ -24,6 +22,7 @@ use one_core::{
         },
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
+        interaction::InteractionId,
         organisation::OrganisationRelations,
     },
     repository::{
@@ -110,8 +109,6 @@ impl CredentialProvider {
         credential: credential::Model,
         relations: &CredentialRelations,
     ) -> Result<Credential, DataLayerError> {
-        let credential_id =
-            Uuid::from_str(&credential.id).map_err(|_| DataLayerError::MappingError)?;
         let issuer_did_id =
             Uuid::from_str(&credential.issuer_did_id).map_err(|_| DataLayerError::MappingError)?;
         let issuer_did = get_did(
@@ -130,7 +127,7 @@ impl CredentialProvider {
             }
         };
 
-        let states: Option<Vec<CredentialState>> = match &relations.state {
+        let state: Option<Vec<CredentialState>> = match &relations.state {
             None => None,
             Some(_) => {
                 let credential_states = credential_state::Entity::find()
@@ -174,15 +171,32 @@ impl CredentialProvider {
             None
         };
 
-        Ok(entities_to_credential(
-            credential_id,
-            credential,
-            states,
+        let interaction = if let Some(interaction_relations) = &relations.interaction {
+            match &credential.interaction_id {
+                None => None,
+                Some(interaction_id) => {
+                    let interaction_id =
+                        Uuid::from_str(interaction_id).map_err(|_| DataLayerError::MappingError)?;
+                    Some(
+                        self.interaction_repository
+                            .get_interaction(&interaction_id, interaction_relations)
+                            .await?,
+                    )
+                }
+            }
+        } else {
+            None
+        };
+
+        Ok(Credential {
+            state,
             issuer_did,
             holder_did,
             claims,
             schema,
-        ))
+            interaction,
+            ..credential.try_into()?
+        })
     }
 
     async fn credentials_to_repository(
@@ -342,6 +356,20 @@ impl CredentialRepository for CredentialProvider {
             .await
     }
 
+    async fn get_credentials_by_interaction_id(
+        &self,
+        interaction_id: &InteractionId,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError> {
+        let credentials = credential::Entity::find()
+            .filter(credential::Column::InteractionId.eq(&interaction_id.to_string()))
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        self.credentials_to_repository(credentials, relations).await
+    }
+
     async fn get_credential_list(
         &self,
         query_params: GetCredentialQuery,
@@ -374,6 +402,7 @@ impl CredentialRepository for CredentialProvider {
                             claim_schemas: Some(ClaimSchemaRelations {}),
                             organisation: Some(OrganisationRelations {}),
                         }),
+                        ..Default::default()
                     },
                 )
                 .await?,

@@ -1,17 +1,20 @@
 use super::dto::HandleInvitationURLQuery;
 use crate::{
     common_mapper::vector_try_into,
-    credential_formatter::{VCCredentialClaimSchemaResponse, VCCredentialSchemaResponse},
+    credential_formatter::VCCredentialClaimSchemaResponse,
     model::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidId, DidType},
         interaction::Interaction,
-        organisation::{Organisation, OrganisationId},
+        organisation::OrganisationId,
         proof::{self, Proof, ProofStateEnum},
     },
     service::{
-        credential_schema::dto::GetCredentialSchemaListValueResponseDTO,
+        credential::dto::CredentialSchemaResponseDTO,
+        credential_schema::dto::{
+            CredentialClaimSchemaDTO, GetCredentialSchemaListValueResponseDTO,
+        },
         error::ServiceError,
         ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
     },
@@ -28,38 +31,11 @@ pub(super) fn parse_query(url: &str) -> Result<HandleInvitationURLQuery, Service
         .map(|(key, value)| (key.to_string(), value.to_string()))
         .collect();
 
-    fn option_parse_uuid(input: Option<&String>) -> Result<Option<Uuid>, ServiceError> {
-        Ok(match input {
-            None => None,
-            Some(str) => Some(string_to_uuid(str)?),
-        })
-    }
-
     Ok(HandleInvitationURLQuery {
         protocol: query
             .get("protocol")
             .ok_or(ServiceError::IncorrectParameters)?
             .to_owned(),
-        credential: option_parse_uuid(query.get("credential"))?,
-        _proof: option_parse_uuid(query.get("proof"))?,
-    })
-}
-
-pub fn credential_schema_from_jwt(
-    schema: VCCredentialSchemaResponse,
-    organisation: Organisation,
-) -> Result<CredentialSchema, ServiceError> {
-    let now = OffsetDateTime::now_utc();
-    Ok(CredentialSchema {
-        id: string_to_uuid(&schema.id)?,
-        name: schema.name,
-        format: "JWT".to_string(),
-        revocation_method: "NONE".to_string(),
-        deleted_at: None,
-        created_date: now,
-        last_modified: now,
-        claim_schemas: Some(vector_try_into(schema.claims)?),
-        organisation: Some(organisation),
     })
 }
 
@@ -140,7 +116,7 @@ impl TryFrom<ProofCredentialSchema> for GetCredentialSchemaListValueResponseDTO 
 }
 
 pub fn interaction_from_handle_invitation(
-    host: Option<&str>,
+    host: String,
     data: Option<Vec<u8>>,
     now: OffsetDateTime,
 ) -> Interaction {
@@ -148,7 +124,7 @@ pub fn interaction_from_handle_invitation(
         id: Uuid::new_v4(),
         created_date: now,
         last_modified: now,
-        host: host.map(ToOwned::to_owned),
+        host: Some(host),
         data,
     }
 }
@@ -175,5 +151,36 @@ pub fn proof_from_handle_invitation(
         verifier_did: Some(verifier_did),
         holder_did: None,
         interaction: Some(interaction),
+    }
+}
+
+impl From<CredentialSchemaResponseDTO> for CredentialSchema {
+    fn from(value: CredentialSchemaResponseDTO) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            format: value.format,
+            revocation_method: value.revocation_method,
+            deleted_at: None,
+            claim_schemas: None,
+            organisation: None,
+        }
+    }
+}
+
+impl From<CredentialClaimSchemaDTO> for CredentialSchemaClaim {
+    fn from(value: CredentialClaimSchemaDTO) -> Self {
+        Self {
+            schema: ClaimSchema {
+                id: value.id,
+                key: value.key,
+                data_type: value.datatype,
+                created_date: value.created_date,
+                last_modified: value.last_modified,
+            },
+            required: value.required,
+        }
     }
 }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use one_core::repository::{
     claim_repository::ClaimRepository, credential_schema_repository::CredentialSchemaRepository,
-    did_repository::DidRepository,
+    did_repository::DidRepository, interaction_repository::InteractionRepository,
 };
 
 pub mod mapper;
@@ -14,6 +14,7 @@ pub(crate) struct CredentialProvider {
     pub credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
     pub claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
     pub did_repository: Arc<dyn DidRepository + Send + Sync>,
+    pub interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
 }
 
 #[cfg(test)]
