@@ -18,6 +18,7 @@ variables:
 stages:
   - build
   - test
+  - manual_e2e_tests
   - publish
   - deploy
   - sdk_build
@@ -44,15 +45,34 @@ before_script:
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
 
-build:
-  stage: build
+.cargo_build:
   script:
     - cargo build --release --features strict
   artifacts:
     expire_in: 1 hour
     paths:
       - target/release/core-server
+
+.docker_publish:
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
+    - docker build -t $IMAGE_TAG -f docker/Dockerfile .
+    - >
+      if [ "$CI_COMMIT_REF_NAME" == "main" ] ; then
+        docker image tag $IMAGE_TAG $IMAGE_NAME:latest
+        docker push $IMAGE_NAME:latest
+      fi
+    - docker push $IMAGE_TAG
+    - docker logout
+
+
+build:
+  stage: build
   extends:
+    - .cargo_build
     - .only_main_or_tag
 
 tests:
@@ -116,23 +136,12 @@ sonarqube-check:
   extends:
     - .only_main_or_tag
 
+
 publish:
   stage: publish
-  image: docker:latest
-  services:
-    - docker:dind
   dependencies: [build]
-  script:
-    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN
-    - docker build -t $IMAGE_TAG -f docker/Dockerfile .
-    - >
-      if [ "$CI_COMMIT_REF_NAME" == "main" ] ; then
-        docker image tag $IMAGE_TAG $IMAGE_NAME:latest
-        docker push $IMAGE_NAME:latest
-      fi
-    - docker push $IMAGE_TAG
-    - docker logout
   extends:
+    - .docker_publish
     - .only_main_or_tag
 
 bitrise_ios_sdk:
@@ -225,17 +234,21 @@ upload_sdk_artifacts:
         SHA-1: $(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
         =========================
       EOM
+      
 
-test_e2e:
-  stage: e2e_tests
-  needs: [publish]
+.run_e2e_tests:
   variables:
     CORE_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
   trigger:
     project: procivis/one/one-e2e-tests
     branch: main
     strategy: depend
+
+test_e2e:
+  stage: e2e_tests
+  needs: [publish]
   extends:
+    - .run_e2e_tests
     - .only_main_or_tag
 
 .deploy_k8s:
@@ -279,3 +292,30 @@ deploy:test:
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
       when: manual
+
+
+run_e2e_tests:
+  stage: manual_e2e_tests
+  when: manual
+  needs: [tests]
+  script:
+    - echo "Job for trigger manual e2e tests"
+
+e2e:build:
+  stage: manual_e2e_tests
+  needs: [run_e2e_tests]
+  extends:
+    - .cargo_build
+
+e2e:publish:
+  stage: manual_e2e_tests
+  needs: [e2e:build]
+  dependencies: [e2e:build]
+  extends:
+    - .docker_publish
+
+e2e:trigger_tests:
+  stage: manual_e2e_tests
+  needs: [e2e:publish]
+  extends:
+    - .run_e2e_tests
