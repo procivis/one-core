@@ -12,7 +12,7 @@ use crate::{
         organisation::OrganisationRelations,
     },
     repository::error::DataLayerError,
-    service::error::ServiceError,
+    service::{credential::dto::CredentialResponseDTO, error::ServiceError},
 };
 use time::OffsetDateTime;
 
@@ -21,8 +21,8 @@ impl SSIIssuerService {
         &self,
         credential_id: &CredentialId,
         holder_did_value: &String,
-    ) -> Result<(), ServiceError> {
-        let credential = self
+    ) -> Result<CredentialResponseDTO, ServiceError> {
+        let mut credential = self
             .credential_repository
             .get_credential(
                 credential_id,
@@ -35,6 +35,7 @@ impl SSIIssuerService {
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
+                    issuer_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
             )
@@ -85,24 +86,31 @@ impl SSIIssuerService {
                 }
             };
 
-        let token = self
-            .formatter_provider
-            .get_formatter(&credential_schema.format)?
-            .format_credentials(&credential.try_into()?, holder_did_value)?;
+        let now: OffsetDateTime = OffsetDateTime::now_utc();
+        let new_state = CredentialStateEnum::Offered;
 
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                credential: Some(token.bytes().collect()),
+                credential: None,
                 holder_did_id: Some(holder_did.id),
                 state: Some(CredentialState {
-                    created_date: OffsetDateTime::now_utc(),
-                    state: CredentialStateEnum::Offered,
+                    created_date: now,
+                    state: new_state.clone(),
                 }),
             })
             .await?;
 
-        Ok(()) // todo: ONE-600 return updated credential
+        // Update local copy for conversion.
+        credential.holder_did = Some(holder_did);
+        if let Some(states) = &mut credential.state {
+            states.push(CredentialState {
+                created_date: now,
+                state: new_state,
+            });
+        }
+
+        credential.try_into()
     }
 
     pub async fn issuer_submit(
@@ -115,13 +123,15 @@ impl SSIIssuerService {
                 credential_id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
-                    schema: Some(CredentialSchemaRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        ..Default::default()
-                    }),
                     claims: Some(ClaimRelations {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    issuer_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
             )
@@ -137,14 +147,26 @@ impl SSIIssuerService {
             return Err(ServiceError::AlreadyExists);
         }
 
-        let token = String::from_utf8(credential.credential).map_err(|_| {
-            ServiceError::MappingError("Credential is not valid UTF8 JWT token".to_string())
-        })?;
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+
+        let holder_did = credential
+            .holder_did
+            .as_ref()
+            .ok_or(ServiceError::MappingError("holder did is None".to_string()))?
+            .clone();
+
+        let token = self
+            .formatter_provider
+            .get_formatter(&credential_schema.format)?
+            .format_credentials(&credential.try_into()?, &holder_did.did)?;
 
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                credential: None,
+                credential: Some(token.bytes().collect()),
                 holder_did_id: None,
                 state: Some(CredentialState {
                     created_date: OffsetDateTime::now_utc(),

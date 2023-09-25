@@ -2,7 +2,9 @@ use super::dto::{
     ConnectIssuerResponseRestDTO, ConnectRequestRestDTO, ConnectVerifierResponseRestDTO,
     PostSsiIssuerConnectQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
-use crate::endpoint::ssi::dto::PostSsiIssuerRejectQueryParams;
+use crate::endpoint::{
+    credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
+};
 use crate::AppState;
 use axum::{
     extract::{Query, State},
@@ -154,8 +156,10 @@ pub(crate) async fn ssi_verifier_submit_proof(
     path = "/ssi/temporary-issuer/v1/connect",
     request_body = ConnectRequestRestDTO,
     responses(
-        (status = 200, description = "OK"),
+        (status = 200, description = "OK", body = GetCredentialResponseRestDTO),
+        (status = 400, description = "Invalid request"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Credential not found"),
         (status = 500, description = "Server error"),
     ),
     params(
@@ -175,7 +179,11 @@ pub(crate) async fn ssi_issuer_connect(
         .await;
 
     match result {
-        Ok(_) => (StatusCode::OK.into_response()).into_response(),
+        Ok(value) => (
+            StatusCode::OK,
+            Json(GetCredentialResponseRestDTO::from(value)),
+        )
+            .into_response(),
         Err(ServiceError::AlreadyExists) => {
             tracing::error!("Already issued");
             (StatusCode::CONFLICT, "Already issued").into_response()
