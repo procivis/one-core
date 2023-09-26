@@ -1,12 +1,9 @@
 use super::CredentialSchemaProvider;
-use crate::test_utilities::*;
+use crate::{entity::credential_schema, list_query::from_pagination, test_utilities::*};
 use one_core::{
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-            GetCredentialSchemaQuery,
-        },
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations},
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
@@ -18,7 +15,7 @@ use one_core::{
         },
     },
 };
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -223,21 +220,42 @@ async fn test_get_credential_schema_list_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema_list(GetCredentialSchemaQuery {
-            page: 0,
-            page_size: 5,
-            sort: None,
-            sort_direction: None,
-            exact: None,
-            name: None,
-            organisation_id: organisation.id.to_string(),
-        })
+        .get_credential_schema_list(from_pagination(0, 5, organisation.id.to_string()))
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(1, result.total_pages);
     assert_eq!(1, result.total_items);
     assert_eq!(1, result.values.len());
+}
+
+#[tokio::test]
+async fn test_get_credential_schema_list_deleted_schema() {
+    let TestSetupWithCredentialSchema {
+        organisation,
+        repository,
+        credential_schema,
+        db,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    credential_schema::ActiveModel {
+        id: Unchanged(credential_schema.id.to_string()),
+        deleted_at: Set(Some(get_dummy_date())),
+        ..Default::default()
+    }
+    .update(&db)
+    .await
+    .unwrap();
+
+    let result = repository
+        .get_credential_schema_list(from_pagination(0, 1, organisation.id.to_string()))
+        .await;
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(0, result.total_pages);
+    assert_eq!(0, result.total_items);
+    assert_eq!(0, result.values.len());
 }
 
 #[tokio::test]
@@ -304,6 +322,74 @@ async fn test_get_credential_schema_success() {
         .get_credential_schema(&credential_schema.id, &CredentialSchemaRelations::default())
         .await;
     assert!(empty_relations_mean_no_other_repository_calls.is_ok());
+}
+
+#[tokio::test]
+async fn test_get_credential_schema_deleted() {
+    let mut claim_schema_repository = MockClaimSchemaRepository::default();
+    claim_schema_repository
+        .expect_get_claim_schema_list()
+        .times(1)
+        .returning(|ids, _| {
+            Ok(ids
+                .into_iter()
+                .map(|id| ClaimSchema {
+                    id,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    key: format!("key{id}"),
+                    data_type: "STRING".to_string(),
+                })
+                .collect())
+        });
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .times(1)
+        .returning(|id, _| {
+            Ok(Organisation {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            })
+        });
+
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        db,
+        ..
+    } = setup_with_schema(Repositories {
+        claim_schema_repository,
+        organisation_repository,
+    })
+    .await;
+
+    let delete_date = get_dummy_date();
+    credential_schema::ActiveModel {
+        id: Unchanged(credential_schema.id.to_string()),
+        deleted_at: Set(Some(delete_date)),
+        ..Default::default()
+    }
+    .update(&db)
+    .await
+    .unwrap();
+
+    let result = repository
+        .get_credential_schema(
+            &credential_schema.id,
+            &CredentialSchemaRelations {
+                claim_schemas: Some(ClaimSchemaRelations::default()),
+                organisation: Some(OrganisationRelations::default()),
+            },
+        )
+        .await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(result.id, credential_schema.id,);
+    assert_eq!(result.deleted_at.unwrap(), delete_date);
 }
 
 #[tokio::test]

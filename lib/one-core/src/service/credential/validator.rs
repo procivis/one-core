@@ -15,6 +15,11 @@ pub(crate) fn validate_create_request(
 ) -> Result<(), ServiceError> {
     validate_exchange_type(transport, &config.exchange)?;
 
+    // ONE-843: cannot create credential based on deleted schema
+    if schema.deleted_at.is_some() {
+        return Err(ServiceError::NotFound);
+    }
+
     let claim_schemas = &schema
         .claim_schemas
         .as_ref()

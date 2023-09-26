@@ -77,7 +77,6 @@ impl ProofSchemaRepository for ProofSchemaProvider {
     ) -> Result<ProofSchema, DataLayerError> {
         let proof_schema_model: proof_schema::Model =
             crate::entity::ProofSchema::find_by_id(id.to_string())
-                .filter(proof_schema::Column::DeletedAt.is_null())
                 .one(&self.db)
                 .await
                 .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
