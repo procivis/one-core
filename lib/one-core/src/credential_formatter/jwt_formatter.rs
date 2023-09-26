@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::service::credential::dto::CredentialResponseDTO;
+use crate::service::credential::dto::CredentialDetailResponseDTO;
 use base64::{engine::general_purpose, Engine};
 use jwt_simple::prelude::*;
 use time::OffsetDateTime;
@@ -64,21 +64,21 @@ fn get_temp_keys() -> Ed25519KeyPair {
 impl CredentialFormatter for JWTFormatter {
     fn format_credentials(
         &self,
-        credentials: &CredentialResponseDTO, // Todo define input/output format
+        credential: &CredentialDetailResponseDTO, // Todo define input/output format
         holder_did: &str,
     ) -> Result<String, FormatterError> {
         let key = get_temp_keys();
-        let custom_claims: VC = credentials.into();
+        let custom_claims: VC = credential.into();
 
         let claims = Claims::with_custom_claims(custom_claims, Duration::from_days(365 * 2))
             // FIXME Issuer did should probably not be optional.
             .with_issuer(
-                credentials
+                credential
                     .issuer_did
                     .as_ref()
                     .unwrap_or(&"NOT PROVIDED".to_owned()),
             )
-            .with_jwt_id(credentials.id.to_owned())
+            .with_jwt_id(credential.id.to_owned())
             .with_subject(holder_did);
 
         // This should be put to a signer
@@ -138,8 +138,8 @@ impl CredentialFormatter for JWTFormatter {
 }
 
 // Format credentials
-impl From<&CredentialResponseDTO> for VC {
-    fn from(value: &CredentialResponseDTO) -> Self {
+impl From<&CredentialDetailResponseDTO> for VC {
+    fn from(value: &CredentialDetailResponseDTO) -> Self {
         let claims: HashMap<String, String> = value
             .claims
             .iter()

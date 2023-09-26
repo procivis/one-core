@@ -7,15 +7,15 @@ use crate::model::{
 };
 use crate::service::{
     credential::dto::{
-        CreateCredentialRequestDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
-        CredentialResponseDTO, CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO,
+        CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
+        CredentialRequestClaimDTO, CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO,
     },
     error::ServiceError,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-impl TryFrom<Credential> for CredentialResponseDTO {
+impl TryFrom<Credential> for CredentialDetailResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: Credential) -> Result<Self, ServiceError> {
@@ -48,7 +48,6 @@ impl TryFrom<Credential> for CredentialResponseDTO {
             claims: from_vec_claim(claims, &schema)?,
             schema: schema.try_into()?,
             issuer_did: issuer_did_value,
-            credential: value.credential,
         })
     }
 }

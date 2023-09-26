@@ -6,12 +6,12 @@ use crate::endpoint::credential_schema::dto::{
 };
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO, CredentialClaimSchemaDTO,
-    CredentialClaimSchemaRequestDTO, GetCredentialSchemaListValueResponseDTO,
-    GetCredentialSchemaResponseDTO,
+    CredentialClaimSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
+    CredentialSchemaListItemResponseDTO,
 };
 
-impl From<GetCredentialSchemaListValueResponseDTO> for CredentialSchemaListValueResponseRestDTO {
-    fn from(value: GetCredentialSchemaListValueResponseDTO) -> Self {
+impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaListValueResponseRestDTO {
+    fn from(value: CredentialSchemaListItemResponseDTO) -> Self {
         Self {
             id: value.id,
             created_date: value.created_date,
@@ -23,8 +23,8 @@ impl From<GetCredentialSchemaListValueResponseDTO> for CredentialSchemaListValue
     }
 }
 
-impl From<GetCredentialSchemaResponseDTO> for CredentialSchemaResponseRestDTO {
-    fn from(value: GetCredentialSchemaResponseDTO) -> Self {
+impl From<CredentialSchemaDetailResponseDTO> for CredentialSchemaResponseRestDTO {
+    fn from(value: CredentialSchemaDetailResponseDTO) -> Self {
         Self {
             id: value.id,
             created_date: value.created_date,

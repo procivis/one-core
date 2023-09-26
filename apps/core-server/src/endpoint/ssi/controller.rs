@@ -1,6 +1,7 @@
 use super::dto::{
     ConnectIssuerResponseRestDTO, ConnectRequestRestDTO, ConnectVerifierResponseRestDTO,
-    PostSsiIssuerConnectQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
+    PostSsiIssuerConnectQueryParams, PostSsiIssuerSubmitQueryParams,
+    PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
@@ -254,18 +255,18 @@ pub(crate) async fn ssi_issuer_reject(
         (status = 500, description = "Server error"),
     ),
     params(
-        PostSsiIssuerConnectQueryParams
+        PostSsiIssuerSubmitQueryParams
     ),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_issuer_submit(
     state: State<AppState>,
-    Query(query): Query<PostSsiIssuerConnectQueryParams>,
+    Query(query): Query<PostSsiIssuerSubmitQueryParams>,
 ) -> Response {
     let result = state
         .core
         .ssi_issuer_service
-        .issuer_submit(&query.credential)
+        .issuer_submit(&query.credential_id)
         .await;
 
     match result {

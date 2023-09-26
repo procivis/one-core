@@ -23,22 +23,28 @@ pub struct CredentialListItemResponseDTO {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct CredentialResponseDTO {
+#[serde(rename_all = "camelCase")]
+pub struct CredentialDetailResponseDTO {
     pub id: CredentialId,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub issuance_date: OffsetDateTime,
     pub state: CredentialStateEnum,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaResponseDTO,
     pub issuer_did: Option<String>,
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
-    pub credential: Vec<u8>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaResponseDTO {
     pub id: CredentialSchemaId,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: String,
@@ -47,12 +53,14 @@ pub struct CredentialSchemaResponseDTO {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DetailCredentialClaimResponseDTO {
     pub schema: CredentialClaimSchemaDTO,
     pub value: String,
 }
 
 #[derive(Debug, PartialEq, Clone, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialStateEnum {
     Created,
     Pending,

@@ -1,6 +1,6 @@
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialListItemResponseDTO, CredentialResponseDTO,
+    CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
     CredentialStateEnum, DetailCredentialClaimResponseDTO, EntityShareResponseDTO,
 };
 
@@ -10,8 +10,8 @@ use crate::endpoint::credential::dto::{
     GetCredentialResponseRestDTO, SortableCredentialColumnRestEnum,
 };
 
-impl From<CredentialResponseDTO> for GetCredentialResponseRestDTO {
-    fn from(value: CredentialResponseDTO) -> Self {
+impl From<CredentialDetailResponseDTO> for GetCredentialResponseRestDTO {
+    fn from(value: CredentialDetailResponseDTO) -> Self {
         Self {
             id: value.id,
             created_date: value.created_date,

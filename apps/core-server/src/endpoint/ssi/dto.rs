@@ -68,8 +68,14 @@ pub struct ConnectIssuerResponseRestDTO {
     pub format: String,
 }
 
-#[derive(Clone, Debug, Deserialize, IntoParams, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, IntoParams, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerRejectQueryParams {
+    pub credential_id: Uuid,
+}
+
+#[derive(Clone, Debug, Deserialize, IntoParams, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PostSsiIssuerSubmitQueryParams {
     pub credential_id: Uuid,
 }

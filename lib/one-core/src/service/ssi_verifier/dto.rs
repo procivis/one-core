@@ -1,6 +1,4 @@
-use crate::service::credential_schema::dto::{
-    ClaimSchemaId, GetCredentialSchemaListValueResponseDTO,
-};
+use crate::service::credential_schema::dto::{ClaimSchemaId, CredentialSchemaListItemResponseDTO};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
@@ -17,7 +15,7 @@ pub struct ProofRequestClaimDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
-    pub credential_schema: GetCredentialSchemaListValueResponseDTO,
+    pub credential_schema: CredentialSchemaListItemResponseDTO,
 }
 
 #[derive(Clone, Debug)]

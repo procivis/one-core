@@ -14,7 +14,7 @@ use crate::{
     service::{
         credential::{
             dto::{
-                CreateCredentialRequestDTO, CredentialResponseDTO, CredentialStateEnum,
+                CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialStateEnum,
                 EntityShareResponseDTO, GetCredentialListResponseDTO, GetCredentialQueryDTO,
             },
             mapper::{claims_from_create_request, from_create_request},
@@ -85,7 +85,7 @@ impl CredentialService {
     pub async fn get_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<CredentialResponseDTO, ServiceError> {
+    ) -> Result<CredentialDetailResponseDTO, ServiceError> {
         let credential = self
             .credential_repository
             .get_credential(

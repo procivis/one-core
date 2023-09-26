@@ -1,4 +1,5 @@
 use crate::{
+    common_mapper::list_response_into,
     model::{
         claim_schema::ClaimSchemaRelations, credential_schema::CredentialSchemaRelations,
         organisation::OrganisationRelations,
@@ -7,8 +8,8 @@ use crate::{
         credential_schema::{
             dto::{
                 CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO,
-                CredentialSchemaId, GetCredentialSchemaListResponseDTO,
-                GetCredentialSchemaQueryDTO, GetCredentialSchemaResponseDTO,
+                CredentialSchemaDetailResponseDTO, CredentialSchemaId,
+                GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
             },
             mapper::from_create_request,
             CredentialSchemaService,
@@ -74,7 +75,7 @@ impl CredentialSchemaService {
     pub async fn get_credential_schema(
         &self,
         credential_schema_id: &CredentialSchemaId,
-    ) -> Result<GetCredentialSchemaResponseDTO, ServiceError> {
+    ) -> Result<CredentialSchemaDetailResponseDTO, ServiceError> {
         let schema = self
             .credential_schema_repository
             .get_credential_schema(
@@ -104,6 +105,6 @@ impl CredentialSchemaService {
             .get_credential_schema_list(query)
             .await
             .map_err(ServiceError::from)?;
-        result.try_into()
+        Ok(list_response_into(result))
     }
 }

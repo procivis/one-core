@@ -1,10 +1,10 @@
-use crate::service::credential::dto::CredentialResponseDTO;
+use crate::service::credential::dto::CredentialDetailResponseDTO;
 use serde::{Deserialize, Serialize}; // serialization necessary for wallet to parse JSON API response
 use time::OffsetDateTime;
 
 #[derive(Clone)]
 pub enum InvitationResponse {
-    Credential(Box<CredentialResponseDTO>),
+    Credential(Box<CredentialDetailResponseDTO>),
     Proof {
         proof_request: ConnectVerifierResponse,
         proof_id: String,

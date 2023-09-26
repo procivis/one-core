@@ -41,7 +41,7 @@ impl TryFrom<ProofSchemaClaim> for ProofRequestClaimDTO {
                 .ok_or(ServiceError::MappingError(
                     "credential_schema is None".to_string(),
                 ))?
-                .try_into()?,
+                .into(),
         })
     }
 }
