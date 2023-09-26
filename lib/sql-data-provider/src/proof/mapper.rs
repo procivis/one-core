@@ -103,14 +103,10 @@ impl TryFrom<Proof> for proof::ActiveModel {
                 .id
                 .to_string()),
             holder_did_id: Set(value.holder_did.map(|did| did.id.to_string())),
-            proof_schema_id: Set(Some(
-                value
-                    .schema
-                    .ok_or(DataLayerError::IncorrectParameters)?
-                    .id
-                    .to_string(),
-            )),
-            interaction_id: Set(None),
+            proof_schema_id: Set(value.schema.map(|schema| schema.id.to_string())),
+            interaction_id: Set(value
+                .interaction
+                .map(|interaction| interaction.id.to_string())),
         })
     }
 }
