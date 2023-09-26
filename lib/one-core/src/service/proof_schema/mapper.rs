@@ -98,5 +98,6 @@ pub fn proof_schema_from_create_request(
         expire_duration: request.expire_duration,
         claim_schemas: Some(claim_schemas),
         organisation: Some(organisation),
+        deleted_at: None,
     }
 }

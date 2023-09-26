@@ -25,6 +25,7 @@ impl TryFrom<proof_schema::Model> for ProofSchema {
             id,
             created_date: value.created_date,
             last_modified: value.last_modified,
+            deleted_at: value.deleted_at,
             name: value.name,
             expire_duration: value.expire_duration,
             claim_schemas: None,

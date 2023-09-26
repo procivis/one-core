@@ -430,3 +430,52 @@ async fn test_create_credential_one_required_claim_missing() {
         .await;
     assert!(result.is_ok());
 }
+
+#[tokio::test]
+async fn test_create_credential_schema_deleted() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    let credential_schema = CredentialSchema {
+        deleted_at: Some(OffsetDateTime::now_utc()),
+        ..credential.schema.clone().unwrap()
+    };
+
+    {
+        let issuer_did = credential.issuer_did.clone().unwrap();
+        let credential_schema_clone = credential_schema.clone();
+        did_repository
+            .expect_get_did()
+            .returning(move |_, _| Ok(issuer_did.clone()));
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .returning(move |_, _| Ok(credential_schema_clone.clone()));
+    }
+
+    let service = setup_service(
+        MockCredentialRepository::default(),
+        credential_schema_repository,
+        did_repository,
+        generic_config(),
+    );
+
+    let claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[0]
+        .schema
+        .id
+        .to_owned();
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+            transport: "PROCIVIS_TEMPORARY".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id,
+                value: "value".to_string(),
+            }],
+        })
+        .await;
+    assert!(matches!(result, Err(ServiceError::NotFound)));
+}

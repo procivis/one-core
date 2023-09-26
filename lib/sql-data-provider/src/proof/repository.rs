@@ -316,7 +316,6 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::P
             sea_orm::JoinType::InnerJoin,
             proof::Relation::ProofSchema.def(),
         )
-        .filter(proof_schema::Column::DeletedAt.is_null())
         .column_as(proof_schema::Column::Id, "schema_id")
         .column_as(proof_schema::Column::Name, "schema_name")
         .column_as(proof_schema::Column::CreatedDate, "schema_created_date")

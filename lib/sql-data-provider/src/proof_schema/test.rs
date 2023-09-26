@@ -1,5 +1,5 @@
 use super::ProofSchemaProvider;
-use crate::test_utilities::*;
+use crate::{entity::proof_schema, test_utilities::*};
 use one_core::{
     model::{
         claim_schema::ClaimSchema,
@@ -23,7 +23,7 @@ use one_core::{
         proof_schema_repository::ProofSchemaRepository,
     },
 };
-use sea_orm::{ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, Set, Unchanged};
 use std::{boxed::Box, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -138,6 +138,7 @@ async fn test_create_proof_schema_invalid_params() {
             id: proof_schema_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
             claim_schemas: None,
@@ -167,6 +168,7 @@ async fn test_create_proof_schema_already_exists() {
             id: proof_schema_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
             claim_schemas: Some(vec![ProofSchemaClaim {
@@ -228,6 +230,7 @@ async fn test_create_proof_schema_success() {
             id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
             claim_schemas: Some(vec![ProofSchemaClaim {
@@ -369,6 +372,39 @@ async fn test_get_proof_schema_no_relations() {
     let result = result.unwrap();
     assert_eq!(result.id, proof_schema_id);
     assert_eq!(result.name, proof_schema_name);
+}
+
+#[tokio::test]
+async fn test_get_proof_schema_deleted() {
+    let TestSetupWithProofSchema {
+        repository,
+        proof_schema_id,
+        db,
+        ..
+    } = setup_with_proof_schema(
+        get_claim_schema_repository_mock(),
+        get_organisation_repository_mock(),
+        get_credential_schema_repository_mock(),
+    )
+    .await;
+
+    let delete_date = get_dummy_date();
+    proof_schema::ActiveModel {
+        id: Unchanged(proof_schema_id.to_string()),
+        deleted_at: Set(Some(delete_date)),
+        ..Default::default()
+    }
+    .update(&db)
+    .await
+    .unwrap();
+
+    let result = repository
+        .get_proof_schema(&proof_schema_id, &ProofSchemaRelations::default())
+        .await;
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(result.id, proof_schema_id);
+    assert_eq!(result.deleted_at.unwrap(), delete_date);
 }
 
 #[tokio::test]

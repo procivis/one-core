@@ -87,6 +87,11 @@ impl ProofService {
             .get_proof_schema(&request.proof_schema_id, &ProofSchemaRelations::default())
             .await?;
 
+        // ONE-843: cannot create proof based on deleted schema
+        if proof_schema.deleted_at.is_some() {
+            return Err(ServiceError::NotFound);
+        }
+
         let verifier_did = self
             .did_repository
             .get_did(&request.verifier_did_id, &DidRelations::default())

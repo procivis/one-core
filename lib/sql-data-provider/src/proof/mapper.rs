@@ -43,6 +43,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 id: schema_id,
                 created_date: value.schema_created_date,
                 last_modified: value.schema_last_modified,
+                deleted_at: None,
                 name: value.schema_name,
                 expire_duration: value.expire_duration,
                 claim_schemas: None,

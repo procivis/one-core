@@ -116,7 +116,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         relations: &CredentialSchemaRelations,
     ) -> Result<CredentialSchema, DataLayerError> {
         let credential_schema = credential_schema::Entity::find_by_id(id.to_string())
-            .filter(credential_schema::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?

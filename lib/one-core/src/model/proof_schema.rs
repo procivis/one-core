@@ -15,6 +15,7 @@ pub struct ProofSchema {
     pub id: ProofSchemaId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub expire_duration: u32,
 

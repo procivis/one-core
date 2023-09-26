@@ -97,6 +97,7 @@ async fn test_get_proof_exists() {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
             claim_schemas: Some(vec![ProofSchemaClaim {
@@ -215,6 +216,7 @@ async fn test_get_proof_list_success() {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
             claim_schemas: None,
@@ -292,6 +294,7 @@ async fn test_create_proof() {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
                 claim_schemas: None,
@@ -337,6 +340,40 @@ async fn test_create_proof() {
     let result = service.create_proof(request).await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), proof_id);
+}
+
+#[tokio::test]
+async fn test_create_proof_schema_deleted() {
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .times(1)
+        .returning(|id, _| {
+            Ok(ProofSchema {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: Some(OffsetDateTime::now_utc()),
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                claim_schemas: None,
+                organisation: None,
+            })
+        });
+
+    let service = setup_service(Repositories {
+        proof_schema_repository,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_proof(CreateProofRequestDTO {
+            proof_schema_id: Uuid::new_v4(),
+            verifier_did_id: Uuid::new_v4(),
+            transport: "transport".to_string(),
+        })
+        .await;
+    assert!(matches!(result, Err(ServiceError::NotFound)));
 }
 
 #[tokio::test]
