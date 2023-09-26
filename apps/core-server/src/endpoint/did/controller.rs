@@ -1,4 +1,4 @@
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 
@@ -6,6 +6,7 @@ use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
 use crate::dto::common::GetDidsResponseRestDTO;
+use crate::extractor::Qs;
 use crate::AppState;
 
 use super::dto::{
@@ -60,10 +61,7 @@ pub(crate) async fn get_did(state: State<AppState>, Path(id): Path<Uuid>) -> Res
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn get_did_list(
-    state: State<AppState>,
-    Query(query): Query<GetDidQuery>,
-) -> Response {
+pub(crate) async fn get_did_list(state: State<AppState>, Qs(query): Qs<GetDidQuery>) -> Response {
     let result = state.core.did_service.get_did_list(query.into()).await;
 
     match result {

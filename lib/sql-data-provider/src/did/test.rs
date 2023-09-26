@@ -347,9 +347,9 @@ async fn test_get_did_list_filtering() {
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
-    assert_eq!(0, response.values.len());
+    assert_eq!(1, response.values.len());
 
-    // exact
+    // exact name
     let result = provider
         .get_did_list(GetDidQuery {
             page: 0,
