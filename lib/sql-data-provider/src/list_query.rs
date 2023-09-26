@@ -43,28 +43,35 @@ where
         let mut result = self;
 
         // filtering by name
-        if let Some(filter_name) = &query_params.name {
-            if let Some(filter_columns) = &filter_name_columns {
-                if !filter_columns.is_empty() {
-                    let mut conditions = Condition::any();
-                    for column in filter_columns {
-                        let exact_column = ExactColumn::from_str(&column.to_string());
-                        match exact_column {
-                            Ok(col) => {
-                                if query_params.exact.clone().unwrap_or(vec![]).contains(&col) {
-                                    conditions = conditions.add(column.eq(filter_name));
-                                } else {
-                                    conditions = conditions.add(column.starts_with(filter_name));
+        if let (Some(filter_name), Some(filter_columns)) =
+            (&query_params.name, &filter_name_columns)
+        {
+            if !filter_columns.is_empty() {
+                let mut conditions = Condition::any();
+
+                for column in filter_columns {
+                    if let Some(exact_columns) = query_params.exact.as_ref() {
+                        // If exact columns are defined and not empty
+                        // don't filter over any other columns
+                        if !exact_columns.is_empty() {
+                            for column in filter_columns {
+                                if let Ok(exact_col) = ExactColumn::from_str(&column.to_string()) {
+                                    if query_params
+                                        .exact
+                                        .as_ref()
+                                        .map(|i| i.contains(&exact_col))
+                                        .unwrap_or_else(|| false)
+                                    {
+                                        conditions = conditions.add(column.eq(filter_name));
+                                    }
                                 }
                             }
-                            Err(_) => tracing::debug!(
-                                "Exact column {} not implemented",
-                                column.to_string()
-                            ),
+                            continue;
                         }
                     }
-                    result = result.filter(conditions);
+                    conditions = conditions.add(column.starts_with(filter_name));
                 }
+                result = result.filter(conditions);
             }
         }
 
