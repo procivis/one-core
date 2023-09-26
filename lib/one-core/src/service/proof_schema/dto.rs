@@ -8,7 +8,7 @@ use crate::{
         proof_schema::SortableProofSchemaColumn,
     },
     service::{
-        credential_schema::dto::GetCredentialSchemaListValueResponseDTO,
+        credential_schema::dto::CredentialSchemaListItemResponseDTO,
         organisation::dto::OrganisationId,
     },
 };
@@ -21,7 +21,7 @@ pub struct ProofClaimSchemaResponseDTO {
     pub required: bool,
     pub key: String,
     pub data_type: String,
-    pub credential_schema: GetCredentialSchemaListValueResponseDTO,
+    pub credential_schema: CredentialSchemaListItemResponseDTO,
 }
 
 #[derive(Clone, Debug)]

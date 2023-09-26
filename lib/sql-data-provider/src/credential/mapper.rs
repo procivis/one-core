@@ -8,6 +8,7 @@ use one_core::model::{
     },
     credential_schema::CredentialSchema,
     did::{Did, DidId},
+    interaction::InteractionId,
 };
 use one_core::repository::error::DataLayerError;
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
@@ -105,6 +106,7 @@ pub(super) fn request_to_active_model(
     schema: CredentialSchema,
     issuer_did: Did,
     holder_did_id: Option<DidId>,
+    interaction_id: Option<InteractionId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id.to_string()),
@@ -117,6 +119,6 @@ pub(super) fn request_to_active_model(
         credential: Set(request.credential.to_owned()),
         issuer_did_id: Set(issuer_did.id.to_string()),
         holder_did_id: Set(holder_did_id.map(|did_id| did_id.to_string())),
-        interaction_id: Set(None),
+        interaction_id: Set(interaction_id.map(|id| id.to_string())),
     }
 }

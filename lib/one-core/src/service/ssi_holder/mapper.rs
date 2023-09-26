@@ -12,9 +12,7 @@ use crate::{
     },
     service::{
         credential::dto::CredentialSchemaResponseDTO,
-        credential_schema::dto::{
-            CredentialClaimSchemaDTO, GetCredentialSchemaListValueResponseDTO,
-        },
+        credential_schema::dto::{CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO},
         error::ServiceError,
         ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
     },
@@ -100,7 +98,7 @@ impl TryFrom<ProofClaimSchema> for ProofRequestClaimDTO {
     }
 }
 
-impl TryFrom<ProofCredentialSchema> for GetCredentialSchemaListValueResponseDTO {
+impl TryFrom<ProofCredentialSchema> for CredentialSchemaListItemResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: ProofCredentialSchema) -> Result<Self, Self::Error> {

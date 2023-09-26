@@ -287,10 +287,7 @@ impl CredentialRepository for CredentialProvider {
             .issuer_did
             .to_owned()
             .ok_or(DataLayerError::MappingError)?;
-        let holder_did_id = match request.holder_did.to_owned() {
-            None => None,
-            Some(did) => Some(did.id),
-        };
+        let holder_did_id = request.holder_did.as_ref().map(|did| did.id);
         let schema = request
             .schema
             .to_owned()
@@ -299,14 +296,19 @@ impl CredentialRepository for CredentialProvider {
             .claims
             .to_owned()
             .ok_or(DataLayerError::MappingError)?;
+        let interaction_id = request
+            .interaction
+            .as_ref()
+            .map(|interaction| interaction.id);
 
-        let credential = request_to_active_model(&request, schema, issuer_did, holder_did_id)
-            .insert(&self.db)
-            .await
-            .map_err(|e| match e.sql_err() {
-                Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
-                _ => DataLayerError::GeneralRuntimeError(e.to_string()),
-            })?;
+        let credential =
+            request_to_active_model(&request, schema, issuer_did, holder_did_id, interaction_id)
+                .insert(&self.db)
+                .await
+                .map_err(|e| match e.sql_err() {
+                    Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
+                    _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+                })?;
 
         if !claims.is_empty() {
             self.claim_repository

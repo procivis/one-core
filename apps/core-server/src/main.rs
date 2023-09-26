@@ -148,7 +148,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::ssi::dto::ConnectVerifierResponseRestDTO,
                 endpoint::ssi::dto::ProofRequestClaimRestDTO,
                 endpoint::ssi::dto::ConnectIssuerResponseRestDTO,
-                endpoint::ssi::dto::PostSsiIssuerRejectQueryParams,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,

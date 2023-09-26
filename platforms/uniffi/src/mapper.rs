@@ -7,10 +7,11 @@ use one_core::{
     common_mapper::vector_into,
     service::{
         credential::dto::{
-            CredentialListItemResponseDTO, CredentialResponseDTO, CredentialSchemaResponseDTO,
-            CredentialStateEnum, DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO,
+            CredentialDetailResponseDTO, CredentialListItemResponseDTO,
+            CredentialSchemaResponseDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
+            GetCredentialListResponseDTO,
         },
-        credential_schema::dto::GetCredentialSchemaListValueResponseDTO,
+        credential_schema::dto::CredentialSchemaListItemResponseDTO,
         ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
     },
 };
@@ -29,8 +30,8 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
     }
 }
 
-impl From<CredentialResponseDTO> for CredentialDetailBindingDTO {
-    fn from(value: CredentialResponseDTO) -> Self {
+impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
+    fn from(value: CredentialDetailResponseDTO) -> Self {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
@@ -58,8 +59,8 @@ impl From<CredentialStateEnum> for CredentialStateBindingEnum {
     }
 }
 
-impl From<GetCredentialSchemaListValueResponseDTO> for CredentialSchemaBindingDTO {
-    fn from(value: GetCredentialSchemaListValueResponseDTO) -> Self {
+impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
+    fn from(value: CredentialSchemaListItemResponseDTO) -> Self {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),

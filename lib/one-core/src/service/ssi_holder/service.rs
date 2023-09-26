@@ -21,7 +21,7 @@ use crate::{
     },
     repository::error::DataLayerError,
     service::{
-        credential::dto::CredentialResponseDTO, did::dto::DidId, error::ServiceError,
+        credential::dto::CredentialDetailResponseDTO, did::dto::DidId, error::ServiceError,
         proof::dto::ProofId,
     },
     transport_protocol::dto::{ConnectVerifierResponse, InvitationResponse},
@@ -317,7 +317,7 @@ impl SSIHolderService {
         &self,
         base_url: String,
         holder_did: Did,
-        issuer_response: CredentialResponseDTO,
+        issuer_response: CredentialDetailResponseDTO,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         let organisation_id = holder_did.organisation_id;
         let organisation = self

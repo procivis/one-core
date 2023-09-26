@@ -14,7 +14,7 @@ pub type Key = String;
 pub type Datatype = String;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GetCredentialSchemaListValueResponseDTO {
+pub struct CredentialSchemaListItemResponseDTO {
     pub id: CredentialSchemaId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -24,7 +24,7 @@ pub struct GetCredentialSchemaListValueResponseDTO {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct GetCredentialSchemaResponseDTO {
+pub struct CredentialSchemaDetailResponseDTO {
     pub id: CredentialSchemaId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -36,17 +36,19 @@ pub struct GetCredentialSchemaResponseDTO {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CredentialClaimSchemaDTO {
     pub id: ClaimSchemaId,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub key: Key,
     pub datatype: Datatype,
     pub required: bool,
 }
 
-pub type GetCredentialSchemaListResponseDTO =
-    GetListResponse<GetCredentialSchemaListValueResponseDTO>;
+pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaListItemResponseDTO>;
 pub type GetCredentialSchemaQueryDTO = GetListQueryParams<SortableCredentialSchemaColumn>;
 
 #[derive(Clone, Debug)]

@@ -12,7 +12,7 @@ use crate::{
         organisation::OrganisationRelations,
     },
     repository::error::DataLayerError,
-    service::{credential::dto::CredentialResponseDTO, error::ServiceError},
+    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
 };
 use time::OffsetDateTime;
 
@@ -21,7 +21,7 @@ impl SSIIssuerService {
         &self,
         credential_id: &CredentialId,
         holder_did_value: &String,
-    ) -> Result<CredentialResponseDTO, ServiceError> {
+    ) -> Result<CredentialDetailResponseDTO, ServiceError> {
         let mut credential = self
             .credential_repository
             .get_credential(

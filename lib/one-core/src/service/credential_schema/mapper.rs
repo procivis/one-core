@@ -1,17 +1,16 @@
-use crate::model::common::ExactColumn;
-use crate::model::credential_schema::OrganisationId;
 use crate::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
 use crate::{
     model::{
         claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList},
+        common::ExactColumn,
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, OrganisationId},
         organisation::Organisation,
     },
     service::{
         credential_schema::dto::{
             CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
-            CredentialClaimSchemaRequestDTO, GetCredentialSchemaListResponseDTO,
-            GetCredentialSchemaListValueResponseDTO, GetCredentialSchemaResponseDTO,
+            CredentialClaimSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
+            CredentialSchemaListItemResponseDTO,
         },
         error::ServiceError,
     },
@@ -19,22 +18,20 @@ use crate::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-impl TryFrom<CredentialSchema> for GetCredentialSchemaListValueResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        Ok(GetCredentialSchemaListValueResponseDTO {
+impl From<CredentialSchema> for CredentialSchemaListItemResponseDTO {
+    fn from(value: CredentialSchema) -> Self {
+        Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
             format: value.format,
             revocation_method: value.revocation_method,
-        })
+        }
     }
 }
 
-impl TryFrom<CredentialSchema> for GetCredentialSchemaResponseDTO {
+impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
@@ -50,7 +47,7 @@ impl TryFrom<CredentialSchema> for GetCredentialSchemaResponseDTO {
             Some(value) => Ok(value.id),
         }?;
 
-        Ok(GetCredentialSchemaResponseDTO {
+        Ok(Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
@@ -73,24 +70,6 @@ impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
             datatype: value.schema.data_type,
             required: value.required,
         }
-    }
-}
-
-impl TryFrom<GetCredentialSchemaList> for GetCredentialSchemaListResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: GetCredentialSchemaList) -> Result<Self, Self::Error> {
-        let values: Result<Vec<_>, _> = value
-            .values
-            .into_iter()
-            .map(|item| item.try_into())
-            .collect();
-
-        Ok(Self {
-            values: values?,
-            total_pages: value.total_pages,
-            total_items: value.total_items,
-        })
     }
 }
 
