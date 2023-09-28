@@ -433,6 +433,101 @@ async fn test_get_proof_with_relations() {
 }
 
 #[tokio::test]
+async fn test_get_proof_by_interaction_id_missing() {
+    let TestSetupWithProof { repository, .. } = setup_with_proof(
+        get_proof_schema_repository_mock(),
+        get_claim_repository_mock(),
+        get_did_repository_mock(),
+        get_interaction_repository_mock(),
+    )
+    .await;
+
+    let result = repository
+        .get_proof_by_interaction_id(&Uuid::new_v4(), &ProofRelations::default())
+        .await;
+    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+}
+
+#[tokio::test]
+async fn test_get_proof_by_interaction_id_success() {
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .times(1)
+        .returning(|id, _| {
+            Ok(ProofSchema {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                claim_schemas: None,
+                organisation: None,
+            })
+        });
+
+    let mut interaction_repository = MockInteractionRepository::default();
+    interaction_repository
+        .expect_get_interaction()
+        .times(1)
+        .returning(|id, _| {
+            Ok(Interaction {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                data: Some(vec![1, 2, 3]),
+                host: Some("host".to_owned()),
+            })
+        });
+
+    let mut did_repository = MockDidRepository::default();
+    did_repository.expect_get_did().times(1).returning(|id, _| {
+        Ok(Did {
+            id: id.to_owned(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: "verifier".to_string(),
+            organisation_id: Uuid::new_v4(),
+            did: "did:key:123".to_string(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+        })
+    });
+
+    let TestSetupWithProof {
+        repository,
+        proof_id,
+        interaction_id,
+        ..
+    } = setup_with_proof(
+        Arc::from(proof_schema_repository),
+        get_claim_repository_mock(),
+        Arc::from(did_repository),
+        Arc::from(interaction_repository),
+    )
+    .await;
+
+    let result = repository
+        .get_proof_by_interaction_id(
+            &interaction_id,
+            &ProofRelations {
+                state: Some(ProofStateRelations::default()),
+                claims: Some(ClaimRelations::default()),
+                schema: Some(ProofSchemaRelations::default()),
+                verifier_did: Some(DidRelations::default()),
+                holder_did: Some(DidRelations::default()),
+                interaction: Some(InteractionRelations::default()),
+            },
+        )
+        .await;
+    assert!(result.is_ok());
+    let proof = result.unwrap();
+    assert_eq!(proof.id, proof_id);
+    assert_eq!(proof.interaction.unwrap().id, interaction_id);
+}
+
+#[tokio::test]
 async fn test_set_proof_state() {
     let TestSetupWithProof {
         repository,

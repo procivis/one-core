@@ -29,3 +29,9 @@ pub struct IssuanceSubmitRequestRestDTO {
 pub struct IssuanceRejectRequestRestDTO {
     pub interaction_id: Uuid,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PresentationRejectRequestRestDTO {
+    pub interaction_id: Uuid,
+}

@@ -118,7 +118,7 @@ interface OneCoreBinding {
   void holder_reject_credential(string interaction_id);
 
   [Throws=ServiceError]
-  void holder_reject_proof();
+  void holder_reject_proof(string interaction_id);
 
   [Throws=ServiceError]
   void holder_submit_proof(sequence<string> credential_ids);

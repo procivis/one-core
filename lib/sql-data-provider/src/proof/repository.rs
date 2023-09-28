@@ -12,7 +12,7 @@ use one_core::{
     model::{
         claim::{Claim, ClaimId},
         did::Did,
-        interaction::InteractionRelations,
+        interaction::InteractionId,
         proof::{GetProofList, GetProofQuery, Proof, ProofId, ProofRelations, ProofState},
     },
     repository::{error::DataLayerError, proof_repository::ProofRepository},
@@ -72,100 +72,29 @@ impl ProofRepository for ProofProvider {
             })?
             .ok_or(DataLayerError::RecordNotFound)?;
 
-        let mut proof: Proof = proof_model.clone().try_into()?;
+        self.resolve_proof_relations(proof_model, relations).await
+    }
 
-        if let Some(proof_schema_relations) = &relations.schema {
-            if let Some(proof_schema_id) = proof_model.proof_schema_id {
-                let proof_schema_id =
-                    Uuid::from_str(&proof_schema_id).map_err(|_| DataLayerError::MappingError)?;
-                proof.schema = Some(
-                    self.proof_schema_repository
-                        .get_proof_schema(&proof_schema_id, proof_schema_relations)
-                        .await?,
+    async fn get_proof_by_interaction_id(
+        &self,
+        interaction_id: &InteractionId,
+        relations: &ProofRelations,
+    ) -> Result<Proof, DataLayerError> {
+        let proof_model = crate::entity::Proof::find()
+            .filter(proof::Column::InteractionId.eq(interaction_id.to_string()))
+            .one(&self.db)
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    "Error while fetching proof with interaction {}. Error: {}",
+                    interaction_id,
+                    e.to_string()
                 );
-            }
-        }
+                DataLayerError::GeneralRuntimeError(e.to_string())
+            })?
+            .ok_or(DataLayerError::RecordNotFound)?;
 
-        if let Some(claim_relations) = &relations.claims {
-            let proof_claims = crate::entity::ProofClaim::find()
-                .filter(proof_claim::Column::ProofId.eq(proof_id.to_string()))
-                .all(&self.db)
-                .await
-                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
-
-            let claim_ids = proof_claims
-                .iter()
-                .map(|item| Uuid::from_str(&item.claim_id))
-                .collect::<Result<Vec<ClaimId>, _>>()
-                .map_err(|_| DataLayerError::MappingError)?;
-
-            proof.claims = if claim_ids.is_empty() {
-                Some(vec![])
-            } else {
-                Some(
-                    self.claim_repository
-                        .get_claim_list(claim_ids, claim_relations)
-                        .await?,
-                )
-            };
-        }
-
-        if let Some(did_relations) = &relations.verifier_did {
-            let verifier_did_id = Uuid::from_str(&proof_model.verifier_did_id)
-                .map_err(|_| DataLayerError::MappingError)?;
-
-            proof.verifier_did = Some(
-                self.did_repository
-                    .get_did(&verifier_did_id, did_relations)
-                    .await?,
-            );
-        }
-
-        if let Some(did_relations) = &relations.holder_did {
-            if let Some(holder_did_id) = &proof_model.holder_did_id {
-                let holder_did_id =
-                    Uuid::from_str(holder_did_id).map_err(|_| DataLayerError::MappingError)?;
-
-                proof.holder_did = Some(
-                    self.did_repository
-                        .get_did(&holder_did_id, did_relations)
-                        .await?,
-                );
-            }
-        }
-
-        if let Some(_state_relations) = &relations.state {
-            let proof_states = crate::entity::ProofState::find()
-                .filter(proof_state::Column::ProofId.eq(proof_id.to_string()))
-                .order_by_desc(proof_state::Column::CreatedDate)
-                .all(&self.db)
-                .await
-                .map_err(|e| {
-                    tracing::error!(
-                        "Error while fetching proof {} state. Error: {}",
-                        proof_id,
-                        e.to_string()
-                    );
-                    DataLayerError::GeneralRuntimeError(e.to_string())
-                })?;
-
-            proof.state = Some(vector_into(proof_states));
-        }
-
-        if let (Some(_), Some(interaction_id)) =
-            (&relations.interaction, proof_model.interaction_id)
-        {
-            let interaction_id =
-                Uuid::from_str(&interaction_id).map_err(|_| DataLayerError::MappingError)?;
-            let interaction = self
-                .interaction_repository
-                .get_interaction(&interaction_id, &InteractionRelations::default())
-                .await?;
-
-            proof.interaction = Some(interaction);
-        }
-
-        Ok(proof)
+        self.resolve_proof_relations(proof_model, relations).await
     }
 
     async fn get_proof_list(
@@ -352,4 +281,107 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::P
         // fallback ordering
         .order_by_desc(proof::Column::CreatedDate)
         .order_by_desc(proof::Column::Id)
+}
+
+impl ProofProvider {
+    async fn resolve_proof_relations(
+        &self,
+        proof_model: proof::Model,
+        relations: &ProofRelations,
+    ) -> Result<Proof, DataLayerError> {
+        let mut proof: Proof = proof_model.clone().try_into()?;
+
+        if let Some(proof_schema_relations) = &relations.schema {
+            if let Some(proof_schema_id) = proof_model.proof_schema_id {
+                let proof_schema_id =
+                    Uuid::from_str(&proof_schema_id).map_err(|_| DataLayerError::MappingError)?;
+                proof.schema = Some(
+                    self.proof_schema_repository
+                        .get_proof_schema(&proof_schema_id, proof_schema_relations)
+                        .await?,
+                );
+            }
+        }
+
+        if let Some(claim_relations) = &relations.claims {
+            let proof_claims = crate::entity::ProofClaim::find()
+                .filter(proof_claim::Column::ProofId.eq(&proof_model.id))
+                .all(&self.db)
+                .await
+                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+            let claim_ids = proof_claims
+                .iter()
+                .map(|item| Uuid::from_str(&item.claim_id))
+                .collect::<Result<Vec<ClaimId>, _>>()
+                .map_err(|_| DataLayerError::MappingError)?;
+
+            proof.claims = if claim_ids.is_empty() {
+                Some(vec![])
+            } else {
+                Some(
+                    self.claim_repository
+                        .get_claim_list(claim_ids, claim_relations)
+                        .await?,
+                )
+            };
+        }
+
+        if let Some(did_relations) = &relations.verifier_did {
+            let verifier_did_id = Uuid::from_str(&proof_model.verifier_did_id)
+                .map_err(|_| DataLayerError::MappingError)?;
+
+            proof.verifier_did = Some(
+                self.did_repository
+                    .get_did(&verifier_did_id, did_relations)
+                    .await?,
+            );
+        }
+
+        if let Some(did_relations) = &relations.holder_did {
+            if let Some(holder_did_id) = &proof_model.holder_did_id {
+                let holder_did_id =
+                    Uuid::from_str(holder_did_id).map_err(|_| DataLayerError::MappingError)?;
+
+                proof.holder_did = Some(
+                    self.did_repository
+                        .get_did(&holder_did_id, did_relations)
+                        .await?,
+                );
+            }
+        }
+
+        if let Some(_state_relations) = &relations.state {
+            let proof_states = crate::entity::ProofState::find()
+                .filter(proof_state::Column::ProofId.eq(&proof_model.id))
+                .order_by_desc(proof_state::Column::CreatedDate)
+                .all(&self.db)
+                .await
+                .map_err(|e| {
+                    tracing::error!(
+                        "Error while fetching proof {} state. Error: {}",
+                        proof_model.id,
+                        e.to_string()
+                    );
+                    DataLayerError::GeneralRuntimeError(e.to_string())
+                })?;
+
+            proof.state = Some(vector_into(proof_states));
+        }
+
+        if let (Some(interaction_relations), Some(interaction_id)) =
+            (&relations.interaction, proof_model.interaction_id)
+        {
+            let interaction_id =
+                Uuid::from_str(&interaction_id).map_err(|_| DataLayerError::MappingError)?;
+            let interaction = self
+                .interaction_repository
+                .get_interaction(&interaction_id, interaction_relations)
+                .await?;
+
+            proof.interaction = Some(interaction);
+        }
+
+        Ok(proof)
+    }
 }
