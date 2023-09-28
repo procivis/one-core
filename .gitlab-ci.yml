@@ -15,6 +15,12 @@ variables:
   # - AZURE_STORAGE_KEY: storage account key
 
 
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+
 stages:
   - build
   - test
@@ -45,6 +51,35 @@ before_script:
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
 
+.manual_except_main_branch:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: never
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
+      when: never
+    - when: on_success
+
+.deploy_k8s:
+  image: registry.gitlab.procivis.ch/procivis/one/one-operations/az-helm-kubectl:1.25.7
+  variables:
+    DEPLOY_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    K8S_TYPE: deployment
+    HELM_APP_NAME: one-core
+    HELM_PATH: onecorechart
+  before_script:
+    - az login --service-principal -u "$AD_APP_ID" -p "$AD_APP_SECRET" --tenant "$AD_TENANT_ID"
+    - az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --admin
+  script:
+    - cd "$HELM_PATH"
+    - helm repo add bitnami https://charts.bitnami.com/bitnami
+    - helm dep build
+    - >
+      helm upgrade --install $HELM_APP_NAME .
+      --values $HELM_VALUES_FILE
+      --set "image.tag=$DEPLOY_IMAGE_TAG"
+      --namespace $K8S_NAMESPACE
+    - kubectl rollout restart $K8S_TYPE $HELM_APP_NAME-$HELM_PATH --namespace=$K8S_NAMESPACE
+
 .cargo_build:
   script:
     - cargo build --release --features strict
@@ -67,6 +102,14 @@ before_script:
       fi
     - docker push $IMAGE_TAG
     - docker logout
+
+.run_e2e_tests:
+  variables:
+    CORE_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+  trigger:
+    project: procivis/one/one-e2e-tests
+    branch: main
+    strategy: depend
 
 
 build:
@@ -234,15 +277,7 @@ upload_sdk_artifacts:
         SHA-1: $(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
         =========================
       EOM
-      
-
-.run_e2e_tests:
-  variables:
-    CORE_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-  trigger:
-    project: procivis/one/one-e2e-tests
-    branch: main
-    strategy: depend
+     
 
 test_e2e:
   stage: e2e_tests
@@ -250,27 +285,6 @@ test_e2e:
   extends:
     - .run_e2e_tests
     - .only_main_or_tag
-
-.deploy_k8s:
-  image: registry.gitlab.procivis.ch/procivis/one/one-operations/az-helm-kubectl:1.25.7
-  variables:
-    DEPLOY_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
-    K8S_TYPE: deployment
-    HELM_APP_NAME: one-core
-    HELM_PATH: onecorechart
-  before_script:
-    - az login --service-principal -u "$AD_APP_ID" -p "$AD_APP_SECRET" --tenant "$AD_TENANT_ID"
-    - az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --admin
-  script:
-    - cd "$HELM_PATH"
-    - helm repo add bitnami https://charts.bitnami.com/bitnami
-    - helm dep build
-    - >
-      helm upgrade --install $HELM_APP_NAME .
-      --values $HELM_VALUES_FILE
-      --set "image.tag=$DEPLOY_IMAGE_TAG"
-      --namespace $K8S_NAMESPACE
-    - kubectl rollout restart $K8S_TYPE $HELM_APP_NAME-$HELM_PATH --namespace=$K8S_NAMESPACE
 
 deploy:dev:
   stage: deploy
@@ -300,22 +314,34 @@ run_e2e_tests:
   needs: [tests]
   script:
     - echo "Job for trigger manual e2e tests"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: never
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
+      when: never
+    - when: manual
 
 e2e:build:
   stage: manual_e2e_tests
-  needs: [run_e2e_tests]
+  needs:
+    - job: run_e2e_tests
   extends:
     - .cargo_build
+    - .manual_except_main_branch
 
 e2e:publish:
   stage: manual_e2e_tests
-  needs: [e2e:build]
+  needs:
+    - job: e2e:build
   dependencies: [e2e:build]
   extends:
     - .docker_publish
+    - .manual_except_main_branch
 
 e2e:trigger_tests:
   stage: manual_e2e_tests
-  needs: [e2e:publish]
+  needs:
+    - job: e2e:publish
   extends:
     - .run_e2e_tests
+    - .manual_except_main_branch
