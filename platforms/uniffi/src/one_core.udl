@@ -66,8 +66,6 @@ dictionary CredentialDetailBindingDTO {
 
 dictionary ProofRequestClaimBindingDTO {
     string id;
-    string created_date;
-    string last_modified;
     string key;
     string data_type;
     boolean required;
@@ -75,14 +73,18 @@ dictionary ProofRequestClaimBindingDTO {
 };
 
 dictionary ProofRequestBindingDTO {
+    string id;
+    string created_date;
+    string last_modified;
     sequence<ProofRequestClaimBindingDTO> claims;
     string verifier_did;
+    string transport;
 };
 
 [Enum]
 interface HandleInvitationResponseBindingEnum {
-  CredentialIssuance(string interaction_id, sequence<CredentialDetailBindingDTO> credentials);
-  ProofRequest(ProofRequestBindingDTO proof_request);
+  CredentialIssuance(string interaction_id, sequence<string> credential_ids);
+  ProofRequest(string interaction_id, string proof_id);
 };
 
 dictionary ListQueryBindingDTO {
@@ -126,4 +128,7 @@ interface OneCoreBinding {
 
   [Throws=ServiceError]
   CredentialDetailBindingDTO get_credential(string credential_id);
+
+  [Throws=ServiceError]
+  ProofRequestBindingDTO get_proof(string proof_id);
 };

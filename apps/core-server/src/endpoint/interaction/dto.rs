@@ -14,7 +14,7 @@ pub struct HandleInvitationRequestRestDTO {
 pub struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
 
-    pub credential_id: Option<Vec<Uuid>>,
+    pub credential_ids: Option<Vec<Uuid>>,
     pub proof_id: Option<Uuid>,
 }
 

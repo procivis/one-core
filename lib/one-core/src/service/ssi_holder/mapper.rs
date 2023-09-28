@@ -1,6 +1,5 @@
 use super::dto::HandleInvitationURLQuery;
 use crate::{
-    common_mapper::vector_try_into,
     credential_formatter::VCCredentialClaimSchemaResponse,
     model::{
         claim_schema::ClaimSchema,
@@ -14,9 +13,8 @@ use crate::{
         credential::dto::DetailCredentialSchemaResponseDTO,
         credential_schema::dto::{CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO},
         error::ServiceError,
-        ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
     },
-    transport_protocol::dto::{ConnectVerifierResponse, ProofClaimSchema, ProofCredentialSchema},
+    transport_protocol::dto::ProofCredentialSchema,
 };
 use std::{collections::HashMap, str::FromStr};
 use time::OffsetDateTime;
@@ -70,32 +68,6 @@ impl TryFrom<VCCredentialClaimSchemaResponse> for CredentialSchemaClaim {
 
 pub fn string_to_uuid(value: &str) -> Result<Uuid, ServiceError> {
     Uuid::from_str(value).map_err(|e| ServiceError::MappingError(e.to_string()))
-}
-
-impl TryFrom<ConnectVerifierResponse> for ConnectVerifierResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: ConnectVerifierResponse) -> Result<Self, Self::Error> {
-        Ok(Self {
-            claims: vector_try_into(value.claims)?,
-            verifier_did: value.verifier_did,
-        })
-    }
-}
-
-impl TryFrom<ProofClaimSchema> for ProofRequestClaimDTO {
-    type Error = ServiceError;
-    fn try_from(value: ProofClaimSchema) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: string_to_uuid(&value.id)?,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            key: value.key,
-            datatype: value.datatype,
-            required: value.required,
-            credential_schema: value.credential_schema.try_into()?,
-        })
-    }
 }
 
 impl TryFrom<ProofCredentialSchema> for CredentialSchemaListItemResponseDTO {

@@ -17,49 +17,24 @@ impl OneCoreBinding {
             .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
 
         run_sync(async {
-            Ok(
-                match self
-                    .inner
-                    .ssi_holder_service
-                    .handle_invitation(&url, &did_id)
-                    .await?
-                {
-                    InvitationResponseDTO::Credential {
-                        credential_id,
-                        interaction_id,
-                    } => {
-                        let credential = self
-                            .inner
-                            .credential_service
-                            .get_credential(&credential_id)
-                            .await?;
+            let invitation_response = self
+                .inner
+                .ssi_holder_service
+                .handle_invitation(&url, &did_id)
+                .await?;
 
-                        HandleInvitationResponseBindingEnum::CredentialIssuance {
-                            interaction_id: interaction_id.to_string(),
-                            credentials: vec![credential.into()],
-                        }
-                    }
-                    InvitationResponseDTO::ProofRequest {
-                        proof_id,
-                        proof_request,
-                        ..
-                    } => {
-                        // temporary workaround for interaction skip
-                        let base_url = get_base_url(&url)?;
+            // temporary workaround for interaction skip
+            if let InvitationResponseDTO::ProofRequest { proof_id, .. } = invitation_response {
+                let base_url = get_base_url(&url)?;
+                let mut active_proof = self.active_proof.write().await;
+                *active_proof = Some(ActiveProof {
+                    id: proof_id,
+                    base_url,
+                    did_id,
+                });
+            }
 
-                        let mut active_proof = self.active_proof.write().await;
-                        *active_proof = Some(ActiveProof {
-                            id: proof_id,
-                            base_url,
-                            did_id,
-                        });
-
-                        HandleInvitationResponseBindingEnum::ProofRequest {
-                            proof_request: proof_request.into(),
-                        }
-                    }
-                },
-            )
+            Ok(invitation_response.into())
         })
     }
 }

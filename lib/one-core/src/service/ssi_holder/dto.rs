@@ -1,17 +1,16 @@
 use crate::{
     model::{credential::CredentialId, interaction::InteractionId},
-    service::{proof::dto::ProofId, ssi_verifier::dto::ConnectVerifierResponseDTO},
+    service::proof::dto::ProofId,
 };
 
 #[derive(Clone, Debug)]
 pub enum InvitationResponseDTO {
     Credential {
         interaction_id: InteractionId,
-        credential_id: CredentialId,
+        credential_ids: Vec<CredentialId>,
     },
     ProofRequest {
         interaction_id: InteractionId,
-        proof_request: ConnectVerifierResponseDTO,
         proof_id: ProofId,
     },
 }

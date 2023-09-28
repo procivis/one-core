@@ -2,7 +2,10 @@ use super::dto::{
     ClaimBindingDTO, CredentialListItemBindingDTO, CredentialSchemaBindingDTO,
     CredentialStateBindingEnum, ProofRequestBindingDTO, ProofRequestClaimBindingDTO,
 };
-use crate::{utils::TimestampFormat, CredentialDetailBindingDTO, CredentialListBindingDTO};
+use crate::{
+    dto::HandleInvitationResponseBindingEnum, utils::TimestampFormat, CredentialDetailBindingDTO,
+    CredentialListBindingDTO,
+};
 use one_core::{
     common_mapper::vector_into,
     service::{
@@ -12,7 +15,8 @@ use one_core::{
             GetCredentialListResponseDTO,
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
-        ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
+        proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
+        ssi_holder::dto::InvitationResponseDTO,
     },
 };
 
@@ -96,25 +100,27 @@ impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
     }
 }
 
-impl From<ConnectVerifierResponseDTO> for ProofRequestBindingDTO {
-    fn from(value: ConnectVerifierResponseDTO) -> Self {
-        Self {
-            claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
-            verifier_did: value.verifier_did,
-        }
-    }
-}
-
-impl From<ProofRequestClaimDTO> for ProofRequestClaimBindingDTO {
-    fn from(value: ProofRequestClaimDTO) -> Self {
+impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
+    fn from(value: ProofDetailResponseDTO) -> Self {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
-            key: value.key,
-            data_type: value.datatype,
-            required: value.required,
-            credential_schema: value.credential_schema.into(),
+            claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
+            verifier_did: value.verifier_did,
+            transport: value.transport,
+        }
+    }
+}
+
+impl From<ProofClaimDTO> for ProofRequestClaimBindingDTO {
+    fn from(value: ProofClaimDTO) -> Self {
+        Self {
+            id: value.schema.id.to_string(),
+            key: value.schema.key,
+            data_type: value.schema.data_type,
+            required: value.schema.required,
+            credential_schema: value.schema.credential_schema.into(),
         }
     }
 }
@@ -125,6 +131,27 @@ impl From<GetCredentialListResponseDTO> for CredentialListBindingDTO {
             values: vector_into(value.values),
             total_pages: value.total_pages,
             total_items: value.total_items,
+        }
+    }
+}
+
+impl From<InvitationResponseDTO> for HandleInvitationResponseBindingEnum {
+    fn from(value: InvitationResponseDTO) -> Self {
+        match value {
+            InvitationResponseDTO::Credential {
+                credential_ids,
+                interaction_id,
+            } => Self::CredentialIssuance {
+                interaction_id: interaction_id.to_string(),
+                credential_ids: credential_ids.iter().map(|item| item.to_string()).collect(),
+            },
+            InvitationResponseDTO::ProofRequest {
+                interaction_id,
+                proof_id,
+            } => Self::ProofRequest {
+                interaction_id: interaction_id.to_string(),
+                proof_id: proof_id.to_string(),
+            },
         }
     }
 }
