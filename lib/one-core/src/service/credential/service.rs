@@ -3,6 +3,7 @@ use crate::{
     model::{
         claim::ClaimRelations,
         claim_schema::ClaimSchemaRelations,
+        common::EntityShareResponseDTO,
         credential::{
             self, CredentialId, CredentialRelations, CredentialState, CredentialStateRelations,
             UpdateCredentialRequest,
@@ -15,7 +16,7 @@ use crate::{
         credential::{
             dto::{
                 CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialStateEnum,
-                EntityShareResponseDTO, GetCredentialListResponseDTO, GetCredentialQueryDTO,
+                GetCredentialListResponseDTO, GetCredentialQueryDTO,
             },
             mapper::{claims_from_create_request, from_create_request},
             CredentialService,
@@ -158,7 +159,7 @@ impl CredentialService {
                 }
 
                 Ok(EntityShareResponseDTO {
-                    credential_id: credential_id.to_string(),
+                    id: credential_id.to_owned(),
                     transport: "PROCIVIS_TEMPORARY".to_string(),
                 })
             }

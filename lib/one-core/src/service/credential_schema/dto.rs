@@ -2,24 +2,25 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::common::{GetListQueryParams, GetListResponse};
-use crate::model::credential_schema::SortableCredentialSchemaColumn;
-use crate::service::organisation::dto::OrganisationId;
+use crate::model::{
+    claim_schema::ClaimSchemaId,
+    common::{GetListQueryParams, GetListResponse},
+    credential_schema::{
+        CredentialFormat, CredentialSchemaId, RevocationMethod, SortableCredentialSchemaColumn,
+    },
+    organisation::OrganisationId,
+};
 
-pub type ClaimSchemaId = Uuid;
-pub type CredentialSchemaId = Uuid;
-pub type Format = String;
-pub type RevocationMethod = String;
-pub type Key = String;
-pub type Datatype = String;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaListItemResponseDTO {
     pub id: CredentialSchemaId,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: Format,
+    pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
 }
 
@@ -29,7 +30,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: Format,
+    pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
@@ -43,8 +44,8 @@ pub struct CredentialClaimSchemaDTO {
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
-    pub key: Key,
-    pub datatype: Datatype,
+    pub key: String,
+    pub datatype: String,
     pub required: bool,
 }
 
@@ -58,11 +59,6 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-}
-
-#[derive(Clone, Debug)]
-pub struct CreateCredentialSchemaResponseDTO {
-    pub id: Uuid,
 }
 
 #[derive(Clone, Debug)]

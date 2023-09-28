@@ -1,8 +1,7 @@
 use super::dto::{
-    CreateProofSchemaRequestRestDTO, CreateProofSchemaResponseRestDTO, GetProofSchemaQuery,
-    GetProofSchemaResponseRestDTO,
+    CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
 };
-use crate::dto::common::GetProofSchemaListResponseRestDTO;
+use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::extractor::Qs;
 use crate::AppState;
 use axum::extract::{Path, State};
@@ -17,7 +16,7 @@ use validator::Validate;
     path = "/api/proof-schema/v1",
     request_body = CreateProofSchemaRequestRestDTO,
     responses(
-        (status = 201, description = "Created", body = CreateProofSchemaResponseRestDTO),
+        (status = 201, description = "Created", body = EntityResponseRestDTO),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
         (status = 409, description = "Already exists"),
@@ -58,7 +57,7 @@ pub(crate) async fn post_proof_schema(
         }
         Ok(value) => (
             StatusCode::CREATED,
-            Json(CreateProofSchemaResponseRestDTO { id: value }),
+            Json(EntityResponseRestDTO { id: value }),
         )
             .into_response(),
     }

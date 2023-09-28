@@ -6,10 +6,8 @@ use validator::Validate;
 
 use one_core::service::error::ServiceError;
 
-use crate::dto::common::GetCredentialSchemaResponseDTO;
-use crate::endpoint::credential_schema::dto::{
-    CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaResponseRestDTO,
-};
+use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemaResponseDTO};
+use crate::endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO;
 use crate::extractor::Qs;
 use crate::AppState;
 
@@ -142,7 +140,7 @@ pub(crate) async fn get_credential_schema_list(
     path = "/api/credential-schema/v1",
     request_body = CreateCredentialSchemaRequestRestDTO,
     responses(
-        (status = 201, description = "Created", body = CreateCredentialSchemaResponseRestDTO),
+        (status = 201, description = "Created", body = EntityResponseRestDTO),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
         (status = 409, description = "Duplicated name"),
@@ -183,7 +181,7 @@ pub(crate) async fn post_credential_schema(
         }
         Ok(value) => (
             StatusCode::CREATED,
-            Json(CreateCredentialSchemaResponseRestDTO::from(value)),
+            Json(EntityResponseRestDTO { id: value }),
         )
             .into_response(),
     }

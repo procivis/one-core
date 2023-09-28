@@ -1,4 +1,7 @@
-use crate::service::credential_schema::dto::{ClaimSchemaId, CredentialSchemaListItemResponseDTO};
+use crate::{
+    model::claim_schema::ClaimSchemaId,
+    service::credential_schema::dto::CredentialSchemaListItemResponseDTO,
+};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]

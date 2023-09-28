@@ -6,10 +6,9 @@ use super::common::{GetListQueryParams, GetListResponse};
 use super::organisation::{Organisation, OrganisationRelations};
 
 pub type CredentialSchemaId = Uuid;
-pub type Name = String;
-pub type Format = String;
+pub type CredentialSchemaName = String;
+pub type CredentialFormat = String;
 pub type RevocationMethod = String;
-pub type OrganisationId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CredentialSchema {
@@ -17,8 +16,8 @@ pub struct CredentialSchema {
     pub deleted_at: Option<OffsetDateTime>,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub name: Name,
-    pub format: Format,
+    pub name: CredentialSchemaName,
+    pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
 
     // Relations

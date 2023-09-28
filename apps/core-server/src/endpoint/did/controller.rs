@@ -5,13 +5,11 @@ use axum::{http::StatusCode, Json};
 use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
-use crate::dto::common::GetDidsResponseRestDTO;
+use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::extractor::Qs;
 use crate::AppState;
 
-use super::dto::{
-    CreateDidRequestRestDTO, CreateDidResponseRestDTO, GetDidQuery, GetDidResponseRestDTO,
-};
+use super::dto::{CreateDidRequestRestDTO, GetDidQuery, GetDidResponseRestDTO};
 
 #[utoipa::path(
     get,
@@ -78,7 +76,7 @@ pub(crate) async fn get_did_list(state: State<AppState>, Qs(query): Qs<GetDidQue
     path = "/api/did/v1",
     request_body = Option<CreateDidRequestRestDTO>,
     responses(
-        (status = 201, description = "Created", body = CreateDidResponseRestDTO),
+        (status = 201, description = "Created", body = EntityResponseRestDTO),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Organisation not found"),
         (status = 409, description = "Did already exists"),
@@ -108,6 +106,6 @@ pub(crate) async fn post_did(
             tracing::error!("Error while creating did: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-        Ok(id) => (StatusCode::CREATED, Json(CreateDidResponseRestDTO { id })).into_response(),
+        Ok(id) => (StatusCode::CREATED, Json(EntityResponseRestDTO { id })).into_response(),
     }
 }

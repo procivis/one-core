@@ -9,7 +9,6 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub type ProofId = Uuid;
-pub type ProofClaimId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Proof {

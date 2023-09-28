@@ -1,9 +1,10 @@
+use crate::model::organisation::OrganisationId;
 use crate::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
 use crate::{
     model::{
         claim_schema::ClaimSchema,
         common::ExactColumn,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim, OrganisationId},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim},
         organisation::Organisation,
     },
     service::{

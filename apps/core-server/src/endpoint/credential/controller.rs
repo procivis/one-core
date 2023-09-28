@@ -92,7 +92,7 @@ pub(crate) async fn get_credential_list(
     path = "/api/credential/v1",
     request_body = CreateCredentialRequestRestDTO,
     responses(
-        (status = 200, description = "Created", body = EntityResponseRestDTO),
+        (status = 201, description = "Created", body = EntityResponseRestDTO),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Credential schema or DID not found"),
@@ -113,7 +113,11 @@ pub(crate) async fn post_credential(
         .await;
 
     match result {
-        Ok(value) => (StatusCode::OK, Json(EntityResponseRestDTO { id: value })).into_response(),
+        Ok(value) => (
+            StatusCode::CREATED,
+            Json(EntityResponseRestDTO { id: value }),
+        )
+            .into_response(),
         Err(error) => match error {
             ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
             ServiceError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
@@ -137,7 +141,7 @@ pub(crate) async fn post_credential(
     post,
     path = "/api/credential/v1/{id}/share",
     responses(
-        (status = 200, description = "Created", body = EntityShareResponseRestDTO),
+        (status = 200, description = "OK", body = EntityShareResponseRestDTO),
         (status = 400, description = "Credential has been shared already"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Credential schema or DID not found"),

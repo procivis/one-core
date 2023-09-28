@@ -1,12 +1,10 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    model::{
-        common::{GetListQueryParams, GetListResponse},
-        did::{DidType, SortableDidColumn},
-    },
-    service::organisation::dto::OrganisationId,
+use crate::model::{
+    common::{GetListQueryParams, GetListResponse},
+    did::{DidType, SortableDidColumn},
+    organisation::OrganisationId,
 };
 
 pub type DidId = Uuid;

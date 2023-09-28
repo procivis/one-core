@@ -1,14 +1,14 @@
 use crate::{
     common_mapper::list_response_into,
     model::{
-        claim_schema::ClaimSchemaRelations, credential_schema::CredentialSchemaRelations,
+        claim_schema::ClaimSchemaRelations,
+        credential_schema::{CredentialSchemaId, CredentialSchemaRelations},
         organisation::OrganisationRelations,
     },
     service::{
         credential_schema::{
             dto::{
-                CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO,
-                CredentialSchemaDetailResponseDTO, CredentialSchemaId,
+                CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
                 GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
             },
             mapper::from_create_request,
@@ -27,7 +27,7 @@ impl CredentialSchemaService {
     pub async fn create_credential_schema(
         &self,
         request: CreateCredentialSchemaRequestDTO,
-    ) -> Result<CreateCredentialSchemaResponseDTO, ServiceError> {
+    ) -> Result<CredentialSchemaId, ServiceError> {
         super::validator::validate_create_request(&request, &self.config)?;
 
         super::validator::credential_schema_already_exists(
@@ -44,12 +44,10 @@ impl CredentialSchemaService {
             .map_err(ServiceError::from)?;
         let credential_schema = from_create_request(request, organisation)?;
 
-        let result = self
-            .credential_schema_repository
+        self.credential_schema_repository
             .create_credential_schema(credential_schema)
             .await
-            .map_err(ServiceError::from)?;
-        Ok(CreateCredentialSchemaResponseDTO { id: result })
+            .map_err(ServiceError::from)
     }
 
     /// Deletes a credential schema

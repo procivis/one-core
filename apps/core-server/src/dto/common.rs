@@ -5,8 +5,8 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::endpoint::{
-    credential::dto::CredentialListValueResponseRestDTO,
-    credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
+    credential::dto::CredentialListItemResponseRestDTO,
+    credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
     did::dto::GetDidResponseRestDTO, proof::dto::ProofListItemResponseRestDTO,
     proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
 };
@@ -16,9 +16,9 @@ use crate::endpoint::{
 // ToSchema is properly generated thanks to that
 #[aliases(
     GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>,
-    GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListValueResponseRestDTO>,
+    GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>,
     GetDidsResponseRestDTO = GetListResponseRestDTO<GetDidResponseRestDTO>,
-    GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListValueResponseRestDTO>,
+    GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListItemResponseRestDTO>,
     GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>)]
 pub struct GetListResponseRestDTO<T>
 where
@@ -68,4 +68,10 @@ pub enum ExactColumn {
 #[serde(rename_all = "camelCase")]
 pub struct EntityResponseRestDTO {
     pub id: Uuid,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct EntityShareResponseRestDTO {
+    pub url: String,
 }

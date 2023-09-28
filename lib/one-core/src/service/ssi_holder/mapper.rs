@@ -11,7 +11,7 @@ use crate::{
         proof::{self, Proof, ProofStateEnum},
     },
     service::{
-        credential::dto::CredentialSchemaResponseDTO,
+        credential::dto::DetailCredentialSchemaResponseDTO,
         credential_schema::dto::{CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO},
         error::ServiceError,
         ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
@@ -152,8 +152,8 @@ pub fn proof_from_handle_invitation(
     }
 }
 
-impl From<CredentialSchemaResponseDTO> for CredentialSchema {
-    fn from(value: CredentialSchemaResponseDTO) -> Self {
+impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
+    fn from(value: DetailCredentialSchemaResponseDTO) -> Self {
         Self {
             id: value.id,
             created_date: value.created_date,
@@ -163,7 +163,7 @@ impl From<CredentialSchemaResponseDTO> for CredentialSchema {
             revocation_method: value.revocation_method,
             deleted_at: None,
             claim_schemas: None,
-            organisation: None,
+            organisation: None, // response organisation is intentionally ignored (holder sets its local organisation)
         }
     }
 }

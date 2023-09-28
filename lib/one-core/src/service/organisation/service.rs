@@ -1,16 +1,13 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    model::organisation::{Organisation, OrganisationRelations},
-    service::error::ServiceError,
-};
-
 use super::{
-    dto::{GetOrganisationDetailsResponseDTO, OrganisationId},
-    mapper::organisations_to_response,
-    validator::organisation_already_exists,
-    OrganisationService,
+    dto::GetOrganisationDetailsResponseDTO, mapper::organisations_to_response,
+    validator::organisation_already_exists, OrganisationService,
+};
+use crate::{
+    model::organisation::{Organisation, OrganisationId, OrganisationRelations},
+    service::error::ServiceError,
 };
 
 impl OrganisationService {

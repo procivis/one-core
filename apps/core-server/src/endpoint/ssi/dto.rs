@@ -1,5 +1,5 @@
 use crate::{
-    endpoint::credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
+    endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
     serialize::front_time,
 };
 use serde::{Deserialize, Serialize};
@@ -49,7 +49,7 @@ pub struct ProofRequestClaimRestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
-    pub credential_schema: CredentialSchemaListValueResponseRestDTO,
+    pub credential_schema: CredentialSchemaListItemResponseRestDTO,
 }
 
 // issuer specific

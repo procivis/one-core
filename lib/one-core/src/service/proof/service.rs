@@ -1,7 +1,7 @@
 use super::{
     dto::{
         CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
-        ProofId, ShareProofResponseDTO,
+        ProofId,
     },
     mapper::proof_from_create_request,
     ProofService,
@@ -11,6 +11,7 @@ use crate::{
     model::{
         claim::ClaimRelations,
         claim_schema::ClaimSchemaRelations,
+        common::EntityShareResponseDTO,
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
         interaction::InteractionRelations,
@@ -114,11 +115,7 @@ impl ProofService {
     ///
     /// * `id` - proof identifier
     /// * `base_url` - verifier base url
-    pub async fn share_proof(
-        &self,
-        id: &ProofId,
-        base_url: &str,
-    ) -> Result<ShareProofResponseDTO, ServiceError> {
+    pub async fn share_proof(&self, id: &ProofId) -> Result<EntityShareResponseDTO, ServiceError> {
         let (proof, proof_state) = self.get_proof_with_state(id).await?;
         match proof_state {
             ProofStateEnum::Created => {
@@ -140,11 +137,9 @@ impl ProofService {
             }
         }
 
-        Ok(ShareProofResponseDTO {
-            url: format!(
-                "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
-                base_url, proof.transport, id
-            ),
+        Ok(EntityShareResponseDTO {
+            id: id.to_owned(),
+            transport: proof.transport,
         })
     }
 

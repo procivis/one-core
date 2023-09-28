@@ -1,4 +1,7 @@
-use crate::dto::common::GetListQueryParams;
+use crate::{
+    dto::common::GetListQueryParams,
+    endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
+};
 use dto_derive::Dto;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -8,11 +11,11 @@ use uuid::Uuid;
 use crate::serialize::front_time;
 
 use crate::endpoint::credential_schema::dto::CredentialClaimSchemaResponseRestDTO;
-use one_core::service::credential::dto::{CredentialRequestClaimDTO, CredentialSchemaResponseDTO};
+use one_core::service::credential::dto::CredentialRequestClaimDTO;
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CredentialListValueResponseRestDTO {
+pub struct CredentialListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -24,7 +27,7 @@ pub struct CredentialListValueResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
-    pub schema: CredentialSchemaResponseRestDTO,
+    pub schema: CredentialSchemaListItemResponseRestDTO,
     pub issuer_did: Option<String>,
 }
 
@@ -42,16 +45,14 @@ pub struct GetCredentialResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
-    pub schema: CredentialSchemaResponseRestDTO,
+    pub schema: CredentialDetailSchemaResponseRestDTO,
     pub issuer_did: Option<String>,
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Dto, Serialize, ToSchema)]
-#[dto(entity = "CredentialSchemaResponseDTO")]
-#[dto(response)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CredentialSchemaResponseRestDTO {
+pub struct CredentialDetailSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -113,9 +114,4 @@ pub struct CreateCredentialRequestRestDTO {
 pub struct CredentialRequestClaimRestDTO {
     pub claim_id: Uuid,
     pub value: String,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-pub struct EntityShareResponseRestDTO {
-    pub url: String,
 }
