@@ -263,7 +263,7 @@ async fn test_create_credential_schema_success() {
         })
         .await;
     assert!(result.is_ok());
-    assert_eq!(schema_id, result.unwrap().id);
+    assert_eq!(schema_id, result.unwrap());
 }
 
 #[tokio::test]

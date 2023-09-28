@@ -1,4 +1,5 @@
 use strum_macros::EnumString;
+use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SortDirection {
@@ -33,4 +34,10 @@ pub struct GetListResponse<ResponseItem> {
     pub values: Vec<ResponseItem>,
     pub total_pages: u64,
     pub total_items: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct EntityShareResponseDTO {
+    pub id: Uuid,
+    pub transport: String,
 }

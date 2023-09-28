@@ -4,11 +4,11 @@ use uuid::Uuid;
 use crate::{
     model::{
         common::{GetListQueryParams, GetListResponse},
+        organisation::OrganisationId,
         proof::{ProofStateEnum, SortableProofColumn},
     },
     service::{
         did::dto::{DidId, DidValue},
-        organisation::dto::OrganisationId,
         proof_schema::dto::{
             GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO, ProofSchemaId,
         },
@@ -68,8 +68,3 @@ pub struct ProofClaimDTO {
 
 pub type GetProofListResponseDTO = GetListResponse<ProofListItemResponseDTO>;
 pub type GetProofQueryDTO = GetListQueryParams<SortableProofColumn>;
-
-#[derive(Clone, Debug)]
-pub struct ShareProofResponseDTO {
-    pub url: String,
-}

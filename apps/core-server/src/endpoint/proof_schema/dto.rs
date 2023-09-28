@@ -6,7 +6,7 @@ use validator::Validate;
 
 use crate::{
     dto::common::GetListQueryParams,
-    endpoint::credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
+    endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
     serialize::front_time,
 };
 
@@ -27,12 +27,6 @@ pub struct CreateProofSchemaRequestRestDTO {
 pub struct ClaimProofSchemaRequestRestDTO {
     pub id: Uuid,
     pub required: bool,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateProofSchemaResponseRestDTO {
-    pub id: Uuid,
 }
 
 // list endpoint
@@ -84,5 +78,5 @@ pub struct ProofClaimSchemaResponseRestDTO {
     pub key: String,
     #[schema(example = "STRING")]
     pub data_type: String,
-    pub credential_schema: CredentialSchemaListValueResponseRestDTO,
+    pub credential_schema: CredentialSchemaListItemResponseRestDTO,
 }

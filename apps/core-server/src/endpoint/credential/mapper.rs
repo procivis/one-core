@@ -1,13 +1,15 @@
+use one_core::model::common::EntityShareResponseDTO;
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-    CredentialStateEnum, DetailCredentialClaimResponseDTO, EntityShareResponseDTO,
+    CredentialStateEnum, DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
 };
 
+use crate::dto::common::EntityShareResponseRestDTO;
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, CredentialDetailClaimResponseRestDTO,
-    CredentialListValueResponseRestDTO, CredentialStateRestEnum, EntityShareResponseRestDTO,
-    GetCredentialResponseRestDTO, SortableCredentialColumnRestEnum,
+    CredentialDetailSchemaResponseRestDTO, CredentialListItemResponseRestDTO,
+    CredentialStateRestEnum, GetCredentialResponseRestDTO, SortableCredentialColumnRestEnum,
 };
 
 impl From<CredentialDetailResponseDTO> for GetCredentialResponseRestDTO {
@@ -61,7 +63,7 @@ impl From<SortableCredentialColumnRestEnum>
     }
 }
 
-impl From<CredentialListItemResponseDTO> for CredentialListValueResponseRestDTO {
+impl From<CredentialListItemResponseDTO> for CredentialListItemResponseRestDTO {
     fn from(value: CredentialListItemResponseDTO) -> Self {
         Self {
             id: value.id,
@@ -71,6 +73,20 @@ impl From<CredentialListItemResponseDTO> for CredentialListValueResponseRestDTO 
             last_modified: value.last_modified,
             schema: value.schema.into(),
             issuer_did: value.issuer_did,
+        }
+    }
+}
+
+impl From<DetailCredentialSchemaResponseDTO> for CredentialDetailSchemaResponseRestDTO {
+    fn from(value: DetailCredentialSchemaResponseDTO) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            format: value.format,
+            revocation_method: value.revocation_method,
+            organisation_id: value.organisation_id,
         }
     }
 }
@@ -92,13 +108,13 @@ impl From<CreateCredentialRequestRestDTO> for CreateCredentialRequestDTO {
 
 pub(crate) fn share_credentials_to_entity_share_response(
     value: EntityShareResponseDTO,
-    base_url: &String,
+    base_url: &str,
 ) -> EntityShareResponseRestDTO {
     let protocol = &value.transport;
     EntityShareResponseRestDTO {
         url: format!(
             "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
-            base_url, protocol, value.credential_id
+            base_url, protocol, value.id
         ),
     }
 }

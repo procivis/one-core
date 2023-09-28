@@ -412,17 +412,10 @@ async fn test_share_proof_created_success() {
         ..Default::default()
     });
 
-    let base_url = "base_url";
-    let result = service.share_proof(&proof_id, base_url).await;
+    let result = service.share_proof(&proof_id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(
-        result.url,
-        format!(
-            "{base_url}/ssi/temporary-verifier/v1/connect?protocol={}&proof={proof_id}",
-            proof.transport
-        )
-    );
+    assert_eq!(result.id, proof_id);
 }
 
 #[tokio::test]
@@ -452,17 +445,10 @@ async fn test_share_proof_pending_success() {
         ..Default::default()
     });
 
-    let base_url = "base_url";
-    let result = service.share_proof(&proof_id, base_url).await;
+    let result = service.share_proof(&proof_id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(
-        result.url,
-        format!(
-            "{base_url}/ssi/temporary-verifier/v1/connect?protocol={}&proof={proof_id}",
-            proof.transport
-        )
-    );
+    assert_eq!(result.id, proof_id);
 }
 
 #[tokio::test]
@@ -484,6 +470,6 @@ async fn test_share_proof_invalid_state() {
         ..Default::default()
     });
 
-    let result = service.share_proof(&proof_id, "base_url").await;
+    let result = service.share_proof(&proof_id).await;
     assert!(matches!(result, Err(ServiceError::AlreadyExists)));
 }

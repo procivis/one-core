@@ -10,7 +10,7 @@ use crate::dto::common::GetListQueryParams;
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CredentialSchemaListValueResponseRestDTO {
+pub struct CredentialSchemaListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -75,12 +75,6 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub organisation_id: Uuid,
     #[validate(length(min = 1))]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateCredentialSchemaResponseRestDTO {
-    pub id: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]

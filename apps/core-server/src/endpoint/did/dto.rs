@@ -41,12 +41,6 @@ pub struct CreateDidRequestRestDTO {
     pub method: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateDidResponseRestDTO {
-    pub id: Uuid,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum SortableDidColumnRestDTO {

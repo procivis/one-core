@@ -1,6 +1,5 @@
-use super::dto::{
-    CreateProofRequestRestDTO, GetProofQuery, ProofDetailResponseRestDTO, ShareProofResponseRestDTO,
-};
+use super::dto::{CreateProofRequestRestDTO, GetProofQuery, ProofDetailResponseRestDTO};
+use super::mapper::share_proof_to_entity_share_response;
 use crate::dto::common::EntityResponseRestDTO;
 use crate::extractor::Qs;
 use crate::AppState;
@@ -83,7 +82,7 @@ pub(crate) async fn get_proofs(state: State<AppState>, Qs(query): Qs<GetProofQue
     path = "/api/proof-request/v1",
     request_body = CreateProofRequestRestDTO,
     responses(
-        (status = 200, description = "Created", body = EntityResponseRestDTO),
+        (status = 201, description = "Created", body = EntityResponseRestDTO),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Not found"),
@@ -121,7 +120,7 @@ pub(crate) async fn post_proof(
     post,
     path = "/api/proof-request/v1/{id}/share",
     responses(
-        (status = 200, description = "Created", body = ShareProofResponseRestDTO),
+        (status = 200, description = "OK", body = EntityShareResponseRestDTO),
         (status = 400, description = "Proof has been shared already"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "proof schema or DID not found"),
@@ -139,14 +138,17 @@ pub(crate) async fn share_proof(
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Response {
-    let result = state
-        .core
-        .proof_service
-        .share_proof(&id, &config.core_base_url)
-        .await;
+    let result = state.core.proof_service.share_proof(&id).await;
 
     match result {
-        Ok(value) => (StatusCode::OK, Json(ShareProofResponseRestDTO::from(value))).into_response(),
+        Ok(value) => (
+            StatusCode::OK,
+            Json(share_proof_to_entity_share_response(
+                value,
+                &config.core_base_url,
+            )),
+        )
+            .into_response(),
         Err(error) => match error {
             ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
             ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),

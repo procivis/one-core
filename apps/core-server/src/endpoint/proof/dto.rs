@@ -117,9 +117,3 @@ pub struct ProofClaimRestDTO {
     pub schema: ProofClaimSchemaResponseRestDTO,
     pub value: Option<String>,
 }
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ShareProofResponseRestDTO {
-    pub url: String,
-}

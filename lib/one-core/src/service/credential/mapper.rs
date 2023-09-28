@@ -8,7 +8,8 @@ use crate::model::{
 use crate::service::{
     credential::dto::{
         CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-        CredentialRequestClaimDTO, CredentialSchemaResponseDTO, DetailCredentialClaimResponseDTO,
+        CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
+        DetailCredentialSchemaResponseDTO,
     },
     error::ServiceError,
 };
@@ -48,6 +49,29 @@ impl TryFrom<Credential> for CredentialDetailResponseDTO {
             claims: from_vec_claim(claims, &schema)?,
             schema: schema.try_into()?,
             issuer_did: issuer_did_value,
+        })
+    }
+}
+
+impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
+        let organisation_id = match value.organisation {
+            None => Err(ServiceError::MappingError(
+                "Organisation has not been fetched".to_string(),
+            )),
+            Some(value) => Ok(value.id),
+        }?;
+
+        Ok(Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            format: value.format,
+            revocation_method: value.revocation_method,
+            organisation_id,
         })
     }
 }
@@ -110,26 +134,6 @@ impl From<model::credential::CredentialStateEnum> for super::dto::CredentialStat
     }
 }
 
-impl TryFrom<model::credential_schema::CredentialSchema> for CredentialSchemaResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let organisation = value.organisation.ok_or(ServiceError::MappingError(
-            "organisation is none".to_string(),
-        ))?;
-
-        Ok(Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-            organisation_id: organisation.id,
-        })
-    }
-}
-
 impl TryFrom<Credential> for CredentialListItemResponseDTO {
     type Error = ServiceError;
 
@@ -159,7 +163,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             issuance_date: value.issuance_date,
             state: latest_state.state.into(),
             last_modified: value.last_modified,
-            schema: schema.try_into()?,
+            schema: schema.into(),
             issuer_did: issuer_did_value,
             credential: value.credential,
         })

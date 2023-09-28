@@ -5,12 +5,10 @@ use crate::{
     model::{
         claim_schema::ClaimSchemaId,
         common::{GetListQueryParams, GetListResponse},
+        organisation::OrganisationId,
         proof_schema::SortableProofSchemaColumn,
     },
-    service::{
-        credential_schema::dto::CredentialSchemaListItemResponseDTO,
-        organisation::dto::OrganisationId,
-    },
+    service::credential_schema::dto::CredentialSchemaListItemResponseDTO,
 };
 
 pub type ProofSchemaId = Uuid;

@@ -7,8 +7,8 @@ use one_core::{
     common_mapper::vector_into,
     service::{
         credential::dto::{
-            CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-            CredentialSchemaResponseDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
+            CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialStateEnum,
+            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
             GetCredentialListResponseDTO,
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
@@ -72,8 +72,8 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
     }
 }
 
-impl From<CredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
-    fn from(value: CredentialSchemaResponseDTO) -> Self {
+impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
+    fn from(value: DetailCredentialSchemaResponseDTO) -> Self {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),

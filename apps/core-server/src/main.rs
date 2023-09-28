@@ -110,22 +110,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 endpoint::credential::dto::CreateCredentialRequestRestDTO,
                 endpoint::credential::dto::CredentialDetailClaimResponseRestDTO,
-                endpoint::credential::dto::CredentialListValueResponseRestDTO,
+                endpoint::credential::dto::CredentialListItemResponseRestDTO,
                 endpoint::credential::dto::CredentialRequestClaimRestDTO,
-                endpoint::credential::dto::CredentialSchemaResponseRestDTO,
                 endpoint::credential::dto::GetCredentialResponseRestDTO,
+                endpoint::credential::dto::CredentialDetailSchemaResponseRestDTO,
                 endpoint::credential::dto::CredentialStateRestEnum,
-                endpoint::credential::dto::EntityShareResponseRestDTO,
 
                 endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO,
-                endpoint::credential_schema::dto::CreateCredentialSchemaResponseRestDTO,
                 endpoint::credential_schema::dto::CredentialClaimSchemaRequestRestDTO,
                 endpoint::credential_schema::dto::CredentialClaimSchemaResponseRestDTO,
                 endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO,
-                endpoint::credential_schema::dto::CredentialSchemaListValueResponseRestDTO,
+                endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
 
                 endpoint::did::dto::CreateDidRequestRestDTO,
-                endpoint::did::dto::CreateDidResponseRestDTO,
                 endpoint::did::dto::GetDidResponseRestDTO,
                 endpoint::did::dto::DidType,
 
@@ -134,11 +131,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::proof::dto::ProofListItemResponseRestDTO,
                 endpoint::proof::dto::ProofDetailResponseRestDTO,
                 endpoint::proof::dto::ProofClaimRestDTO,
-                endpoint::proof::dto::ShareProofResponseRestDTO,
 
                 endpoint::proof_schema::dto::CreateProofSchemaRequestRestDTO,
                 endpoint::proof_schema::dto::ClaimProofSchemaRequestRestDTO,
-                endpoint::proof_schema::dto::CreateProofSchemaResponseRestDTO,
                 endpoint::proof_schema::dto::SortableProofSchemaColumnRestEnum,
                 endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
                 endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO,
@@ -162,7 +157,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 dto::common::GetProofsResponseRestDTO,
 
                 dto::common::EntityResponseRestDTO,
-
+                dto::common::EntityShareResponseRestDTO,
                 dto::common::SortDirection,
             )
         ),

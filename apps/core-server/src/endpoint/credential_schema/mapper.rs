@@ -1,16 +1,14 @@
 use crate::endpoint::credential_schema::dto::{
-    CreateCredentialSchemaRequestRestDTO, CreateCredentialSchemaResponseRestDTO,
-    CredentialClaimSchemaRequestRestDTO, CredentialClaimSchemaResponseRestDTO,
-    CredentialSchemaListValueResponseRestDTO, CredentialSchemaResponseRestDTO,
-    SortableCredentialSchemaColumnRestEnum,
+    CreateCredentialSchemaRequestRestDTO, CredentialClaimSchemaRequestRestDTO,
+    CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
+    CredentialSchemaResponseRestDTO, SortableCredentialSchemaColumnRestEnum,
 };
 use one_core::service::credential_schema::dto::{
-    CreateCredentialSchemaRequestDTO, CreateCredentialSchemaResponseDTO, CredentialClaimSchemaDTO,
-    CredentialClaimSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
-    CredentialSchemaListItemResponseDTO,
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaListItemResponseDTO,
 };
 
-impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaListValueResponseRestDTO {
+impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaListItemResponseRestDTO {
     fn from(value: CredentialSchemaListItemResponseDTO) -> Self {
         Self {
             id: value.id,
@@ -59,14 +57,6 @@ impl From<CreateCredentialSchemaRequestRestDTO> for CreateCredentialSchemaReques
             revocation_method: value.revocation_method,
             organisation_id: value.organisation_id,
             claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
-        }
-    }
-}
-
-impl From<CreateCredentialSchemaResponseDTO> for CreateCredentialSchemaResponseRestDTO {
-    fn from(value: CreateCredentialSchemaResponseDTO) -> Self {
-        CreateCredentialSchemaResponseRestDTO {
-            id: value.id.to_string(),
         }
     }
 }

@@ -246,7 +246,7 @@ async fn test_share_credential_success() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(credential.id.to_string(), result.credential_id);
+    assert_eq!(credential.id, result.id);
     assert_eq!("PROCIVIS_TEMPORARY", result.transport);
 }
 
