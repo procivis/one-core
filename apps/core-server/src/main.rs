@@ -97,6 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_submit,
             endpoint::interaction::controller::issuance_reject,
+            endpoint::interaction::controller::presentation_reject,
 
             endpoint::misc::get_build_info,
         ),
@@ -148,6 +149,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,
                 endpoint::interaction::dto::IssuanceSubmitRequestRestDTO,
                 endpoint::interaction::dto::IssuanceRejectRequestRestDTO,
+                endpoint::interaction::dto::PresentationRejectRequestRestDTO,
 
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
@@ -167,6 +169,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             (name = "proof_schema_management", description = "Proof schema management"),
             (name = "ssi", description = "SSI"),
             (name = "other", description = "Other utility endpoints"),
+            (name = "interaction", description = "Holder functionality"),
         ),
         modifiers(&SecurityAddon)
     )]
@@ -285,6 +288,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/interaction/v1/issuance-reject",
             post(interaction::controller::issuance_reject),
+        )
+        .route(
+            "/api/interaction/v1/presentation-reject",
+            post(interaction::controller::presentation_reject),
         )
         .layer(middleware::from_fn(bearer_check));
 

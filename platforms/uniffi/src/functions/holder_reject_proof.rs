@@ -1,20 +1,17 @@
-use crate::{utils::run_sync, ActiveProof, OneCoreBinding};
+use crate::{utils::run_sync, OneCoreBinding};
 use one_core::service::error::ServiceError;
+use uuid::Uuid;
 
 impl OneCoreBinding {
-    pub fn holder_reject_proof(&self) -> Result<(), ServiceError> {
-        run_sync(async {
-            let active_proof = self.active_proof.read().await;
-            if let Some(ActiveProof { id, base_url, .. }) = &*active_proof {
-                self.inner
-                    .ssi_holder_service
-                    .reject_proof_request("PROCIVIS_TEMPORARY", base_url, id)
-                    .await?;
-            } else {
-                return Err(ServiceError::NotFound);
-            }
+    pub fn holder_reject_proof(&self, interaction_id: String) -> Result<(), ServiceError> {
+        let interaction_id = Uuid::parse_str(&interaction_id)
+            .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
 
-            Ok(())
+        run_sync(async {
+            self.inner
+                .ssi_holder_service
+                .reject_proof_request(&interaction_id)
+                .await
         })
     }
 }

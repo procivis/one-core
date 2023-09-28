@@ -1,6 +1,6 @@
 use super::dto::{
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceRejectRequestRestDTO,
-    IssuanceSubmitRequestRestDTO,
+    IssuanceSubmitRequestRestDTO, PresentationRejectRequestRestDTO,
 };
 use crate::AppState;
 use axum::{
@@ -142,6 +142,53 @@ pub(crate) async fn issuance_reject(
         }
         Err(ServiceError::NotFound) => {
             tracing::error!("Credential offer not found: {:?}", result);
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(ServiceError::AlreadyExists) => {
+            tracing::error!("Wrong state: {:?}", result);
+            StatusCode::CONFLICT.into_response()
+        }
+        Err(error) => {
+            tracing::error!("Unknown error: {:?}", error);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/interaction/v1/presentation-reject",
+    request_body = PresentationRejectRequestRestDTO,
+    responses(
+        (status = 204, description = "No content"),
+        (status = 404, description = "Not found"),
+        (status = 409, description = "Invalid state"),
+    ),
+    tag = "interaction",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn presentation_reject(
+    state: State<AppState>,
+    Json(request): Json<PresentationRejectRequestRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .ssi_holder_service
+        .reject_proof_request(&request.interaction_id)
+        .await;
+
+    match result {
+        Ok(_) => StatusCode::NO_CONTENT.into_response(),
+        Err(ServiceError::TransportProtocolError(TransportProtocolError::HttpRequestError(
+            error,
+        ))) => {
+            tracing::error!("HTTP request error: {:?}", error);
+            StatusCode::BAD_GATEWAY.into_response()
+        }
+        Err(ServiceError::NotFound) => {
+            tracing::error!("Proof request not found: {:?}", result);
             StatusCode::NOT_FOUND.into_response()
         }
         Err(ServiceError::AlreadyExists) => {

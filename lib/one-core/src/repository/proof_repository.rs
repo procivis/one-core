@@ -2,6 +2,7 @@ use super::error::DataLayerError;
 use crate::model::{
     claim::Claim,
     did::Did,
+    interaction::InteractionId,
     proof::{GetProofList, GetProofQuery, Proof, ProofId, ProofRelations, ProofState},
 };
 
@@ -12,6 +13,12 @@ pub trait ProofRepository {
     async fn get_proof(
         &self,
         id: &ProofId,
+        relations: &ProofRelations,
+    ) -> Result<Proof, DataLayerError>;
+
+    async fn get_proof_by_interaction_id(
+        &self,
+        interaction_id: &InteractionId,
         relations: &ProofRelations,
     ) -> Result<Proof, DataLayerError>;
 

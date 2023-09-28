@@ -18,6 +18,7 @@ use crate::{
         did::{Did, DidRelations},
         interaction::{InteractionId, InteractionRelations},
         organisation::{OrganisationId, OrganisationRelations},
+        proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
     },
     repository::error::DataLayerError,
     service::{
@@ -74,13 +75,56 @@ impl SSIHolderService {
 
     pub async fn reject_proof_request(
         &self,
-        transport_protocol: &str,
-        base_url: &str,
-        proof_id: &ProofId,
+        interaction_id: &InteractionId,
     ) -> Result<(), ServiceError> {
+        let proof = self
+            .proof_repository
+            .get_proof_by_interaction_id(
+                interaction_id,
+                &ProofRelations {
+                    state: Some(ProofStateRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let latest_state = proof
+            .state
+            .ok_or(ServiceError::MappingError("state is None".to_string()))?
+            .get(0)
+            .ok_or(ServiceError::MappingError("state is missing".to_string()))?
+            .to_owned();
+
+        if latest_state.state != ProofStateEnum::Pending {
+            return Err(ServiceError::AlreadyExists);
+        }
+
+        let base_url = proof
+            .interaction
+            .ok_or(ServiceError::MappingError(
+                "interaction is None".to_string(),
+            ))?
+            .host
+            .ok_or(ServiceError::MappingError(
+                "interaction host is missing".to_string(),
+            ))?;
+
         self.protocol_provider
-            .get_protocol(transport_protocol)?
-            .reject_proof(base_url, &proof_id.to_string())
+            .get_protocol(&proof.transport)?
+            .reject_proof(&base_url, &proof.id.to_string())
+            .await?;
+
+        let now = OffsetDateTime::now_utc();
+        self.proof_repository
+            .set_proof_state(
+                &proof.id,
+                ProofState {
+                    created_date: now,
+                    last_modified: now,
+                    state: ProofStateEnum::Rejected,
+                },
+            )
             .await
             .map_err(ServiceError::from)
     }
