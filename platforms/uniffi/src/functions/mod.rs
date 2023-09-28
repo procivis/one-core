@@ -2,6 +2,7 @@ mod create_local_did;
 mod create_organisation;
 mod get_credential;
 mod get_credentials;
+mod get_proof;
 mod handle_invitation;
 mod holder_accept_credential;
 mod holder_reject_credential;

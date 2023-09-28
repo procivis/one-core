@@ -309,7 +309,6 @@ impl SSIHolderService {
         Ok(InvitationResponseDTO::ProofRequest {
             interaction_id,
             proof_id: string_to_uuid(&proof_id)?,
-            proof_request: proof_request.try_into()?,
         })
     }
 
@@ -425,7 +424,7 @@ impl SSIHolderService {
             .await?;
 
         Ok(InvitationResponseDTO::Credential {
-            credential_id: issuer_response.id,
+            credential_ids: vec![issuer_response.id],
             interaction_id,
         })
     }
