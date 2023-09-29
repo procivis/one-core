@@ -5,11 +5,10 @@ use one_core::{
         data_structure::{ConfigKind, UnparsedConfig},
         ConfigParseError,
     },
-    service::{did::dto::DidId, error::ServiceError, proof::dto::ProofId},
+    service::error::ServiceError,
 };
 use sql_data_provider::DataLayer;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use utils::run_sync;
 
 mod dto;
@@ -20,17 +19,8 @@ mod utils;
 use dto::*;
 uniffi::include_scaffolding!("one_core");
 
-pub struct ActiveProof {
-    id: ProofId,
-    base_url: String,
-    did_id: DidId,
-}
-
 pub struct OneCoreBinding {
     inner: one_core::OneCore,
-
-    // FIXME: temporary solution for proof submit/reject until interaction is developed
-    active_proof: RwLock<Option<ActiveProof>>,
 }
 
 fn initialize_core(data_dir_path: String) -> Result<Arc<OneCoreBinding>, ConfigParseError> {
@@ -49,8 +39,5 @@ fn initialize_core(data_dir_path: String) -> Result<Arc<OneCoreBinding>, ConfigP
             placeholder_config,
         )
     })?;
-    Ok(Arc::new(OneCoreBinding {
-        inner: core,
-        active_proof: RwLock::new(None),
-    }))
+    Ok(Arc::new(OneCoreBinding { inner: core }))
 }

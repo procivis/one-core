@@ -86,3 +86,8 @@ pub struct ProofRequestClaimBindingDTO {
     pub required: bool,
     pub credential_schema: CredentialSchemaBindingDTO,
 }
+
+pub struct PresentationSubmitCredentialRequestBindingDTO {
+    pub credential_id: String,
+    pub submit_claims: Vec<String>,
+}

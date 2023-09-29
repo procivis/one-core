@@ -81,6 +81,11 @@ dictionary ProofRequestBindingDTO {
     string transport;
 };
 
+dictionary PresentationSubmitCredentialRequestBindingDTO {
+    string credential_id;
+    sequence<string> submit_claims;
+};
+
 [Enum]
 interface HandleInvitationResponseBindingEnum {
   CredentialIssuance(string interaction_id, sequence<string> credential_ids);
@@ -121,7 +126,7 @@ interface OneCoreBinding {
   void holder_reject_proof(string interaction_id);
 
   [Throws=ServiceError]
-  void holder_submit_proof(sequence<string> credential_ids);
+  void holder_submit_proof(string interaction_id, record<string, PresentationSubmitCredentialRequestBindingDTO> submit_credentials);
 
   [Throws=ServiceError]
   CredentialListBindingDTO get_credentials([ByRef] ListQueryBindingDTO query);

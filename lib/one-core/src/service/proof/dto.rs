@@ -42,8 +42,8 @@ pub struct ProofDetailResponseDTO {
     pub transport: String,
     pub state: ProofStateEnum,
     pub organisation_id: OrganisationId,
+    pub schema: Option<GetProofSchemaListItemDTO>,
     pub claims: Vec<ProofClaimDTO>,
-    pub schema: GetProofSchemaListItemDTO,
 }
 
 #[derive(Clone, Debug)]
@@ -57,7 +57,7 @@ pub struct ProofListItemResponseDTO {
     pub verifier_did: DidValue,
     pub transport: String,
     pub state: ProofStateEnum,
-    pub schema: GetProofSchemaListItemDTO,
+    pub schema: Option<GetProofSchemaListItemDTO>,
 }
 
 #[derive(Clone, Debug)]

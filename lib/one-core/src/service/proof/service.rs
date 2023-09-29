@@ -3,7 +3,7 @@ use super::{
         CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
         ProofId,
     },
-    mapper::proof_from_create_request,
+    mapper::{get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request},
     ProofService,
 };
 use crate::{
@@ -52,7 +52,12 @@ impl ProofService {
             )
             .await
             .map_err(ServiceError::from)?;
-        result.try_into()
+
+        if result.schema.is_some() {
+            get_verifier_proof_detail(result)
+        } else {
+            get_holder_proof_detail(result)
+        }
     }
 
     /// Returns list of proofs according to query

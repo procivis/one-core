@@ -72,7 +72,7 @@ pub struct ProofListItemResponseRestDTO {
     pub verifier_did: String,
     pub transport: String,
     pub state: ProofStateRestEnum,
-    pub schema: GetProofSchemaListItemResponseRestDTO,
+    pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
 }
 
 // detail endpoint
@@ -107,7 +107,7 @@ pub struct ProofDetailResponseRestDTO {
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub organisation_id: Uuid,
-    pub schema: GetProofSchemaListItemResponseRestDTO,
+    pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
     pub claims: Vec<ProofClaimRestDTO>,
 }
 

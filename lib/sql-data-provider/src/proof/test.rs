@@ -622,12 +622,6 @@ async fn test_set_proof_claims_success() {
         schema: None,
     };
 
-    let mut claim_repository = MockClaimRepository::default();
-    claim_repository
-        .expect_create_claim_list()
-        .times(1)
-        .returning(|_| Ok(()));
-
     let TestSetupWithProof {
         repository,
         proof_id,
@@ -636,7 +630,7 @@ async fn test_set_proof_claims_success() {
         ..
     } = setup_with_proof(
         get_proof_schema_repository_mock(),
-        Arc::from(claim_repository),
+        get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
     )

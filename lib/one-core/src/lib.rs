@@ -119,6 +119,7 @@ impl OneCore {
             ),
             ssi_verifier_service: SSIVerifierService::new(
                 data_provider.get_claim_schema_repository(),
+                data_provider.get_claim_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),

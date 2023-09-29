@@ -7,7 +7,7 @@ use crate::{
         did::{Did, DidId, DidType},
         interaction::Interaction,
         organisation::OrganisationId,
-        proof::{self, Proof, ProofStateEnum},
+        proof::{self, Proof, ProofId, ProofStateEnum},
     },
     service::{
         credential::dto::DetailCredentialSchemaResponseDTO,
@@ -100,13 +100,15 @@ pub fn interaction_from_handle_invitation(
 }
 
 pub fn proof_from_handle_invitation(
+    proof_id: &ProofId,
     protocol: &str,
     verifier_did: Did,
+    holder_did: Did,
     interaction: Interaction,
     now: OffsetDateTime,
 ) -> Proof {
     Proof {
-        id: Uuid::new_v4(),
+        id: proof_id.to_owned(),
         created_date: now,
         last_modified: now,
         issuance_date: now,
@@ -119,7 +121,7 @@ pub fn proof_from_handle_invitation(
         schema: None,
         claims: None,
         verifier_did: Some(verifier_did),
-        holder_did: None,
+        holder_did: Some(holder_did),
         interaction: Some(interaction),
     }
 }

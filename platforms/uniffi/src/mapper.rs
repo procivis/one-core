@@ -3,8 +3,9 @@ use super::dto::{
     CredentialStateBindingEnum, ProofRequestBindingDTO, ProofRequestClaimBindingDTO,
 };
 use crate::{
-    dto::HandleInvitationResponseBindingEnum, utils::TimestampFormat, CredentialDetailBindingDTO,
-    CredentialListBindingDTO,
+    dto::{HandleInvitationResponseBindingEnum, PresentationSubmitCredentialRequestBindingDTO},
+    utils::TimestampFormat,
+    CredentialDetailBindingDTO, CredentialListBindingDTO,
 };
 use one_core::{
     common_mapper::vector_into,
@@ -15,10 +16,13 @@ use one_core::{
             GetCredentialListResponseDTO,
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
+        error::ServiceError,
         proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
-        ssi_holder::dto::InvitationResponseDTO,
+        ssi_holder::dto::{InvitationResponseDTO, PresentationSubmitCredentialRequestDTO},
     },
 };
+use std::str::FromStr;
+use uuid::Uuid;
 
 impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
     fn from(value: CredentialListItemResponseDTO) -> Self {
@@ -153,5 +157,18 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseBindingEnum {
                 proof_id: proof_id.to_string(),
             },
         }
+    }
+}
+
+impl TryFrom<PresentationSubmitCredentialRequestBindingDTO>
+    for PresentationSubmitCredentialRequestDTO
+{
+    type Error = ServiceError;
+    fn try_from(value: PresentationSubmitCredentialRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            credential_id: Uuid::from_str(&value.credential_id)
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+            submit_claims: value.submit_claims,
+        })
     }
 }
