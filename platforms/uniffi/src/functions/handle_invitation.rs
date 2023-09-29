@@ -1,10 +1,5 @@
-use crate::{
-    dto::HandleInvitationResponseBindingEnum, utils::run_sync, ActiveProof, OneCoreBinding,
-};
-use one_core::{
-    common_mapper::get_base_url,
-    service::{error::ServiceError, ssi_holder::dto::InvitationResponseDTO},
-};
+use crate::{dto::HandleInvitationResponseBindingEnum, utils::run_sync, OneCoreBinding};
+use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
 impl OneCoreBinding {
@@ -22,17 +17,6 @@ impl OneCoreBinding {
                 .ssi_holder_service
                 .handle_invitation(&url, &did_id)
                 .await?;
-
-            // temporary workaround for interaction skip
-            if let InvitationResponseDTO::ProofRequest { proof_id, .. } = invitation_response {
-                let base_url = get_base_url(&url)?;
-                let mut active_proof = self.active_proof.write().await;
-                *active_proof = Some(ActiveProof {
-                    id: proof_id,
-                    base_url,
-                    did_id,
-                });
-            }
 
             Ok(invitation_response.into())
         })

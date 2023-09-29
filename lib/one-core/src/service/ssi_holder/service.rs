@@ -1,5 +1,5 @@
 use super::{
-    dto::InvitationResponseDTO,
+    dto::{InvitationResponseDTO, PresentationSubmitRequestDTO},
     mapper::{
         interaction_from_handle_invitation, parse_query, proof_from_handle_invitation,
         remote_did_from_value, string_to_uuid,
@@ -9,22 +9,19 @@ use super::{
 use crate::{
     common_mapper::get_base_url,
     model::{
-        claim::{Claim, ClaimId},
+        claim::{Claim, ClaimId, ClaimRelations},
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
+            Credential, CredentialRelations, CredentialState, CredentialStateEnum,
             CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchema,
         did::{Did, DidRelations},
         interaction::{InteractionId, InteractionRelations},
-        organisation::{OrganisationId, OrganisationRelations},
+        organisation::OrganisationRelations,
         proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
     },
     repository::error::DataLayerError,
-    service::{
-        credential::dto::CredentialDetailResponseDTO, did::dto::DidId, error::ServiceError,
-        proof::dto::ProofId,
-    },
+    service::{credential::dto::CredentialDetailResponseDTO, did::dto::DidId, error::ServiceError},
     transport_protocol::dto::{ConnectVerifierResponse, InvitationResponse},
 };
 
@@ -62,7 +59,7 @@ impl SSIHolderService {
                     proof_id,
                     proof_request,
                     &url_query_params.protocol,
-                    &holder_did.organisation_id,
+                    &holder_did,
                 )
                 .await
             }
@@ -131,25 +128,61 @@ impl SSIHolderService {
 
     pub async fn submit_proof(
         &self,
-        transport_protocol: &str,
-        base_url: &str,
-        proof_id: &ProofId,
-        credential_ids: &[CredentialId],
-        holder_did_id: &DidId,
+        request: PresentationSubmitRequestDTO,
     ) -> Result<(), ServiceError> {
-        let holder_did = self
-            .did_repository
-            .get_did(holder_did_id, &DidRelations::default())
+        let proof = self
+            .proof_repository
+            .get_proof_by_interaction_id(
+                &request.interaction_id,
+                &ProofRelations {
+                    state: Some(ProofStateRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    ..Default::default()
+                },
+            )
             .await?;
 
-        let mut credentials: Vec<String> = vec![];
-        for credential_id in credential_ids {
-            let credential_data = self
-                .credential_repository
-                .get_credential(credential_id, &CredentialRelations::default())
-                .await?
-                .credential;
+        let latest_state = proof
+            .state
+            .ok_or(ServiceError::MappingError("state is None".to_string()))?
+            .get(0)
+            .ok_or(ServiceError::MappingError("state is missing".to_string()))?
+            .to_owned();
 
+        if latest_state.state != ProofStateEnum::Pending {
+            return Err(ServiceError::AlreadyExists);
+        }
+
+        let holder_did = proof
+            .holder_did
+            .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+
+        let base_url = proof
+            .interaction
+            .ok_or(ServiceError::MappingError(
+                "interaction is None".to_string(),
+            ))?
+            .host
+            .ok_or(ServiceError::MappingError(
+                "interaction host is missing".to_string(),
+            ))?;
+
+        let mut submitted_claims: Vec<Claim> = vec![];
+        let mut credentials: Vec<String> = vec![];
+        for (_, credential_request) in request.submit_credentials {
+            let credential = self
+                .credential_repository
+                .get_credential(
+                    &credential_request.credential_id,
+                    &CredentialRelations {
+                        claims: Some(ClaimRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+
+            let credential_data = credential.credential;
             if credential_data.is_empty() {
                 return Err(ServiceError::NotFound);
             }
@@ -157,15 +190,43 @@ impl SSIHolderService {
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
             credentials.push(credential_content.to_owned());
+
+            let credential_claims = credential
+                .claims
+                .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
+            submitted_claims.extend(credential_claims);
         }
 
         // FIXME - pick correct formatter
         let formatter = self.formatter_provider.get_formatter("JWT")?;
         let presentation = formatter.format_presentation(&credentials, &holder_did.did)?;
 
-        self.protocol_provider
-            .get_protocol(transport_protocol)?
-            .submit_proof(base_url, &proof_id.to_string(), &presentation)
+        let submit_result = self
+            .protocol_provider
+            .get_protocol(&proof.transport)?
+            .submit_proof(&base_url, &proof.id.to_string(), &presentation)
+            .await;
+
+        if submit_result.is_ok() {
+            self.proof_repository
+                .set_proof_claims(&proof.id, submitted_claims)
+                .await?;
+        }
+
+        let now = OffsetDateTime::now_utc();
+        self.proof_repository
+            .set_proof_state(
+                &proof.id,
+                ProofState {
+                    created_date: now,
+                    last_modified: now,
+                    state: if submit_result.is_ok() {
+                        ProofStateEnum::Accepted
+                    } else {
+                        ProofStateEnum::Error
+                    },
+                },
+            )
             .await
             .map_err(ServiceError::from)
     }
@@ -307,7 +368,7 @@ impl SSIHolderService {
         proof_id: String,
         proof_request: ConnectVerifierResponse,
         protocol: &str,
-        organisation_id: &OrganisationId,
+        holder_did: &Did,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         let verifier_did_result = self
             .did_repository
@@ -323,7 +384,7 @@ impl SSIHolderService {
                     created_date: now,
                     last_modified: now,
                     name: "verifier".to_owned(),
-                    organisation_id: organisation_id.to_owned(),
+                    organisation_id: holder_did.organisation_id.to_owned(),
                     did: proof_request.verifier_did.clone(),
                     did_type: crate::model::did::DidType::Remote,
                     did_method: "KEY".to_owned(),
@@ -335,7 +396,7 @@ impl SSIHolderService {
         };
 
         let data = serde_json::to_string(&proof_request.claims)
-            .unwrap()
+            .map_err(|e| ServiceError::MappingError(e.to_string()))?
             .as_bytes()
             .to_vec();
 
@@ -346,13 +407,21 @@ impl SSIHolderService {
             .create_interaction(interaction.clone())
             .await?;
 
-        let proof = proof_from_handle_invitation(protocol, verifier_did, interaction, now);
+        let proof_id = string_to_uuid(&proof_id)?;
+        let proof = proof_from_handle_invitation(
+            &proof_id,
+            protocol,
+            verifier_did,
+            holder_did.to_owned(),
+            interaction,
+            now,
+        );
 
         self.proof_repository.create_proof(proof).await?;
 
         Ok(InvitationResponseDTO::ProofRequest {
             interaction_id,
-            proof_id: string_to_uuid(&proof_id)?,
+            proof_id,
         })
     }
 

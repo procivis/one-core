@@ -205,8 +205,6 @@ impl ProofRepository for ProofProvider {
             .map(|claim| get_proof_claim_active_model(proof_id, claim))
             .collect();
 
-        self.claim_repository.create_claim_list(claims).await?;
-
         proof_claim::Entity::insert_many(proof_claim_models)
             .exec(&self.db)
             .await

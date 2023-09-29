@@ -1,32 +1,28 @@
-use crate::{utils::run_sync, ActiveProof, OneCoreBinding};
-use one_core::{model::credential::CredentialId, service::error::ServiceError};
-use std::str::FromStr;
+use crate::{dto::PresentationSubmitCredentialRequestBindingDTO, utils::run_sync, OneCoreBinding};
+use one_core::service::{error::ServiceError, ssi_holder::dto::PresentationSubmitRequestDTO};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 impl OneCoreBinding {
-    pub fn holder_submit_proof(&self, credential_ids: Vec<String>) -> Result<(), ServiceError> {
-        run_sync(async {
-            let active_proof = self.active_proof.read().await;
-            if let Some(ActiveProof {
-                id,
-                base_url,
-                did_id,
-            }) = &*active_proof
-            {
-                let credential_ids = credential_ids
-                    .iter()
-                    .map(|id| {
-                        Uuid::from_str(id).map_err(|e| ServiceError::MappingError(e.to_string()))
-                    })
-                    .collect::<Result<Vec<CredentialId>, ServiceError>>()?;
+    pub fn holder_submit_proof(
+        &self,
+        interaction_id: String,
+        submit_credentials: HashMap<String, PresentationSubmitCredentialRequestBindingDTO>,
+    ) -> Result<(), ServiceError> {
+        let interaction_id = Uuid::parse_str(&interaction_id)
+            .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
 
-                self.inner
-                    .ssi_holder_service
-                    .submit_proof("PROCIVIS_TEMPORARY", base_url, id, &credential_ids, did_id)
-                    .await?;
-            } else {
-                return Err(ServiceError::NotFound);
-            }
+        run_sync(async {
+            self.inner
+                .ssi_holder_service
+                .submit_proof(PresentationSubmitRequestDTO {
+                    interaction_id,
+                    submit_credentials: submit_credentials
+                        .into_iter()
+                        .map(|(key, value)| Ok((key, value.try_into()?)))
+                        .collect::<Result<_, ServiceError>>()?,
+                })
+                .await?;
 
             Ok(())
         })

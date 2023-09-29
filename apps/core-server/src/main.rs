@@ -97,6 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_submit,
             endpoint::interaction::controller::issuance_reject,
+            endpoint::interaction::controller::presentation_submit,
             endpoint::interaction::controller::presentation_reject,
 
             endpoint::misc::get_build_info,
@@ -150,6 +151,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::interaction::dto::IssuanceSubmitRequestRestDTO,
                 endpoint::interaction::dto::IssuanceRejectRequestRestDTO,
                 endpoint::interaction::dto::PresentationRejectRequestRestDTO,
+                endpoint::interaction::dto::PresentationSubmitRequestRestDTO,
+                endpoint::interaction::dto::PresentationSubmitCredentialRequestRestDTO,
 
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
@@ -288,6 +291,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/interaction/v1/issuance-reject",
             post(interaction::controller::issuance_reject),
+        )
+        .route(
+            "/api/interaction/v1/presentation-submit",
+            post(interaction::controller::presentation_submit),
         )
         .route(
             "/api/interaction/v1/presentation-reject",

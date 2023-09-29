@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -34,4 +35,18 @@ pub struct IssuanceRejectRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct PresentationRejectRequestRestDTO {
     pub interaction_id: Uuid,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PresentationSubmitRequestRestDTO {
+    pub interaction_id: Uuid,
+    pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PresentationSubmitCredentialRequestRestDTO {
+    pub credential_id: Uuid,
+    pub submit_claims: Vec<String>,
 }

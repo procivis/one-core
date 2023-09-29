@@ -25,7 +25,7 @@ impl From<ProofDetailResponseDTO> for ProofDetailResponseRestDTO {
             transport: value.transport,
             state: value.state.into(),
             organisation_id: value.organisation_id,
-            schema: value.schema.into(),
+            schema: value.schema.map(|schema| schema.into()),
             claims: vector_into(value.claims),
         }
     }
@@ -43,7 +43,7 @@ impl From<ProofListItemResponseDTO> for ProofListItemResponseRestDTO {
             verifier_did: value.verifier_did,
             transport: value.transport,
             state: value.state.into(),
-            schema: value.schema.into(),
+            schema: value.schema.map(|schema| schema.into()),
         }
     }
 }

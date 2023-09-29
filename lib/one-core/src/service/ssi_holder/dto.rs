@@ -2,6 +2,7 @@ use crate::{
     model::{credential::CredentialId, interaction::InteractionId},
     service::proof::dto::ProofId,
 };
+use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 pub enum InvitationResponseDTO {
@@ -18,4 +19,16 @@ pub enum InvitationResponseDTO {
 #[derive(Clone, Debug)]
 pub(super) struct HandleInvitationURLQuery {
     pub protocol: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationSubmitRequestDTO {
+    pub interaction_id: InteractionId,
+    pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationSubmitCredentialRequestDTO {
+    pub credential_id: CredentialId,
+    pub submit_claims: Vec<String>,
 }

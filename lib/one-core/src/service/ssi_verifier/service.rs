@@ -250,6 +250,9 @@ impl SSIVerifierService {
             })
             .collect();
 
+        self.claim_repository
+            .create_claim_list(claims.clone())
+            .await?;
         self.proof_repository.set_proof_claims(id, claims).await?;
 
         self.proof_repository
