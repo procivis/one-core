@@ -9,3 +9,5 @@ data:
   AUTH_TOKEN: {{ required "Auth token is required" .Values.authToken | quote }}
   CORE_BASE_URL: {{ required "Base url is required" .Values.baseUrl | quote }}
   CONFIG_FILE: "/app/config.yml"
+  SENTRY_DSN: {{ .Values.sentry.dsn | quote }}
+  SENTRY_ENVIRONMENT: {{ required "Sentry env is required" .Values.sentry.env | quote }}

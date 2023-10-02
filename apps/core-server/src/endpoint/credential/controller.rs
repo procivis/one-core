@@ -12,7 +12,8 @@ use crate::endpoint::credential::dto::{
 };
 use crate::endpoint::credential::mapper::share_credentials_to_entity_share_response;
 use crate::extractor::Qs;
-use crate::{AppState, Config};
+use crate::router::AppState;
+use crate::Config;
 
 #[utoipa::path(
     get,

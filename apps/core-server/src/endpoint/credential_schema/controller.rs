@@ -9,7 +9,7 @@ use one_core::service::error::ServiceError;
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemaResponseDTO};
 use crate::endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO;
 use crate::extractor::Qs;
-use crate::AppState;
+use crate::router::AppState;
 
 use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
 

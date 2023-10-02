@@ -1,5 +1,8 @@
 baseUrl: "https://core.test.one-trust-solution.com"
 
+sentry:
+  env: "test"
+
 authToken: "r3Sutx7H5ALrmSsOEdMCFwC8bnfEm6ko5dEXpk9OxmzyA0kIf159onReW4fkHUvzLE2QLhPyLgIHdSQrHM0XtHmIuObjWDo8zBQHtCfpxKGmNopvFKzn1jHXJ61tVDui"
 
 mariadb:

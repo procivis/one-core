@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::extractor::Qs;
-use crate::AppState;
+use crate::router::AppState;
 
 use super::dto::{CreateDidRequestRestDTO, GetDidQuery, GetDidResponseRestDTO};
 

@@ -3,7 +3,7 @@ use super::dto::{
     IssuanceSubmitRequestRestDTO, PresentationRejectRequestRestDTO,
     PresentationSubmitRequestRestDTO,
 };
-use crate::AppState;
+use crate::router::AppState;
 use axum::{
     extract::State,
     http::StatusCode,
