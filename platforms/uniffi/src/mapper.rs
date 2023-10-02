@@ -3,7 +3,12 @@ use super::dto::{
     CredentialStateBindingEnum, ProofRequestBindingDTO, ProofRequestClaimBindingDTO,
 };
 use crate::{
-    dto::{HandleInvitationResponseBindingEnum, PresentationSubmitCredentialRequestBindingDTO},
+    dto::{
+        HandleInvitationResponseBindingEnum, PresentationDefinitionBindingDTO,
+        PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestGroupBindingDTO,
+        PresentationDefinitionRequestedCredentialBindingDTO, PresentationDefinitionRuleBindingDTO,
+        PresentationDefinitionRuleTypeBindingEnum, PresentationSubmitCredentialRequestBindingDTO,
+    },
     utils::TimestampFormat,
     CredentialDetailBindingDTO, CredentialListBindingDTO,
 };
@@ -17,7 +22,12 @@ use one_core::{
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
         error::ServiceError,
-        proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
+        proof::dto::{
+            PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+            PresentationDefinitionRequestedCredentialResponseDTO,
+            PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
+            PresentationDefinitionRuleTypeEnum, ProofClaimDTO, ProofDetailResponseDTO,
+        },
         ssi_holder::dto::{InvitationResponseDTO, PresentationSubmitCredentialRequestDTO},
     },
 };
@@ -170,5 +180,73 @@ impl TryFrom<PresentationSubmitCredentialRequestBindingDTO>
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?,
             submit_claims: value.submit_claims,
         })
+    }
+}
+
+impl From<PresentationDefinitionResponseDTO> for PresentationDefinitionBindingDTO {
+    fn from(value: PresentationDefinitionResponseDTO) -> Self {
+        Self {
+            request_groups: vector_into(value.request_groups),
+        }
+    }
+}
+
+impl From<PresentationDefinitionRequestGroupResponseDTO>
+    for PresentationDefinitionRequestGroupBindingDTO
+{
+    fn from(value: PresentationDefinitionRequestGroupResponseDTO) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            purpose: value.purpose,
+            rule: value.rule.into(),
+            requested_credentials: vector_into(value.requested_credentials),
+        }
+    }
+}
+
+impl From<PresentationDefinitionRuleDTO> for PresentationDefinitionRuleBindingDTO {
+    fn from(value: PresentationDefinitionRuleDTO) -> Self {
+        Self {
+            r#type: value.r#type.into(),
+            min: value.min,
+            max: value.max,
+            count: value.count,
+        }
+    }
+}
+
+impl From<PresentationDefinitionRequestedCredentialResponseDTO>
+    for PresentationDefinitionRequestedCredentialBindingDTO
+{
+    fn from(value: PresentationDefinitionRequestedCredentialResponseDTO) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            purpose: value.purpose,
+            fields: vector_into(value.fields),
+            applicable_credentials: value.applicable_credentials,
+        }
+    }
+}
+
+impl From<PresentationDefinitionRuleTypeEnum> for PresentationDefinitionRuleTypeBindingEnum {
+    fn from(value: PresentationDefinitionRuleTypeEnum) -> Self {
+        match value {
+            PresentationDefinitionRuleTypeEnum::All => Self::All,
+            PresentationDefinitionRuleTypeEnum::Pick => Self::Pick,
+        }
+    }
+}
+
+impl From<PresentationDefinitionFieldDTO> for PresentationDefinitionFieldBindingDTO {
+    fn from(value: PresentationDefinitionFieldDTO) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            purpose: value.purpose,
+            required: value.required.unwrap_or(true),
+            key_map: value.key_map,
+        }
     }
 }

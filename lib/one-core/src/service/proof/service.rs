@@ -128,7 +128,6 @@ impl ProofService {
             .map_err(ServiceError::from)?;
 
         let credentials: Vec<_> = credentials
-            .clone()
             .into_iter()
             .filter(|credential| {
                 claim_names.clone().into_iter().all(|claim_name| {

@@ -185,7 +185,6 @@ pub fn presentation_definition_from_proof(
                 .collect::<Result<Vec<_>, ServiceError>>()?,
         }],
         credentials: credentials
-            .clone()
             .into_iter()
             .map(|credential| credential.try_into())
             .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()?,
