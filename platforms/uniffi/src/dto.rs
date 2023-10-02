@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 pub enum CredentialStateBindingEnum {
     Created,
     Pending,
@@ -90,4 +92,44 @@ pub struct ProofRequestClaimBindingDTO {
 pub struct PresentationSubmitCredentialRequestBindingDTO {
     pub credential_id: String,
     pub submit_claims: Vec<String>,
+}
+
+pub struct PresentationDefinitionBindingDTO {
+    pub request_groups: Vec<PresentationDefinitionRequestGroupBindingDTO>,
+}
+
+pub struct PresentationDefinitionRequestGroupBindingDTO {
+    pub id: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub rule: PresentationDefinitionRuleBindingDTO,
+    pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialBindingDTO>,
+}
+
+pub struct PresentationDefinitionRequestedCredentialBindingDTO {
+    pub id: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub fields: Vec<PresentationDefinitionFieldBindingDTO>,
+    pub applicable_credentials: Vec<String>,
+}
+
+pub struct PresentationDefinitionFieldBindingDTO {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub required: bool,
+    pub key_map: HashMap<String, String>,
+}
+
+pub enum PresentationDefinitionRuleTypeBindingEnum {
+    All,
+    Pick,
+}
+
+pub struct PresentationDefinitionRuleBindingDTO {
+    pub r#type: PresentationDefinitionRuleTypeBindingEnum,
+    pub min: Option<u32>,
+    pub max: Option<u32>,
+    pub count: Option<u32>,
 }

@@ -104,6 +104,45 @@ dictionary CredentialListBindingDTO {
     u64 total_items;
 };
 
+dictionary PresentationDefinitionBindingDTO {
+    sequence<PresentationDefinitionRequestGroupBindingDTO> request_groups;
+};
+
+dictionary PresentationDefinitionRequestGroupBindingDTO {
+    string id;
+    string? name;
+    string? purpose;
+    PresentationDefinitionRuleBindingDTO rule;
+    sequence<PresentationDefinitionRequestedCredentialBindingDTO> requested_credentials;
+};
+
+dictionary PresentationDefinitionRequestedCredentialBindingDTO {
+    string id;
+    string? name;
+    string? purpose;
+    sequence<PresentationDefinitionFieldBindingDTO> fields;
+    sequence<string> applicable_credentials;
+};
+
+dictionary PresentationDefinitionFieldBindingDTO {
+    string? id;
+    string? name;
+    string? purpose;
+    boolean required;
+    record<string, string> key_map;
+};
+
+enum PresentationDefinitionRuleTypeBindingEnum {
+  "All", "Pick"
+};
+
+dictionary PresentationDefinitionRuleBindingDTO {
+    PresentationDefinitionRuleTypeBindingEnum type;
+    u32? min;
+    u32? max;
+    u32? count;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -121,6 +160,9 @@ interface OneCoreBinding {
 
   [Throws=ServiceError]
   void holder_reject_credential(string interaction_id);
+
+  [Throws=ServiceError]
+  PresentationDefinitionBindingDTO get_presentation_defintion(string proof_id);
 
   [Throws=ServiceError]
   void holder_reject_proof(string interaction_id);
