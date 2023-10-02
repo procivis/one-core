@@ -1,4 +1,10 @@
 use super::ProofService;
+use crate::model::claim::Claim;
+use crate::model::credential::{
+    Credential, CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
+};
+use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::model::interaction::Interaction;
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -17,7 +23,8 @@ use crate::{
     repository::{
         error::DataLayerError,
         mock::{
-            did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
+            credential_repository::MockCredentialRepository, did_repository::MockDidRepository,
+            interaction_repository::MockInteractionRepository,
             proof_repository::MockProofRepository,
             proof_schema_repository::MockProofSchemaRepository,
         },
@@ -28,6 +35,7 @@ use crate::{
     },
 };
 use mockall::{predicate::*, Sequence};
+use serde_json::json;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -38,10 +46,12 @@ struct Repositories {
     pub proof_repository: MockProofRepository,
     pub did_repository: MockDidRepository,
     pub interaction_repository: MockInteractionRepository,
+    pub credential_repository: MockCredentialRepository,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
     ProofService::new(
+        Arc::new(repositories.credential_repository),
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
@@ -76,6 +86,606 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         holder_did: None,
         interaction: None,
     }
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition() {
+    let mut proof_repository = MockProofRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+
+    let proof = Proof {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        transport: "transport".to_string(),
+        state: Some(vec![ProofState {
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            state: ProofStateEnum::Pending,
+        }]),
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "proof schema".to_string(),
+            expire_duration: 0,
+            claim_schemas: Some(vec![ProofSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4(),
+                    key: "key".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                },
+                required: true,
+                credential_schema: Some(CredentialSchema {
+                    id: Uuid::new_v4(),
+                    deleted_at: None,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    name: "credential schema".to_string(),
+                    format: "JWT".to_string(),
+                    revocation_method: "NONE".to_string(),
+                    claim_schemas: None,
+                    organisation: None,
+                }),
+            }]),
+            organisation: Some(Organisation {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
+        }),
+        claims: Some(vec![]),
+        verifier_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "did".to_string(),
+            organisation_id: Uuid::new_v4(),
+            did: "did".to_string(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+        }),
+        holder_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "did".to_string(),
+            organisation_id: Uuid::new_v4(),
+            did: "did".to_string(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+        }),
+        interaction: Some(Interaction {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            host: None,
+            data: Some(
+                json!([{
+                    "id": Uuid::new_v4().to_string(),
+                    "createdDate": "2023-06-09T14:19:57.000Z",
+                    "lastModified": "2023-06-09T14:19:57.000Z",
+                    "key": "key",
+                    "datatype": "STRING",
+                    "required": true,
+                    "credentialSchema": {
+                         "id": Uuid::new_v4().to_string(),
+                         "createdDate": "2023-06-09T14:19:57.000Z",
+                         "lastModified": "2023-06-09T14:19:57.000Z",
+                         "name": "test",
+                         "format": "JWT",
+                         "revocationMethod": "NONE",
+                    }
+                }])
+                .to_string()
+                .into_bytes(),
+            ),
+        }),
+    };
+    let now = OffsetDateTime::now_utc();
+
+    let claim_schema = ClaimSchema {
+        id: Uuid::new_v4(),
+        key: "key".to_string(),
+        data_type: "NUMBER".to_string(),
+        created_date: now,
+        last_modified: now,
+    };
+    let organisation = Organisation {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+    };
+    let credential_id = Uuid::new_v4();
+    let credentials = vec![Credential {
+        id: credential_id,
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        credential: vec![],
+        transport: "PROCIVIS_TEMPORARY".to_string(),
+        state: Some(vec![CredentialState {
+            created_date: now,
+            state: CredentialStateEnum::Created,
+        }]),
+        claims: Some(vec![Claim {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            value: "123".to_string(),
+            schema: Some(claim_schema.clone()),
+        }]),
+        issuer_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation_id: organisation.id.to_owned(),
+            did: "did1".to_string(),
+            did_type: DidType::Remote,
+            did_method: "KEY".to_string(),
+        }),
+        holder_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "did".to_string(),
+            organisation_id: Uuid::new_v4(),
+            did: "did".to_string(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+        }),
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            claim_schemas: Some(vec![CredentialSchemaClaim {
+                schema: claim_schema,
+                required: true,
+            }]),
+            organisation: Some(organisation),
+        }),
+        interaction: None,
+    }];
+
+    let claim_names = vec!["key".to_string()];
+    {
+        let res_clone = proof.clone();
+        proof_repository
+            .expect_get_proof()
+            .times(1)
+            .with(
+                eq(proof.id.to_owned()),
+                eq(ProofRelations {
+                    schema: Some(ProofSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations {
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    state: Some(ProofStateRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    verifier_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                }),
+            )
+            .returning(move |_, _| Ok(res_clone.clone()));
+
+        credential_repository
+            .expect_get_credentials_by_claim_names()
+            .times(1)
+            .with(
+                eq(claim_names),
+                eq(CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    issuer_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    ..Default::default()
+                }),
+            )
+            .returning(move |_, _| Ok(credentials.clone()));
+    }
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        credential_repository,
+        ..Default::default()
+    });
+
+    let result = service.get_proof_presentation_definition(&proof.id).await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(
+        result.request_groups.get(0).unwrap().id,
+        proof.id.to_string()
+    );
+    assert_eq!(
+        result.credentials.get(0).unwrap().id.to_string(),
+        credential_id.to_string()
+    );
+    assert_eq!(
+        result
+            .request_groups
+            .get(0)
+            .unwrap()
+            .requested_credentials
+            .get(0)
+            .unwrap()
+            .applicable_credentials
+            .get(0)
+            .unwrap()
+            .to_owned(),
+        credential_id.to_string()
+    );
+    assert_eq!(
+        result
+            .request_groups
+            .get(0)
+            .unwrap()
+            .requested_credentials
+            .get(0)
+            .unwrap()
+            .fields
+            .get(0)
+            .unwrap()
+            .key_map
+            .get(&credential_id.to_string())
+            .unwrap()
+            .to_owned(),
+        "key".to_string()
+    );
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_no_match() {
+    let mut proof_repository = MockProofRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+
+    let proof = Proof {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        transport: "transport".to_string(),
+        state: Some(vec![ProofState {
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            state: ProofStateEnum::Pending,
+        }]),
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "proof schema".to_string(),
+            expire_duration: 0,
+            claim_schemas: Some(vec![ProofSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4(),
+                    key: "key_123".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                },
+                required: true,
+                credential_schema: Some(CredentialSchema {
+                    id: Uuid::new_v4(),
+                    deleted_at: None,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    name: "credential schema".to_string(),
+                    format: "JWT".to_string(),
+                    revocation_method: "NONE".to_string(),
+                    claim_schemas: None,
+                    organisation: None,
+                }),
+            }]),
+            organisation: Some(Organisation {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
+        }),
+        claims: Some(vec![]),
+        verifier_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "did".to_string(),
+            organisation_id: Uuid::new_v4(),
+            did: "did".to_string(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+        }),
+        holder_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "did".to_string(),
+            organisation_id: Uuid::new_v4(),
+            did: "did".to_string(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+        }),
+        interaction: Some(Interaction {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            host: None,
+            data: Some(
+                json!([{
+                    "id": Uuid::new_v4().to_string(),
+                    "createdDate": "2023-06-09T14:19:57.000Z",
+                    "lastModified": "2023-06-09T14:19:57.000Z",
+                    "key": "key_123",
+                    "datatype": "STRING",
+                    "required": true,
+                    "credentialSchema": {
+                         "id": Uuid::new_v4().to_string(),
+                         "createdDate": "2023-06-09T14:19:57.000Z",
+                         "lastModified": "2023-06-09T14:19:57.000Z",
+                         "name": "test",
+                         "format": "JWT",
+                         "revocationMethod": "NONE",
+                    }
+                }])
+                .to_string()
+                .into_bytes(),
+            ),
+        }),
+    };
+    let now = OffsetDateTime::now_utc();
+
+    let claim_schema = ClaimSchema {
+        id: Uuid::new_v4(),
+        key: "key".to_string(),
+        data_type: "NUMBER".to_string(),
+        created_date: now,
+        last_modified: now,
+    };
+    let organisation = Organisation {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+    };
+    let credential_id = Uuid::new_v4();
+    let credentials = vec![Credential {
+        id: credential_id,
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        credential: vec![],
+        transport: "PROCIVIS_TEMPORARY".to_string(),
+        state: Some(vec![CredentialState {
+            created_date: now,
+            state: CredentialStateEnum::Created,
+        }]),
+        claims: Some(vec![Claim {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            value: "123".to_string(),
+            schema: Some(claim_schema.clone()),
+        }]),
+        issuer_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation_id: organisation.id.to_owned(),
+            did: "did1".to_string(),
+            did_type: DidType::Remote,
+            did_method: "KEY".to_string(),
+        }),
+        holder_did: None,
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            claim_schemas: Some(vec![CredentialSchemaClaim {
+                schema: claim_schema,
+                required: true,
+            }]),
+            organisation: Some(organisation),
+        }),
+        interaction: None,
+    }];
+
+    let claim_names = vec!["key_123".to_string()];
+    {
+        let res_clone = proof.clone();
+        proof_repository
+            .expect_get_proof()
+            .times(1)
+            .with(
+                eq(proof.id.to_owned()),
+                eq(ProofRelations {
+                    schema: Some(ProofSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations {
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    state: Some(ProofStateRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    verifier_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                }),
+            )
+            .returning(move |_, _| Ok(res_clone.clone()));
+
+        credential_repository
+            .expect_get_credentials_by_claim_names()
+            .times(1)
+            .with(
+                eq(claim_names),
+                eq(CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    issuer_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    ..Default::default()
+                }),
+            )
+            .returning(move |_, _| Ok(credentials.clone()));
+    }
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        credential_repository,
+        ..Default::default()
+    });
+
+    let result = service.get_proof_presentation_definition(&proof.id).await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(
+        result.request_groups.get(0).unwrap().id,
+        proof.id.to_string()
+    );
+    assert_eq!(result.credentials.len(), 0);
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_holder_did_not_local() {
+    let mut proof_repository = MockProofRepository::default();
+
+    let proof = Proof {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        transport: "transport".to_string(),
+        state: Some(vec![ProofState {
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            state: ProofStateEnum::Pending,
+        }]),
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "proof schema".to_string(),
+            expire_duration: 0,
+            claim_schemas: Some(vec![ProofSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4(),
+                    key: "key_123".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                },
+                required: true,
+                credential_schema: Some(CredentialSchema {
+                    id: Uuid::new_v4(),
+                    deleted_at: None,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    name: "credential schema".to_string(),
+                    format: "JWT".to_string(),
+                    revocation_method: "NONE".to_string(),
+                    claim_schemas: None,
+                    organisation: None,
+                }),
+            }]),
+            organisation: Some(Organisation {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
+        }),
+        claims: Some(vec![]),
+        verifier_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "did".to_string(),
+            organisation_id: Uuid::new_v4(),
+            did: "did".to_string(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+        }),
+        holder_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "did".to_string(),
+            organisation_id: Uuid::new_v4(),
+            did: "did".to_string(),
+            did_type: DidType::Remote,
+            did_method: "KEY".to_string(),
+        }),
+        interaction: None,
+    };
+
+    {
+        let res_clone = proof.clone();
+        proof_repository
+            .expect_get_proof()
+            .times(1)
+            .with(
+                eq(proof.id.to_owned()),
+                eq(ProofRelations {
+                    schema: Some(ProofSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations {
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    state: Some(ProofStateRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    verifier_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                }),
+            )
+            .returning(move |_, _| Ok(res_clone.clone()));
+    }
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        ..Default::default()
+    });
+
+    let result = service.get_proof_presentation_definition(&proof.id).await;
+
+    assert!(result.is_err_and(|e| matches!(e, ServiceError::IncorrectParameters)));
 }
 
 #[tokio::test]
@@ -329,8 +939,10 @@ async fn test_create_proof() {
         .returning(move |_| Ok(proof_id));
 
     let interaction_repository = MockInteractionRepository::default();
+    let credential_repository = MockCredentialRepository::default();
 
     let service = setup_service(Repositories {
+        credential_repository,
         proof_repository,
         did_repository,
         proof_schema_repository,

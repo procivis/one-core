@@ -1,3 +1,4 @@
+use super::error::DataLayerError;
 use crate::model::{
     credential::{
         Credential, CredentialId, CredentialRelations, GetCredentialList, GetCredentialQuery,
@@ -5,8 +6,6 @@ use crate::model::{
     },
     interaction::InteractionId,
 };
-
-use super::error::DataLayerError;
 
 #[async_trait::async_trait]
 pub trait CredentialRepository {
@@ -33,4 +32,10 @@ pub trait CredentialRepository {
         &self,
         credential: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError>;
+
+    async fn get_credentials_by_claim_names(
+        &self,
+        claim_names: Vec<String>,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError>;
 }

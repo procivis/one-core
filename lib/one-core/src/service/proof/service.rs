@@ -1,11 +1,16 @@
 use super::{
     dto::{
-        CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
-        ProofId,
+        CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO,
+        PresentationDefinitionResponseDTO, ProofDetailResponseDTO, ProofId,
     },
     mapper::{get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request},
     ProofService,
 };
+use crate::model::credential::{CredentialRelations, CredentialStateRelations};
+use crate::service::proof::mapper::{
+    get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
+};
+use crate::service::proof::validator::{check_holder_did_is_local, check_last_proof_state};
 use crate::{
     common_mapper::list_response_try_into,
     model::{
@@ -58,6 +63,91 @@ impl ProofService {
         } else {
             get_holder_proof_detail(result)
         }
+    }
+
+    /// Returns presentation definition of proof
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Proof uuid
+    pub async fn get_proof_presentation_definition(
+        &self,
+        id: &ProofId,
+    ) -> Result<PresentationDefinitionResponseDTO, ServiceError> {
+        let proof = self
+            .proof_repository
+            .get_proof(
+                id,
+                &ProofRelations {
+                    schema: Some(ProofSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations {
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    state: Some(ProofStateRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    verifier_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                },
+            )
+            .await
+            .map_err(ServiceError::from)?;
+
+        check_holder_did_is_local(&proof)?;
+        check_last_proof_state(&proof, ProofStateEnum::Pending)?;
+
+        let claims = get_proof_claim_schemas_from_proof(&proof)?;
+        let claim_names: Vec<String> = claims
+            .iter()
+            .map(|claim_schema| claim_schema.clone().key)
+            .collect();
+
+        let credentials = self
+            .credential_repository
+            .get_credentials_by_claim_names(
+                claim_names.clone(),
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    issuer_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(ServiceError::from)?;
+
+        let credentials: Vec<_> = credentials
+            .clone()
+            .into_iter()
+            .filter(|credential| {
+                claim_names.clone().into_iter().all(|claim_name| {
+                    if let Some(claims) = &credential.claims {
+                        claims.iter().any(|claim| {
+                            if let Some(claim_schema) = &claim.schema {
+                                claim_name == claim_schema.key
+                            } else {
+                                false
+                            }
+                        })
+                    } else {
+                        false
+                    }
+                })
+            })
+            .collect();
+
+        presentation_definition_from_proof(proof, credentials, claims)
     }
 
     /// Returns list of proofs according to query

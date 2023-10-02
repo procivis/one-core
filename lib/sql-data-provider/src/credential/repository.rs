@@ -33,8 +33,9 @@ use one_core::{
 };
 use sea_orm::{
     sea_query::{Alias, Expr, IntoCondition, Query},
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, JoinType,
+    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
+    Unchanged,
 };
 use std::{str::FromStr, sync::Arc};
 use time::OffsetDateTime;
@@ -365,6 +366,35 @@ impl CredentialRepository for CredentialProvider {
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
             .filter(credential::Column::InteractionId.eq(&interaction_id.to_string()))
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        self.credentials_to_repository(credentials, relations).await
+    }
+
+    async fn get_credentials_by_claim_names(
+        &self,
+        claim_names: Vec<String>,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError> {
+        let credentials = credential::Entity::find()
+            .join(
+                JoinType::LeftJoin,
+                credential::Relation::CredentialClaim.def(),
+            )
+            .join(JoinType::LeftJoin, credential_claim::Relation::Claim.def())
+            .join(
+                JoinType::LeftJoin,
+                claim::Relation::ClaimSchema
+                    .def()
+                    .on_condition(move |_left, _right| {
+                        Expr::col(claim_schema::Column::Key)
+                            .is_in(&claim_names)
+                            .into_condition()
+                    }),
+            )
+            .distinct()
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;

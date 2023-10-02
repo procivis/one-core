@@ -86,6 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             endpoint::proof::controller::get_proofs,
             endpoint::proof::controller::post_proof,
             endpoint::proof::controller::share_proof,
+            endpoint::proof::controller::get_proof_presentation_definition,
 
             endpoint::ssi::controller::ssi_verifier_connect,
             endpoint::ssi::controller::ssi_verifier_submit_proof,
@@ -133,6 +134,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 endpoint::proof::dto::ProofListItemResponseRestDTO,
                 endpoint::proof::dto::ProofDetailResponseRestDTO,
                 endpoint::proof::dto::ProofClaimRestDTO,
+                endpoint::proof::dto::PresentationDefinitionResponseRestDTO,
+                endpoint::proof::dto::PresentationDefinitionRequestGroupResponseRestDTO,
+                endpoint::proof::dto::PresentationDefinitionRuleRestDTO,
+                endpoint::proof::dto::PresentationDefinitionRequestedCredentialResponseRestDTO,
+                endpoint::proof::dto::PresentationDefinitionFieldRestDTO,
+                endpoint::proof::dto::PresentationDefinitionRuleRestDTO,
+                endpoint::proof::dto::PresentationDefinitionRuleTypeRestEnum,
 
                 endpoint::proof_schema::dto::CreateProofSchemaRequestRestDTO,
                 endpoint::proof_schema::dto::ClaimProofSchemaRequestRestDTO,
@@ -267,6 +275,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/api/proof-request/v1/:id",
             get(proof::controller::get_proof_details),
+        )
+        .route(
+            "/api/proof-request/v1/:id/presentation-definition",
+            get(proof::controller::get_proof_presentation_definition),
         )
         .route(
             "/api/organisation/v1",
