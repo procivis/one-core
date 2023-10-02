@@ -32,6 +32,13 @@ panic-handler = "2.1.2"
 serde_variant = "0.1.2"
 envy = "0.4.2"
 serde_qs = "0.12.0"
+sentry = { version = "0.31.7", default-features = false, features = [
+    "backtrace",
+    "panic",
+    "rustls",
+    "reqwest",
+] }
+sentry-tracing = "0.31.7"
 
 [build-dependencies]
 shadow-rs.workspace = true

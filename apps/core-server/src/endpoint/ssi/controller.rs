@@ -6,7 +6,7 @@ use super::dto::{
 use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
 };
-use crate::AppState;
+use crate::router::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,

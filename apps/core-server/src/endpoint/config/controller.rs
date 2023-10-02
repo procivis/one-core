@@ -1,5 +1,5 @@
 use super::dto::ConfigRestDTO;
-use crate::AppState;
+use crate::router::AppState;
 use axum::{
     extract::State,
     http::StatusCode,

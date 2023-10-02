@@ -5,7 +5,7 @@ use super::dto::{
 use super::mapper::share_proof_to_entity_share_response;
 use crate::dto::common::EntityResponseRestDTO;
 use crate::extractor::Qs;
-use crate::AppState;
+use crate::router::AppState;
 use crate::{dto::common::GetProofsResponseRestDTO, Config};
 use axum::{
     extract::{Path, State},

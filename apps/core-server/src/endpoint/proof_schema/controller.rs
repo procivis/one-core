@@ -3,7 +3,7 @@ use super::dto::{
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::extractor::Qs;
-use crate::AppState;
+use crate::router::AppState;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};

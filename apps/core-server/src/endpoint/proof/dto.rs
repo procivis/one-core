@@ -1,7 +1,9 @@
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
 use crate::{
     dto::common::GetListQueryParams,
-    proof_schema::dto::{GetProofSchemaListItemResponseRestDTO, ProofClaimSchemaResponseRestDTO},
+    endpoint::proof_schema::dto::{
+        GetProofSchemaListItemResponseRestDTO, ProofClaimSchemaResponseRestDTO,
+    },
     serialize::{front_time, front_time_option},
 };
 use serde::{Deserialize, Serialize};
