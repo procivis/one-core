@@ -1,4 +1,7 @@
-use super::dto::{CreateProofRequestRestDTO, GetProofQuery, ProofDetailResponseRestDTO};
+use super::dto::{
+    CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
+    ProofDetailResponseRestDTO,
+};
 use super::mapper::share_proof_to_entity_share_response;
 use crate::dto::common::EntityResponseRestDTO;
 use crate::extractor::Qs;
@@ -12,6 +15,49 @@ use axum::{
 };
 use one_core::service::error::ServiceError;
 use uuid::Uuid;
+
+#[utoipa::path(
+get,
+path = "/api/proof-request/v1/{id}/presentation-definition",
+responses(
+(status = 200, description = "OK", body = PresentationDefinitionResponseRestDTO),
+(status = 400, description = "Unauthorized"),
+(status = 404, description = "Proof request not found"),
+),
+params(
+("id" = Uuid, Path, description = "Proof id")
+),
+tag = "proof_management",
+security(
+("bearer" = [])
+),
+)]
+pub(crate) async fn get_proof_presentation_definition(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Response {
+    let result = state
+        .core
+        .proof_service
+        .get_proof_presentation_definition(&id)
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(PresentationDefinitionResponseRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(error) => match error {
+            ServiceError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
+            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
+            _ => {
+                tracing::error!("Error while getting proof {error}");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        },
+    }
+}
 
 #[utoipa::path(
     get,

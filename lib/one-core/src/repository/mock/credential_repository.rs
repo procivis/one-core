@@ -29,6 +29,12 @@ mock! {
             relations: &CredentialRelations,
         ) -> Result<Vec<Credential>, DataLayerError>;
 
+        pub fn get_credentials_by_claim_names(
+            &self,
+            claim_names: Vec<String>,
+            relations: &CredentialRelations,
+        ) -> Result<Vec<Credential>, DataLayerError>;
+
         pub fn get_credential_list(
             &self,
             query_params: GetCredentialQuery,
@@ -75,5 +81,13 @@ impl crate::repository::credential_repository::CredentialRepository for MockCred
         credential: UpdateCredentialRequest,
     ) -> Result<(), DataLayerError> {
         self.update_credential(credential)
+    }
+
+    async fn get_credentials_by_claim_names(
+        &self,
+        claim_names: Vec<String>,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError> {
+        self.get_credentials_by_claim_names(claim_names, relations)
     }
 }

@@ -30,7 +30,7 @@ pub struct Credential {
     pub interaction: Option<Interaction>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct CredentialRelations {
     pub state: Option<CredentialStateRelations>,
     pub claims: Option<ClaimRelations>,
