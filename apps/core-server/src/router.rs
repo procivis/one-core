@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::http::{HeaderValue, Request, Response, StatusCode};
+use axum::http::{Request, Response, StatusCode};
 use axum::middleware::{self, Next};
 use axum::routing::{delete, get, post};
 use axum::{Extension, Router};
@@ -28,6 +28,17 @@ use crate::{dto, Config};
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub core: OneCore,
+}
+
+pub struct HttpRequestContext {
+    pub path: String,
+    pub method: String,
+    pub request_id: Option<String>,
+    pub session_id: Option<String>,
+}
+
+tokio::task_local! {
+    pub static SENTRY_HTTP_REQUEST: HttpRequestContext;
 }
 
 pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Error>> {
@@ -317,32 +328,14 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
-                    let headers = request.headers();
-                    let default_header_value = "NOT PROVIDED";
-                    let default_header = HeaderValue::from_static(default_header_value);
-
-                    let request_id = headers
-                        .get("x-request-id")
-                        .unwrap_or(&default_header)
-                        .to_str()
-                        .unwrap_or(default_header_value)
-                        .to_string();
-                    let session_id = headers
-                        .get("x-session-id")
-                        .unwrap_or(&default_header)
-                        .to_str()
-                        .unwrap_or(default_header_value)
-                        .to_string();
-
-                    let method = request.method().to_string();
-
+                    let context = get_http_request_context(request);
                     info_span!(
                         "http_request",
-                        method = method,
-                        path = request.uri().path(),
+                        method = context.method,
+                        path = context.path,
                         service = "one-core",
-                        RequestId = request_id,
-                        SessionId = session_id,
+                        RequestId = context.request_id,
+                        SessionId = context.session_id,
                     )
                 })
                 .on_request(|request: &Request<_>, _span: &Span| {
@@ -358,6 +351,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
         )
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", documentation))
         .merge(technical_endpoints)
+        .layer(middleware::from_fn(sentry_context))
         .layer(Extension(config.clone()))
         .with_state(state);
 
@@ -424,4 +418,34 @@ async fn bearer_check<B>(
         return Err(StatusCode::UNAUTHORIZED);
     }
     Ok(next.run(request).await)
+}
+
+fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext {
+    let headers = request.headers();
+    let request_id = headers
+        .get("x-request-id")
+        .and_then(|header| header.to_str().ok())
+        .map(ToOwned::to_owned);
+    let session_id = headers
+        .get("x-session-id")
+        .and_then(|header| header.to_str().ok())
+        .map(ToOwned::to_owned);
+
+    HttpRequestContext {
+        path: request.uri().path().to_owned(),
+        method: request.method().to_string(),
+        request_id,
+        session_id,
+    }
+}
+
+async fn sentry_context<T>(
+    request: Request<T>,
+    next: Next<T>,
+) -> Result<axum::response::Response, StatusCode> {
+    SENTRY_HTTP_REQUEST
+        .scope(get_http_request_context(&request), async move {
+            Ok(next.run(request).await)
+        })
+        .await
 }

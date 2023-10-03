@@ -5,7 +5,7 @@ use std::panic;
 use std::sync::Arc;
 
 use figment::{providers::Env, Figment};
-use router::router_logic;
+use router::{router_logic, HttpRequestContext, SENTRY_HTTP_REQUEST};
 use sentry_tracing::EventFilter;
 use serde::Deserialize;
 use shadow_rs::shadow;
@@ -30,7 +30,7 @@ pub struct Config {
     auth_token: String,
     core_base_url: String,
     sentry_dsn: Option<String>,
-    sentry_environment: String,
+    sentry_environment: Option<String>,
 }
 
 fn main() {
@@ -66,16 +66,23 @@ fn log_build_info() {
 }
 
 fn initialize_sentry(config: &Config) -> Option<sentry::ClientInitGuard> {
-    if config
-        .sentry_dsn
-        .as_ref()
-        .is_some_and(|dsn| !dsn.is_empty())
-    {
+    let Config {
+        sentry_dsn,
+        sentry_environment,
+        ..
+    } = config;
+
+    if let (Some(dsn), Some(environment)) = (sentry_dsn, sentry_environment) {
+        if dsn.is_empty() {
+            return None;
+        }
+
         Some(sentry::init((
-            config.sentry_dsn.to_owned().unwrap(),
+            dsn.to_owned(),
             sentry::ClientOptions {
                 release: sentry::release_name!(),
-                environment: Some(config.sentry_environment.to_owned().into()),
+                environment: Some(environment.to_owned().into()),
+                max_breadcrumbs: 50,
                 before_send: Some(Arc::new(|mut event| {
                     if event.level == sentry::Level::Error
                         && event
@@ -85,6 +92,31 @@ fn initialize_sentry(config: &Config) -> Option<sentry::ClientInitGuard> {
                     {
                         event.level = sentry::Level::Fatal;
                     }
+
+                    let _ = SENTRY_HTTP_REQUEST.try_with(|http_request| {
+                        let HttpRequestContext {
+                            method,
+                            path,
+                            request_id,
+                            session_id,
+                        } = http_request;
+
+                        event
+                            .tags
+                            .insert("http-request".to_string(), format!("{method} {path}"));
+
+                        if let Some(request_id) = request_id {
+                            event
+                                .tags
+                                .insert("ONE-request-id".to_string(), request_id.to_owned());
+                        }
+                        if let Some(session_id) = session_id {
+                            event
+                                .tags
+                                .insert("ONE-session-id".to_string(), session_id.to_owned());
+                        }
+                    });
+
                     Some(event)
                 })),
                 ..Default::default()
