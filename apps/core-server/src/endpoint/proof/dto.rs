@@ -109,7 +109,7 @@ pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionFieldRestDTO {
-    pub id: Option<String>,
+    pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub required: Option<bool>,

@@ -74,7 +74,7 @@ pub struct PresentationDefinitionRequestedCredentialResponseDTO {
 
 #[derive(Clone, Debug)]
 pub struct PresentationDefinitionFieldDTO {
-    pub id: Option<String>,
+    pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub required: Option<bool>,

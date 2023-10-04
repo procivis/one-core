@@ -81,7 +81,6 @@ pub fn create_presentation_definition_field(
             .ok_or(ServiceError::MappingError(
                 "credential claims is None".to_string(),
             ))?
-            .iter()
         {
             if claim
                 .schema
@@ -97,7 +96,7 @@ pub fn create_presentation_definition_field(
         }
     }
     Ok(PresentationDefinitionFieldDTO {
-        id: Some(claim_schema.id.to_string()),
+        id: claim_schema.id.to_string(),
         name: Some(format!("claim_{}", index)),
         purpose: None,
         required: Some(claim_schema.required),
@@ -176,8 +175,8 @@ pub fn presentation_definition_from_proof(
                 .enumerate()
                 .map(|(index, credential_schema)| {
                     create_requested_credential(
-                        claim_schemas.as_ref(),
-                        credentials.as_ref(),
+                        &claim_schemas,
+                        &credentials,
                         index,
                         credential_schema,
                     )

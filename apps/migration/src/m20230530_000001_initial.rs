@@ -816,13 +816,16 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(ProofClaim::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(ProofClaim::ClaimId)
-                            .char_len(36)
-                            .not_null()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(ProofClaim::ClaimId).char_len(36).not_null())
                     .col(ColumnDef::new(ProofClaim::ProofId).char_len(36).not_null())
+                    .primary_key(
+                        Index::create()
+                            .if_not_exists()
+                            .name("pk-Proof_Claim")
+                            .col(ProofClaim::ClaimId)
+                            .col(ProofClaim::ProofId)
+                            .primary(),
+                    )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
                             .name("fk-Proof_Claim-ClaimId")
