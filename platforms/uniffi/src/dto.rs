@@ -115,7 +115,7 @@ pub struct PresentationDefinitionRequestedCredentialBindingDTO {
 }
 
 pub struct PresentationDefinitionFieldBindingDTO {
-    pub id: Option<String>,
+    pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub required: bool,

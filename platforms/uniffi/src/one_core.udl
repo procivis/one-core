@@ -125,7 +125,7 @@ dictionary PresentationDefinitionRequestedCredentialBindingDTO {
 };
 
 dictionary PresentationDefinitionFieldBindingDTO {
-    string? id;
+    string id;
     string? name;
     string? purpose;
     boolean required;
