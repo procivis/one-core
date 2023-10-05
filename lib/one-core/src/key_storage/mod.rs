@@ -3,14 +3,15 @@ use std::sync::Arc;
 
 use crate::{
     config::{
-        data_structure::{KeyStorageEntity, KeyStorageHsmAzureParams, KeyStorageInternalParams, KeyStorageParams, ParamsEnum},
+        data_structure::{
+            KeyStorageEntity, KeyStorageInternalParams, KeyStorageParams, ParamsEnum,
+        },
         ConfigParseError,
     },
-    key_storage::{hsm_azure::HsmAzureKeyProvider, internal::InternalKeyProvider},
+    key_storage::internal::InternalKeyProvider,
     service::error::ServiceError,
 };
 
-pub mod hsm_azure;
 pub mod internal;
 pub mod provider;
 

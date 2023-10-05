@@ -17,11 +17,7 @@ pub struct InternalKeyProvider {
 impl KeyStorage for InternalKeyProvider {
     fn generate(&self, algorithm: &str) -> Result<GeneratedKey, ServiceError> {
         // Note: RSA private key generation takes around a minute in debug mode
-        let algorithm = match algorithm {
-            "RSA_4096" => Ok(Algorithm::Rsa { hash: None }),
-            "ED25519" => Ok(Algorithm::Ed25519),
-            _ => Err(ServiceError::IncorrectParameters),
-        }?;
+        let algorithm = get_algorithm_from_string(algorithm)?;
 
         let private_key = PrivateKey::random(&mut rand::thread_rng(), algorithm)
             .map_err(|e| ServiceError::Other(e.to_string()))?;
@@ -68,5 +64,14 @@ fn encrypt_if_password_is_provided(
 
             Ok(encrypted)
         }
+    }
+}
+
+fn get_algorithm_from_string(value: &str) -> Result<Algorithm, ServiceError> {
+    // TODO: use crypto module to search these dynamically
+    match value {
+        "RSA_4096" => Ok(Algorithm::Rsa { hash: None }),
+        "Ed25519" => Ok(Algorithm::Ed25519),
+        _ => Err(ServiceError::IncorrectParameters),
     }
 }

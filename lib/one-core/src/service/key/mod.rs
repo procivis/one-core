@@ -16,7 +16,7 @@ pub struct KeyService {
     key_repository: Arc<dyn KeyRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    _config: Arc<CoreConfig>,
+    config: Arc<CoreConfig>,
 }
 
 impl KeyService {
@@ -30,7 +30,7 @@ impl KeyService {
             key_repository,
             organisation_repository,
             key_provider,
-            _config: config,
+            config,
         }
     }
 }

@@ -34,6 +34,7 @@ fn convert_internal_structure_to_dto() {
                 ))),
             },
         )]),
+        key_algorithm: Default::default(),
         key_storage: Default::default(),
     };
     let output = ConfigDTO::try_from(&config).unwrap();
@@ -56,7 +57,8 @@ fn convert_internal_structure_to_dto() {
       "type": "STRING"
     }
   },
-  "key": {}
+  "keyAlgorithm": {},
+  "keyStorage": {}
 }"#,
         text_output
     );
@@ -89,6 +91,7 @@ fn do_not_serialize_private_parameters() {
                 ))),
             },
         )]),
+        key_algorithm: Default::default(),
         key_storage: Default::default(),
     };
 
@@ -110,7 +113,8 @@ fn do_not_serialize_private_parameters() {
       "type": "STRING"
     }
   },
-  "key": {}
+  "keyAlgorithm": {},
+  "keyStorage": {}
 }"#,
         text_output
     );

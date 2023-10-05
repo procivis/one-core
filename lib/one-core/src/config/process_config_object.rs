@@ -5,8 +5,9 @@ use serde::de::Error;
 use crate::config::data_structure::{
     AccessModifier, DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams,
     DatatypeParams, DatatypeStringParams, DatatypeType, DidEntity, DidKeyParams, DidParams,
-    DidType, ExchangeEntity, FormatEntity, KeyStorageEntity, KeyStorageHsmAzureParams, KeyStorageInternalParams,
-    KeyStorageParams, ParamsEnum, RevocationEntity, TransportEntity,
+    DidType, ExchangeEntity, FormatEntity, KeyAlgorithmEntity, KeyAlgorithmParams,
+    KeyStorageEntity, KeyStorageInternalParams, KeyStorageParams, ParamsEnum, RevocationEntity,
+    TransportEntity,
 };
 
 fn convert_param_to_param_map(
@@ -238,7 +239,35 @@ fn postprocess_datatype_entity(
     })
 }
 
-fn postprocess_key_entity(entity: KeyStorageEntity) -> Result<KeyStorageEntity, serde_json::Error> {
+fn postprocess_key_algorithm_entity(
+    entity: KeyAlgorithmEntity,
+) -> Result<KeyAlgorithmEntity, serde_json::Error> {
+    let parsed_params = match entity.params {
+        None => Err(serde_json::Error::custom("key algorithm must be specified")),
+        Some(value) => match value {
+            ParamsEnum::Unparsed(value) => {
+                let public = value["public"].to_owned();
+                let private = value["private"].to_owned();
+                let merged = merge_public_and_private(public, private)?;
+
+                let params: KeyAlgorithmParams = serde_json::from_value(merged)?;
+                Ok(Some(ParamsEnum::Parsed(params)))
+            }
+            ParamsEnum::Parsed(value) => Ok(Some(ParamsEnum::Parsed(value))),
+        },
+    }?;
+
+    Ok(KeyAlgorithmEntity {
+        r#type: entity.r#type,
+        display: entity.display,
+        order: entity.order,
+        params: parsed_params,
+    })
+}
+
+fn postprocess_key_storage_entity(
+    entity: KeyStorageEntity,
+) -> Result<KeyStorageEntity, serde_json::Error> {
     let parsed_params = match entity.params {
         None => None,
         Some(value) => match value {
@@ -321,11 +350,20 @@ pub fn postprocess_datatype_entities(
         .collect()
 }
 
-pub fn postprocess_key_entities(
+pub fn postprocess_key_algorithm_entities(
+    entities: HashMap<String, KeyAlgorithmEntity>,
+) -> Result<HashMap<String, KeyAlgorithmEntity>, serde_json::Error> {
+    entities
+        .into_iter()
+        .map(|(k, v)| Ok((k, postprocess_key_algorithm_entity(v)?)))
+        .collect()
+}
+
+pub fn postprocess_key_storage_entities(
     entities: HashMap<String, KeyStorageEntity>,
 ) -> Result<HashMap<String, KeyStorageEntity>, serde_json::Error> {
     entities
         .into_iter()
-        .map(|(k, v)| Ok((k, postprocess_key_entity(v)?)))
+        .map(|(k, v)| Ok((k, postprocess_key_storage_entity(v)?)))
         .collect()
 }

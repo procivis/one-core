@@ -21,6 +21,7 @@ pub struct CoreConfig {
     pub revocation: HashMap<String, RevocationEntity>,
     pub did: HashMap<String, DidEntity>,
     pub datatype: HashMap<String, DatatypeEntity>,
+    pub key_algorithm: HashMap<String, KeyAlgorithmEntity>,
     pub key_storage: HashMap<String, KeyStorageEntity>,
 }
 
@@ -30,6 +31,7 @@ pub type TransportEntity = ConfigEntity<String, serde_json::Value>;
 pub type RevocationEntity = ConfigEntity<String, serde_json::Value>;
 pub type DidEntity = ConfigEntity<DidType, DidParams>;
 pub type DatatypeEntity = ConfigEntity<DatatypeType, DatatypeParams>;
+pub type KeyAlgorithmEntity = ConfigEntity<String, KeyAlgorithmParams>;
 pub type KeyStorageEntity = ConfigEntity<String, KeyStorageParams>;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -131,6 +133,11 @@ pub struct EnumValue {
     pub key: String,
     pub value: Option<String>,
     pub display: Option<TranslatableString>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct KeyAlgorithmParams {
+    pub algorithm: Param<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
