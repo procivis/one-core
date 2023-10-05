@@ -98,12 +98,3 @@ impl Related<super::key::Entity> for Entity {
         Relation::Key.def()
     }
 }
-
-impl Related<super::did::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::key::Relation::Did.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(super::key::Relation::Credential.def().rev())
-    }
-}

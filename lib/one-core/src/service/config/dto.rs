@@ -10,4 +10,5 @@ pub struct ConfigDTO {
     pub revocation: HashMap<String, Value>,
     pub did: HashMap<String, Value>,
     pub datatype: HashMap<String, Value>,
+    pub key: HashMap<String, Value>,
 }

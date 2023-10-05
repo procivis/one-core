@@ -1,6 +1,6 @@
 use crate::config::data_structure::{
     CoreConfig, DatatypeEntity, DatatypeType, DidEntity, DidType, ExchangeEntity, FormatEntity,
-    RevocationEntity, TranslatableString,
+    KeyEntity, RevocationEntity, TranslatableString,
 };
 use std::collections::HashMap;
 
@@ -68,6 +68,26 @@ pub fn generic_config() -> CoreConfig {
                 "NUMBER".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::Number,
+                    display: TranslatableString::Key("Display".to_string()),
+                    order: None,
+                    params: None,
+                },
+            ),
+        ]),
+        key: HashMap::from([
+            (
+                "INTERNAL".to_string(),
+                KeyEntity {
+                    r#type: "INTERNAL".to_string(),
+                    display: TranslatableString::Key("Display".to_string()),
+                    order: None,
+                    params: None,
+                },
+            ),
+            (
+                "MEIN_AZURE_KEYVAULT".to_string(),
+                KeyEntity {
+                    r#type: "HSM_AZURE".to_string(),
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,

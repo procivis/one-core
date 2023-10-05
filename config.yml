@@ -91,3 +91,20 @@ datatype:
   #           display: # optional
   #             en: "Switzerland"
   #             de: "Schweiz"
+key:
+  INTERNAL:
+    display: "storage.internal"
+    type: "INTERNAL"
+    order: 2
+    params:
+      private:
+        encryption: "my encryption key"
+  MEIN_AZURE_KEYVAULT:
+    display: ..
+    type: "HSM_AZURE"
+    order: 2
+    params:
+      private:
+        instanceUrl: https://azure/1230123-123-123/my-vault/
+        account: "devops@procivis.ch"
+        accessToken: 123-321-123123  # must be able to supply this from env

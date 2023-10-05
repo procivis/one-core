@@ -1,5 +1,6 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::config::ConfigParseError;
@@ -19,6 +20,7 @@ use transport_protocol::{
 
 pub mod config;
 pub mod credential_formatter;
+pub mod key_storage;
 pub mod signature_provider;
 pub mod transport_protocol;
 
@@ -29,11 +31,15 @@ pub mod service;
 pub mod common_mapper;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
+use crate::key_storage::provider::KeyProviderImpl;
+use crate::key_storage::{key_providers_from_config, KeyStorage};
 use crate::service::credential_schema::CredentialSchemaService;
+use crate::service::key::KeyService;
 
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
+    pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub signature_providers: Vec<(String, Arc<dyn SignatureProvider + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
@@ -41,6 +47,7 @@ pub struct OneCore {
     pub did_service: DidService,
     pub credential_service: CredentialService,
     pub credential_schema_service: CredentialSchemaService,
+    pub key_service: KeyService,
     pub proof_schema_service: ProofSchemaService,
     pub proof_service: ProofService,
     pub config_service: ConfigService,
@@ -78,9 +85,12 @@ impl OneCore {
                 .collect::<Vec<String>>(),
         )?;
 
+        let key_providers = key_providers_from_config(&config.key)?;
+
         let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
             credential_formatters.to_owned(),
         ));
+        let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
         let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
             transport_protocols.to_owned(),
         ));
@@ -88,6 +98,7 @@ impl OneCore {
         let config = Arc::new(config);
 
         Ok(OneCore {
+            key_providers,
             transport_protocols,
             signature_providers: vec![],
             credential_formatters,
@@ -104,6 +115,12 @@ impl OneCore {
             credential_schema_service: CredentialSchemaService::new(
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_organisation_repository(),
+                config.clone(),
+            ),
+            key_service: KeyService::new(
+                data_provider.get_key_repository(),
+                data_provider.get_organisation_repository(),
+                key_provider.clone(),
                 config.clone(),
             ),
             proof_schema_service: ProofSchemaService::new(

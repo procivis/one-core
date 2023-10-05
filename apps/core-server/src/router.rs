@@ -20,7 +20,7 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::endpoint::{
-    self, config, credential, credential_schema, did, interaction, misc, organisation, proof,
+    self, config, credential, credential_schema, did, interaction, key, misc, organisation, proof,
     proof_schema, ssi,
 };
 use crate::{dto, Config};
@@ -64,6 +64,8 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             endpoint::did::controller::get_did,
             endpoint::did::controller::get_did_list,
             endpoint::did::controller::post_did,
+
+            endpoint::key::controller::post_key,
 
             endpoint::proof_schema::controller::post_proof_schema,
             endpoint::proof_schema::controller::get_proof_schemas,
@@ -116,6 +118,8 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 endpoint::did::dto::CreateDidRequestRestDTO,
                 endpoint::did::dto::GetDidResponseRestDTO,
                 endpoint::did::dto::DidType,
+
+                endpoint::key::dto::KeyRequestRestDTO,
 
                 endpoint::proof::dto::ProofStateRestEnum,
                 endpoint::proof::dto::CreateProofRequestRestDTO,
@@ -241,6 +245,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             delete(proof_schema::controller::delete_proof_schema)
                 .get(proof_schema::controller::get_proof_schema_detail),
         )
+        .route("/api/key/v1", post(key::controller::post_key))
         .route(
             "/api/proof-schema/v1",
             get(proof_schema::controller::get_proof_schemas)

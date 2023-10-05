@@ -7,6 +7,7 @@ pub mod credential_repository;
 pub mod credential_schema_repository;
 pub mod did_repository;
 pub mod interaction_repository;
+pub mod key_repository;
 pub mod organisation_repository;
 pub mod proof_repository;
 pub mod proof_schema_repository;
@@ -19,6 +20,7 @@ use claim_schema_repository::ClaimSchemaRepository;
 use credential_repository::CredentialRepository;
 use credential_schema_repository::CredentialSchemaRepository;
 use did_repository::DidRepository;
+use key_repository::KeyRepository;
 use organisation_repository::OrganisationRepository;
 use proof_repository::ProofRepository;
 use proof_schema_repository::ProofSchemaRepository;
@@ -33,6 +35,7 @@ pub trait DataRepository {
     fn get_credential_repository(&self) -> Arc<dyn CredentialRepository + Send + Sync>;
     fn get_credential_schema_repository(&self)
         -> Arc<dyn CredentialSchemaRepository + Send + Sync>;
+    fn get_key_repository(&self) -> Arc<dyn KeyRepository + Send + Sync>;
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository + Send + Sync>;
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync>;
     fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository + Send + Sync>;

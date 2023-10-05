@@ -18,6 +18,8 @@ use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::DatabaseConnection;
 
+use crate::key::KeyProvider;
+use one_core::repository::key_repository::KeyRepository;
 use std::sync::Arc;
 
 mod common;
@@ -33,6 +35,7 @@ pub mod credential;
 pub mod credential_schema;
 pub mod did;
 pub mod interaction;
+pub mod key;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
@@ -50,6 +53,7 @@ pub struct DataLayer {
     claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
+    key_repository: Arc<dyn KeyRepository + Send + Sync>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
@@ -70,6 +74,7 @@ impl DataLayer {
             db: db.clone(),
             claim_schema_repository: claim_schema_repository.clone(),
         });
+        let key_repository = Arc::new(KeyProvider { db: db.clone() });
         let organisation_repository = Arc::new(OrganisationProvider { db: db.clone() });
         let credential_schema_repository = Arc::new(CredentialSchemaProvider {
             db: db.clone(),
@@ -101,6 +106,7 @@ impl DataLayer {
             organisation_repository,
             credential_repository,
             credential_schema_repository,
+            key_repository,
             proof_schema_repository,
             proof_repository,
             claim_schema_repository,
@@ -133,6 +139,9 @@ impl DataRepository for DataLayer {
         &self,
     ) -> Arc<dyn CredentialSchemaRepository + Send + Sync> {
         self.credential_schema_repository.clone()
+    }
+    fn get_key_repository(&self) -> Arc<dyn KeyRepository + Send + Sync> {
+        self.key_repository.clone()
     }
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository + Send + Sync> {
         self.proof_schema_repository.clone()

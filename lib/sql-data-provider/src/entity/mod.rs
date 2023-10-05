@@ -8,6 +8,7 @@ pub mod credential_state;
 pub mod did;
 pub mod interaction;
 pub mod key;
+pub mod key_did;
 pub mod organisation;
 pub mod proof;
 pub mod proof_claim;

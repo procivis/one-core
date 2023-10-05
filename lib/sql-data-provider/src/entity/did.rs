@@ -19,8 +19,8 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::key::Entity")]
-    Key,
+    #[sea_orm(has_many = "super::key_did::Entity")]
+    KeyDid,
     #[sea_orm(
         belongs_to = "super::organisation::Entity",
         from = "Column::OrganisationId",
@@ -31,9 +31,9 @@ pub enum Relation {
     Organisation,
 }
 
-impl Related<super::key::Entity> for Entity {
+impl Related<super::key_did::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Key.def()
+        Relation::KeyDid.def()
     }
 }
 
@@ -43,12 +43,12 @@ impl Related<super::organisation::Entity> for Entity {
     }
 }
 
-impl Related<super::credential::Entity> for Entity {
+impl Related<super::key::Entity> for Entity {
     fn to() -> RelationDef {
-        super::key::Relation::Credential.def()
+        super::key_did::Relation::Key.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(super::key::Relation::Did.def().rev())
+        Some(super::key_did::Relation::Did.def().rev())
     }
 }
 
