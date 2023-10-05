@@ -2,6 +2,7 @@
 name = "sql-data-provider"
 version.workspace = true
 edition.workspace = true
+publish = false
 
 [features]
 # Treat build warnings as error

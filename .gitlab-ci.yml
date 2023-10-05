@@ -157,7 +157,6 @@ linter:dependencies:
     - cargo install --locked cargo-deny
     - rustup target list --installed
     - cargo deny check
-  allow_failure: true
 
 sonarqube-check:
   stage: test

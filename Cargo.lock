@@ -656,16 +656,13 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "dto_derive",
- "envy",
  "figment",
  "one-core",
- "panic-handler",
  "sentry",
  "sentry-tracing",
  "serde",
  "serde_json",
  "serde_qs",
- "serde_variant",
  "shadow-rs",
  "sql-data-provider",
  "time",
@@ -1026,15 +1023,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071a31f4ee85403370b58aca746f01041ede6f0da2730960ad001edc2b71b394"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "envy"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f47e0157f2cb54f5ae1bd371b30a2ae4311e1c028f575cd4e81de7353215965"
-dependencies = [
- "serde",
 ]
 
 [[package]]
@@ -2288,15 +2276,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "panic-handler"
-version = "2.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c8721f24112c95f5f31ca61b0d2f0fa2b6d8acb9f37051e9b2b0365de57111f"
-dependencies = [
- "backtrace",
-]
-
-[[package]]
 name = "parking_lot"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2933,7 +2912,7 @@ checksum = "1d1feddffcfcc0b33f5c6ce9a29e341e4cd59c3f78e7ee45f4a40c038b1d6cbb"
 dependencies = [
  "log",
  "ring",
- "rustls-webpki 0.101.5",
+ "rustls-webpki 0.101.6",
  "sct",
 ]
 
@@ -2970,9 +2949,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-webpki"
-version = "0.101.5"
+version = "0.101.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45a27e3b59326c16e23d30aeb7a36a24cc0d29e71d68ff611cdfb4a01d013bed"
+checksum = "3c7d5dece342910d9ba34d259310cae3e0154b873b35408b787b59bce53d34fe"
 dependencies = [
  "ring",
  "untrusted",
@@ -3429,15 +3408,6 @@ dependencies = [
  "form_urlencoded",
  "itoa",
  "ryu",
- "serde",
-]
-
-[[package]]
-name = "serde_variant"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47a8ec0b2fd0506290348d9699c0e3eb2e3e8c0498b5a9a6158b3bd4d6970076"
-dependencies = [
  "serde",
 ]
 
@@ -4869,7 +4839,7 @@ version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b291546d5d9d1eab74f069c77749f2cb8504a12caa20f0f2de93ddbf6f411888"
 dependencies = [
- "rustls-webpki 0.101.5",
+ "rustls-webpki 0.101.6",
 ]
 
 [[package]]

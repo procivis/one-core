@@ -35,10 +35,7 @@ ignore = []
 # https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
 [licenses]
 unlicensed = "deny"
-allow = [
-    "LicenseRef-Procivis",
-    "Unicode-DFS-2016",
-]
+allow = ["Unicode-DFS-2016"]
 deny = []
 copyleft = "deny"
 allow-osi-fsf-free = "both"
@@ -65,55 +62,13 @@ exceptions = [
 ]
 
 [licenses.private]
-ignore = false
-
+ignore = true
 
 # Clarify ring crate license (LICENSE file not properly detected)
 [[licenses.clarify]]
 name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
-license-files = [
-    { path = "LICENSE", hash = 0xbd0eed23 }
-]
-
-# Mark our internal libraries
-[[licenses.clarify]]
-name = "one-core"
-expression = "LicenseRef-Procivis"
-license-files = [
-    { path = "build.rs", hash = 0x44b5b77d }
-]
-[[licenses.clarify]]
-name = "core-server"
-expression = "LicenseRef-Procivis"
-license-files = [
-    { path = "build.rs", hash = 0xc02c33d6 }
-]
-[[licenses.clarify]]
-name = "migration"
-expression = "LicenseRef-Procivis"
-license-files = [
-    { path = "Cargo.toml", hash = 0x359cc181 }
-]
-[[licenses.clarify]]
-name = "one-core-uniffi"
-expression = "LicenseRef-Procivis"
-license-files = [
-    { path = "build.rs", hash = 0x388ae4e5 }
-]
-[[licenses.clarify]]
-name = "uniffi-bindgen"
-expression = "LicenseRef-Procivis"
-license-files = [
-    { path = "Cargo.toml", hash = 0x2cb76165 }
-]
-[[licenses.clarify]]
-name = "sql-data-provider"
-expression = "LicenseRef-Procivis"
-license-files = [
-    { path = "Cargo.toml", hash = 0x97b24e5e }
-]
-
+license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
 # This section is considered when running `cargo deny check bans`.
 # More documentation about the 'bans' section can be found here:
