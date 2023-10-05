@@ -143,11 +143,22 @@ dictionary PresentationDefinitionRuleBindingDTO {
     u32? count;
 };
 
+dictionary KeyRequestBindingDTO {
+    string key_type;
+    record<string, string> key_params;
+    string name;
+    string storage_type;
+    record<string, string> storage_params;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
   [Throws=ServiceError]
   string create_organisation(string? uuid);
+
+  [Throws=ServiceError]
+  string generate_key(string organisation_id, [ByRef] KeyRequestBindingDTO request);
 
   [Throws=ServiceError]
   string create_local_did(string did, string organisation_id);

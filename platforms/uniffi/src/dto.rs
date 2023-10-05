@@ -133,3 +133,11 @@ pub struct PresentationDefinitionRuleBindingDTO {
     pub max: Option<u32>,
     pub count: Option<u32>,
 }
+
+pub struct KeyRequestBindingDTO {
+    pub key_type: String,
+    pub key_params: HashMap<String, String>,
+    pub name: String,
+    pub storage_type: String,
+    pub storage_params: HashMap<String, String>,
+}

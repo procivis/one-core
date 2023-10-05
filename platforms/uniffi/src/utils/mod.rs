@@ -1,5 +1,7 @@
+use one_core::service::error::ServiceError;
 use std::future::Future;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 /// Run synchronously
 pub fn run_sync<F: Future>(future: F) -> F::Output {
@@ -21,4 +23,8 @@ impl TimestampFormat for OffsetDateTime {
     fn format_timestamp(&self) -> String {
         self.format(&TIMESTAMP_FORMAT).unwrap()
     }
+}
+
+pub fn into_uuid(input: &str) -> Result<Uuid, ServiceError> {
+    Uuid::parse_str(input).map_err(|e| ServiceError::MappingError(e.to_string()))
 }

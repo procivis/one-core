@@ -4,8 +4,9 @@ use super::dto::{
 };
 use crate::{
     dto::{
-        HandleInvitationResponseBindingEnum, PresentationDefinitionBindingDTO,
-        PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestGroupBindingDTO,
+        HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
+        PresentationDefinitionBindingDTO, PresentationDefinitionFieldBindingDTO,
+        PresentationDefinitionRequestGroupBindingDTO,
         PresentationDefinitionRequestedCredentialBindingDTO, PresentationDefinitionRuleBindingDTO,
         PresentationDefinitionRuleTypeBindingEnum, PresentationSubmitCredentialRequestBindingDTO,
     },
@@ -14,6 +15,7 @@ use crate::{
 };
 use one_core::{
     common_mapper::vector_into,
+    model::organisation::OrganisationId,
     service::{
         credential::dto::{
             CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialStateEnum,
@@ -22,6 +24,7 @@ use one_core::{
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
         error::ServiceError,
+        key::dto::KeyRequestDTO,
         proof::dto::{
             PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
             PresentationDefinitionRequestedCredentialResponseDTO,
@@ -31,6 +34,7 @@ use one_core::{
         ssi_holder::dto::{InvitationResponseDTO, PresentationSubmitCredentialRequestDTO},
     },
 };
+use serde_json::json;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -248,5 +252,19 @@ impl From<PresentationDefinitionFieldDTO> for PresentationDefinitionFieldBinding
             required: value.required.unwrap_or(true),
             key_map: value.key_map,
         }
+    }
+}
+
+pub fn from_generate_key_request(
+    organisation_id: OrganisationId,
+    request: &KeyRequestBindingDTO,
+) -> KeyRequestDTO {
+    KeyRequestDTO {
+        organisation_id,
+        key_type: request.key_type.to_owned(),
+        key_params: json!(request.key_params),
+        name: request.name.to_owned(),
+        storage_type: request.storage_type.to_owned(),
+        storage_params: json!(request.storage_params),
     }
 }
