@@ -46,6 +46,9 @@ pub struct CreateDidRequestRestDTO {
 pub enum SortableDidColumnRestDTO {
     Name,
     CreatedDate,
+    Method,
+    Type,
+    Did,
 }
 
 pub type GetDidQuery = GetListQueryParams<SortableDidColumnRestDTO>;

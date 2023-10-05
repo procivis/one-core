@@ -31,6 +31,9 @@ pub struct Did {
 pub enum SortableDidColumn {
     Name,
     CreatedDate,
+    Method,
+    Type,
+    Did,
 }
 
 pub type GetDidList = GetListResponse<Did>;

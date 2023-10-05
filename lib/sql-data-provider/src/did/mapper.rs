@@ -58,6 +58,9 @@ impl GetEntityColumn for SortableDidColumn {
         match self {
             SortableDidColumn::Name => did::Column::Name.into_simple_expr(),
             SortableDidColumn::CreatedDate => did::Column::CreatedDate.into_simple_expr(),
+            SortableDidColumn::Method => did::Column::Method.into_simple_expr(),
+            SortableDidColumn::Type => did::Column::TypeField.into_simple_expr(),
+            SortableDidColumn::Did => did::Column::Did.into_simple_expr(),
         }
     }
 }

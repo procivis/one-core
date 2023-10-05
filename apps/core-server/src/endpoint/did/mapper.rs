@@ -55,6 +55,9 @@ impl From<SortableDidColumnRestDTO> for one_core::model::did::SortableDidColumn 
             SortableDidColumnRestDTO::CreatedDate => {
                 one_core::model::did::SortableDidColumn::CreatedDate
             }
+            SortableDidColumnRestDTO::Did => one_core::model::did::SortableDidColumn::Did,
+            SortableDidColumnRestDTO::Type => one_core::model::did::SortableDidColumn::Type,
+            SortableDidColumnRestDTO::Method => one_core::model::did::SortableDidColumn::Method,
         }
     }
 }
