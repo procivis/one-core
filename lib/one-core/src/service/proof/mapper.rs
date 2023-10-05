@@ -159,6 +159,11 @@ pub fn presentation_definition_from_proof(
         );
     }
 
+    // If no match is found we need to create a dummy entry in order to generate one empty requestedCredentials
+    if credential_schema_ids.is_empty() {
+        credential_schema_ids.insert("dummy-credential-schema-id".to_string());
+    }
+
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
             id: proof.id.to_string(),
