@@ -252,10 +252,6 @@ fn postprocess_key_entity(entity: KeyStorageEntity) -> Result<KeyStorageEntity, 
                         let params: KeyStorageInternalParams = serde_json::from_value(merged)?;
                         Some(ParamsEnum::Parsed(KeyStorageParams::Internal(params)))
                     }
-                    "HSM_AZURE" => {
-                        let params: KeyStorageHsmAzureParams = serde_json::from_value(merged)?;
-                        Some(ParamsEnum::Parsed(KeyStorageParams::HsmAzure(params)))
-                    }
                     _ => Some(ParamsEnum::Parsed(KeyStorageParams::Unknown(merged))),
                 }
             }

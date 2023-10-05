@@ -137,19 +137,10 @@ pub struct EnumValue {
 #[serde(untagged)]
 pub enum KeyStorageParams {
     Internal(KeyStorageInternalParams),
-    HsmAzure(KeyStorageHsmAzureParams),
     Unknown(serde_json::Value),
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct KeyStorageInternalParams {
     pub encryption: Option<Param<String>>,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct KeyStorageHsmAzureParams {
-    pub instance_url: Option<Param<String>>,
-    pub account: Option<Param<String>>,
-    pub access_token: Option<Param<String>>,
 }
