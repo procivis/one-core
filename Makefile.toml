@@ -58,6 +58,13 @@ args = ["run", "-p", "migration", "--", "down", "-n1"]
 command = "sea-orm-cli"
 args = ["generate", "entity", "--date-time-crate" , "time", "-o", "lib/sql-data-provider/src/entity_new/" ]
 
+[tasks.mobile-build]
+script.pre = '''
+export CARGO_PROFILE_RELEASE_OPT_LEVEL=s
+export CARGO_PROFILE_RELEASE_LTO=true
+export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+export CARGO_PROFILE_RELEASE_STRIP=symbols
+'''
 
 ############################################################### ANDROID-UNIFFI
 [tasks.add_android_targets]
@@ -78,7 +85,8 @@ rm -rf target/android_tmp
 '''
 
 [tasks.build_android_targets]
-script = '''
+extend = "mobile-build"
+script.main = '''
 for target in "i686-linux-android" "armv7-linux-androideabi" "aarch64-linux-android"
 do
   cross build -p one-core-uniffi --target $target --release
@@ -136,7 +144,8 @@ rustup component add rust-src --toolchain nightly
 '''
 
 [tasks.build_ios_code]
-script = '''
+extend = "mobile-build"
+script.main = '''
 cargo build --package one-core-uniffi --lib --release --target x86_64-apple-ios
 cargo +nightly build --package one-core-uniffi --lib --release --target aarch64-apple-ios-sim
 cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios
