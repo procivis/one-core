@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::{
     config::{
-        data_structure::{KeyEntity, KeyHsmAzureParams, KeyInternalParams, KeyParams, ParamsEnum},
+        data_structure::{KeyStorageEntity, KeyStorageHsmAzureParams, KeyStorageInternalParams, KeyStorageParams, ParamsEnum},
         ConfigParseError,
     },
     key_storage::{hsm_azure::HsmAzureKeyProvider, internal::InternalKeyProvider},
@@ -24,7 +24,7 @@ pub trait KeyStorage {
 }
 
 pub fn key_providers_from_config(
-    key_config: &HashMap<String, KeyEntity>,
+    key_config: &HashMap<String, KeyStorageEntity>,
 ) -> Result<HashMap<String, Arc<dyn KeyStorage + Send + Sync>>, ConfigParseError> {
     key_config
         .iter()
@@ -34,14 +34,14 @@ pub fn key_providers_from_config(
 
 fn storage_from_entity(
     name: &String,
-    entity: &KeyEntity,
+    entity: &KeyStorageEntity,
 ) -> Result<(String, Arc<dyn KeyStorage + Send + Sync>), ConfigParseError> {
     match entity.r#type.as_str() {
         "INTERNAL" => {
             let params = match &entity.params {
-                None => Ok(KeyInternalParams::default()),
+                None => Ok(KeyStorageInternalParams::default()),
                 Some(value) => match value {
-                    ParamsEnum::Parsed(KeyParams::Internal(value)) => Ok(value.to_owned()),
+                    ParamsEnum::Parsed(KeyStorageParams::Internal(value)) => Ok(value.to_owned()),
                     _ => Err(ConfigParseError::InvalidType(
                         name.to_owned(),
                         String::new(),
@@ -52,9 +52,9 @@ fn storage_from_entity(
         }
         "HSM_AZURE" => {
             let params = match &entity.params {
-                None => Ok(KeyHsmAzureParams::default()),
+                None => Ok(KeyStorageHsmAzureParams::default()),
                 Some(value) => match value {
-                    ParamsEnum::Parsed(KeyParams::HsmAzure(value)) => Ok(value.to_owned()),
+                    ParamsEnum::Parsed(KeyStorageParams::HsmAzure(value)) => Ok(value.to_owned()),
                     _ => Err(ConfigParseError::InvalidType(
                         name.to_owned(),
                         String::new(),

@@ -13,6 +13,7 @@ pub enum ConfigKind {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CoreConfig {
     pub format: HashMap<String, FormatEntity>,
     pub exchange: HashMap<String, ExchangeEntity>,
@@ -20,7 +21,7 @@ pub struct CoreConfig {
     pub revocation: HashMap<String, RevocationEntity>,
     pub did: HashMap<String, DidEntity>,
     pub datatype: HashMap<String, DatatypeEntity>,
-    pub key: HashMap<String, KeyEntity>,
+    pub key_storage: HashMap<String, KeyStorageEntity>,
 }
 
 pub type FormatEntity = ConfigEntity<String, serde_json::Value>;
@@ -29,7 +30,7 @@ pub type TransportEntity = ConfigEntity<String, serde_json::Value>;
 pub type RevocationEntity = ConfigEntity<String, serde_json::Value>;
 pub type DidEntity = ConfigEntity<DidType, DidParams>;
 pub type DatatypeEntity = ConfigEntity<DatatypeType, DatatypeParams>;
-pub type KeyEntity = ConfigEntity<String, KeyParams>;
+pub type KeyStorageEntity = ConfigEntity<String, KeyStorageParams>;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -134,20 +135,20 @@ pub struct EnumValue {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum KeyParams {
-    Internal(KeyInternalParams),
-    HsmAzure(KeyHsmAzureParams),
+pub enum KeyStorageParams {
+    Internal(KeyStorageInternalParams),
+    HsmAzure(KeyStorageHsmAzureParams),
     Unknown(serde_json::Value),
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct KeyInternalParams {
+pub struct KeyStorageInternalParams {
     pub encryption: Option<Param<String>>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyHsmAzureParams {
+pub struct KeyStorageHsmAzureParams {
     pub instance_url: Option<Param<String>>,
     pub account: Option<Param<String>>,
     pub access_token: Option<Param<String>>,

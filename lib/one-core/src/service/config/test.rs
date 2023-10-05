@@ -34,7 +34,7 @@ fn convert_internal_structure_to_dto() {
                 ))),
             },
         )]),
-        key: Default::default(),
+        key_storage: Default::default(),
     };
     let output = ConfigDTO::try_from(&config).unwrap();
     let text_output = serde_json::to_string_pretty(&output).unwrap();
@@ -89,7 +89,7 @@ fn do_not_serialize_private_parameters() {
                 ))),
             },
         )]),
-        key: Default::default(),
+        key_storage: Default::default(),
     };
 
     let output = ConfigDTO::try_from(&config).unwrap();

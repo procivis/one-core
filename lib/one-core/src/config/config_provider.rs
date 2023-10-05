@@ -53,7 +53,7 @@ pub(super) fn process_and_validate_config(
     config.did = postprocess_did_entities(config.did).map_err(ConfigParseError::JsonError)?;
     config.datatype =
         postprocess_datatype_entities(config.datatype).map_err(ConfigParseError::JsonError)?;
-    config.key = postprocess_key_entities(config.key).map_err(ConfigParseError::JsonError)?;
+    config.key_storage = postprocess_key_entities(config.key_storage).map_err(ConfigParseError::JsonError)?;
 
     validate_types(&config.format, credential_formatters)?;
     validate_types(&config.exchange, transport_protocols)?;
