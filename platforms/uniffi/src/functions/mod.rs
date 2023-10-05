@@ -1,5 +1,6 @@
 mod create_local_did;
 mod create_organisation;
+mod generate_key;
 mod get_credential;
 mod get_credentials;
 mod get_presentation_defintion;
