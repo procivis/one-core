@@ -17,7 +17,7 @@ use crate::router::AppState;
         (status = 400, description = "Invalid params"),
         (status = 422, description = "Unsupported key/storage params"),
     ),
-    tag = "interaction",
+    tag = "key",
     security(
         ("bearer" = [])
     ),

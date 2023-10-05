@@ -173,6 +173,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             (name = "ssi", description = "SSI"),
             (name = "other", description = "Other utility endpoints"),
             (name = "interaction", description = "Holder functionality"),
+            (name = "key", description = "Key management"),
         ),
         modifiers(&SecurityAddon)
     )]
