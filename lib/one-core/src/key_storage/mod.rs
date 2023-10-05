@@ -50,19 +50,6 @@ fn storage_from_entity(
             }?;
             Ok((name.to_owned(), Arc::new(InternalKeyProvider { params })))
         }
-        "HSM_AZURE" => {
-            let params = match &entity.params {
-                None => Ok(KeyStorageHsmAzureParams::default()),
-                Some(value) => match value {
-                    ParamsEnum::Parsed(KeyStorageParams::HsmAzure(value)) => Ok(value.to_owned()),
-                    _ => Err(ConfigParseError::InvalidType(
-                        name.to_owned(),
-                        String::new(),
-                    )),
-                },
-            }?;
-            Ok((name.to_owned(), Arc::new(HsmAzureKeyProvider { params })))
-        }
         _ => Err(ConfigParseError::InvalidType(
             entity.r#type.to_owned(),
             String::new(),
