@@ -359,7 +359,7 @@ async fn test_get_presentation_definition() {
 async fn test_get_presentation_definition_no_match() {
     let mut proof_repository = MockProofRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
-
+    let claim_schema_id = Uuid::new_v4();
     let proof = Proof {
         id: Uuid::new_v4(),
         created_date: OffsetDateTime::now_utc(),
@@ -380,7 +380,7 @@ async fn test_get_presentation_definition_no_match() {
             expire_duration: 0,
             claim_schemas: Some(vec![ProofSchemaClaim {
                 schema: ClaimSchema {
-                    id: Uuid::new_v4(),
+                    id: claim_schema_id,
                     key: "key_123".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),
@@ -433,7 +433,7 @@ async fn test_get_presentation_definition_no_match() {
             host: None,
             data: Some(
                 json!([{
-                    "id": Uuid::new_v4().to_string(),
+                    "id": claim_schema_id.to_string(),
                     "createdDate": "2023-06-09T14:19:57.000Z",
                     "lastModified": "2023-06-09T14:19:57.000Z",
                     "key": "key_123",
@@ -456,7 +456,7 @@ async fn test_get_presentation_definition_no_match() {
     let now = OffsetDateTime::now_utc();
 
     let claim_schema = ClaimSchema {
-        id: Uuid::new_v4(),
+        id: claim_schema_id,
         key: "key".to_string(),
         data_type: "NUMBER".to_string(),
         created_date: now,
@@ -468,6 +468,7 @@ async fn test_get_presentation_definition_no_match() {
         last_modified: now,
     };
     let credential_id = Uuid::new_v4();
+    let claim_id = Uuid::new_v4();
     let credentials = vec![Credential {
         id: credential_id,
         created_date: now,
@@ -480,7 +481,7 @@ async fn test_get_presentation_definition_no_match() {
             state: CredentialStateEnum::Created,
         }]),
         claims: Some(vec![Claim {
-            id: Uuid::new_v4(),
+            id: claim_id,
             created_date: now,
             last_modified: now,
             value: "123".to_string(),
@@ -572,10 +573,18 @@ async fn test_get_presentation_definition_no_match() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
+    let group = result.request_groups.get(0).unwrap();
+    assert_eq!(group.id, proof.id.to_string());
+    assert_eq!(group.requested_credentials.len(), 1);
+    let first_requested_credential = group.requested_credentials.get(0).unwrap();
+    assert_eq!(first_requested_credential.applicable_credentials.len(), 0);
+    assert_eq!(first_requested_credential.id, "input_0".to_string());
+    assert_eq!(first_requested_credential.fields.len(), 1);
     assert_eq!(
-        result.request_groups.get(0).unwrap().id,
-        proof.id.to_string()
+        first_requested_credential.fields.get(0).unwrap().id,
+        claim_schema_id.to_string()
     );
+
     assert_eq!(result.credentials.len(), 0);
 }
 
