@@ -4,14 +4,14 @@ use age::secrecy::Secret;
 use ssh_key::{Algorithm, LineEnding, PrivateKey};
 
 use crate::{
-    config::data_structure::KeyInternalParams,
+    config::data_structure::KeyStorageInternalParams,
     key_storage::{GeneratedKey, KeyStorage},
     service::error::ServiceError,
 };
 
 #[derive(Default)]
 pub struct InternalKeyProvider {
-    pub params: KeyInternalParams,
+    pub params: KeyStorageInternalParams,
 }
 
 impl KeyStorage for InternalKeyProvider {

@@ -96,7 +96,15 @@ datatype:
   #           display: # optional
   #             en: "Switzerland"
   #             de: "Schweiz"
-key:
+keyAlgorithm:
+  EDDSA:
+    display: "keyAlgorithm.eddsa"
+    order: 1
+    type: "EDDSA"
+    params:
+      public:
+        algorithm: "Ed25519"
+keyStorage:
   INTERNAL:
     display: "storage.internal"
     type: "INTERNAL"

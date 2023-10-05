@@ -5,8 +5,8 @@ use serde::de::Error;
 use crate::config::data_structure::{
     AccessModifier, DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams,
     DatatypeParams, DatatypeStringParams, DatatypeType, DidEntity, DidKeyParams, DidParams,
-    DidType, ExchangeEntity, FormatEntity, KeyEntity, KeyHsmAzureParams, KeyInternalParams,
-    KeyParams, ParamsEnum, RevocationEntity, TransportEntity,
+    DidType, ExchangeEntity, FormatEntity, KeyStorageEntity, KeyStorageHsmAzureParams, KeyStorageInternalParams,
+    KeyStorageParams, ParamsEnum, RevocationEntity, TransportEntity,
 };
 
 fn convert_param_to_param_map(
@@ -238,7 +238,7 @@ fn postprocess_datatype_entity(
     })
 }
 
-fn postprocess_key_entity(entity: KeyEntity) -> Result<KeyEntity, serde_json::Error> {
+fn postprocess_key_entity(entity: KeyStorageEntity) -> Result<KeyStorageEntity, serde_json::Error> {
     let parsed_params = match entity.params {
         None => None,
         Some(value) => match value {
@@ -249,21 +249,21 @@ fn postprocess_key_entity(entity: KeyEntity) -> Result<KeyEntity, serde_json::Er
 
                 match entity.r#type.as_str() {
                     "INTERNAL" => {
-                        let params: KeyInternalParams = serde_json::from_value(merged)?;
-                        Some(ParamsEnum::Parsed(KeyParams::Internal(params)))
+                        let params: KeyStorageInternalParams = serde_json::from_value(merged)?;
+                        Some(ParamsEnum::Parsed(KeyStorageParams::Internal(params)))
                     }
                     "HSM_AZURE" => {
-                        let params: KeyHsmAzureParams = serde_json::from_value(merged)?;
-                        Some(ParamsEnum::Parsed(KeyParams::HsmAzure(params)))
+                        let params: KeyStorageHsmAzureParams = serde_json::from_value(merged)?;
+                        Some(ParamsEnum::Parsed(KeyStorageParams::HsmAzure(params)))
                     }
-                    _ => Some(ParamsEnum::Parsed(KeyParams::Unknown(merged))),
+                    _ => Some(ParamsEnum::Parsed(KeyStorageParams::Unknown(merged))),
                 }
             }
             ParamsEnum::Parsed(value) => Some(ParamsEnum::Parsed(value)),
         },
     };
 
-    Ok(KeyEntity {
+    Ok(KeyStorageEntity {
         r#type: entity.r#type,
         display: entity.display,
         order: entity.order,
@@ -326,8 +326,8 @@ pub fn postprocess_datatype_entities(
 }
 
 pub fn postprocess_key_entities(
-    entities: HashMap<String, KeyEntity>,
-) -> Result<HashMap<String, KeyEntity>, serde_json::Error> {
+    entities: HashMap<String, KeyStorageEntity>,
+) -> Result<HashMap<String, KeyStorageEntity>, serde_json::Error> {
     entities
         .into_iter()
         .map(|(k, v)| Ok((k, postprocess_key_entity(v)?)))

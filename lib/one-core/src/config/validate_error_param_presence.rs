@@ -200,7 +200,7 @@ public:
                     },
                 ),
             ]),
-            key: Default::default(),
+            key_storage: Default::default(),
         };
 
         let result = validate_error_param_presence(&valid_config);
@@ -230,7 +230,7 @@ public:
                     )),
                 },
             )]),
-            key: Default::default(),
+            key_storage: Default::default(),
         };
 
         let result = validate_error_param_presence(&invalid_config_missing_error_param);

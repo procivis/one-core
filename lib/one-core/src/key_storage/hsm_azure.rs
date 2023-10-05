@@ -1,10 +1,10 @@
-use crate::config::data_structure::KeyHsmAzureParams;
+use crate::config::data_structure::KeyStorageHsmAzureParams;
 use crate::key_storage::{GeneratedKey, KeyStorage};
 use crate::service::error::ServiceError;
 
 #[derive(Default)]
 pub struct HsmAzureKeyProvider {
-    pub params: KeyHsmAzureParams,
+    pub params: KeyStorageHsmAzureParams,
 }
 
 impl KeyStorage for HsmAzureKeyProvider {

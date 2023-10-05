@@ -107,7 +107,7 @@ impl OneCore {
                 .collect::<Vec<String>>(),
         )?;
 
-        let key_providers = key_providers_from_config(&config.key)?;
+        let key_providers = key_providers_from_config(&config.key_storage)?;
 
         let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
             credential_formatters.to_owned(),
