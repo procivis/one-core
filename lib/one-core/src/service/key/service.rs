@@ -1,5 +1,11 @@
 use crate::{
-    config::validator::ConfigValidationError,
+    config::{
+        data_structure::{KeyAlgorithmEntity, ParamsEnum},
+        validator::{
+            key::{find_key_algorithm, validate_key_storage},
+            ConfigValidationError,
+        },
+    },
     model::{key::KeyId, organisation::OrganisationRelations},
     service::{
         error::ServiceError,
@@ -16,12 +22,10 @@ impl KeyService {
     ///
     /// * `request` - key data
     pub async fn generate_key(&self, request: KeyRequestDTO) -> Result<KeyId, ServiceError> {
-        // TODO: ONE-868 validate_key_type(&request.key_type);
-        if request.key_type != "RSA_4096" && request.key_type != "ED25519" {
-            return Err(ServiceError::ConfigValidationError(
-                ConfigValidationError::UnknownType(request.key_type),
-            ));
-        }
+        let algorithm_entity = find_key_algorithm(&request.key_type, &self.config.key_algorithm)?;
+        validate_key_storage(&request.storage_type, &self.config.key_storage)?;
+
+        let algorithm = get_algorithm_from_storage(algorithm_entity)?;
 
         let organisation = self
             .organisation_repository
@@ -30,7 +34,7 @@ impl KeyService {
             .map_err(ServiceError::from)?;
 
         let provider = self.key_provider.get_key_storage(&request.storage_type)?;
-        let key = provider.generate(&request.key_type)?;
+        let key = provider.generate(&algorithm)?;
 
         let uuid = self
             .key_repository
@@ -39,5 +43,20 @@ impl KeyService {
             .map_err(ServiceError::from)?;
 
         Ok(uuid)
+    }
+}
+
+fn get_algorithm_from_storage(
+    algorithm_entity: &KeyAlgorithmEntity,
+) -> Result<String, ConfigValidationError> {
+    let params = algorithm_entity
+        .params
+        .as_ref()
+        .ok_or(ConfigValidationError::KeyNotFound(
+            "params is None".to_string(),
+        ))?;
+    match params {
+        ParamsEnum::Parsed(value) => Ok(value.algorithm.value.to_owned()),
+        _ => Err(ConfigValidationError::UnparsedParameterTree),
     }
 }

@@ -200,6 +200,7 @@ public:
                     },
                 ),
             ]),
+            key_algorithm: Default::default(),
             key_storage: Default::default(),
         };
 
@@ -230,6 +231,7 @@ public:
                     )),
                 },
             )]),
+            key_algorithm: Default::default(),
             key_storage: Default::default(),
         };
 

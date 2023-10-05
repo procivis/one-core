@@ -15,7 +15,8 @@ impl TryFrom<&CoreConfig> for ConfigDTO {
         dto.revocation = filter_config_entities(dto.revocation);
         dto.did = filter_config_entities(dto.did);
         dto.datatype = filter_config_entities(dto.datatype);
-        dto.key = filter_config_entities(dto.key);
+        dto.key_algorithm = filter_config_entities(dto.key_algorithm);
+        dto.key_storage = filter_config_entities(dto.key_storage);
 
         Ok(dto)
     }

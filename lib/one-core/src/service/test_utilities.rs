@@ -1,6 +1,7 @@
 use crate::config::data_structure::{
-    CoreConfig, DatatypeEntity, DatatypeType, DidEntity, DidType, ExchangeEntity, FormatEntity,
-    KeyStorageEntity, RevocationEntity, TranslatableString,
+    AccessModifier, CoreConfig, DatatypeEntity, DatatypeType, DidEntity, DidType, ExchangeEntity,
+    FormatEntity, KeyAlgorithmEntity, KeyAlgorithmParams, KeyStorageEntity, Param, ParamsEnum,
+    RevocationEntity, TranslatableString,
 };
 use std::collections::HashMap;
 
@@ -74,6 +75,20 @@ pub fn generic_config() -> CoreConfig {
                 },
             ),
         ]),
+        key_algorithm: HashMap::from([(
+            "EDDSA".to_string(),
+            KeyAlgorithmEntity {
+                r#type: "EDDSA".to_string(),
+                display: TranslatableString::Key("Display".to_string()),
+                order: None,
+                params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {
+                    algorithm: Param {
+                        access: AccessModifier::Public,
+                        value: "Ed25519".to_string(),
+                    },
+                })),
+            },
+        )]),
         key_storage: HashMap::from([
             (
                 "INTERNAL".to_string(),
@@ -88,6 +103,15 @@ pub fn generic_config() -> CoreConfig {
                 "MEIN_AZURE_KEYVAULT".to_string(),
                 KeyStorageEntity {
                     r#type: "HSM_AZURE".to_string(),
+                    display: TranslatableString::Key("Display".to_string()),
+                    order: None,
+                    params: None,
+                },
+            ),
+            (
+                "MOCK".to_string(),
+                KeyStorageEntity {
+                    r#type: "MOCK".to_string(),
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,

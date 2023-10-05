@@ -29,6 +29,7 @@ fn setup_service(
             revocation: HashMap::default(),
             did: did_config,
             datatype: HashMap::default(),
+            key_algorithm: Default::default(),
             key_storage: Default::default(),
         }),
     )
