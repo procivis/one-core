@@ -3,6 +3,7 @@ name = "core-server"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
+publish = false
 
 [features]
 # Treat build warnings as error
@@ -28,9 +29,6 @@ figment.workspace = true
 tower-http = { version = "0.4", features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 utoipa-swagger-ui = { version = "3.0", features = ["axum"] }
-panic-handler = "2.1.2"
-serde_variant = "0.1.2"
-envy = "0.4.2"
 serde_qs = "0.12.0"
 sentry = { version = "0.31.7", default-features = false, features = [
     "backtrace",
