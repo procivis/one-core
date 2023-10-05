@@ -5,19 +5,23 @@ use time::OffsetDateTime;
 #[sea_orm(table_name = "key")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub did_id: String,
+    pub id: String,
 
-    #[sea_orm(primary_key, auto_increment = false)]
     pub created_date: OffsetDateTime,
 
     pub last_modified: OffsetDateTime,
 
+    pub name: String,
     pub public_key: String,
-    pub private_key: String,
+
+    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
+    pub private_key: Vec<u8>,
+
     pub storage_type: String,
-    pub key_type: KeyType,
+    pub key_type: String,
 
     pub credential_id: Option<String>,
+    pub organisation_id: String,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -32,14 +36,16 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Credential,
+    #[sea_orm(has_many = "super::key_did::Entity")]
+    KeyDid,
     #[sea_orm(
-        belongs_to = "super::did::Entity",
-        from = "Column::DidId",
-        to = "super::did::Column::Id",
+        belongs_to = "super::organisation::Entity",
+        from = "Column::OrganisationId",
+        to = "super::organisation::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    Did,
+    Organisation,
 }
 
 impl Related<super::credential::Entity> for Entity {
@@ -48,18 +54,23 @@ impl Related<super::credential::Entity> for Entity {
     }
 }
 
-impl Related<super::did::Entity> for Entity {
+impl Related<super::key_did::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Did.def()
+        Relation::KeyDid.def()
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
-pub enum KeyType {
-    #[default]
-    #[sea_orm(string_value = "RSA_4096")]
-    Rsa4096,
-    #[sea_orm(string_value = "ED25519")]
-    Ed25519,
+impl Related<super::did::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::key_did::Relation::Did.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(super::key_did::Relation::Key.def().rev())
+    }
+}
+
+impl Related<super::organisation::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Organisation.def()
+    }
 }

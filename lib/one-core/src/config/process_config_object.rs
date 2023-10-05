@@ -5,7 +5,8 @@ use serde::de::Error;
 use crate::config::data_structure::{
     AccessModifier, DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams,
     DatatypeParams, DatatypeStringParams, DatatypeType, DidEntity, DidKeyParams, DidParams,
-    DidType, ExchangeEntity, FormatEntity, ParamsEnum, RevocationEntity, TransportEntity,
+    DidType, ExchangeEntity, FormatEntity, KeyEntity, KeyHsmAzureParams, KeyInternalParams,
+    KeyParams, ParamsEnum, RevocationEntity, TransportEntity,
 };
 
 fn convert_param_to_param_map(
@@ -237,6 +238,39 @@ fn postprocess_datatype_entity(
     })
 }
 
+fn postprocess_key_entity(entity: KeyEntity) -> Result<KeyEntity, serde_json::Error> {
+    let parsed_params = match entity.params {
+        None => None,
+        Some(value) => match value {
+            ParamsEnum::Unparsed(value) => {
+                let public = value["public"].to_owned();
+                let private = value["private"].to_owned();
+                let merged = merge_public_and_private(public, private)?;
+
+                match entity.r#type.as_str() {
+                    "INTERNAL" => {
+                        let params: KeyInternalParams = serde_json::from_value(merged)?;
+                        Some(ParamsEnum::Parsed(KeyParams::Internal(params)))
+                    }
+                    "HSM_AZURE" => {
+                        let params: KeyHsmAzureParams = serde_json::from_value(merged)?;
+                        Some(ParamsEnum::Parsed(KeyParams::HsmAzure(params)))
+                    }
+                    _ => Some(ParamsEnum::Parsed(KeyParams::Unknown(merged))),
+                }
+            }
+            ParamsEnum::Parsed(value) => Some(ParamsEnum::Parsed(value)),
+        },
+    };
+
+    Ok(KeyEntity {
+        r#type: entity.r#type,
+        display: entity.display,
+        order: entity.order,
+        params: parsed_params,
+    })
+}
+
 pub fn postprocess_format_entities(
     entities: HashMap<String, FormatEntity>,
 ) -> Result<HashMap<String, FormatEntity>, serde_json::Error> {
@@ -288,5 +322,14 @@ pub fn postprocess_datatype_entities(
     entities
         .into_iter()
         .map(|(k, v)| Ok((k, postprocess_datatype_entity(v)?)))
+        .collect()
+}
+
+pub fn postprocess_key_entities(
+    entities: HashMap<String, KeyEntity>,
+) -> Result<HashMap<String, KeyEntity>, serde_json::Error> {
+    entities
+        .into_iter()
+        .map(|(k, v)| Ok((k, postprocess_key_entity(v)?)))
         .collect()
 }
