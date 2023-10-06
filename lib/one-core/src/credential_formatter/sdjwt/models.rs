@@ -133,10 +133,10 @@ pub(super) struct DecomposedToken<Claims> {
     pub payload: JWTPayload<Claims>,
     pub payload_json: String,
     pub signature: Vec<u8>,
-    pub disclosures: Vec<(Disclosure, String)>,
+    pub disclosures: Vec<(Disclosure, String, String)>,
 }
 
 pub(super) struct ExtractedDisclosures<'a> {
     pub jwt: &'a str,
-    pub deserialized_disclosures: Vec<(Disclosure, String)>,
+    pub deserialized_disclosures: Vec<(Disclosure, String, String)>,
 }

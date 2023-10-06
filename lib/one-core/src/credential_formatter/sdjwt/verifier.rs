@@ -9,7 +9,7 @@ use super::{get_temp_keys, mapper::*, models::Disclosure};
 
 pub(super) fn verify_claims(
     hashed_claims: &[String],
-    disclosures: &[(Disclosure, String)],
+    disclosures: &[(Disclosure, String, String)],
     hasher: &Arc<dyn Hasher + Send + Sync>,
 ) -> Result<(), FormatterError> {
     if !disclosures.iter().all(|disclosure| {
