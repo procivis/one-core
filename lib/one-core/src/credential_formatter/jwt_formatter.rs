@@ -7,7 +7,8 @@ use uuid::Uuid;
 
 use super::{
     CredentialFormatter, CredentialPresentation, CredentialSubject, DetailCredential,
-    FormatterError, VCCredentialClaimSchemaResponse, VCCredentialSchemaResponse,
+    FormatterError, PresentationCredential, VCCredentialClaimSchemaResponse,
+    VCCredentialSchemaResponse,
 };
 
 pub struct JWTFormatter {}
@@ -101,11 +102,15 @@ impl CredentialFormatter for JWTFormatter {
 
     fn format_presentation(
         &self,
-        credentials: &[String],
+        credentials: &[PresentationCredential],
         holder_did: &str,
+        _algorithm: &str,
     ) -> Result<String, FormatterError> {
         let key = get_temp_keys();
-        let custom_claims: VP = format_presentation(credentials);
+
+        // We should explicitly confirm that claims are identical that the claims provided in the token as JWT
+        // does not allow to limit number of disclosures.
+        let custom_claims: VP = format_payload(credentials);
 
         let claims = Claims::with_custom_claims(custom_claims, Duration::from_mins(5))
             .with_issuer(holder_did)
@@ -170,12 +175,12 @@ impl From<&CredentialDetailResponseDTO> for VC {
     }
 }
 
-fn format_presentation(credentials: &[String]) -> VP {
+fn format_payload(credentials: &[PresentationCredential]) -> VP {
     VP {
         vp: VPContent {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
             r#type: vec!["VerifiablePresentation".to_owned()],
-            verifiable_credential: credentials.to_owned(),
+            verifiable_credential: credentials.iter().map(|fc| fc.token.clone()).collect(),
         },
     }
 }

@@ -99,11 +99,21 @@ impl SSIVerifierService {
         let holder_did = proof
             .holder_did
             .ok_or(ServiceError::MappingError("holder did is None".to_string()))?;
+
+        let mut format = "JWT".to_owned(); //Default
+        if let Some(claim_schemas) = &proof_schema.claim_schemas {
+            if let Some(claim_schema) = &claim_schemas.first() {
+                if let Some(credential_schema) = &claim_schema.credential_schema {
+                    format = credential_schema.format.to_owned();
+                }
+            }
+        }
+
         let proved_claims = match validate_proof(
             proof_schema,
             holder_did,
             presentation_content,
-            &*self.formatter_provider.get_formatter("JWT")?, // provide proper format based on requested credentials
+            &*self.formatter_provider.get_formatter(&format)?,
         ) {
             Ok(claims) => claims,
             Err(e) => {
