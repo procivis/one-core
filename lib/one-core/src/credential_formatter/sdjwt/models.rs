@@ -96,6 +96,7 @@ pub struct VPContent {
     pub context: Vec<String>,
     #[serde(rename = "type")]
     pub r#type: Vec<String>,
+    #[serde(rename = "_sd_jwt")]
     pub verifiable_credential: Vec<String>,
 }
 
@@ -114,7 +115,7 @@ pub struct VP {
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct Disclosure {
     pub salt: String,
-    pub attribute: String,
+    pub key: String,
     pub value: String,
 }
 
@@ -132,5 +133,10 @@ pub(super) struct DecomposedToken<Claims> {
     pub payload: JWTPayload<Claims>,
     pub payload_json: String,
     pub signature: Vec<u8>,
-    pub disclosures_decoded: Vec<String>,
+    pub disclosures: Vec<(Disclosure, String)>,
+}
+
+pub(super) struct ExtractedDisclosures<'a> {
+    pub jwt: &'a str,
+    pub deserialized_disclosures: Vec<(Disclosure, String)>,
 }

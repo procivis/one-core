@@ -80,6 +80,7 @@ pub(super) fn validate_proof(
         HashMap::new();
 
     for credential in presentation.credentials {
+        // Particular tokens are verified here
         let credential = formatter.extract_credentials(&credential)?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.

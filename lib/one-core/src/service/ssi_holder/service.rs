@@ -8,13 +8,15 @@ use super::{
 };
 use crate::{
     common_mapper::get_base_url,
+    credential_formatter::PresentationCredential,
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
+        claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential::{
             Credential, CredentialRelations, CredentialState, CredentialStateEnum,
             CredentialStateRelations, UpdateCredentialRequest,
         },
-        credential_schema::CredentialSchema,
+        credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
         interaction::{InteractionId, InteractionRelations},
         organisation::OrganisationRelations,
@@ -169,14 +171,20 @@ impl SSIHolderService {
             ))?;
 
         let mut submitted_claims: Vec<Claim> = vec![];
-        let mut credentials: Vec<String> = vec![];
+        let mut credentials: Vec<PresentationCredential> = vec![];
+
+        // This is a temporary format selection. Will change in the future.
+        let mut format = String::from("JWT"); // Default
         for (_, credential_request) in request.submit_credentials {
             let credential = self
                 .credential_repository
                 .get_credential(
                     &credential_request.credential_id,
                     &CredentialRelations {
-                        claims: Some(ClaimRelations::default()),
+                        claims: Some(ClaimRelations {
+                            schema: Some(ClaimSchemaRelations::default()),
+                        }),
+                        schema: Some(CredentialSchemaRelations::default()),
                         ..Default::default()
                     },
                 )
@@ -189,17 +197,48 @@ impl SSIHolderService {
             let credential_content = std::str::from_utf8(&credential_data)
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-            credentials.push(credential_content.to_owned());
+            if let Some(schema) = &credential.schema {
+                format = schema.format.clone();
+            }
 
-            let credential_claims = credential
+            let requested_claims: Vec<(Claim, ClaimSchema)> = credential
                 .claims
-                .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
-            submitted_claims.extend(credential_claims);
+                .as_ref()
+                .map(|claims| {
+                    claims
+                        .iter()
+                        .filter_map(|claim| {
+                            claim
+                                .schema
+                                .as_ref()
+                                .map(|claim_schema| (claim.clone(), claim_schema.clone()))
+                        })
+                        .filter(|(_, schema)| {
+                            credential_request
+                                .submit_claims
+                                .contains(&schema.id.to_string())
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let (claims, claim_schemas): (Vec<Claim>, Vec<ClaimSchema>) =
+                requested_claims.into_iter().unzip();
+
+            credentials.push(PresentationCredential {
+                token: credential_content.to_owned(),
+                disclosed_keys: claim_schemas
+                    .into_iter()
+                    .map(|claim_schema| claim_schema.key)
+                    .collect(),
+            });
+
+            submitted_claims.extend(claims);
         }
 
-        // FIXME - pick correct formatter
-        let formatter = self.formatter_provider.get_formatter("JWT")?;
-        let presentation = formatter.format_presentation(&credentials, &holder_did.did)?;
+        let formatter = self.formatter_provider.get_formatter(&format)?;
+        let presentation =
+            formatter.format_presentation(&credentials, &holder_did.did, "Ed25519")?;
 
         let submit_result = self
             .protocol_provider

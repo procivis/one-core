@@ -36,6 +36,8 @@ pub enum FormatterError {
     MissingPart,
     #[error("Missing disclosure")]
     MissingDisclosure,
+    #[error("Missing claim")]
+    MissingClaim,
     #[error("Signer error `{0}`")]
     SignerError(#[from] SignerError),
 }
@@ -82,12 +84,19 @@ pub struct CredentialSubject {
     pub one_credential_schema: VCCredentialSchemaResponse,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CredentialPresentation {
     pub id: Option<String>,
     pub issued_at: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
     pub issuer_did: Option<String>,
     pub credentials: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PresentationCredential {
+    pub token: String,
+    pub disclosed_keys: Vec<String>,
 }
 
 pub trait CredentialFormatter {
@@ -102,8 +111,9 @@ pub trait CredentialFormatter {
 
     fn format_presentation(
         &self,
-        tokens: &[String],
+        tokens: &[PresentationCredential],
         holder_did: &str,
+        algorithm: &str,
     ) -> Result<String, FormatterError>;
 
     fn extract_presentation(&self, token: &str) -> Result<CredentialPresentation, FormatterError>;
