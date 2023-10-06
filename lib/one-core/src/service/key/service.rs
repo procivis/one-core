@@ -6,16 +6,44 @@ use crate::{
             ConfigValidationError,
         },
     },
-    model::{key::KeyId, organisation::OrganisationRelations},
+    model::{
+        key::{KeyId, KeyRelations},
+        organisation::OrganisationRelations,
+    },
     service::{
         error::ServiceError,
-        key::{dto::KeyRequestDTO, mapper::from_create_request},
+        key::{
+            dto::{KeyRequestDTO, KeyResponseDTO},
+            mapper::from_create_request,
+        },
     },
 };
 
 use super::KeyService;
 
 impl KeyService {
+    /// Returns details of a key
+    ///
+    /// # Arguments
+    ///
+    /// * `KeyId` - Id of an existing key
+    pub async fn get_key(&self, key_id: &KeyId) -> Result<KeyResponseDTO, ServiceError> {
+        let key = self
+            .key_repository
+            .get_key(
+                key_id,
+                &KeyRelations {
+                    credential: None,
+                    dids: None,
+                    organisation: Some(OrganisationRelations {}),
+                },
+            )
+            .await
+            .map_err(ServiceError::from)?;
+
+        key.try_into()
+    }
+
     /// Generates a new random key with data provided in arguments
     ///
     /// # Arguments

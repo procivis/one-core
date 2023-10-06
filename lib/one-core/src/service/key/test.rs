@@ -104,7 +104,34 @@ async fn test_create_key_success() {
         })
         .await;
 
-    result.unwrap();
-    /*assert!(result.is_ok());
-    assert_eq!(key.id, result.unwrap());*/
+    assert!(result.is_ok());
+    assert_eq!(key.id, result.unwrap());
+}
+
+#[tokio::test]
+async fn test_get_key_success() {
+    let mut repository = MockKeyRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+    let key_storage = MockKeyStorage::default();
+
+    let key = generic_key();
+    {
+        let key = key.clone();
+        repository
+            .expect_get_key()
+            .times(1)
+            .returning(move |_, _| Ok(key.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        organisation_repository,
+        key_storage,
+        generic_config(),
+    );
+
+    let result = service.get_key(&key.id).await;
+
+    assert!(result.is_ok());
+    assert_eq!(key.id, result.unwrap().id);
 }
