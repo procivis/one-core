@@ -70,7 +70,6 @@ fn encrypt_if_password_is_provided(
 fn get_algorithm_from_string(value: &str) -> Result<Algorithm, ServiceError> {
     // TODO: use crypto module to search these dynamically
     match value {
-        "RSA_4096" => Ok(Algorithm::Rsa { hash: None }),
         "Ed25519" => Ok(Algorithm::Ed25519),
         _ => Err(ServiceError::IncorrectParameters),
     }
