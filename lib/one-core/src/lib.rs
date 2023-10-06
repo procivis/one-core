@@ -6,14 +6,19 @@ use std::sync::Arc;
 use crate::config::ConfigParseError;
 use credential_formatter::jwt_formatter::JWTFormatter;
 use credential_formatter::provider::CredentialFormatterProviderImpl;
+use credential_formatter::sdjwt::SDJWTFormatter;
 use credential_formatter::CredentialFormatter;
+use crypto::hasher::sha256::SHA256;
+use crypto::hasher::Hasher;
+use crypto::signer::eddsa::EDDSASigner;
+use crypto::signer::Signer;
+use crypto::Crypto;
 use repository::DataRepository;
 use service::{
     config::ConfigService, credential::CredentialService, did::DidService,
     organisation::OrganisationService, proof::ProofService, proof_schema::ProofSchemaService,
     ssi_holder::SSIHolderService, ssi_issuer::SSIIssuerService, ssi_verifier::SSIVerifierService,
 };
-use signature_provider::SignatureProvider;
 use transport_protocol::{
     procivis_temp::ProcivisTemp, provider::TransportProtocolProviderImpl, TransportProtocol,
 };
@@ -21,8 +26,9 @@ use transport_protocol::{
 pub mod config;
 pub mod credential_formatter;
 pub mod key_storage;
-pub mod signature_provider;
 pub mod transport_protocol;
+
+pub mod crypto;
 
 pub mod model;
 pub mod repository;
@@ -41,7 +47,6 @@ use crate::service::key::KeyService;
 pub struct OneCore {
     pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
-    pub signature_providers: Vec<(String, Arc<dyn SignatureProvider + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
@@ -55,6 +60,7 @@ pub struct OneCore {
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub config: Arc<CoreConfig>,
+    pub crypto: Crypto,
 }
 
 impl OneCore {
@@ -65,13 +71,29 @@ impl OneCore {
         // For now we will just put them here.
         // We will introduce a builder later.
 
+        let hashers: Vec<(String, Arc<dyn Hasher + Send + Sync>)> =
+            vec![("sha-256".to_string(), Arc::new(SHA256 {}))];
+
+        let signers: Vec<(String, Arc<dyn Signer + Send + Sync>)> =
+            vec![("Ed25519".to_string(), Arc::new(EDDSASigner {}))];
+
+        let crypto = Crypto {
+            hashers: HashMap::from_iter(hashers),
+            signers: HashMap::from_iter(signers),
+        };
+
         let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![(
             "PROCIVIS_TEMPORARY".to_string(),
             Arc::new(ProcivisTemp::default()),
         )];
         let jwt_formatter = Arc::new(JWTFormatter {});
-        let credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)> =
-            vec![("JWT".to_string(), jwt_formatter)];
+        let sdjwt_formatter = Arc::new(SDJWTFormatter {
+            crypto: crypto.clone(),
+        });
+        let credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)> = vec![
+            ("JWT".to_string(), jwt_formatter),
+            ("SDJWT".to_string(), sdjwt_formatter),
+        ];
 
         let config = config::config_provider::parse_config(
             unparsed_config,
@@ -100,7 +122,6 @@ impl OneCore {
         Ok(OneCore {
             key_providers,
             transport_protocols,
-            signature_providers: vec![],
             credential_formatters,
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
@@ -158,6 +179,7 @@ impl OneCore {
                 protocol_provider,
             ),
             config_service: ConfigService::new(config.clone()),
+            crypto,
             config,
         })
     }

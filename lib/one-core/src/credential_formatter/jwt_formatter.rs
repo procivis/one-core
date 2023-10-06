@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::service::credential::dto::CredentialDetailResponseDTO;
-use base64::{engine::general_purpose, Engine};
 use jwt_simple::prelude::*;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -51,12 +50,10 @@ struct PresentationMeta {
 
 fn get_temp_keys() -> Ed25519KeyPair {
     // Until we have a proper key handling we use static keys.
-    let private = general_purpose::STANDARD
-        .decode("cHl197m5y0cTmdvl8M1jZhWEw+S8btcEQ+pI8grCadw=")
-        .unwrap();
-    let public = general_purpose::STANDARD
-        .decode("rTa2X5z9tCT9eVFG0yKDR5w4k89fwHohWxcd1I2LDsQ=")
-        .unwrap();
+    let private =
+        Base64::decode_to_vec("cHl197m5y0cTmdvl8M1jZhWEw+S8btcEQ+pI8grCadw=", None).unwrap();
+    let public =
+        Base64::decode_to_vec("rTa2X5z9tCT9eVFG0yKDR5w4k89fwHohWxcd1I2LDsQ=", None).unwrap();
 
     Ed25519KeyPair::from_bytes(&private.into_iter().chain(public).collect::<Vec<u8>>()).unwrap()
 }
@@ -66,6 +63,7 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         credential: &CredentialDetailResponseDTO, // Todo define input/output format
         holder_did: &str,
+        _algorithm: &str,
     ) -> Result<String, FormatterError> {
         let key = get_temp_keys();
         let custom_claims: VC = credential.into();

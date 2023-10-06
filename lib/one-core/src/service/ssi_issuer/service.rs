@@ -158,10 +158,12 @@ impl SSIIssuerService {
             .ok_or(ServiceError::MappingError("holder did is None".to_string()))?
             .clone();
 
+        let format = credential_schema.format.to_owned();
+
         let token = self
             .formatter_provider
-            .get_formatter(&credential_schema.format)?
-            .format_credentials(&credential.try_into()?, &holder_did.did)?;
+            .get_formatter(&format)?
+            .format_credentials(&credential.try_into()?, &holder_did.did, "Ed25519")?;
 
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
@@ -177,7 +179,7 @@ impl SSIIssuerService {
 
         Ok(IssuerResponseDTO {
             credential: token,
-            format: "JWT".to_string(),
+            format,
         })
     }
 

@@ -3,8 +3,9 @@ use std::collections::HashMap;
 // Implementations
 pub mod jwt_formatter;
 pub(crate) mod provider;
+pub mod sdjwt;
 
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::{crypto::signer::SignerError, service::credential::dto::CredentialDetailResponseDTO};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
@@ -15,6 +16,8 @@ pub enum FormatterError {
     Failed(String),
     #[error("Could not sign: `{0}`")]
     CouldNotSign(String),
+    #[error("Could not verify: `{0}`")]
+    CouldNotVerify(String),
     #[error("Could not format: `{0}`")]
     CouldNotFormat(String),
     #[error("Could not extract credentials: `{0}`")]
@@ -25,6 +28,16 @@ pub enum FormatterError {
     CouldNotExtractClaimsFromPresentation(String),
     #[error("Incorrect signature")]
     IncorrectSignature,
+    #[error("Missing signer")]
+    MissingSigner,
+    #[error("Missing hasher")]
+    MissingHasher,
+    #[error("Missing part")]
+    MissingPart,
+    #[error("Missing disclosure")]
+    MissingDisclosure,
+    #[error("Signer error `{0}`")]
+    SignerError(#[from] SignerError),
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]
@@ -33,6 +46,7 @@ pub enum ParseError {
     Failed(String),
 }
 
+#[derive(Debug)]
 pub struct DetailCredential {
     pub id: Option<String>,
     pub issued_at: Option<OffsetDateTime>,
@@ -81,18 +95,16 @@ pub trait CredentialFormatter {
         &self,
         credential: &CredentialDetailResponseDTO,
         holder_did: &str,
+        algorithm: &str,
     ) -> Result<String, FormatterError>;
 
     fn extract_credentials(&self, credentials: &str) -> Result<DetailCredential, FormatterError>;
 
     fn format_presentation(
         &self,
-        credentials: &[String],
+        tokens: &[String],
         holder_did: &str,
     ) -> Result<String, FormatterError>;
 
-    fn extract_presentation(
-        &self,
-        presentation: &str,
-    ) -> Result<CredentialPresentation, FormatterError>;
+    fn extract_presentation(&self, token: &str) -> Result<CredentialPresentation, FormatterError>;
 }
