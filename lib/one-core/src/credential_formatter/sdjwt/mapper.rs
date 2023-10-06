@@ -5,8 +5,7 @@ use serde::Serialize;
 
 use crate::{
     credential_formatter::{
-        sdjwt::models::Disclosure, FormatterError, VCCredentialClaimSchemaResponse,
-        VCCredentialSchemaResponse,
+        FormatterError, VCCredentialClaimSchemaResponse, VCCredentialSchemaResponse,
     },
     crypto::{hasher::Hasher, signer::Signer, Crypto},
     service::credential::dto::{CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO},
@@ -29,11 +28,11 @@ pub(super) fn claims_to_formatted_disclosure(
     claims
         .iter()
         .filter_map(|c| {
-            serde_json::to_string(&Disclosure {
-                salt: Crypto::generate_salt_base64(),
-                key: c.schema.key.clone(),
-                value: c.value.clone(),
-            })
+            serde_json::to_string(&vec![
+                Crypto::generate_salt_base64(),
+                c.schema.key.clone(),
+                c.value.clone(),
+            ])
             .ok()
         })
         .collect()

@@ -119,7 +119,9 @@ impl CredentialFormatter for SDJWTFormatter {
             subject: payload.subject,
             claims: CredentialSubject {
                 values: HashMap::from_iter(
-                    disclosures.into_iter().map(|(dis, _)| (dis.key, dis.value)),
+                    disclosures
+                        .into_iter()
+                        .map(|(dis, _, _)| (dis.key, dis.value)),
                 ),
                 one_credential_schema: payload.custom.vc.credential_subject.one_credential_schema,
             },
@@ -215,7 +217,7 @@ fn prepare_sd_presentation(
     } = extract_disclosures(&presentation.token)?;
 
     let mut token = jwt.to_owned();
-    for (disclosure, disclosure_encoded) in deserialized_disclosures {
+    for (disclosure, _, disclosure_encoded) in deserialized_disclosures {
         if presentation.disclosed_keys.contains(&disclosure.key) {
             token.push('~');
             token.push_str(&disclosure_encoded);
@@ -250,12 +252,12 @@ fn extract_disclosures(token: &str) -> Result<ExtractedDisclosures, FormatterErr
         })
         .collect();
 
-    let deserialized_claims: Vec<(Disclosure, String)> = disclosures_decoded_encoded
+    let deserialized_claims: Vec<(Disclosure, String, String)> = disclosures_decoded_encoded
         .into_iter()
         .filter_map(|(decoded, encoded)| {
             serde_json::from_str(&decoded)
                 .ok()
-                .map(|disclosure| (disclosure, encoded))
+                .map(|disclosure| (disclosure, decoded, encoded))
         })
         .collect();
 
