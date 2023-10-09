@@ -5,9 +5,14 @@ use crate::service::error::ServiceError;
 use crate::service::key::dto::KeyResponseDTO;
 use crate::{
     key_storage::GeneratedKey,
-    model::{key::Key, organisation::Organisation},
+    model::{
+        key::{GetKeyList, Key},
+        organisation::Organisation,
+    },
     service::key::dto::KeyRequestDTO,
 };
+
+use super::dto::{GetKeyListItemResponseDTO, GetKeyListResponseDTO};
 
 pub(super) fn from_create_request(
     request: KeyRequestDTO,
@@ -52,5 +57,29 @@ impl TryFrom<Key> for KeyResponseDTO {
             key_type: value.key_type,
             storage_type: value.storage_type,
         })
+    }
+}
+
+impl From<GetKeyList> for GetKeyListResponseDTO {
+    fn from(value: GetKeyList) -> Self {
+        Self {
+            values: value.values.into_iter().map(|item| item.into()).collect(),
+            total_pages: value.total_pages,
+            total_items: value.total_items,
+        }
+    }
+}
+
+impl From<Key> for GetKeyListItemResponseDTO {
+    fn from(value: Key) -> Self {
+        GetKeyListItemResponseDTO {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
+            public_key: value.public_key,
+            key_type: value.key_type,
+            storage_type: value.storage_type,
+        }
     }
 }

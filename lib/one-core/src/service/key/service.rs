@@ -19,7 +19,10 @@ use crate::{
     },
 };
 
-use super::KeyService;
+use super::{
+    dto::{GetKeyListResponseDTO, GetKeyQueryDTO},
+    KeyService,
+};
 
 impl KeyService {
     /// Returns details of a key
@@ -71,6 +74,24 @@ impl KeyService {
             .map_err(ServiceError::from)?;
 
         Ok(uuid)
+    }
+
+    /// Returns list of keys according to query
+    ///
+    /// # Arguments
+    ///
+    /// * `query` - query parameters
+    pub async fn get_key_list(
+        &self,
+        query: GetKeyQueryDTO,
+    ) -> Result<GetKeyListResponseDTO, ServiceError> {
+        let result = self
+            .key_repository
+            .get_key_list(query)
+            .await
+            .map_err(ServiceError::from)?;
+
+        Ok(result.into())
     }
 }
 

@@ -4,6 +4,8 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::common::{GetListQueryParams, GetListResponse};
+
 pub type KeyId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -44,3 +46,15 @@ pub enum KeyRole {
     CapabilityInvocation,
     CapabilityDelegation,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableKeyColumn {
+    Name,
+    CreatedDate,
+    PublicKey,
+    Type,
+    Storage,
+}
+
+pub type GetKeyList = GetListResponse<Key>;
+pub type GetKeyQuery = GetListQueryParams<SortableKeyColumn>;

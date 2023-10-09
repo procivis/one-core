@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::key;
-use one_core::model::key::{KeyId, KeyRelations};
+use one_core::model::key::{GetKeyQuery, KeyId, KeyRelations};
 use one_core::repository::mock::credential_repository::MockCredentialRepository;
 use one_core::repository::mock::did_repository::MockDidRepository;
 use one_core::{
@@ -61,6 +61,44 @@ async fn setup() -> TestSetup {
         db,
         key_id,
         organisation,
+    }
+}
+
+struct TestListSetup {
+    pub db: sea_orm::DatabaseConnection,
+    pub organisation: Organisation,
+    pub ids: Vec<Uuid>,
+}
+
+async fn setup_list() -> TestListSetup {
+    let TestSetup {
+        db,
+        key_id,
+        organisation,
+    } = setup().await;
+
+    let now = OffsetDateTime::now_utc();
+    let key2_id = Uuid::new_v4();
+    key::ActiveModel {
+        id: Set(key2_id.to_string()),
+        created_date: Set(now),
+        last_modified: Set(now),
+        name: Set("test2".to_string()),
+        public_key: Set("test2".to_string()),
+        private_key: Set(vec![]),
+        storage_type: Set("test2".to_string()),
+        key_type: Set("test2".to_string()),
+        credential_id: Set(None),
+        organisation_id: Set(organisation.id.to_string()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    TestListSetup {
+        db,
+        organisation,
+        ids: vec![key_id, key2_id],
     }
 }
 
@@ -132,4 +170,44 @@ async fn test_get_key_success() {
 
     assert!(result.is_ok());
     assert_eq!(key_id, result.unwrap().id);
+}
+
+#[tokio::test]
+async fn test_get_key_list_success() {
+    let credential_repository = MockCredentialRepository::default();
+    let did_repository = MockDidRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+
+    let TestListSetup {
+        db,
+        organisation,
+        ids,
+    } = setup_list().await;
+
+    let provider = KeyProvider {
+        db: db.clone(),
+        credential_repository: Arc::new(credential_repository),
+        did_repository: Arc::new(did_repository),
+        organisation_repository: Arc::new(organisation_repository),
+    };
+
+    let query_params = GetKeyQuery {
+        page: 0,
+        page_size: 5,
+        sort: None,
+        sort_direction: None,
+        name: None,
+        organisation_id: organisation.id.to_string(),
+        exact: None,
+    };
+
+    let result = provider.get_key_list(query_params).await;
+    assert!(result.is_ok());
+
+    let data = result.unwrap();
+    assert_eq!(data.total_pages, 1);
+    assert_eq!(data.total_items, 2);
+    assert_eq!(data.values.len(), 2);
+
+    assert!(data.values.iter().all(|key| ids.contains(&key.id)));
 }

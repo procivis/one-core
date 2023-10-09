@@ -7,7 +7,8 @@ use uuid::Uuid;
 use crate::endpoint::{
     credential::dto::CredentialListItemResponseRestDTO,
     credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
-    did::dto::GetDidResponseRestDTO, proof::dto::ProofListItemResponseRestDTO,
+    did::dto::GetDidResponseRestDTO, key::dto::GetKeyListItemResponseRestDTO,
+    proof::dto::ProofListItemResponseRestDTO,
     proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
 };
 
@@ -19,7 +20,8 @@ use crate::endpoint::{
     GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>,
     GetDidsResponseRestDTO = GetListResponseRestDTO<GetDidResponseRestDTO>,
     GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListItemResponseRestDTO>,
-    GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>)]
+    GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>,
+    GetKeyListResponseRestDTO = GetListResponseRestDTO<GetKeyListItemResponseRestDTO>)]
 pub struct GetListResponseRestDTO<T>
 where
     T: Clone + fmt::Debug + Serialize,
