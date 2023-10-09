@@ -7,8 +7,8 @@ use one_core::repository::{
     organisation_repository::OrganisationRepository,
 };
 
-pub mod mapper;
-pub mod repository;
+mod mapper;
+mod repository;
 
 pub(crate) struct KeyProvider {
     pub db: DatabaseConnection,

@@ -66,6 +66,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             endpoint::did::controller::post_did,
 
             endpoint::key::controller::get_key,
+            endpoint::key::controller::get_key_list,
             endpoint::key::controller::post_key,
 
             endpoint::proof_schema::controller::post_proof_schema,
@@ -162,6 +163,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 dto::common::GetCredentialsResponseDTO,
                 dto::common::GetCredentialSchemaResponseDTO,
                 dto::common::GetProofsResponseRestDTO,
+                dto::common::GetKeyListResponseRestDTO,
 
                 dto::common::EntityResponseRestDTO,
                 dto::common::EntityShareResponseRestDTO,
@@ -249,7 +251,10 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 .get(proof_schema::controller::get_proof_schema_detail),
         )
         .route("/api/key/v1/:id", get(key::controller::get_key))
-        .route("/api/key/v1", post(key::controller::post_key))
+        .route(
+            "/api/key/v1",
+            post(key::controller::post_key).get(key::controller::get_key_list),
+        )
         .route(
             "/api/proof-schema/v1",
             get(proof_schema::controller::get_proof_schemas)

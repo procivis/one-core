@@ -2,15 +2,18 @@ use crate::entity::{credential, key, key_did, organisation};
 use crate::error_mapper::to_data_layer_error;
 use crate::key::mapper::from_model_and_relations;
 use crate::key::KeyProvider;
+use crate::list_query::SelectWithListQuery;
 use one_core::model::credential::{Credential, CredentialRelations};
 use one_core::model::did::DidRelations;
-use one_core::model::key::{Key, KeyId, KeyRelations, RelatedDid};
+use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyId, KeyRelations, RelatedDid};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
-use sea_orm::{ActiveModelTrait, EntityTrait, ModelTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, ModelTrait, PaginatorTrait, QueryOrder, Set};
 use std::str::FromStr;
 use uuid::Uuid;
+
+use super::mapper::create_list_response;
 
 impl KeyProvider {
     async fn get_credential(
@@ -151,5 +154,27 @@ impl KeyRepository for KeyProvider {
         let organisation = self.get_organisation(&key, &relations.organisation).await?;
 
         from_model_and_relations(key, credential, dids, organisation)
+    }
+    async fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError> {
+        let limit: u64 = query_params.page_size as u64;
+
+        let query = key::Entity::find()
+            .with_organisation_id(&query_params, &key::Column::OrganisationId)
+            .with_list_query(&query_params, &Some(vec![key::Column::Name]))
+            .order_by_desc(key::Column::CreatedDate)
+            .order_by_desc(key::Column::Id);
+
+        let items_count = query
+            .to_owned()
+            .count(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        let keys: Vec<key::Model> = query
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        Ok(create_list_response(keys, limit, items_count))
     }
 }

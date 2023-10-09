@@ -5,8 +5,9 @@ use axum::Json;
 use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
-use crate::dto::common::EntityResponseRestDTO;
+use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
 use crate::endpoint::key::dto::{KeyRequestRestDTO, KeyResponseRestDTO};
+use crate::extractor::Qs;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -39,6 +40,8 @@ pub(crate) async fn get_key(state: State<AppState>, Path(id): Path<Uuid>) -> Res
         },
     }
 }
+
+use super::dto::GetKeyQuery;
 
 #[utoipa::path(
     post,
@@ -74,5 +77,33 @@ pub(crate) async fn post_key(
             tracing::error!("Unknown error: {:?}", error);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/key/v1",
+    responses(
+        (status = 200, description = "OK", body = GetKeyListResponseRestDTO),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Server error"),
+    ),
+    params(
+        GetKeyQuery
+    ),
+    tag = "key",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_key_list(state: State<AppState>, Qs(query): Qs<GetKeyQuery>) -> Response {
+    let result = state.core.key_service.get_key_list(query.into()).await;
+
+    match result {
+        Err(error) => {
+            tracing::error!("Error while getting keys: {:?}", error);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+        Ok(value) => (StatusCode::OK, Json(GetKeyListResponseRestDTO::from(value))).into_response(),
     }
 }
