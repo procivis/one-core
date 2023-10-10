@@ -34,14 +34,8 @@ impl ProofRepository for ProofProvider {
             .insert(&self.db)
             .await
             .map_err(|e| match e.sql_err() {
-                Some(sql_error) if matches!(sql_error, SqlErr::UniqueConstraintViolation(_)) => {
-                    DataLayerError::AlreadyExists
-                }
-                Some(sql_error)
-                    if matches!(sql_error, SqlErr::ForeignKeyConstraintViolation(_)) =>
-                {
-                    DataLayerError::RecordNotFound
-                }
+                Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
+                Some(SqlErr::ForeignKeyConstraintViolation(_)) => DataLayerError::RecordNotFound,
                 Some(_) | None => DataLayerError::GeneralRuntimeError(e.to_string()),
             })?;
 
@@ -139,7 +133,7 @@ impl ProofRepository for ProofProvider {
                 Uuid::from_str(&proof_state.proof_id).map_err(|_| DataLayerError::MappingError)?;
             proof_states_map
                 .entry(proof_id)
-                .or_insert(vec![])
+                .or_default()
                 .push(proof_state.into());
         }
 

@@ -1,4 +1,4 @@
-image: rust:1.72.0-slim-buster
+image: rust:1.73.0-slim-buster
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -138,7 +138,8 @@ linter:clippy:
   stage: test
   script:
     - rustup component add clippy
-    - cargo clippy --all-targets -- -D warnings
+    - cargo clippy --all-targets -- -W clippy::redundant_clone -D warnings
+    - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
     - cargo clippy --message-format=json &> report.json
   artifacts:
     expire_in: 1 hour

@@ -6,4 +6,3 @@ publish = false
 
 [dependencies]
 uniffi.workspace = true
-uniffi_bindgen = "0.24.1"
