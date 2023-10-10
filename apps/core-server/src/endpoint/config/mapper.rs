@@ -10,6 +10,8 @@ impl From<ConfigDTO> for ConfigRestDTO {
             revocation: config.revocation,
             did: config.did,
             datatype: config.datatype,
+            key_algorithm: config.key_algorithm,
+            key_storage: config.key_storage,
         }
     }
 }
