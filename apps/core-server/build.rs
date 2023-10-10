@@ -8,7 +8,7 @@ fn main() -> SdResult<()> {
 }
 
 fn get_app_version_string() -> String {
-    let value = env::var("APP_VERSION").unwrap_or(String::default());
+    let value = env::var("APP_VERSION").unwrap_or_default();
     if value.is_empty() {
         "None".to_string()
     } else {

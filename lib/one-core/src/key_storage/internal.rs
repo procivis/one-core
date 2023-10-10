@@ -31,8 +31,7 @@ impl KeyStorage for InternalKeyProvider {
         let public_key_openssh_format = private_key
             .public_key()
             .to_openssh()
-            .map_err(|e| ServiceError::Other(e.to_string()))?
-            .to_string();
+            .map_err(|e| ServiceError::Other(e.to_string()))?;
 
         Ok(GeneratedKey {
             public: public_key_openssh_format,

@@ -141,7 +141,7 @@ impl OneCore {
             key_service: KeyService::new(
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
-                key_provider.clone(),
+                key_provider,
                 config.clone(),
             ),
             proof_schema_service: ProofSchemaService::new(

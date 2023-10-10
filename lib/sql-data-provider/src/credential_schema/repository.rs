@@ -62,11 +62,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .insert(&self.db)
                 .await
                 .map_err(|e| match e.sql_err() {
-                    Some(sql_error)
-                        if matches!(sql_error, SqlErr::UniqueConstraintViolation(_)) =>
-                    {
-                        DataLayerError::AlreadyExists
-                    }
+                    Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
                     Some(_) | None => DataLayerError::GeneralRuntimeError(e.to_string()),
                 })?;
 

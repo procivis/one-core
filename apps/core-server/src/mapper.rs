@@ -31,7 +31,7 @@ where
             exact: Some(
                 value
                     .exact
-                    .unwrap_or(vec![])
+                    .unwrap_or_default()
                     .into_iter()
                     .map(Into::into)
                     .collect(),
