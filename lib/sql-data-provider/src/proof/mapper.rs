@@ -27,8 +27,6 @@ impl TryFrom<ProofListItemModel> for Proof {
         let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
         let schema_id =
             Uuid::from_str(&value.schema_id).map_err(|_| DataLayerError::MappingError)?;
-        let organisation_id =
-            Uuid::from_str(&value.organisation_id).map_err(|_| DataLayerError::MappingError)?;
         let verifier_did_id =
             Uuid::from_str(&value.verifier_did_id).map_err(|_| DataLayerError::MappingError)?;
 
@@ -55,10 +53,11 @@ impl TryFrom<ProofListItemModel> for Proof {
                 created_date: value.verifier_did_created_date,
                 last_modified: value.verifier_did_last_modified,
                 name: value.verifier_did_name,
-                organisation_id,
                 did: value.verifier_did,
                 did_type: value.verifier_did_type.into(),
                 did_method: value.verifier_did_method,
+                organisation: None,
+                keys: None,
             }),
             holder_did: None,
             interaction: None,

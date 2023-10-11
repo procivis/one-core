@@ -80,10 +80,11 @@ fn generic_credential() -> Credential {
             created_date: now,
             last_modified: now,
             name: "did1".to_string(),
-            organisation_id: organisation.id.to_owned(),
+            organisation: Some(organisation.clone()),
             did: "did1".to_string(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
+            keys: None,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {

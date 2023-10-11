@@ -1,13 +1,19 @@
+use std::collections::{HashMap, HashSet};
+
 use time::OffsetDateTime;
 
 use crate::{
     config::validator::did::validate_did_method,
-    model::did::{DidRelations, DidValue},
+    model::{
+        did::DidRelations,
+        key::{Key, KeyId, KeyRelations},
+        organisation::OrganisationRelations,
+    },
     service::{did::validator::did_already_exists, error::ServiceError},
 };
 
 use super::{
-    dto::{CreateDidRequestDTO, DidId, GetDidListResponseDTO, GetDidQueryDTO, GetDidResponseDTO},
+    dto::{CreateDidRequestDTO, DidId, DidResponseDTO, GetDidListResponseDTO, GetDidQueryDTO},
     mapper::did_from_did_request,
     DidService,
 };
@@ -18,30 +24,19 @@ impl DidService {
     /// # Arguments
     ///
     /// * `id` - Did uuid
-    pub async fn get_did(&self, id: &DidId) -> Result<GetDidResponseDTO, ServiceError> {
+    pub async fn get_did(&self, id: &DidId) -> Result<DidResponseDTO, ServiceError> {
         let result = self
             .did_repository
-            .get_did(id, &DidRelations::default())
+            .get_did(
+                id,
+                &DidRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
+                },
+            )
             .await
             .map_err(ServiceError::from)?;
-        Ok(result.into())
-    }
-
-    /// Returns details of a did by value
-    ///
-    /// # Arguments
-    ///
-    /// * `value` - Did value
-    pub async fn get_did_by_value(
-        &self,
-        value: &DidValue,
-    ) -> Result<GetDidResponseDTO, ServiceError> {
-        let result = self
-            .did_repository
-            .get_did_by_value(value, &DidRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
-        Ok(result.into())
+        result.try_into()
     }
 
     /// Returns list of dids according to query
@@ -76,7 +71,32 @@ impl DidService {
 
         let now = OffsetDateTime::now_utc();
 
-        let request = did_from_did_request(request, now);
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .await?;
+
+        let mut key_map: HashMap<KeyId, Key> = HashMap::default();
+        let keys = request.keys.to_owned();
+        for key_id in HashSet::<KeyId>::from_iter(
+            [
+                keys.authentication,
+                keys.assertion,
+                keys.key_agreement,
+                keys.capability_invocation,
+                keys.capability_delegation,
+            ]
+            .concat()
+            .into_iter(),
+        ) {
+            let key = self
+                .key_repository
+                .get_key(&key_id, &KeyRelations::default())
+                .await?;
+            key_map.insert(key_id, key);
+        }
+
+        let request = did_from_did_request(request, organisation, key_map, now)?;
 
         let uuid = self
             .did_repository

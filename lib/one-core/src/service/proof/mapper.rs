@@ -278,7 +278,12 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         .holder_did
         .as_ref()
         .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?
-        .organisation_id;
+        .organisation
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "organisation is None".to_string(),
+        ))?
+        .id;
 
     let holder_did_id = value.holder_did.as_ref().map(|did| did.id).to_owned();
 

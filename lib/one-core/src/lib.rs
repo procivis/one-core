@@ -132,7 +132,12 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 config.clone(),
             ),
-            did_service: DidService::new(data_provider.get_did_repository(), config.clone()),
+            did_service: DidService::new(
+                data_provider.get_did_repository(),
+                data_provider.get_organisation_repository(),
+                data_provider.get_key_repository(),
+                config.clone(),
+            ),
             credential_schema_service: CredentialSchemaService::new(
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_organisation_repository(),
@@ -169,7 +174,6 @@ impl OneCore {
                 formatter_provider.clone(),
             ),
             ssi_holder_service: SSIHolderService::new(
-                data_provider.get_organisation_repository(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),

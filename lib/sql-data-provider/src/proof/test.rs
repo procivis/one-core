@@ -217,7 +217,6 @@ async fn test_create_proof_success() {
         db,
         proof_schema_id,
         did_id,
-        organisation_id,
         ..
     } = setup(
         get_proof_schema_repository_mock(),
@@ -255,10 +254,11 @@ async fn test_create_proof_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "verifier".to_string(),
-            organisation_id,
             did: "did:key:123".to_string(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
+            organisation: None,
+            keys: None,
         }),
         holder_did: None,
         interaction: None,
@@ -388,10 +388,11 @@ async fn test_get_proof_with_relations() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "verifier".to_string(),
-            organisation_id: Uuid::new_v4(),
             did: "did:key:123".to_string(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
+            organisation: None,
+            keys: None,
         })
     });
 
@@ -488,10 +489,11 @@ async fn test_get_proof_by_interaction_id_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "verifier".to_string(),
-            organisation_id: Uuid::new_v4(),
             did: "did:key:123".to_string(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
+            organisation: None,
+            keys: None,
         })
     });
 
@@ -594,10 +596,11 @@ async fn test_set_proof_holder_did() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "holder".to_string(),
-                organisation_id,
                 did: "did:holder".to_string(),
                 did_type: DidType::Remote,
                 did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
             },
         )
         .await;

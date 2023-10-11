@@ -36,9 +36,9 @@ impl CredentialService {
         &self,
         request: CreateCredentialRequestDTO,
     ) -> Result<CredentialId, ServiceError> {
-        let did = self
+        let issuer_did = self
             .did_repository
-            .get_did(&request.issuer_did, &DidRelations {})
+            .get_did(&request.issuer_did, &DidRelations::default())
             .await
             .map_err(ServiceError::from)?;
         let schema = self
@@ -68,7 +68,7 @@ impl CredentialService {
             ))?;
 
         let claims = claims_from_create_request(request.claim_values.clone(), &claim_schemas)?;
-        let credential = from_create_request(request, claims, did, schema);
+        let credential = from_create_request(request, claims, issuer_did, schema);
 
         let result = self
             .credential_repository

@@ -1,32 +1,64 @@
 use crate::{did::DidProvider, entity::did, list_query::from_pagination, test_utilities::*};
 use one_core::model::common::ExactColumn;
+use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::key::{Key, KeyRelations};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::repository::mock::key_repository::MockKeyRepository;
+use one_core::repository::mock::organisation_repository::MockOrganisationRepository;
 use one_core::{
     model::{
         common::SortDirection,
         did::{Did, DidId, DidRelations, DidType, DidValue, GetDidQuery, SortableDidColumn},
-        organisation::OrganisationId,
     },
     repository::{did_repository::DidRepository, error::DataLayerError},
 };
-use sea_orm::{ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use std::sync::Arc;
 use time::macros::datetime;
 use uuid::Uuid;
 
 struct TestSetup {
     pub provider: DidProvider,
-    pub organisation_id: OrganisationId,
+    pub organisation: Organisation,
     pub db: sea_orm::DatabaseConnection,
+    pub key: Key,
 }
 
-async fn setup_empty() -> TestSetup {
+#[derive(Default)]
+struct Repositories {
+    pub key_repository: MockKeyRepository,
+    pub organisation_repository: MockOrganisationRepository,
+}
+
+async fn setup_empty(repositories: Repositories) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
+    let key_id = insert_key_to_database(&db, &organisation_id).await.unwrap();
 
     TestSetup {
-        provider: DidProvider { db: db.clone() },
-        organisation_id: Uuid::parse_str(&organisation_id).unwrap(),
+        provider: DidProvider {
+            key_repository: Arc::new(repositories.key_repository),
+            organisation_repository: Arc::new(repositories.organisation_repository),
+            db: db.clone(),
+        },
+        organisation: Organisation {
+            id: Uuid::parse_str(&organisation_id).unwrap(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        },
+        key: Key {
+            id: Uuid::parse_str(&key_id).unwrap(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            public_key: "public".to_string(),
+            name: "test_key".to_string(),
+            private_key: "private".to_string().bytes().collect(),
+            storage_type: "INTERNAL".to_string(),
+            key_type: "ED25519".to_string(),
+            organisation: None,
+        },
         db,
     }
 }
@@ -36,31 +68,39 @@ struct TestSetupWithDid {
     pub did_name: String,
     pub did_value: DidValue,
     pub did_id: DidId,
-    pub organisation_id: OrganisationId,
+    pub organisation: Organisation,
+    pub key: Key,
 }
 
-async fn setup_with_did() -> TestSetupWithDid {
+async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
     let TestSetup {
         provider,
-        organisation_id,
+        organisation,
         db,
-    } = setup_empty().await;
+        key,
+        ..
+    } = setup_empty(repositories).await;
 
     let did_name = "test did name";
     let did_value = "test:did";
     let did_id = Uuid::parse_str(
-        &insert_did(&db, did_name, did_value, &organisation_id.to_string())
+        &insert_did(&db, did_name, did_value, &organisation.id.to_string())
             .await
             .unwrap(),
     )
     .unwrap();
 
+    insert_key_did(&db, &did_id.to_string(), &key.id.to_string())
+        .await
+        .unwrap();
+
     TestSetupWithDid {
         provider,
-        organisation_id,
+        organisation,
         did_id,
         did_value: did_value.to_string(),
         did_name: did_name.to_string(),
+        key,
     }
 }
 
@@ -68,21 +108,27 @@ async fn setup_with_did() -> TestSetupWithDid {
 async fn test_create_did() {
     let TestSetup {
         provider,
-        organisation_id,
+        organisation,
+        key,
+        db,
         ..
-    } = setup_empty().await;
+    } = setup_empty(Repositories::default()).await;
 
     let id = Uuid::new_v4();
     let result = provider
         .create_did(Did {
             id,
             name: "Name".to_string(),
-            organisation_id,
+            organisation: Some(organisation),
             did: "did:key:123".to_owned(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             did_method: "KEY".to_string(),
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key,
+            }]),
         })
         .await;
 
@@ -90,41 +136,73 @@ async fn test_create_did() {
 
     let response = result.unwrap();
     assert_eq!(id, response);
+
+    assert_eq!(crate::entity::Did::find().all(&db).await.unwrap().len(), 1);
+    assert_eq!(
+        crate::entity::key_did::Entity::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
 }
 
 #[tokio::test]
 async fn test_create_did_invalid_organisation() {
-    let TestSetup { provider, .. } = setup_empty().await;
+    let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
-    let missing_organisation = Uuid::new_v4();
     let result = provider
         .create_did(Did {
             id: Uuid::new_v4(),
             name: "Name".to_string(),
-            organisation_id: missing_organisation,
+            organisation: None,
             did: "did:key:123".to_owned(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             did_method: "KEY".to_string(),
+            keys: None,
         })
         .await;
-    assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
+    assert!(matches!(result, Err(DataLayerError::MappingError)));
 }
 
 #[tokio::test]
 async fn test_get_did_by_value_existing() {
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .times(1)
+        .returning(|id, _| {
+            Ok(Organisation {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            })
+        });
+
     let TestSetupWithDid {
         provider,
         did_id,
         did_name,
         did_value,
-        organisation_id,
+        organisation,
         ..
-    } = setup_with_did().await;
+    } = setup_with_did(Repositories {
+        organisation_repository,
+        ..Default::default()
+    })
+    .await;
 
     let result = provider
-        .get_did_by_value(&did_value.to_string(), &DidRelations::default())
+        .get_did_by_value(
+            &did_value.to_string(),
+            &DidRelations {
+                organisation: Some(OrganisationRelations::default()),
+                ..Default::default()
+            },
+        )
         .await;
 
     assert!(result.is_ok());
@@ -135,12 +213,12 @@ async fn test_get_did_by_value_existing() {
     assert_eq!(content.did_type, DidType::Local);
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
-    assert_eq!(content.organisation_id, organisation_id);
+    assert_eq!(content.organisation.unwrap().id, organisation.id);
 }
 
 #[tokio::test]
 async fn test_get_did_by_value_missing() {
-    let TestSetupWithDid { provider, .. } = setup_with_did().await;
+    let TestSetupWithDid { provider, .. } = setup_with_did(Repositories::default()).await;
 
     let result = provider
         .get_did_by_value(&"missing".to_string(), &DidRelations::default())
@@ -151,16 +229,56 @@ async fn test_get_did_by_value_missing() {
 
 #[tokio::test]
 async fn test_get_did_existing() {
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .times(1)
+        .returning(|id, _| {
+            Ok(Organisation {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            })
+        });
+
+    let mut key_repository = MockKeyRepository::default();
+    key_repository.expect_get_key().times(1).returning(|id, _| {
+        Ok(Key {
+            id: id.to_owned(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            public_key: "public".to_string(),
+            name: "test_key".to_string(),
+            private_key: "private".to_string().bytes().collect(),
+            storage_type: "INTERNAL".to_string(),
+            key_type: "ED25519".to_string(),
+            organisation: None,
+        })
+    });
+
     let TestSetupWithDid {
         provider,
         did_id,
         did_name,
         did_value,
-        organisation_id,
+        organisation,
+        key,
         ..
-    } = setup_with_did().await;
+    } = setup_with_did(Repositories {
+        organisation_repository,
+        key_repository,
+    })
+    .await;
 
-    let result = provider.get_did(&did_id, &DidRelations::default()).await;
+    let result = provider
+        .get_did(
+            &did_id,
+            &DidRelations {
+                organisation: Some(OrganisationRelations::default()),
+                keys: Some(KeyRelations::default()),
+            },
+        )
+        .await;
 
     assert!(result.is_ok());
 
@@ -170,12 +288,16 @@ async fn test_get_did_existing() {
     assert_eq!(content.did_type, DidType::Local);
     assert_eq!(content.did, did_value);
     assert_eq!(content.name, did_name);
-    assert_eq!(content.organisation_id, organisation_id);
+
+    assert_eq!(content.organisation.unwrap().id, organisation.id);
+    let keys = content.keys.unwrap();
+    assert_eq!(keys.len(), 1);
+    assert_eq!(keys[0].key.id, key.id);
 }
 
 #[tokio::test]
 async fn test_get_did_not_existing() {
-    let TestSetup { provider, .. } = setup_empty().await;
+    let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
     let result = provider
         .get_did(&Uuid::new_v4(), &DidRelations::default())
@@ -189,12 +311,12 @@ async fn test_get_did_list_one_did() {
     let TestSetupWithDid {
         provider,
         did_id,
-        organisation_id,
+        organisation,
         ..
-    } = setup_with_did().await;
+    } = setup_with_did(Repositories::default()).await;
 
     let result = provider
-        .get_did_list(from_pagination(0, 1, organisation_id.to_string()))
+        .get_did_list(from_pagination(0, 1, organisation.id.to_string()))
         .await;
 
     assert!(result.is_ok());
@@ -209,12 +331,12 @@ async fn test_get_did_list_one_did() {
 async fn test_get_did_list_empty_result() {
     let TestSetup {
         provider,
-        organisation_id,
+        organisation,
         ..
-    } = setup_empty().await;
+    } = setup_empty(Repositories::default()).await;
 
     let result = provider
-        .get_did_list(from_pagination(0, 1, organisation_id.to_string()))
+        .get_did_list(from_pagination(0, 1, organisation.id.to_string()))
         .await;
 
     assert!(result.is_ok());
@@ -226,7 +348,7 @@ async fn test_get_did_list_empty_result() {
 
 #[tokio::test]
 async fn test_get_did_list_empty_incorrect_organisation() {
-    let TestSetupWithDid { provider, .. } = setup_with_did().await;
+    let TestSetupWithDid { provider, .. } = setup_with_did(Repositories::default()).await;
 
     let result = provider
         .get_did_list(from_pagination(0, 1, Uuid::new_v4().to_string()))
@@ -243,23 +365,24 @@ async fn test_get_did_list_empty_incorrect_organisation() {
 async fn test_get_did_list_pages() {
     let TestSetup {
         provider,
-        organisation_id,
+        organisation,
         db,
-    } = setup_empty().await;
+        ..
+    } = setup_empty(Repositories::default()).await;
 
     for i in 0..50 {
         insert_did(
             &db,
             "test did name",
             &format!("did:key:{}", i),
-            &organisation_id.to_string(),
+            &organisation.id.to_string(),
         )
         .await
         .unwrap();
     }
 
     let result = provider
-        .get_did_list(from_pagination(0, 10, organisation_id.to_string()))
+        .get_did_list(from_pagination(0, 10, organisation.id.to_string()))
         .await;
 
     assert!(result.is_ok());
@@ -269,7 +392,7 @@ async fn test_get_did_list_pages() {
     assert_eq!(10, response.values.len());
 
     let result = provider
-        .get_did_list(from_pagination(0, 2, organisation_id.to_string()))
+        .get_did_list(from_pagination(0, 2, organisation.id.to_string()))
         .await;
 
     assert!(result.is_ok());
@@ -279,7 +402,7 @@ async fn test_get_did_list_pages() {
     assert_eq!(2, response.values.len());
 
     let result = provider
-        .get_did_list(from_pagination(5, 10, organisation_id.to_string()))
+        .get_did_list(from_pagination(5, 10, organisation.id.to_string()))
         .await;
 
     assert!(result.is_ok());
@@ -296,9 +419,9 @@ async fn test_get_did_list_filtering() {
         did_id,
         did_name,
         did_value,
-        organisation_id,
+        organisation,
         ..
-    } = setup_with_did().await;
+    } = setup_with_did(Repositories::default()).await;
 
     // not found
     let result = provider
@@ -309,7 +432,7 @@ async fn test_get_did_list_filtering() {
             exact: None,
             sort_direction: None,
             name: Some("not-found".to_owned()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -325,7 +448,7 @@ async fn test_get_did_list_filtering() {
             exact: None,
             sort_direction: None,
             name: Some("test".to_owned()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -342,7 +465,7 @@ async fn test_get_did_list_filtering() {
             exact: None,
             sort_direction: None,
             name: Some(did_value.to_owned()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -358,7 +481,7 @@ async fn test_get_did_list_filtering() {
             exact: Some(vec![ExactColumn::Name]),
             sort_direction: None,
             name: Some(did_name.to_owned()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -370,9 +493,10 @@ async fn test_get_did_list_filtering() {
 async fn test_get_did_list_sorting() {
     let TestSetup {
         provider,
-        organisation_id,
+        organisation,
         db,
-    } = setup_empty().await;
+        ..
+    } = setup_empty(Repositories::default()).await;
 
     let older_a_did = did::ActiveModel {
         id: Set(Uuid::new_v4().to_string()),
@@ -382,7 +506,7 @@ async fn test_get_did_list_sorting() {
         name: Set("a".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
-        organisation_id: Set(organisation_id.to_string()),
+        organisation_id: Set(organisation.id.to_string()),
     }
     .insert(&db)
     .await
@@ -396,7 +520,7 @@ async fn test_get_did_list_sorting() {
         name: Set("b".to_owned()),
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
-        organisation_id: Set(organisation_id.to_string()),
+        organisation_id: Set(organisation.id.to_string()),
     }
     .insert(&db)
     .await
@@ -411,7 +535,7 @@ async fn test_get_did_list_sorting() {
             exact: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
 
@@ -431,7 +555,7 @@ async fn test_get_did_list_sorting() {
             sort: Some(SortableDidColumn::Name),
             sort_direction: Some(SortDirection::Descending),
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -450,7 +574,7 @@ async fn test_get_did_list_sorting() {
             sort: Some(SortableDidColumn::Name),
             sort_direction: Some(SortDirection::Ascending),
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -469,7 +593,7 @@ async fn test_get_did_list_sorting() {
             sort: Some(SortableDidColumn::CreatedDate),
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -488,7 +612,7 @@ async fn test_get_did_list_sorting() {
             sort: Some(SortableDidColumn::CreatedDate),
             sort_direction: Some(SortDirection::Descending),
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -507,7 +631,7 @@ async fn test_get_did_list_sorting() {
             sort: Some(SortableDidColumn::CreatedDate),
             sort_direction: Some(SortDirection::Ascending),
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id: organisation.id.to_string(),
         })
         .await;
     assert!(result.is_ok());
@@ -519,7 +643,7 @@ async fn test_get_did_list_sorting() {
 
     // no sorting specified - default Descending by CreatedDate
     let result = provider
-        .get_did_list(from_pagination(0, 2, organisation_id.to_string()))
+        .get_did_list(from_pagination(0, 2, organisation.id.to_string()))
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();

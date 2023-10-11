@@ -42,7 +42,13 @@ impl SSIHolderService {
 
         let holder_did = self
             .did_repository
-            .get_did(holder_did_id, &DidRelations::default())
+            .get_did(
+                holder_did_id,
+                &DidRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         let connect_response = self
@@ -423,10 +429,11 @@ impl SSIHolderService {
                     created_date: now,
                     last_modified: now,
                     name: "verifier".to_owned(),
-                    organisation_id: holder_did.organisation_id.to_owned(),
                     did: proof_request.verifier_did.clone(),
                     did_type: crate::model::did::DidType::Remote,
                     did_method: "KEY".to_owned(),
+                    keys: None,
+                    organisation: holder_did.organisation.to_owned(),
                 };
                 self.did_repository.create_did(new_did.clone()).await?;
                 new_did
@@ -470,14 +477,14 @@ impl SSIHolderService {
         holder_did: Did,
         issuer_response: CredentialDetailResponseDTO,
     ) -> Result<InvitationResponseDTO, ServiceError> {
-        let organisation_id = holder_did.organisation_id;
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&organisation_id, &OrganisationRelations::default())
-            .await?;
-
+        let organisation = holder_did
+            .organisation
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "organisation is None".to_string(),
+            ))?;
         let mut credential_schema: CredentialSchema = issuer_response.schema.into();
-        credential_schema.organisation = Some(organisation);
+        credential_schema.organisation = Some(organisation.to_owned());
         credential_schema.claim_schemas = Some(
             issuer_response
                 .claims
@@ -500,7 +507,7 @@ impl SSIHolderService {
         let issuer_did_value = issuer_response
             .issuer_did
             .ok_or(ServiceError::IncorrectParameters)?;
-        let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation_id);
+        let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
         let did_insert_result = self.did_repository.create_did(issuer_did.clone()).await;
         let issuer_did = match did_insert_result {
             Ok(_) => issuer_did,

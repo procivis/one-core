@@ -1,16 +1,31 @@
 use super::dto::{
-    CreateDidRequestRestDTO, DidType, GetDidResponseRestDTO, SortableDidColumnRestDTO,
+    CreateDidRequestRestDTO, DidListItemResponseRestDTO, DidResponseRestDTO, DidType,
+    SortableDidColumnRestDTO,
 };
-use one_core::service::did::dto::{CreateDidRequestDTO, GetDidResponseDTO};
+use one_core::service::did::dto::{CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO};
 
-impl From<GetDidResponseDTO> for GetDidResponseRestDTO {
-    fn from(value: GetDidResponseDTO) -> Self {
+impl From<DidResponseDTO> for DidResponseRestDTO {
+    fn from(value: DidResponseDTO) -> Self {
         Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
             organisation_id: value.organisation_id,
+            did: value.did,
+            did_type: value.did_type.into(),
+            did_method: value.did_method,
+        }
+    }
+}
+
+impl From<DidListItemResponseDTO> for DidListItemResponseRestDTO {
+    fn from(value: DidListItemResponseDTO) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            name: value.name,
             did: value.did,
             did_type: value.did_type.into(),
             did_method: value.did_method,
@@ -26,6 +41,7 @@ impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
             did: value.did,
             did_method: value.method,
             did_type: one_core::model::did::DidType::Local,
+            keys: value.keys.into(),
         }
     }
 }

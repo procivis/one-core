@@ -6,7 +6,7 @@ use crate::{
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidId, DidType},
         interaction::Interaction,
-        organisation::OrganisationId,
+        organisation::Organisation,
         proof::{self, Proof, ProofId, ProofStateEnum},
     },
     service::{
@@ -35,17 +35,18 @@ pub(super) fn parse_query(url: &str) -> Result<HandleInvitationURLQuery, Service
     })
 }
 
-pub fn remote_did_from_value(did_value: String, organisation_id: OrganisationId) -> Did {
+pub fn remote_did_from_value(did_value: String, organisation: &Organisation) -> Did {
     let now = OffsetDateTime::now_utc();
     Did {
         id: DidId::new_v4(),
         name: "issuer".to_string(),
         created_date: now,
         last_modified: now,
-        organisation_id,
+        organisation: Some(organisation.to_owned()),
         did: did_value,
         did_type: DidType::Remote,
         did_method: "KEY".to_string(),
+        keys: None,
     }
 }
 

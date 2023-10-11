@@ -1,4 +1,4 @@
-mod create_local_did;
+mod create_local_key_did;
 mod create_organisation;
 mod generate_key;
 mod get_credential;

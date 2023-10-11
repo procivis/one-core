@@ -53,8 +53,6 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         private_key: vec![],
         storage_type: "MOCK".to_string(),
         key_type: "RSA4096".to_string(),
-        credential: None,
-        dids: None,
         organisation: Some(Organisation {
             id: organisation_id,
             created_date: now,

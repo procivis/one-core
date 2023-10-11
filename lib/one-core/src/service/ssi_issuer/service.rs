@@ -73,10 +73,11 @@ impl SSIIssuerService {
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
                         name: "holder".to_string(),
-                        organisation_id: organisation.id,
+                        organisation: Some(organisation.to_owned()),
                         did: holder_did_value.clone(),
                         did_method: "KEY".to_string(),
                         did_type: DidType::Remote,
+                        keys: None,
                     };
                     self.did_repository.create_did(did.clone()).await?;
                     did

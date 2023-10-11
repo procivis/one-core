@@ -3,8 +3,7 @@ use crate::{
     repository::{
         credential_repository::CredentialRepository,
         credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-        interaction_repository::InteractionRepository,
-        organisation_repository::OrganisationRepository, proof_repository::ProofRepository,
+        interaction_repository::InteractionRepository, proof_repository::ProofRepository,
     },
     transport_protocol::provider::TransportProtocolProvider,
 };
@@ -17,7 +16,6 @@ mod mapper;
 
 #[derive(Clone)]
 pub struct SSIHolderService {
-    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
@@ -30,7 +28,6 @@ pub struct SSIHolderService {
 #[allow(clippy::too_many_arguments)]
 impl SSIHolderService {
     pub(crate) fn new(
-        organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
         credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
@@ -40,7 +37,6 @@ impl SSIHolderService {
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     ) -> Self {
         Self {
-            organisation_repository,
             credential_schema_repository,
             credential_repository,
             proof_repository,
