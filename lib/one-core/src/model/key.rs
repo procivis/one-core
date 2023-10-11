@@ -52,8 +52,8 @@ pub enum SortableKeyColumn {
     Name,
     CreatedDate,
     PublicKey,
-    Type,
-    Storage,
+    KeyType,
+    StorageType,
 }
 
 pub type GetKeyList = GetListResponse<Key>;

@@ -26,8 +26,10 @@ impl From<SortableKeyColumnRestDTO> for one_core::model::key::SortableKeyColumn 
             SortableKeyColumnRestDTO::PublicKey => {
                 one_core::model::key::SortableKeyColumn::PublicKey
             }
-            SortableKeyColumnRestDTO::Type => one_core::model::key::SortableKeyColumn::Type,
-            SortableKeyColumnRestDTO::Storage => one_core::model::key::SortableKeyColumn::Storage,
+            SortableKeyColumnRestDTO::KeyType => one_core::model::key::SortableKeyColumn::KeyType,
+            SortableKeyColumnRestDTO::StorageType => {
+                one_core::model::key::SortableKeyColumn::StorageType
+            }
         }
     }
 }

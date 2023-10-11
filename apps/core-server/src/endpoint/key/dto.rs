@@ -64,8 +64,8 @@ pub enum SortableKeyColumnRestDTO {
     Name,
     CreatedDate,
     PublicKey,
-    Type,
-    Storage,
+    KeyType,
+    StorageType,
 }
 
 pub type GetKeyQuery = GetListQueryParams<SortableKeyColumnRestDTO>;
