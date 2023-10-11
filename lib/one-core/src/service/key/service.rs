@@ -36,9 +36,7 @@ impl KeyService {
             .get_key(
                 key_id,
                 &KeyRelations {
-                    credential: None,
-                    dids: None,
-                    organisation: Some(OrganisationRelations {}),
+                    organisation: Some(OrganisationRelations::default()),
                 },
             )
             .await

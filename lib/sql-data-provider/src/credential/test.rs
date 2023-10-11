@@ -108,10 +108,15 @@ async fn setup_empty() -> TestSetup {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "name".to_string(),
-        organisation_id,
+        organisation: Some(Organisation {
+            id: organisation_id,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        }),
         did: "did:key:123".to_string(),
         did_type: one_core::model::did::DidType::Local,
         did_method: "KEY".to_string(),
+        keys: None,
     };
 
     TestSetup {

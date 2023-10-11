@@ -30,8 +30,6 @@ pub(super) fn from_create_request(
         private_key: generated_key.private,
         storage_type: request.storage_type.to_owned(),
         key_type: request.key_type,
-        credential: None,
-        dids: None,
         organisation: Some(organisation),
     }
 }

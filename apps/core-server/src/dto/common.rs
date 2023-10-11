@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::endpoint::{
     credential::dto::CredentialListItemResponseRestDTO,
     credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
-    did::dto::GetDidResponseRestDTO, key::dto::GetKeyListItemResponseRestDTO,
+    did::dto::DidListItemResponseRestDTO, key::dto::GetKeyListItemResponseRestDTO,
     proof::dto::ProofListItemResponseRestDTO,
     proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
 };
@@ -18,7 +18,7 @@ use crate::endpoint::{
 #[aliases(
     GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>,
     GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>,
-    GetDidsResponseRestDTO = GetListResponseRestDTO<GetDidResponseRestDTO>,
+    GetDidsResponseRestDTO = GetListResponseRestDTO<DidListItemResponseRestDTO>,
     GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListItemResponseRestDTO>,
     GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>,
     GetKeyListResponseRestDTO = GetListResponseRestDTO<GetKeyListItemResponseRestDTO>)]

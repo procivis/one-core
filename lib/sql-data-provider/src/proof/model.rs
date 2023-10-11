@@ -20,7 +20,6 @@ pub(super) struct ProofListItemModel {
     pub verifier_did_name: String,
     pub verifier_did_type: DidType,
     pub verifier_did_method: String,
-    pub organisation_id: String,
 
     // proof_schema
     pub schema_id: String,

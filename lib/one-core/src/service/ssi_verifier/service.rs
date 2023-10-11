@@ -10,6 +10,7 @@ use crate::{
         claim_schema::{ClaimSchemaId, ClaimSchemaRelations},
         credential_schema::CredentialSchemaRelations,
         did::{Did, DidRelations, DidType, DidValue},
+        organisation::OrganisationRelations,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
@@ -168,7 +169,10 @@ impl SSIVerifierService {
             .get_proof_with_state(
                 id,
                 ProofRelations {
-                    verifier_did: Some(DidRelations::default()),
+                    verifier_did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
@@ -186,21 +190,25 @@ impl SSIVerifierService {
         {
             Ok(did) => did,
             Err(DataLayerError::RecordNotFound) => {
-                let organisation_id = proof
+                let organisation = proof
                     .verifier_did
                     .ok_or(ServiceError::MappingError(
                         "verifier_did is None".to_string(),
                     ))?
-                    .organisation_id;
+                    .organisation
+                    .ok_or(ServiceError::MappingError(
+                        "organisation is None".to_string(),
+                    ))?;
                 let did = Did {
                     id: Uuid::new_v4(),
                     created_date: now,
                     last_modified: now,
                     name: "prover".to_string(),
-                    organisation_id,
+                    organisation: Some(organisation),
                     did: holder_did_value.to_owned(),
                     did_type: DidType::Remote,
                     did_method: "KEY".to_string(),
+                    keys: None,
                 };
                 self.did_repository.create_did(did.clone()).await?;
                 did

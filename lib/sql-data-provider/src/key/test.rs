@@ -7,8 +7,6 @@ use uuid::Uuid;
 
 use crate::entity::key;
 use one_core::model::key::{GetKeyQuery, KeyId, KeyRelations};
-use one_core::repository::mock::credential_repository::MockCredentialRepository;
-use one_core::repository::mock::did_repository::MockDidRepository;
 use one_core::{
     model::{key::Key, organisation::Organisation},
     repository::{
@@ -104,8 +102,6 @@ async fn setup_list() -> TestListSetup {
 
 #[tokio::test]
 async fn test_create_key_success() {
-    let credential_repository = MockCredentialRepository::default();
-    let did_repository = MockDidRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
     let TestSetup {
@@ -114,8 +110,6 @@ async fn test_create_key_success() {
 
     let provider = KeyProvider {
         db: db.clone(),
-        credential_repository: Arc::new(credential_repository),
-        did_repository: Arc::new(did_repository),
         organisation_repository: Arc::new(organisation_repository),
     };
 
@@ -132,8 +126,6 @@ async fn test_create_key_success() {
             private_key: vec![],
             storage_type: "INTERNAL".to_string(),
             key_type: "RSA_4096".to_string(),
-            credential: None,
-            dids: None,
             organisation: Some(organisation),
         })
         .await;
@@ -144,28 +136,17 @@ async fn test_create_key_success() {
 
 #[tokio::test]
 async fn test_get_key_success() {
-    let credential_repository = MockCredentialRepository::default();
-    let did_repository = MockDidRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
     let TestSetup { db, key_id, .. } = setup().await;
 
     let provider = KeyProvider {
         db: db.clone(),
-        credential_repository: Arc::new(credential_repository),
-        did_repository: Arc::new(did_repository),
         organisation_repository: Arc::new(organisation_repository),
     };
 
     let result = provider
-        .get_key(
-            &key_id,
-            &KeyRelations {
-                credential: None,
-                dids: None,
-                organisation: None,
-            },
-        )
+        .get_key(&key_id, &KeyRelations { organisation: None })
         .await;
 
     assert!(result.is_ok());
@@ -174,8 +155,6 @@ async fn test_get_key_success() {
 
 #[tokio::test]
 async fn test_get_key_list_success() {
-    let credential_repository = MockCredentialRepository::default();
-    let did_repository = MockDidRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
     let TestListSetup {
@@ -186,8 +165,6 @@ async fn test_get_key_list_success() {
 
     let provider = KeyProvider {
         db: db.clone(),
-        credential_repository: Arc::new(credential_repository),
-        did_repository: Arc::new(did_repository),
         organisation_repository: Arc::new(organisation_repository),
     };
 

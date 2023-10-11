@@ -161,7 +161,7 @@ interface OneCoreBinding {
   string generate_key(string organisation_id, [ByRef] KeyRequestBindingDTO request);
 
   [Throws=ServiceError]
-  string create_local_did(string did, string organisation_id);
+  string create_local_key_did(string did, string organisation_id, string key_id);
 
   [Throws=ServiceError]
   HandleInvitationResponseBindingEnum handle_invitation(string url, string did_id);

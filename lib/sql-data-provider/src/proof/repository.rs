@@ -231,7 +231,6 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::P
         .column_as(did::Column::Name, "verifier_did_name")
         .column_as(did::Column::TypeField, "verifier_did_type")
         .column_as(did::Column::Method, "verifier_did_method")
-        .column_as(did::Column::OrganisationId, "organisation_id")
         // add related proof schema
         .join(
             sea_orm::JoinType::InnerJoin,

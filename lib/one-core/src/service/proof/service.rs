@@ -51,7 +51,10 @@ impl ProofService {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
                     verifier_did: Some(DidRelations::default()),
-                    holder_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                 },
             )

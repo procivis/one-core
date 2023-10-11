@@ -68,7 +68,6 @@ impl DataLayer {
         Migrator::up(&db, None).await.unwrap();
 
         let interaction_repository = Arc::new(InteractionProvider { db: db.clone() });
-        let did_repository = Arc::new(DidProvider { db: db.clone() });
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
         let claim_repository = Arc::new(ClaimProvider {
             db: db.clone(),
@@ -79,6 +78,15 @@ impl DataLayer {
             db: db.clone(),
             claim_schema_repository: claim_schema_repository.clone(),
             organisation_repository: organisation_repository.clone(),
+        });
+        let key_repository = Arc::new(KeyProvider {
+            db: db.clone(),
+            organisation_repository: organisation_repository.clone(),
+        });
+        let did_repository = Arc::new(DidProvider {
+            key_repository: key_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
+            db: db.clone(),
         });
         let proof_schema_repository = Arc::new(ProofSchemaProvider {
             db: db.clone(),
@@ -99,12 +107,6 @@ impl DataLayer {
             claim_repository: claim_repository.clone(),
             did_repository: did_repository.clone(),
             interaction_repository: interaction_repository.clone(),
-        });
-        let key_repository = Arc::new(KeyProvider {
-            db: db.clone(),
-            credential_repository: credential_repository.clone(),
-            did_repository: did_repository.clone(),
-            organisation_repository: organisation_repository.clone(),
         });
 
         Self {

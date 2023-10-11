@@ -9,13 +9,13 @@ use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
-use super::dto::{CreateDidRequestRestDTO, GetDidQuery, GetDidResponseRestDTO};
+use super::dto::{CreateDidRequestRestDTO, DidResponseRestDTO, GetDidQuery};
 
 #[utoipa::path(
     get,
     path = "/api/did/v1/{id}",
     responses(
-        (status = 200, description = "OK", body = GetDidResponseRestDTO),
+        (status = 200, description = "OK", body = DidResponseRestDTO),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "DID not found"),
         (status = 500, description = "Server error"),
@@ -39,7 +39,7 @@ pub(crate) async fn get_did(state: State<AppState>, Path(id): Path<Uuid>) -> Res
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
             }
         },
-        Ok(value) => (StatusCode::OK, Json(GetDidResponseRestDTO::from(value))).into_response(),
+        Ok(value) => (StatusCode::OK, Json(DidResponseRestDTO::from(value))).into_response(),
     }
 }
 

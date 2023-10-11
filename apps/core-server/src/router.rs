@@ -118,7 +118,9 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
 
                 endpoint::did::dto::CreateDidRequestRestDTO,
-                endpoint::did::dto::GetDidResponseRestDTO,
+                endpoint::did::dto::CreateDidRequestKeysRestDTO,
+                endpoint::did::dto::DidResponseRestDTO,
+                endpoint::did::dto::DidListItemResponseRestDTO,
                 endpoint::did::dto::DidType,
 
                 endpoint::key::dto::KeyRequestRestDTO,

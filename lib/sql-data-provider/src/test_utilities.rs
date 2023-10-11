@@ -13,8 +13,8 @@ use uuid::Uuid;
 use crate::{
     entity::{
         claim, claim_schema, credential, credential_claim, credential_schema,
-        credential_schema_claim_schema, credential_state, did, interaction, organisation, proof,
-        proof_claim, proof_schema, proof_schema_claim_schema,
+        credential_schema_claim_schema, credential_state, did, interaction, key, key_did,
+        organisation, proof, proof_claim, proof_schema, proof_schema_claim_schema,
         proof_state::{self, ProofRequestState},
     },
     DataLayer,
@@ -339,6 +339,27 @@ pub async fn insert_organisation_to_database(
     Ok(organisation.id)
 }
 
+pub async fn insert_key_to_database(
+    database: &DatabaseConnection,
+    organisation_id: &str,
+) -> Result<String, DbErr> {
+    let key = key::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        name: Set("test_key".to_string()),
+        public_key: Set("public".to_string()),
+        private_key: Set("private".to_string().bytes().collect()),
+        storage_type: Set("INTERNAL".to_string()),
+        key_type: Set("ED25519".to_string()),
+        credential_id: Set(None),
+        organisation_id: Set(organisation_id.to_string()),
+    }
+    .insert(database)
+    .await?;
+    Ok(key.id)
+}
+
 pub async fn get_proof_schema_with_id(
     database: &DatabaseConnection,
     id: &str,
@@ -372,6 +393,22 @@ pub async fn insert_did(
     .await?;
 
     Ok(did.id)
+}
+
+pub async fn insert_key_did(
+    database: &DatabaseConnection,
+    did_id: &str,
+    key_id: &str,
+) -> Result<(), DbErr> {
+    key_did::ActiveModel {
+        did_id: Set(did_id.to_string()),
+        key_id: Set(key_id.to_string()),
+        role: Set(key_did::KeyRole::Authentication),
+    }
+    .insert(database)
+    .await?;
+
+    Ok(())
 }
 
 pub async fn insert_interaction(
