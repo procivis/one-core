@@ -54,8 +54,8 @@ impl GetEntityColumn for SortableKeyColumn {
             SortableKeyColumn::Name => entity::key::Column::Name.into_simple_expr(),
             SortableKeyColumn::CreatedDate => entity::key::Column::CreatedDate.into_simple_expr(),
             SortableKeyColumn::PublicKey => entity::key::Column::PublicKey.into_simple_expr(),
-            SortableKeyColumn::Type => entity::key::Column::KeyType.into_simple_expr(),
-            SortableKeyColumn::Storage => entity::key::Column::StorageType.into_simple_expr(),
+            SortableKeyColumn::KeyType => entity::key::Column::KeyType.into_simple_expr(),
+            SortableKeyColumn::StorageType => entity::key::Column::StorageType.into_simple_expr(),
         }
     }
 }
