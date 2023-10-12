@@ -25,8 +25,8 @@ mod verifier;
 use self::verifier::*;
 
 use super::{
-    CredentialFormatter, CredentialPresentation, DetailCredential, FormatterError,
-    PresentationCredential,
+    CredentialFormatter, CredentialPresentation, CredentialStatus, DetailCredential,
+    FormatterError, PresentationCredential,
 };
 
 pub struct SDJWTFormatter {
@@ -47,10 +47,19 @@ impl CredentialFormatter for SDJWTFormatter {
     fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,
+        credential_status: Option<CredentialStatus>,
         holder_did: &str,
         algorithm: &str,
+        additional_context: Vec<String>,
+        additional_types: Vec<String>,
     ) -> Result<String, FormatterError> {
-        let (vc, disclosures) = self.format_hashed_credential(credential, "sha-256")?;
+        let (vc, disclosures) = self.format_hashed_credential(
+            credential,
+            credential_status,
+            "sha-256",
+            additional_context,
+            additional_types,
+        )?;
 
         let (header, payload) = prepare_jwt(
             algorithm,
@@ -125,6 +134,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 ),
                 one_credential_schema: payload.custom.vc.credential_subject.one_credential_schema,
             },
+            status: payload.custom.vc.credential_status,
         })
     }
 
@@ -192,7 +202,10 @@ impl SDJWTFormatter {
     fn format_hashed_credential(
         &self,
         credential: &CredentialDetailResponseDTO,
+        credential_status: Option<CredentialStatus>,
         algorithm: &str,
+        additional_context: Vec<String>,
+        additional_types: Vec<String>,
     ) -> Result<(VC, Vec<String>), FormatterError> {
         let hasher = self
             .crypto
@@ -202,7 +215,14 @@ impl SDJWTFormatter {
 
         let claims: Vec<String> = claims_to_formatted_disclosure(&credential.claims);
 
-        let vc = vc_from_credential(&claims, credential, hasher);
+        let vc = vc_from_credential(
+            &claims,
+            credential,
+            credential_status,
+            hasher,
+            additional_context,
+            additional_types,
+        );
 
         Ok((vc, claims))
     }

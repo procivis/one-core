@@ -54,6 +54,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             endpoint::credential::controller::get_credential,
             endpoint::credential::controller::get_credential_list,
             endpoint::credential::controller::post_credential,
+            endpoint::credential::controller::revoke_credential,
             endpoint::credential::controller::share_credential,
 
             endpoint::credential_schema::controller::delete_credential_schema,
@@ -230,6 +231,10 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
         .route(
             "/api/credential/v1/:id",
             get(credential::controller::get_credential),
+        )
+        .route(
+            "/api/credential/v1/:id/revoke",
+            post(credential::controller::revoke_credential),
         )
         .route(
             "/api/credential/v1/:id/share",

@@ -1,8 +1,9 @@
 use thiserror::Error;
 
 use crate::{
-    config::validator::ConfigValidationError, credential_formatter::FormatterError,
-    repository::error::DataLayerError, transport_protocol::TransportProtocolError,
+    bitstring::BitstringError, config::validator::ConfigValidationError,
+    credential_formatter::FormatterError, repository::error::DataLayerError,
+    transport_protocol::TransportProtocolError,
 };
 
 #[derive(Debug, Error)]
@@ -27,6 +28,8 @@ pub enum ServiceError {
     TransportProtocolError(#[from] TransportProtocolError),
     #[error("Formatter error `{0}`")]
     FormatterError(#[from] FormatterError),
+    #[error("Bitstring error `{0}`")]
+    BitstringError(#[from] BitstringError),
     #[error("Other Repository error: `{0}`")]
     Other(String),
 }

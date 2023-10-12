@@ -13,6 +13,7 @@ use crate::{
         credential_repository::MockCredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
         did_repository::MockDidRepository,
+        revocation_list_repository::MockRevocationListRepository,
     },
     service::{
         credential::dto::{
@@ -31,12 +32,14 @@ fn setup_service(
     repository: MockCredentialRepository,
     credential_schema_repository: MockCredentialSchemaRepository,
     did_repository: MockDidRepository,
+    revocation_list_repository: MockRevocationListRepository,
     config: CoreConfig,
 ) -> CredentialService {
     CredentialService::new(
         Arc::new(repository),
         Arc::new(credential_schema_repository),
         Arc::new(did_repository),
+        Arc::new(revocation_list_repository),
         Arc::new(config),
     )
 }
@@ -102,6 +105,7 @@ fn generic_credential() -> Credential {
             organisation: Some(organisation),
         }),
         interaction: None,
+        revocation_list: None,
     }
 }
 
@@ -110,6 +114,7 @@ async fn test_get_credential_list_success() {
     let mut repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
+    let revocation_list_repository = MockRevocationListRepository::default();
 
     let credentials = GetCredentialList {
         values: vec![generic_credential()],
@@ -128,6 +133,7 @@ async fn test_get_credential_list_success() {
         repository,
         credential_schema_repository,
         did_repository,
+        revocation_list_repository,
         generic_config(),
     );
 
@@ -163,6 +169,7 @@ async fn test_get_credential_success() {
     let mut repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
+    let revocation_list_repository = MockRevocationListRepository::default();
 
     let credential = generic_credential();
     {
@@ -178,6 +185,7 @@ async fn test_get_credential_success() {
         repository,
         credential_schema_repository,
         did_repository,
+        revocation_list_repository,
         generic_config(),
     );
 
@@ -193,6 +201,7 @@ async fn test_get_credential_fail_credential_schema_is_none() {
     let mut repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
+    let revocation_list_repository = MockRevocationListRepository::default();
 
     let mut credential = generic_credential();
     credential.schema = None;
@@ -209,6 +218,7 @@ async fn test_get_credential_fail_credential_schema_is_none() {
         repository,
         credential_schema_repository,
         did_repository,
+        revocation_list_repository,
         generic_config(),
     );
 
@@ -221,6 +231,7 @@ async fn test_share_credential_success() {
     let mut repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
+    let revocation_list_repository = MockRevocationListRepository::default();
 
     let credential = generic_credential();
     {
@@ -240,6 +251,7 @@ async fn test_share_credential_success() {
         repository,
         credential_schema_repository,
         did_repository,
+        revocation_list_repository,
         generic_config(),
     );
 
@@ -256,6 +268,7 @@ async fn test_share_credential_failed_invalid_state() {
     let mut repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
+    let revocation_list_repository = MockRevocationListRepository::default();
 
     let mut credential = generic_credential();
     credential.state.as_mut().unwrap()[0].state = CredentialStateEnum::Accepted;
@@ -272,6 +285,7 @@ async fn test_share_credential_failed_invalid_state() {
         repository,
         credential_schema_repository,
         did_repository,
+        revocation_list_repository,
         generic_config(),
     );
 
@@ -284,6 +298,7 @@ async fn test_create_credential_success() {
     let mut repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let revocation_list_repository = MockRevocationListRepository::default();
 
     let credential = generic_credential();
     {
@@ -311,6 +326,7 @@ async fn test_create_credential_success() {
         repository,
         credential_schema_repository,
         did_repository,
+        revocation_list_repository,
         generic_config(),
     );
 
@@ -339,6 +355,7 @@ async fn test_create_credential_one_required_claim_missing() {
     let mut repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let revocation_list_repository = MockRevocationListRepository::default();
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
@@ -389,6 +406,7 @@ async fn test_create_credential_one_required_claim_missing() {
         repository,
         credential_schema_repository,
         did_repository,
+        revocation_list_repository,
         generic_config(),
     );
 
@@ -436,6 +454,7 @@ async fn test_create_credential_one_required_claim_missing() {
 async fn test_create_credential_schema_deleted() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
+    let revocation_list_repository = MockRevocationListRepository::default();
 
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
@@ -459,6 +478,7 @@ async fn test_create_credential_schema_deleted() {
         MockCredentialRepository::default(),
         credential_schema_repository,
         did_repository,
+        revocation_list_repository,
         generic_config(),
     );
 

@@ -5,7 +5,8 @@ use serde::Serialize;
 
 use crate::{
     credential_formatter::{
-        FormatterError, VCCredentialClaimSchemaResponse, VCCredentialSchemaResponse,
+        CredentialStatus, FormatterError, VCCredentialClaimSchemaResponse,
+        VCCredentialSchemaResponse,
     },
     crypto::{hasher::Hasher, signer::Signer, Crypto},
     service::credential::dto::{CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO},
@@ -41,7 +42,10 @@ pub(super) fn claims_to_formatted_disclosure(
 pub(super) fn vc_from_credential(
     claims: &[String],
     credential: &CredentialDetailResponseDTO,
+    credential_status: Option<CredentialStatus>,
     hasher: &Arc<dyn Hasher + Send + Sync>,
+    additional_context: Vec<String>,
+    additional_types: Vec<String>,
 ) -> VC {
     let mut hashed_claims: Vec<String> = claims
         .iter()
@@ -50,10 +54,20 @@ pub(super) fn vc_from_credential(
 
     hashed_claims.sort_unstable();
 
+    let context = vec!["https://www.w3.org/2018/credentials/v1".to_owned()]
+        .into_iter()
+        .chain(additional_context)
+        .collect();
+
+    let types = vec!["VerifiableCredential".to_owned()]
+        .into_iter()
+        .chain(additional_types)
+        .collect();
+
     VC {
         vc: VCContent {
-            context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
-            r#type: vec!["VerifiableCredential".to_owned()],
+            context,
+            r#type: types,
             credential_subject: SDCredentialSubject {
                 claims: hashed_claims,
                 one_credential_schema: VCCredentialSchemaResponse {
@@ -71,6 +85,7 @@ pub(super) fn vc_from_credential(
                         .collect(),
                 },
             },
+            credential_status,
         },
     }
 }

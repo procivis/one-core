@@ -23,6 +23,7 @@ pub struct Model {
     pub issuer_did_id: String,
     pub holder_did_id: Option<String>,
     pub interaction_id: Option<String>,
+    pub revocation_list_id: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -67,6 +68,14 @@ pub enum Relation {
     Interaction,
     #[sea_orm(has_many = "super::key::Entity")]
     Key,
+    #[sea_orm(
+        belongs_to = "super::revocation_list::Entity",
+        from = "Column::RevocationListId",
+        to = "super::revocation_list::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    RevocationList,
 }
 
 impl Related<super::credential_claim::Entity> for Entity {
@@ -96,5 +105,11 @@ impl Related<super::interaction::Entity> for Entity {
 impl Related<super::key::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Key.def()
+    }
+}
+
+impl Related<super::revocation_list::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::RevocationList.def()
     }
 }

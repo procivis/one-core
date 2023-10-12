@@ -9,6 +9,7 @@ use one_core::model::{
     credential_schema::CredentialSchema,
     did::{Did, DidId},
     interaction::InteractionId,
+    revocation_list::RevocationListId,
 };
 use one_core::repository::error::DataLayerError;
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
@@ -97,6 +98,7 @@ impl TryFrom<entity::credential::Model> for Credential {
             holder_did: None,
             schema: None,
             interaction: None,
+            revocation_list: None,
         })
     }
 }
@@ -107,6 +109,7 @@ pub(super) fn request_to_active_model(
     issuer_did: Did,
     holder_did_id: Option<DidId>,
     interaction_id: Option<InteractionId>,
+    revocation_list_id: Option<RevocationListId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id.to_string()),
@@ -120,5 +123,6 @@ pub(super) fn request_to_active_model(
         issuer_did_id: Set(issuer_did.id.to_string()),
         holder_did_id: Set(holder_did_id.map(|did_id| did_id.to_string())),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
+        revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
     }
 }

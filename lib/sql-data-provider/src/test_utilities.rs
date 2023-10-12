@@ -43,6 +43,7 @@ pub async fn insert_credential(
         issuer_did_id: Set(did_id.to_string()),
         holder_did_id: Set(None),
         interaction_id: Set(None),
+        revocation_list_id: Set(None),
     }
     .insert(db)
     .await?;

@@ -164,7 +164,14 @@ impl SSIIssuerService {
         let token = self
             .formatter_provider
             .get_formatter(&format)?
-            .format_credentials(&credential.try_into()?, &holder_did.did, "Ed25519")?;
+            .format_credentials(
+                &credential.try_into()?,
+                None,
+                &holder_did.did,
+                "Ed25519",
+                vec![],
+                vec![],
+            )?;
 
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
