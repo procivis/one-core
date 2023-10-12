@@ -27,7 +27,7 @@ pub struct KeyResponseDTO {
 }
 
 #[derive(Clone, Debug)]
-pub struct GetKeyListItemResponseDTO {
+pub struct KeyListItemResponseDTO {
     pub id: Uuid,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
@@ -37,5 +37,5 @@ pub struct GetKeyListItemResponseDTO {
     pub storage_type: String,
 }
 
-pub type GetKeyListResponseDTO = GetListResponse<GetKeyListItemResponseDTO>;
+pub type GetKeyListResponseDTO = GetListResponse<KeyListItemResponseDTO>;
 pub type GetKeyQueryDTO = GetListQueryParams<SortableKeyColumn>;

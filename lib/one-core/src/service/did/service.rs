@@ -31,7 +31,7 @@ impl DidService {
                 id,
                 &DidRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
+                    keys: Some(KeyRelations::default()),
                 },
             )
             .await
@@ -98,12 +98,9 @@ impl DidService {
 
         let request = did_from_did_request(request, organisation, key_map, now)?;
 
-        let uuid = self
-            .did_repository
+        self.did_repository
             .create_did(request)
             .await
-            .map_err(ServiceError::from)?;
-
-        Ok(uuid)
+            .map_err(ServiceError::from)
     }
 }
