@@ -403,6 +403,53 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(RevocationList::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(RevocationList::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(RevocationList::CreatedDate)
+                            .custom::<CustomDateTime>(CustomDateTime(
+                                manager.get_database_backend(),
+                            ))
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RevocationList::LastModified)
+                            .custom::<CustomDateTime>(CustomDateTime(
+                                manager.get_database_backend(),
+                            ))
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RevocationList::Credentials)
+                            .binary()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RevocationList::IssuerDidId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-RevocationList-IssuerDidId")
+                            .from_tbl(RevocationList::Table)
+                            .from_col(RevocationList::IssuerDidId)
+                            .to_tbl(Did::Table)
+                            .to_col(Did::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(Credential::Table)
                     .if_not_exists()
                     .col(
@@ -900,53 +947,6 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
-        manager
-            .create_table(
-                Table::create()
-                    .table(RevocationList::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(RevocationList::Id)
-                            .char_len(36)
-                            .not_null()
-                            .primary_key(),
-                    )
-                    .col(
-                        ColumnDef::new(RevocationList::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(RevocationList::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(RevocationList::Credentials)
-                            .binary()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(RevocationList::IssuerDidId)
-                            .char_len(36)
-                            .not_null(),
-                    )
-                    .foreign_key(
-                        ForeignKeyCreateStatement::new()
-                            .name("fk-RevocationList-IssuerDidId")
-                            .from_tbl(RevocationList::Table)
-                            .from_col(RevocationList::IssuerDidId)
-                            .to_tbl(Did::Table)
-                            .to_col(Did::Id),
-                    )
-                    .to_owned(),
-            )
-            .await?;
-
         Ok(())
     }
 
@@ -974,6 +974,9 @@ impl MigrationTrait for Migration {
             .await?;
         manager
             .drop_table(Table::drop().table(Credential::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(RevocationList::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(Did::Table).to_owned())
