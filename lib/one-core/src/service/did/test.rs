@@ -5,7 +5,8 @@ use crate::{
         data_structure::{CoreConfig, DidEntity},
     },
     model::{
-        did::{Did, DidRelations, DidType, GetDidList},
+        did::{Did, DidRelations, DidType, GetDidList, KeyRole, RelatedKey},
+        key::{Key, KeyRelations},
         organisation::{Organisation, OrganisationRelations},
     },
     repository::mock::{
@@ -62,7 +63,20 @@ async fn test_get_did_exists() {
         did: "did:key:abc".to_string(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
-        keys: None,
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::Authentication,
+            key: Key {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                public_key: "public_key".to_string(),
+                name: "key_name".to_string(),
+                private_key: vec![],
+                storage_type: "INTERNAL".to_string(),
+                key_type: "EDDSA".to_string(),
+                organisation: None,
+            },
+        }]),
     };
     {
         let did_clone = did.clone();
@@ -73,7 +87,7 @@ async fn test_get_did_exists() {
                 eq(did.id.to_owned()),
                 eq(DidRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
+                    keys: Some(KeyRelations::default()),
                 }),
             )
             .returning(move |_, _| Ok(did_clone.clone()));
@@ -91,6 +105,8 @@ async fn test_get_did_exists() {
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.id, did.id);
+    assert_eq!(result.keys.authentication.len(), 1);
+    assert!(result.keys.assertion.is_empty());
 }
 
 #[tokio::test]

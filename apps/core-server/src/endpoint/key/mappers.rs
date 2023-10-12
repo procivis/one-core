@@ -1,9 +1,9 @@
-use one_core::service::key::dto::GetKeyListItemResponseDTO;
+use one_core::service::key::dto::KeyListItemResponseDTO;
 
-use super::dto::{GetKeyListItemResponseRestDTO, SortableKeyColumnRestDTO};
+use super::dto::{KeyListItemResponseRestDTO, SortableKeyColumnRestDTO};
 
-impl From<GetKeyListItemResponseDTO> for GetKeyListItemResponseRestDTO {
-    fn from(value: GetKeyListItemResponseDTO) -> Self {
+impl From<KeyListItemResponseDTO> for KeyListItemResponseRestDTO {
+    fn from(value: KeyListItemResponseDTO) -> Self {
         Self {
             id: value.id,
             created_date: value.created_date,

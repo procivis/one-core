@@ -5,7 +5,10 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{dto::common::GetListQueryParams, serialize::front_time};
+use crate::{
+    dto::common::GetListQueryParams, endpoint::key::dto::KeyListItemResponseRestDTO,
+    serialize::front_time,
+};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -50,6 +53,17 @@ pub struct DidResponseRestDTO {
     pub did_type: DidType,
     #[serde(rename = "method")]
     pub did_method: String,
+    pub keys: DidResponseKeysRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DidResponseKeysRestDTO {
+    pub authentication: Vec<KeyListItemResponseRestDTO>,
+    pub assertion: Vec<KeyListItemResponseRestDTO>,
+    pub key_agreement: Vec<KeyListItemResponseRestDTO>,
+    pub capability_invocation: Vec<KeyListItemResponseRestDTO>,
+    pub capability_delegation: Vec<KeyListItemResponseRestDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]

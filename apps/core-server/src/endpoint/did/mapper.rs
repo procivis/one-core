@@ -1,8 +1,13 @@
 use super::dto::{
-    CreateDidRequestRestDTO, DidListItemResponseRestDTO, DidResponseRestDTO, DidType,
-    SortableDidColumnRestDTO,
+    CreateDidRequestRestDTO, DidListItemResponseRestDTO, DidResponseKeysRestDTO,
+    DidResponseRestDTO, DidType, SortableDidColumnRestDTO,
 };
-use one_core::service::did::dto::{CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO};
+use one_core::{
+    common_mapper::vector_into,
+    service::did::dto::{
+        CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
+    },
+};
 
 impl From<DidResponseDTO> for DidResponseRestDTO {
     fn from(value: DidResponseDTO) -> Self {
@@ -15,6 +20,19 @@ impl From<DidResponseDTO> for DidResponseRestDTO {
             did: value.did,
             did_type: value.did_type.into(),
             did_method: value.did_method,
+            keys: value.keys.into(),
+        }
+    }
+}
+
+impl From<DidResponseKeysDTO> for DidResponseKeysRestDTO {
+    fn from(value: DidResponseKeysDTO) -> Self {
+        Self {
+            authentication: vector_into(value.authentication),
+            assertion: vector_into(value.assertion),
+            key_agreement: vector_into(value.key_agreement),
+            capability_invocation: vector_into(value.capability_invocation),
+            capability_delegation: vector_into(value.capability_delegation),
         }
     }
 }

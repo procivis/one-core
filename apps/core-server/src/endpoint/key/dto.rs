@@ -44,7 +44,7 @@ pub struct KeyResponseRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GetKeyListItemResponseRestDTO {
+pub struct KeyListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]

@@ -4,7 +4,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::dto::{
-    CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, GetDidListResponseDTO,
+    CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
+    GetDidListResponseDTO,
 };
 use crate::{
     common_mapper::vector_into,
@@ -13,7 +14,7 @@ use crate::{
         key::{Key, KeyId},
         organisation::Organisation,
     },
-    service::error::ServiceError,
+    service::{error::ServiceError, key::dto::KeyListItemResponseDTO},
 };
 
 impl TryFrom<Did> for DidResponseDTO {
@@ -22,6 +23,17 @@ impl TryFrom<Did> for DidResponseDTO {
         let organisation = value.organisation.ok_or(ServiceError::MappingError(
             "organisation is None".to_string(),
         ))?;
+
+        let keys = value
+            .keys
+            .ok_or(ServiceError::MappingError("keys is None".to_string()))?;
+        let filter_keys = |role: KeyRole| -> Vec<KeyListItemResponseDTO> {
+            keys.iter()
+                .filter(|key| key.role == role)
+                .map(|key| key.key.to_owned().into())
+                .collect()
+        };
+
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
@@ -31,6 +43,13 @@ impl TryFrom<Did> for DidResponseDTO {
             did: value.did,
             did_type: value.did_type,
             did_method: value.did_method,
+            keys: DidResponseKeysDTO {
+                authentication: filter_keys(KeyRole::Authentication),
+                assertion: filter_keys(KeyRole::AssertionMethod),
+                key_agreement: filter_keys(KeyRole::KeyAgreement),
+                capability_invocation: filter_keys(KeyRole::CapabilityInvocation),
+                capability_delegation: filter_keys(KeyRole::CapabilityDelegation),
+            },
         })
     }
 }

@@ -12,7 +12,7 @@ use crate::{
     service::key::dto::KeyRequestDTO,
 };
 
-use super::dto::{GetKeyListItemResponseDTO, GetKeyListResponseDTO};
+use super::dto::{GetKeyListResponseDTO, KeyListItemResponseDTO};
 
 pub(super) fn from_create_request(
     request: KeyRequestDTO,
@@ -68,9 +68,9 @@ impl From<GetKeyList> for GetKeyListResponseDTO {
     }
 }
 
-impl From<Key> for GetKeyListItemResponseDTO {
+impl From<Key> for KeyListItemResponseDTO {
     fn from(value: Key) -> Self {
-        GetKeyListItemResponseDTO {
+        Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,

@@ -120,12 +120,13 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 endpoint::did::dto::CreateDidRequestRestDTO,
                 endpoint::did::dto::CreateDidRequestKeysRestDTO,
                 endpoint::did::dto::DidResponseRestDTO,
+                endpoint::did::dto::DidResponseKeysRestDTO,
                 endpoint::did::dto::DidListItemResponseRestDTO,
                 endpoint::did::dto::DidType,
 
                 endpoint::key::dto::KeyRequestRestDTO,
                 endpoint::key::dto::KeyResponseRestDTO,
-                endpoint::key::dto::GetKeyListItemResponseRestDTO,
+                endpoint::key::dto::KeyListItemResponseRestDTO,
 
                 endpoint::proof::dto::ProofStateRestEnum,
                 endpoint::proof::dto::CreateProofRequestRestDTO,
