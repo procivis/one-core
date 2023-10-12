@@ -15,6 +15,7 @@ pub mod proof_claim;
 pub mod proof_schema;
 pub mod proof_schema_claim_schema;
 pub mod proof_state;
+pub mod revocation_list;
 
 pub use claim::Entity as Claim;
 pub use claim_schema::Entity as ClaimSchema;

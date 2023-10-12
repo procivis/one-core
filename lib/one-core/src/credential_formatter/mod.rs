@@ -57,6 +57,7 @@ pub struct DetailCredential {
     pub issuer_did: Option<String>,
     pub subject: Option<String>,
     pub claims: CredentialSubject,
+    pub status: Option<CredentialStatus>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -99,12 +100,25 @@ pub struct PresentationCredential {
     pub disclosed_keys: Vec<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialStatus {
+    pub id: String,
+    pub r#type: String,
+    pub status_purpose: String,
+    #[serde(flatten)]
+    pub additional_fields: HashMap<String, String>,
+}
+
 pub trait CredentialFormatter {
     fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,
+        credential_status: Option<CredentialStatus>,
         holder_did: &str,
         algorithm: &str,
+        additional_context: Vec<String>,
+        additional_types: Vec<String>,
     ) -> Result<String, FormatterError>;
 
     fn extract_credentials(&self, credentials: &str) -> Result<DetailCredential, FormatterError>;

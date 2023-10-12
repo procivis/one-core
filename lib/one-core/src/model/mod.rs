@@ -9,3 +9,4 @@ pub mod key;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
+pub mod revocation_list;

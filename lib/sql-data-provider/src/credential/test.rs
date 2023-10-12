@@ -4,6 +4,7 @@ use crate::{
     test_utilities::*,
 };
 use mockall::predicate::{always, eq};
+use one_core::repository::mock::revocation_list_repository::MockRevocationListRepository;
 use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
@@ -178,6 +179,7 @@ async fn test_create_credential_success() {
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(MockDidRepository::default()),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
     };
 
     let credential_id = Uuid::new_v4();
@@ -237,6 +239,7 @@ async fn test_create_credential_success() {
             holder_did: None,
             schema: Some(credential_schema),
             interaction: None,
+            revocation_list: None,
         })
         .await;
 
@@ -276,6 +279,7 @@ async fn test_create_credential_empty_claims() {
         claim_repository: Arc::from(MockClaimRepository::default()),
         did_repository: Arc::from(MockDidRepository::default()),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
     };
 
     let credential_id = Uuid::new_v4();
@@ -293,6 +297,7 @@ async fn test_create_credential_empty_claims() {
             holder_did: None,
             schema: Some(credential_schema),
             interaction: None,
+            revocation_list: None,
         })
         .await;
 
@@ -332,6 +337,7 @@ async fn test_create_credential_already_exists() {
         claim_repository: Arc::from(MockClaimRepository::default()),
         did_repository: Arc::from(MockDidRepository::default()),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
     };
 
     let claims = vec![Claim {
@@ -360,6 +366,7 @@ async fn test_create_credential_already_exists() {
             holder_did: None,
             schema: Some(credential_schema),
             interaction: None,
+            revocation_list: None,
         })
         .await;
 
@@ -407,6 +414,7 @@ async fn test_get_credential_list_success() {
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
     };
 
     let credentials = provider
@@ -545,6 +553,7 @@ async fn test_get_credential_success() {
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
     };
 
     let credential = provider
@@ -562,6 +571,7 @@ async fn test_get_credential_success() {
                 issuer_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
                 interaction: Some(InteractionRelations::default()),
+                revocation_list: None, // TODO: Add check for this
             },
         )
         .await;
@@ -598,6 +608,7 @@ async fn test_get_credential_fail_not_found() {
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
     };
 
     let credential = provider
@@ -633,6 +644,7 @@ async fn test_update_credential_success() {
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
     };
 
     let credential_before_update = provider

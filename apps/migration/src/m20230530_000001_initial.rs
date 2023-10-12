@@ -453,6 +453,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Credential::HolderDidId).char_len(36))
                     .col(ColumnDef::new(Credential::InteractionId).char_len(36))
+                    .col(ColumnDef::new(Credential::RevocationListId).char_len(36))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-Credential-CredentialSchemaId")
@@ -484,6 +485,14 @@ impl MigrationTrait for Migration {
                             .from_col(Credential::InteractionId)
                             .to_tbl(Interaction::Table)
                             .to_col(Interaction::Id),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-Credential-RevocationListId")
+                            .from_tbl(Credential::Table)
+                            .from_col(Credential::RevocationListId)
+                            .to_tbl(RevocationList::Table)
+                            .to_col(RevocationList::Id),
                     )
                     .to_owned(),
             )
@@ -724,7 +733,12 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Key::Table)
                     .if_not_exists()
-                    .col(ColumnDef::new(Key::DidId).char_len(36).not_null())
+                    .col(
+                        ColumnDef::new(Key::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
                     .col(
                         ColumnDef::new(Key::CreatedDate)
                             .custom::<CustomDateTime>(CustomDateTime(
@@ -739,30 +753,13 @@ impl MigrationTrait for Migration {
                             ))
                             .not_null(),
                     )
+                    .col(ColumnDef::new(Key::Name).string().not_null())
                     .col(ColumnDef::new(Key::PublicKey).string().not_null())
-                    .col(ColumnDef::new(Key::PrivateKey).string().not_null())
+                    .col(ColumnDef::new(Key::PrivateKey).binary().not_null())
                     .col(ColumnDef::new(Key::StorageType).string().not_null())
-                    .col(
-                        ColumnDef::new(Key::KeyType)
-                            .enumeration(KeyType::Table, [KeyType::Rsa4096, KeyType::Ed25519])
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Key::KeyType).string().not_null())
                     .col(ColumnDef::new(Key::CredentialId).char_len(36))
-                    .primary_key(
-                        Index::create()
-                            .name("pk-Key")
-                            .col(Key::DidId)
-                            .col(Key::CreatedDate)
-                            .primary(),
-                    )
-                    .foreign_key(
-                        ForeignKeyCreateStatement::new()
-                            .name("fk-Key-DidId")
-                            .from_tbl(Key::Table)
-                            .from_col(Key::DidId)
-                            .to_tbl(Did::Table)
-                            .to_col(Did::Id),
-                    )
+                    .col(ColumnDef::new(Key::OrganisationId).char_len(36).not_null())
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
                             .name("fk-Key-CredentialId")
@@ -770,6 +767,63 @@ impl MigrationTrait for Migration {
                             .from_col(Key::CredentialId)
                             .to_tbl(Credential::Table)
                             .to_col(Credential::Id),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-Key-OrganisationId")
+                            .from_tbl(Key::Table)
+                            .from_col(Key::OrganisationId)
+                            .to_tbl(Organisation::Table)
+                            .to_col(Organisation::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(KeyDid::Table)
+                    .if_not_exists()
+                    .col(ColumnDef::new(KeyDid::DidId).char_len(36).not_null())
+                    .col(ColumnDef::new(KeyDid::KeyId).char_len(36).not_null())
+                    .col(
+                        ColumnDef::new(KeyDid::Role)
+                            .enumeration(
+                                KeyRole::Table,
+                                [
+                                    KeyRole::Authentication,
+                                    KeyRole::AssertionMethod,
+                                    KeyRole::KeyAgreement,
+                                    KeyRole::CapabilityInvocation,
+                                    KeyRole::CapabilityDelegation,
+                                ],
+                            )
+                            .not_null(),
+                    )
+                    .primary_key(
+                        Index::create()
+                            .name("pk-KeyDid")
+                            .col(KeyDid::DidId)
+                            .col(KeyDid::KeyId)
+                            .col(KeyDid::Role)
+                            .primary(),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-KeyDid-DidId")
+                            .from_tbl(KeyDid::Table)
+                            .from_col(KeyDid::DidId)
+                            .to_tbl(Did::Table)
+                            .to_col(Did::Id),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-KeyDid-KeyId")
+                            .from_tbl(KeyDid::Table)
+                            .from_col(KeyDid::KeyId)
+                            .to_tbl(Key::Table)
+                            .to_col(Key::Id),
                     )
                     .to_owned(),
             )
@@ -846,6 +900,53 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_table(
+                Table::create()
+                    .table(RevocationList::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(RevocationList::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(RevocationList::CreatedDate)
+                            .custom::<CustomDateTime>(CustomDateTime(
+                                manager.get_database_backend(),
+                            ))
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RevocationList::LastModified)
+                            .custom::<CustomDateTime>(CustomDateTime(
+                                manager.get_database_backend(),
+                            ))
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RevocationList::Credentials)
+                            .binary()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(RevocationList::IssuerDidId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-RevocationList-IssuerDidId")
+                            .from_tbl(RevocationList::Table)
+                            .from_col(RevocationList::IssuerDidId)
+                            .to_tbl(Did::Table)
+                            .to_col(Did::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
@@ -876,6 +977,9 @@ impl MigrationTrait for Migration {
             .await?;
         manager
             .drop_table(Table::drop().table(Did::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(KeyDid::Table).to_owned())
             .await?;
 
         manager
@@ -1003,6 +1107,7 @@ pub enum Credential {
     IssuerDidId,
     HolderDidId,
     InteractionId,
+    RevocationListId,
 }
 
 #[derive(Iden)]
@@ -1107,23 +1212,49 @@ pub enum Claim {
 #[derive(Iden)]
 pub enum Key {
     Table,
-    DidId,
+    Id,
     CreatedDate,
     LastModified,
+    Name,
     PublicKey,
     PrivateKey,
     StorageType,
     KeyType,
     CredentialId,
+    OrganisationId,
 }
 
 #[derive(Iden)]
-pub enum KeyType {
+pub enum KeyDid {
     Table,
-    #[iden = "RSA_4096"]
-    Rsa4096,
-    #[iden = "ED25519"]
-    Ed25519,
+    KeyId,
+    DidId,
+    Role,
+}
+
+#[derive(Iden)]
+pub enum KeyRole {
+    Table,
+    #[iden = "AUTHENTICATION"]
+    Authentication,
+    #[iden = "ASSERTION_METHOD"]
+    AssertionMethod,
+    #[iden = "KEY_AGREEMENT"]
+    KeyAgreement,
+    #[iden = "CAPABILITY_INVOCATION"]
+    CapabilityInvocation,
+    #[iden = "CAPABILITY_DELEGATION"]
+    CapabilityDelegation,
+}
+
+#[derive(Iden)]
+pub enum RevocationList {
+    Table,
+    Id,
+    CreatedDate,
+    LastModified,
+    Credentials,
+    IssuerDidId,
 }
 
 #[derive(Iden)]

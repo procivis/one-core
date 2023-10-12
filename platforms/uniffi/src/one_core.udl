@@ -10,7 +10,7 @@ enum ConfigParseError {
 
 [Error]
 enum ServiceError {
-  "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "ConfigValidationError", "TransportProtocolError", "FormatterError", "Other",
+  "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "ConfigValidationError", "TransportProtocolError", "FormatterError", "BitstringError", "Other",
 };
 
 dictionary VersionBindingDTO {

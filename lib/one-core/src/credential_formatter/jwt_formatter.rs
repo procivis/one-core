@@ -6,8 +6,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    CredentialFormatter, CredentialPresentation, CredentialSubject, DetailCredential,
-    FormatterError, PresentationCredential, VCCredentialClaimSchemaResponse,
+    CredentialFormatter, CredentialPresentation, CredentialStatus, CredentialSubject,
+    DetailCredential, FormatterError, PresentationCredential, VCCredentialClaimSchemaResponse,
     VCCredentialSchemaResponse,
 };
 
@@ -20,6 +20,8 @@ pub struct VCContent {
     pub context: Vec<String>,
     pub r#type: Vec<String>,
     pub credential_subject: CredentialSubject,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_status: Option<CredentialStatus>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -63,11 +65,19 @@ impl CredentialFormatter for JWTFormatter {
     fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO, // Todo define input/output format
+        credential_status: Option<CredentialStatus>,
         holder_did: &str,
         _algorithm: &str,
+        additional_context: Vec<String>,
+        additional_types: Vec<String>,
     ) -> Result<String, FormatterError> {
         let key = get_temp_keys();
-        let custom_claims: VC = credential.into();
+        let custom_claims: VC = format_vc(
+            credential,
+            credential_status,
+            additional_context,
+            additional_types,
+        );
 
         let claims = Claims::with_custom_claims(custom_claims, Duration::from_days(365 * 2))
             // FIXME Issuer did should probably not be optional.
@@ -140,38 +150,51 @@ impl CredentialFormatter for JWTFormatter {
     }
 }
 
-// Format credentials
-impl From<&CredentialDetailResponseDTO> for VC {
-    fn from(value: &CredentialDetailResponseDTO) -> Self {
-        let claims: HashMap<String, String> = value
-            .claims
-            .iter()
-            .map(|c| (c.schema.key.clone(), c.value.clone()))
-            .collect();
+fn format_vc(
+    credential: &CredentialDetailResponseDTO,
+    credential_status: Option<CredentialStatus>,
+    additional_context: Vec<String>,
+    additional_types: Vec<String>,
+) -> VC {
+    let claims: HashMap<String, String> = credential
+        .claims
+        .iter()
+        .map(|c| (c.schema.key.clone(), c.value.clone()))
+        .collect();
 
-        Self {
-            vc: VCContent {
-                context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
-                r#type: vec!["VerifiableCredential".to_owned()],
-                credential_subject: CredentialSubject {
-                    values: claims,
-                    one_credential_schema: VCCredentialSchemaResponse {
-                        name: value.schema.name.clone(),
-                        id: value.schema.id.to_string(),
-                        claims: value
-                            .claims
-                            .iter()
-                            .map(|claim| VCCredentialClaimSchemaResponse {
-                                key: claim.schema.key.clone(),
-                                id: claim.schema.id.to_string(),
-                                datatype: claim.schema.datatype.to_owned(),
-                                required: claim.schema.required,
-                            })
-                            .collect(),
-                    },
+    let context = vec!["https://www.w3.org/2018/credentials/v1".to_owned()]
+        .into_iter()
+        .chain(additional_context)
+        .collect();
+
+    let types = vec!["VerifiableCredential".to_owned()]
+        .into_iter()
+        .chain(additional_types)
+        .collect();
+
+    VC {
+        vc: VCContent {
+            context,
+            r#type: types,
+            credential_subject: CredentialSubject {
+                values: claims,
+                one_credential_schema: VCCredentialSchemaResponse {
+                    name: credential.schema.name.clone(),
+                    id: credential.schema.id.to_string(),
+                    claims: credential
+                        .claims
+                        .iter()
+                        .map(|claim| VCCredentialClaimSchemaResponse {
+                            key: claim.schema.key.clone(),
+                            id: claim.schema.id.to_string(),
+                            datatype: claim.schema.datatype.to_owned(),
+                            required: claim.schema.required,
+                        })
+                        .collect(),
                 },
             },
-        }
+            credential_status,
+        },
     }
 }
 
@@ -201,6 +224,7 @@ impl From<JWTClaims<VC>> for DetailCredential {
             issuer_did: value.issuer,
             subject: value.subject,
             claims: value.custom.vc.credential_subject,
+            status: value.custom.vc.credential_status,
         }
     }
 }

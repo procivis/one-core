@@ -1,5 +1,5 @@
 use crate::{
-    common::calculate_pages_count,
+    common::{calculate_pages_count, get_did},
     credential::{
         mapper::{get_credential_state_active_model, request_to_active_model},
         CredentialProvider,
@@ -21,14 +21,13 @@ use one_core::{
             UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::{Did, DidRelations},
+        did::DidRelations,
         interaction::InteractionId,
         organisation::OrganisationRelations,
     },
     repository::{
         claim_repository::ClaimRepository, credential_repository::CredentialRepository,
-        credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-        error::DataLayerError,
+        credential_schema_repository::CredentialSchemaRepository, error::DataLayerError,
     },
 };
 use sea_orm::{
@@ -91,17 +90,6 @@ async fn get_claims(
         .collect::<Result<Vec<_>, _>>()?;
 
     claim_repository.get_claim_list(ids, relations).await
-}
-
-async fn get_did(
-    did_id: &Uuid,
-    relations: &Option<DidRelations>,
-    repository: Arc<dyn DidRepository + Send + Sync>,
-) -> Result<Option<Did>, DataLayerError> {
-    match relations {
-        None => Ok(None),
-        Some(did_relations) => Ok(Some(repository.get_did(did_id, did_relations).await?)),
-    }
 }
 
 impl CredentialProvider {
@@ -189,12 +177,30 @@ impl CredentialProvider {
             None
         };
 
+        let revocation_list = if let Some(revocation_list_relations) = &relations.revocation_list {
+            match &credential.revocation_list_id {
+                None => None,
+                Some(revocation_list_id) => {
+                    let revocation_list_id = Uuid::from_str(revocation_list_id)
+                        .map_err(|_| DataLayerError::MappingError)?;
+                    Some(
+                        self.revocation_list_repository
+                            .get_revocation_list(&revocation_list_id, revocation_list_relations)
+                            .await?,
+                    )
+                }
+            }
+        } else {
+            None
+        };
+
         Ok(Credential {
             state,
             issuer_did,
             holder_did,
             claims,
             schema,
+            revocation_list,
             interaction,
             ..credential.try_into()?
         })
@@ -301,15 +307,25 @@ impl CredentialRepository for CredentialProvider {
             .interaction
             .as_ref()
             .map(|interaction| interaction.id);
+        let revocation_list_id = request
+            .revocation_list
+            .as_ref()
+            .map(|revocation_list| revocation_list.id);
 
-        let credential =
-            request_to_active_model(&request, schema, issuer_did, holder_did_id, interaction_id)
-                .insert(&self.db)
-                .await
-                .map_err(|e| match e.sql_err() {
-                    Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
-                    _ => DataLayerError::GeneralRuntimeError(e.to_string()),
-                })?;
+        let credential = request_to_active_model(
+            &request,
+            schema,
+            issuer_did,
+            holder_did_id,
+            interaction_id,
+            revocation_list_id,
+        )
+        .insert(&self.db)
+        .await
+        .map_err(|e| match e.sql_err() {
+            Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
+            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+        })?;
 
         if !claims.is_empty() {
             self.claim_repository
@@ -373,28 +389,14 @@ impl CredentialRepository for CredentialProvider {
         self.credentials_to_repository(credentials, relations).await
     }
 
-    async fn get_credentials_by_claim_names(
+    async fn get_credentials_by_issuer_did_id(
         &self,
-        claim_names: Vec<String>,
+        issuer_did_id: &Uuid,
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
-            .join(
-                JoinType::LeftJoin,
-                credential::Relation::CredentialClaim.def(),
-            )
-            .join(JoinType::LeftJoin, credential_claim::Relation::Claim.def())
-            .join(
-                JoinType::LeftJoin,
-                claim::Relation::ClaimSchema
-                    .def()
-                    .on_condition(move |_left, _right| {
-                        Expr::col(claim_schema::Column::Key)
-                            .is_in(&claim_names)
-                            .into_condition()
-                    }),
-            )
-            .distinct()
+            .filter(credential::Column::IssuerDidId.eq(&issuer_did_id.to_string()))
+            .order_by_asc(credential::Column::CreatedDate)
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
@@ -485,5 +487,34 @@ impl CredentialRepository for CredentialProvider {
         })?;
 
         Ok(())
+    }
+
+    async fn get_credentials_by_claim_names(
+        &self,
+        claim_names: Vec<String>,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError> {
+        let credentials = credential::Entity::find()
+            .join(
+                JoinType::LeftJoin,
+                credential::Relation::CredentialClaim.def(),
+            )
+            .join(JoinType::LeftJoin, credential_claim::Relation::Claim.def())
+            .join(
+                JoinType::LeftJoin,
+                claim::Relation::ClaimSchema
+                    .def()
+                    .on_condition(move |_left, _right| {
+                        Expr::col(claim_schema::Column::Key)
+                            .is_in(&claim_names)
+                            .into_condition()
+                    }),
+            )
+            .distinct()
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        self.credentials_to_repository(credentials, relations).await
     }
 }

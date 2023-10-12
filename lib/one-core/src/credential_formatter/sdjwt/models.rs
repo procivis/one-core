@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::credential_formatter::VCCredentialSchemaResponse;
+use crate::credential_formatter::{CredentialStatus, VCCredentialSchemaResponse};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct JWTHeader {
@@ -87,6 +87,8 @@ pub struct VCContent {
     pub context: Vec<String>,
     pub r#type: Vec<String>,
     pub credential_subject: SDCredentialSubject,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_status: Option<CredentialStatus>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

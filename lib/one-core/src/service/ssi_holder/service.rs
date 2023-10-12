@@ -579,6 +579,7 @@ impl SSIHolderService {
                 holder_did: Some(holder_did),
                 schema: Some(credential_schema),
                 interaction: Some(interaction),
+                revocation_list: None,
             })
             .await?;
 

@@ -34,6 +34,7 @@ pub mod model;
 pub mod repository;
 pub mod service;
 
+pub mod bitstring;
 pub mod common_mapper;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
@@ -130,6 +131,7 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_did_repository(),
+                data_provider.get_revocation_list_repository(),
                 config.clone(),
             ),
             did_service: DidService::new(

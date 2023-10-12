@@ -25,6 +25,8 @@ rand = "0.8.5"
 rand_chacha = "0.3"
 sha2 = "0.10"
 ed25519-compact = { version = "2.0.4" }
+bit-vec = "0.6.3"
+flate2 = "1.0.27"
 
 regex = "1.8.4"
 reqwest = { version = "0.11.18", default-features = false, features = [

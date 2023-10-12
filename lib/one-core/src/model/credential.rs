@@ -1,13 +1,14 @@
-use crate::model::common::{GetListQueryParams, GetListResponse};
-use crate::model::did::DidId;
+use crate::model::revocation_list::RevocationListRelations;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
     claim::{Claim, ClaimRelations},
+    common::{GetListQueryParams, GetListResponse},
     credential_schema::{CredentialSchema, CredentialSchemaRelations},
-    did::{Did, DidRelations},
+    did::{Did, DidId, DidRelations},
     interaction::{Interaction, InteractionRelations},
+    revocation_list::RevocationList,
 };
 
 pub type CredentialId = Uuid;
@@ -28,6 +29,7 @@ pub struct Credential {
     pub holder_did: Option<Did>,
     pub schema: Option<CredentialSchema>,
     pub interaction: Option<Interaction>,
+    pub revocation_list: Option<RevocationList>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -38,6 +40,7 @@ pub struct CredentialRelations {
     pub holder_did: Option<DidRelations>,
     pub schema: Option<CredentialSchemaRelations>,
     pub interaction: Option<InteractionRelations>,
+    pub revocation_list: Option<RevocationListRelations>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -11,6 +11,7 @@ pub mod key_repository;
 pub mod organisation_repository;
 pub mod proof_repository;
 pub mod proof_schema_repository;
+pub mod revocation_list_repository;
 
 use std::sync::Arc;
 
@@ -24,6 +25,7 @@ use key_repository::KeyRepository;
 use organisation_repository::OrganisationRepository;
 use proof_repository::ProofRepository;
 use proof_schema_repository::ProofSchemaRepository;
+use revocation_list_repository::RevocationListRepository;
 
 use self::interaction_repository::InteractionRepository;
 
@@ -39,6 +41,7 @@ pub trait DataRepository {
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository + Send + Sync>;
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync>;
     fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository + Send + Sync>;
+    fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository + Send + Sync>;
 }
 
 #[cfg(any(test, feature = "mock"))]

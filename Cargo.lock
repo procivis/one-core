@@ -399,6 +399,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e0d60973d9320722cb1206f412740e162a33b8547ea8d6be75d7cff237c7a85"
 
 [[package]]
+name = "bit-vec"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2163,8 +2169,10 @@ version = "0.1.0"
 dependencies = [
  "age",
  "async-trait",
+ "bit-vec",
  "ct-codecs",
  "ed25519-compact",
+ "flate2",
  "jwt-simple",
  "mockall",
  "rand 0.8.5",

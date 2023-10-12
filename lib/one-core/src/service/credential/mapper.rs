@@ -194,6 +194,7 @@ pub(super) fn from_create_request(
         holder_did: None,
         schema: Some(schema),
         interaction: None,
+        revocation_list: None,
     }
 }
 
