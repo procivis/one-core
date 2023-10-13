@@ -13,7 +13,6 @@ use one_core::{
 impl OneCoreBinding {
     pub fn create_local_key_did(
         &self,
-        did: String,
         organisation_id: String,
         key_id: String,
     ) -> Result<String, ServiceError> {
@@ -24,7 +23,6 @@ impl OneCoreBinding {
                 .create_did(CreateDidRequestDTO {
                     name: "local".to_string(),
                     organisation_id: into_uuid(&organisation_id)?,
-                    did,
                     did_type: DidType::Local,
                     did_method: "KEY".to_string(),
                     keys: CreateDidRequestKeysDTO {

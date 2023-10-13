@@ -194,7 +194,6 @@ async fn test_create_did_success() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
-        did: "did:key:abc".to_string(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
@@ -253,7 +252,6 @@ async fn test_create_did_value_already_exists() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
-        did: "did:key:abc".to_string(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
@@ -285,10 +283,6 @@ async fn test_create_did_value_already_exists() {
     repository
         .expect_get_did_by_value()
         .times(1)
-        .with(
-            eq(create_request.did.to_owned()),
-            eq(DidRelations::default()),
-        )
         .returning(move |_, _| Ok(did.clone()));
 
     let did_config = HashMap::<String, DidEntity>::from([(
@@ -316,7 +310,6 @@ async fn test_create_did_value_invalid_did_method() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
-        did: "did:key:abc".to_string(),
         did_type: DidType::Local,
         did_method: "UNKNOWN".to_string(),
         keys: CreateDidRequestKeysDTO {

@@ -81,6 +81,7 @@ impl From<GetDidList> for GetDidListResponseDTO {
 pub(crate) fn did_from_did_request(
     request: CreateDidRequestDTO,
     organisation: Organisation,
+    did_value: String,
     key_map: HashMap<KeyId, Key>,
     now: OffsetDateTime,
 ) -> Result<Did, ServiceError> {
@@ -112,7 +113,7 @@ pub(crate) fn did_from_did_request(
         last_modified: now,
         name: request.name,
         organisation: Some(organisation),
-        did: request.did,
+        did: did_value,
         did_type: request.did_type,
         did_method: request.did_method,
         keys: Some(keys),

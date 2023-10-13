@@ -65,7 +65,10 @@ impl DidService {
     pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, ServiceError> {
         validate_did_method(&request.did_method, &self.config.did)?;
 
-        if did_already_exists(&self.did_repository, &request.did).await? {
+        // TODO: proper did generation
+        let did_value = format!("did:{}:{}", request.did_method, request.name);
+
+        if did_already_exists(&self.did_repository, &did_value).await? {
             return Err(ServiceError::AlreadyExists);
         }
 
@@ -96,7 +99,7 @@ impl DidService {
             key_map.insert(key_id, key);
         }
 
-        let request = did_from_did_request(request, organisation, key_map, now)?;
+        let request = did_from_did_request(request, organisation, did_value, key_map, now)?;
 
         self.did_repository
             .create_did(request)
