@@ -135,9 +135,31 @@ pub struct PresentationDefinitionRuleBindingDTO {
 }
 
 pub struct KeyRequestBindingDTO {
+    pub organisation_id: String,
     pub key_type: String,
     pub key_params: HashMap<String, String>,
     pub name: String,
     pub storage_type: String,
     pub storage_params: HashMap<String, String>,
+}
+
+pub enum DidTypeBindingEnum {
+    Local,
+    Remote,
+}
+
+pub struct DidRequestBindingDTO {
+    pub organisation_id: String,
+    pub name: String,
+    pub did_method: String,
+    pub did_type: DidTypeBindingEnum,
+    pub keys: DidRequestKeysBindingDTO,
+}
+
+pub struct DidRequestKeysBindingDTO {
+    pub authentication: Vec<String>,
+    pub assertion: Vec<String>,
+    pub key_agreement: Vec<String>,
+    pub capability_invocation: Vec<String>,
+    pub capability_delegation: Vec<String>,
 }
