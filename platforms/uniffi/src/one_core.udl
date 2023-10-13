@@ -144,11 +144,32 @@ dictionary PresentationDefinitionRuleBindingDTO {
 };
 
 dictionary KeyRequestBindingDTO {
+    string organisation_id;
     string key_type;
     record<string, string> key_params;
     string name;
     string storage_type;
     record<string, string> storage_params;
+};
+
+enum DidTypeBindingEnum {
+  "Local", "Remote"
+};
+
+dictionary DidRequestKeysBindingDTO {
+    sequence<string> authentication;
+    sequence<string> assertion;
+    sequence<string> key_agreement;
+    sequence<string> capability_invocation;
+    sequence<string> capability_delegation;
+};
+
+dictionary DidRequestBindingDTO {
+    string organisation_id;
+    string name;
+    string did_method;
+    DidTypeBindingEnum did_type;
+    DidRequestKeysBindingDTO keys;
 };
 
 interface OneCoreBinding {
@@ -158,10 +179,10 @@ interface OneCoreBinding {
   string create_organisation(string? uuid);
 
   [Throws=ServiceError]
-  string generate_key(string organisation_id, [ByRef] KeyRequestBindingDTO request);
+  string generate_key(KeyRequestBindingDTO request);
 
   [Throws=ServiceError]
-  string create_local_key_did(string organisation_id, string key_id);
+  string create_did(DidRequestBindingDTO request);
 
   [Throws=ServiceError]
   HandleInvitationResponseBindingEnum handle_invitation(string url, string did_id);

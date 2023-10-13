@@ -4,18 +4,19 @@ use super::dto::{
 };
 use crate::{
     dto::{
+        DidRequestBindingDTO, DidRequestKeysBindingDTO, DidTypeBindingEnum,
         HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
         PresentationDefinitionBindingDTO, PresentationDefinitionFieldBindingDTO,
         PresentationDefinitionRequestGroupBindingDTO,
         PresentationDefinitionRequestedCredentialBindingDTO, PresentationDefinitionRuleBindingDTO,
         PresentationDefinitionRuleTypeBindingEnum, PresentationSubmitCredentialRequestBindingDTO,
     },
-    utils::TimestampFormat,
+    utils::{into_uuid, TimestampFormat},
     CredentialDetailBindingDTO, CredentialListBindingDTO,
 };
 use one_core::{
     common_mapper::vector_into,
-    model::organisation::OrganisationId,
+    model::did::DidType,
     service::{
         credential::dto::{
             CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialStateEnum,
@@ -23,6 +24,7 @@ use one_core::{
             GetCredentialListResponseDTO,
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
+        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
         error::ServiceError,
         key::dto::KeyRequestDTO,
         proof::dto::{
@@ -255,16 +257,55 @@ impl From<PresentationDefinitionFieldDTO> for PresentationDefinitionFieldBinding
     }
 }
 
-pub fn from_generate_key_request(
-    organisation_id: OrganisationId,
-    request: &KeyRequestBindingDTO,
-) -> KeyRequestDTO {
-    KeyRequestDTO {
-        organisation_id,
-        key_type: request.key_type.to_owned(),
-        key_params: json!(request.key_params),
-        name: request.name.to_owned(),
-        storage_type: request.storage_type.to_owned(),
-        storage_params: json!(request.storage_params),
+impl TryFrom<KeyRequestBindingDTO> for KeyRequestDTO {
+    type Error = ServiceError;
+    fn try_from(request: KeyRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            organisation_id: into_uuid(&request.organisation_id)?,
+            key_type: request.key_type.to_owned(),
+            key_params: json!(request.key_params),
+            name: request.name.to_owned(),
+            storage_type: request.storage_type.to_owned(),
+            storage_params: json!(request.storage_params),
+        })
+    }
+}
+
+impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
+    type Error = ServiceError;
+    fn try_from(request: DidRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            organisation_id: into_uuid(&request.organisation_id)?,
+            name: request.name,
+            did_method: request.did_method,
+            did_type: request.did_type.into(),
+            keys: request.keys.try_into()?,
+        })
+    }
+}
+
+impl From<DidTypeBindingEnum> for DidType {
+    fn from(value: DidTypeBindingEnum) -> Self {
+        match value {
+            DidTypeBindingEnum::Local => Self::Local,
+            DidTypeBindingEnum::Remote => Self::Remote,
+        }
+    }
+}
+
+impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
+    type Error = ServiceError;
+    fn try_from(request: DidRequestKeysBindingDTO) -> Result<Self, Self::Error> {
+        let convert = |ids: Vec<String>| -> Result<Vec<Uuid>, Self::Error> {
+            ids.iter().map(|id| into_uuid(id)).collect()
+        };
+
+        Ok(Self {
+            authentication: convert(request.authentication)?,
+            assertion: convert(request.assertion)?,
+            key_agreement: convert(request.key_agreement)?,
+            capability_invocation: convert(request.capability_invocation)?,
+            capability_delegation: convert(request.capability_delegation)?,
+        })
     }
 }
