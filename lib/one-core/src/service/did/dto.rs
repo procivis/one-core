@@ -54,7 +54,6 @@ pub type GetDidQueryDTO = GetListQueryParams<SortableDidColumn>;
 pub struct CreateDidRequestDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
-    pub did: String,
     pub did_method: String,
     pub did_type: DidType,
     pub keys: CreateDidRequestKeysDTO,

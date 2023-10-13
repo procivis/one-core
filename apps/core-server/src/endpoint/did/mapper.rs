@@ -56,7 +56,6 @@ impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
         Self {
             name: value.name,
             organisation_id: value.organisation_id,
-            did: value.did,
             did_method: value.method,
             did_type: one_core::model::did::DidType::Local,
             keys: value.keys.into(),

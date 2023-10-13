@@ -71,7 +71,6 @@ pub struct DidResponseKeysRestDTO {
 pub struct CreateDidRequestRestDTO {
     pub name: String,
     pub organisation_id: Uuid,
-    pub did: String,
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
 }
