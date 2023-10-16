@@ -12,7 +12,10 @@ use crate::{
         organisation::OrganisationRelations,
     },
     repository::error::DataLayerError,
-    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
+    service::{
+        credential::dto::CredentialDetailResponseDTO, error::ServiceError,
+        ssi_issuer::mapper::from_credential_id_and_token,
+    },
 };
 use time::OffsetDateTime;
 
@@ -161,28 +164,32 @@ impl SSIIssuerService {
 
         let format = credential_schema.format.to_owned();
 
+        let revocation_method = self
+            .revocation_method_provider
+            .get_revocation_method(&credential_schema.revocation_method)?;
+        let (credential_status, additional_context) =
+            match revocation_method.add_issued_credential(&credential).await? {
+                None => (None, vec![]),
+                Some(revocation_info) => (
+                    Some(revocation_info.credential_status),
+                    revocation_info.additional_vc_contexts,
+                ),
+            };
+
         let token = self
             .formatter_provider
             .get_formatter(&format)?
             .format_credentials(
                 &credential.try_into()?,
-                None,
+                credential_status,
                 &holder_did.did,
                 "Ed25519",
-                vec![],
+                additional_context,
                 vec![],
             )?;
 
         self.credential_repository
-            .update_credential(UpdateCredentialRequest {
-                id: credential_id.to_owned(),
-                credential: Some(token.bytes().collect()),
-                holder_did_id: None,
-                state: Some(CredentialState {
-                    created_date: OffsetDateTime::now_utc(),
-                    state: CredentialStateEnum::Accepted,
-                }),
-            })
+            .update_credential(from_credential_id_and_token(credential_id, &token))
             .await?;
 
         Ok(IssuerResponseDTO {

@@ -26,6 +26,7 @@ use transport_protocol::{
 pub mod config;
 pub mod credential_formatter;
 pub mod key_storage;
+pub mod revocation;
 pub mod transport_protocol;
 
 pub mod crypto;
@@ -40,6 +41,10 @@ pub mod common_mapper;
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 use crate::key_storage::provider::KeyProviderImpl;
 use crate::key_storage::{key_providers_from_config, KeyStorage};
+use crate::revocation::none::NoneRevocation;
+use crate::revocation::provider::RevocationMethodProviderImpl;
+use crate::revocation::statuslist2021::StatusList2021;
+use crate::revocation::RevocationMethod;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::key::KeyService;
 
@@ -49,6 +54,7 @@ pub struct OneCore {
     pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
+    pub revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
     pub credential_service: CredentialService,
@@ -95,6 +101,16 @@ impl OneCore {
             ("JWT".to_string(), jwt_formatter),
             ("SDJWT".to_string(), sdjwt_formatter),
         ];
+        let revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)> = vec![
+            ("NONE".to_string(), Arc::new(NoneRevocation {})),
+            (
+                "STATUSLIST2021".to_string(),
+                Arc::new(StatusList2021 {
+                    credential_repository: data_provider.get_credential_repository(),
+                    revocation_list_repository: data_provider.get_revocation_list_repository(),
+                }),
+            ),
+        ];
 
         let config = config::config_provider::parse_config(
             unparsed_config,
@@ -117,6 +133,9 @@ impl OneCore {
         let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
             transport_protocols.to_owned(),
         ));
+        let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
+            revocation_methods.to_owned(),
+        ));
 
         let config = Arc::new(config);
 
@@ -124,6 +143,7 @@ impl OneCore {
             key_providers,
             transport_protocols,
             credential_formatters,
+            revocation_methods,
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
             ),
@@ -131,7 +151,7 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_did_repository(),
-                data_provider.get_revocation_list_repository(),
+                revocation_method_provider.clone(),
                 config.clone(),
             ),
             did_service: DidService::new(
@@ -174,6 +194,7 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),
+                revocation_method_provider,
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_schema_repository(),

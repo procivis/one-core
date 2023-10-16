@@ -1,5 +1,6 @@
+use time::OffsetDateTime;
+
 use crate::{
-    bitstring::generate_bitstring,
     common_mapper::list_response_try_into,
     model::{
         claim::ClaimRelations,
@@ -10,9 +11,8 @@ use crate::{
             UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
-        did::{DidId, DidRelations},
+        did::DidRelations,
         organisation::OrganisationRelations,
-        revocation_list::RevocationListRelations,
     },
     service::{
         credential::{
@@ -26,7 +26,6 @@ use crate::{
         error::ServiceError,
     },
 };
-use time::OffsetDateTime;
 
 impl CredentialService {
     /// Creates a credential according to request
@@ -146,14 +145,28 @@ impl CredentialService {
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
                     issuer_did: Some(DidRelations::default()),
+                    schema: Some(CredentialSchemaRelations::default()),
                     ..Default::default()
                 },
             )
             .await?;
 
-        super::validator::validate_state_for_revocation(credential.state)?;
+        super::validator::validate_state_for_revocation(&credential.state)?;
 
-        let now = OffsetDateTime::now_utc();
+        let revocation_method = self.revocation_method_provider.get_revocation_method(
+            &credential
+                .schema
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "credential schema is None".to_string(),
+                ))?
+                .revocation_method,
+        )?;
+        revocation_method
+            .mark_credential_revoked(&credential)
+            .await?;
+
+        let now: OffsetDateTime = OffsetDateTime::now_utc();
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
@@ -164,31 +177,6 @@ impl CredentialService {
                     state: credential::CredentialStateEnum::Revoked,
                 }),
             })
-            .await
-            .map_err(ServiceError::from)?;
-
-        let issuer_did_value = credential
-            .issuer_did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
-        let issuer_did = self
-            .did_repository
-            .get_did_by_value(&issuer_did_value.did, &DidRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
-        let revocation_bitstring = self
-            .generate_bitstring_from_credentials(&issuer_did.id)
-            .await?;
-        let revocation_list = self
-            .revocation_list_repository
-            .get_revocation_by_issuer_did_id(&issuer_did.id, &RevocationListRelations::default())
-            .await?;
-
-        self.revocation_list_repository
-            .update_credentials(
-                &revocation_list.id,
-                revocation_bitstring.as_bytes().to_vec(),
-            )
             .await?;
 
         Ok(())
@@ -232,44 +220,5 @@ impl CredentialService {
 
             _ => Err(ServiceError::AlreadyExists),
         }
-    }
-
-    async fn generate_bitstring_from_credentials(
-        &self,
-        issuer_did_id: &DidId,
-    ) -> Result<String, ServiceError> {
-        let credentials = self
-            .credential_repository
-            .get_credentials_by_issuer_did_id(
-                issuer_did_id,
-                &CredentialRelations {
-                    state: Some(CredentialStateRelations {}),
-                    ..Default::default()
-                },
-            )
-            .await
-            .map_err(ServiceError::from)?;
-
-        let states: Vec<bool> = credentials
-            .into_iter()
-            .map(|credential| {
-                let states = credential
-                    .state
-                    .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-
-                match states
-                    .get(0)
-                    .ok_or(ServiceError::MappingError(
-                        "latest state not found".to_string(),
-                    ))?
-                    .state
-                {
-                    credential::CredentialStateEnum::Revoked => Ok(true),
-                    _ => Ok(false),
-                }
-            })
-            .collect::<Result<Vec<bool>, ServiceError>>()?;
-
-        generate_bitstring(states).map_err(ServiceError::from)
     }
 }
