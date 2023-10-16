@@ -74,6 +74,7 @@ impl OneCore {
     pub fn new(
         data_provider: Arc<dyn DataRepository>,
         unparsed_config: UnparsedConfig,
+        core_base_url: Option<String>,
     ) -> Result<OneCore, ConfigParseError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -106,6 +107,7 @@ impl OneCore {
             (
                 "STATUSLIST2021".to_string(),
                 Arc::new(StatusList2021 {
+                    core_base_url,
                     credential_repository: data_provider.get_credential_repository(),
                     revocation_list_repository: data_provider.get_revocation_list_repository(),
                 }),

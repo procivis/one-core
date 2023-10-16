@@ -17,6 +17,7 @@ use crate::revocation::{CredentialRevocationInfo, RevocationMethod};
 use crate::service::error::ServiceError;
 
 pub struct StatusList2021 {
+    pub(crate) core_base_url: Option<String>,
     pub(crate) credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     pub(crate) revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
 }
@@ -65,7 +66,8 @@ impl RevocationMethod for StatusList2021 {
 
         Ok(Some(CredentialRevocationInfo {
             additional_vc_contexts: vec!["https://w3id.org/vc/status-list/2021/v1".to_string()],
-            credential_status: create_credential_status(&revocation_list_id, index_on_status_list),
+            credential_status: self
+                .create_credential_status(&revocation_list_id, index_on_status_list)?,
         }))
     }
 
@@ -157,25 +159,32 @@ impl StatusList2021 {
 
         generate_bitstring(states).map_err(ServiceError::from)
     }
-}
 
-fn create_credential_status(
-    revocation_list_id: &RevocationListId,
-    index_on_status_list: usize,
-) -> CredentialStatus {
-    CredentialStatus {
-        id: format!("{}#{}", revocation_list_id, index_on_status_list),
-        r#type: "StatusList2021Entry".to_string(),
-        status_purpose: "revocation".to_string(),
-        additional_fields: HashMap::from([
-            (
-                "statusListCredential".to_string(),
-                revocation_list_id.to_string(),
-            ),
-            (
-                "statusListIndex".to_string(),
-                index_on_status_list.to_string(),
-            ),
-        ]),
+    fn create_credential_status(
+        &self,
+        revocation_list_id: &RevocationListId,
+        index_on_status_list: usize,
+    ) -> Result<CredentialStatus, ServiceError> {
+        let revocation_list_url = format!(
+            "{}/ssi/revocation/v1/list/{}",
+            self.core_base_url
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "Host URL not specified".to_string()
+                ))?,
+            revocation_list_id
+        );
+        Ok(CredentialStatus {
+            id: format!("{}#{}", revocation_list_url, index_on_status_list),
+            r#type: "StatusList2021Entry".to_string(),
+            status_purpose: "revocation".to_string(),
+            additional_fields: HashMap::from([
+                ("statusListCredential".to_string(), revocation_list_url),
+                (
+                    "statusListIndex".to_string(),
+                    index_on_status_list.to_string(),
+                ),
+            ]),
+        })
     }
 }

@@ -37,6 +37,7 @@ fn initialize_core(data_dir_path: String) -> Result<Arc<OneCoreBinding>, ConfigP
                 .await,
             ),
             placeholder_config,
+            None,
         )
     })?;
     Ok(Arc::new(OneCoreBinding { inner: core }))
