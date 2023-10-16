@@ -14,12 +14,14 @@ use crate::{dto::common::GetListQueryParams, serialize::front_time};
 #[serde(rename_all = "camelCase")]
 pub struct KeyRequestRestDTO {
     pub organisation_id: Uuid,
-    #[schema(example = "ED25519")]
+    #[schema(example = "EDDSA")]
     pub key_type: String,
+    #[schema(value_type = Object)]
     pub key_params: serde_json::Value,
     pub name: String,
     #[schema(example = "INTERNAL")]
     pub storage_type: String,
+    #[schema(value_type = Object)]
     pub storage_params: serde_json::Value,
 }
 
