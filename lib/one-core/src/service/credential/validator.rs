@@ -66,7 +66,7 @@ pub(crate) fn validate_create_request(
 }
 
 pub(crate) fn validate_state_for_revocation(
-    states: Option<Vec<CredentialState>>,
+    states: &Option<Vec<CredentialState>>,
 ) -> Result<(), ServiceError> {
     let current_state = states
         .as_ref()
