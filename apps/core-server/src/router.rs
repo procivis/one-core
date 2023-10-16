@@ -216,6 +216,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
     let core = OneCore::new(
         Arc::new(DataLayer::create(&config.database_url).await),
         unparsed_config,
+        Some(config.core_base_url.to_owned()),
     )
     .expect("Failed to parse config");
 
