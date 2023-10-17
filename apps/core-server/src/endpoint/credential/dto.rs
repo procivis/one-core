@@ -1,3 +1,5 @@
+use crate::serialize::front_time;
+use crate::serialize::front_time_option;
 use crate::{
     dto::common::GetListQueryParams,
     endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
@@ -7,8 +9,6 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-use crate::serialize::front_time;
 
 use crate::endpoint::credential_schema::dto::CredentialClaimSchemaResponseRestDTO;
 use one_core::service::credential::dto::CredentialRequestClaimDTO;
@@ -23,6 +23,10 @@ pub struct CredentialListItemResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub revocation_date: Option<OffsetDateTime>,
     pub state: CredentialStateRestEnum,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
@@ -41,6 +45,10 @@ pub struct GetCredentialResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub revocation_date: Option<OffsetDateTime>,
     pub state: CredentialStateRestEnum,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
