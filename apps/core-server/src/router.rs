@@ -86,7 +86,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             endpoint::ssi::controller::ssi_verifier_reject_proof,
             endpoint::ssi::controller::ssi_issuer_connect,
             endpoint::ssi::controller::ssi_issuer_submit,
-            endpoint::ssi::controller::ssi_issuer_reject,
+            endpoint::ssi::controller::get_revocation_list_by_id,
 
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_submit,
@@ -328,6 +328,10 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
         .route(
             "/ssi/temporary-issuer/v1/submit",
             post(ssi::controller::ssi_issuer_submit),
+        )
+        .route(
+            "/ssi/revocation/v1/:id",
+            get(ssi::controller::get_revocation_list_by_id),
         )
         .route(
             "/ssi/temporary-verifier/v1/connect",

@@ -7,6 +7,7 @@ use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
 };
 use crate::router::AppState;
+use axum::extract::Path;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -14,6 +15,7 @@ use axum::{
     Json,
 };
 use one_core::service::error::ServiceError;
+use uuid::Uuid;
 
 #[utoipa::path(
     post,
@@ -59,6 +61,39 @@ pub(crate) async fn ssi_verifier_connect(
         Err(ServiceError::NotFound) => {
             tracing::error!("Missing proof");
             (StatusCode::NOT_FOUND, "Missing proof").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+get,
+path = "/ssi/revocation/v1/{id}",
+responses(
+(status = 200, description = "OK", content_type = "text/plain"),
+(status = 404, description = "Revocation list not found"),
+(status = 500, description = "Server error"),
+),
+tag = "ssi",
+)]
+pub(crate) async fn get_revocation_list_by_id(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Response {
+    let result = state
+        .core
+        .revocation_list_service
+        .get_revocation_list_by_id(&id)
+        .await;
+
+    match result {
+        Ok(result) => (StatusCode::OK, result).into_response(),
+        Err(ServiceError::NotFound) => {
+            tracing::error!("Missing revocation list");
+            (StatusCode::NOT_FOUND, "Missing revocation list").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

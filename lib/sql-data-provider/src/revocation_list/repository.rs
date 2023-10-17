@@ -58,10 +58,16 @@ impl RevocationListRepository for RevocationListProvider {
 
     async fn get_revocation_list(
         &self,
-        _id: &RevocationListId,
-        _relations: &RevocationListRelations,
+        id: &RevocationListId,
+        relations: &RevocationListRelations,
     ) -> Result<RevocationList, DataLayerError> {
-        unimplemented!()
+        let revocation_list = revocation_list::Entity::find_by_id(id.to_string())
+            .one(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .ok_or(DataLayerError::RecordNotFound)?;
+        self.entity_model_to_repository_model(revocation_list, relations)
+            .await
     }
 
     async fn get_revocation_by_issuer_did_id(
