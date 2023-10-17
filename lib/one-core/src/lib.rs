@@ -47,6 +47,7 @@ use crate::revocation::statuslist2021::StatusList2021;
 use crate::revocation::RevocationMethod;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::key::KeyService;
+use crate::service::revocation_list::RevocationListService;
 
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
@@ -64,6 +65,7 @@ pub struct OneCore {
     pub proof_service: ProofService,
     pub config_service: ConfigService,
     pub ssi_verifier_service: SSIVerifierService,
+    pub revocation_list_service: RevocationListService,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub config: Arc<CoreConfig>,
@@ -161,6 +163,9 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 data_provider.get_key_repository(),
                 config.clone(),
+            ),
+            revocation_list_service: RevocationListService::new(
+                data_provider.get_revocation_list_repository(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 data_provider.get_credential_schema_repository(),

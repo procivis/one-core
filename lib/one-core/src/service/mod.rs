@@ -12,5 +12,7 @@ pub mod ssi_holder;
 pub mod ssi_issuer;
 pub mod ssi_verifier;
 
+pub mod revocation_list;
+
 #[cfg(test)]
 pub mod test_utilities;
