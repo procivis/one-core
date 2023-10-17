@@ -163,6 +163,9 @@ pub(crate) async fn revoke_credential(state: State<AppState>, Path(id): Path<Uui
         Err(error) => match error {
             ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
             ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
+            ServiceError::ValidationError(message) => {
+                (StatusCode::BAD_REQUEST, message).into_response()
+            }
             other => {
                 tracing::error!("Error while getting credential: {other:?}");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
