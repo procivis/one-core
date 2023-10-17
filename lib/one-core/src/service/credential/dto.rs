@@ -19,6 +19,7 @@ pub struct CredentialListItemResponseDTO {
     pub id: CredentialId,
     pub created_date: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
+    pub revocation_date: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseDTO,
@@ -34,6 +35,11 @@ pub struct CredentialDetailResponseDTO {
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub issuance_date: OffsetDateTime,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        with = "time::serde::timestamp::option"
+    )]
+    pub revocation_date: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,

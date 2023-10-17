@@ -115,11 +115,17 @@ async fn test_get_credential_list_success() {
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
+    let now = OffsetDateTime::now_utc();
+    let mut c = generic_credential().clone();
+    c.state = Some(vec![CredentialState {
+        created_date: now,
+        state: CredentialStateEnum::Revoked,
+    }]);
 
     let credentials = GetCredentialList {
-        values: vec![generic_credential()],
+        values: vec![generic_credential(), c],
         total_pages: 1,
-        total_items: 1,
+        total_items: 2,
     };
     {
         let clone = credentials.clone();
@@ -158,10 +164,12 @@ async fn test_get_credential_list_success() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(1, result.total_items);
+    assert_eq!(2, result.total_items);
     assert_eq!(1, result.total_pages);
-    assert_eq!(1, result.values.len());
+    assert_eq!(2, result.values.len());
     assert_eq!(credentials.values[0].id, result.values[0].id);
+    assert_eq!(None, result.values[0].revocation_date);
+    assert_ne!(None, result.values[1].revocation_date);
 }
 
 #[tokio::test]
@@ -194,6 +202,46 @@ async fn test_get_credential_success() {
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(credential.id, result.id);
+    assert_eq!(None, result.revocation_date);
+}
+
+#[tokio::test]
+async fn test_get_revoked_credential_success() {
+    let mut repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+    let now = OffsetDateTime::now_utc();
+
+    let mut credential = generic_credential();
+    credential.state = Some(vec![CredentialState {
+        created_date: now,
+        state: CredentialStateEnum::Revoked,
+    }]);
+
+    {
+        let clone = credential.clone();
+        repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(clone.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        generic_config(),
+    );
+
+    let result = service.get_credential(&credential.id).await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(credential.id, result.id);
+    assert_ne!(None, result.revocation_date);
 }
 
 #[tokio::test]

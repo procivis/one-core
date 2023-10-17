@@ -1,5 +1,4 @@
 use crate::model::{
-    self,
     claim::Claim,
     credential::{Credential, CredentialState, CredentialStateEnum},
     credential_schema::{CredentialSchema, CredentialSchemaClaim},
@@ -44,6 +43,7 @@ impl TryFrom<Credential> for CredentialDetailResponseDTO {
             id: value.id,
             created_date: value.created_date,
             issuance_date: value.issuance_date,
+            revocation_date: get_revocation_date(&latest_state),
             state: latest_state.state.into(),
             last_modified: value.last_modified,
             claims: from_vec_claim(claims, &schema)?,
@@ -108,28 +108,16 @@ fn from_vec_claim(
         .collect::<Result<Vec<_>, _>>()
 }
 
-impl From<model::credential::CredentialStateEnum> for super::dto::CredentialStateEnum {
+impl From<CredentialStateEnum> for super::dto::CredentialStateEnum {
     fn from(value: CredentialStateEnum) -> Self {
         match value {
-            model::credential::CredentialStateEnum::Created => {
-                super::dto::CredentialStateEnum::Created
-            }
-            model::credential::CredentialStateEnum::Pending => {
-                super::dto::CredentialStateEnum::Pending
-            }
-            model::credential::CredentialStateEnum::Offered => {
-                super::dto::CredentialStateEnum::Offered
-            }
-            model::credential::CredentialStateEnum::Accepted => {
-                super::dto::CredentialStateEnum::Accepted
-            }
-            model::credential::CredentialStateEnum::Rejected => {
-                super::dto::CredentialStateEnum::Rejected
-            }
-            model::credential::CredentialStateEnum::Revoked => {
-                super::dto::CredentialStateEnum::Revoked
-            }
-            model::credential::CredentialStateEnum::Error => super::dto::CredentialStateEnum::Error,
+            CredentialStateEnum::Created => super::dto::CredentialStateEnum::Created,
+            CredentialStateEnum::Pending => super::dto::CredentialStateEnum::Pending,
+            CredentialStateEnum::Offered => super::dto::CredentialStateEnum::Offered,
+            CredentialStateEnum::Accepted => super::dto::CredentialStateEnum::Accepted,
+            CredentialStateEnum::Rejected => super::dto::CredentialStateEnum::Rejected,
+            CredentialStateEnum::Revoked => super::dto::CredentialStateEnum::Revoked,
+            CredentialStateEnum::Error => super::dto::CredentialStateEnum::Error,
         }
     }
 }
@@ -161,12 +149,21 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             id: value.id,
             created_date: value.created_date,
             issuance_date: value.issuance_date,
+            revocation_date: get_revocation_date(&latest_state),
             state: latest_state.state.into(),
             last_modified: value.last_modified,
             schema: schema.into(),
             issuer_did: issuer_did_value,
             credential: value.credential,
         })
+    }
+}
+
+fn get_revocation_date(latest_state: &CredentialState) -> Option<OffsetDateTime> {
+    if latest_state.state == CredentialStateEnum::Revoked {
+        Some(latest_state.created_date)
+    } else {
+        None
     }
 }
 
