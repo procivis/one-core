@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::{
     bitstring::BitstringError, config::validator::ConfigValidationError,
-    provider::credential_formatter::error::FormatterError,
+    provider::credential_formatter::error::FormatterError, provider::did_method::DidMethodError,
     provider::transport_protocol::TransportProtocolError, repository::error::DataLayerError,
 };
 
@@ -34,6 +34,8 @@ pub enum ServiceError {
     MissingSigner(String),
     #[error("Missing algorithm `{0}`")]
     MissingAlgorithm(String),
+    #[error("Did method error `{0}`")]
+    DidMethodError(#[from] DidMethodError),
     #[error("Other Repository error: `{0}`")]
     Other(String),
 }

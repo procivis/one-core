@@ -29,16 +29,10 @@ pub type FormatEntity = ConfigEntity<String, serde_json::Value>;
 pub type ExchangeEntity = ConfigEntity<String, serde_json::Value>;
 pub type TransportEntity = ConfigEntity<String, serde_json::Value>;
 pub type RevocationEntity = ConfigEntity<String, serde_json::Value>;
-pub type DidEntity = ConfigEntity<DidType, DidParams>;
+pub type DidEntity = ConfigEntity<String, DidParams>;
 pub type DatatypeEntity = ConfigEntity<DatatypeType, DatatypeParams>;
 pub type KeyAlgorithmEntity = ConfigEntity<String, KeyAlgorithmParams>;
 pub type KeyStorageEntity = ConfigEntity<String, KeyStorageParams>;
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum DidType {
-    Key,
-}
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -86,10 +80,14 @@ pub enum AccessModifier {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum DidParams {
     Key(DidKeyParams),
+    Unknown(serde_json::Value),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct DidKeyParams {}
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct DidKeyParams {
+    pub min: Option<Param<u64>>,
+    pub max: Option<Param<u64>>,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(untagged)]

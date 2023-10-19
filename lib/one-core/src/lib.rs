@@ -4,6 +4,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::config::ConfigParseError;
+use crate::provider::key_storage::key_providers_from_config;
+use crate::provider::key_storage::provider::KeyProviderImpl;
+use crate::provider::key_storage::KeyStorage;
 use crypto::hasher::sha256::SHA256;
 use crypto::hasher::Hasher;
 use crypto::signer::eddsa::EDDSASigner;
@@ -37,9 +40,8 @@ pub mod bitstring;
 pub mod common_mapper;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
-use crate::provider::key_storage::{
-    key_providers_from_config, provider::KeyProviderImpl, KeyStorage,
-};
+use crate::provider::did_method::provider::DidMethodProviderImpl;
+use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
 use crate::revocation::none::NoneRevocation;
 use crate::revocation::provider::RevocationMethodProviderImpl;
 use crate::revocation::status_list_2021::StatusList2021;
@@ -51,6 +53,7 @@ use crate::service::revocation_list::RevocationListService;
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
+    pub did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>>,
     pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
@@ -117,11 +120,20 @@ impl OneCore {
         )?;
 
         let key_providers = key_providers_from_config(&config.key_storage)?;
+        let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
+
+        let did_methods = did_method_providers_from_config(
+            &config.did,
+            data_provider.get_did_repository(),
+            data_provider.get_organisation_repository(),
+            key_provider.clone(),
+        )?;
+        let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
 
         let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
             credential_formatters.to_owned(),
         ));
-        let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
+
         let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
             transport_protocols.to_owned(),
         ));
@@ -147,6 +159,7 @@ impl OneCore {
         ));
 
         Ok(OneCore {
+            did_methods,
             key_providers,
             transport_protocols,
             credential_formatters,
@@ -163,9 +176,8 @@ impl OneCore {
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
-                data_provider.get_organisation_repository(),
                 data_provider.get_key_repository(),
-                key_provider.clone(),
+                did_method_provider,
                 config.clone(),
             ),
             revocation_list_service: RevocationListService::new(

@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use time::OffsetDateTime;
 
 use crate::{
     config::validator::did::validate_did_method,
@@ -8,15 +7,11 @@ use crate::{
         key::{KeyId, KeyRelations},
         organisation::OrganisationRelations,
     },
-    service::{
-        did::validator::{did_already_exists, validate_request_only_one_key_of_each_type},
-        error::ServiceError,
-    },
+    service::{did::validator::validate_request_only_one_key_of_each_type, error::ServiceError},
 };
 
 use super::{
     dto::{CreateDidRequestDTO, DidId, DidResponseDTO, GetDidListResponseDTO, GetDidQueryDTO},
-    mapper::did_from_did_request,
     DidService,
 };
 
@@ -68,6 +63,10 @@ impl DidService {
         validate_did_method(&request.did_method, &self.config.did)?;
         validate_request_only_one_key_of_each_type(request.keys.to_owned())?;
 
+        let did_method = self
+            .did_method_provider
+            .get_did_method(&request.did_method)?;
+
         let keys = request.keys.to_owned();
 
         let key_ids = HashSet::<KeyId>::from_iter(
@@ -91,24 +90,11 @@ impl DidService {
             .key_repository
             .get_key(&key_id, &KeyRelations::default())
             .await?;
-        let key_storage = self.key_provider.get_key_storage(&key.storage_type)?;
-        let fingerprint = key_storage.fingerprint(&key.public_key)?;
-        let did_value = format!("did:key:{}", fingerprint);
 
-        if did_already_exists(&self.did_repository, &did_value).await? {
-            return Err(ServiceError::AlreadyExists);
-        }
-
-        let now = OffsetDateTime::now_utc();
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
-        let request = did_from_did_request(request, organisation, did_value, key, now)?;
-
-        self.did_repository
-            .create_did(request)
+        Ok(did_method
+            .create(request, key)
             .await
-            .map_err(ServiceError::from)
+            .map_err(ServiceError::from)?
+            .id)
     }
 }

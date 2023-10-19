@@ -1,5 +1,5 @@
 use crate::config::data_structure::{
-    AccessModifier, CoreConfig, DatatypeEntity, DatatypeType, DidEntity, DidType, ExchangeEntity,
+    AccessModifier, CoreConfig, DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity,
     FormatEntity, KeyAlgorithmEntity, KeyAlgorithmParams, KeyStorageEntity, Param, ParamsEnum,
     RevocationEntity, TranslatableString,
 };
@@ -49,7 +49,7 @@ pub fn generic_config() -> CoreConfig {
         did: HashMap::from([(
             "KEY".to_string(),
             DidEntity {
-                r#type: DidType::Key,
+                r#type: "KEY".to_string(),
                 display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: None,
