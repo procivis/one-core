@@ -1,7 +1,14 @@
 use crate::dto::common::{ExactColumn, GetListQueryParams, GetListResponseRestDTO, SortDirection};
 use serde::Serialize;
 use std::fmt;
+use thiserror::Error;
 use utoipa::ToSchema;
+
+#[derive(Debug, Error)]
+pub enum MapperError {
+    #[error("ct_codecs error: `{0}`")]
+    CtCodecsError(#[from] ct_codecs::Error),
+}
 
 impl<T, K> From<one_core::model::common::GetListResponse<K>> for GetListResponseRestDTO<T>
 where
@@ -14,6 +21,25 @@ where
             total_items: value.total_items,
         }
     }
+}
+
+pub fn list_try_from<T, K>(
+    value: one_core::model::common::GetListResponse<K>,
+) -> Result<GetListResponseRestDTO<T>, MapperError>
+where
+    T: TryFrom<K> + Clone + fmt::Debug + Serialize,
+    MapperError: From<<T as TryFrom<K>>::Error>,
+{
+    Ok(GetListResponseRestDTO {
+        values: value
+            .values
+            .into_iter()
+            .map(|item| item.try_into())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(MapperError::from)?,
+        total_pages: value.total_pages,
+        total_items: value.total_items,
+    })
 }
 
 impl<T, K> From<GetListQueryParams<T>> for one_core::model::common::GetListQueryParams<K>

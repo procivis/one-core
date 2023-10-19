@@ -12,7 +12,9 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
 
     pub name: String,
-    pub public_key: String,
+
+    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
+    pub public_key: Vec<u8>,
 
     #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
     pub private_key: Vec<u8>,

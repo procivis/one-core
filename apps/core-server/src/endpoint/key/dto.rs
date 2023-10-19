@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use one_core::service::key::dto::{KeyRequestDTO, KeyResponseDTO};
+use one_core::service::key::dto::KeyRequestDTO;
 
 use crate::{dto::common::GetListQueryParams, serialize::front_time};
 
@@ -25,9 +25,7 @@ pub struct KeyRequestRestDTO {
     pub storage_params: serde_json::Value,
 }
 
-#[derive(Clone, Debug, Deserialize, Dto, Serialize, ToSchema)]
-#[dto(entity = "KeyResponseDTO")]
-#[dto(response)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyResponseRestDTO {
     pub id: Uuid,

@@ -170,6 +170,7 @@ dictionary DidRequestBindingDTO {
     string did_method;
     DidTypeBindingEnum did_type;
     DidRequestKeysBindingDTO keys;
+    record<string, string> params;
 };
 
 interface OneCoreBinding {

@@ -11,7 +11,7 @@ pub struct Key {
     pub id: KeyId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub public_key: String,
+    pub public_key: Vec<u8>,
     pub name: String,
     pub private_key: Vec<u8>,
     pub storage_type: String,

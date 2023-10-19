@@ -154,6 +154,7 @@ pub struct DidRequestBindingDTO {
     pub did_method: String,
     pub did_type: DidTypeBindingEnum,
     pub keys: DidRequestKeysBindingDTO,
+    pub params: HashMap<String, String>,
 }
 
 pub struct DidRequestKeysBindingDTO {

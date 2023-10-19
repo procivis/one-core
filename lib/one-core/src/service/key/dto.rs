@@ -21,7 +21,7 @@ pub struct KeyResponseDTO {
     pub last_modified: OffsetDateTime,
     pub organisation_id: Uuid,
     pub name: String,
-    pub public_key: String,
+    pub public_key: Vec<u8>,
     pub key_type: String,
     pub storage_type: String,
 }
@@ -32,7 +32,7 @@ pub struct KeyListItemResponseDTO {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub public_key: String,
+    pub public_key: Vec<u8>,
     pub key_type: String,
     pub storage_type: String,
 }

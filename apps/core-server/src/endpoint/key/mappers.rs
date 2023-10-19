@@ -1,18 +1,39 @@
-use one_core::service::key::dto::KeyListItemResponseDTO;
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_core::service::key::dto::{KeyListItemResponseDTO, KeyResponseDTO};
 
-use super::dto::{KeyListItemResponseRestDTO, SortableKeyColumnRestDTO};
+use super::dto::{KeyListItemResponseRestDTO, KeyResponseRestDTO, SortableKeyColumnRestDTO};
+use crate::mapper::MapperError;
 
-impl From<KeyListItemResponseDTO> for KeyListItemResponseRestDTO {
-    fn from(value: KeyListItemResponseDTO) -> Self {
-        Self {
+impl TryFrom<KeyResponseDTO> for KeyResponseRestDTO {
+    type Error = MapperError;
+
+    fn try_from(value: KeyResponseDTO) -> Result<Self, MapperError> {
+        Ok(Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            organisation_id: value.organisation_id,
+            name: value.name,
+            public_key: Base64UrlSafeNoPadding::encode_to_string(value.public_key)?,
+            key_type: value.key_type,
+            storage_type: value.storage_type,
+        })
+    }
+}
+
+impl TryFrom<KeyListItemResponseDTO> for KeyListItemResponseRestDTO {
+    type Error = MapperError;
+
+    fn try_from(value: KeyListItemResponseDTO) -> Result<Self, MapperError> {
+        Ok(Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
-            public_key: value.public_key,
+            public_key: Base64UrlSafeNoPadding::encode_to_string(value.public_key)?,
             key_type: value.key_type,
             storage_type: value.storage_type,
-        }
+        })
     }
 }
 

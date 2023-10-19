@@ -4,6 +4,7 @@ use crate::{
         data_structure,
         data_structure::{CoreConfig, DidEntity},
     },
+    key_storage::{mock_key_storage::MockKeyStorage, provider::KeyProviderImpl, KeyStorage},
     model::{
         did::{Did, DidRelations, DidType, GetDidList, KeyRole, RelatedKey},
         key::{Key, KeyRelations},
@@ -18,6 +19,7 @@ use crate::{
         error::ServiceError,
     },
 };
+use did_key::{Generate, KeyMaterial};
 use mockall::predicate::*;
 use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
@@ -27,12 +29,19 @@ fn setup_service(
     did_repository: MockDidRepository,
     organisation_repository: MockOrganisationRepository,
     key_repository: MockKeyRepository,
+    key_storage: MockKeyStorage,
     did_config: HashMap<String, DidEntity>,
 ) -> DidService {
+    let mut storages: HashMap<String, Arc<dyn KeyStorage + Send + Sync>> = HashMap::new();
+    storages.insert("MOCK".to_string(), Arc::new(key_storage));
+
+    let key_provider = KeyProviderImpl::new(storages);
+
     DidService::new(
         Arc::new(did_repository),
         Arc::new(organisation_repository),
         Arc::new(key_repository),
+        Arc::new(key_provider),
         Arc::new(CoreConfig {
             format: HashMap::default(),
             exchange: HashMap::default(),
@@ -69,7 +78,7 @@ async fn test_get_did_exists() {
                 id: Uuid::new_v4(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                public_key: "public_key".to_string(),
+                public_key: vec![],
                 name: "key_name".to_string(),
                 private_key: vec![],
                 storage_type: "INTERNAL".to_string(),
@@ -97,6 +106,7 @@ async fn test_get_did_exists() {
         repository,
         MockOrganisationRepository::default(),
         MockKeyRepository::default(),
+        MockKeyStorage::default(),
         HashMap::<String, DidEntity>::new(),
     );
 
@@ -121,6 +131,7 @@ async fn test_get_did_missing() {
         repository,
         MockOrganisationRepository::default(),
         MockKeyRepository::default(),
+        MockKeyStorage::default(),
         HashMap::<String, DidEntity>::new(),
     );
 
@@ -165,6 +176,7 @@ async fn test_get_did_list() {
         repository,
         MockOrganisationRepository::default(),
         MockKeyRepository::default(),
+        MockKeyStorage::default(),
         HashMap::<String, DidEntity>::new(),
     );
 
@@ -191,18 +203,21 @@ async fn test_get_did_list() {
 
 #[tokio::test]
 async fn test_create_did_success() {
+    let key_id = Uuid::new_v4();
+
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
-            authentication: vec![],
+            authentication: vec![key_id],
             assertion: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],
             capability_delegation: vec![],
         },
+        params: None,
     };
 
     let mut did_repository = MockDidRepository::default();
@@ -227,6 +242,30 @@ async fn test_create_did_success() {
             })
         });
 
+    let mut key_repository = MockKeyRepository::default();
+    key_repository
+        .expect_get_key()
+        .times(1)
+        .returning(move |_, _| {
+            let key_pair = did_key::Ed25519KeyPair::new();
+            Ok(Key {
+                id: key_id,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                public_key: key_pair.public_key_bytes(),
+                name: "".to_string(),
+                private_key: key_pair.private_key_bytes(),
+                storage_type: "MOCK".to_string(),
+                key_type: "".to_string(),
+                organisation: None,
+            })
+        });
+    let mut key_storage = MockKeyStorage::default();
+    key_storage
+        .expect_fingerprint()
+        .times(1)
+        .returning(move |_| Ok("did:key:MOCK".to_string()));
+
     let did_config = HashMap::<String, DidEntity>::from([(
         "KEY".to_string(),
         DidEntity {
@@ -239,28 +278,31 @@ async fn test_create_did_success() {
     let service = setup_service(
         did_repository,
         organisation_repository,
-        MockKeyRepository::default(),
+        key_repository,
+        key_storage,
         did_config,
     );
 
     let result = service.create_did(create_request).await;
-    assert!(result.is_ok());
+    result.unwrap();
 }
 
 #[tokio::test]
 async fn test_create_did_value_already_exists() {
+    let key_id = Uuid::new_v4();
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
-            authentication: vec![],
+            authentication: vec![key_id],
             assertion: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],
             capability_delegation: vec![],
         },
+        params: None,
     };
 
     let did = Did {
@@ -285,6 +327,30 @@ async fn test_create_did_value_already_exists() {
         .times(1)
         .returning(move |_, _| Ok(did.clone()));
 
+    let mut key_repository = MockKeyRepository::default();
+    key_repository
+        .expect_get_key()
+        .times(1)
+        .returning(move |_, _| {
+            let key_pair = did_key::Ed25519KeyPair::new();
+            Ok(Key {
+                id: key_id,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                public_key: key_pair.public_key_bytes(),
+                name: "".to_string(),
+                private_key: key_pair.private_key_bytes(),
+                storage_type: "MOCK".to_string(),
+                key_type: "".to_string(),
+                organisation: None,
+            })
+        });
+    let mut key_storage = MockKeyStorage::default();
+    key_storage
+        .expect_fingerprint()
+        .times(1)
+        .returning(move |_| Ok("did:key:MOCK".to_string()));
+
     let did_config = HashMap::<String, DidEntity>::from([(
         "KEY".to_string(),
         DidEntity {
@@ -297,7 +363,8 @@ async fn test_create_did_value_already_exists() {
     let service = setup_service(
         repository,
         MockOrganisationRepository::default(),
-        MockKeyRepository::default(),
+        key_repository,
+        key_storage,
         did_config,
     );
 
@@ -319,6 +386,7 @@ async fn test_create_did_value_invalid_did_method() {
             capability_invocation: vec![],
             capability_delegation: vec![],
         },
+        params: None,
     };
 
     let did_config = HashMap::<String, DidEntity>::from([(
@@ -334,6 +402,7 @@ async fn test_create_did_value_invalid_did_method() {
         MockDidRepository::default(),
         MockOrganisationRepository::default(),
         MockKeyRepository::default(),
+        MockKeyStorage::default(),
         did_config,
     );
 

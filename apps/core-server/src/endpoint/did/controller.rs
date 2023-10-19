@@ -39,7 +39,13 @@ pub(crate) async fn get_did(state: State<AppState>, Path(id): Path<Uuid>) -> Res
                 (StatusCode::INTERNAL_SERVER_ERROR).into_response()
             }
         },
-        Ok(value) => (StatusCode::OK, Json(DidResponseRestDTO::from(value))).into_response(),
+        Ok(value) => match DidResponseRestDTO::try_from(value) {
+            Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+            Err(error) => {
+                tracing::error!("Error while encoding base64: {:?}", error);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        },
     }
 }
 
@@ -98,9 +104,17 @@ pub(crate) async fn post_did(
             tracing::error!("Did already exists");
             StatusCode::CONFLICT.into_response()
         }
-        Err(ServiceError::IncorrectParameters) => {
+        Err(ServiceError::IncorrectParameters | ServiceError::NotFound) => {
             tracing::error!("Organisation not found");
             StatusCode::NOT_FOUND.into_response()
+        }
+        Err(ServiceError::ConfigValidationError(message)) => {
+            tracing::error!("Config validation error: {}", message);
+            StatusCode::BAD_REQUEST.into_response()
+        }
+        Err(ServiceError::ValidationError(message)) => {
+            tracing::error!("Validation error: {}", message);
+            StatusCode::BAD_REQUEST.into_response()
         }
         Err(e) => {
             tracing::error!("Error while creating did: {:?}", e);

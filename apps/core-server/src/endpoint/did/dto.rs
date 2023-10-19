@@ -73,6 +73,8 @@ pub struct CreateDidRequestRestDTO {
     pub organisation_id: Uuid,
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
+    #[schema(value_type = Object)]
+    pub params: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Dto)]
