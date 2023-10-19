@@ -801,7 +801,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(Key::Name).string().not_null())
-                    .col(ColumnDef::new(Key::PublicKey).string().not_null())
+                    .col(ColumnDef::new(Key::PublicKey).binary().not_null())
                     .col(ColumnDef::new(Key::PrivateKey).binary().not_null())
                     .col(ColumnDef::new(Key::StorageType).string().not_null())
                     .col(ColumnDef::new(Key::KeyType).string().not_null())

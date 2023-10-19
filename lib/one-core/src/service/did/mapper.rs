@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -82,15 +80,15 @@ pub(crate) fn did_from_did_request(
     request: CreateDidRequestDTO,
     organisation: Organisation,
     did_value: String,
-    key_map: HashMap<KeyId, Key>,
+    key: Key,
     now: OffsetDateTime,
 ) -> Result<Did, ServiceError> {
     let mut keys: Vec<RelatedKey> = vec![];
     let mut add_keys = |key_ids: Vec<KeyId>, role: KeyRole| {
-        for key_id in key_ids {
+        for _ in key_ids {
             keys.push(RelatedKey {
                 role: role.to_owned(),
-                key: key_map[&key_id].to_owned(),
+                key: key.to_owned(),
             });
         }
     };

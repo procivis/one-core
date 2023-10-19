@@ -57,6 +57,7 @@ pub struct CreateDidRequestDTO {
     pub did_method: String,
     pub did_type: DidType,
     pub keys: CreateDidRequestKeysDTO,
+    pub params: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug)]

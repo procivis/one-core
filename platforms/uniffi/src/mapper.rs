@@ -280,6 +280,7 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
             did_method: request.did_method,
             did_type: request.did_type.into(),
             keys: request.keys.try_into()?,
+            params: Some(json!(request.params)),
         })
     }
 }

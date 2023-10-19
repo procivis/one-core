@@ -16,11 +16,13 @@ pub mod internal;
 pub mod provider;
 
 pub struct GeneratedKey {
-    pub public: String,
+    pub public: Vec<u8>,
     pub private: Vec<u8>,
 }
 
 pub trait KeyStorage {
+    fn decrypt_private_key(&self, private_key: &[u8]) -> Result<Vec<u8>, ServiceError>;
+    fn fingerprint(&self, bytes: &[u8]) -> Result<String, ServiceError>;
     fn generate(&self, algorithm: &str) -> Result<GeneratedKey, ServiceError>;
 }
 

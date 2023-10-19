@@ -48,7 +48,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         id: Uuid::new_v4(),
         created_date: now,
         last_modified: now,
-        public_key: "".to_string(),
+        public_key: vec![],
         name: name.to_owned(),
         private_key: vec![],
         storage_type: "MOCK".to_string(),
@@ -81,7 +81,7 @@ async fn test_create_key_success() {
 
         key_storage.expect_generate().times(1).returning(move |_| {
             Ok(GeneratedKey {
-                public: "".to_string(),
+                public: vec![],
                 private: vec![],
             })
         });

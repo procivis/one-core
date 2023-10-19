@@ -2,12 +2,17 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
-use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
-use crate::endpoint::key::dto::{KeyRequestRestDTO, KeyResponseRestDTO};
+use one_core::service::error::ServiceError;
+use one_core::service::key::dto::KeyListItemResponseDTO;
+
+use crate::dto::common::EntityResponseRestDTO;
+use crate::endpoint::key::dto::{
+    KeyListItemResponseRestDTO, KeyRequestRestDTO, KeyResponseRestDTO,
+};
 use crate::extractor::Qs;
+use crate::mapper::list_try_from;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -30,7 +35,13 @@ pub(crate) async fn get_key(state: State<AppState>, Path(id): Path<Uuid>) -> Res
     let result = state.core.key_service.get_key(&id).await;
 
     match result {
-        Ok(value) => (StatusCode::OK, Json(KeyResponseRestDTO::from(value))).into_response(),
+        Ok(value) => match KeyResponseRestDTO::try_from(value) {
+            Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+            Err(error) => {
+                tracing::error!("Error while encoding base64: {:?}", error);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        },
         Err(error) => match error {
             ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
             _ => {
@@ -104,6 +115,14 @@ pub(crate) async fn get_key_list(state: State<AppState>, Qs(query): Qs<GetKeyQue
             tracing::error!("Error while getting keys: {:?}", error);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-        Ok(value) => (StatusCode::OK, Json(GetKeyListResponseRestDTO::from(value))).into_response(),
+        Ok(value) => {
+            match list_try_from::<KeyListItemResponseRestDTO, KeyListItemResponseDTO>(value) {
+                Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+                Err(error) => {
+                    tracing::error!("Error while encoding base64: {:?}", error);
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                }
+            }
+        }
     }
 }
