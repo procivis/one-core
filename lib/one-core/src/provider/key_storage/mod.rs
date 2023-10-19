@@ -22,7 +22,7 @@ pub struct GeneratedKey {
 
 pub trait KeyStorage {
     fn decrypt_private_key(&self, private_key: &[u8]) -> Result<Vec<u8>, ServiceError>;
-    fn fingerprint(&self, bytes: &[u8]) -> Result<String, ServiceError>;
+    fn fingerprint(&self, bytes: &[u8]) -> String;
     fn generate(&self, algorithm: &str) -> Result<GeneratedKey, ServiceError>;
 }
 

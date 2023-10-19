@@ -20,9 +20,9 @@ impl KeyStorage for InternalKeyProvider {
         decrypt_if_password_is_provided(private_key, passphrase)
     }
 
-    fn fingerprint(&self, public_key: &[u8]) -> Result<String, ServiceError> {
+    fn fingerprint(&self, public_key: &[u8]) -> String {
         let key = did_key::Ed25519KeyPair::from_public_key(public_key);
-        Ok(key.fingerprint())
+        key.fingerprint()
     }
 
     fn generate(&self, algorithm: &str) -> Result<GeneratedKey, ServiceError> {

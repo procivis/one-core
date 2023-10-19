@@ -9,13 +9,10 @@ use crate::{
         key::{Key, KeyRelations},
         organisation::{Organisation, OrganisationRelations},
     },
-    provider::key_storage::{
-        mock_key_storage::MockKeyStorage, provider::KeyProviderImpl, KeyStorage,
+    provider::did_method::{
+        mock_did_method::MockDidMethod, provider::DidMethodProviderImpl, DidMethod, DidMethodError,
     },
-    repository::mock::{
-        did_repository::MockDidRepository, key_repository::MockKeyRepository,
-        organisation_repository::MockOrganisationRepository,
-    },
+    repository::mock::{did_repository::MockDidRepository, key_repository::MockKeyRepository},
     service::{
         did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO, GetDidQueryDTO},
         error::ServiceError,
@@ -29,21 +26,18 @@ use uuid::Uuid;
 
 fn setup_service(
     did_repository: MockDidRepository,
-    organisation_repository: MockOrganisationRepository,
     key_repository: MockKeyRepository,
-    key_storage: MockKeyStorage,
+    did_method: MockDidMethod,
     did_config: HashMap<String, DidEntity>,
 ) -> DidService {
-    let mut storages: HashMap<String, Arc<dyn KeyStorage + Send + Sync>> = HashMap::new();
-    storages.insert("MOCK".to_string(), Arc::new(key_storage));
-
-    let key_provider = KeyProviderImpl::new(storages);
+    let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
+    did_methods.insert("MOCK".to_string(), Arc::new(did_method));
+    let did_method_provider = DidMethodProviderImpl::new(did_methods);
 
     DidService::new(
         Arc::new(did_repository),
-        Arc::new(organisation_repository),
         Arc::new(key_repository),
-        Arc::new(key_provider),
+        Arc::new(did_method_provider),
         Arc::new(CoreConfig {
             format: HashMap::default(),
             exchange: HashMap::default(),
@@ -55,6 +49,18 @@ fn setup_service(
             key_storage: Default::default(),
         }),
     )
+}
+
+fn get_did_config() -> HashMap<String, DidEntity> {
+    HashMap::<String, DidEntity>::from([(
+        "MOCK".to_string(),
+        DidEntity {
+            r#type: "MOCK".to_string(),
+            display: data_structure::TranslatableString::Key("translation".to_string()),
+            order: None,
+            params: None,
+        },
+    )])
 }
 
 #[tokio::test]
@@ -73,7 +79,7 @@ async fn test_get_did_exists() {
         }),
         did: "did:key:abc".to_string(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "MOCK".to_string(),
         keys: Some(vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
@@ -106,9 +112,8 @@ async fn test_get_did_exists() {
 
     let service = setup_service(
         repository,
-        MockOrganisationRepository::default(),
         MockKeyRepository::default(),
-        MockKeyStorage::default(),
+        MockDidMethod::default(),
         HashMap::<String, DidEntity>::new(),
     );
 
@@ -131,9 +136,8 @@ async fn test_get_did_missing() {
 
     let service = setup_service(
         repository,
-        MockOrganisationRepository::default(),
         MockKeyRepository::default(),
-        MockKeyStorage::default(),
+        MockDidMethod::default(),
         HashMap::<String, DidEntity>::new(),
     );
 
@@ -155,7 +159,7 @@ async fn test_get_did_list() {
         }),
         did: "did:key:abc".to_string(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "MOCK".to_string(),
         keys: None,
     };
 
@@ -176,9 +180,8 @@ async fn test_get_did_list() {
 
     let service = setup_service(
         repository,
-        MockOrganisationRepository::default(),
         MockKeyRepository::default(),
-        MockKeyStorage::default(),
+        MockDidMethod::default(),
         HashMap::<String, DidEntity>::new(),
     );
 
@@ -211,7 +214,7 @@ async fn test_create_did_success() {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "MOCK".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![key_id],
             assertion: vec![],
@@ -221,28 +224,6 @@ async fn test_create_did_success() {
         },
         params: None,
     };
-
-    let mut did_repository = MockDidRepository::default();
-    did_repository
-        .expect_get_did_by_value()
-        .times(1)
-        .returning(|_, _| Err(crate::repository::error::DataLayerError::RecordNotFound));
-    did_repository
-        .expect_create_did()
-        .times(1)
-        .returning(|request| Ok(request.id));
-
-    let mut organisation_repository = MockOrganisationRepository::default();
-    organisation_repository
-        .expect_get_organisation()
-        .times(1)
-        .returning(|id, _| {
-            Ok(Organisation {
-                id: id.to_owned(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            })
-        });
 
     let mut key_repository = MockKeyRepository::default();
     key_repository
@@ -262,27 +243,30 @@ async fn test_create_did_success() {
                 organisation: None,
             })
         });
-    let mut key_storage = MockKeyStorage::default();
-    key_storage
-        .expect_fingerprint()
-        .times(1)
-        .returning(move |_| Ok("did:key:MOCK".to_string()));
 
-    let did_config = HashMap::<String, DidEntity>::from([(
-        "KEY".to_string(),
-        DidEntity {
-            r#type: data_structure::DidType::Key,
-            display: data_structure::TranslatableString::Key("translation".to_string()),
-            order: None,
-            params: None,
-        },
-    )]);
+    let mut did_method = MockDidMethod::default();
+    did_method
+        .expect_create()
+        .times(1)
+        .returning(|request, _key| {
+            Ok(Did {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: request.name,
+                did: "did:key:123".to_string(),
+                did_type: DidType::Local,
+                did_method: request.did_method,
+                keys: None,
+                organisation: None,
+            })
+        });
+
     let service = setup_service(
-        did_repository,
-        organisation_repository,
+        MockDidRepository::default(),
         key_repository,
-        key_storage,
-        did_config,
+        did_method,
+        get_did_config(),
     );
 
     let result = service.create_did(create_request).await;
@@ -296,7 +280,7 @@ async fn test_create_did_value_already_exists() {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
         did_type: DidType::Local,
-        did_method: "KEY".to_string(),
+        did_method: "MOCK".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![key_id],
             assertion: vec![],
@@ -306,28 +290,6 @@ async fn test_create_did_value_already_exists() {
         },
         params: None,
     };
-
-    let did = Did {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        name: "name".to_string(),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
-        did: "did:key:abc".to_string(),
-        did_type: DidType::Local,
-        did_method: "KEY".to_string(),
-        keys: None,
-    };
-
-    let mut repository = MockDidRepository::default();
-    repository
-        .expect_get_did_by_value()
-        .times(1)
-        .returning(move |_, _| Ok(did.clone()));
 
     let mut key_repository = MockKeyRepository::default();
     key_repository
@@ -347,31 +309,25 @@ async fn test_create_did_value_already_exists() {
                 organisation: None,
             })
         });
-    let mut key_storage = MockKeyStorage::default();
-    key_storage
-        .expect_fingerprint()
-        .times(1)
-        .returning(move |_| Ok("did:key:MOCK".to_string()));
 
-    let did_config = HashMap::<String, DidEntity>::from([(
-        "KEY".to_string(),
-        DidEntity {
-            r#type: data_structure::DidType::Key,
-            display: data_structure::TranslatableString::Key("translation".to_string()),
-            order: None,
-            params: None,
-        },
-    )]);
+    let mut did_method = MockDidMethod::default();
+    did_method
+        .expect_create()
+        .times(1)
+        .returning(|_, _| Err(DidMethodError::AlreadyExists));
+
     let service = setup_service(
-        repository,
-        MockOrganisationRepository::default(),
+        MockDidRepository::default(),
         key_repository,
-        key_storage,
-        did_config,
+        did_method,
+        get_did_config(),
     );
 
     let result = service.create_did(create_request).await;
-    assert!(matches!(result, Err(ServiceError::AlreadyExists)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::DidMethodError(DidMethodError::AlreadyExists))
+    ));
 }
 
 #[tokio::test]
@@ -380,7 +336,7 @@ async fn test_create_did_value_invalid_did_method() {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
         did_type: DidType::Local,
-        did_method: "UNKNOWN".to_string(),
+        did_method: "MOCK".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![],
             assertion: vec![],
@@ -391,26 +347,13 @@ async fn test_create_did_value_invalid_did_method() {
         params: None,
     };
 
-    let did_config = HashMap::<String, DidEntity>::from([(
-        "KEY".to_string(),
-        DidEntity {
-            r#type: data_structure::DidType::Key,
-            display: data_structure::TranslatableString::Key("translation".to_string()),
-            order: None,
-            params: None,
-        },
-    )]);
     let service = setup_service(
         MockDidRepository::default(),
-        MockOrganisationRepository::default(),
         MockKeyRepository::default(),
-        MockKeyStorage::default(),
-        did_config,
+        MockDidMethod::default(),
+        get_did_config(),
     );
 
     let result = service.create_did(create_request).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::ConfigValidationError(_))
-    ));
+    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
 }

@@ -5,9 +5,8 @@ use serde::de::Error;
 use crate::config::data_structure::{
     AccessModifier, DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams,
     DatatypeParams, DatatypeStringParams, DatatypeType, DidEntity, DidKeyParams, DidParams,
-    DidType, ExchangeEntity, FormatEntity, KeyAlgorithmEntity, KeyAlgorithmParams,
-    KeyStorageEntity, KeyStorageInternalParams, KeyStorageParams, ParamsEnum, RevocationEntity,
-    TransportEntity,
+    ExchangeEntity, FormatEntity, KeyAlgorithmEntity, KeyAlgorithmParams, KeyStorageEntity,
+    KeyStorageInternalParams, KeyStorageParams, ParamsEnum, RevocationEntity, TransportEntity,
 };
 
 fn convert_param_to_param_map(
@@ -175,16 +174,19 @@ fn postprocess_did_entity(entity: DidEntity) -> Result<DidEntity, serde_json::Er
     let parsed_params = match entity.params {
         None => None,
         Some(value) => match value {
-            ParamsEnum::Unparsed(value) => match entity.r#type {
-                DidType::Key => {
-                    let public = value["public"].to_owned();
-                    let private = value["private"].to_owned();
-                    let merged = merge_public_and_private(public, private)?;
+            ParamsEnum::Unparsed(value) => {
+                let public = value["public"].to_owned();
+                let private = value["private"].to_owned();
+                let merged = merge_public_and_private(public, private)?;
 
-                    let params: DidKeyParams = serde_json::from_value(merged)?;
-                    Some(ParamsEnum::Parsed(DidParams::Key(params)))
+                match entity.r#type.as_str() {
+                    "KEY" => {
+                        let params: DidKeyParams = serde_json::from_value(merged)?;
+                        Some(ParamsEnum::Parsed(DidParams::Key(params)))
+                    }
+                    _ => Some(ParamsEnum::Parsed(DidParams::Unknown(merged))),
                 }
-            },
+            }
             ParamsEnum::Parsed(value) => Some(ParamsEnum::Parsed(value)),
         },
     };
