@@ -105,7 +105,7 @@ pub(crate) async fn post_did(
             StatusCode::CONFLICT.into_response()
         }
         Err(ServiceError::IncorrectParameters | ServiceError::NotFound) => {
-            tracing::error!("Organisation not found");
+            tracing::error!("Organisation or key not found");
             StatusCode::NOT_FOUND.into_response()
         }
         Err(ServiceError::ConfigValidationError(message)) => {
