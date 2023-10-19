@@ -32,10 +32,12 @@ fn setup_service(
 ) -> DidService {
     let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
     did_methods.insert("MOCK".to_string(), Arc::new(did_method));
-    let did_method_provider = DidMethodProviderImpl::new(did_methods);
+
+    let did_repository = Arc::new(did_repository);
+    let did_method_provider = DidMethodProviderImpl::new(did_methods, did_repository.clone());
 
     DidService::new(
-        Arc::new(did_repository),
+        did_repository,
         Arc::new(key_repository),
         Arc::new(did_method_provider),
         Arc::new(CoreConfig {

@@ -1,11 +1,12 @@
 use async_trait::async_trait;
+use did_key::KeyMaterial;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::DidMethodError;
 use crate::config::data_structure::DidKeyParams;
-use crate::model::did::{Did, DidId, DidRelations, KeyRole, RelatedKey};
+use crate::model::did::{Did, DidId, DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::key::{Key, KeyId, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::key_storage::provider::KeyProvider;
@@ -83,25 +84,67 @@ impl super::DidMethod for KeyDidMethod {
     }
 
     async fn resolve(&self, did: &str) -> Result<Did, DidMethodError> {
-        let result = self
-            .did_repository
-            .get_did_by_value(
-                &did.to_string(),
-                &DidRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    keys: Some(KeyRelations::default()),
-                },
-            )
-            .await
-            .map_err(DidMethodError::from)?;
-
-        if result.did_method == self.method_key {
-            Ok(result)
-        } else {
-            Err(DidMethodError::DataLayerError(
-                DataLayerError::RecordNotFound,
-            ))
+        // only allow Ed25519 keys for now
+        if !did.starts_with("did:key:z6Mk") {
+            return Err(DidMethodError::ResolutionError(
+                "Unsupported key algorithm".to_string(),
+            ));
         }
+
+        let resolved = did_key::resolve(did)
+            .map_err(|_| DidMethodError::ResolutionError("Failed to resolve".to_string()))?;
+
+        let public_key = resolved.public_key_bytes();
+
+        // check Ed25519 key length
+        if public_key.len() != 32 {
+            return Err(DidMethodError::ResolutionError(
+                "Invalid key length".to_string(),
+            ));
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let key = Key {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            public_key,
+            name: did.to_string(),
+            private_key: vec![],
+            storage_type: "EPHEMERAL".to_string(),
+            key_type: "EDDSA".to_string(),
+            organisation: None,
+        };
+
+        Ok(Did {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            name: did.to_string(),
+            did: did.to_string(),
+            did_type: DidType::Remote,
+            did_method: "KEY".to_string(),
+            keys: Some(vec![
+                RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: key.clone(),
+                },
+                RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.clone(),
+                },
+                RelatedKey {
+                    role: KeyRole::CapabilityInvocation,
+                    key: key.clone(),
+                },
+                RelatedKey {
+                    role: KeyRole::CapabilityDelegation,
+                    key,
+                },
+                // skipping KeyAgreement (only supported using X25519 converted key)
+            ]),
+            organisation: None,
+        })
     }
 
     fn update(&self) -> Result<(), DidMethodError> {

@@ -18,6 +18,7 @@ use crate::repository::organisation_repository::OrganisationRepository;
 use crate::service::did::dto::CreateDidRequestDTO;
 
 pub mod key;
+mod mapper;
 pub mod provider;
 
 #[derive(Debug, Error)]
@@ -28,6 +29,8 @@ pub enum DidMethodError {
     DataLayerError(#[from] DataLayerError),
     #[error("Key storage not found")]
     KeyStorageNotFound,
+    #[error("Could not resolve: `{0}`")]
+    ResolutionError(String),
     #[error("Not supported")]
     NotSupported,
 }
@@ -104,3 +107,6 @@ fn storage_from_entity(
 
 #[cfg(test)]
 pub mod mock_did_method;
+
+#[cfg(test)]
+mod test;

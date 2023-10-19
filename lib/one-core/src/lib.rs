@@ -128,7 +128,10 @@ impl OneCore {
             data_provider.get_organisation_repository(),
             key_provider.clone(),
         )?;
-        let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
+        let did_method_provider = Arc::new(DidMethodProviderImpl::new(
+            did_methods.to_owned(),
+            data_provider.get_did_repository(),
+        ));
 
         let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
             credential_formatters.to_owned(),
