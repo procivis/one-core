@@ -10,7 +10,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use one_core::{service::error::ServiceError, transport_protocol::TransportProtocolError};
+use one_core::{
+    provider::transport_protocol::TransportProtocolError, service::error::ServiceError,
+};
 
 #[utoipa::path(
     post,

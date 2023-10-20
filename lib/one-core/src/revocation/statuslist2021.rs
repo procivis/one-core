@@ -4,12 +4,12 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::bitstring::generate_bitstring;
-use crate::credential_formatter::CredentialStatus;
 use crate::model::credential::{
     Credential, CredentialId, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
 };
 use crate::model::did::DidId;
 use crate::model::revocation_list::{RevocationList, RevocationListId, RevocationListRelations};
+use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::revocation_list_repository::RevocationListRepository;

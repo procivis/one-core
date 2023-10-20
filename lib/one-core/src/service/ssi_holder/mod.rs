@@ -1,11 +1,15 @@
 use crate::{
-    credential_formatter::provider::CredentialFormatterProvider,
+    config::data_structure::CoreConfig,
+    crypto::Crypto,
+    provider::credential_formatter::provider::CredentialFormatterProvider,
+    provider::{
+        key_storage::provider::KeyProvider, transport_protocol::provider::TransportProtocolProvider,
+    },
     repository::{
         credential_repository::CredentialRepository,
         credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
         interaction_repository::InteractionRepository, proof_repository::ProofRepository,
     },
-    transport_protocol::provider::TransportProtocolProvider,
 };
 use std::sync::Arc;
 
@@ -23,6 +27,9 @@ pub struct SSIHolderService {
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    crypto: Crypto,
+    config: Arc<CoreConfig>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -35,6 +42,9 @@ impl SSIHolderService {
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+        key_provider: Arc<dyn KeyProvider + Send + Sync>,
+        crypto: Crypto,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             credential_schema_repository,
@@ -44,6 +54,9 @@ impl SSIHolderService {
             interaction_repository,
             formatter_provider,
             protocol_provider,
+            key_provider,
+            crypto,
+            config,
         }
     }
 }

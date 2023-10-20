@@ -4,30 +4,28 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::config::ConfigParseError;
-use credential_formatter::jwt_formatter::JWTFormatter;
-use credential_formatter::provider::CredentialFormatterProviderImpl;
-use credential_formatter::sdjwt::SDJWTFormatter;
-use credential_formatter::CredentialFormatter;
 use crypto::hasher::sha256::SHA256;
 use crypto::hasher::Hasher;
 use crypto::signer::eddsa::EDDSASigner;
 use crypto::signer::Signer;
 use crypto::Crypto;
+use provider::credential_formatter::jwt_formatter::JWTFormatter;
+use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
+use provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
+use provider::credential_formatter::CredentialFormatter;
+use provider::transport_protocol::{
+    procivis_temp::ProcivisTemp, provider::TransportProtocolProviderImpl, TransportProtocol,
+};
 use repository::DataRepository;
 use service::{
     config::ConfigService, credential::CredentialService, did::DidService,
     organisation::OrganisationService, proof::ProofService, proof_schema::ProofSchemaService,
     ssi_holder::SSIHolderService, ssi_issuer::SSIIssuerService, ssi_verifier::SSIVerifierService,
 };
-use transport_protocol::{
-    procivis_temp::ProcivisTemp, provider::TransportProtocolProviderImpl, TransportProtocol,
-};
 
 pub mod config;
-pub mod credential_formatter;
-pub mod key_storage;
+pub mod provider;
 pub mod revocation;
-pub mod transport_protocol;
 
 pub mod crypto;
 
@@ -39,8 +37,9 @@ pub mod bitstring;
 pub mod common_mapper;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
-use crate::key_storage::provider::KeyProviderImpl;
-use crate::key_storage::{key_providers_from_config, KeyStorage};
+use crate::provider::key_storage::{
+    key_providers_from_config, provider::KeyProviderImpl, KeyStorage,
+};
 use crate::revocation::none::NoneRevocation;
 use crate::revocation::provider::RevocationMethodProviderImpl;
 use crate::revocation::statuslist2021::StatusList2021;
@@ -176,7 +175,7 @@ impl OneCore {
             key_service: KeyService::new(
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
-                key_provider,
+                key_provider.clone(),
                 config.clone(),
             ),
             proof_schema_service: ProofSchemaService::new(
@@ -197,12 +196,16 @@ impl OneCore {
                 data_provider.get_proof_repository(),
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),
+                config.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_did_repository(),
+                key_provider.clone(),
                 formatter_provider.clone(),
                 revocation_method_provider,
+                crypto.clone(),
+                config.clone(),
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_schema_repository(),
@@ -212,6 +215,9 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 formatter_provider,
                 protocol_provider,
+                key_provider,
+                crypto.clone(),
+                config.clone(),
             ),
             config_service: ConfigService::new(config.clone()),
             crypto,

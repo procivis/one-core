@@ -1,19 +1,70 @@
 use super::dto::ValidatedProofClaimDTO;
 use crate::{
-    credential_formatter::CredentialFormatter,
     model::{
         credential_schema::{CredentialSchema, CredentialSchemaId},
         did::Did,
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
+    provider::credential_formatter::{model::DetailCredential, CredentialFormatter},
     service::error::ServiceError,
 };
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use std::collections::{HashMap, HashSet};
 use time::OffsetDateTime;
 use uuid::Uuid;
+/*
+pub(super) fn verify_signature(
+    crypto: &Crypto,
+    header_json: &str,
+    payload_json: &str,
+    signature: &[u8],
+    signature_algorithm: &str,
+) -> Result<(), FormatterError> {
+    let signer = crypto
+        .signers
+        .get(signature_algorithm)
+        .ok_or(FormatterError::MissingSigner)?;
+
+    let (_, public) = get_temp_keys();
+
+    let jwt: String = format!(
+        "{}.{}",
+        string_to_b64url_string(header_json)?,
+        string_to_b64url_string(payload_json)?,
+    );
+
+    signer
+        .verify(&jwt, signature, &public)
+        .map_err(|_| FormatterError::Failed("Failed".to_owned()))?;
+    Ok(())
+}
+*/
+
+/*
+// pub(super) fn verify_signature(
+//     crypto: &Crypto,
+//     header_json: &str,
+//     payload_json: &str,
+//     signature: &[u8],
+//     signature_algorithm: &str,
+// ) -> Result<(), FormatterError> {
+//     let signer = crypto
+//         .signers
+//         .get(signature_algorithm)
+//         .ok_or(FormatterError::MissingSigner)?;
+
+//     let (_, public) = get_temp_keys();
+
+//     let jwt: String = format!(
+//         "{}.{}",
+//         string_to_b64url_string(header_json)?,
+//         string_to_b64url_string(payload_json)?,
+//     );
+
+//     signer
+//         .verify(&jwt, signature, &public)
+//         .map_err(|_| FormatterError::Failed("Failed".to_owned()))?;
+//     Ok(())
+// } */
 
 pub(super) fn validate_proof(
     proof_schema: ProofSchema,
@@ -21,11 +72,14 @@ pub(super) fn validate_proof(
     presentation: &str,
     formatter: &(dyn CredentialFormatter + Send + Sync),
 ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
+    // Provide real implementation when did key provider is ready.
+    let verify_fn = Box::new(|_payload: &str, _data: &[u8]| Ok(()));
+
     // TODO Check if the signature of the ProofSubmitRequestDTO(JWT) is signed with did of the issuer property (holder did)
     // Add when key management introduced. For now we use the same pair of keys for everything.
-    // If it's extracted - it's properly signed
+    // If it's extracted - it's signed
     // This will change when we started using external signature providers
-    let presentation = formatter.extract_presentation(presentation)?;
+    let presentation = formatter.extract_presentation(presentation, verify_fn)?;
 
     // Check if presentation is expired
     validate_issuance_time(presentation.issued_at)?;
@@ -80,8 +134,12 @@ pub(super) fn validate_proof(
         HashMap::new();
 
     for credential in presentation.credentials {
+        let verify_fn = Box::new(|_payload: &str, _data: &[u8]| Ok(()));
+
         // Particular tokens are verified here
-        let credential = formatter.extract_credentials(&credential)?;
+        let credential = formatter.extract_credentials(&credential, verify_fn)?;
+
+        let credential_schema_id = find_matching_schema(&credential, &remaining_requested_claims)?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
         validate_issuance_time(credential.invalid_before)?;
@@ -103,8 +161,6 @@ pub(super) fn validate_proof(
         }
 
         // check if this credential was requested
-        let credential_schema_id = Uuid::from_str(&credential.claims.one_credential_schema.id)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
         let requested_proof_claims: Result<Vec<ProofSchemaClaim>, ServiceError> =
             match remaining_requested_claims.remove_entry(&credential_schema_id) {
                 None => {
@@ -162,6 +218,24 @@ pub(super) fn validate_proof(
         .into_iter()
         .flat_map(|(.., claims)| claims)
         .collect())
+}
+
+fn find_matching_schema(
+    credential: &DetailCredential,
+    remaining_requested_claims: &HashMap<Uuid, Vec<ProofSchemaClaim>>,
+) -> Result<Uuid, ServiceError> {
+    for (schema_id, claim_schemas) in remaining_requested_claims {
+        if credential.claims.values.keys().all(|key| {
+            claim_schemas
+                .iter()
+                .any(|claim_schema| claim_schema.schema.key.eq(key))
+        }) {
+            return Ok(schema_id.to_owned());
+        }
+    }
+    Err(ServiceError::ValidationError(
+        "Could not find matching credential schema".to_owned(),
+    ))
 }
 
 fn validate_issuance_time(issued_at: Option<OffsetDateTime>) -> Result<(), ServiceError> {

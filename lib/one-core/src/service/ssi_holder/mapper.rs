@@ -1,6 +1,5 @@
 use super::dto::HandleInvitationURLQuery;
 use crate::{
-    credential_formatter::VCCredentialClaimSchemaResponse,
     model::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
@@ -9,12 +8,15 @@ use crate::{
         organisation::Organisation,
         proof::{self, Proof, ProofId, ProofStateEnum},
     },
+    provider::{
+        credential_formatter::model::VCCredentialClaimSchemaResponse,
+        transport_protocol::dto::ProofCredentialSchema,
+    },
     service::{
         credential::dto::DetailCredentialSchemaResponseDTO,
         credential_schema::dto::{CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO},
         error::ServiceError,
     },
-    transport_protocol::dto::ProofCredentialSchema,
 };
 use std::{collections::HashMap, str::FromStr};
 use time::OffsetDateTime;

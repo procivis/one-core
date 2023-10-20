@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::key_storage::provider::KeyProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::{config::data_structure::CoreConfig, repository::key_repository::KeyRepository};
 

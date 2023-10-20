@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::credential_formatter::{CredentialStatus, VCCredentialSchemaResponse};
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct JWTHeader {
     #[serde(rename = "alg")]
@@ -26,7 +24,7 @@ impl Default for JWTHeader {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct JWTPayload<CustomClaims> {
+pub struct JWTPayload<CustomPayload> {
     /// Time the claims were created at
     #[serde(
         rename = "iat",
@@ -70,75 +68,15 @@ pub struct JWTPayload<CustomClaims> {
     #[serde(rename = "nonce", default, skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,
 
-    /// Hash algorithm
-    /// https://www.iana.org/assignments/named-information/named-information.xhtml
-    #[serde(rename = "_sd_alg", default, skip_serializing_if = "Option::is_none")]
-    pub hash_alg: Option<String>,
-
     /// Custom (application-defined) claims
     #[serde(flatten)]
-    pub custom: CustomClaims,
+    pub custom: CustomPayload,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VCContent {
-    #[serde(rename = "@context")]
-    pub context: Vec<String>,
-    pub r#type: Vec<String>,
-    pub credential_subject: SDCredentialSubject,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub credential_status: Option<CredentialStatus>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VPContent {
-    #[serde(rename = "@context")]
-    pub context: Vec<String>,
-    #[serde(rename = "type")]
-    pub r#type: Vec<String>,
-    #[serde(rename = "_sd_jwt")]
-    pub verifiable_credential: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VC {
-    pub vc: VCContent,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VP {
-    pub vp: VPContent,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub(super) struct Disclosure {
-    pub salt: String,
-    pub key: String,
-    pub value: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SDCredentialSubject {
-    #[serde(rename = "_sd")]
-    pub claims: Vec<String>,
-    pub one_credential_schema: VCCredentialSchemaResponse,
-}
-
-pub(super) struct DecomposedToken<Claims> {
+pub(super) struct DecomposedToken<Payload> {
     pub header: JWTHeader,
     pub header_json: String,
-    pub payload: JWTPayload<Claims>,
+    pub payload: JWTPayload<Payload>,
     pub payload_json: String,
     pub signature: Vec<u8>,
-    pub disclosures: Vec<(Disclosure, String, String)>,
-}
-
-pub(super) struct ExtractedDisclosures<'a> {
-    pub jwt: &'a str,
-    pub deserialized_disclosures: Vec<(Disclosure, String, String)>,
 }

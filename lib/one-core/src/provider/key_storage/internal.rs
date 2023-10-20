@@ -5,7 +5,7 @@ use did_key::{Fingerprint, Generate, KeyMaterial};
 
 use crate::{
     config::data_structure::KeyStorageInternalParams,
-    key_storage::{GeneratedKey, KeyStorage},
+    provider::key_storage::{GeneratedKey, KeyStorage},
     service::error::ServiceError,
 };
 

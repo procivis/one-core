@@ -1,5 +1,5 @@
-use crate::credential_formatter::CredentialStatus;
 use crate::model::credential::Credential;
+use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::service::error::ServiceError;
 
 pub mod none;

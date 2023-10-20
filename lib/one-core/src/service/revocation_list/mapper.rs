@@ -1,5 +1,5 @@
-use crate::credential_formatter::FormatterError;
 use crate::model::revocation_list::RevocationList;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::service::error::ServiceError;
 
 impl TryFrom<RevocationList> for String {

@@ -23,7 +23,6 @@ pub struct CredentialListItemResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,
@@ -45,7 +44,6 @@ pub struct GetCredentialResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: OffsetDateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "front_time_option")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,

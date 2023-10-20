@@ -4,11 +4,13 @@ use crate::{
         data_structure,
         data_structure::{CoreConfig, DidEntity},
     },
-    key_storage::{mock_key_storage::MockKeyStorage, provider::KeyProviderImpl, KeyStorage},
     model::{
         did::{Did, DidRelations, DidType, GetDidList, KeyRole, RelatedKey},
         key::{Key, KeyRelations},
         organisation::{Organisation, OrganisationRelations},
+    },
+    provider::key_storage::{
+        mock_key_storage::MockKeyStorage, provider::KeyProviderImpl, KeyStorage,
     },
     repository::mock::{
         did_repository::MockDidRepository, key_repository::MockKeyRepository,

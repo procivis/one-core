@@ -1,4 +1,4 @@
-use crate::{key_storage::GeneratedKey, service::error::ServiceError};
+use crate::{provider::key_storage::GeneratedKey, service::error::ServiceError};
 
 use mockall::*;
 
@@ -13,7 +13,7 @@ mock! {
     }
 }
 
-impl crate::key_storage::KeyStorage for MockKeyStorage {
+impl crate::provider::key_storage::KeyStorage for MockKeyStorage {
     fn decrypt_private_key(&self, private_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
         self.decrypt_private_key(private_key)
     }

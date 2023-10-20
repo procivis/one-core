@@ -8,7 +8,7 @@ use crate::{
         },
         ConfigParseError,
     },
-    key_storage::internal::InternalKeyProvider,
+    provider::key_storage::internal::InternalKeyProvider,
     service::error::ServiceError,
 };
 
