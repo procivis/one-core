@@ -2,8 +2,8 @@ use thiserror::Error;
 
 use crate::{
     bitstring::BitstringError, config::validator::ConfigValidationError,
-    credential_formatter::FormatterError, repository::error::DataLayerError,
-    transport_protocol::TransportProtocolError,
+    provider::credential_formatter::error::FormatterError,
+    provider::transport_protocol::TransportProtocolError, repository::error::DataLayerError,
 };
 
 #[derive(Debug, Error)]
@@ -30,6 +30,10 @@ pub enum ServiceError {
     FormatterError(#[from] FormatterError),
     #[error("Bitstring error `{0}`")]
     BitstringError(#[from] BitstringError),
+    #[error("Missing signer for algorithm `{0}`")]
+    MissingSigner(String),
+    #[error("Missing algorithm `{0}`")]
+    MissingAlgorithm(String),
     #[error("Other Repository error: `{0}`")]
     Other(String),
 }

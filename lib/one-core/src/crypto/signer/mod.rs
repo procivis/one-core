@@ -17,6 +17,11 @@ pub enum SignerError {
 }
 
 pub trait Signer {
-    fn sign(&self, input: &str, key: &[u8]) -> Result<Vec<u8>, SignerError>;
-    fn verify(&self, input: &str, signature: &[u8], key: &[u8]) -> Result<(), SignerError>;
+    fn sign(
+        &self,
+        input: &str,
+        public_key: &[u8],
+        private_key: &[u8],
+    ) -> Result<Vec<u8>, SignerError>;
+    fn verify(&self, input: &str, signature: &[u8], public_key: &[u8]) -> Result<(), SignerError>;
 }

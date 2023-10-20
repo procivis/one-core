@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     config::data_structure::CoreConfig,
-    key_storage::provider::KeyProvider,
+    provider::key_storage::provider::KeyProvider,
     repository::{
         did_repository::DidRepository, key_repository::KeyRepository,
         organisation_repository::OrganisationRepository,

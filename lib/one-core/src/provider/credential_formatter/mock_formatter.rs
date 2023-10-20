@@ -21,20 +21,24 @@ mock! {
             algorithm: &str,
             additional_context: Vec<String>,
             additional_types: Vec<String>,
+            auth_fn: AuthenticationFn,
         ) -> Result<String, FormatterError>;
         fn extract_credentials(
             &self,
             credentials: &str
+            verify_fn: VerificationFn,
         ) -> Result<DetailCredential, FormatterError>;
         fn format_presentation(
             &self,
             tokens: &[PresentationCredential],
             holder_did: &str,
             algorithm: &str
+            auth_fn: AuthenticationFn,
         ) -> Result<String, FormatterError>;
         fn extract_presentation(
             &self,
             token: &str
+            verify_fn: VerificationFn,
         ) -> Result<CredentialPresentation, FormatterError>;
     }
 }

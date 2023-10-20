@@ -35,10 +35,7 @@ pub struct CredentialDetailResponseDTO {
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub issuance_date: OffsetDateTime,
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        with = "time::serde::timestamp::option"
-    )]
+    #[serde(with = "time::serde::timestamp::option")]
     pub revocation_date: Option<OffsetDateTime>,
     pub state: CredentialStateEnum,
     #[serde(with = "time::serde::rfc3339")]

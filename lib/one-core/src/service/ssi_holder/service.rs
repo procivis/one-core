@@ -7,8 +7,7 @@ use super::{
     SSIHolderService,
 };
 use crate::{
-    common_mapper::get_base_url,
-    credential_formatter::PresentationCredential,
+    common_mapper::{get_algorithm_from_key_algorithm, get_base_url},
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
@@ -17,14 +16,18 @@ use crate::{
             CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::{Did, DidRelations},
+        did::{Did, DidRelations, KeyRole},
         interaction::{InteractionId, InteractionRelations},
+        key::KeyRelations,
         organisation::OrganisationRelations,
         proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
     },
+    provider::{
+        credential_formatter::model::PresentationCredential,
+        transport_protocol::dto::{ConnectVerifierResponse, InvitationResponse},
+    },
     repository::error::DataLayerError,
     service::{credential::dto::CredentialDetailResponseDTO, did::dto::DidId, error::ServiceError},
-    transport_protocol::dto::{ConnectVerifierResponse, InvitationResponse},
 };
 
 use time::OffsetDateTime;
@@ -145,7 +148,10 @@ impl SSIHolderService {
                 &ProofRelations {
                     state: Some(ProofStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
-                    holder_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
@@ -243,8 +249,44 @@ impl SSIHolderService {
         }
 
         let formatter = self.formatter_provider.get_formatter(&format)?;
-        let presentation =
-            formatter.format_presentation(&credentials, &holder_did.did, "Ed25519")?;
+
+        let keys = holder_did
+            .keys
+            .as_ref()
+            .ok_or(ServiceError::MappingError("Holder has no keys".to_string()))?;
+
+        let key = keys
+            .iter()
+            .find(|k| k.role == KeyRole::AssertionMethod)
+            .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
+
+        let algorithm = get_algorithm_from_key_algorithm(&key.key.key_type, &self.config)?;
+
+        let signer = self
+            .crypto
+            .signers
+            .get(&algorithm)
+            .ok_or(ServiceError::MissingSigner(algorithm.clone()))?
+            .clone();
+
+        let key_provider = self.key_provider.get_key_storage(&key.key.storage_type)?;
+
+        let private_key_moved = key_provider.decrypt_private_key(&key.key.private_key)?;
+        let public_key_moved = key.key.public_key.clone();
+
+        let auth_fn = Box::new(move |data: &str| {
+            let signer = signer;
+            let private_key = private_key_moved;
+            let public_key = public_key_moved;
+            signer.sign(data, &public_key, &private_key)
+        });
+
+        let presentation = formatter.format_presentation(
+            &credentials,
+            &holder_did.did,
+            &key.key.key_type,
+            auth_fn,
+        )?;
 
         let submit_result = self
             .protocol_provider

@@ -3,7 +3,14 @@ use super::{Signer, SignerError};
 pub struct EDDSASigner {}
 
 impl Signer for EDDSASigner {
-    fn sign(&self, input: &str, key_pair: &[u8]) -> Result<Vec<u8>, SignerError> {
+    fn sign(
+        &self,
+        input: &str,
+        public_key: &[u8],
+        private_key: &[u8],
+    ) -> Result<Vec<u8>, SignerError> {
+        let key_pair: &[u8] = &[private_key, public_key].concat();
+
         let ed25519_kp = ed25519_compact::KeyPair::from_slice(key_pair)
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
         Ok(ed25519_kp.sk.sign(input, None).to_vec())

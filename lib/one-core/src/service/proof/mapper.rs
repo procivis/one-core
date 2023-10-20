@@ -18,8 +18,8 @@ use crate::{
         proof::{self, Proof, ProofStateEnum},
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
+    provider::transport_protocol::dto::ProofClaimSchema,
     service::error::ServiceError,
-    transport_protocol::dto::ProofClaimSchema,
 };
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;

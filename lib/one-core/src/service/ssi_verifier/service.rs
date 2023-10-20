@@ -93,7 +93,6 @@ impl SSIVerifierService {
         if proof_state != ProofStateEnum::Offered {
             return Err(ServiceError::AlreadyExists);
         }
-
         let proof_schema = proof.schema.ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),
         ))?;

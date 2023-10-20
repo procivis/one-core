@@ -1,4 +1,7 @@
-use crate::{model::common::GetListResponse, service::error::ServiceError};
+use crate::{
+    config::data_structure::CoreConfig, model::common::GetListResponse,
+    service::error::ServiceError,
+};
 
 pub fn vector_into<T, F: Into<T>>(input: Vec<F>) -> Vec<T> {
     input.into_iter().map(|item| item.into()).collect()
@@ -49,4 +52,23 @@ pub fn get_base_url(url: &str) -> Result<String, ServiceError> {
     }
 
     Ok(host_url)
+}
+
+pub(crate) fn get_algorithm_from_key_algorithm(
+    key_type: &str,
+    config: &CoreConfig,
+) -> Result<String, ServiceError> {
+    let algorithm = config
+        .key_algorithm
+        .get(key_type)
+        .ok_or(ServiceError::MissingSigner(key_type.to_owned()))?;
+
+    let algorithm = algorithm.params.clone().unwrap();
+
+    match algorithm {
+        crate::config::data_structure::ParamsEnum::Unparsed(_) => Err(ServiceError::Other(
+            "Missing key algorithm in config".to_owned(),
+        )),
+        crate::config::data_structure::ParamsEnum::Parsed(val) => Ok(val.algorithm.value),
+    }
 }

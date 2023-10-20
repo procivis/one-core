@@ -4,11 +4,11 @@ use uuid::Uuid;
 use crate::service::error::ServiceError;
 use crate::service::key::dto::KeyResponseDTO;
 use crate::{
-    key_storage::GeneratedKey,
     model::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
+    provider::key_storage::GeneratedKey,
     service::key::dto::KeyRequestDTO,
 };
 
