@@ -42,7 +42,7 @@ use crate::provider::key_storage::{
 };
 use crate::revocation::none::NoneRevocation;
 use crate::revocation::provider::RevocationMethodProviderImpl;
-use crate::revocation::statuslist2021::StatusList2021;
+use crate::revocation::status_list_2021::StatusList2021;
 use crate::revocation::RevocationMethod;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::key::KeyService;
@@ -103,17 +103,6 @@ impl OneCore {
             ("JWT".to_string(), jwt_formatter),
             ("SDJWT".to_string(), sdjwt_formatter),
         ];
-        let revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)> = vec![
-            ("NONE".to_string(), Arc::new(NoneRevocation {})),
-            (
-                "STATUSLIST2021".to_string(),
-                Arc::new(StatusList2021 {
-                    core_base_url,
-                    credential_repository: data_provider.get_credential_repository(),
-                    revocation_list_repository: data_provider.get_revocation_list_repository(),
-                }),
-            ),
-        ];
 
         let config = config::config_provider::parse_config(
             unparsed_config,
@@ -136,11 +125,26 @@ impl OneCore {
         let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
             transport_protocols.to_owned(),
         ));
+
+        let config = Arc::new(config);
+
+        let revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)> = vec![
+            ("NONE".to_string(), Arc::new(NoneRevocation {})),
+            (
+                "STATUSLIST2021".to_string(),
+                Arc::new(StatusList2021 {
+                    core_base_url,
+                    credential_repository: data_provider.get_credential_repository(),
+                    revocation_list_repository: data_provider.get_revocation_list_repository(),
+                    crypto: crypto.clone(),
+                    config: config.clone(),
+                    key_provider: key_provider.clone(),
+                }),
+            ),
+        ];
         let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
             revocation_methods.to_owned(),
         ));
-
-        let config = Arc::new(config);
 
         Ok(OneCore {
             key_providers,

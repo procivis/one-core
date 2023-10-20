@@ -12,6 +12,7 @@ use crate::{
         },
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
+        key::KeyRelations,
         organisation::OrganisationRelations,
     },
     service::{
@@ -144,7 +145,10 @@ impl CredentialService {
                 credential_id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
-                    issuer_did: Some(DidRelations::default()),
+                    issuer_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                     schema: Some(CredentialSchemaRelations::default()),
                     ..Default::default()
                 },
