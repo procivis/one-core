@@ -4,7 +4,7 @@ use crate::service::error::ServiceError;
 
 pub mod none;
 pub mod provider;
-pub mod statuslist2021;
+pub mod status_list_2021;
 
 pub struct CredentialRevocationInfo {
     pub additional_vc_contexts: Vec<String>,

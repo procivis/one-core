@@ -1,18 +1,28 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::bitstring::generate_bitstring;
-use crate::model::credential::{
-    Credential, CredentialId, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
+use crate::common_mapper::get_algorithm_from_key_algorithm;
+use crate::config::data_structure::CoreConfig;
+use crate::crypto::Crypto;
+use crate::model::did::KeyRole;
+use crate::model::{
+    credential::{
+        Credential, CredentialId, CredentialRelations, CredentialStateEnum,
+        CredentialStateRelations,
+    },
+    did::{Did, DidId},
+    revocation_list::{RevocationList, RevocationListId, RevocationListRelations},
 };
-use crate::model::did::DidId;
-use crate::model::revocation_list::{RevocationList, RevocationListId, RevocationListRelations};
-use crate::provider::credential_formatter::model::CredentialStatus;
-use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::error::DataLayerError;
-use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::provider::credential_formatter::{
+    model::CredentialStatus, status_list_2021_jwt_formatter::StatusList2021JWTFormatter,
+};
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::{
+    credential_repository::CredentialRepository, error::DataLayerError,
+    revocation_list_repository::RevocationListRepository,
+};
 use crate::revocation::{CredentialRevocationInfo, RevocationMethod};
 use crate::service::error::ServiceError;
 
@@ -20,6 +30,9 @@ pub struct StatusList2021 {
     pub(crate) core_base_url: Option<String>,
     pub(crate) credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     pub(crate) revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
+    pub(crate) config: Arc<CoreConfig>,
+    pub(crate) crypto: Crypto,
+    pub(crate) key_provider: Arc<dyn KeyProvider + Send + Sync>,
 }
 
 #[async_trait::async_trait]
@@ -41,18 +54,25 @@ impl RevocationMethod for StatusList2021 {
         let revocation_list_id = match revocation_list {
             Ok(value) => Ok(value.id),
             Err(DataLayerError::RecordNotFound) => {
-                let revocation_bitstring = self
+                let encoded_list = self
                     .generate_bitstring_from_credentials(&issuer_did.id, None)
                     .await?;
+
+                let revocation_list_id = RevocationListId::new_v4();
+                let list_credential = self.format_status_list_credential(
+                    &revocation_list_id,
+                    &issuer_did,
+                    encoded_list,
+                )?;
 
                 let now = OffsetDateTime::now_utc();
                 Ok(self
                     .revocation_list_repository
                     .create_revocation_list(RevocationList {
-                        id: Uuid::new_v4(),
+                        id: revocation_list_id,
                         created_date: now,
                         last_modified: now,
-                        credentials: revocation_bitstring.as_bytes().to_vec(),
+                        credentials: list_credential.as_bytes().to_vec(),
                         issuer_did: Some(issuer_did.to_owned()),
                     })
                     .await?)
@@ -83,15 +103,15 @@ impl RevocationMethod for StatusList2021 {
             .get_revocation_by_issuer_did_id(&issuer_did.id, &RevocationListRelations::default())
             .await?;
 
-        let revocation_bitstring = self
+        let encoded_list = self
             .generate_bitstring_from_credentials(&issuer_did.id, Some(credential.id))
             .await?;
 
+        let list_credential =
+            self.format_status_list_credential(&revocation_list.id, &issuer_did, encoded_list)?;
+
         self.revocation_list_repository
-            .update_credentials(
-                &revocation_list.id,
-                revocation_bitstring.as_bytes().to_vec(),
-            )
+            .update_credentials(&revocation_list.id, list_credential.as_bytes().to_vec())
             .await?;
 
         Ok(())
@@ -165,15 +185,7 @@ impl StatusList2021 {
         revocation_list_id: &RevocationListId,
         index_on_status_list: usize,
     ) -> Result<CredentialStatus, ServiceError> {
-        let revocation_list_url = format!(
-            "{}/ssi/revocation/v1/list/{}",
-            self.core_base_url
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "Host URL not specified".to_string()
-                ))?,
-            revocation_list_id
-        );
+        let revocation_list_url = self.get_revocation_list_url(revocation_list_id)?;
         Ok(CredentialStatus {
             id: format!("{}#{}", revocation_list_url, index_on_status_list),
             r#type: "StatusList2021Entry".to_string(),
@@ -186,5 +198,63 @@ impl StatusList2021 {
                 ),
             ]),
         })
+    }
+
+    fn format_status_list_credential(
+        &self,
+        revocation_list_id: &RevocationListId,
+        issuer_did: &Did,
+        encoded_list: String,
+    ) -> Result<String, ServiceError> {
+        let revocation_list_url = self.get_revocation_list_url(revocation_list_id)?;
+
+        let keys = issuer_did
+            .keys
+            .as_ref()
+            .ok_or(ServiceError::MappingError("Issuer has no keys".to_string()))?;
+
+        let key = keys
+            .iter()
+            .find(|k| k.role == KeyRole::AssertionMethod)
+            .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
+
+        let algorithm = get_algorithm_from_key_algorithm(&key.key.key_type, &self.config)?;
+
+        let signer = self
+            .crypto
+            .signers
+            .get(&algorithm)
+            .ok_or(ServiceError::MissingSigner(algorithm))?
+            .clone();
+
+        let key_storage = self.key_provider.get_key_storage(&key.key.storage_type)?;
+
+        let private_key = key_storage.decrypt_private_key(&key.key.private_key)?;
+        let public_key = key.key.public_key.clone();
+        let auth_fn = Box::new(move |data: &str| signer.sign(data, &public_key, &private_key));
+
+        StatusList2021JWTFormatter::format_status_list(
+            revocation_list_url,
+            issuer_did,
+            encoded_list,
+            key.key.key_type.to_owned(),
+            auth_fn,
+        )
+        .map_err(ServiceError::from)
+    }
+
+    fn get_revocation_list_url(
+        &self,
+        revocation_list_id: &RevocationListId,
+    ) -> Result<String, ServiceError> {
+        Ok(format!(
+            "{}/ssi/revocation/v1/list/{}",
+            self.core_base_url
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "Host URL not specified".to_string()
+                ))?,
+            revocation_list_id
+        ))
     }
 }
