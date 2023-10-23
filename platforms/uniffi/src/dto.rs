@@ -164,3 +164,10 @@ pub struct DidRequestKeysBindingDTO {
     pub capability_invocation: Vec<String>,
     pub capability_delegation: Vec<String>,
 }
+
+pub struct CredentialRevocationCheckResponseBindingDTO {
+    pub credential_id: String,
+    pub status: CredentialStateBindingEnum,
+    pub success: bool,
+    pub reason: Option<String>,
+}
