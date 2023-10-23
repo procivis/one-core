@@ -2,6 +2,7 @@ use super::{
     dto::{HandleInvitationConnectRequest, InvitationResponse, SubmitIssuerResponse},
     TransportProtocol, TransportProtocolError,
 };
+use crate::model::{credential::Credential, did::Did, interaction::Interaction, proof::Proof};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -40,17 +41,48 @@ fn categorize_url(url: &str) -> Result<InvitationType, TransportProtocolError> {
     Err(TransportProtocolError::Failed("Invalid Query".to_owned()))
 }
 
+fn get_base_url(interaction: &Option<Interaction>) -> Result<reqwest::Url, TransportProtocolError> {
+    let base_url = interaction
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "interaction is None".to_string(),
+        ))?
+        .host
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "interaction host is missing".to_string(),
+        ))?;
+
+    reqwest::Url::parse(base_url)
+        .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))
+}
+
 #[async_trait]
 impl TransportProtocol for ProcivisTemp {
+    fn detect_invitation_type(
+        &self,
+        url: &str,
+    ) -> Option<crate::provider::transport_protocol::dto::InvitationType> {
+        let r#type = categorize_url(url).ok()?;
+        Some(match r#type {
+            InvitationType::CredentialIssuance => {
+                crate::provider::transport_protocol::dto::InvitationType::CredentialIssuance
+            }
+            InvitationType::ProofRequest { .. } => {
+                crate::provider::transport_protocol::dto::InvitationType::ProofRequest
+            }
+        })
+    }
+
     async fn handle_invitation(
         &self,
         url: &str,
-        own_did: &str,
+        own_did: &Did,
     ) -> Result<InvitationResponse, TransportProtocolError> {
         let invitation_type = categorize_url(url)?;
 
         let request_body = HandleInvitationConnectRequest {
-            did: own_did.to_owned(),
+            did: own_did.did.to_owned(),
         };
         let response = self
             .client
@@ -80,15 +112,10 @@ impl TransportProtocol for ProcivisTemp {
         })
     }
 
-    async fn reject_proof(
-        &self,
-        base_url: &str,
-        proof_id: &str,
-    ) -> Result<(), TransportProtocolError> {
-        let mut url = reqwest::Url::parse(base_url)
-            .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+    async fn reject_proof(&self, proof: &Proof) -> Result<(), TransportProtocolError> {
+        let mut url = get_base_url(&proof.interaction)?;
         url.set_path("/ssi/temporary-verifier/v1/reject");
-        url.set_query(Some(&format!("proof={proof_id}")));
+        url.set_query(Some(&format!("proof={}", proof.id)));
 
         let response = self
             .client
@@ -105,14 +132,12 @@ impl TransportProtocol for ProcivisTemp {
 
     async fn submit_proof(
         &self,
-        base_url: &str,
-        proof_id: &str,
+        proof: &Proof,
         presentation: &str,
     ) -> Result<(), TransportProtocolError> {
-        let mut url = reqwest::Url::parse(base_url)
-            .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+        let mut url = get_base_url(&proof.interaction)?;
         url.set_path("/ssi/temporary-verifier/v1/submit");
-        url.set_query(Some(&format!("proof={proof_id}")));
+        url.set_query(Some(&format!("proof={}", proof.id)));
 
         let response = self
             .client
@@ -130,13 +155,11 @@ impl TransportProtocol for ProcivisTemp {
 
     async fn accept_credential(
         &self,
-        base_url: &str,
-        credential_id: &str,
+        credential: &Credential,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
-        let mut url = reqwest::Url::parse(base_url)
-            .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+        let mut url = get_base_url(&credential.interaction)?;
         url.set_path("/ssi/temporary-issuer/v1/submit");
-        url.set_query(Some(&format!("credentialId={credential_id}")));
+        url.set_query(Some(&format!("credentialId={}", credential.id)));
 
         let response = self
             .client
@@ -157,13 +180,11 @@ impl TransportProtocol for ProcivisTemp {
 
     async fn reject_credential(
         &self,
-        base_url: &str,
-        credential_id: &str,
+        credential: &Credential,
     ) -> Result<(), TransportProtocolError> {
-        let mut url = reqwest::Url::parse(base_url)
-            .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))?;
+        let mut url = get_base_url(&credential.interaction)?;
         url.set_path("/ssi/temporary-issuer/v1/reject");
-        url.set_query(Some(&format!("credentialId={credential_id}")));
+        url.set_query(Some(&format!("credentialId={}", credential.id)));
 
         let response = self
             .client
@@ -176,5 +197,16 @@ impl TransportProtocol for ProcivisTemp {
             .map_err(TransportProtocolError::HttpRequestError)?;
 
         Ok(())
+    }
+
+    async fn share_credential(
+        &self,
+        _credential: &Credential,
+    ) -> Result<String, TransportProtocolError> {
+        unimplemented!()
+    }
+
+    async fn share_proof(&self, _proof: &Proof) -> Result<String, TransportProtocolError> {
+        unimplemented!()
     }
 }
