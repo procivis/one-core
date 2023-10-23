@@ -173,6 +173,13 @@ dictionary DidRequestBindingDTO {
     record<string, string> params;
 };
 
+dictionary CredentialRevocationCheckResponseBindingDTO {
+    string credential_id;
+    CredentialStateBindingEnum status;
+    boolean success;
+    string? reason;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -211,4 +218,7 @@ interface OneCoreBinding {
 
   [Throws=ServiceError]
   ProofRequestBindingDTO get_proof(string proof_id);
+
+  [Throws=ServiceError]
+  sequence<CredentialRevocationCheckResponseBindingDTO> check_revocation(sequence<string> credential_ids);
 };

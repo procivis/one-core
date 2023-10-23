@@ -4,10 +4,10 @@ use super::dto::{
 };
 use crate::{
     dto::{
-        DidRequestBindingDTO, DidRequestKeysBindingDTO, DidTypeBindingEnum,
-        HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
-        PresentationDefinitionBindingDTO, PresentationDefinitionFieldBindingDTO,
-        PresentationDefinitionRequestGroupBindingDTO,
+        CredentialRevocationCheckResponseBindingDTO, DidRequestBindingDTO,
+        DidRequestKeysBindingDTO, DidTypeBindingEnum, HandleInvitationResponseBindingEnum,
+        KeyRequestBindingDTO, PresentationDefinitionBindingDTO,
+        PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestGroupBindingDTO,
         PresentationDefinitionRequestedCredentialBindingDTO, PresentationDefinitionRuleBindingDTO,
         PresentationDefinitionRuleTypeBindingEnum, PresentationSubmitCredentialRequestBindingDTO,
     },
@@ -19,7 +19,8 @@ use one_core::{
     model::did::DidType,
     service::{
         credential::dto::{
-            CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialStateEnum,
+            CredentialDetailResponseDTO, CredentialListItemResponseDTO,
+            CredentialRevocationCheckResponseDTO, CredentialStateEnum,
             DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
             GetCredentialListResponseDTO,
         },
@@ -308,5 +309,16 @@ impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
             capability_invocation: convert(request.capability_invocation)?,
             capability_delegation: convert(request.capability_delegation)?,
         })
+    }
+}
+
+impl From<CredentialRevocationCheckResponseDTO> for CredentialRevocationCheckResponseBindingDTO {
+    fn from(value: CredentialRevocationCheckResponseDTO) -> Self {
+        Self {
+            credential_id: value.credential_id.to_string(),
+            status: value.status.into(),
+            success: value.success,
+            reason: value.reason,
+        }
     }
 }

@@ -1,3 +1,4 @@
+mod check_revocation;
 mod create_did;
 mod create_organisation;
 mod generate_key;
