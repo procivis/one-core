@@ -75,7 +75,11 @@ pub(crate) async fn post_key(
     let result = state.core.key_service.generate_key(request.into()).await;
 
     match result {
-        Ok(value) => (StatusCode::OK, Json(EntityResponseRestDTO { id: value })).into_response(),
+        Ok(value) => (
+            StatusCode::CREATED,
+            Json(EntityResponseRestDTO { id: value }),
+        )
+            .into_response(),
         Err(ServiceError::ConfigValidationError(error)) => {
             tracing::error!("Config validation error: {:?}", error);
             StatusCode::UNPROCESSABLE_ENTITY.into_response()
