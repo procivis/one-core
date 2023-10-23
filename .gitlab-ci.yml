@@ -13,6 +13,7 @@ variables:
   # - BITRISE_API_ACCESS_TOKEN: Bitrise access token for IOS sdk build
   # - AZURE_STORAGE_ACCOUNT: storage account for sdk build upload
   # - AZURE_STORAGE_KEY: storage account key
+  # - PGP_PRIVATE_KEY: helm-secrets
 
 
 workflow:
@@ -60,8 +61,10 @@ before_script:
     - when: on_success
 
 .deploy_k8s:
-  image: registry.gitlab.procivis.ch/procivis/one/one-operations/az-helm-kubectl:1.25.7
+  image: registry.gitlab.procivis.ch/procivis/one/one-operations/az-helm-kubectl:1.27.7
   variables:
+    HELM_VALUES_FILE: $VALUES_PATH/main.yaml
+    SECRETS_FILE: $VALUES_PATH/secrets.yaml
     DEPLOY_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
     K8S_TYPE: deployment
     HELM_APP_NAME: one-core
@@ -69,6 +72,7 @@ before_script:
   before_script:
     - az login --service-principal -u "$AD_APP_ID" -p "$AD_APP_SECRET" --tenant "$AD_TENANT_ID"
     - az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --admin
+    - gpg --import "$PGP_PRIVATE_KEY"
   script:
     - cd "$HELM_PATH"
     - helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -76,6 +80,7 @@ before_script:
     - >
       helm upgrade --install $HELM_APP_NAME .
       --values $HELM_VALUES_FILE
+      -f secrets://$SECRETS_FILE
       --set "image.tag=$DEPLOY_IMAGE_TAG"
       --namespace $K8S_NAMESPACE
     - kubectl rollout restart $K8S_TYPE $HELM_APP_NAME-$HELM_PATH --namespace=$K8S_NAMESPACE
@@ -278,7 +283,7 @@ upload_sdk_artifacts:
         SHA-1: $(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
         =========================
       EOM
-     
+
 
 test_e2e:
   stage: e2e_tests
@@ -292,7 +297,7 @@ deploy:dev:
   extends:
     - .deploy_k8s
   variables:
-    HELM_VALUES_FILE: values/desk.dev.one-trust-solution.yaml
+    VALUES_PATH: values/dev
     K8S_NAMESPACE: default
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
@@ -302,7 +307,7 @@ deploy:test:
   extends:
     - .deploy_k8s
   variables:
-    HELM_VALUES_FILE: values/desk.test.one-trust-solution.yaml
+    VALUES_PATH: values/test
     K8S_NAMESPACE: one-test
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"

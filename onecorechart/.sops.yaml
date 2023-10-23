@@ -1,0 +1,4 @@
+creation_rules:
+  - path_regex: secrets\.yaml$
+    pgp: "DCF133C87C2A5A76B65480FE152E1740622F55CE"
+    azure_keyvault: "https://one-global.vault.azure.net/keys/helm-secret/245618f1ec0f4834b87b5b7b0b2934d0"
