@@ -1,0 +1,11 @@
+baseUrl: "https://core.test.one-trust-solution.com"
+
+sentry:
+  env: "test"
+
+ingress:
+  hosts:
+  - host: core.test.one-trust-solution.com
+    paths:
+      - path: /
+        pathType: ImplementationSpecific
