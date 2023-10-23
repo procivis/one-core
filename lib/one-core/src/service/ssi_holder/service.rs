@@ -57,7 +57,7 @@ impl SSIHolderService {
         let connect_response = self
             .protocol_provider
             .get_protocol(&url_query_params.protocol)?
-            .handle_invitation(url, &holder_did.did)
+            .handle_invitation(url, &holder_did)
             .await?;
 
         match connect_response {
@@ -99,6 +99,7 @@ impl SSIHolderService {
 
         let latest_state = proof
             .state
+            .as_ref()
             .ok_or(ServiceError::MappingError("state is None".to_string()))?
             .get(0)
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?
@@ -108,19 +109,9 @@ impl SSIHolderService {
             return Err(ServiceError::AlreadyExists);
         }
 
-        let base_url = proof
-            .interaction
-            .ok_or(ServiceError::MappingError(
-                "interaction is None".to_string(),
-            ))?
-            .host
-            .ok_or(ServiceError::MappingError(
-                "interaction host is missing".to_string(),
-            ))?;
-
         self.protocol_provider
             .get_protocol(&proof.transport)?
-            .reject_proof(&base_url, &proof.id.to_string())
+            .reject_proof(&proof)
             .await?;
 
         let now = OffsetDateTime::now_utc();
@@ -159,6 +150,7 @@ impl SSIHolderService {
 
         let latest_state = proof
             .state
+            .as_ref()
             .ok_or(ServiceError::MappingError("state is None".to_string()))?
             .get(0)
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?
@@ -170,17 +162,8 @@ impl SSIHolderService {
 
         let holder_did = proof
             .holder_did
+            .as_ref()
             .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
-
-        let base_url = proof
-            .interaction
-            .ok_or(ServiceError::MappingError(
-                "interaction is None".to_string(),
-            ))?
-            .host
-            .ok_or(ServiceError::MappingError(
-                "interaction host is missing".to_string(),
-            ))?;
 
         let mut submitted_claims: Vec<Claim> = vec![];
         let mut credentials: Vec<PresentationCredential> = vec![];
@@ -291,7 +274,7 @@ impl SSIHolderService {
         let submit_result = self
             .protocol_provider
             .get_protocol(&proof.transport)?
-            .submit_proof(&base_url, &proof.id.to_string(), &presentation)
+            .submit_proof(&proof, &presentation)
             .await;
 
         if submit_result.is_ok() {
@@ -350,22 +333,10 @@ impl SSIHolderService {
                 return Err(ServiceError::AlreadyExists);
             }
 
-            let interaction = credential
-                .interaction
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "interaction is None".to_string(),
-                ))?;
-
-            let base_url = interaction
-                .host
-                .as_ref()
-                .ok_or(ServiceError::MappingError("host is None".to_string()))?;
-
             let credential_content = self
                 .protocol_provider
                 .get_protocol(&credential.transport)?
-                .accept_credential(base_url, &credential.id.to_string())
+                .accept_credential(&credential)
                 .await?;
 
             self.credential_repository
@@ -416,21 +387,9 @@ impl SSIHolderService {
                 return Err(ServiceError::AlreadyExists);
             }
 
-            let interaction = credential
-                .interaction
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "interaction is None".to_string(),
-                ))?;
-
-            let base_url = interaction
-                .host
-                .as_ref()
-                .ok_or(ServiceError::MappingError("host is None".to_string()))?;
-
             self.protocol_provider
                 .get_protocol(&credential.transport)?
-                .reject_credential(base_url, &credential.id.to_string())
+                .reject_credential(&credential)
                 .await?;
 
             self.credential_repository
