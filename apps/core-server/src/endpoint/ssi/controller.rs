@@ -71,7 +71,7 @@ pub(crate) async fn ssi_verifier_connect(
 
 #[utoipa::path(
 get,
-path = "/ssi/revocation/v1/{id}",
+path = "/ssi/revocation/v1/list/{id}",
 responses(
 (status = 200, description = "OK", content_type = "text/plain"),
 (status = 404, description = "Revocation list not found"),

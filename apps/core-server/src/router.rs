@@ -330,7 +330,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             post(ssi::controller::ssi_issuer_submit),
         )
         .route(
-            "/ssi/revocation/v1/:id",
+            "/ssi/revocation/v1/list/:id",
             get(ssi::controller::get_revocation_list_by_id),
         )
         .route(
