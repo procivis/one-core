@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize, Serializer};
-use time::OffsetDateTime;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
-fn timestamp<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
+fn into_timestamp<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -17,25 +17,53 @@ where
     formatted.serialize(s)
 }
 
+fn from_timestamp<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    String::deserialize(deserializer).and_then(|string| {
+        OffsetDateTime::parse(&string, &Rfc3339).map_err(|err| Error::custom(err.to_string()))
+    })
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum ContentType {
+    VerifiableCredential,
+    StatusList2021Credential,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VCContent {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
     pub id: String,
-    pub r#type: Vec<String>,
+    pub r#type: Vec<ContentType>,
     pub issuer: String,
-    #[serde(serialize_with = "timestamp")]
+    #[serde(serialize_with = "into_timestamp", deserialize_with = "from_timestamp")]
     pub issued: OffsetDateTime,
     pub credential_subject: CredentialSubject,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub enum StatusPurpose {
+    Revocation,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SubjectType {
+    StatusList2021,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CredentialSubject {
     pub id: String,
-    pub r#type: String,
-    pub status_purpose: String,
+    pub r#type: SubjectType,
+    pub status_purpose: StatusPurpose,
     pub encoded_list: String,
 }
 

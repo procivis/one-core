@@ -2,6 +2,7 @@ use crate::revocation::RevocationMethod;
 use crate::service::error::ServiceError;
 use std::{collections::HashMap, sync::Arc};
 
+#[cfg_attr(test, mockall::automock)]
 pub(crate) trait RevocationMethodProvider {
     fn get_revocation_method(
         &self,

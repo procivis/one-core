@@ -94,3 +94,11 @@ pub struct CredentialRequestClaimDTO {
     pub claim_schema_id: Uuid,
     pub value: String,
 }
+
+#[derive(Clone, Debug)]
+pub struct CredentialRevocationCheckResponseDTO {
+    pub credential_id: CredentialId,
+    pub status: CredentialStateEnum,
+    pub success: bool,
+    pub reason: Option<String>,
+}

@@ -1,7 +1,7 @@
-use self::model::{CredentialSubject, VCContent, VC};
+use self::model::{ContentType, CredentialSubject, StatusPurpose, SubjectType, VCContent, VC};
 use super::{
     error::FormatterError,
-    jwt::{model::JWTPayload, AuthenticationFn},
+    jwt::{model::JWTPayload, AuthenticationFn, VerificationFn},
 };
 use crate::{model::did::Did, provider::credential_formatter::jwt::Jwt};
 use time::OffsetDateTime;
@@ -27,15 +27,15 @@ impl StatusList2021JWTFormatter {
                 ],
                 id: revocation_list_url.to_owned(),
                 r#type: vec![
-                    "VerifiableCredential".to_string(),
-                    "StatusList2021Credential".to_string(),
+                    ContentType::VerifiableCredential,
+                    ContentType::StatusList2021Credential,
                 ],
                 issuer: issuer_did.did.to_owned(),
                 issued: OffsetDateTime::now_utc(),
                 credential_subject: CredentialSubject {
                     id: subject.to_owned(),
-                    r#type: "StatusList2021".to_string(),
-                    status_purpose: "revocation".to_string(),
+                    r#type: SubjectType::StatusList2021,
+                    status_purpose: StatusPurpose::Revocation,
                     encoded_list,
                 },
             },
@@ -55,5 +55,24 @@ impl StatusList2021JWTFormatter {
         let jwt = Jwt::new("JWT".to_owned(), algorithm, None, payload);
 
         jwt.tokenize(auth_fn)
+    }
+
+    pub fn parse_status_list(
+        status_list_token: &str,
+        issuer_did: &str,
+    ) -> Result<String, FormatterError> {
+        // TODO: proper signature validation
+        let verify_fn: VerificationFn = Box::new(|_, _| Ok(()));
+
+        let jwt: Jwt<VC> = Jwt::build_from_token(status_list_token, verify_fn)?;
+
+        let payload = jwt.payload;
+        if !payload.issuer.is_some_and(|issuer| issuer == issuer_did) {
+            return Err(FormatterError::CouldNotExtractCredentials(
+                "Invalid issuer".to_string(),
+            ));
+        }
+
+        Ok(payload.custom.vc.credential_subject.encoded_list)
     }
 }

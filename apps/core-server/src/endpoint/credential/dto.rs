@@ -121,3 +121,19 @@ pub struct CredentialRequestClaimRestDTO {
     pub claim_id: Uuid,
     pub value: String,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialRevocationCheckRequestRestDTO {
+    pub credential_ids: Vec<Uuid>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialRevocationCheckResponseRestDTO {
+    pub credential_id: Uuid,
+    pub status: CredentialStateRestEnum,
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}

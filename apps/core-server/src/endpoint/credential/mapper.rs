@@ -2,7 +2,8 @@ use one_core::model::common::EntityShareResponseDTO;
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-    CredentialStateEnum, DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+    CredentialRevocationCheckResponseDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
+    DetailCredentialSchemaResponseDTO,
 };
 
 use crate::dto::common::EntityShareResponseRestDTO;
@@ -11,6 +12,8 @@ use crate::endpoint::credential::dto::{
     CredentialDetailSchemaResponseRestDTO, CredentialListItemResponseRestDTO,
     CredentialStateRestEnum, GetCredentialResponseRestDTO, SortableCredentialColumnRestEnum,
 };
+
+use super::dto::CredentialRevocationCheckResponseRestDTO;
 
 impl From<CredentialDetailResponseDTO> for GetCredentialResponseRestDTO {
     fn from(value: CredentialDetailResponseDTO) -> Self {
@@ -104,6 +107,17 @@ impl From<CreateCredentialRequestRestDTO> for CreateCredentialRequestDTO {
                 .into_iter()
                 .map(|claim| claim.into())
                 .collect(),
+        }
+    }
+}
+
+impl From<CredentialRevocationCheckResponseDTO> for CredentialRevocationCheckResponseRestDTO {
+    fn from(value: CredentialRevocationCheckResponseDTO) -> Self {
+        Self {
+            credential_id: value.credential_id,
+            status: value.status.into(),
+            success: value.success,
+            reason: value.reason,
         }
     }
 }

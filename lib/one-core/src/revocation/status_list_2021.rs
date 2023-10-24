@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
 
-use crate::bitstring::generate_bitstring;
+use crate::bitstring::{extract_bitstring_index, generate_bitstring};
 use crate::common_mapper::get_algorithm_from_key_algorithm;
 use crate::config::data_structure::CoreConfig;
 use crate::crypto::Crypto;
@@ -19,6 +19,7 @@ use crate::provider::credential_formatter::{
     model::CredentialStatus, status_list_2021_jwt_formatter::StatusList2021JWTFormatter,
 };
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::{
     credential_repository::CredentialRepository, error::DataLayerError,
     revocation_list_repository::RevocationListRepository,
@@ -33,6 +34,7 @@ pub struct StatusList2021 {
     pub(crate) config: Arc<CoreConfig>,
     pub(crate) crypto: Crypto,
     pub(crate) key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    pub(crate) client: reqwest::Client,
 }
 
 #[async_trait::async_trait]
@@ -115,6 +117,57 @@ impl RevocationMethod for StatusList2021 {
             .await?;
 
         Ok(())
+    }
+
+    async fn check_credential_revocation_status(
+        &self,
+        credential_status: &CredentialStatus,
+        issuer_did: &Did,
+    ) -> Result<bool, ServiceError> {
+        if credential_status.r#type != "StatusList2021Entry" {
+            return Err(ServiceError::ValidationError(format!(
+                "Invalid credential status type: {}",
+                credential_status.r#type
+            )));
+        }
+
+        let list_url = credential_status
+            .additional_fields
+            .get("statusListCredential")
+            .ok_or(ServiceError::ValidationError(
+                "Missing status list url".to_string(),
+            ))?;
+
+        let list_index = credential_status
+            .additional_fields
+            .get("statusListIndex")
+            .ok_or(ServiceError::ValidationError(
+                "Missing status list index".to_string(),
+            ))?;
+        let list_index: usize = list_index
+            .parse()
+            .map_err(|_| ServiceError::ValidationError("Invalid list index".to_string()))?;
+
+        let response = self
+            .client
+            .get(list_url)
+            .header("content-type", "application/json")
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+        let response = response
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?;
+        let response_value = response
+            .text()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+
+        let encoded_list =
+            StatusList2021JWTFormatter::parse_status_list(&response_value, &issuer_did.did)?;
+
+        let result = extract_bitstring_index(encoded_list, list_index)?;
+        Ok(result)
     }
 }
 

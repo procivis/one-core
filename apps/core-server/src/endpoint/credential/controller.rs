@@ -2,6 +2,8 @@ use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Extension, Json};
 
+use one_core::common_mapper::vector_into;
+use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
 use uuid::Uuid;
 
 use one_core::service::error::ServiceError;
@@ -14,6 +16,10 @@ use crate::endpoint::credential::mapper::share_credentials_to_entity_share_respo
 use crate::extractor::Qs;
 use crate::router::AppState;
 use crate::Config;
+
+use super::dto::{
+    CredentialRevocationCheckRequestRestDTO, CredentialRevocationCheckResponseRestDTO,
+};
 
 #[utoipa::path(
     get,
@@ -212,6 +218,49 @@ pub(crate) async fn share_credential(
             ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
             other => {
                 tracing::error!("Error while getting credential: {other:?}");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        },
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/credential/v1/revocation-check",
+    request_body = CredentialRevocationCheckRequestRestDTO,
+    responses(
+        (status = 200, description = "OK", body = Vec<CredentialRevocationCheckResponseRestDTO>),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Credential not found"),
+    ),
+    tag = "credential_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn revocation_check(
+    state: State<AppState>,
+    Json(request): Json<CredentialRevocationCheckRequestRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .credential_service
+        .check_revocation(request.credential_ids)
+        .await;
+
+    match result {
+        Ok(values) => (
+            StatusCode::OK,
+            Json(vector_into::<
+                CredentialRevocationCheckResponseRestDTO,
+                CredentialRevocationCheckResponseDTO,
+            >(values)),
+        )
+            .into_response(),
+        Err(error) => match error {
+            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
+            other => {
+                tracing::error!("Error while checking credentials: {other:?}");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         },

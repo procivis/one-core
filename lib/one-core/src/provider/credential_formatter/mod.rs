@@ -19,6 +19,7 @@ use self::{
 };
 
 #[allow(clippy::too_many_arguments)]
+#[cfg_attr(test, mockall::automock)]
 pub trait CredentialFormatter {
     fn format_credentials(
         &self,

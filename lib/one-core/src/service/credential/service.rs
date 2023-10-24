@@ -18,7 +18,8 @@ use crate::{
     service::{
         credential::{
             dto::{
-                CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialStateEnum,
+                CreateCredentialRequestDTO, CredentialDetailResponseDTO,
+                CredentialRevocationCheckResponseDTO, CredentialStateEnum,
                 GetCredentialListResponseDTO, GetCredentialQueryDTO,
             },
             mapper::{claims_from_create_request, from_create_request},
@@ -184,6 +185,142 @@ impl CredentialService {
             .await?;
 
         Ok(())
+    }
+
+    /// Checks credentials' revocation status
+    ///
+    /// # Arguments
+    ///
+    /// * `credential_ids` - credentials to check
+    pub async fn check_revocation(
+        &self,
+        credential_ids: Vec<CredentialId>,
+    ) -> Result<Vec<CredentialRevocationCheckResponseDTO>, ServiceError> {
+        let mut result: Vec<CredentialRevocationCheckResponseDTO> = vec![];
+
+        for credential_id in credential_ids {
+            let credential = self
+                .credential_repository
+                .get_credential(
+                    &credential_id,
+                    &CredentialRelations {
+                        state: Some(CredentialStateRelations::default()),
+                        schema: Some(CredentialSchemaRelations::default()),
+                        issuer_did: Some(DidRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+
+            let current_state = credential
+                .state
+                .as_ref()
+                .ok_or(ServiceError::MappingError("state is None".to_string()))?
+                .get(0)
+                .ok_or(ServiceError::MappingError(
+                    "latest state not found".to_string(),
+                ))?
+                .to_owned()
+                .state;
+
+            let credential_schema = credential
+                .schema
+                .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+
+            let credential_status = match current_state {
+                credential::CredentialStateEnum::Accepted => {
+                    let formatter = self
+                        .formatter_provider
+                        .get_formatter(&credential_schema.format)?;
+
+                    let credential = String::from_utf8(credential.credential)
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                    let credential =
+                        formatter.extract_credentials(&credential, Box::new(|_, _| Ok(())))?;
+
+                    if let Some(status) = credential.status {
+                        status
+                    } else {
+                        result.push(CredentialRevocationCheckResponseDTO {
+                            credential_id,
+                            status: CredentialStateEnum::Accepted,
+                            success: true,
+                            reason: None,
+                        });
+                        break;
+                    }
+                }
+                credential::CredentialStateEnum::Revoked => {
+                    result.push(CredentialRevocationCheckResponseDTO {
+                        credential_id,
+                        status: CredentialStateEnum::Revoked,
+                        success: true,
+                        reason: None,
+                    });
+                    break;
+                }
+                _ => {
+                    result.push(CredentialRevocationCheckResponseDTO {
+                        credential_id,
+                        status: current_state.into(),
+                        success: false,
+                        reason: Some("Invalid credential state".to_string()),
+                    });
+                    break;
+                }
+            };
+
+            let revocation_method = self
+                .revocation_method_provider
+                .get_revocation_method(&credential_schema.revocation_method)?;
+
+            let issuer_did = credential
+                .issuer_did
+                .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+
+            let revoked = match revocation_method
+                .check_credential_revocation_status(&credential_status, &issuer_did)
+                .await
+            {
+                Err(error) => {
+                    result.push(CredentialRevocationCheckResponseDTO {
+                        credential_id,
+                        status: current_state.into(),
+                        success: false,
+                        reason: Some(error.to_string()),
+                    });
+                    break;
+                }
+                Ok(revoked) => revoked,
+            };
+
+            result.push(CredentialRevocationCheckResponseDTO {
+                credential_id,
+                status: if revoked {
+                    CredentialStateEnum::Revoked
+                } else {
+                    CredentialStateEnum::Accepted
+                },
+                success: true,
+                reason: None,
+            });
+
+            // update local credential state if revoked on the list
+            if revoked {
+                self.credential_repository
+                    .update_credential(UpdateCredentialRequest {
+                        id: credential_id.to_owned(),
+                        state: Some(CredentialState {
+                            created_date: OffsetDateTime::now_utc(),
+                            state: credential::CredentialStateEnum::Revoked,
+                        }),
+                        ..Default::default()
+                    })
+                    .await?;
+            }
+        }
+
+        Ok(result)
     }
 
     /// Returns URL of shared credential
