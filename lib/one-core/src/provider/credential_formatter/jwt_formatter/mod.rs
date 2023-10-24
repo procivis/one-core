@@ -8,6 +8,7 @@ mod mapper;
 mod model;
 
 use crate::{
+    config::data_structure::FormatJwtParams,
     provider::credential_formatter::{jwt::Jwt, jwt_formatter::mapper::format_vc},
     service::credential::dto::CredentialDetailResponseDTO,
 };
@@ -21,7 +22,9 @@ use super::{
     CredentialFormatter,
 };
 
-pub struct JWTFormatter {}
+pub struct JWTFormatter {
+    pub params: FormatJwtParams,
+}
 
 impl CredentialFormatter for JWTFormatter {
     fn format_credentials(
@@ -114,6 +117,13 @@ impl CredentialFormatter for JWTFormatter {
             issuer_did: jwt.payload.issuer,
             credentials: jwt.payload.custom.vp.verifiable_credential,
         })
+    }
+
+    fn get_leeway(&self) -> u64 {
+        match &self.params.leeway {
+            None => 0,
+            Some(leeway) => leeway.value,
+        }
     }
 }
 

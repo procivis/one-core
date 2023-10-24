@@ -9,6 +9,8 @@ use crate::{
     service::error::ServiceError,
 };
 use std::collections::{HashMap, HashSet};
+use std::ops::{Add, Sub};
+use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
 /*
@@ -82,8 +84,8 @@ pub(super) fn validate_proof(
     let presentation = formatter.extract_presentation(presentation, verify_fn)?;
 
     // Check if presentation is expired
-    validate_issuance_time(presentation.issued_at)?;
-    validate_expiration_time(presentation.expires_at)?;
+    validate_issuance_time(presentation.issued_at, formatter.get_leeway())?;
+    validate_expiration_time(presentation.expires_at, formatter.get_leeway())?;
 
     let proof_schema_claims = proof_schema
         .claim_schemas
@@ -142,8 +144,8 @@ pub(super) fn validate_proof(
         let credential_schema_id = find_matching_schema(&credential, &remaining_requested_claims)?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
-        validate_issuance_time(credential.invalid_before)?;
-        validate_expiration_time(credential.expires_at)?;
+        validate_issuance_time(credential.invalid_before, formatter.get_leeway())?;
+        validate_expiration_time(credential.expires_at, formatter.get_leeway())?;
 
         // Check if all subjects of the submitted VCs is matching the holder did.
         let claim_subject = match credential.subject {
@@ -238,28 +240,65 @@ fn find_matching_schema(
     ))
 }
 
-fn validate_issuance_time(issued_at: Option<OffsetDateTime>) -> Result<(), ServiceError> {
+fn validate_issuance_time(
+    issued_at: Option<OffsetDateTime>,
+    leeway: u64,
+) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
     let issued = issued_at.ok_or(ServiceError::ValidationError(
         "Missing issuance date".to_owned(),
     ))?;
 
-    if issued > now {
+    if issued > now.add(Duration::from_secs(leeway)) {
         return Err(ServiceError::ValidationError("Issued in future".to_owned()));
     }
 
     Ok(())
 }
 
-fn validate_expiration_time(expires_at: Option<OffsetDateTime>) -> Result<(), ServiceError> {
+fn validate_expiration_time(
+    expires_at: Option<OffsetDateTime>,
+    leeway: u64,
+) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
     let expires = expires_at.ok_or(ServiceError::ValidationError(
         "Missing expiration date".to_owned(),
     ))?;
 
-    if expires < now {
+    if expires < now.sub(Duration::from_secs(leeway)) {
         return Err(ServiceError::ValidationError("Expired".to_owned()));
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use time::OffsetDateTime;
+
+    use super::*;
+
+    #[test]
+    fn test_validate_issuance_time() {
+        let leeway = 5u64;
+
+        let correctly_issued = validate_issuance_time(Some(OffsetDateTime::now_utc()), leeway);
+        assert!(correctly_issued.is_ok());
+
+        let now_plus_minute = OffsetDateTime::now_utc().add(Duration::from_secs(60));
+        let issued_in_future = validate_issuance_time(Some(now_plus_minute), leeway);
+        assert!(issued_in_future.is_err());
+    }
+
+    #[test]
+    fn test_validate_expiration_time() {
+        let leeway = 5u64;
+
+        let correctly_issued = validate_expiration_time(Some(OffsetDateTime::now_utc()), leeway);
+        assert!(correctly_issued.is_ok());
+
+        let now_minus_minute = OffsetDateTime::now_utc().sub(Duration::from_secs(60));
+        let issued_in_future = validate_expiration_time(Some(now_minus_minute), leeway);
+        assert!(issued_in_future.is_err());
+    }
 }

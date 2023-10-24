@@ -5,8 +5,9 @@ use serde::de::Error;
 use crate::config::data_structure::{
     AccessModifier, DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams,
     DatatypeParams, DatatypeStringParams, DatatypeType, DidEntity, DidKeyParams, DidParams,
-    ExchangeEntity, FormatEntity, KeyAlgorithmEntity, KeyAlgorithmParams, KeyStorageEntity,
-    KeyStorageInternalParams, KeyStorageParams, ParamsEnum, RevocationEntity, TransportEntity,
+    ExchangeEntity, FormatEntity, FormatJwtParams, FormatParams, KeyAlgorithmEntity,
+    KeyAlgorithmParams, KeyStorageEntity, KeyStorageInternalParams, KeyStorageParams, ParamsEnum,
+    RevocationEntity, TransportEntity,
 };
 
 fn convert_param_to_param_map(
@@ -79,9 +80,15 @@ fn postprocess_format_entity(entity: FormatEntity) -> Result<FormatEntity, serde
             ParamsEnum::Unparsed(value) => {
                 let public = value["public"].to_owned();
                 let private = value["private"].to_owned();
-                Some(ParamsEnum::Parsed(merge_public_and_private(
-                    public, private,
-                )?))
+                let merged = merge_public_and_private(public, private)?;
+
+                match entity.r#type.as_str() {
+                    "JWT" | "SDJWT" => {
+                        let params: FormatJwtParams = serde_json::from_value(merged)?;
+                        Some(ParamsEnum::Parsed(FormatParams::Jwt(params)))
+                    }
+                    _ => Some(ParamsEnum::Parsed(FormatParams::Unknown(merged))),
+                }
             }
             ParamsEnum::Parsed(value) => Some(ParamsEnum::Parsed(value)),
         },

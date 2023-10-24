@@ -50,4 +50,6 @@ pub trait CredentialFormatter {
         token: &str,
         verify_fn: VerificationFn,
     ) -> Result<CredentialPresentation, FormatterError>;
+
+    fn get_leeway(&self) -> u64;
 }

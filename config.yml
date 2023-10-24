@@ -3,12 +3,16 @@ format:
     type: "JWT"
     display: "format.jwt"
     order: 0 # optional to force ordering
-    params: null # optional, per-type additional config
+    params:
+      public:
+        leeway: 60
   SDJWT:
     type: "SDJWT"
     display: "format.sdjwt"
     order: 1 # optional to force ordering
-    params: null # optional, per-type additional config
+    params:
+      public:
+        leeway: 60
 exchange:
   PROCIVIS_TEMPORARY:
     display: "exchange.procivis"

@@ -12,9 +12,7 @@ use crypto::hasher::Hasher;
 use crypto::signer::eddsa::EDDSASigner;
 use crypto::signer::Signer;
 use crypto::Crypto;
-use provider::credential_formatter::jwt_formatter::JWTFormatter;
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
-use provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use provider::credential_formatter::CredentialFormatter;
 use provider::transport_protocol::{
     procivis_temp::ProcivisTemp, provider::TransportProtocolProviderImpl, TransportProtocol,
@@ -40,6 +38,7 @@ pub mod bitstring;
 pub mod common_mapper;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
+use crate::provider::credential_formatter::provider::credential_formatters_from_config;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
 use crate::revocation::none::NoneRevocation;
@@ -56,7 +55,7 @@ pub struct OneCore {
     pub did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>>,
     pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
-    pub credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)>,
+    pub credential_formatters: HashMap<String, Arc<dyn CredentialFormatter + Send + Sync>>,
     pub revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
@@ -98,26 +97,19 @@ impl OneCore {
             "PROCIVIS_TEMPORARY".to_string(),
             Arc::new(ProcivisTemp::default()),
         )];
-        let jwt_formatter = Arc::new(JWTFormatter {});
-        let sdjwt_formatter = Arc::new(SDJWTFormatter {
-            crypto: crypto.clone(),
-        });
-        let credential_formatters: Vec<(String, Arc<dyn CredentialFormatter + Send + Sync>)> = vec![
-            ("JWT".to_string(), jwt_formatter),
-            ("SDJWT".to_string(), sdjwt_formatter),
-        ];
 
+        let available_credential_formatter_types = ["JWT".to_string(), "SDJWT".to_string()];
         let config = config::config_provider::parse_config(
             unparsed_config,
             &transport_protocols
                 .iter()
                 .map(|i| i.0.to_owned())
                 .collect::<Vec<String>>(),
-            &credential_formatters
-                .iter()
-                .map(|i| i.0.to_owned())
-                .collect::<Vec<String>>(),
+            &available_credential_formatter_types,
         )?;
+
+        let credential_formatters =
+            credential_formatters_from_config(&config.format, crypto.clone())?;
 
         let key_providers = key_providers_from_config(&config.key_storage)?;
         let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
