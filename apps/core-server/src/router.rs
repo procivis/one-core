@@ -56,6 +56,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             endpoint::credential::controller::post_credential,
             endpoint::credential::controller::revoke_credential,
             endpoint::credential::controller::share_credential,
+            endpoint::credential::controller::revocation_check,
 
             endpoint::credential_schema::controller::delete_credential_schema,
             endpoint::credential_schema::controller::get_credential_schema,
@@ -110,6 +111,8 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 endpoint::credential::dto::CredentialRequestClaimRestDTO,
                 endpoint::credential::dto::GetCredentialResponseRestDTO,
                 endpoint::credential::dto::CredentialDetailSchemaResponseRestDTO,
+                endpoint::credential::dto::CredentialRevocationCheckRequestRestDTO,
+                endpoint::credential::dto::CredentialRevocationCheckResponseRestDTO,
                 endpoint::credential::dto::CredentialStateRestEnum,
 
                 endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO,
@@ -240,6 +243,10 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
         .route(
             "/api/credential/v1/:id/share",
             post(credential::controller::share_credential),
+        )
+        .route(
+            "/api/credential/v1/revocation-check",
+            post(credential::controller::revocation_check),
         )
         .route(
             "/api/proof-request/v1/:id/share",

@@ -7,6 +7,7 @@ use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use crate::service::error::ServiceError;
 use std::{collections::HashMap, sync::Arc};
 
+#[cfg_attr(test, mockall::automock)]
 pub(crate) trait CredentialFormatterProvider {
     fn get_formatter(
         &self,

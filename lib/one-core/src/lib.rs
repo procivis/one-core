@@ -146,6 +146,7 @@ impl OneCore {
                     crypto: crypto.clone(),
                     config: config.clone(),
                     key_provider: key_provider.clone(),
+                    client: reqwest::Client::new(),
                 }),
             ),
         ];
@@ -167,6 +168,7 @@ impl OneCore {
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_did_repository(),
                 revocation_method_provider.clone(),
+                formatter_provider.clone(),
                 config.clone(),
             ),
             did_service: DidService::new(
