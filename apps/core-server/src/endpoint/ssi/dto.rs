@@ -36,6 +36,26 @@ pub struct ConnectVerifierResponseRestDTO {
     pub verifier_did: String,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
+    pub credential_issuer: String,
+    pub credential_endpoint: String,
+    pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
+    pub format: String,
+    pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO {
+    pub r#type: Vec<String>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofRequestClaimRestDTO {

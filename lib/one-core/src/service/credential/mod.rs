@@ -8,10 +8,11 @@ use std::sync::Arc;
 
 use crate::config::data_structure::CoreConfig;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
-use crate::revocation::provider::RevocationMethodProvider;
 
 #[derive(Clone)]
 pub struct CredentialService {

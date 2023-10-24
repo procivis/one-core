@@ -1,4 +1,4 @@
-use crate::revocation::RevocationMethod;
+use crate::provider::revocation::RevocationMethod;
 use crate::service::error::ServiceError;
 use std::{collections::HashMap, sync::Arc};
 

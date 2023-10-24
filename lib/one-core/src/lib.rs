@@ -26,7 +26,6 @@ use service::{
 
 pub mod config;
 pub mod provider;
-pub mod revocation;
 
 pub mod crypto;
 
@@ -41,12 +40,13 @@ use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 use crate::provider::credential_formatter::provider::credential_formatters_from_config;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
-use crate::revocation::none::NoneRevocation;
-use crate::revocation::provider::RevocationMethodProviderImpl;
-use crate::revocation::status_list_2021::StatusList2021;
-use crate::revocation::RevocationMethod;
+use crate::provider::revocation::none::NoneRevocation;
+use crate::provider::revocation::provider::RevocationMethodProviderImpl;
+use crate::provider::revocation::status_list_2021::StatusList2021;
+use crate::provider::revocation::RevocationMethod;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::key::KeyService;
+use crate::service::oidc::OIDCService;
 use crate::service::revocation_list::RevocationListService;
 
 // Clone just for now. Later it should be removed.
@@ -67,6 +67,7 @@ pub struct OneCore {
     pub config_service: ConfigService,
     pub ssi_verifier_service: SSIVerifierService,
     pub revocation_list_service: RevocationListService,
+    pub oidc_service: OIDCService,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub config: Arc<CoreConfig>,
@@ -140,7 +141,7 @@ impl OneCore {
             (
                 "STATUSLIST2021".to_string(),
                 Arc::new(StatusList2021 {
-                    core_base_url,
+                    core_base_url: core_base_url.clone(),
                     credential_repository: data_provider.get_credential_repository(),
                     revocation_list_repository: data_provider.get_revocation_list_repository(),
                     crypto: crypto.clone(),
@@ -179,6 +180,10 @@ impl OneCore {
             ),
             revocation_list_service: RevocationListService::new(
                 data_provider.get_revocation_list_repository(),
+            ),
+            oidc_service: OIDCService::new(
+                core_base_url,
+                data_provider.get_credential_schema_repository(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 data_provider.get_credential_schema_repository(),

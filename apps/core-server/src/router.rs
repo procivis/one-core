@@ -88,6 +88,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             endpoint::ssi::controller::ssi_issuer_connect,
             endpoint::ssi::controller::ssi_issuer_submit,
             endpoint::ssi::controller::get_revocation_list_by_id,
+            endpoint::ssi::controller::oidc_get_issuer_metadata,
 
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_submit,
@@ -156,6 +157,9 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 endpoint::ssi::dto::ConnectVerifierResponseRestDTO,
                 endpoint::ssi::dto::ProofRequestClaimRestDTO,
                 endpoint::ssi::dto::ConnectIssuerResponseRestDTO,
+                endpoint::ssi::dto::OpenID4VCIIssuerMetadataResponseRestDTO,
+                endpoint::ssi::dto::OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO,
+                endpoint::ssi::dto::OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,
@@ -325,6 +329,14 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
 
     let unprotected = Router::new()
         .route(
+            "/ssi/oidc-issuer/v1/:id/.well-known/openid-credential-issuer",
+            get(ssi::controller::oidc_get_issuer_metadata),
+        )
+        .route(
+            "/ssi/revocation/v1/list/:id",
+            get(ssi::controller::get_revocation_list_by_id),
+        )
+        .route(
             "/ssi/temporary-issuer/v1/connect",
             post(ssi::controller::ssi_issuer_connect),
         )
@@ -335,10 +347,6 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
         .route(
             "/ssi/temporary-issuer/v1/submit",
             post(ssi::controller::ssi_issuer_submit),
-        )
-        .route(
-            "/ssi/revocation/v1/list/:id",
-            get(ssi::controller::get_revocation_list_by_id),
         )
         .route(
             "/ssi/temporary-verifier/v1/connect",
