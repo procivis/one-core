@@ -3,12 +3,12 @@ use std::sync::Arc;
 use crate::{
     config::data_structure::CoreConfig,
     crypto::Crypto,
+    provider::revocation::provider::RevocationMethodProvider,
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
         key_storage::provider::KeyProvider,
     },
     repository::{credential_repository::CredentialRepository, did_repository::DidRepository},
-    revocation::provider::RevocationMethodProvider,
 };
 
 pub mod dto;

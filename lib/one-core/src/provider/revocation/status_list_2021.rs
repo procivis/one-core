@@ -19,12 +19,12 @@ use crate::provider::credential_formatter::{
     model::CredentialStatus, status_list_2021_jwt_formatter::StatusList2021JWTFormatter,
 };
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::{CredentialRevocationInfo, RevocationMethod};
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::{
     credential_repository::CredentialRepository, error::DataLayerError,
     revocation_list_repository::RevocationListRepository,
 };
-use crate::revocation::{CredentialRevocationInfo, RevocationMethod};
 use crate::service::error::ServiceError;
 
 pub struct StatusList2021 {

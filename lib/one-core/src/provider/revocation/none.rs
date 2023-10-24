@@ -1,6 +1,6 @@
 use crate::model::{credential::Credential, did::Did};
 use crate::provider::credential_formatter::model::CredentialStatus;
-use crate::revocation::RevocationMethod;
+use crate::provider::revocation::RevocationMethod;
 use crate::service::error::ServiceError;
 
 use super::CredentialRevocationInfo;
