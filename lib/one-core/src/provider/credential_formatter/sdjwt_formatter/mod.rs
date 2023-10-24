@@ -2,13 +2,14 @@
 
 use std::collections::HashMap;
 
+use crate::config::data_structure::FormatJwtParams;
 use crate::crypto::Crypto;
 use crate::provider::credential_formatter::sdjwt_formatter::models::{
     DecomposedToken, Disclosure, Sdvc,
 };
 use crate::service::credential::dto::CredentialDetailResponseDTO;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -31,6 +32,7 @@ use super::{
 
 pub struct SDJWTFormatter {
     pub crypto: Crypto,
+    pub params: FormatJwtParams,
 }
 
 impl CredentialFormatter for SDJWTFormatter {
@@ -162,6 +164,13 @@ impl CredentialFormatter for SDJWTFormatter {
             issuer_did: jwt.payload.issuer,
             credentials: jwt.payload.custom.vp.verifiable_credential,
         })
+    }
+
+    fn get_leeway(&self) -> u64 {
+        match &self.params.leeway {
+            None => 0,
+            Some(leeway) => leeway.value,
+        }
     }
 }
 

@@ -25,7 +25,7 @@ pub struct CoreConfig {
     pub key_storage: HashMap<String, KeyStorageEntity>,
 }
 
-pub type FormatEntity = ConfigEntity<String, serde_json::Value>;
+pub type FormatEntity = ConfigEntity<String, FormatParams>;
 pub type ExchangeEntity = ConfigEntity<String, serde_json::Value>;
 pub type TransportEntity = ConfigEntity<String, serde_json::Value>;
 pub type RevocationEntity = ConfigEntity<String, serde_json::Value>;
@@ -78,9 +78,20 @@ pub enum AccessModifier {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum FormatParams {
+    Jwt(FormatJwtParams),
+    Unknown(serde_json::Value),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum DidParams {
     Key(DidKeyParams),
     Unknown(serde_json::Value),
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct FormatJwtParams {
+    pub leeway: Option<Param<u64>>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
