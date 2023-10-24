@@ -19,6 +19,14 @@ exchange:
     type: "PROCIVIS_TEMPORARY"
     order: 0 # optional to force ordering
     params: null
+  OPENID4VC:
+    display: "exchange.openid"
+    order: 1
+    type: "OPENID4VC"
+    params:
+      public:
+        preAuthorizedCodeExpiresIn: 300
+        tokenExpiresIn: 86400
 transport:
   HTTP:
     type: "HTTP"
