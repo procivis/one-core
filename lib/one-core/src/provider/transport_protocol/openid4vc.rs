@@ -5,8 +5,8 @@ use super::{
 use crate::model::{credential::Credential, did::Did, proof::Proof};
 use async_trait::async_trait;
 
+#[derive(Default)]
 pub struct OpenID4VC {}
-
 #[async_trait]
 impl TransportProtocol for OpenID4VC {
     fn detect_invitation_type(&self, _url: &str) -> Option<InvitationType> {

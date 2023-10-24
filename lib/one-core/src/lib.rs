@@ -44,6 +44,7 @@ use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::RevocationMethodProviderImpl;
 use crate::provider::revocation::status_list_2021::StatusList2021;
 use crate::provider::revocation::RevocationMethod;
+use crate::provider::transport_protocol::openid4vc::OpenID4VC;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::key::KeyService;
 use crate::service::oidc::OIDCService;
@@ -94,10 +95,13 @@ impl OneCore {
             signers: HashMap::from_iter(signers),
         };
 
-        let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![(
-            "PROCIVIS_TEMPORARY".to_string(),
-            Arc::new(ProcivisTemp::default()),
-        )];
+        let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![
+            (
+                "PROCIVIS_TEMPORARY".to_string(),
+                Arc::new(ProcivisTemp::default()),
+            ),
+            ("OPENID4VC".to_string(), Arc::new(OpenID4VC::default())),
+        ];
 
         let available_credential_formatter_types = ["JWT".to_string(), "SDJWT".to_string()];
         let config = config::config_provider::parse_config(
