@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use super::KeyStorage;
 use crate::service::error::ServiceError;
 
+#[cfg_attr(test, mockall::automock)]
 pub trait KeyProvider {
     fn get_key_storage(
         &self,

@@ -15,6 +15,9 @@ pub mod dto;
 pub mod mapper;
 pub mod service;
 
+#[cfg(test)]
+mod test;
+
 #[derive(Clone)]
 pub struct SSIIssuerService {
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,

@@ -16,6 +16,7 @@ pub enum SignerError {
     InvalidSignature,
 }
 
+#[cfg_attr(test, mockall::automock)]
 pub trait Signer {
     fn sign(
         &self,

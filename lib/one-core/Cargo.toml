@@ -42,6 +42,7 @@ ssh-key = { version = "0.6.1", features = ["ed25519", "rsa"] }
 bs58 = "0.5"
 mockall.workspace = true
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+assert2 = { version = "0.3.11" }
 
 [build-dependencies]
 shadow-rs.workspace = true

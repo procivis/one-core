@@ -14,6 +14,9 @@ pub mod service;
 mod mapper;
 mod validator;
 
+#[cfg(test)]
+mod test;
+
 #[allow(unused)]
 #[derive(Clone)]
 pub struct SSIVerifierService {
