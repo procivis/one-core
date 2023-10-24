@@ -48,6 +48,7 @@ dictionary CredentialListItemBindingDTO {
   string created_date;
   string issuance_date;
   string last_modified;
+  string? revocation_date;
   string? issuer_did;
   CredentialStateBindingEnum state;
   CredentialSchemaBindingDTO schema;
@@ -58,6 +59,7 @@ dictionary CredentialDetailBindingDTO {
   string created_date;
   string issuance_date;
   string last_modified;
+  string? revocation_date;
   string? issuer_did;
   CredentialStateBindingEnum state;
   sequence<ClaimBindingDTO> claims;
