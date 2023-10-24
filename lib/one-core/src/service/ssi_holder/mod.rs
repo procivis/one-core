@@ -18,6 +18,9 @@ pub mod service;
 
 mod mapper;
 
+#[cfg(test)]
+mod test;
+
 #[derive(Clone)]
 pub struct SSIHolderService {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
