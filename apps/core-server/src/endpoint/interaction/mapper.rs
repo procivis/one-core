@@ -1,10 +1,5 @@
-use super::dto::{
-    HandleInvitationResponseRestDTO, PresentationSubmitCredentialRequestRestDTO,
-    PresentationSubmitRequestRestDTO,
-};
-use one_core::service::ssi_holder::dto::{
-    InvitationResponseDTO, PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
-};
+use super::dto::{HandleInvitationResponseRestDTO, PresentationSubmitRequestRestDTO};
+use one_core::service::ssi_holder::dto::{InvitationResponseDTO, PresentationSubmitRequestDTO};
 
 impl From<InvitationResponseDTO> for HandleInvitationResponseRestDTO {
     fn from(value: InvitationResponseDTO) -> Self {
@@ -39,15 +34,6 @@ impl From<PresentationSubmitRequestRestDTO> for PresentationSubmitRequestDTO {
                 .into_iter()
                 .map(|(key, value)| (key, value.into()))
                 .collect(),
-        }
-    }
-}
-
-impl From<PresentationSubmitCredentialRequestRestDTO> for PresentationSubmitCredentialRequestDTO {
-    fn from(value: PresentationSubmitCredentialRequestRestDTO) -> Self {
-        Self {
-            credential_id: value.credential_id,
-            submit_claims: value.submit_claims,
         }
     }
 }

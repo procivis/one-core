@@ -2,6 +2,15 @@ use crate::{
     endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
     serialize::front_time,
 };
+use dto_mapper::From;
+use one_core::service::{
+    oidc::dto::{
+        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+    },
+    ssi_issuer::dto::IssuerResponseDTO,
+    ssi_verifier::dto::ProofRequestClaimDTO,
+};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -43,20 +52,23 @@ pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_endpoint: String,
     pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
 }
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO")]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO")]
 pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO {
     pub r#type: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "OpenID4VCIDiscoveryResponseDTO")]
 pub struct OpenID4VCIDiscoveryResponseRestDTO {
     pub issuer: String,
     pub authorization_endpoint: String,
@@ -68,8 +80,9 @@ pub struct OpenID4VCIDiscoveryResponseRestDTO {
     pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "ProofRequestClaimDTO")]
 pub struct ProofRequestClaimRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
@@ -93,8 +106,9 @@ pub struct PostSsiIssuerConnectQueryParams {
     pub credential: Uuid,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "IssuerResponseDTO")]
 pub struct ConnectIssuerResponseRestDTO {
     pub credential: String,
     pub format: String,

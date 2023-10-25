@@ -1,5 +1,6 @@
 use std::fmt;
 
+use dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -52,7 +53,8 @@ pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
     pub exact: Option<Vec<ExactColumn>>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, From)]
+#[convert(into = "one_core::model::common::SortDirection")]
 pub enum SortDirection {
     #[serde(rename = "ASC")]
     Ascending,
@@ -60,7 +62,8 @@ pub enum SortDirection {
     Descending,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, From)]
+#[convert(into = "one_core::model::common::ExactColumn")]
 pub enum ExactColumn {
     #[serde(rename = "name")]
     Name,

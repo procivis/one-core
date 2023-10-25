@@ -1,3 +1,7 @@
+use dto_mapper::From;
+use one_core::service::proof_schema::dto::{
+    CreateProofSchemaClaimRequestDTO, GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO,
+};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -22,16 +26,18 @@ pub struct CreateProofSchemaRequestRestDTO {
     pub claim_schemas: Vec<ClaimProofSchemaRequestRestDTO>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(into = "CreateProofSchemaClaimRequestDTO")]
 pub struct ClaimProofSchemaRequestRestDTO {
     pub id: Uuid,
     pub required: bool,
 }
 
 // list endpoint
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(into = "one_core::model::proof_schema::SortableProofSchemaColumn")]
 pub enum SortableProofSchemaColumnRestEnum {
     Name,
     CreatedDate,
@@ -39,8 +45,9 @@ pub enum SortableProofSchemaColumnRestEnum {
 
 pub type GetProofSchemaQuery = GetListQueryParams<SortableProofSchemaColumnRestEnum>;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "GetProofSchemaListItemDTO")]
 pub struct GetProofSchemaListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
@@ -70,8 +77,9 @@ pub struct GetProofSchemaResponseRestDTO {
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "ProofClaimSchemaResponseDTO")]
 pub struct ProofClaimSchemaResponseRestDTO {
     pub id: Uuid,
     pub required: bool,

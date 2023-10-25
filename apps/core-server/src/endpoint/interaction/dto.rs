@@ -1,3 +1,4 @@
+use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use utoipa::ToSchema;
@@ -44,8 +45,9 @@ pub struct PresentationSubmitRequestRestDTO {
     pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, dto_mapper::From)]
 #[serde(rename_all = "camelCase")]
+#[convert(into = "PresentationSubmitCredentialRequestDTO")]
 pub struct PresentationSubmitCredentialRequestRestDTO {
     pub credential_id: Uuid,
     pub submit_claims: Vec<String>,

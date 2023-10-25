@@ -1,11 +1,14 @@
+use dto_mapper::From;
+use one_core::service::config::dto::ConfigDTO;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[schema(example = json!({"format": {}, "exchange": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}}))]
+#[convert(from = "ConfigDTO")]
 pub struct ConfigRestDTO {
     pub format: HashMap<String, Value>,
     pub exchange: HashMap<String, Value>,

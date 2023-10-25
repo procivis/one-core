@@ -1,4 +1,5 @@
 use dto_derive::Dto;
+use dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -58,8 +59,9 @@ pub struct KeyListItemResponseRestDTO {
     pub storage_type: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(into = "one_core::model::key::SortableKeyColumn")]
 pub enum SortableKeyColumnRestDTO {
     Name,
     CreatedDate,
