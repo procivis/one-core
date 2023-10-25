@@ -11,7 +11,9 @@ strict = []
 
 [dependencies]
 one-core = { version = "0.1.0", path = "../../lib/one-core" }
-sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["mysql"] }
+sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = [
+    "mysql",
+] }
 
 axum.workspace = true
 ct-codecs.workspace = true
@@ -39,6 +41,7 @@ sentry = { version = "0.31.7", default-features = false, features = [
     "reqwest",
 ] }
 sentry-tracing = "0.31.7"
+dto_mapper = { workspace = true }
 
 [build-dependencies]
 shadow-rs.workspace = true

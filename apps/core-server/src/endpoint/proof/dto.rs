@@ -6,14 +6,21 @@ use crate::{
     },
     serialize::{front_time, front_time_option},
 };
+use dto_mapper::From;
+use one_core::model::proof::ProofStateEnum;
+use one_core::service::proof::dto::{
+    PresentationDefinitionFieldDTO, PresentationDefinitionRuleDTO,
+    PresentationDefinitionRuleTypeEnum, ProofClaimDTO,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[convert(from = "ProofStateEnum")]
 pub enum ProofStateRestEnum {
     Created,
     Pending,
@@ -106,8 +113,9 @@ pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub applicable_credentials: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "PresentationDefinitionFieldDTO")]
 pub struct PresentationDefinitionFieldRestDTO {
     pub id: String,
     pub name: Option<String>,
@@ -116,7 +124,8 @@ pub struct PresentationDefinitionFieldRestDTO {
     pub key_map: HashMap<String, String>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[convert(from = "PresentationDefinitionRuleTypeEnum")]
 pub enum PresentationDefinitionRuleTypeRestEnum {
     #[serde(rename = "all")]
     All,
@@ -124,8 +133,9 @@ pub enum PresentationDefinitionRuleTypeRestEnum {
     Pick,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "PresentationDefinitionRuleDTO")]
 pub struct PresentationDefinitionRuleRestDTO {
     //#[serde(serialize_with = "type")]
     pub r#type: PresentationDefinitionRuleTypeRestEnum,
@@ -170,8 +180,9 @@ pub struct ProofDetailResponseRestDTO {
     pub claims: Vec<ProofClaimRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "ProofClaimDTO")]
 pub struct ProofClaimRestDTO {
     pub schema: ProofClaimSchemaResponseRestDTO,
     pub value: Option<String>,

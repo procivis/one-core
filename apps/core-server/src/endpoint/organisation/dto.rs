@@ -1,3 +1,5 @@
+use dto_mapper::From;
+use one_core::service::organisation::dto::GetOrganisationDetailsResponseDTO;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -17,8 +19,9 @@ pub struct CreateOrganisationResponseRestDTO {
     pub id: Uuid,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "GetOrganisationDetailsResponseDTO")]
 pub struct GetOrganisationDetailsResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]

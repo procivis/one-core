@@ -1,26 +1,23 @@
 use crate::dto::common::EntityShareResponseRestDTO;
 
 use super::dto::{
-    CreateProofRequestRestDTO, PresentationDefinitionResponseRestDTO, ProofClaimRestDTO,
-    ProofDetailResponseRestDTO, ProofListItemResponseRestDTO, ProofStateRestEnum,
-    SortableProofColumnRestEnum,
+    CreateProofRequestRestDTO, PresentationDefinitionResponseRestDTO, ProofDetailResponseRestDTO,
+    ProofListItemResponseRestDTO, SortableProofColumnRestEnum,
 };
 use crate::endpoint::proof::dto::{
-    PresentationDefinitionFieldRestDTO, PresentationDefinitionRequestGroupResponseRestDTO,
-    PresentationDefinitionRequestedCredentialResponseRestDTO, PresentationDefinitionRuleRestDTO,
-    PresentationDefinitionRuleTypeRestEnum,
+    PresentationDefinitionRequestGroupResponseRestDTO,
+    PresentationDefinitionRequestedCredentialResponseRestDTO,
 };
 use one_core::service::proof::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionRuleDTO,
-    PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO,
 };
 use one_core::{
     common_mapper::vector_into,
-    model::{common::EntityShareResponseDTO, proof::ProofStateEnum},
+    model::common::EntityShareResponseDTO,
     service::proof::dto::{
-        CreateProofRequestDTO, PresentationDefinitionResponseDTO, ProofClaimDTO,
-        ProofDetailResponseDTO, ProofListItemResponseDTO,
+        CreateProofRequestDTO, PresentationDefinitionResponseDTO, ProofDetailResponseDTO,
+        ProofListItemResponseDTO,
     },
 };
 
@@ -77,28 +74,6 @@ impl From<ProofListItemResponseDTO> for ProofListItemResponseRestDTO {
     }
 }
 
-impl From<ProofStateEnum> for ProofStateRestEnum {
-    fn from(value: ProofStateEnum) -> Self {
-        match value {
-            ProofStateEnum::Created => Self::Created,
-            ProofStateEnum::Pending => Self::Pending,
-            ProofStateEnum::Offered => Self::Offered,
-            ProofStateEnum::Accepted => Self::Accepted,
-            ProofStateEnum::Rejected => Self::Rejected,
-            ProofStateEnum::Error => Self::Error,
-        }
-    }
-}
-
-impl From<ProofClaimDTO> for ProofClaimRestDTO {
-    fn from(value: ProofClaimDTO) -> Self {
-        Self {
-            schema: value.schema.into(),
-            value: value.value,
-        }
-    }
-}
-
 impl From<SortableProofColumnRestEnum> for one_core::model::proof::SortableProofColumn {
     fn from(value: SortableProofColumnRestEnum) -> Self {
         match value {
@@ -106,26 +81,6 @@ impl From<SortableProofColumnRestEnum> for one_core::model::proof::SortableProof
             SortableProofColumnRestEnum::VerifierDid => Self::VerifierDid,
             SortableProofColumnRestEnum::CreatedDate => Self::CreatedDate,
             SortableProofColumnRestEnum::State => Self::State,
-        }
-    }
-}
-
-impl From<PresentationDefinitionRuleTypeEnum> for PresentationDefinitionRuleTypeRestEnum {
-    fn from(value: PresentationDefinitionRuleTypeEnum) -> Self {
-        match value {
-            PresentationDefinitionRuleTypeEnum::All => Self::All,
-            PresentationDefinitionRuleTypeEnum::Pick => Self::Pick,
-        }
-    }
-}
-
-impl From<PresentationDefinitionRuleDTO> for PresentationDefinitionRuleRestDTO {
-    fn from(value: PresentationDefinitionRuleDTO) -> Self {
-        Self {
-            r#type: value.r#type.into(),
-            max: value.max,
-            min: value.min,
-            count: value.count,
         }
     }
 }
@@ -158,18 +113,6 @@ impl From<PresentationDefinitionRequestedCredentialResponseDTO>
             name: value.name,
             fields: value.fields.into_iter().map(|field| field.into()).collect(),
             applicable_credentials: value.applicable_credentials,
-        }
-    }
-}
-
-impl From<PresentationDefinitionFieldDTO> for PresentationDefinitionFieldRestDTO {
-    fn from(value: PresentationDefinitionFieldDTO) -> Self {
-        Self {
-            id: value.id,
-            purpose: value.purpose,
-            name: value.name,
-            key_map: value.key_map,
-            required: value.required,
         }
     }
 }

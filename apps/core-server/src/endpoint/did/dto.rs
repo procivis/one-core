@@ -1,5 +1,6 @@
 use dto_derive::Dto;
-use one_core::service::did::dto::CreateDidRequestKeysDTO;
+use dto_mapper::From;
+use one_core::service::did::dto::{CreateDidRequestKeysDTO, DidListItemResponseDTO};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -10,16 +11,21 @@ use crate::{
     serialize::front_time,
 };
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[convert(
+    from = "one_core::model::did::DidType",
+    into = "one_core::model::did::DidType"
+)]
 pub enum DidType {
     #[default]
     Remote,
     Local,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "DidListItemResponseDTO")]
 pub struct DidListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
@@ -89,8 +95,9 @@ pub struct CreateDidRequestKeysRestDTO {
     pub capability_delegation: Vec<Uuid>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(into = "one_core::model::did::SortableDidColumn")]
 pub enum SortableDidColumnRestDTO {
     Name,
     CreatedDate,

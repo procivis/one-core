@@ -1,4 +1,4 @@
-use crate::dto::common::{ExactColumn, GetListQueryParams, GetListResponseRestDTO, SortDirection};
+use crate::dto::common::{GetListQueryParams, GetListResponseRestDTO};
 use serde::Serialize;
 use std::fmt;
 use thiserror::Error;
@@ -63,23 +63,6 @@ where
                     .collect(),
             ),
             organisation_id: value.organisation_id,
-        }
-    }
-}
-
-impl From<ExactColumn> for one_core::model::common::ExactColumn {
-    fn from(value: ExactColumn) -> Self {
-        match value {
-            ExactColumn::Name => one_core::model::common::ExactColumn::Name,
-        }
-    }
-}
-
-impl From<SortDirection> for one_core::model::common::SortDirection {
-    fn from(value: SortDirection) -> Self {
-        match value {
-            SortDirection::Ascending => one_core::model::common::SortDirection::Ascending,
-            SortDirection::Descending => one_core::model::common::SortDirection::Descending,
         }
     }
 }

@@ -1,3 +1,7 @@
+use dto_mapper::From;
+use one_core::service::credential_schema::dto::{
+    CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO, CredentialSchemaListItemResponseDTO,
+};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -8,8 +12,9 @@ use crate::serialize::front_time;
 
 use crate::dto::common::GetListQueryParams;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "CredentialSchemaListItemResponseDTO")]
 pub struct CredentialSchemaListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
@@ -40,8 +45,9 @@ pub struct CredentialSchemaResponseRestDTO {
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(from = "CredentialClaimSchemaDTO")]
 pub struct CredentialClaimSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
@@ -57,8 +63,9 @@ pub struct CredentialClaimSchemaResponseRestDTO {
 
 pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumnRestEnum>;
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(into = "one_core::model::credential_schema::SortableCredentialSchemaColumn")]
 pub enum SortableCredentialSchemaColumnRestEnum {
     Name,
     Format,
@@ -77,7 +84,8 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "CredentialClaimSchemaRequestDTO")]
 pub struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
     pub datatype: String,
