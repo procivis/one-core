@@ -17,6 +17,8 @@ pub enum TransportProtocolError {
     HttpRequestError(reqwest::Error),
     #[error("JSON error: `{0}`")]
     JsonError(serde_json::Error),
+    #[error("Operation not supported")]
+    OperationNotSupported,
 }
 
 #[cfg_attr(test, mockall::automock)]
