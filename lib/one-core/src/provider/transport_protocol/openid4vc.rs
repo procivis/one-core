@@ -44,7 +44,7 @@ impl TransportProtocol for OpenID4VC {
         &self,
         _credential: &Credential,
     ) -> Result<(), TransportProtocolError> {
-        unimplemented!()
+        Err(TransportProtocolError::OperationNotSupported)
     }
 
     async fn share_credential(
