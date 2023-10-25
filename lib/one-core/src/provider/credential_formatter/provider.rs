@@ -40,7 +40,7 @@ impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
 
 pub(crate) fn credential_formatters_from_config(
     format_config: &HashMap<String, FormatEntity>,
-    crypto: Crypto,
+    crypto: Arc<Crypto>,
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter + Send + Sync>>, ConfigParseError> {
     format_config
         .iter()
@@ -51,7 +51,7 @@ pub(crate) fn credential_formatters_from_config(
 fn formatter_from_entity(
     name: &String,
     entity: &FormatEntity,
-    crypto: Crypto,
+    crypto: Arc<Crypto>,
 ) -> Result<(String, Arc<dyn CredentialFormatter + Send + Sync>), ConfigParseError> {
     match entity.r#type.as_str() {
         "JWT" => {

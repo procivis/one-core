@@ -1,10 +1,11 @@
-use std::{sync::Arc, vec};
+use std::{collections::HashMap, sync::Arc, vec};
 
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
     config::data_structure::CoreConfig,
+    crypto::Crypto,
     model::{
         claim_schema::ClaimSchema,
         credential_schema::CredentialSchema,
@@ -12,9 +13,12 @@ use crate::{
         proof::{Proof, ProofState, ProofStateEnum},
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
-    provider::credential_formatter::{
-        model::CredentialPresentation, provider::MockCredentialFormatterProvider,
-        MockCredentialFormatter,
+    provider::{
+        credential_formatter::{
+            model::CredentialPresentation, provider::MockCredentialFormatterProvider,
+            MockCredentialFormatter,
+        },
+        did_method::{mock_did_method::MockDidMethod, provider::DidMethodProviderImpl, DidMethod},
     },
     repository::mock::{
         claim_repository::MockClaimRepository, claim_schema_repository::MockClaimSchemaRepository,
@@ -313,12 +317,19 @@ async fn test_reject_proof_succeeds() {
 }
 
 fn mock_ssi_verifier_service() -> SSIVerifierService {
+    let did_method = MockDidMethod::new();
+    let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
+    did_methods.insert("MOCK".to_string(), Arc::new(did_method));
+    let did_method_provider = DidMethodProviderImpl::new(did_methods);
+
     SSIVerifierService {
         did_repository: Arc::new(MockDidRepository::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         claim_schema_repository: Arc::new(MockClaimSchemaRepository::new()),
         proof_repository: Arc::new(MockProofRepository::new()),
         claim_repository: Arc::new(MockClaimRepository::new()),
+        did_method_provider: Arc::new(did_method_provider),
+        crypto: Arc::new(Crypto::default()),
         config: Arc::new(CoreConfig {
             format: Default::default(),
             exchange: Default::default(),

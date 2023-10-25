@@ -627,10 +627,10 @@ async fn test_submit_proof_succeeds() {
         formatter_provider: Arc::new(formatter_provider),
         protocol_provider: Arc::new(protocol_provider),
         key_provider: Arc::new(key_provider),
-        crypto: Crypto {
+        crypto: Arc::new(Crypto {
             signers: HashMap::from_iter([(key_type.to_string(), signer)]),
             ..dummy_crypto()
-        },
+        }),
         config: Arc::new(config),
         ..mock_ssi_holder_service()
     };
@@ -734,7 +734,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
-        crypto: dummy_crypto(),
+        crypto: Arc::new(dummy_crypto()),
         config: Arc::new(dummy_config()),
     }
 }

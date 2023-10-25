@@ -34,7 +34,7 @@ fn setup_provider(
     did_methods.insert(
         "KEY".to_string(),
         Arc::new(KeyDidMethod {
-            did_repository: did_repository.clone(),
+            did_repository,
             organisation_repository: Arc::new(organisation_repository),
             key_provider: Arc::new(key_provider),
             method_key: "KEY".to_string(),
@@ -42,7 +42,7 @@ fn setup_provider(
         }),
     );
 
-    Arc::new(DidMethodProviderImpl::new(did_methods, did_repository))
+    Arc::new(DidMethodProviderImpl::new(did_methods))
 }
 
 // test vectors taken from: https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/ed25519-x25519.json
@@ -85,14 +85,8 @@ async fn test_did_key_resolve() {
         MockOrganisationRepository::default(),
     );
 
-    let organisation = Organisation {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    };
-
     for (did, public_key) in TEST_VECTORS {
-        let result = provider.resolve(did, organisation.to_owned()).await;
+        let result = provider.resolve(did).await;
 
         assert!(result.is_ok());
         let result = result.unwrap();

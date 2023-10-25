@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -22,15 +23,54 @@ pub mod mapper;
 pub mod model;
 
 pub type AuthenticationFn = Box<dyn FnOnce(&str) -> Result<Vec<u8>, SignerError>>;
-pub type VerificationFn = Box<dyn FnOnce(&str, &[u8]) -> Result<(), SignerError>>;
+
+#[async_trait]
+pub trait TokenVerifier {
+    async fn verify<'a>(
+        &self,
+        issuer_did_value: &'a str,
+        algorithm: &'a str,
+        token: &'a str,
+        signature: &'a [u8],
+    ) -> Result<(), SignerError>;
+}
+
+#[derive(Default)]
+pub struct SkipVerification;
+
+#[async_trait]
+impl TokenVerifier for SkipVerification {
+    async fn verify<'a>(
+        &self,
+        _issuer_did_value: &'a str,
+        _algorithm: &'a str,
+        _token: &'a str,
+        _signature: &'a [u8],
+    ) -> Result<(), SignerError> {
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl TokenVerifier for Box<dyn TokenVerifier + Send + Sync> {
+    async fn verify<'a>(
+        &self,
+        issuer_did_value: &'a str,
+        algorithm: &'a str,
+        token: &'a str,
+        signature: &'a [u8],
+    ) -> Result<(), SignerError> {
+        TokenVerifier::verify(self, issuer_did_value, algorithm, token, signature).await
+    }
+}
 
 #[derive(Debug)]
-pub struct Jwt<Payload: Serialize + DeserializeOwned + Debug> {
+pub struct Jwt<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> {
     pub(crate) header: JWTHeader,
     pub(crate) payload: JWTPayload<Payload>,
 }
 
-impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
+impl<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> Jwt<Payload> {
     pub fn new(
         signature_type: String,
         algorithm: String,
@@ -46,9 +86,9 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
         Jwt { header, payload }
     }
 
-    pub fn build_from_token(
+    pub async fn build_from_token(
         token: &str,
-        verify_fn: VerificationFn,
+        verification: impl TokenVerifier,
     ) -> Result<Jwt<Payload>, FormatterError> {
         let DecomposedToken {
             header,
@@ -64,7 +104,15 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
             string_to_b64url_string(&payload_json)?,
         );
 
-        verify_fn(&jwt, &signature).map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+        let issuer = payload
+            .issuer
+            .as_ref()
+            .ok_or(FormatterError::MissingIssuer)?;
+
+        verification
+            .verify(issuer, &header.algorithm, &jwt, &signature)
+            .await
+            .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
 
         let jwt = Jwt { header, payload };
 

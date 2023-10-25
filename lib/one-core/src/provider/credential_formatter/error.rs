@@ -26,6 +26,8 @@ pub enum FormatterError {
     MissingPart,
     #[error("Missing disclosure")]
     MissingDisclosure,
+    #[error("Missing issuer")]
+    MissingIssuer,
     #[error("Missing claim")]
     MissingClaim,
 }

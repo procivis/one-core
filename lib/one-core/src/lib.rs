@@ -72,7 +72,7 @@ pub struct OneCore {
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub config: Arc<CoreConfig>,
-    pub crypto: Crypto,
+    pub crypto: Arc<Crypto>,
 }
 
 impl OneCore {
@@ -90,10 +90,10 @@ impl OneCore {
         let signers: Vec<(String, Arc<dyn Signer + Send + Sync>)> =
             vec![("Ed25519".to_string(), Arc::new(EDDSASigner {}))];
 
-        let crypto = Crypto {
+        let crypto = Arc::new(Crypto {
             hashers: HashMap::from_iter(hashers),
             signers: HashMap::from_iter(signers),
-        };
+        });
 
         let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![
             (
@@ -125,10 +125,7 @@ impl OneCore {
             data_provider.get_organisation_repository(),
             key_provider.clone(),
         )?;
-        let did_method_provider = Arc::new(DidMethodProviderImpl::new(
-            did_methods.to_owned(),
-            data_provider.get_did_repository(),
-        ));
+        let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
 
         let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
             credential_formatters.to_owned(),
@@ -179,7 +176,7 @@ impl OneCore {
             did_service: DidService::new(
                 data_provider.get_did_repository(),
                 data_provider.get_key_repository(),
-                did_method_provider,
+                did_method_provider.clone(),
                 config.clone(),
             ),
             revocation_list_service: RevocationListService::new(
@@ -218,6 +215,8 @@ impl OneCore {
                 data_provider.get_proof_repository(),
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),
+                did_method_provider,
+                crypto.clone(),
                 config.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(

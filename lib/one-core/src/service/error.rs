@@ -35,6 +35,8 @@ pub enum ServiceError {
     MissingSigner(String),
     #[error("Missing algorithm `{0}`")]
     MissingAlgorithm(String),
+    #[error("Missing key")]
+    MissingKey,
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
     #[error("Other Repository error: `{0}`")]

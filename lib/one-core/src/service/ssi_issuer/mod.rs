@@ -25,7 +25,7 @@ pub struct SSIIssuerService {
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-    crypto: Crypto,
+    crypto: Arc<Crypto>,
     config: Arc<CoreConfig>,
 }
 
@@ -36,7 +36,7 @@ impl SSIIssuerService {
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-        crypto: Crypto,
+        crypto: Arc<Crypto>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {

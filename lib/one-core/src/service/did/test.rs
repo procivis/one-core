@@ -34,7 +34,7 @@ fn setup_service(
     did_methods.insert("MOCK".to_string(), Arc::new(did_method));
 
     let did_repository = Arc::new(did_repository);
-    let did_method_provider = DidMethodProviderImpl::new(did_methods, did_repository.clone());
+    let did_method_provider = DidMethodProviderImpl::new(did_methods);
 
     DidService::new(
         did_repository,
