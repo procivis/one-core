@@ -33,8 +33,8 @@ pub mod model;
 pub mod repository;
 pub mod service;
 
-pub mod bitstring;
 pub mod common_mapper;
+pub mod util;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 use crate::provider::credential_formatter::provider::credential_formatters_from_config;

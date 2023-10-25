@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
 
-use crate::bitstring::{extract_bitstring_index, generate_bitstring};
 use crate::common_mapper::get_algorithm_from_key_algorithm;
 use crate::config::data_structure::CoreConfig;
 use crate::crypto::Crypto;
@@ -26,6 +25,7 @@ use crate::repository::{
     revocation_list_repository::RevocationListRepository,
 };
 use crate::service::error::ServiceError;
+use crate::util::bitstring::{extract_bitstring_index, generate_bitstring};
 
 pub struct StatusList2021 {
     pub(crate) core_base_url: Option<String>,
