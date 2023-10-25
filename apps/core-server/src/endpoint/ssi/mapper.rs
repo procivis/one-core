@@ -1,5 +1,6 @@
 use super::dto::{
-    ConnectIssuerResponseRestDTO, ConnectVerifierResponseRestDTO, ProofRequestClaimRestDTO,
+    ConnectIssuerResponseRestDTO, ConnectVerifierResponseRestDTO,
+    OpenID4VCIDiscoveryResponseRestDTO, ProofRequestClaimRestDTO,
 };
 use crate::endpoint::ssi::dto::{
     OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
@@ -7,7 +8,7 @@ use crate::endpoint::ssi::dto::{
     OpenID4VCIIssuerMetadataResponseRestDTO,
 };
 use one_core::service::oidc::dto::{
-    OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
 };
 use one_core::{
@@ -54,6 +55,21 @@ impl From<OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO>
     fn from(value: OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO) -> Self {
         Self {
             r#type: value.r#type,
+        }
+    }
+}
+
+impl From<OpenID4VCIDiscoveryResponseDTO> for OpenID4VCIDiscoveryResponseRestDTO {
+    fn from(value: OpenID4VCIDiscoveryResponseDTO) -> Self {
+        Self {
+            issuer: value.issuer,
+            authorization_endpoint: value.authorization_endpoint,
+            token_endpoint: value.token_endpoint,
+            jwks_uri: value.jwks_uri,
+            response_types_supported: value.response_types_supported,
+            grant_types_supported: value.grant_types_supported,
+            subject_types_supported: value.subject_types_supported,
+            id_token_signing_alg_values_supported: value.id_token_signing_alg_values_supported,
         }
     }
 }

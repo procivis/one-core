@@ -14,3 +14,15 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
 pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
     pub r#type: Vec<String>,
 }
+
+#[derive(Clone, Debug)]
+pub struct OpenID4VCIDiscoveryResponseDTO {
+    pub issuer: String,
+    pub authorization_endpoint: String,
+    pub token_endpoint: String,
+    pub jwks_uri: String,
+    pub response_types_supported: Vec<String>,
+    pub grant_types_supported: Vec<String>,
+    pub subject_types_supported: Vec<String>,
+    pub id_token_signing_alg_values_supported: Vec<String>,
+}
