@@ -1146,7 +1146,7 @@ dependencies = [
 [[package]]
 name = "dto_mapper"
 version = "0.1.0"
-source = "git+https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git?tag=0.1.0#58b8999583e56a84411b216e6ad50e5c43637635"
+source = "git+https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git?tag=0.1.1#83186c1697d6edb42661803d8ffcff4324eedc4a"
 dependencies = [
  "darling",
  "proc-macro2 1.0.69",
