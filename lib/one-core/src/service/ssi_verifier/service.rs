@@ -9,11 +9,12 @@ use crate::{
         claim::Claim,
         claim_schema::{ClaimSchemaId, ClaimSchemaRelations},
         credential_schema::CredentialSchemaRelations,
-        did::{Did, DidRelations, DidType, DidValue},
+        did::{Did, DidRelations, DidValue},
         organisation::OrganisationRelations,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
+    provider::did_method::provider::DidMethodProvider,
     repository::error::DataLayerError,
     service::error::ServiceError,
 };
@@ -59,7 +60,7 @@ impl SSIVerifierService {
 
         let result = proof_verifier_to_connect_verifier_response(proof_schema, did)?;
 
-        self.set_holder_connected(proof_id, holder_did_value)
+        self.set_holder_connected(proof_id, holder_did_value, &(*self.did_method_provider))
             .await?;
 
         Ok(result)
@@ -114,7 +115,12 @@ impl SSIVerifierService {
             holder_did,
             presentation_content,
             &*self.formatter_provider.get_formatter(&format)?,
-        ) {
+            self.crypto.clone(),
+            self.config.clone(),
+            self.did_method_provider.clone(),
+        )
+        .await
+        {
             Ok(claims) => claims,
             Err(e) => {
                 self.fail_proof(proof_id).await?;
@@ -163,6 +169,7 @@ impl SSIVerifierService {
         &self,
         id: &ProofId,
         holder_did_value: &String,
+        did_method_provider: &(dyn DidMethodProvider + Send + Sync),
     ) -> Result<(), ServiceError> {
         let (proof, proof_state) = self
             .get_proof_with_state(
@@ -198,19 +205,18 @@ impl SSIVerifierService {
                     .ok_or(ServiceError::MappingError(
                         "organisation is None".to_string(),
                     ))?;
-                let did = Did {
-                    id: Uuid::new_v4(),
-                    created_date: now,
-                    last_modified: now,
-                    name: "prover".to_string(),
-                    organisation: Some(organisation),
-                    did: holder_did_value.to_owned(),
-                    did_type: DidType::Remote,
-                    did_method: "KEY".to_string(),
-                    keys: None,
-                };
-                self.did_repository.create_did(did.clone()).await?;
-                did
+
+                let resolved_did = did_method_provider.resolve(holder_did_value).await?;
+
+                self.did_repository
+                    .create_did(Did {
+                        keys: None, // do not store (remote) keys
+                        organisation: Some(organisation),
+                        ..resolved_did.to_owned()
+                    })
+                    .await?;
+
+                resolved_did
             }
             Err(e) => {
                 return Err(ServiceError::from(e));

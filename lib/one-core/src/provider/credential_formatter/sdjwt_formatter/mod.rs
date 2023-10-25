@@ -1,6 +1,7 @@
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::config::data_structure::FormatJwtParams;
 use crate::crypto::Crypto;
@@ -8,6 +9,7 @@ use crate::provider::credential_formatter::sdjwt_formatter::models::{
     DecomposedToken, Disclosure, Sdvc,
 };
 use crate::service::credential::dto::CredentialDetailResponseDTO;
+use async_trait::async_trait;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use time::{Duration, OffsetDateTime};
@@ -23,7 +25,7 @@ mod verifier;
 use self::verifier::*;
 
 use super::jwt::model::JWTPayload;
-use super::jwt::{AuthenticationFn, Jwt, VerificationFn};
+use super::jwt::{AuthenticationFn, Jwt, TokenVerifier};
 use super::model::CredentialSubject;
 use super::{
     CredentialFormatter, CredentialPresentation, CredentialStatus, DetailCredential,
@@ -31,10 +33,11 @@ use super::{
 };
 
 pub struct SDJWTFormatter {
-    pub crypto: Crypto,
+    pub crypto: Arc<Crypto>,
     pub params: FormatJwtParams,
 }
 
+#[async_trait]
 impl CredentialFormatter for SDJWTFormatter {
     fn format_credentials(
         &self,
@@ -79,17 +82,17 @@ impl CredentialFormatter for SDJWTFormatter {
         Ok(token)
     }
 
-    fn extract_credentials(
+    async fn extract_credentials(
         &self,
         token: &str,
-        verify_fn: VerificationFn,
+        verification: Box<dyn TokenVerifier + Send + Sync>,
     ) -> Result<DetailCredential, FormatterError> {
         let DecomposedToken {
             deserialized_disclosures,
             jwt,
         } = decompose_sd_token(token)?;
 
-        let jwt: Jwt<Sdvc> = Jwt::build_from_token(jwt, verify_fn)?;
+        let jwt: Jwt<Sdvc> = Jwt::build_from_token(jwt, verification).await?;
 
         let hasher = self
             .crypto
@@ -149,13 +152,13 @@ impl CredentialFormatter for SDJWTFormatter {
         jwt.tokenize(auth_fn)
     }
 
-    fn extract_presentation(
+    async fn extract_presentation(
         &self,
         token: &str,
-        verify_fn: VerificationFn,
+        verification: Box<dyn TokenVerifier + Send + Sync>,
     ) -> Result<CredentialPresentation, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, verify_fn)?;
+        let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, verification).await?;
 
         Ok(CredentialPresentation {
             id: jwt.payload.jwt_id,

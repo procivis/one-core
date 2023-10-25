@@ -15,6 +15,7 @@ use crate::{
         key::KeyRelations,
         organisation::OrganisationRelations,
     },
+    provider::credential_formatter::jwt::SkipVerification,
     service::{
         credential::{
             dto::{
@@ -235,8 +236,12 @@ impl CredentialService {
 
                     let credential = String::from_utf8(credential.credential)
                         .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-                    let credential =
-                        formatter.extract_credentials(&credential, Box::new(|_, _| Ok(())))?;
+
+                    let verification = Box::new(SkipVerification);
+
+                    let credential = formatter
+                        .extract_credentials(&credential, verification)
+                        .await?;
 
                     if let Some(status) = credential.status {
                         status

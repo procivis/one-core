@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -17,7 +18,7 @@ use self::model::{VPContent, VC, VP};
 
 use super::{
     error::FormatterError,
-    jwt::{model::JWTPayload, AuthenticationFn, VerificationFn},
+    jwt::{model::JWTPayload, AuthenticationFn, TokenVerifier},
     model::{CredentialPresentation, CredentialStatus, DetailCredential, PresentationCredential},
     CredentialFormatter,
 };
@@ -26,6 +27,7 @@ pub struct JWTFormatter {
     pub params: FormatJwtParams,
 }
 
+#[async_trait]
 impl CredentialFormatter for JWTFormatter {
     fn format_credentials(
         &self,
@@ -63,13 +65,13 @@ impl CredentialFormatter for JWTFormatter {
         jwt.tokenize(auth_fn)
     }
 
-    fn extract_credentials(
+    async fn extract_credentials(
         &self,
         token: &str,
-        verify_fn: VerificationFn,
+        verification: Box<dyn TokenVerifier + Send + Sync>,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VC> = Jwt::build_from_token(token, verify_fn)?;
+        let jwt: Jwt<VC> = Jwt::build_from_token(token, verification).await?;
 
         Ok(jwt.into())
     }
@@ -102,13 +104,13 @@ impl CredentialFormatter for JWTFormatter {
         jwt.tokenize(auth_fn)
     }
 
-    fn extract_presentation(
+    async fn extract_presentation(
         &self,
         token: &str,
-        verify_fn: VerificationFn,
+        verification: Box<dyn TokenVerifier + Send + Sync>,
     ) -> Result<CredentialPresentation, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VP> = Jwt::build_from_token(token, verify_fn)?;
+        let jwt: Jwt<VP> = Jwt::build_from_token(token, verification).await?;
 
         Ok(CredentialPresentation {
             id: jwt.payload.jwt_id,

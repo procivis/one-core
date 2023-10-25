@@ -55,13 +55,13 @@ pub fn get_base_url(url: &str) -> Result<String, ServiceError> {
 }
 
 pub(crate) fn get_algorithm_from_key_algorithm(
-    key_type: &str,
+    signature_type: &str,
     config: &CoreConfig,
 ) -> Result<String, ServiceError> {
     let algorithm = config
         .key_algorithm
-        .get(key_type)
-        .ok_or(ServiceError::MissingSigner(key_type.to_owned()))?;
+        .get(signature_type)
+        .ok_or(ServiceError::MissingSigner(signature_type.to_owned()))?;
 
     let algorithm = algorithm.params.clone().unwrap();
 

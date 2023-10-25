@@ -189,10 +189,10 @@ async fn test_issuer_submit_succeeds() {
         revocation_method_provider: Arc::new(revocation_method_provider),
         formatter_provider: Arc::new(formatter_provider),
         key_provider: Arc::new(key_provider),
-        crypto: Crypto {
+        crypto: Arc::new(Crypto {
             signers: HashMap::from_iter([(key_type.to_string(), signer)]),
             ..dummy_crypto()
-        },
+        }),
         config: Arc::new(config),
         ..mock_ssi_issuer_service()
     };
@@ -242,10 +242,10 @@ fn mock_ssi_issuer_service() -> SSIIssuerService {
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
-        crypto: Crypto {
+        crypto: Arc::new(Crypto {
             hashers: Default::default(),
             signers: Default::default(),
-        },
+        }),
         config: Arc::new(dummy_config()),
     }
 }

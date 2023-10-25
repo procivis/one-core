@@ -31,7 +31,7 @@ pub struct SSIHolderService {
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    crypto: Crypto,
+    crypto: Arc<Crypto>,
     config: Arc<CoreConfig>,
 }
 
@@ -46,7 +46,7 @@ impl SSIHolderService {
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
-        crypto: Crypto,
+        crypto: Arc<Crypto>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {

@@ -1,6 +1,10 @@
 use crate::{
     config::data_structure::CoreConfig,
-    provider::credential_formatter::provider::CredentialFormatterProvider,
+    crypto::Crypto,
+    provider::{
+        credential_formatter::provider::CredentialFormatterProvider,
+        did_method::provider::DidMethodProvider,
+    },
     repository::{
         claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
         did_repository::DidRepository, proof_repository::ProofRepository,
@@ -25,9 +29,12 @@ pub struct SSIVerifierService {
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+    crypto: Arc<Crypto>,
     config: Arc<CoreConfig>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl SSIVerifierService {
     pub(crate) fn new(
         claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
@@ -35,6 +42,8 @@ impl SSIVerifierService {
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
         did_repository: Arc<dyn DidRepository + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+        did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+        crypto: Arc<Crypto>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {
@@ -43,6 +52,8 @@ impl SSIVerifierService {
             proof_repository,
             did_repository,
             formatter_provider,
+            did_method_provider,
+            crypto,
             config,
         }
     }

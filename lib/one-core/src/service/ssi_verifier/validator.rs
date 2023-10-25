@@ -1,87 +1,47 @@
 use super::dto::ValidatedProofClaimDTO;
 use crate::{
+    common_mapper::get_algorithm_from_key_algorithm,
+    config::data_structure::CoreConfig,
+    crypto::{signer::SignerError, Crypto},
     model::{
         credential_schema::{CredentialSchema, CredentialSchemaId},
-        did::Did,
+        did::{Did, KeyRole},
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
-    provider::credential_formatter::{model::DetailCredential, CredentialFormatter},
+    provider::{
+        credential_formatter::{jwt::TokenVerifier, model::DetailCredential, CredentialFormatter},
+        did_method::provider::DidMethodProvider,
+    },
     service::error::ServiceError,
 };
-use std::collections::{HashMap, HashSet};
+use async_trait::async_trait;
 use std::ops::{Add, Sub};
 use std::time::Duration;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
-/*
-pub(super) fn verify_signature(
-    crypto: &Crypto,
-    header_json: &str,
-    payload_json: &str,
-    signature: &[u8],
-    signature_algorithm: &str,
-) -> Result<(), FormatterError> {
-    let signer = crypto
-        .signers
-        .get(signature_algorithm)
-        .ok_or(FormatterError::MissingSigner)?;
 
-    let (_, public) = get_temp_keys();
-
-    let jwt: String = format!(
-        "{}.{}",
-        string_to_b64url_string(header_json)?,
-        string_to_b64url_string(payload_json)?,
-    );
-
-    signer
-        .verify(&jwt, signature, &public)
-        .map_err(|_| FormatterError::Failed("Failed".to_owned()))?;
-    Ok(())
-}
-*/
-
-/*
-// pub(super) fn verify_signature(
-//     crypto: &Crypto,
-//     header_json: &str,
-//     payload_json: &str,
-//     signature: &[u8],
-//     signature_algorithm: &str,
-// ) -> Result<(), FormatterError> {
-//     let signer = crypto
-//         .signers
-//         .get(signature_algorithm)
-//         .ok_or(FormatterError::MissingSigner)?;
-
-//     let (_, public) = get_temp_keys();
-
-//     let jwt: String = format!(
-//         "{}.{}",
-//         string_to_b64url_string(header_json)?,
-//         string_to_b64url_string(payload_json)?,
-//     );
-
-//     signer
-//         .verify(&jwt, signature, &public)
-//         .map_err(|_| FormatterError::Failed("Failed".to_owned()))?;
-//     Ok(())
-// } */
-
-pub(super) fn validate_proof(
+pub(super) async fn validate_proof(
     proof_schema: ProofSchema,
     holder_did: Did,
     presentation: &str,
     formatter: &(dyn CredentialFormatter + Send + Sync),
+    crypto: Arc<Crypto>,
+    config: Arc<CoreConfig>,
+    did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
-    // Provide real implementation when did key provider is ready.
-    let verify_fn = Box::new(|_payload: &str, _data: &[u8]| Ok(()));
+    let key_verification = Box::new(KeyVerification {
+        config: config.clone(),
+        crypto: crypto.clone(),
+        did_method_provider: did_method_provider.clone(),
+    });
 
-    // TODO Check if the signature of the ProofSubmitRequestDTO(JWT) is signed with did of the issuer property (holder did)
-    // Add when key management introduced. For now we use the same pair of keys for everything.
-    // If it's extracted - it's signed
-    // This will change when we started using external signature providers
-    let presentation = formatter.extract_presentation(presentation, verify_fn)?;
+    let presentation = formatter
+        .extract_presentation(presentation, key_verification.clone())
+        .await?;
 
     // Check if presentation is expired
     validate_issuance_time(presentation.issued_at, formatter.get_leeway())?;
@@ -136,10 +96,10 @@ pub(super) fn validate_proof(
         HashMap::new();
 
     for credential in presentation.credentials {
-        let verify_fn = Box::new(|_payload: &str, _data: &[u8]| Ok(()));
-
-        // Particular tokens are verified here
-        let credential = formatter.extract_credentials(&credential, verify_fn)?;
+        // Credential tokens are being verified here
+        let credential = formatter
+            .extract_credentials(&credential, key_verification.clone())
+            .await?;
 
         let credential_schema_id = find_matching_schema(&credential, &remaining_requested_claims)?;
 
@@ -156,6 +116,7 @@ pub(super) fn validate_proof(
             }
             Some(did) => did,
         };
+
         if claim_subject != holder_did.did {
             return Err(ServiceError::ValidationError(
                 "Holder DID doesn't match.".to_owned(),
@@ -220,6 +181,55 @@ pub(super) fn validate_proof(
         .into_iter()
         .flat_map(|(.., claims)| claims)
         .collect())
+}
+
+#[derive(Clone)]
+struct KeyVerification {
+    pub config: Arc<CoreConfig>,
+    pub crypto: Arc<Crypto>,
+    pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+}
+
+#[async_trait]
+impl TokenVerifier for KeyVerification {
+    async fn verify<'a>(
+        &self,
+        issuer_did_value: &'a str,
+        algorithm: &'a str,
+        token: &'a str,
+        signature: &'a [u8],
+    ) -> Result<(), SignerError> {
+        let algorithm = get_algorithm_from_key_algorithm(algorithm, &self.config)
+            .map_err(|_| SignerError::CouldNotSign)?;
+
+        let signer = self
+            .crypto
+            .signers
+            .get(&algorithm)
+            .ok_or(SignerError::MissingAlgorithm(algorithm))?;
+
+        let did = self
+            .did_method_provider
+            .resolve(issuer_did_value)
+            .await
+            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+
+        let public_key = did
+            .keys
+            .ok_or(SignerError::MissingKey)?
+            .iter()
+            .find(|key| key.role == KeyRole::AssertionMethod)
+            .ok_or(SignerError::MissingKey)?
+            .key
+            .public_key
+            .to_owned();
+
+        signer
+            .verify(token, signature, &public_key)
+            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+
+        Ok(())
+    }
 }
 
 fn find_matching_schema(

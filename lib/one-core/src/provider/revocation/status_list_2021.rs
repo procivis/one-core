@@ -32,7 +32,7 @@ pub struct StatusList2021 {
     pub(crate) credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     pub(crate) revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
     pub(crate) config: Arc<CoreConfig>,
-    pub(crate) crypto: Crypto,
+    pub(crate) crypto: Arc<Crypto>,
     pub(crate) key_provider: Arc<dyn KeyProvider + Send + Sync>,
     pub(crate) client: reqwest::Client,
 }
@@ -164,7 +164,7 @@ impl RevocationMethod for StatusList2021 {
             .map_err(TransportProtocolError::HttpRequestError)?;
 
         let encoded_list =
-            StatusList2021JWTFormatter::parse_status_list(&response_value, &issuer_did.did)?;
+            StatusList2021JWTFormatter::parse_status_list(&response_value, &issuer_did.did).await?;
 
         let result = extract_bitstring_index(encoded_list, list_index)?;
         Ok(result)

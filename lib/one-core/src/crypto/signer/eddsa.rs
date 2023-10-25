@@ -21,7 +21,7 @@ impl Signer for EDDSASigner {
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
         let ed25519_signature = ed25519_compact::Signature::from_slice(signature)
-            .map_err(|_| SignerError::CouldNotVerify)?;
+            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
         ed25519_pk
             .verify(input, &ed25519_signature)
