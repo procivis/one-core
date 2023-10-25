@@ -1,9 +1,10 @@
 use thiserror::Error;
 
 use crate::{
-    bitstring::BitstringError, config::validator::ConfigValidationError,
+    config::validator::ConfigValidationError,
     provider::credential_formatter::error::FormatterError, provider::did_method::DidMethodError,
     provider::transport_protocol::TransportProtocolError, repository::error::DataLayerError,
+    util::bitstring::BitstringError,
 };
 
 #[derive(Debug, Error)]

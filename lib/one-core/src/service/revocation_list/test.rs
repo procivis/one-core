@@ -1,4 +1,3 @@
-use crate::bitstring::generate_bitstring;
 use crate::model::revocation_list::{RevocationList, RevocationListRelations};
 use crate::repository::mock::revocation_list_repository::MockRevocationListRepository;
 use crate::service::revocation_list::RevocationListService;
@@ -25,10 +24,7 @@ async fn test_get_revocation_list() {
             id: revocation_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            credentials: generate_bitstring(vec![false, true, false, false])
-                .unwrap()
-                .as_bytes()
-                .to_vec(),
+            credentials: b"revocation-list-credential".to_vec(),
             issuer_did: None,
         };
         revocation_list_repository
@@ -51,9 +47,5 @@ async fn test_get_revocation_list() {
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    // TODO: This needs to be adapted to check if it is a JWT not base64 as it is now. Depends on ONE-550
-    assert_eq!(
-        result,
-        "H4sIAAAAAAAA/+3AsQAAAAACsNDypwqjZ2sAAAAAAAAAAAAAAAAAAACAtwE3F1/NAEAAAA=="
-    );
+    assert_eq!(result, "revocation-list-credential");
 }
