@@ -89,6 +89,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
             endpoint::ssi::controller::ssi_issuer_submit,
             endpoint::ssi::controller::get_revocation_list_by_id,
             endpoint::ssi::controller::oidc_get_issuer_metadata,
+            endpoint::ssi::controller::oidc_service_discovery,
 
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_submit,
@@ -160,6 +161,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 endpoint::ssi::dto::OpenID4VCIIssuerMetadataResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
+                endpoint::ssi::dto::OpenID4VCIDiscoveryResponseRestDTO,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,
@@ -331,6 +333,10 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
         .route(
             "/ssi/oidc-issuer/v1/:id/.well-known/openid-credential-issuer",
             get(ssi::controller::oidc_get_issuer_metadata),
+        )
+        .route(
+            "/ssi/oidc-issuer/v1/:id/.well-known/openid-configuration",
+            get(ssi::controller::oidc_service_discovery),
         )
         .route(
             "/ssi/revocation/v1/list/:id",

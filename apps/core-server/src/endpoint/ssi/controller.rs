@@ -1,7 +1,7 @@
 use super::dto::{
     ConnectIssuerResponseRestDTO, ConnectRequestRestDTO, ConnectVerifierResponseRestDTO,
-    PostSsiIssuerConnectQueryParams, PostSsiIssuerSubmitQueryParams,
-    PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
+    OpenID4VCIDiscoveryResponseRestDTO, PostSsiIssuerConnectQueryParams,
+    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::endpoint::ssi::dto::OpenID4VCIIssuerMetadataResponseRestDTO;
 use crate::endpoint::{
@@ -71,14 +71,17 @@ pub(crate) async fn ssi_verifier_connect(
 }
 
 #[utoipa::path(
-get,
-path = "/ssi/revocation/v1/list/{id}",
-responses(
-(status = 200, description = "OK", content_type = "text/plain"),
-(status = 404, description = "Revocation list not found"),
-(status = 500, description = "Server error"),
-),
-tag = "ssi",
+    get,
+    path = "/ssi/revocation/v1/list/{id}",
+    params(
+        ("id" = Uuid, Path, description = "Revocation list id")
+    ),
+    responses(
+        (status = 200, description = "OK", content_type = "text/plain"),
+        (status = 404, description = "Revocation list not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
 )]
 pub(crate) async fn get_revocation_list_by_id(
     state: State<AppState>,
@@ -104,17 +107,17 @@ pub(crate) async fn get_revocation_list_by_id(
 }
 
 #[utoipa::path(
-get,
-path = "/ssi/oidc-issuer/v1/{id}/.well-known/openid-credential-issuer",
-params(
-("id" = Uuid, Path, description = "Credential schema id")
-),
-responses(
-(status = 200, description = "OK", body = OpenID4VCIIssuerMetadataResponseRestDTO),
-(status = 404, description = "Credential schema not found"),
-(status = 500, description = "Server error"),
-),
-tag = "ssi",
+    get,
+    path = "/ssi/oidc-issuer/v1/{id}/.well-known/openid-credential-issuer",
+    params(
+        ("id" = Uuid, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = OpenID4VCIIssuerMetadataResponseRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
 )]
 pub(crate) async fn oidc_get_issuer_metadata(
     state: State<AppState>,
@@ -126,6 +129,42 @@ pub(crate) async fn oidc_get_issuer_metadata(
         Ok(value) => (
             StatusCode::OK,
             Json(OpenID4VCIIssuerMetadataResponseRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(ServiceError::NotFound) => {
+            tracing::error!("Missing credential schema");
+            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/oidc-issuer/v1/{id}/.well-known/openid-configuration",
+    params(
+        ("id" = Uuid, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = OpenID4VCIDiscoveryResponseRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn oidc_service_discovery(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Response {
+    let result = state.core.oidc_service.oidc_service_discovery(&id).await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(OpenID4VCIDiscoveryResponseRestDTO::from(value)),
         )
             .into_response(),
         Err(ServiceError::NotFound) => {

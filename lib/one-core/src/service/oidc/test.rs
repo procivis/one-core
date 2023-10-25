@@ -74,3 +74,23 @@ async fn test_get_issuer_metadata_sd_jwt() {
         result.credentials_supported.get(0).unwrap().format
     );
 }
+
+#[tokio::test]
+async fn test_service_discovery() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let schema = generic_credential_schema();
+    {
+        let clone = schema.clone();
+        repository
+            .expect_get_credential_schema()
+            .times(1)
+            .with(
+                eq(schema.id.to_owned()),
+                eq(CredentialSchemaRelations::default()),
+            )
+            .returning(move |_, _| Ok(clone.clone()));
+    }
+    let service = setup_service(repository);
+    let result = service.oidc_service_discovery(&schema.id).await;
+    assert!(result.is_ok());
+}
