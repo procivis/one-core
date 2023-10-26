@@ -5,6 +5,7 @@ use crate::{
     model::did::Did, provider::did_method::mapper::get_did_method_id, service::error::ServiceError,
 };
 
+#[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait DidMethodProvider {
     fn get_did_method(

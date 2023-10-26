@@ -1,4 +1,4 @@
-use crate::model::{credential::Credential, did::Did};
+use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::revocation::RevocationMethod;
 use crate::service::error::ServiceError;
@@ -9,6 +9,10 @@ pub struct NoneRevocation {}
 
 #[async_trait::async_trait]
 impl RevocationMethod for NoneRevocation {
+    fn get_status_type(&self) -> String {
+        "NONE".to_string()
+    }
+
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
@@ -25,7 +29,7 @@ impl RevocationMethod for NoneRevocation {
     async fn check_credential_revocation_status(
         &self,
         _credential_status: &CredentialStatus,
-        _issuer_did: &Did,
+        _issuer_did: &str,
     ) -> Result<bool, ServiceError> {
         Err(ServiceError::ValidationError(
             "Credential cannot be revoked - status invalid".to_string(),

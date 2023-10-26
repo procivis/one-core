@@ -1,20 +1,20 @@
 use super::dto::ValidatedProofClaimDTO;
 use crate::{
-    common_mapper::get_algorithm_from_key_algorithm,
     config::data_structure::CoreConfig,
-    crypto::{signer::SignerError, Crypto},
+    crypto::Crypto,
     model::{
         credential_schema::{CredentialSchema, CredentialSchemaId},
-        did::{Did, KeyRole},
+        did::Did,
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
     provider::{
-        credential_formatter::{jwt::TokenVerifier, model::DetailCredential, CredentialFormatter},
+        credential_formatter::{model::DetailCredential, CredentialFormatter},
         did_method::provider::DidMethodProvider,
+        revocation::provider::RevocationMethodProvider,
     },
     service::error::ServiceError,
+    util::key_verification::KeyVerification,
 };
-use async_trait::async_trait;
 use std::ops::{Add, Sub};
 use std::time::Duration;
 use std::{
@@ -24,6 +24,7 @@ use std::{
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_proof(
     proof_schema: ProofSchema,
     holder_did: Did,
@@ -32,6 +33,7 @@ pub(super) async fn validate_proof(
     crypto: Arc<Crypto>,
     config: Arc<CoreConfig>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
     let key_verification = Box::new(KeyVerification {
         config: config.clone(),
@@ -107,6 +109,24 @@ pub(super) async fn validate_proof(
         validate_issuance_time(credential.invalid_before, formatter.get_leeway())?;
         validate_expiration_time(credential.expires_at, formatter.get_leeway())?;
 
+        if let Some(credential_status) = credential.status {
+            let revocation_method = revocation_method_provider
+                .get_revocation_method_by_status_type(&credential_status.r#type)?;
+
+            let issuer_did = credential.issuer_did.ok_or(ServiceError::ValidationError(
+                "Issuer DID missing".to_owned(),
+            ))?;
+
+            if revocation_method
+                .check_credential_revocation_status(&credential_status, &issuer_did)
+                .await?
+            {
+                return Err(ServiceError::ValidationError(
+                    "Submitted credential revoked".to_owned(),
+                ));
+            }
+        }
+
         // Check if all subjects of the submitted VCs is matching the holder did.
         let claim_subject = match credential.subject {
             None => {
@@ -181,55 +201,6 @@ pub(super) async fn validate_proof(
         .into_iter()
         .flat_map(|(.., claims)| claims)
         .collect())
-}
-
-#[derive(Clone)]
-struct KeyVerification {
-    pub config: Arc<CoreConfig>,
-    pub crypto: Arc<Crypto>,
-    pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-}
-
-#[async_trait]
-impl TokenVerifier for KeyVerification {
-    async fn verify<'a>(
-        &self,
-        issuer_did_value: &'a str,
-        algorithm: &'a str,
-        token: &'a str,
-        signature: &'a [u8],
-    ) -> Result<(), SignerError> {
-        let algorithm = get_algorithm_from_key_algorithm(algorithm, &self.config)
-            .map_err(|_| SignerError::CouldNotSign)?;
-
-        let signer = self
-            .crypto
-            .signers
-            .get(&algorithm)
-            .ok_or(SignerError::MissingAlgorithm(algorithm))?;
-
-        let did = self
-            .did_method_provider
-            .resolve(issuer_did_value)
-            .await
-            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
-
-        let public_key = did
-            .keys
-            .ok_or(SignerError::MissingKey)?
-            .iter()
-            .find(|key| key.role == KeyRole::AssertionMethod)
-            .ok_or(SignerError::MissingKey)?
-            .key
-            .public_key
-            .to_owned();
-
-        signer
-            .verify(token, signature, &public_key)
-            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
-
-        Ok(())
-    }
 }
 
 fn find_matching_schema(

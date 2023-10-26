@@ -237,10 +237,8 @@ impl CredentialService {
                     let credential = String::from_utf8(credential.credential)
                         .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-                    let verification = Box::new(SkipVerification);
-
                     let credential = formatter
-                        .extract_credentials(&credential, verification)
+                        .extract_credentials(&credential, Box::new(SkipVerification))
                         .await?;
 
                     if let Some(status) = credential.status {
@@ -284,7 +282,7 @@ impl CredentialService {
                 .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
             let revoked = match revocation_method
-                .check_credential_revocation_status(&credential_status, &issuer_did)
+                .check_credential_revocation_status(&credential_status, &issuer_did.did)
                 .await
             {
                 Err(error) => {

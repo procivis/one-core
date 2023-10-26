@@ -17,6 +17,7 @@ use crate::model::{
 use crate::provider::credential_formatter::{
     model::CredentialStatus, status_list_2021_jwt_formatter::StatusList2021JWTFormatter,
 };
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{CredentialRevocationInfo, RevocationMethod};
 use crate::provider::transport_protocol::TransportProtocolError;
@@ -26,19 +27,27 @@ use crate::repository::{
 };
 use crate::service::error::ServiceError;
 use crate::util::bitstring::{extract_bitstring_index, generate_bitstring};
+use crate::util::key_verification::KeyVerification;
 
-pub struct StatusList2021 {
-    pub(crate) core_base_url: Option<String>,
-    pub(crate) credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-    pub(crate) revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
-    pub(crate) config: Arc<CoreConfig>,
-    pub(crate) crypto: Arc<Crypto>,
-    pub(crate) key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    pub(crate) client: reqwest::Client,
+pub(crate) struct StatusList2021 {
+    pub core_base_url: Option<String>,
+    pub credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+    pub revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
+    pub config: Arc<CoreConfig>,
+    pub crypto: Arc<Crypto>,
+    pub key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+    pub client: reqwest::Client,
 }
+
+const CREDENTIAL_STATUS_TYPE: &str = "StatusList2021Entry";
 
 #[async_trait::async_trait]
 impl RevocationMethod for StatusList2021 {
+    fn get_status_type(&self) -> String {
+        CREDENTIAL_STATUS_TYPE.to_string()
+    }
+
     async fn add_issued_credential(
         &self,
         credential: &Credential,
@@ -122,9 +131,9 @@ impl RevocationMethod for StatusList2021 {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_did: &Did,
+        issuer_did: &str,
     ) -> Result<bool, ServiceError> {
-        if credential_status.r#type != "StatusList2021Entry" {
+        if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(ServiceError::ValidationError(format!(
                 "Invalid credential status type: {}",
                 credential_status.r#type
@@ -151,7 +160,6 @@ impl RevocationMethod for StatusList2021 {
         let response = self
             .client
             .get(list_url)
-            .header("content-type", "application/json")
             .send()
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;
@@ -163,8 +171,18 @@ impl RevocationMethod for StatusList2021 {
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;
 
-        let encoded_list =
-            StatusList2021JWTFormatter::parse_status_list(&response_value, &issuer_did.did).await?;
+        let key_verification = Box::new(KeyVerification {
+            config: self.config.clone(),
+            crypto: self.crypto.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+        });
+
+        let encoded_list = StatusList2021JWTFormatter::parse_status_list(
+            &response_value,
+            issuer_did,
+            key_verification,
+        )
+        .await?;
 
         let result = extract_bitstring_index(encoded_list, list_index)?;
         Ok(result)
@@ -241,7 +259,7 @@ impl StatusList2021 {
         let revocation_list_url = self.get_revocation_list_url(revocation_list_id)?;
         Ok(CredentialStatus {
             id: format!("{}#{}", revocation_list_url, index_on_status_list),
-            r#type: "StatusList2021Entry".to_string(),
+            r#type: CREDENTIAL_STATUS_TYPE.to_string(),
             status_purpose: "revocation".to_string(),
             additional_fields: HashMap::from([
                 ("statusListCredential".to_string(), revocation_list_url),

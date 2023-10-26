@@ -1,5 +1,4 @@
 use crate::model::credential::Credential;
-use crate::model::did::Did;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::service::error::ServiceError;
 
@@ -15,6 +14,8 @@ pub struct CredentialRevocationInfo {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait RevocationMethod {
+    fn get_status_type(&self) -> String;
+
     async fn add_issued_credential(
         &self,
         credential: &Credential,
@@ -27,6 +28,6 @@ pub trait RevocationMethod {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_did: &Did,
+        issuer_did: &str,
     ) -> Result<bool, ServiceError>;
 }
