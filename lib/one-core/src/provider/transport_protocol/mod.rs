@@ -1,5 +1,6 @@
 use self::dto::{InvitationResponse, InvitationType, SubmitIssuerResponse};
-use crate::model::{credential::Credential, did::Did, proof::Proof};
+use crate::model::{credential::Credential, did::Did, interaction::Interaction, proof::Proof};
+
 use async_trait::async_trait;
 use thiserror::Error;
 
@@ -61,4 +62,22 @@ pub trait TransportProtocol {
     // verifier methods
     /// Generates QR-code content to start the proof request flow
     async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError>;
+}
+
+pub(super) fn get_base_url(
+    interaction: &Option<Interaction>,
+) -> Result<reqwest::Url, TransportProtocolError> {
+    let base_url = interaction
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "interaction is None".to_string(),
+        ))?
+        .host
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "interaction host is missing".to_string(),
+        ))?;
+
+    reqwest::Url::parse(base_url)
+        .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))
 }

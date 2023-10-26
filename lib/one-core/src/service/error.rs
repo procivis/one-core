@@ -2,9 +2,11 @@ use thiserror::Error;
 
 use crate::{
     config::validator::ConfigValidationError,
-    provider::credential_formatter::error::FormatterError, provider::did_method::DidMethodError,
-    provider::transport_protocol::TransportProtocolError, repository::error::DataLayerError,
-    util::bitstring::BitstringError,
+    provider::credential_formatter::error::FormatterError,
+    provider::did_method::DidMethodError,
+    provider::transport_protocol::TransportProtocolError,
+    repository::error::DataLayerError,
+    util::{bitstring::BitstringError, oidc::FormatError},
 };
 
 #[derive(Debug, Error)]
@@ -58,6 +60,14 @@ impl From<DataLayerError> for ServiceError {
             DataLayerError::Other => ServiceError::Other("Other internal error".to_string()),
             DataLayerError::RecordNotFound => ServiceError::NotFound,
             DataLayerError::RecordNotUpdated => ServiceError::NotUpdated,
+        }
+    }
+}
+
+impl From<FormatError> for ServiceError {
+    fn from(value: FormatError) -> Self {
+        match value {
+            FormatError::MappingError(value) => ServiceError::MappingError(value),
         }
     }
 }
