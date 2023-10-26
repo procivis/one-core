@@ -60,7 +60,9 @@ impl TokenVerifier for Box<dyn TokenVerifier + Send + Sync> {
         token: &'a str,
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
-        TokenVerifier::verify(self, issuer_did_value, algorithm, token, signature).await
+        self.as_ref()
+            .verify(issuer_did_value, algorithm, token, signature)
+            .await
     }
 }
 
