@@ -3,7 +3,7 @@ use crate::{
     crypto::Crypto,
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
-        did_method::provider::DidMethodProvider,
+        did_method::provider::DidMethodProvider, revocation::provider::RevocationMethodProvider,
     },
     repository::{
         claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
@@ -30,6 +30,7 @@ pub struct SSIVerifierService {
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     crypto: Arc<Crypto>,
     config: Arc<CoreConfig>,
 }
@@ -43,6 +44,7 @@ impl SSIVerifierService {
         did_repository: Arc<dyn DidRepository + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         crypto: Arc<Crypto>,
         config: Arc<CoreConfig>,
     ) -> Self {
@@ -53,6 +55,7 @@ impl SSIVerifierService {
             did_repository,
             formatter_provider,
             did_method_provider,
+            revocation_method_provider,
             crypto,
             config,
         }

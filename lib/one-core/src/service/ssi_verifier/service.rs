@@ -118,6 +118,7 @@ impl SSIVerifierService {
             self.crypto.clone(),
             self.config.clone(),
             self.did_method_provider.clone(),
+            self.revocation_method_provider.clone(),
         )
         .await
         {

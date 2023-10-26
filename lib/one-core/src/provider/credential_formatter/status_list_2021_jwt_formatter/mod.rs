@@ -1,7 +1,7 @@
 use self::model::{ContentType, CredentialSubject, StatusPurpose, SubjectType, VCContent, VC};
 use super::{
     error::FormatterError,
-    jwt::{model::JWTPayload, AuthenticationFn, SkipVerification},
+    jwt::{model::JWTPayload, AuthenticationFn, TokenVerifier},
 };
 use crate::{model::did::Did, provider::credential_formatter::jwt::Jwt};
 use time::OffsetDateTime;
@@ -60,13 +60,18 @@ impl StatusList2021JWTFormatter {
     pub async fn parse_status_list(
         status_list_token: &str,
         issuer_did: &str,
+        verification: Box<dyn TokenVerifier + Send + Sync>,
     ) -> Result<String, FormatterError> {
-        // TODO: proper signature validation
-
-        let jwt: Jwt<VC> = Jwt::build_from_token(status_list_token, SkipVerification).await?;
+        let jwt: Jwt<VC> = Jwt::build_from_token(status_list_token, verification).await?;
 
         let payload = jwt.payload;
         if !payload.issuer.is_some_and(|issuer| issuer == issuer_did) {
+            return Err(FormatterError::CouldNotExtractCredentials(
+                "Invalid issuer".to_string(),
+            ));
+        }
+
+        if payload.custom.vc.issuer != issuer_did {
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid issuer".to_string(),
             ));

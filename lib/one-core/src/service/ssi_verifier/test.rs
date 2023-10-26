@@ -19,6 +19,7 @@ use crate::{
             MockCredentialFormatter,
         },
         did_method::{mock_did_method::MockDidMethod, provider::DidMethodProviderImpl, DidMethod},
+        revocation::provider::MockRevocationMethodProvider,
     },
     repository::mock::{
         claim_repository::MockClaimRepository, claim_schema_repository::MockClaimSchemaRepository,
@@ -329,6 +330,7 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
         proof_repository: Arc::new(MockProofRepository::new()),
         claim_repository: Arc::new(MockClaimRepository::new()),
         did_method_provider: Arc::new(did_method_provider),
+        revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         crypto: Arc::new(Crypto::default()),
         config: Arc::new(CoreConfig {
             format: Default::default(),
