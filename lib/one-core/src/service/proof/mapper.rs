@@ -71,7 +71,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
 pub fn create_presentation_definition_field(
     claim_schema: &ProofClaimSchema,
     credentials: &Vec<Credential>,
-    index: usize,
+    _index: usize,
 ) -> Result<PresentationDefinitionFieldDTO, ServiceError> {
     let mut key_map: HashMap<String, String> = HashMap::new();
     for credential in credentials {
@@ -97,7 +97,7 @@ pub fn create_presentation_definition_field(
     }
     Ok(PresentationDefinitionFieldDTO {
         id: claim_schema.id.to_string(),
-        name: Some(format!("claim_{}", index)),
+        name: Some(claim_schema.key.to_string()),
         purpose: None,
         required: Some(claim_schema.required),
         key_map,
