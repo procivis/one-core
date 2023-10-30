@@ -1,18 +1,19 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::service::error::ServiceError;
-use crate::service::key::dto::KeyResponseDTO;
 use crate::{
     model::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
     provider::key_storage::GeneratedKey,
-    service::key::dto::KeyRequestDTO,
+    service::{
+        error::ServiceError,
+        key::dto::{KeyRequestDTO, KeyResponseDTO},
+    },
 };
 
-use super::dto::{GetKeyListResponseDTO, KeyListItemResponseDTO};
+use super::dto::GetKeyListResponseDTO;
 
 pub(super) fn from_create_request(
     request: KeyRequestDTO,
@@ -64,20 +65,6 @@ impl From<GetKeyList> for GetKeyListResponseDTO {
             values: value.values.into_iter().map(|item| item.into()).collect(),
             total_pages: value.total_pages,
             total_items: value.total_items,
-        }
-    }
-}
-
-impl From<Key> for KeyListItemResponseDTO {
-    fn from(value: Key) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            public_key: value.public_key,
-            key_type: value.key_type,
-            storage_type: value.storage_type,
         }
     }
 }

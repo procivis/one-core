@@ -11,26 +11,12 @@ use crate::{
         credential_schema::dto::{
             CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
             CredentialClaimSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
-            CredentialSchemaListItemResponseDTO,
         },
         error::ServiceError,
     },
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-impl From<CredentialSchema> for CredentialSchemaListItemResponseDTO {
-    fn from(value: CredentialSchema) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-        }
-    }
-}
 
 impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
     type Error = ServiceError;

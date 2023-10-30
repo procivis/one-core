@@ -1,6 +1,5 @@
 use super::dto::{
-    CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO, GetProofSchemaResponseDTO,
-    ProofClaimSchemaResponseDTO,
+    CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
 };
 use crate::model::common::ExactColumn;
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
@@ -36,18 +35,6 @@ impl TryFrom<ProofSchema> for GetProofSchemaResponseDTO {
                 ServiceError::MappingError("claim_schemas is None".to_string()),
             )?)?,
         })
-    }
-}
-
-impl From<ProofSchema> for GetProofSchemaListItemDTO {
-    fn from(value: ProofSchema) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            expire_duration: value.expire_duration,
-        }
     }
 }
 

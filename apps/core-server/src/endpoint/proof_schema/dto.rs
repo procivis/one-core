@@ -1,6 +1,8 @@
 use dto_mapper::From;
+use one_core::common_mapper::vector_into;
 use one_core::service::proof_schema::dto::{
-    CreateProofSchemaClaimRequestDTO, GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO,
+    CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
+    GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -15,13 +17,15 @@ use crate::{
 };
 
 // create endpoint
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, From)]
+#[convert(into = "CreateProofSchemaRequestDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     pub name: String,
     pub organisation_id: Uuid,
     pub expire_duration: u32,
+    #[convert(with_fn = "vector_into")]
     #[validate(length(min = 1))]
     pub claim_schemas: Vec<ClaimProofSchemaRequestRestDTO>,
 }
@@ -61,7 +65,8 @@ pub struct GetProofSchemaListItemResponseRestDTO {
 }
 
 // detail endpoint
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "GetProofSchemaResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct GetProofSchemaResponseRestDTO {
     pub id: Uuid,
@@ -74,6 +79,7 @@ pub struct GetProofSchemaResponseRestDTO {
     pub name: String,
     pub expire_duration: u32,
     pub organisation_id: Uuid,
+    #[convert(with_fn = "vector_into")]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
 }
 

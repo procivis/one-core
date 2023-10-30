@@ -3,7 +3,7 @@ use crate::{
     common::calculate_pages_count,
     entity::{
         did, proof, proof_claim, proof_schema,
-        proof_state::{self, ProofRequestState},
+        proof_state::{self},
     },
     list_query::GetEntityColumn,
 };
@@ -11,7 +11,7 @@ use one_core::{
     model::{
         claim::Claim,
         did::Did,
-        proof::{GetProofList, Proof, ProofId, ProofState, ProofStateEnum, SortableProofColumn},
+        proof::{GetProofList, Proof, ProofId, ProofState, SortableProofColumn},
         proof_schema::ProofSchema,
     },
     repository::error::DataLayerError,
@@ -108,42 +108,6 @@ impl TryFrom<Proof> for proof::ActiveModel {
                 .interaction
                 .map(|interaction| interaction.id.to_string())),
         })
-    }
-}
-
-impl From<ProofRequestState> for ProofStateEnum {
-    fn from(value: ProofRequestState) -> Self {
-        match value {
-            ProofRequestState::Created => Self::Created,
-            ProofRequestState::Pending => Self::Pending,
-            ProofRequestState::Offered => Self::Offered,
-            ProofRequestState::Accepted => Self::Accepted,
-            ProofRequestState::Rejected => Self::Rejected,
-            ProofRequestState::Error => Self::Error,
-        }
-    }
-}
-
-impl From<ProofStateEnum> for ProofRequestState {
-    fn from(value: ProofStateEnum) -> Self {
-        match value {
-            ProofStateEnum::Created => Self::Created,
-            ProofStateEnum::Pending => Self::Pending,
-            ProofStateEnum::Offered => Self::Offered,
-            ProofStateEnum::Accepted => Self::Accepted,
-            ProofStateEnum::Rejected => Self::Rejected,
-            ProofStateEnum::Error => Self::Error,
-        }
-    }
-}
-
-impl From<proof_state::Model> for ProofState {
-    fn from(value: proof_state::Model) -> Self {
-        Self {
-            state: value.state.into(),
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-        }
     }
 }
 

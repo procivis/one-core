@@ -1,4 +1,3 @@
-use dto_derive::Dto;
 use dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -9,9 +8,8 @@ use one_core::service::key::dto::KeyRequestDTO;
 
 use crate::{dto::common::GetListQueryParams, serialize::front_time};
 
-#[derive(Clone, Debug, Deserialize, Dto, Serialize, ToSchema)]
-#[dto(entity = "KeyRequestDTO")]
-#[dto(request)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "KeyRequestDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct KeyRequestRestDTO {
     pub organisation_id: Uuid,

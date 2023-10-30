@@ -1,5 +1,5 @@
 use one_core::{
-    model::did::{Did, DidFilterValue, DidType, GetDidList, KeyRole, SortableDidColumn},
+    model::did::{Did, DidFilterValue, GetDidList, SortableDidColumn},
     repository::error::DataLayerError,
 };
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
@@ -8,29 +8,11 @@ use uuid::Uuid;
 
 use crate::{
     common::calculate_pages_count,
-    entity::{self, did, key_did},
+    entity::{self, did},
     list_query_generic::{
         get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
     },
 };
-
-impl From<DidType> for entity::did::DidType {
-    fn from(value: DidType) -> Self {
-        match value {
-            DidType::Remote => did::DidType::Remote,
-            DidType::Local => did::DidType::Local,
-        }
-    }
-}
-
-impl From<entity::did::DidType> for DidType {
-    fn from(value: entity::did::DidType) -> Self {
-        match value {
-            did::DidType::Remote => DidType::Remote,
-            did::DidType::Local => DidType::Local,
-        }
-    }
-}
 
 impl TryFrom<entity::did::Model> for Did {
     type Error = DataLayerError;
@@ -116,29 +98,5 @@ impl TryFrom<Did> for did::ActiveModel {
             method: Set(value.did_method),
             organisation_id: Set(organisation.id.to_string()),
         })
-    }
-}
-
-impl From<key_did::KeyRole> for KeyRole {
-    fn from(value: key_did::KeyRole) -> Self {
-        match value {
-            key_did::KeyRole::Authentication => Self::Authentication,
-            key_did::KeyRole::AssertionMethod => Self::AssertionMethod,
-            key_did::KeyRole::KeyAgreement => Self::KeyAgreement,
-            key_did::KeyRole::CapabilityInvocation => Self::CapabilityInvocation,
-            key_did::KeyRole::CapabilityDelegation => Self::CapabilityDelegation,
-        }
-    }
-}
-
-impl From<KeyRole> for key_did::KeyRole {
-    fn from(value: KeyRole) -> Self {
-        match value {
-            KeyRole::Authentication => Self::Authentication,
-            KeyRole::AssertionMethod => Self::AssertionMethod,
-            KeyRole::KeyAgreement => Self::KeyAgreement,
-            KeyRole::CapabilityInvocation => Self::CapabilityInvocation,
-            KeyRole::CapabilityDelegation => Self::CapabilityDelegation,
-        }
     }
 }

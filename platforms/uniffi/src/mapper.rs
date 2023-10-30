@@ -1,39 +1,28 @@
 use super::dto::{
     ClaimBindingDTO, CredentialListItemBindingDTO, CredentialSchemaBindingDTO,
-    CredentialStateBindingEnum, ProofRequestBindingDTO, ProofRequestClaimBindingDTO,
+    ProofRequestBindingDTO, ProofRequestClaimBindingDTO,
 };
 use crate::{
     dto::{
-        CredentialRevocationCheckResponseBindingDTO, DidRequestBindingDTO,
-        DidRequestKeysBindingDTO, DidTypeBindingEnum, HandleInvitationResponseBindingEnum,
-        KeyRequestBindingDTO, PresentationDefinitionBindingDTO,
-        PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestGroupBindingDTO,
-        PresentationDefinitionRequestedCredentialBindingDTO, PresentationDefinitionRuleBindingDTO,
-        PresentationDefinitionRuleTypeBindingEnum, PresentationSubmitCredentialRequestBindingDTO,
+        DidRequestBindingDTO, DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum,
+        KeyRequestBindingDTO, PresentationDefinitionFieldBindingDTO,
+        PresentationSubmitCredentialRequestBindingDTO,
     },
     utils::{into_uuid, TimestampFormat},
-    CredentialDetailBindingDTO, CredentialListBindingDTO,
+    CredentialDetailBindingDTO,
 };
 use one_core::{
     common_mapper::vector_into,
-    model::did::DidType,
     service::{
         credential::dto::{
             CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-            CredentialRevocationCheckResponseDTO, CredentialStateEnum,
             DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
-            GetCredentialListResponseDTO,
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
         did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
         error::ServiceError,
         key::dto::KeyRequestDTO,
-        proof::dto::{
-            PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-            PresentationDefinitionRequestedCredentialResponseDTO,
-            PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
-            PresentationDefinitionRuleTypeEnum, ProofClaimDTO, ProofDetailResponseDTO,
-        },
+        proof::dto::{PresentationDefinitionFieldDTO, ProofClaimDTO, ProofDetailResponseDTO},
         ssi_holder::dto::{InvitationResponseDTO, PresentationSubmitCredentialRequestDTO},
     },
 };
@@ -68,20 +57,6 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             state: value.state.into(),
             schema: value.schema.into(),
             claims: vector_into(value.claims),
-        }
-    }
-}
-
-impl From<CredentialStateEnum> for CredentialStateBindingEnum {
-    fn from(value: CredentialStateEnum) -> Self {
-        match value {
-            CredentialStateEnum::Created => Self::Created,
-            CredentialStateEnum::Pending => Self::Pending,
-            CredentialStateEnum::Offered => Self::Offered,
-            CredentialStateEnum::Accepted => Self::Accepted,
-            CredentialStateEnum::Rejected => Self::Rejected,
-            CredentialStateEnum::Revoked => Self::Revoked,
-            CredentialStateEnum::Error => Self::Error,
         }
     }
 }
@@ -148,16 +123,6 @@ impl From<ProofClaimDTO> for ProofRequestClaimBindingDTO {
     }
 }
 
-impl From<GetCredentialListResponseDTO> for CredentialListBindingDTO {
-    fn from(value: GetCredentialListResponseDTO) -> Self {
-        Self {
-            values: vector_into(value.values),
-            total_pages: value.total_pages,
-            total_items: value.total_items,
-        }
-    }
-}
-
 impl From<InvitationResponseDTO> for HandleInvitationResponseBindingEnum {
     fn from(value: InvitationResponseDTO) -> Self {
         match value {
@@ -189,62 +154,6 @@ impl TryFrom<PresentationSubmitCredentialRequestBindingDTO>
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?,
             submit_claims: value.submit_claims,
         })
-    }
-}
-
-impl From<PresentationDefinitionResponseDTO> for PresentationDefinitionBindingDTO {
-    fn from(value: PresentationDefinitionResponseDTO) -> Self {
-        Self {
-            request_groups: vector_into(value.request_groups),
-        }
-    }
-}
-
-impl From<PresentationDefinitionRequestGroupResponseDTO>
-    for PresentationDefinitionRequestGroupBindingDTO
-{
-    fn from(value: PresentationDefinitionRequestGroupResponseDTO) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            purpose: value.purpose,
-            rule: value.rule.into(),
-            requested_credentials: vector_into(value.requested_credentials),
-        }
-    }
-}
-
-impl From<PresentationDefinitionRuleDTO> for PresentationDefinitionRuleBindingDTO {
-    fn from(value: PresentationDefinitionRuleDTO) -> Self {
-        Self {
-            r#type: value.r#type.into(),
-            min: value.min,
-            max: value.max,
-            count: value.count,
-        }
-    }
-}
-
-impl From<PresentationDefinitionRequestedCredentialResponseDTO>
-    for PresentationDefinitionRequestedCredentialBindingDTO
-{
-    fn from(value: PresentationDefinitionRequestedCredentialResponseDTO) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            purpose: value.purpose,
-            fields: vector_into(value.fields),
-            applicable_credentials: value.applicable_credentials,
-        }
-    }
-}
-
-impl From<PresentationDefinitionRuleTypeEnum> for PresentationDefinitionRuleTypeBindingEnum {
-    fn from(value: PresentationDefinitionRuleTypeEnum) -> Self {
-        match value {
-            PresentationDefinitionRuleTypeEnum::All => Self::All,
-            PresentationDefinitionRuleTypeEnum::Pick => Self::Pick,
-        }
     }
 }
 
@@ -288,15 +197,6 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
     }
 }
 
-impl From<DidTypeBindingEnum> for DidType {
-    fn from(value: DidTypeBindingEnum) -> Self {
-        match value {
-            DidTypeBindingEnum::Local => Self::Local,
-            DidTypeBindingEnum::Remote => Self::Remote,
-        }
-    }
-}
-
 impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
     type Error = ServiceError;
     fn try_from(request: DidRequestKeysBindingDTO) -> Result<Self, Self::Error> {
@@ -311,16 +211,5 @@ impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
             capability_invocation: convert(request.capability_invocation)?,
             capability_delegation: convert(request.capability_delegation)?,
         })
-    }
-}
-
-impl From<CredentialRevocationCheckResponseDTO> for CredentialRevocationCheckResponseBindingDTO {
-    fn from(value: CredentialRevocationCheckResponseDTO) -> Self {
-        Self {
-            credential_id: value.credential_id.to_string(),
-            status: value.status.into(),
-            success: value.success,
-            reason: value.reason,
-        }
     }
 }

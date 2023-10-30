@@ -1,9 +1,14 @@
+use dto_mapper::From;
 use sea_orm::entity::prelude::*;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+use one_core::model::proof::{ProofState, ProofStateEnum};
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, From)]
+#[convert(into = "ProofState")]
 #[sea_orm(table_name = "proof_state")]
 pub struct Model {
+    #[convert(skip)]
     #[sea_orm(primary_key, auto_increment = false)]
     pub proof_id: String,
 
@@ -34,7 +39,8 @@ impl Related<super::proof::Entity> for Entity {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, From)]
+#[convert(from = "ProofStateEnum", into = "ProofStateEnum")]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum ProofRequestState {
     #[default]

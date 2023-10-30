@@ -1,5 +1,8 @@
+use dto_mapper::From;
 use sea_orm::entity::prelude::*;
 use time::OffsetDateTime;
+
+use one_core::model::did::DidType as ModelDidType;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "did")]
@@ -54,7 +57,8 @@ impl Related<super::key::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, From)]
+#[convert(from = "ModelDidType", into = "ModelDidType")]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum DidType {
     #[default]

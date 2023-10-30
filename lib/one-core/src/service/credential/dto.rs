@@ -2,6 +2,8 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use dto_mapper::From;
+
 use crate::{
     model::{
         common::{GetListQueryParams, GetListResponse},
@@ -66,7 +68,8 @@ pub struct DetailCredentialClaimResponseDTO {
     pub value: String,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize, From)]
+#[convert(from = "crate::model::credential::CredentialStateEnum")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialStateEnum {
     Created,

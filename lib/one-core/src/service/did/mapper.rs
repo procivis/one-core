@@ -1,6 +1,4 @@
-use super::dto::{
-    DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO,
-};
+use super::dto::{DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
 use crate::{
     common_mapper::vector_into,
     model::did::{Did, GetDidList, KeyRole},
@@ -41,20 +39,6 @@ impl TryFrom<Did> for DidResponseDTO {
                 capability_delegation: filter_keys(KeyRole::CapabilityDelegation),
             },
         })
-    }
-}
-
-impl From<Did> for DidListItemResponseDTO {
-    fn from(value: Did) -> Self {
-        Self {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-            name: value.name,
-            did: value.did,
-            did_type: value.did_type,
-            did_method: value.did_method,
-        }
     }
 }
 

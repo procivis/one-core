@@ -108,20 +108,6 @@ fn from_vec_claim(
         .collect::<Result<Vec<_>, _>>()
 }
 
-impl From<CredentialStateEnum> for super::dto::CredentialStateEnum {
-    fn from(value: CredentialStateEnum) -> Self {
-        match value {
-            CredentialStateEnum::Created => super::dto::CredentialStateEnum::Created,
-            CredentialStateEnum::Pending => super::dto::CredentialStateEnum::Pending,
-            CredentialStateEnum::Offered => super::dto::CredentialStateEnum::Offered,
-            CredentialStateEnum::Accepted => super::dto::CredentialStateEnum::Accepted,
-            CredentialStateEnum::Rejected => super::dto::CredentialStateEnum::Rejected,
-            CredentialStateEnum::Revoked => super::dto::CredentialStateEnum::Revoked,
-            CredentialStateEnum::Error => super::dto::CredentialStateEnum::Error,
-        }
-    }
-}
-
 impl TryFrom<Credential> for CredentialListItemResponseDTO {
     type Error = ServiceError;
 
