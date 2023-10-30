@@ -3,7 +3,10 @@ use super::dto::{
     OpenID4VCIDiscoveryResponseRestDTO, PostSsiIssuerConnectQueryParams,
     PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
-use crate::endpoint::ssi::dto::OpenID4VCIIssuerMetadataResponseRestDTO;
+use crate::endpoint::ssi::dto::{
+    OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+    OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
+};
 use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
 };
@@ -13,7 +16,7 @@ use axum::{
     extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
+    Form, Json,
 };
 use one_core::service::error::ServiceError;
 use uuid::Uuid;
@@ -170,6 +173,62 @@ pub(crate) async fn oidc_service_discovery(
         Err(ServiceError::NotFound) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/ssi/oidc-issuer/v1/{id}/token",
+    request_body(content = OpenID4VCITokenRequestRestDTO, description = "Token request", content_type = "application/x-www-form-urlencoded"),
+    params(
+        ("id" = Uuid, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = OpenID4VCITokenResponseRestDTO),
+        (status = 400, description = "OIDC token errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 409, description = "Wrong credential state"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn oidc_create_token(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+    Form(request): Form<OpenID4VCITokenRequestRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .oidc_service
+        .oidc_create_token(&id, request.into())
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(OpenID4VCITokenResponseRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(ServiceError::OpenID4VCError(error)) => {
+            tracing::error!("OpenID4VCI token validation error: {:?}", error);
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO::from(error)),
+            )
+                .into_response()
+        }
+        Err(ServiceError::NotFound) => {
+            tracing::error!("Missing credential schema");
+            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
+        }
+        Err(ServiceError::AlreadyExists) => {
+            tracing::warn!("Already finished");
+            (StatusCode::CONFLICT, "Wrong credential state").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

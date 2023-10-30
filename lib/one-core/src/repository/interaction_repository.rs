@@ -9,6 +9,8 @@ pub trait InteractionRepository {
         request: Interaction,
     ) -> Result<InteractionId, DataLayerError>;
 
+    async fn update_interaction(&self, request: Interaction) -> Result<(), DataLayerError>;
+
     async fn get_interaction(
         &self,
         id: &InteractionId,

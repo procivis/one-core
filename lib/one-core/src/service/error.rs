@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::service::oidc::dto::OpenID4VCIError;
 use crate::{
     config::validator::ConfigValidationError,
     provider::credential_formatter::error::FormatterError,
@@ -25,6 +26,8 @@ pub enum ServiceError {
     NotUpdated,
     #[error("Validation errror: `{0}`")]
     ValidationError(String),
+    #[error("OpenID4VCI validation error `{0}`")]
+    OpenID4VCError(#[from] OpenID4VCIError),
     #[error("Config validation error `{0}`")]
     ConfigValidationError(#[from] ConfigValidationError),
     #[error("Transport protocol error `{0}`")]

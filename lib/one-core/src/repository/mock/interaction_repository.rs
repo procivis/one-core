@@ -14,6 +14,11 @@ mock! {
             request: Interaction,
         ) -> Result<InteractionId, DataLayerError>;
 
+        pub fn update_interaction(
+            &self,
+            request: Interaction,
+        ) -> Result<(), DataLayerError>;
+
         pub fn get_interaction(
             &self,
             id: &InteractionId,
@@ -31,6 +36,10 @@ impl crate::repository::interaction_repository::InteractionRepository
         request: Interaction,
     ) -> Result<InteractionId, DataLayerError> {
         self.create_interaction(request)
+    }
+
+    async fn update_interaction(&self, request: Interaction) -> Result<(), DataLayerError> {
+        self.update_interaction(request)
     }
 
     async fn get_interaction(

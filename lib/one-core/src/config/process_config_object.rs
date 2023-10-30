@@ -5,9 +5,9 @@ use serde::de::Error;
 use crate::config::data_structure::{
     AccessModifier, DatatypeDateParams, DatatypeEntity, DatatypeEnumParams, DatatypeNumberParams,
     DatatypeParams, DatatypeStringParams, DatatypeType, DidEntity, DidKeyParams, DidParams,
-    ExchangeEntity, FormatEntity, FormatJwtParams, FormatParams, KeyAlgorithmEntity,
-    KeyAlgorithmParams, KeyStorageEntity, KeyStorageInternalParams, KeyStorageParams, ParamsEnum,
-    RevocationEntity, TransportEntity,
+    ExchangeEntity, ExchangeOPENID4VCParams, ExchangeParams, FormatEntity, FormatJwtParams,
+    FormatParams, KeyAlgorithmEntity, KeyAlgorithmParams, KeyStorageEntity,
+    KeyStorageInternalParams, KeyStorageParams, ParamsEnum, RevocationEntity, TransportEntity,
 };
 
 fn convert_param_to_param_map(
@@ -111,9 +111,15 @@ fn postprocess_exchange_entity(
             ParamsEnum::Unparsed(value) => {
                 let public = value["public"].to_owned();
                 let private = value["private"].to_owned();
-                Some(ParamsEnum::Parsed(merge_public_and_private(
-                    public, private,
-                )?))
+                let merged = merge_public_and_private(public, private)?;
+
+                match entity.r#type.as_str() {
+                    "OPENID4VC" => {
+                        let params: ExchangeOPENID4VCParams = serde_json::from_value(merged)?;
+                        Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(params)))
+                    }
+                    _ => Some(ParamsEnum::Parsed(ExchangeParams::Unknown(merged))),
+                }
             }
             ParamsEnum::Parsed(value) => Some(ParamsEnum::Parsed(value)),
         },
