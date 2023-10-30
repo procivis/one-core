@@ -1,4 +1,3 @@
 pub mod controller;
 pub mod dto;
-
-mod mapper;
+pub mod mapper;

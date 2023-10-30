@@ -1,4 +1,7 @@
+use dto_mapper::From;
 use sea_orm::entity::prelude::*;
+
+use one_core::model::did::KeyRole as ModelKeyRole;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "key_did")]
@@ -47,7 +50,8 @@ impl Related<super::key::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, From)]
+#[convert(from = "ModelKeyRole", into = "ModelKeyRole")]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum KeyRole {
     #[default]

@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 async-trait = "0.1.68"
 ct-codecs.workspace = true
+dto_mapper.workspace = true
 serde_yaml = "0.9.25"
 serde.workspace = true
 serde_json.workspace = true

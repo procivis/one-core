@@ -2,16 +2,20 @@ use serde::Deserialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use dto_mapper::From;
+
 use crate::model::{
     claim_schema::ClaimSchemaId,
     common::{GetListQueryParams, GetListResponse},
     credential_schema::{
-        CredentialFormat, CredentialSchemaId, RevocationMethod, SortableCredentialSchemaColumn,
+        CredentialFormat, CredentialSchema, CredentialSchemaId, RevocationMethod,
+        SortableCredentialSchemaColumn,
     },
     organisation::OrganisationId,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, From)]
+#[convert(from = "CredentialSchema")]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaListItemResponseDTO {
     pub id: CredentialSchemaId,

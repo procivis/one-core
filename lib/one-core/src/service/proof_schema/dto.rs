@@ -1,3 +1,4 @@
+use dto_mapper::From;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -6,7 +7,7 @@ use crate::{
         claim_schema::ClaimSchemaId,
         common::{GetListQueryParams, GetListResponse},
         organisation::OrganisationId,
-        proof_schema::SortableProofSchemaColumn,
+        proof_schema::{ProofSchema, SortableProofSchemaColumn},
     },
     service::credential_schema::dto::CredentialSchemaListItemResponseDTO,
 };
@@ -33,7 +34,8 @@ pub struct GetProofSchemaResponseDTO {
     pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
+#[convert(from = "ProofSchema")]
 pub struct GetProofSchemaListItemDTO {
     pub id: ProofSchemaId,
     pub created_date: OffsetDateTime,

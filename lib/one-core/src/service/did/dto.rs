@@ -1,10 +1,12 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use dto_mapper::From;
+
 use crate::{
     model::{
         common::{GetListQueryParams, GetListResponse},
-        did::{DidType, SortableDidColumn},
+        did::{Did, DidType, SortableDidColumn},
         key::KeyId,
         organisation::OrganisationId,
     },
@@ -36,7 +38,8 @@ pub struct DidResponseKeysDTO {
     pub capability_delegation: Vec<KeyListItemResponseDTO>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
+#[convert(from = "Did")]
 pub struct DidListItemResponseDTO {
     pub id: DidId,
     pub created_date: OffsetDateTime,

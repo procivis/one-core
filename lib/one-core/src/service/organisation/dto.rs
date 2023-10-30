@@ -1,7 +1,11 @@
-use crate::model::organisation::OrganisationId;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+use dto_mapper::From;
+
+use crate::model::organisation::{Organisation, OrganisationId};
+
+#[derive(Clone, Debug, PartialEq, Eq, From)]
+#[convert(from = "Organisation")]
 pub struct GetOrganisationDetailsResponseDTO {
     pub id: OrganisationId,
     pub created_date: OffsetDateTime,

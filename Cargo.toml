@@ -18,7 +18,7 @@ members = [
 [workspace.dependencies]
 axum = { version = "0.6.19", features = ["macros"] }
 ct-codecs = "1.1.1"
-dto_derive = "0.1.1"
+dto_mapper = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.2" }
 mockall = "0.11"
 serde = "1.0"
 serde_json = "1"
@@ -38,5 +38,4 @@ uniffi = { version = "0.25.0", features = ["cli"] }
 thiserror = "1.0"
 tokio = "1.26"
 figment = { version = "0.10.10", features = ["env"] }
-dto_mapper = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.1" }
 url = { version = "2.4" }

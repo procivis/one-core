@@ -1,5 +1,25 @@
 use std::collections::HashMap;
 
+use dto_mapper::From;
+
+use one_core::{
+    common_mapper::vector_into,
+    model::did::DidType,
+    service::{
+        credential::dto::{
+            CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
+        },
+        proof::dto::{
+            PresentationDefinitionRequestGroupResponseDTO,
+            PresentationDefinitionRequestedCredentialResponseDTO,
+            PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
+            PresentationDefinitionRuleTypeEnum,
+        },
+    },
+};
+
+#[derive(From)]
+#[convert(from = "CredentialStateEnum")]
 pub enum CredentialStateBindingEnum {
     Created,
     Pending,
@@ -18,7 +38,10 @@ pub struct ListQueryBindingDTO {
     pub organisation_id: String,
 }
 
+#[derive(From)]
+#[convert(from = "GetCredentialListResponseDTO")]
 pub struct CredentialListBindingDTO {
+    #[convert(with_fn = "vector_into")]
     pub values: Vec<CredentialListItemBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
@@ -96,23 +119,33 @@ pub struct PresentationSubmitCredentialRequestBindingDTO {
     pub submit_claims: Vec<String>,
 }
 
+#[derive(From)]
+#[convert(from = "PresentationDefinitionResponseDTO")]
 pub struct PresentationDefinitionBindingDTO {
+    #[convert(with_fn = "vector_into")]
     pub request_groups: Vec<PresentationDefinitionRequestGroupBindingDTO>,
 }
 
+#[derive(From)]
+#[convert(from = "PresentationDefinitionRequestGroupResponseDTO")]
 pub struct PresentationDefinitionRequestGroupBindingDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub rule: PresentationDefinitionRuleBindingDTO,
+    #[convert(with_fn = "vector_into")]
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialBindingDTO>,
 }
 
+#[derive(From)]
+#[convert(from = "PresentationDefinitionRequestedCredentialResponseDTO")]
 pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
+    #[convert(with_fn = "vector_into")]
     pub fields: Vec<PresentationDefinitionFieldBindingDTO>,
+    #[convert(with_fn = "vector_into")]
     pub applicable_credentials: Vec<String>,
 }
 
@@ -124,11 +157,15 @@ pub struct PresentationDefinitionFieldBindingDTO {
     pub key_map: HashMap<String, String>,
 }
 
+#[derive(From)]
+#[convert(from = "PresentationDefinitionRuleTypeEnum")]
 pub enum PresentationDefinitionRuleTypeBindingEnum {
     All,
     Pick,
 }
 
+#[derive(From)]
+#[convert(from = "PresentationDefinitionRuleDTO")]
 pub struct PresentationDefinitionRuleBindingDTO {
     pub r#type: PresentationDefinitionRuleTypeBindingEnum,
     pub min: Option<u32>,
@@ -145,6 +182,8 @@ pub struct KeyRequestBindingDTO {
     pub storage_params: HashMap<String, String>,
 }
 
+#[derive(From)]
+#[convert(into = "DidType")]
 pub enum DidTypeBindingEnum {
     Local,
     Remote,
@@ -167,7 +206,10 @@ pub struct DidRequestKeysBindingDTO {
     pub capability_delegation: Vec<String>,
 }
 
+#[derive(From)]
+#[convert(from = "CredentialRevocationCheckResponseDTO")]
 pub struct CredentialRevocationCheckResponseBindingDTO {
+    #[convert(with_fn_ref = "uuid::Uuid::to_string")]
     pub credential_id: String,
     pub status: CredentialStateBindingEnum,
     pub success: bool,

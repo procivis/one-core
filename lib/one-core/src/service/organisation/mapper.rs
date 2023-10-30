@@ -1,16 +1,7 @@
-use crate::model::organisation::Organisation;
-
-use super::dto::GetOrganisationDetailsResponseDTO;
-
-impl From<Organisation> for GetOrganisationDetailsResponseDTO {
-    fn from(value: Organisation) -> Self {
-        GetOrganisationDetailsResponseDTO {
-            id: value.id,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-        }
-    }
-}
+use crate::{
+    model::organisation::Organisation,
+    service::organisation::dto::GetOrganisationDetailsResponseDTO,
+};
 
 pub(crate) fn organisations_to_response(
     organisations: Vec<Organisation>,

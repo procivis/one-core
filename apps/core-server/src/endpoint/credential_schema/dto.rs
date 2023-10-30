@@ -1,6 +1,8 @@
 use dto_mapper::From;
+use one_core::common_mapper::vector_into;
 use one_core::service::credential_schema::dto::{
-    CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO, CredentialSchemaListItemResponseDTO,
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -28,7 +30,8 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub revocation_method: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "CredentialSchemaDetailResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaResponseRestDTO {
     pub id: Uuid,
@@ -42,6 +45,7 @@ pub struct CredentialSchemaResponseRestDTO {
     pub format: String,
     pub revocation_method: String,
     pub organisation_id: Uuid,
+    #[convert(with_fn = "vector_into")]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
 }
 
@@ -72,7 +76,8 @@ pub enum SortableCredentialSchemaColumnRestEnum {
     CreatedDate,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, From)]
+#[convert(into = "CreateCredentialSchemaRequestDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
@@ -80,6 +85,7 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub format: String,
     pub revocation_method: String,
     pub organisation_id: Uuid,
+    #[convert(with_fn = "vector_into")]
     #[validate(length(min = 1))]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
 }

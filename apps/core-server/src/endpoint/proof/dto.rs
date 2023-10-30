@@ -7,10 +7,12 @@ use crate::{
     serialize::{front_time, front_time_option},
 };
 use dto_mapper::From;
+use one_core::common_mapper::vector_into;
 use one_core::model::proof::ProofStateEnum;
 use one_core::service::proof::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRuleDTO,
-    PresentationDefinitionRuleTypeEnum, ProofClaimDTO,
+    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, ProofClaimDTO,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -86,30 +88,38 @@ pub struct ProofListItemResponseRestDTO {
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "PresentationDefinitionResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionResponseRestDTO {
+    #[convert(with_fn = "vector_into")]
     pub request_groups: Vec<PresentationDefinitionRequestGroupResponseRestDTO>,
+    #[convert(with_fn = "vector_into")]
     pub credentials: Vec<GetCredentialResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "PresentationDefinitionRequestGroupResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionRequestGroupResponseRestDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub rule: PresentationDefinitionRuleRestDTO,
+    #[convert(with_fn = "vector_into")]
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "PresentationDefinitionRequestedCredentialResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
+    #[convert(with_fn = "vector_into")]
     pub fields: Vec<PresentationDefinitionFieldRestDTO>,
+    #[convert(with_fn = "vector_into")]
     pub applicable_credentials: Vec<String>,
 }
 

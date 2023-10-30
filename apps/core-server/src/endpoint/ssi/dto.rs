@@ -3,16 +3,17 @@ use crate::{
     serialize::front_time,
 };
 use dto_mapper::From;
+use one_core::common_mapper::vector_into;
 use one_core::service::{
     oidc::dto::{
         OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
         OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
         OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO, OpenID4VCITokenRequestDTO,
-        OpenID4VCITokenResponseDTO,
+        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     },
     ssi_issuer::dto::IssuerResponseDTO,
-    ssi_verifier::dto::ProofRequestClaimDTO,
+    ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -41,19 +42,25 @@ pub struct PostSsiVerifierConnectQueryParams {
     pub proof: Uuid,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "ConnectVerifierResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectVerifierResponseRestDTO {
+    #[convert(with_fn = "vector_into")]
     pub claims: Vec<ProofRequestClaimRestDTO>,
     pub verifier_did: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "OpenID4VCIIssuerMetadataResponseDTO")]
+#[serde(rename_all = "camelCase")]
 pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
+    #[convert(with_fn = "vector_into")]
     pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
 }
+
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[convert(from = "OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO")]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
@@ -112,6 +119,7 @@ pub struct OpenID4VCITokenResponseRestDTO {
     pub token_type: String,
     pub expires_in: DurationSecondsRest,
 }
+
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 pub struct OpenID4VCIErrorResponseRestDTO {
     pub error: OpenID4VCIErrorRestEnum,

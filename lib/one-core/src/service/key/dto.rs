@@ -1,9 +1,11 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use dto_mapper::From;
+
 use crate::model::{
     common::{GetListQueryParams, GetListResponse},
-    key::SortableKeyColumn,
+    key::{Key, SortableKeyColumn},
 };
 
 pub struct KeyRequestDTO {
@@ -26,7 +28,8 @@ pub struct KeyResponseDTO {
     pub storage_type: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, From)]
+#[convert(from = "Key")]
 pub struct KeyListItemResponseDTO {
     pub id: Uuid,
     pub created_date: OffsetDateTime,

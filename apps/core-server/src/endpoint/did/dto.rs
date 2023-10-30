@@ -1,4 +1,3 @@
-use dto_derive::Dto;
 use dto_mapper::From;
 use one_core::service::did::dto::{CreateDidRequestKeysDTO, DidListItemResponseDTO};
 use serde::{Deserialize, Serialize};
@@ -83,9 +82,8 @@ pub struct CreateDidRequestRestDTO {
     pub params: Option<serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Dto)]
-#[dto(entity = "CreateDidRequestKeysDTO")]
-#[dto(request)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[convert(into = "CreateDidRequestKeysDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestKeysRestDTO {
     pub authentication: Vec<Uuid>,
