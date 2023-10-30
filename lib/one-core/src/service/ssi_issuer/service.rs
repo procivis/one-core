@@ -1,4 +1,5 @@
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
+use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::{
     common_mapper::get_algorithm_from_key_algorithm,
     model::{
@@ -46,15 +47,7 @@ impl SSIIssuerService {
             )
             .await?;
 
-        let latest_state = credential
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?
-            .get(0)
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
-        if latest_state.state != CredentialStateEnum::Pending {
-            return Err(ServiceError::AlreadyExists);
-        }
+        throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
         let credential_schema = credential
             .schema
@@ -146,15 +139,7 @@ impl SSIIssuerService {
             )
             .await?;
 
-        let latest_state = credential
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?
-            .get(0)
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
-        if latest_state.state != CredentialStateEnum::Offered {
-            return Err(ServiceError::AlreadyExists);
-        }
+        throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
 
         let credential_schema = credential
             .schema
@@ -260,15 +245,7 @@ impl SSIIssuerService {
             )
             .await?;
 
-        let latest_state = credential
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?
-            .get(0)
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
-        if latest_state.state != CredentialStateEnum::Offered {
-            return Err(ServiceError::AlreadyExists);
-        }
+        throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
 
         self.credential_repository
             .update_credential(UpdateCredentialRequest {

@@ -34,6 +34,7 @@ pub mod repository;
 pub mod service;
 
 pub mod common_mapper;
+mod common_validator;
 pub mod util;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
@@ -186,6 +187,9 @@ impl OneCore {
             oidc_service: OIDCService::new(
                 core_base_url,
                 data_provider.get_credential_schema_repository(),
+                data_provider.get_credential_repository(),
+                data_provider.get_interaction_repository(),
+                config.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 data_provider.get_credential_schema_repository(),

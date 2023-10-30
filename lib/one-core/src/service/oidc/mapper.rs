@@ -1,8 +1,10 @@
 use crate::model::credential_schema::CredentialSchema;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+    DurationSeconds, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIInteractionDataDTO,
+    OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCITokenResponseDTO,
 };
 use crate::util::oidc::map_format_to_oidc_format;
 
@@ -37,4 +39,14 @@ pub(super) fn create_service_discovery_response(
         subject_types_supported: vec!["public".to_string()],
         id_token_signing_alg_values_supported: vec![],
     })
+}
+
+impl From<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
+    fn from(value: OpenID4VCIInteractionDataDTO) -> Self {
+        Self {
+            access_token: value.access_token.to_string(),
+            token_type: "bearer".to_string(),
+            expires_in: DurationSeconds(value.access_token_expires_at.unix_timestamp()),
+        }
+    }
 }

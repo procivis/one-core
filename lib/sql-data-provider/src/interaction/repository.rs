@@ -4,7 +4,7 @@ use one_core::{
     model::interaction::{Interaction, InteractionId, InteractionRelations},
     repository::{error::DataLayerError, interaction_repository::InteractionRepository},
 };
-use sea_orm::{ActiveModelTrait, EntityTrait};
+use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
 use uuid::Uuid;
 
 use crate::{entity::interaction, error_mapper::to_data_layer_error};
@@ -23,6 +23,16 @@ impl InteractionRepository for InteractionProvider {
             .map_err(to_data_layer_error)?;
 
         Uuid::from_str(&interaction.id).map_err(|_| DataLayerError::MappingError)
+    }
+
+    async fn update_interaction(&self, request: Interaction) -> Result<(), DataLayerError> {
+        let model: interaction::ActiveModel = request.into();
+
+        model.update(&self.db).await.map_err(|e| match e {
+            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
+            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+        })?;
+        Ok(())
     }
 
     async fn get_interaction(

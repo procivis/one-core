@@ -1,5 +1,8 @@
 use super::dto::ConnectVerifierResponseRestDTO;
-use crate::endpoint::ssi::dto::OpenID4VCIIssuerMetadataResponseRestDTO;
+use crate::endpoint::ssi::dto::{
+    DurationSecondsRest, OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+};
+use one_core::service::oidc::dto::{DurationSeconds, OpenID4VCIError};
 use one_core::{
     common_mapper::vector_into,
     service::{
@@ -24,5 +27,18 @@ impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataRespo
             credential_endpoint: value.credential_endpoint,
             credentials_supported: vector_into(value.credentials_supported),
         }
+    }
+}
+impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
+    fn from(value: OpenID4VCIError) -> Self {
+        OpenID4VCIErrorResponseRestDTO {
+            error: value.into(),
+        }
+    }
+}
+
+impl From<DurationSeconds> for DurationSecondsRest {
+    fn from(value: DurationSeconds) -> Self {
+        DurationSecondsRest(value.0)
     }
 }

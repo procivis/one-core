@@ -5,8 +5,10 @@ use crate::{
 use dto_mapper::From;
 use one_core::service::{
     oidc::dto::{
-        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
+        OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO, OpenID4VCITokenRequestDTO,
+        OpenID4VCITokenResponseDTO,
     },
     ssi_issuer::dto::IssuerResponseDTO,
     ssi_verifier::dto::ProofRequestClaimDTO,
@@ -46,14 +48,12 @@ pub struct ConnectVerifierResponseRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
     pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
 #[convert(from = "OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO")]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
@@ -61,7 +61,6 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
 #[convert(from = "OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO")]
 pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO {
     pub r#type: Vec<String>,
@@ -78,6 +77,39 @@ pub struct OpenID4VCIDiscoveryResponseRestDTO {
     pub grant_types_supported: Vec<String>,
     pub subject_types_supported: Vec<String>,
     pub id_token_signing_alg_values_supported: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "OpenID4VCITokenRequestDTO")]
+pub struct OpenID4VCITokenRequestRestDTO {
+    pub grant_type: String,
+    #[serde(rename = "pre-authorized_code")]
+    pub pre_authorized_code: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(transparent)]
+pub struct DurationSecondsRest(pub i64);
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "OpenID4VCITokenResponseDTO")]
+pub struct OpenID4VCITokenResponseRestDTO {
+    pub access_token: String,
+    pub token_type: String,
+    pub expires_in: DurationSecondsRest,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+pub struct OpenID4VCIErrorResponseRestDTO {
+    pub error: OpenID4VCIErrorRestEnum,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[serde(rename_all = "snake_case")]
+#[convert(from = "OpenID4VCIError")]
+pub enum OpenID4VCIErrorRestEnum {
+    UnsupportedGrantType,
+    InvalidGrant,
+    InvalidRequest,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]

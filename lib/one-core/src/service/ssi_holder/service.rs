@@ -30,6 +30,7 @@ use crate::{
     service::{credential::dto::CredentialDetailResponseDTO, did::dto::DidId, error::ServiceError},
 };
 
+use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -322,16 +323,7 @@ impl SSIHolderService {
         }
 
         for credential in credentials {
-            let latest_state = credential
-                .state
-                .as_ref()
-                .ok_or(ServiceError::MappingError("state is None".to_string()))?
-                .get(0)
-                .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
-
-            if latest_state.state != CredentialStateEnum::Pending {
-                return Err(ServiceError::AlreadyExists);
-            }
+            throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
             let credential_content = self
                 .protocol_provider
@@ -376,16 +368,7 @@ impl SSIHolderService {
         }
 
         for credential in credentials {
-            let latest_state = credential
-                .state
-                .as_ref()
-                .ok_or(ServiceError::MappingError("state is None".to_string()))?
-                .get(0)
-                .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
-
-            if latest_state.state != CredentialStateEnum::Pending {
-                return Err(ServiceError::AlreadyExists);
-            }
+            throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
             self.protocol_provider
                 .get_protocol(&credential.transport)?

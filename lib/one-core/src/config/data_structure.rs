@@ -26,7 +26,7 @@ pub struct CoreConfig {
 }
 
 pub type FormatEntity = ConfigEntity<String, FormatParams>;
-pub type ExchangeEntity = ConfigEntity<String, serde_json::Value>;
+pub type ExchangeEntity = ConfigEntity<String, ExchangeParams>;
 pub type TransportEntity = ConfigEntity<String, serde_json::Value>;
 pub type RevocationEntity = ConfigEntity<String, serde_json::Value>;
 pub type DidEntity = ConfigEntity<String, DidParams>;
@@ -84,6 +84,12 @@ pub enum FormatParams {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum ExchangeParams {
+    OPENID4VC(ExchangeOPENID4VCParams),
+    Unknown(serde_json::Value),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum DidParams {
     Key(DidKeyParams),
     Unknown(serde_json::Value),
@@ -92,6 +98,13 @@ pub enum DidParams {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct FormatJwtParams {
     pub leeway: Option<Param<u64>>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExchangeOPENID4VCParams {
+    pub pre_authorized_code_expires_in: Option<Param<u64>>,
+    pub token_expires_in: Option<Param<u64>>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]

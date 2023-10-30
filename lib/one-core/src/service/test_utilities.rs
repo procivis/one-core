@@ -1,7 +1,7 @@
 use crate::config::data_structure::{
     AccessModifier, CoreConfig, DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity,
-    FormatEntity, KeyAlgorithmEntity, KeyAlgorithmParams, KeyStorageEntity, Param, ParamsEnum,
-    RevocationEntity, TranslatableString,
+    ExchangeOPENID4VCParams, ExchangeParams, FormatEntity, KeyAlgorithmEntity, KeyAlgorithmParams,
+    KeyStorageEntity, Param, ParamsEnum, RevocationEntity, TranslatableString,
 };
 use std::collections::HashMap;
 
@@ -16,15 +16,37 @@ pub fn generic_config() -> CoreConfig {
                 params: None,
             },
         )]),
-        exchange: HashMap::from([(
-            "PROCIVIS_TEMPORARY".to_string(),
-            ExchangeEntity {
-                r#type: "PROCIVIS_TEMPORARY".to_string(),
-                display: TranslatableString::Key("Display".to_string()),
-                order: None,
-                params: None,
-            },
-        )]),
+        exchange: HashMap::from([
+            (
+                "PROCIVIS_TEMPORARY".to_string(),
+                ExchangeEntity {
+                    r#type: "PROCIVIS_TEMPORARY".to_string(),
+                    display: TranslatableString::Key("Display".to_string()),
+                    order: None,
+                    params: None,
+                },
+            ),
+            (
+                "OPENID4VC".to_string(),
+                ExchangeEntity {
+                    r#type: "OPENID4VC".to_string(),
+                    display: TranslatableString::Key("Display".to_string()),
+                    order: None,
+                    params: Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(
+                        ExchangeOPENID4VCParams {
+                            pre_authorized_code_expires_in: Some(Param {
+                                access: AccessModifier::Public,
+                                value: 300,
+                            }),
+                            token_expires_in: Some(Param {
+                                access: AccessModifier::Public,
+                                value: 86400,
+                            }),
+                        },
+                    ))),
+                },
+            ),
+        ]),
         transport: Default::default(),
         revocation: HashMap::from([
             (
