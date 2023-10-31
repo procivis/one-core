@@ -1,5 +1,4 @@
 use std::{collections::HashMap, sync::Arc, vec};
-
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -21,9 +20,10 @@ use crate::{
         did_method::{mock_did_method::MockDidMethod, provider::DidMethodProviderImpl, DidMethod},
         revocation::provider::MockRevocationMethodProvider,
     },
+    repository::did_repository::MockDidRepository,
     repository::mock::{
         claim_repository::MockClaimRepository, claim_schema_repository::MockClaimSchemaRepository,
-        did_repository::MockDidRepository, proof_repository::MockProofRepository,
+        proof_repository::MockProofRepository,
     },
     service::ssi_verifier::SSIVerifierService,
 };

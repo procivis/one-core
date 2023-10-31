@@ -3506,7 +3506,6 @@ dependencies = [
  "sea-query-derive",
  "serde_json",
  "time",
- "uuid",
 ]
 
 [[package]]
@@ -3519,7 +3518,6 @@ dependencies = [
  "serde_json",
  "sqlx",
  "time",
- "uuid",
 ]
 
 [[package]]
@@ -4044,7 +4042,6 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "url",
- "uuid",
  "webpki-roots 0.24.0",
 ]
 
@@ -4127,7 +4124,6 @@ dependencies = [
  "thiserror",
  "time",
  "tracing",
- "uuid",
  "whoami",
 ]
 
@@ -4168,7 +4164,6 @@ dependencies = [
  "thiserror",
  "time",
  "tracing",
- "uuid",
  "whoami",
 ]
 
@@ -4193,7 +4188,6 @@ dependencies = [
  "time",
  "tracing",
  "url",
- "uuid",
 ]
 
 [[package]]

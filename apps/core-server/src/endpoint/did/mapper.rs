@@ -1,5 +1,14 @@
-use super::dto::{CreateDidRequestRestDTO, DidResponseKeysRestDTO, DidResponseRestDTO};
+use super::dto::{
+    CreateDidRequestRestDTO, DidFilter, DidResponseKeysRestDTO, DidResponseRestDTO,
+    ExactDidFilterColumnRestEnum,
+};
 use crate::mapper::MapperError;
+use one_core::model::{
+    did::DidFilterValue,
+    list_filter::{
+        into_condition, into_condition_opt, ListFilterCondition, StringMatch, StringMatchType,
+    },
+};
 use one_core::{
     common_mapper::vector_try_into,
     service::did::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO},
@@ -47,5 +56,40 @@ impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
             keys: value.keys.into(),
             params: value.params,
         }
+    }
+}
+
+impl From<DidFilter> for ListFilterCondition<DidFilterValue> {
+    fn from(value: DidFilter) -> Self {
+        let exact = value.exact.unwrap_or_default();
+        let get_string_match_type = move |column: ExactDidFilterColumnRestEnum| -> StringMatchType {
+            if exact.contains(&column) {
+                StringMatchType::Equals
+            } else {
+                StringMatchType::StartsWith
+            }
+        };
+
+        let organisation_id = DidFilterValue::OrganisationId(value.organisation_id);
+
+        let r#type = value
+            .r#type
+            .map(|r#type| DidFilterValue::Type(r#type.into()));
+
+        let name = value.name.map(|name| {
+            DidFilterValue::Name(StringMatch {
+                r#match: get_string_match_type(ExactDidFilterColumnRestEnum::Name),
+                value: name,
+            })
+        });
+
+        let did_value = value.did.map(|did| {
+            DidFilterValue::Did(StringMatch {
+                r#match: get_string_match_type(ExactDidFilterColumnRestEnum::Did),
+                value: did,
+            })
+        });
+
+        into_condition(organisation_id) & r#type & (into_condition_opt(name) | did_value)
     }
 }

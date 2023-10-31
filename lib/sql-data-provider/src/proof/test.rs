@@ -19,11 +19,11 @@ use one_core::{
     },
     repository::{
         claim_repository::ClaimRepository,
-        did_repository::DidRepository,
+        did_repository::{DidRepository, MockDidRepository},
         error::DataLayerError,
         interaction_repository::InteractionRepository,
         mock::{
-            claim_repository::MockClaimRepository, did_repository::MockDidRepository,
+            claim_repository::MockClaimRepository,
             interaction_repository::MockInteractionRepository,
             proof_schema_repository::MockProofSchemaRepository,
         },

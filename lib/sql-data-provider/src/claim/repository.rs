@@ -1,5 +1,5 @@
 use super::{mapper::sort_claim_models, ClaimProvider};
-use crate::{entity::claim, error_mapper::to_data_layer_error};
+use crate::{entity::claim, mapper::to_data_layer_error};
 use one_core::{
     common_mapper::vector_try_into,
     model::{

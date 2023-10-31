@@ -39,7 +39,7 @@ use crate::{
     repository::mock::credential_schema_repository::MockCredentialSchemaRepository,
     repository::mock::interaction_repository::MockInteractionRepository,
     repository::mock::proof_repository::MockProofRepository,
-    repository::{error::DataLayerError, mock::did_repository::MockDidRepository},
+    repository::{did_repository::MockDidRepository, error::DataLayerError},
     service::{
         credential::dto::{CredentialDetailResponseDTO, DetailCredentialSchemaResponseDTO},
         error::ServiceError,

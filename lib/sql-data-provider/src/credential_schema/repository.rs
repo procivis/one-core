@@ -29,8 +29,8 @@ use crate::{
         CredentialSchemaProvider,
     },
     entity::{claim_schema, credential_schema, credential_schema_claim_schema, organisation},
-    error_mapper::to_data_layer_error,
     list_query::SelectWithListQuery,
+    mapper::to_data_layer_error,
 };
 
 async fn delete_credential_schema_from_database(

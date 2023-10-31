@@ -1,17 +1,19 @@
-use crate::{did::DidProvider, entity::did, list_query::from_pagination, test_utilities::*};
-use one_core::model::common::ExactColumn;
+use crate::{did::DidProvider, entity::did, test_utilities::*};
+use one_core::model::did::{DidFilterValue, DidListQuery};
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::key::{Key, KeyRelations};
+use one_core::model::list_filter::{
+    into_condition, into_condition_opt, ListFilterCondition, StringMatch, StringMatchType,
+};
+use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::{
+    common::SortDirection,
+    did::{Did, DidId, DidRelations, DidType, DidValue, SortableDidColumn},
+};
 use one_core::repository::mock::key_repository::MockKeyRepository;
 use one_core::repository::mock::organisation_repository::MockOrganisationRepository;
-use one_core::{
-    model::{
-        common::SortDirection,
-        did::{Did, DidId, DidRelations, DidType, DidValue, GetDidQuery, SortableDidColumn},
-    },
-    repository::{did_repository::DidRepository, error::DataLayerError},
-};
+use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use std::sync::Arc;
 use time::macros::datetime;
@@ -309,14 +311,17 @@ async fn test_get_did_not_existing() {
 #[tokio::test]
 async fn test_get_did_list_one_did() {
     let TestSetupWithDid {
-        provider,
-        did_id,
-        organisation,
-        ..
+        provider, did_id, ..
     } = setup_with_did(Repositories::default()).await;
 
     let result = provider
-        .get_did_list(from_pagination(0, 1, organisation.id.to_string()))
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            ..Default::default()
+        })
         .await;
 
     assert!(result.is_ok());
@@ -329,14 +334,16 @@ async fn test_get_did_list_one_did() {
 
 #[tokio::test]
 async fn test_get_did_list_empty_result() {
-    let TestSetup {
-        provider,
-        organisation,
-        ..
-    } = setup_empty(Repositories::default()).await;
+    let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
     let result = provider
-        .get_did_list(from_pagination(0, 1, organisation.id.to_string()))
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            ..Default::default()
+        })
         .await;
 
     assert!(result.is_ok());
@@ -351,7 +358,16 @@ async fn test_get_did_list_empty_incorrect_organisation() {
     let TestSetupWithDid { provider, .. } = setup_with_did(Repositories::default()).await;
 
     let result = provider
-        .get_did_list(from_pagination(0, 1, Uuid::new_v4().to_string()))
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            filtering: Some(ListFilterCondition::Value(DidFilterValue::OrganisationId(
+                Uuid::new_v4(),
+            ))),
+            ..Default::default()
+        })
         .await;
 
     assert!(result.is_ok());
@@ -382,7 +398,13 @@ async fn test_get_did_list_pages() {
     }
 
     let result = provider
-        .get_did_list(from_pagination(0, 10, organisation.id.to_string()))
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 10,
+            }),
+            ..Default::default()
+        })
         .await;
 
     assert!(result.is_ok());
@@ -392,7 +414,13 @@ async fn test_get_did_list_pages() {
     assert_eq!(10, response.values.len());
 
     let result = provider
-        .get_did_list(from_pagination(0, 2, organisation.id.to_string()))
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            ..Default::default()
+        })
         .await;
 
     assert!(result.is_ok());
@@ -402,7 +430,13 @@ async fn test_get_did_list_pages() {
     assert_eq!(2, response.values.len());
 
     let result = provider
-        .get_did_list(from_pagination(5, 10, organisation.id.to_string()))
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 5,
+                page_size: 10,
+            }),
+            ..Default::default()
+        })
         .await;
 
     assert!(result.is_ok());
@@ -419,20 +453,23 @@ async fn test_get_did_list_filtering() {
         did_id,
         did_name,
         did_value,
-        organisation,
         ..
     } = setup_with_did(Repositories::default()).await;
 
     // not found
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: Some("not-found".to_owned()),
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            filtering: Some(ListFilterCondition::Value(DidFilterValue::Name(
+                StringMatch {
+                    value: "not-found".to_owned(),
+                    r#match: StringMatchType::StartsWith,
+                },
+            ))),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -441,14 +478,18 @@ async fn test_get_did_list_filtering() {
 
     // by name starts with
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: Some("test".to_owned()),
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            filtering: Some(ListFilterCondition::Value(DidFilterValue::Name(
+                StringMatch {
+                    value: "test".to_owned(),
+                    r#match: StringMatchType::StartsWith,
+                },
+            ))),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -458,14 +499,18 @@ async fn test_get_did_list_filtering() {
 
     // by value
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: Some(did_value.to_owned()),
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            filtering: Some(ListFilterCondition::Value(DidFilterValue::Did(
+                StringMatch {
+                    value: did_value.to_owned(),
+                    r#match: StringMatchType::Equals,
+                },
+            ))),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -474,14 +519,18 @@ async fn test_get_did_list_filtering() {
 
     // exact name
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            sort: None,
-            exact: Some(vec![ExactColumn::Name]),
-            sort_direction: None,
-            name: Some(did_name.to_owned()),
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            filtering: Some(ListFilterCondition::Value(DidFilterValue::Name(
+                StringMatch {
+                    value: did_name.to_owned(),
+                    r#match: StringMatchType::Equals,
+                },
+            ))),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -528,14 +577,16 @@ async fn test_get_did_list_sorting() {
 
     // sort by name - default Ascending
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            sort: Some(SortableDidColumn::Name),
-            exact: None,
-            sort_direction: None,
-            name: None,
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableDidColumn::Name,
+                direction: None,
+            }),
+            ..Default::default()
         })
         .await;
 
@@ -548,14 +599,16 @@ async fn test_get_did_list_sorting() {
 
     // sort by name - explicit Descending
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            exact: None,
-            sort: Some(SortableDidColumn::Name),
-            sort_direction: Some(SortDirection::Descending),
-            name: None,
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableDidColumn::Name,
+                direction: Some(SortDirection::Descending),
+            }),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -567,14 +620,16 @@ async fn test_get_did_list_sorting() {
 
     // sort by name - explicit Ascending
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            exact: None,
-            sort: Some(SortableDidColumn::Name),
-            sort_direction: Some(SortDirection::Ascending),
-            name: None,
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableDidColumn::Name,
+                direction: Some(SortDirection::Ascending),
+            }),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -586,14 +641,16 @@ async fn test_get_did_list_sorting() {
 
     // sort by CreatedDate - default Ascending
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            exact: None,
-            sort: Some(SortableDidColumn::CreatedDate),
-            sort_direction: None,
-            name: None,
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableDidColumn::CreatedDate,
+                direction: None,
+            }),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -605,14 +662,16 @@ async fn test_get_did_list_sorting() {
 
     // sort by CreatedDate - explicit Descending
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            exact: None,
-            sort: Some(SortableDidColumn::CreatedDate),
-            sort_direction: Some(SortDirection::Descending),
-            name: None,
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableDidColumn::CreatedDate,
+                direction: Some(SortDirection::Descending),
+            }),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -624,14 +683,16 @@ async fn test_get_did_list_sorting() {
 
     // sort by CreatedDate - explicit Ascending
     let result = provider
-        .get_did_list(GetDidQuery {
-            page: 0,
-            page_size: 2,
-            exact: None,
-            sort: Some(SortableDidColumn::CreatedDate),
-            sort_direction: Some(SortDirection::Ascending),
-            name: None,
-            organisation_id: organisation.id.to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableDidColumn::CreatedDate,
+                direction: Some(SortDirection::Ascending),
+            }),
+            ..Default::default()
         })
         .await;
     assert!(result.is_ok());
@@ -643,12 +704,127 @@ async fn test_get_did_list_sorting() {
 
     // no sorting specified - default Descending by CreatedDate
     let result = provider
-        .get_did_list(from_pagination(0, 2, organisation.id.to_string()))
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 2,
+            }),
+            ..Default::default()
+        })
         .await;
     assert!(result.is_ok());
     let response = result.unwrap();
     assert_eq!(2, response.total_items);
     assert_eq!(1, response.total_pages);
     assert_eq!(2, response.values.len());
+    assert_eq!(newer_b_did.id, response.values[0].id.to_string());
+}
+
+#[tokio::test]
+async fn test_get_did_list_complex_filter_condition() {
+    let TestSetup {
+        provider,
+        organisation,
+        db,
+        ..
+    } = setup_empty(Repositories::default()).await;
+
+    let older_a_did = did::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        did: Set("did1:did1".to_owned()),
+        created_date: Set(datetime!(2023-02-01 21:00 +0)),
+        last_modified: Set(get_dummy_date()),
+        name: Set("a".to_owned()),
+        type_field: Set(did::DidType::Local),
+        method: Set("KEY".to_string()),
+        organisation_id: Set(organisation.id.to_string()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let newer_b_did = did::ActiveModel {
+        id: Set(Uuid::new_v4().to_string()),
+        did: Set("did2:did2".to_owned()),
+        created_date: Set(datetime!(2023-02-02 21:00 +0)),
+        last_modified: Set(get_dummy_date()),
+        name: Set("b".to_owned()),
+        type_field: Set(did::DidType::Local),
+        method: Set("KEY".to_string()),
+        organisation_id: Set(organisation.id.to_string()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    // combined filter AND
+    let result = provider
+        .get_did_list(DidListQuery {
+            filtering: Some(ListFilterCondition::<DidFilterValue>::And(vec![
+                into_condition(DidFilterValue::Did(StringMatch {
+                    r#match: StringMatchType::Equals,
+                    value: older_a_did.did.to_owned(),
+                })),
+                into_condition(DidFilterValue::OrganisationId(organisation.id)),
+            ])),
+            ..Default::default()
+        })
+        .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(1, response.total_items);
+    assert_eq!(1, response.values.len());
+    assert_eq!(older_a_did.id, response.values[0].id.to_string());
+
+    // combined filter OR
+    let result = provider
+        .get_did_list(DidListQuery {
+            filtering: Some(ListFilterCondition::<DidFilterValue>::Or(vec![
+                into_condition(DidFilterValue::Did(StringMatch {
+                    r#match: StringMatchType::Equals,
+                    value: older_a_did.did.to_owned(),
+                })),
+                into_condition(DidFilterValue::Name(StringMatch {
+                    r#match: StringMatchType::Equals,
+                    value: older_a_did.name.to_owned(),
+                })),
+            ])),
+            ..Default::default()
+        })
+        .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(1, response.total_items);
+    assert_eq!(1, response.values.len());
+    assert_eq!(older_a_did.id, response.values[0].id.to_string());
+
+    // combined filter OR/AND
+    let condition: ListFilterCondition<DidFilterValue> =
+        into_condition(DidFilterValue::Did(StringMatch {
+            r#match: StringMatchType::Equals,
+            value: newer_b_did.did.to_owned(),
+        })) | DidFilterValue::Name(StringMatch {
+            r#match: StringMatchType::Equals,
+            value: newer_b_did.name.to_owned(),
+        }) | None::<DidFilterValue>
+            | (into_condition_opt(Some(DidFilterValue::OrganisationId(organisation.id)))
+                & DidFilterValue::Name(StringMatch {
+                    r#match: StringMatchType::Equals,
+                    value: newer_b_did.name.to_owned(),
+                })
+                & None::<DidFilterValue>);
+    let result = provider
+        .get_did_list(DidListQuery {
+            filtering: Some(condition),
+            ..Default::default()
+        })
+        .await;
+
+    assert!(result.is_ok());
+    let response = result.unwrap();
+    assert_eq!(1, response.total_items);
+    assert_eq!(1, response.values.len());
     assert_eq!(newer_b_did.id, response.values[0].id.to_string());
 }

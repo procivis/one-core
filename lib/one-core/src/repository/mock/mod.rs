@@ -2,7 +2,6 @@ pub mod claim_repository;
 pub mod claim_schema_repository;
 pub mod credential_repository;
 pub mod credential_schema_repository;
-pub mod did_repository;
 pub mod interaction_repository;
 pub mod key_repository;
 pub mod organisation_repository;

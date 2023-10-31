@@ -18,7 +18,6 @@ sea-orm = { version = "0.12.1", default-features = false, features = [
     "runtime-tokio-rustls",
     "macros",
     "with-time",
-    "with-uuid",
     "with-json",
 ] }
 serde_yaml = "0.9.25"

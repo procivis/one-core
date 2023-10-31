@@ -1,18 +1,17 @@
 use std::collections::HashSet;
 
+use super::{
+    dto::{CreateDidRequestDTO, DidId, DidResponseDTO, GetDidListResponseDTO},
+    DidService,
+};
 use crate::{
     config::validator::did::validate_did_method,
     model::{
-        did::DidRelations,
+        did::{DidListQuery, DidRelations},
         key::{KeyId, KeyRelations},
         organisation::OrganisationRelations,
     },
     service::{did::validator::validate_request_only_one_key_of_each_type, error::ServiceError},
-};
-
-use super::{
-    dto::{CreateDidRequestDTO, DidId, DidResponseDTO, GetDidListResponseDTO, GetDidQueryDTO},
-    DidService,
 };
 
 impl DidService {
@@ -43,7 +42,7 @@ impl DidService {
     /// * `query` - query parameters
     pub async fn get_did_list(
         &self,
-        query: GetDidQueryDTO,
+        query: DidListQuery,
     ) -> Result<GetDidListResponseDTO, ServiceError> {
         let result = self
             .did_repository

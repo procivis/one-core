@@ -3,11 +3,11 @@ use dto_mapper::From;
 use one_core::service::did::dto::{CreateDidRequestKeysDTO, DidListItemResponseDTO};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::{
-    dto::common::GetListQueryParams, endpoint::key::dto::KeyListItemResponseRestDTO,
+    dto::common::ListQueryParamsRest, endpoint::key::dto::KeyListItemResponseRestDTO,
     serialize::front_time,
 };
 
@@ -106,4 +106,23 @@ pub enum SortableDidColumnRestDTO {
     Did,
 }
 
-pub type GetDidQuery = GetListQueryParams<SortableDidColumnRestDTO>;
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum ExactDidFilterColumnRestEnum {
+    Name,
+    Did,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct DidFilter {
+    pub name: Option<String>,
+    pub did: Option<String>,
+    #[param(inline)]
+    pub r#type: Option<DidType>,
+    #[param(inline, rename = "exact[]")]
+    pub exact: Option<Vec<ExactDidFilterColumnRestEnum>>,
+    pub organisation_id: Uuid,
+}
+
+pub type GetDidQuery = ListQueryParamsRest<DidFilter, SortableDidColumnRestDTO>;

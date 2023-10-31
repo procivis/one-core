@@ -1,5 +1,5 @@
 use super::OrganisationProvider;
-use crate::{entity::organisation, error_mapper::to_data_layer_error};
+use crate::{entity::organisation, mapper::to_data_layer_error};
 use one_core::{
     common_mapper::vector_try_into,
     model::organisation::{Organisation, OrganisationId, OrganisationRelations},

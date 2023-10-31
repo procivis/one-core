@@ -2,9 +2,11 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    common::{GetListQueryParams, GetListResponse},
+    common::GetListResponse,
     key::{Key, KeyRelations},
-    organisation::{Organisation, OrganisationRelations},
+    list_filter::StringMatch,
+    list_query::ListQuery,
+    organisation::{Organisation, OrganisationId, OrganisationRelations},
 };
 
 pub type DidId = Uuid;
@@ -55,8 +57,17 @@ pub enum SortableDidColumn {
     Did,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DidFilterValue {
+    Name(StringMatch),
+    Method(String),
+    Type(DidType),
+    Did(StringMatch),
+    OrganisationId(OrganisationId),
+}
+
 pub type GetDidList = GetListResponse<Did>;
-pub type GetDidQuery = GetListQueryParams<SortableDidColumn>;
+pub type DidListQuery = ListQuery<SortableDidColumn, DidFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct DidRelations {

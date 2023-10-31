@@ -34,9 +34,8 @@ use crate::{
         key_storage::provider::MockKeyProvider,
         revocation::{provider::MockRevocationMethodProvider, CredentialRevocationInfo},
     },
-    repository::mock::{
-        credential_repository::MockCredentialRepository, did_repository::MockDidRepository,
-    },
+    repository::did_repository::MockDidRepository,
+    repository::mock::credential_repository::MockCredentialRepository,
     service::ssi_issuer::SSIIssuerService,
 };
 

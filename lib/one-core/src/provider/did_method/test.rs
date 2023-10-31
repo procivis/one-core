@@ -12,7 +12,7 @@ use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
 use crate::{
     model::{did::KeyRole, organisation::Organisation},
     provider::did_method::{provider::DidMethodProviderImpl, DidMethod},
-    repository::mock::did_repository::MockDidRepository,
+    repository::did_repository::MockDidRepository,
 };
 use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
