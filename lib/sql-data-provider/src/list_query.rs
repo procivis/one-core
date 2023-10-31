@@ -1,4 +1,4 @@
-use crate::data_model::order_from_sort_direction;
+use crate::mapper::order_from_sort_direction;
 use one_core::model::common::{ExactColumn, GetListQueryParams, SortDirection};
 use sea_orm::{entity::*, query::*, sea_query::SimpleExpr, EntityTrait, QueryOrder, QuerySelect};
 use std::str::FromStr;

@@ -24,10 +24,11 @@ use crate::revocation_list::RevocationListProvider;
 use std::sync::Arc;
 
 mod common;
-mod data_model;
 mod entity;
+mod mapper;
 
 mod list_query;
+mod list_query_generic;
 
 // New implementations
 pub mod claim;
@@ -41,8 +42,6 @@ pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
 pub mod revocation_list;
-
-mod error_mapper;
 
 #[derive(Clone)]
 pub struct DataLayer {

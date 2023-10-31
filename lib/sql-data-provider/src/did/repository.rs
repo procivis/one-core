@@ -1,16 +1,14 @@
 use super::{mapper::create_list_response, DidProvider};
 use crate::{
     entity::{did, key_did},
-    error_mapper::to_data_layer_error,
-    list_query::SelectWithListQuery,
+    list_query_generic::SelectWithListQuery,
+    mapper::to_data_layer_error,
 };
-use one_core::{
-    model::{
-        did::{Did, DidId, DidRelations, DidValue, GetDidList, GetDidQuery, RelatedKey},
-        key::{Key, KeyId},
-    },
-    repository::{did_repository::DidRepository, error::DataLayerError},
+use one_core::model::{
+    did::{Did, DidId, DidListQuery, DidRelations, DidValue, GetDidList, RelatedKey},
+    key::{Key, KeyId},
 };
+use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
 };
@@ -95,17 +93,15 @@ impl DidRepository for DidProvider {
         self.resolve_relations(did, relations).await
     }
 
-    async fn get_did_list(&self, query_params: GetDidQuery) -> Result<GetDidList, DataLayerError> {
-        let limit: u64 = query_params.page_size as u64;
-
+    async fn get_did_list(&self, query_params: DidListQuery) -> Result<GetDidList, DataLayerError> {
         let query = did::Entity::find()
-            .with_organisation_id(&query_params, &did::Column::OrganisationId)
-            .with_list_query(
-                &query_params,
-                &Some(vec![did::Column::Name, did::Column::Did]),
-            )
+            .with_list_query(&query_params)
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);
+
+        let limit = query_params
+            .pagination
+            .map(|pagination| pagination.page_size as u64);
 
         let items_count = query
             .to_owned()
@@ -118,7 +114,7 @@ impl DidRepository for DidProvider {
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-        Ok(create_list_response(dids, limit, items_count))
+        create_list_response(dids, limit, items_count)
     }
 
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError> {

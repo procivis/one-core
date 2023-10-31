@@ -1,15 +1,13 @@
-use std::str::FromStr;
-
 use one_core::{
     model::interaction::{Interaction, InteractionId, InteractionRelations},
     repository::{error::DataLayerError, interaction_repository::InteractionRepository},
 };
 use sea_orm::{ActiveModelTrait, DbErr, EntityTrait};
+use std::str::FromStr;
 use uuid::Uuid;
 
-use crate::{entity::interaction, error_mapper::to_data_layer_error};
-
 use super::InteractionProvider;
+use crate::{entity::interaction, mapper::to_data_layer_error};
 
 #[async_trait::async_trait]
 impl InteractionRepository for InteractionProvider {

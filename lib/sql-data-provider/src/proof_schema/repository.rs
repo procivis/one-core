@@ -6,8 +6,8 @@ use crate::{
     entity::{
         claim_schema, credential_schema_claim_schema, proof_schema, proof_schema_claim_schema,
     },
-    error_mapper::to_data_layer_error,
     list_query::SelectWithListQuery,
+    mapper::to_data_layer_error,
 };
 use one_core::{
     model::{

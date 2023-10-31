@@ -5,16 +5,18 @@ use crate::{
         data_structure::{CoreConfig, DidEntity},
     },
     model::{
-        did::{Did, DidRelations, DidType, GetDidList, KeyRole, RelatedKey},
+        did::{Did, DidListQuery, DidRelations, DidType, GetDidList, KeyRole, RelatedKey},
         key::{Key, KeyRelations},
+        list_query::ListPagination,
         organisation::{Organisation, OrganisationRelations},
     },
     provider::did_method::{
         mock_did_method::MockDidMethod, provider::DidMethodProviderImpl, DidMethod, DidMethodError,
     },
-    repository::mock::{did_repository::MockDidRepository, key_repository::MockKeyRepository},
+    repository::did_repository::MockDidRepository,
+    repository::mock::key_repository::MockKeyRepository,
     service::{
-        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO, GetDidQueryDTO},
+        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
         error::ServiceError,
     },
 };
@@ -188,14 +190,12 @@ async fn test_get_did_list() {
     );
 
     let result = service
-        .get_did_list(GetDidQueryDTO {
-            page: 0,
-            page_size: 1,
-            sort: None,
-            exact: None,
-            sort_direction: None,
-            name: None,
-            organisation_id: Uuid::new_v4().to_string(),
+        .get_did_list(DidListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            ..Default::default()
         })
         .await;
 

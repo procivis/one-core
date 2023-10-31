@@ -18,10 +18,10 @@ use crate::{
         MockCredentialFormatter,
     },
     provider::revocation::{provider::MockRevocationMethodProvider, MockRevocationMethod},
+    repository::did_repository::MockDidRepository,
     repository::mock::{
         credential_repository::MockCredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository,
     },
     service::{
         credential::{
