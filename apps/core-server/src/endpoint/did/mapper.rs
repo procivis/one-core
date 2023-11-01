@@ -1,13 +1,11 @@
 use super::dto::{
-    CreateDidRequestRestDTO, DidFilter, DidResponseKeysRestDTO, DidResponseRestDTO,
+    CreateDidRequestRestDTO, DidFilterQueryParamsRest, DidResponseKeysRestDTO, DidResponseRestDTO,
     ExactDidFilterColumnRestEnum,
 };
 use crate::mapper::MapperError;
 use one_core::model::{
     did::DidFilterValue,
-    list_filter::{
-        into_condition, into_condition_opt, ListFilterCondition, StringMatch, StringMatchType,
-    },
+    list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
 };
 use one_core::{
     common_mapper::vector_try_into,
@@ -59,8 +57,8 @@ impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
     }
 }
 
-impl From<DidFilter> for ListFilterCondition<DidFilterValue> {
-    fn from(value: DidFilter) -> Self {
+impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
+    fn from(value: DidFilterQueryParamsRest) -> Self {
         let exact = value.exact.unwrap_or_default();
         let get_string_match_type = move |column: ExactDidFilterColumnRestEnum| -> StringMatchType {
             if exact.contains(&column) {
@@ -70,18 +68,21 @@ impl From<DidFilter> for ListFilterCondition<DidFilterValue> {
             }
         };
 
-        let organisation_id = DidFilterValue::OrganisationId(value.organisation_id);
+        let organisation_id = DidFilterValue::OrganisationId(value.organisation_id).condition();
 
         let r#type = value
             .r#type
             .map(|r#type| DidFilterValue::Type(r#type.into()));
 
-        let name = value.name.map(|name| {
-            DidFilterValue::Name(StringMatch {
-                r#match: get_string_match_type(ExactDidFilterColumnRestEnum::Name),
-                value: name,
+        let name: Self = value
+            .name
+            .map(|name| {
+                DidFilterValue::Name(StringMatch {
+                    r#match: get_string_match_type(ExactDidFilterColumnRestEnum::Name),
+                    value: name,
+                })
             })
-        });
+            .into();
 
         let did_value = value.did.map(|did| {
             DidFilterValue::Did(StringMatch {
@@ -90,6 +91,6 @@ impl From<DidFilter> for ListFilterCondition<DidFilterValue> {
             })
         });
 
-        into_condition(organisation_id) & r#type & (into_condition_opt(name) | did_value)
+        organisation_id & r#type & (name | did_value)
     }
 }

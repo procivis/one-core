@@ -1,6 +1,6 @@
 use crate::dto::common::ListQueryParamsRest;
 use one_core::model::{
-    list_filter::ListFilterCondition,
+    list_filter::{ListFilterCondition, ListFilterValue},
     list_query::{ListPagination, ListQuery, ListSorting},
 };
 use serde::Deserialize;
@@ -8,7 +8,7 @@ use utoipa::{openapi::path::ParameterIn, IntoParams, ToSchema};
 
 use super::common::SortDirection;
 
-impl<FilterRest, SortableColumnRest, SortableColumn, Filter>
+impl<FilterRest, SortableColumnRest, SortableColumn, Filter: ListFilterValue>
     From<ListQueryParamsRest<FilterRest, SortableColumnRest>> for ListQuery<SortableColumn, Filter>
 where
     FilterRest: IntoParams + Into<ListFilterCondition<Filter>>,

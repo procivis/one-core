@@ -1,7 +1,7 @@
 use crate::mapper::order_from_sort_direction;
 use one_core::model::{
     common::SortDirection,
-    list_filter::{ListFilterCondition, StringMatch, StringMatchType},
+    list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
     list_query::ListQuery,
 };
 use sea_orm::{
@@ -15,7 +15,7 @@ pub trait IntoSortingColumn {
     fn get_column(&self) -> SimpleExpr;
 }
 
-pub trait IntoFilterCondition: Clone {
+pub trait IntoFilterCondition: Clone + ListFilterValue {
     /// converts single query field into a sea-orm condition
     fn get_condition(self) -> Condition;
 }
