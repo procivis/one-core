@@ -663,14 +663,22 @@ async fn test_check_revocation_non_revocable() {
         generic_config(),
     );
 
-    let result = service.check_revocation(vec![credential.id]).await;
+    let result = service
+        .check_revocation(vec![credential.id, Uuid::new_v4()])
+        .await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.len(), 1);
+    assert_eq!(result.len(), 2);
     assert_eq!(result[0].credential_id, credential.id);
     assert!(result[0].success);
     assert_eq!(
         result[0].status,
+        credential::dto::CredentialStateEnum::Accepted
+    );
+
+    assert!(result[1].success);
+    assert_eq!(
+        result[1].status,
         credential::dto::CredentialStateEnum::Accepted
     );
 }
@@ -707,14 +715,22 @@ async fn test_check_revocation_already_revoked() {
         generic_config(),
     );
 
-    let result = service.check_revocation(vec![credential.id]).await;
+    let result = service
+        .check_revocation(vec![credential.id, Uuid::new_v4()])
+        .await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.len(), 1);
+    assert_eq!(result.len(), 2);
     assert_eq!(result[0].credential_id, credential.id);
     assert!(result[0].success);
     assert_eq!(
         result[0].status,
+        credential::dto::CredentialStateEnum::Revoked
+    );
+
+    assert!(result[1].success);
+    assert_eq!(
+        result[1].status,
         credential::dto::CredentialStateEnum::Revoked
     );
 }
