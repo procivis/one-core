@@ -250,7 +250,7 @@ impl CredentialService {
                             success: true,
                             reason: None,
                         });
-                        break;
+                        continue;
                     }
                 }
                 credential::CredentialStateEnum::Revoked => {
@@ -260,7 +260,7 @@ impl CredentialService {
                         success: true,
                         reason: None,
                     });
-                    break;
+                    continue;
                 }
                 _ => {
                     result.push(CredentialRevocationCheckResponseDTO {
@@ -269,7 +269,7 @@ impl CredentialService {
                         success: false,
                         reason: Some("Invalid credential state".to_string()),
                     });
-                    break;
+                    continue;
                 }
             };
 
@@ -292,7 +292,7 @@ impl CredentialService {
                         success: false,
                         reason: Some(error.to_string()),
                     });
-                    break;
+                    continue;
                 }
                 Ok(revoked) => revoked,
             };
