@@ -4,7 +4,7 @@ use uuid::Uuid;
 use super::{
     common::GetListResponse,
     key::{Key, KeyRelations},
-    list_filter::StringMatch,
+    list_filter::{ListFilterValue, StringMatch},
     list_query::ListQuery,
     organisation::{Organisation, OrganisationId, OrganisationRelations},
 };
@@ -65,6 +65,8 @@ pub enum DidFilterValue {
     Did(StringMatch),
     OrganisationId(OrganisationId),
 }
+
+impl ListFilterValue for DidFilterValue {}
 
 pub type GetDidList = GetListResponse<Did>;
 pub type DidListQuery = ListQuery<SortableDidColumn, DidFilterValue>;

@@ -115,7 +115,7 @@ pub enum ExactDidFilterColumnRestEnum {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
-pub struct DidFilter {
+pub struct DidFilterQueryParamsRest {
     pub name: Option<String>,
     pub did: Option<String>,
     #[param(inline)]
@@ -125,4 +125,4 @@ pub struct DidFilter {
     pub organisation_id: Uuid,
 }
 
-pub type GetDidQuery = ListQueryParamsRest<DidFilter, SortableDidColumnRestDTO>;
+pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;

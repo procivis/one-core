@@ -2,9 +2,7 @@ use crate::{did::DidProvider, entity::did, test_utilities::*};
 use one_core::model::did::{DidFilterValue, DidListQuery};
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::key::{Key, KeyRelations};
-use one_core::model::list_filter::{
-    into_condition, into_condition_opt, ListFilterCondition, StringMatch, StringMatchType,
-};
+use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::{
@@ -761,11 +759,12 @@ async fn test_get_did_list_complex_filter_condition() {
     let result = provider
         .get_did_list(DidListQuery {
             filtering: Some(ListFilterCondition::<DidFilterValue>::And(vec![
-                into_condition(DidFilterValue::Did(StringMatch {
+                DidFilterValue::Did(StringMatch {
                     r#match: StringMatchType::Equals,
                     value: older_a_did.did.to_owned(),
-                })),
-                into_condition(DidFilterValue::OrganisationId(organisation.id)),
+                })
+                .into(),
+                DidFilterValue::OrganisationId(organisation.id).into(),
             ])),
             ..Default::default()
         })
@@ -781,14 +780,16 @@ async fn test_get_did_list_complex_filter_condition() {
     let result = provider
         .get_did_list(DidListQuery {
             filtering: Some(ListFilterCondition::<DidFilterValue>::Or(vec![
-                into_condition(DidFilterValue::Did(StringMatch {
+                DidFilterValue::Did(StringMatch {
                     r#match: StringMatchType::Equals,
                     value: older_a_did.did.to_owned(),
-                })),
-                into_condition(DidFilterValue::Name(StringMatch {
+                })
+                .into(),
+                DidFilterValue::Name(StringMatch {
                     r#match: StringMatchType::Equals,
                     value: older_a_did.name.to_owned(),
-                })),
+                })
+                .into(),
             ])),
             ..Default::default()
         })
@@ -802,19 +803,19 @@ async fn test_get_did_list_complex_filter_condition() {
 
     // combined filter OR/AND
     let condition: ListFilterCondition<DidFilterValue> =
-        into_condition(DidFilterValue::Did(StringMatch {
+        ListFilterCondition::<DidFilterValue>::from(DidFilterValue::Did(StringMatch {
             r#match: StringMatchType::Equals,
             value: newer_b_did.did.to_owned(),
         })) | DidFilterValue::Name(StringMatch {
             r#match: StringMatchType::Equals,
             value: newer_b_did.name.to_owned(),
         }) | None::<DidFilterValue>
-            | (into_condition_opt(Some(DidFilterValue::OrganisationId(organisation.id)))
-                & DidFilterValue::Name(StringMatch {
-                    r#match: StringMatchType::Equals,
-                    value: newer_b_did.name.to_owned(),
-                })
-                & None::<DidFilterValue>);
+            | (ListFilterCondition::<DidFilterValue>::from(Some(DidFilterValue::OrganisationId(
+                organisation.id,
+            ))) & DidFilterValue::Name(StringMatch {
+                r#match: StringMatchType::Equals,
+                value: newer_b_did.name.to_owned(),
+            }) & None::<DidFilterValue>);
     let result = provider
         .get_did_list(DidListQuery {
             filtering: Some(condition),
