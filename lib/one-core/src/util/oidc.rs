@@ -13,7 +13,7 @@ pub fn map_core_to_oidc_format(format: &str) -> Result<String, FormatError> {
         "JWT" => Ok("jwt_vc_json".to_string()),
         "SDJWT" => Ok("vc+sd-jwt".to_string()),
         _ => Err(FormatError::MappingError(
-            "Credential format invalid!".to_string(),
+            "Credential format is invalid!".to_string(),
         )),
     }
 }

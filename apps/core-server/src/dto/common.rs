@@ -90,7 +90,8 @@ pub struct EntityResponseRestDTO {
     pub id: Uuid,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "one_core::model::common::EntityShareResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct EntityShareResponseRestDTO {
     pub url: String,

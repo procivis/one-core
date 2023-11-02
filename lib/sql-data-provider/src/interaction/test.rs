@@ -4,6 +4,7 @@ use one_core::{
     model::interaction::{Interaction, InteractionRelations},
     repository::interaction_repository::InteractionRepository,
 };
+use sea_orm::DbErr;
 use uuid::Uuid;
 
 use crate::test_utilities::{
@@ -28,6 +29,7 @@ async fn setup() -> TestSetup {
 }
 
 struct TestSetupWithInteraction {
+    pub db: sea_orm::DatabaseConnection,
     pub provider: InteractionProvider,
     pub interaction_id: Uuid,
     pub host: String,
@@ -45,6 +47,7 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
     let id = Uuid::from_str(&id).unwrap();
 
     TestSetupWithInteraction {
+        db: setup.db,
         provider: setup.provider,
         interaction_id: id,
         host,
@@ -90,4 +93,20 @@ async fn test_get_interaction() {
 
     assert_eq!(interaction.data, Some(setup.data));
     assert_eq!(interaction.host, Some(setup.host));
+}
+
+#[tokio::test]
+async fn test_delete_interaction() {
+    let setup = setup_with_interaction().await;
+
+    let result = setup
+        .provider
+        .delete_interaction(&setup.interaction_id)
+        .await;
+
+    assert!(result.is_ok());
+
+    let result = get_interaction(&setup.db, &setup.interaction_id).await;
+
+    assert!(matches!(result, Err(DbErr::RecordNotFound(_))));
 }

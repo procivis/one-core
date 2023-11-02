@@ -15,5 +15,6 @@ pub(super) fn from_credential_id_and_token(
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Accepted,
         }),
+        interaction: None,
     }
 }

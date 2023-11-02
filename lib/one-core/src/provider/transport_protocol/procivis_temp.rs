@@ -8,12 +8,14 @@ use std::collections::HashMap;
 
 pub struct ProcivisTemp {
     client: reqwest::Client,
+    base_url: Option<String>,
 }
 
-impl Default for ProcivisTemp {
-    fn default() -> Self {
+impl ProcivisTemp {
+    pub fn new(base_url: Option<String>) -> Self {
         Self {
             client: reqwest::Client::new(),
+            base_url,
         }
     }
 }
@@ -185,12 +187,30 @@ impl TransportProtocol for ProcivisTemp {
 
     async fn share_credential(
         &self,
-        _credential: &Credential,
+        credential: &Credential,
     ) -> Result<String, TransportProtocolError> {
-        unimplemented!()
+        Ok(self
+            .base_url
+            .as_ref()
+            .map(|base_url| {
+                format!(
+                    "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
+                    base_url, credential.transport, credential.id
+                )
+            })
+            .ok_or(TransportProtocolError::MissingBaseUrl)?)
     }
 
-    async fn share_proof(&self, _proof: &Proof) -> Result<String, TransportProtocolError> {
-        unimplemented!()
+    async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError> {
+        Ok(self
+            .base_url
+            .as_ref()
+            .map(|base_url| {
+                format!(
+                    "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
+                    base_url, proof.transport, proof.id
+                )
+            })
+            .ok_or(TransportProtocolError::MissingBaseUrl)?)
     }
 }

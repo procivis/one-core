@@ -16,4 +16,6 @@ pub trait InteractionRepository {
         id: &InteractionId,
         relations: &InteractionRelations,
     ) -> Result<Interaction, DataLayerError>;
+
+    async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError>;
 }

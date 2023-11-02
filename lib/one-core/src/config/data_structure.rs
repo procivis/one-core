@@ -12,7 +12,7 @@ pub enum ConfigKind {
     Yaml,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreConfig {
     pub format: HashMap<String, FormatEntity>,

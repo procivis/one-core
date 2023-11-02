@@ -436,13 +436,10 @@ pub async fn get_interaction(
     database: &DatabaseConnection,
     id: &InteractionId,
 ) -> Result<interaction::Model, DbErr> {
-    let interaction = interaction::Entity::find_by_id(id.to_string())
+    interaction::Entity::find_by_id(id.to_string())
         .one(database)
-        .await
-        .unwrap()
-        .unwrap();
-
-    Ok(interaction)
+        .await?
+        .ok_or(DbErr::RecordNotFound(String::default()))
 }
 
 // We will bring it back with service unit tests

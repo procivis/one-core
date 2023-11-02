@@ -1,7 +1,5 @@
-use one_core::model::common::EntityShareResponseDTO;
 use one_core::service::credential::dto::{CreateCredentialRequestDTO, CredentialDetailResponseDTO};
 
-use crate::dto::common::EntityShareResponseRestDTO;
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialResponseRestDTO,
 };
@@ -34,18 +32,5 @@ impl From<CreateCredentialRequestRestDTO> for CreateCredentialRequestDTO {
                 .map(|claim| claim.into())
                 .collect(),
         }
-    }
-}
-
-pub(crate) fn share_credentials_to_entity_share_response(
-    value: EntityShareResponseDTO,
-    base_url: &str,
-) -> EntityShareResponseRestDTO {
-    let protocol = &value.transport;
-    EntityShareResponseRestDTO {
-        url: format!(
-            "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
-            base_url, protocol, value.id
-        ),
     }
 }

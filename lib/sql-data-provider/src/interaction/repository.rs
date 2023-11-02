@@ -46,4 +46,12 @@ impl InteractionRepository for InteractionProvider {
 
         interaction.try_into()
     }
+
+    async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError> {
+        let _ = interaction::Entity::delete_by_id(id.to_string())
+            .exec(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+        Ok(())
+    }
 }

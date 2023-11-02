@@ -92,6 +92,7 @@ impl SSIIssuerService {
                     created_date: now,
                     state: new_state.clone(),
                 }),
+                interaction: None,
             })
             .await?;
 
@@ -151,6 +152,7 @@ impl SSIIssuerService {
                     created_date: OffsetDateTime::now_utc(),
                     state: CredentialStateEnum::Rejected,
                 }),
+                interaction: None,
             })
             .await?;
 

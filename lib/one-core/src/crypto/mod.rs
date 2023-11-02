@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use rand::distributions::{Alphanumeric, DistString};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
@@ -23,6 +24,10 @@ impl Crypto {
 
         //This operation should be safe as we control the input.
         Base64UrlSafeNoPadding::encode_to_string(data).unwrap_or_default()
+    }
+
+    pub fn generate_alphanumeric(length: usize) -> String {
+        Alphanumeric.sample_string(&mut rand::thread_rng(), length)
     }
 }
 

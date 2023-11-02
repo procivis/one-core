@@ -1,10 +1,14 @@
 use super::ProofService;
+use crate::config::data_structure::CoreConfig;
 use crate::model::claim::Claim;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
 };
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::interaction::Interaction;
+use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
+use crate::provider::transport_protocol::MockTransportProtocol;
+use crate::service::test_utilities::generic_config;
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -48,6 +52,8 @@ struct Repositories {
     pub did_repository: MockDidRepository,
     pub interaction_repository: MockInteractionRepository,
     pub credential_repository: MockCredentialRepository,
+    pub protocol_provider: MockTransportProtocolProvider,
+    pub config: CoreConfig,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -57,6 +63,8 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
         Arc::new(repositories.interaction_repository),
+        Arc::new(repositories.protocol_provider),
+        Arc::new(repositories.config),
     )
 }
 
@@ -66,7 +74,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "transport".to_string(),
+        transport: "PROCIVIS_TEMPORARY".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -995,6 +1003,7 @@ async fn test_create_proof() {
         did_repository,
         proof_schema_repository,
         interaction_repository,
+        ..Default::default()
     });
 
     let result = service.create_proof(request).await;
@@ -1040,6 +1049,21 @@ async fn test_create_proof_schema_deleted() {
 async fn test_share_proof_created_success() {
     let proof_id = ProofId::new_v4();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Created);
+    let mut protocol = MockTransportProtocol::default();
+    let mut protocol_provider = MockTransportProtocolProvider::default();
+
+    let expected_url = "test_url";
+    protocol
+        .expect_share_proof()
+        .times(1)
+        .returning(|_| Ok(expected_url.to_owned()));
+
+    let protocol = Arc::new(protocol);
+
+    protocol_provider
+        .expect_get_protocol()
+        .times(1)
+        .returning(move |_| Ok(protocol.clone()));
 
     let mut seq = Sequence::new();
     let mut proof_repository = MockProofRepository::default();
@@ -1069,19 +1093,37 @@ async fn test_share_proof_created_success() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        protocol_provider,
+        config: generic_config(),
         ..Default::default()
     });
 
     let result = service.share_proof(&proof_id).await;
+
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!(result.id, proof_id);
+    assert_eq!(result.url, expected_url);
 }
 
 #[tokio::test]
 async fn test_share_proof_pending_success() {
     let proof_id = ProofId::new_v4();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
+    let mut protocol = MockTransportProtocol::default();
+    let mut protocol_provider = MockTransportProtocolProvider::default();
+
+    let expected_url = "test_url";
+    protocol
+        .expect_share_proof()
+        .times(1)
+        .returning(|_| Ok(expected_url.to_owned()));
+
+    let protocol = Arc::new(protocol);
+
+    protocol_provider
+        .expect_get_protocol()
+        .times(1)
+        .returning(move |_| Ok(protocol.clone()));
 
     let mut proof_repository = MockProofRepository::default();
     {
@@ -1102,13 +1144,13 @@ async fn test_share_proof_pending_success() {
 
     let service = setup_service(Repositories {
         proof_repository,
+        protocol_provider,
+        config: generic_config(),
         ..Default::default()
     });
 
     let result = service.share_proof(&proof_id).await;
     assert!(result.is_ok());
-    let result = result.unwrap();
-    assert_eq!(result.id, proof_id);
 }
 
 #[tokio::test]
@@ -1131,5 +1173,5 @@ async fn test_share_proof_invalid_state() {
     });
 
     let result = service.share_proof(&proof_id).await;
-    assert!(matches!(result, Err(ServiceError::AlreadyExists)));
+    assert!(matches!(result, Err(ServiceError::AlreadyShared)));
 }
