@@ -2,16 +2,15 @@ use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
     ProofDetailResponseRestDTO,
 };
-use super::mapper::share_proof_to_entity_share_response;
-use crate::dto::common::EntityResponseRestDTO;
+use crate::dto::common::GetProofsResponseRestDTO;
+use crate::dto::common::{EntityResponseRestDTO, EntityShareResponseRestDTO};
 use crate::extractor::Qs;
 use crate::router::AppState;
-use crate::{dto::common::GetProofsResponseRestDTO, Config};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    Extension, Json,
+    Json,
 };
 use one_core::service::error::ServiceError;
 use uuid::Uuid;
@@ -179,20 +178,13 @@ pub(crate) async fn post_proof(
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn share_proof(
-    Extension(config): Extension<Config>,
-    state: State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Response {
+pub(crate) async fn share_proof(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
     let result = state.core.proof_service.share_proof(&id).await;
 
     match result {
         Ok(value) => (
             StatusCode::OK,
-            Json(share_proof_to_entity_share_response(
-                value,
-                &config.core_base_url,
-            )),
+            Json(EntityShareResponseRestDTO::from(value)),
         )
             .into_response(),
         Err(error) => match error {

@@ -10,6 +10,7 @@ use crate::config::data_structure::CoreConfig;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -21,6 +22,7 @@ pub struct CredentialService {
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     config: Arc<CoreConfig>,
 }
 
@@ -31,6 +33,7 @@ impl CredentialService {
         did_repository: Arc<dyn DidRepository + Send + Sync>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+        protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {
@@ -39,6 +42,7 @@ impl CredentialService {
             did_repository,
             revocation_method_provider,
             formatter_provider,
+            protocol_provider,
             config,
         }
     }

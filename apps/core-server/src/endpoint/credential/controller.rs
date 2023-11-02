@@ -1,6 +1,6 @@
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum::{http::StatusCode, Extension, Json};
+use axum::{http::StatusCode, Json};
 
 use one_core::common_mapper::vector_into;
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
@@ -8,14 +8,14 @@ use uuid::Uuid;
 
 use one_core::service::error::ServiceError;
 
-use crate::dto::common::{EntityResponseRestDTO, GetCredentialsResponseDTO};
+use crate::dto::common::{
+    EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
+};
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
 };
-use crate::endpoint::credential::mapper::share_credentials_to_entity_share_response;
 use crate::extractor::Qs;
 use crate::router::AppState;
-use crate::Config;
 
 use super::dto::{
     CredentialRevocationCheckRequestRestDTO, CredentialRevocationCheckResponseRestDTO,
@@ -197,25 +197,20 @@ pub(crate) async fn revoke_credential(state: State<AppState>, Path(id): Path<Uui
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn share_credential(
-    Extension(config): Extension<Config>,
-    state: State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Response {
+pub(crate) async fn share_credential(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
     let result = state.core.credential_service.share_credential(&id).await;
 
     match result {
         Ok(value) => (
             StatusCode::OK,
-            Json(share_credentials_to_entity_share_response(
-                value,
-                &config.core_base_url,
-            )),
+            Json(EntityShareResponseRestDTO::from(value)),
         )
             .into_response(),
         Err(error) => match error {
             ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
+            ServiceError::AlreadyExists | ServiceError::AlreadyShared => {
+                StatusCode::BAD_REQUEST.into_response()
+            }
             other => {
                 tracing::error!("Error while getting credential: {other:?}");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()

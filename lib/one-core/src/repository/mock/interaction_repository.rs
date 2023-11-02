@@ -24,6 +24,11 @@ mock! {
             id: &InteractionId,
             relations: &InteractionRelations,
         ) -> Result<Interaction, DataLayerError>;
+
+        pub fn delete_interaction(
+            &self,
+            credential_id: &InteractionId,
+        ) -> Result<(), DataLayerError>;
     }
 }
 
@@ -48,5 +53,9 @@ impl crate::repository::interaction_repository::InteractionRepository
         relations: &InteractionRelations,
     ) -> Result<Interaction, DataLayerError> {
         self.get_interaction(id, relations)
+    }
+
+    async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError> {
+        self.delete_interaction(id)
     }
 }

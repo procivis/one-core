@@ -7,6 +7,7 @@ use crate::config::ConfigParseError;
 use crate::provider::key_storage::key_providers_from_config;
 use crate::provider::key_storage::provider::KeyProviderImpl;
 use crate::provider::key_storage::KeyStorage;
+use common_mapper::get_exchange_params;
 use crypto::hasher::sha256::SHA256;
 use crypto::hasher::Hasher;
 use crypto::signer::eddsa::EDDSASigner;
@@ -96,23 +97,30 @@ impl OneCore {
             signers: HashMap::from_iter(signers),
         });
 
-        let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![
-            (
-                "PROCIVIS_TEMPORARY".to_string(),
-                Arc::new(ProcivisTemp::default()),
-            ),
-            ("OPENID4VC".to_string(), Arc::new(OpenID4VC::default())),
-        ];
-
+        let available_transport_protocol_types =
+            ["PROCIVIS_TEMPORARY".to_string(), "OPENID4VC".to_string()];
         let available_credential_formatter_types = ["JWT".to_string(), "SDJWT".to_string()];
         let config = config::config_provider::parse_config(
             unparsed_config,
-            &transport_protocols
-                .iter()
-                .map(|i| i.0.to_owned())
-                .collect::<Vec<String>>(),
+            &available_transport_protocol_types,
             &available_credential_formatter_types,
         )?;
+
+        let procivis_temp = ProcivisTemp::new(core_base_url.clone());
+
+        let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![
+            ("PROCIVIS_TEMPORARY".to_string(), Arc::new(procivis_temp)),
+            (
+                "OPENID4VC".to_string(),
+                Arc::new(OpenID4VC::new(
+                    core_base_url.clone(),
+                    data_provider.get_credential_repository(),
+                    data_provider.get_proof_repository(),
+                    data_provider.get_interaction_repository(),
+                    get_exchange_params("OPENID4VC", &config).ok(),
+                )),
+            ),
+        ];
 
         let credential_formatters =
             credential_formatters_from_config(&config.format, crypto.clone())?;
@@ -179,6 +187,7 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 revocation_method_provider.clone(),
                 formatter_provider.clone(),
+                protocol_provider.clone(),
                 config.clone(),
             ),
             did_service: DidService::new(
@@ -220,6 +229,8 @@ impl OneCore {
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_interaction_repository(),
+                protocol_provider.clone(),
+                config.clone(),
             ),
             ssi_verifier_service: SSIVerifierService::new(
                 data_provider.get_claim_schema_repository(),

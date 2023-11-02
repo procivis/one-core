@@ -23,6 +23,8 @@ pub enum TransportProtocolError {
     JsonError(serde_json::Error),
     #[error("Operation not supported")]
     OperationNotSupported,
+    #[error("Base url is unknown")]
+    MissingBaseUrl,
 }
 
 #[cfg_attr(test, mockall::automock)]

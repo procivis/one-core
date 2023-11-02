@@ -7,7 +7,7 @@ use super::{
     common::{GetListQueryParams, GetListResponse},
     credential_schema::{CredentialSchema, CredentialSchemaRelations},
     did::{Did, DidId, DidRelations},
-    interaction::{Interaction, InteractionRelations},
+    interaction::{Interaction, InteractionId, InteractionRelations},
     revocation_list::RevocationList,
 };
 
@@ -80,4 +80,5 @@ pub struct UpdateCredentialRequest {
     pub credential: Option<Vec<u8>>,
     pub holder_did_id: Option<DidId>,
     pub state: Option<CredentialState>,
+    pub interaction: Option<InteractionId>,
 }

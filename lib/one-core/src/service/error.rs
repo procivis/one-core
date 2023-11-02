@@ -18,6 +18,8 @@ pub enum ServiceError {
     MappingError(String),
     #[error("Already exists")]
     AlreadyExists,
+    #[error("Already shared")]
+    AlreadyShared,
     #[error("Wrong parameters")]
     IncorrectParameters,
     #[error("Not found")]
@@ -40,6 +42,8 @@ pub enum ServiceError {
     MissingSigner(String),
     #[error("Missing algorithm `{0}`")]
     MissingAlgorithm(String),
+    #[error("Missing transport protocol `{0}`")]
+    MissingTransportProtocol(String),
     #[error("Missing key")]
     MissingKey,
     #[error("Did method error `{0}`")]

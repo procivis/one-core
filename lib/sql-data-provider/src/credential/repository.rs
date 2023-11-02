@@ -352,6 +352,7 @@ impl CredentialRepository for CredentialProvider {
                     credential: None,
                     holder_did_id: None,
                     state: Some(state),
+                    interaction: None,
                 })
                 .await?;
             }

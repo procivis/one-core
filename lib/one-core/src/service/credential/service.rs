@@ -7,8 +7,8 @@ use crate::{
         claim_schema::ClaimSchemaRelations,
         common::EntityShareResponseDTO,
         credential::{
-            self, CredentialId, CredentialRelations, CredentialState, CredentialStateRelations,
-            UpdateCredentialRequest,
+            self, Credential, CredentialId, CredentialRelations, CredentialState,
+            CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
@@ -182,6 +182,7 @@ impl CredentialService {
                     created_date: now,
                     state: credential::CredentialStateEnum::Revoked,
                 }),
+                interaction: None,
             })
             .await?;
 
@@ -335,34 +336,74 @@ impl CredentialService {
         &self,
         credential_id: &CredentialId,
     ) -> Result<EntityShareResponseDTO, ServiceError> {
-        let current_state = self.get_credential(credential_id).await?.state;
+        let (credential, credential_state) = self.get_credential_with_state(credential_id).await?;
 
-        match current_state {
-            CredentialStateEnum::Created | CredentialStateEnum::Pending => {
-                let now = OffsetDateTime::now_utc();
+        let now = OffsetDateTime::now_utc();
 
-                if current_state == CredentialStateEnum::Created {
-                    self.credential_repository
-                        .update_credential(UpdateCredentialRequest {
-                            id: credential_id.to_owned(),
-                            credential: None,
-                            holder_did_id: None,
-                            state: Some(CredentialState {
-                                created_date: now,
-                                state: credential::CredentialStateEnum::Pending,
-                            }),
-                        })
-                        .await
-                        .map_err(ServiceError::from)?;
-                }
-
-                Ok(EntityShareResponseDTO {
-                    id: credential_id.to_owned(),
-                    transport: "PROCIVIS_TEMPORARY".to_string(),
-                })
+        match credential_state {
+            CredentialStateEnum::Created => {
+                self.credential_repository
+                    .update_credential(UpdateCredentialRequest {
+                        id: credential_id.to_owned(),
+                        credential: None,
+                        holder_did_id: None,
+                        state: Some(CredentialState {
+                            created_date: now,
+                            state: credential::CredentialStateEnum::Pending,
+                        }),
+                        interaction: None,
+                    })
+                    .await
+                    .map_err(ServiceError::from)?;
             }
-
-            _ => Err(ServiceError::AlreadyExists),
+            CredentialStateEnum::Pending => {}
+            _ => return Err(ServiceError::AlreadyShared),
         }
+
+        let transport_instance = &self
+            .config
+            .exchange
+            .get(&credential.transport)
+            .ok_or(ServiceError::MissingTransportProtocol(
+                credential.transport.to_owned(),
+            ))?
+            .r#type;
+
+        let transport = self.protocol_provider.get_protocol(transport_instance)?;
+
+        let url = transport.share_credential(&credential).await?;
+
+        Ok(EntityShareResponseDTO { url })
+    }
+
+    // ============ Private methods
+
+    /// Get credential with the latest credential state
+    async fn get_credential_with_state(
+        &self,
+        id: &CredentialId,
+    ) -> Result<(Credential, CredentialStateEnum), ServiceError> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                id,
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let credential_states = credential
+            .state
+            .as_ref()
+            .ok_or(ServiceError::MappingError("state is None".to_string()))?;
+        let latest_state = credential_states
+            .get(0)
+            .ok_or(ServiceError::MappingError("state is missing".to_string()))?
+            .state
+            .clone()
+            .into();
+        Ok((credential, latest_state))
     }
 }

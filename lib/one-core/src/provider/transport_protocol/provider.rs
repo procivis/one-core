@@ -35,6 +35,11 @@ pub(crate) trait TransportProtocolProvider {
         protocol_id: &str,
     ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, ServiceError>;
 
+    fn get_protocol_by_config_key(
+        &self,
+        protocol_config_key: &str,
+    ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, ServiceError>;
+
     fn detect_protocol(&self, url: &str) -> Option<DetectedProtocol>;
 
     async fn issue_credential(
@@ -86,6 +91,22 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .get(protocol_id)
             .ok_or(ServiceError::NotFound)?
             .to_owned())
+    }
+
+    fn get_protocol_by_config_key(
+        &self,
+        protocol_key: &str,
+    ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, ServiceError> {
+        let transport_instance = &self
+            .config
+            .exchange
+            .get(protocol_key)
+            .ok_or(ServiceError::MissingTransportProtocol(
+                protocol_key.to_owned(),
+            ))?
+            .r#type;
+
+        self.get_protocol(transport_instance)
     }
 
     fn detect_protocol(&self, url: &str) -> Option<DetectedProtocol> {

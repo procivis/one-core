@@ -1,5 +1,3 @@
-use crate::dto::common::EntityShareResponseRestDTO;
-
 use super::dto::{
     CreateProofRequestRestDTO, PresentationDefinitionResponseRestDTO, ProofDetailResponseRestDTO,
     ProofListItemResponseRestDTO, SortableProofColumnRestEnum,
@@ -14,7 +12,6 @@ use one_core::service::proof::dto::{
 };
 use one_core::{
     common_mapper::vector_into,
-    model::common::EntityShareResponseDTO,
     service::proof::dto::{
         CreateProofRequestDTO, PresentationDefinitionResponseDTO, ProofDetailResponseDTO,
         ProofListItemResponseDTO,
@@ -124,18 +121,5 @@ impl From<CreateProofRequestRestDTO> for CreateProofRequestDTO {
             verifier_did_id: value.verifier_did,
             transport: value.transport,
         }
-    }
-}
-
-pub(crate) fn share_proof_to_entity_share_response(
-    value: EntityShareResponseDTO,
-    base_url: &str,
-) -> EntityShareResponseRestDTO {
-    let protocol = &value.transport;
-    EntityShareResponseRestDTO {
-        url: format!(
-            "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
-            base_url, protocol, value.id
-        ),
     }
 }

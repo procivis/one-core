@@ -664,6 +664,7 @@ async fn test_update_credential_success() {
             credential: Some(token.to_owned()),
             holder_did_id: None,
             state: None,
+            interaction: None,
         })
         .await
         .is_ok());

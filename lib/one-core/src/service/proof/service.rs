@@ -214,9 +214,11 @@ impl ProofService {
     /// * `base_url` - verifier base url
     pub async fn share_proof(&self, id: &ProofId) -> Result<EntityShareResponseDTO, ServiceError> {
         let (proof, proof_state) = self.get_proof_with_state(id).await?;
+
+        let now = OffsetDateTime::now_utc();
+
         match proof_state {
             ProofStateEnum::Created => {
-                let now = OffsetDateTime::now_utc();
                 self.proof_repository
                     .set_proof_state(
                         id,
@@ -230,14 +232,24 @@ impl ProofService {
             }
             ProofStateEnum::Pending => {}
             _ => {
-                return Err(ServiceError::AlreadyExists);
+                return Err(ServiceError::AlreadyShared);
             }
         }
 
-        Ok(EntityShareResponseDTO {
-            id: id.to_owned(),
-            transport: proof.transport,
-        })
+        let transport_instance = &self
+            .config
+            .exchange
+            .get(&proof.transport)
+            .ok_or(ServiceError::MissingTransportProtocol(
+                proof.transport.to_owned(),
+            ))?
+            .r#type;
+
+        let transport = self.protocol_provider.get_protocol(transport_instance)?;
+
+        let url = transport.share_proof(&proof).await?;
+
+        Ok(EntityShareResponseDTO { url })
     }
 
     // ============ Private methods

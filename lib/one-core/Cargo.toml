@@ -11,6 +11,7 @@ ct-codecs.workspace = true
 serde_yaml = "0.9.25"
 serde.workspace = true
 serde_json.workspace = true
+serde_urlencoded.workspace = true
 thiserror.workspace = true
 time.workspace = true
 tokio.workspace = true
