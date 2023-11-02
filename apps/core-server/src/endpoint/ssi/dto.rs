@@ -5,7 +5,8 @@ use crate::{
 use dto_mapper::From;
 use one_core::service::{
     oidc::dto::{
-        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
+        OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
+        OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
         OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
         OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO, OpenID4VCITokenRequestDTO,
         OpenID4VCITokenResponseDTO,
@@ -87,6 +88,19 @@ pub struct OpenID4VCITokenRequestRestDTO {
     pub pre_authorized_code: String,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "OpenID4VCICredentialDefinitionRequestDTO")]
+pub struct OpenID4VCICredentialDefinitionRequestRestDTO {
+    pub r#type: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "OpenID4VCICredentialRequestDTO")]
+pub struct OpenID4VCICredentialRequestRestDTO {
+    pub format: String,
+    pub credential_definition: OpenID4VCICredentialDefinitionRequestRestDTO,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(transparent)]
 pub struct DurationSecondsRest(pub i64);
@@ -110,6 +124,9 @@ pub enum OpenID4VCIErrorRestEnum {
     UnsupportedGrantType,
     InvalidGrant,
     InvalidRequest,
+    InvalidToken,
+    UnsupportedCredentialFormat,
+    UnsupportedCredentialType,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
@@ -142,6 +159,14 @@ pub struct PostSsiIssuerConnectQueryParams {
 #[serde(rename_all = "camelCase")]
 #[convert(from = "IssuerResponseDTO")]
 pub struct ConnectIssuerResponseRestDTO {
+    pub credential: String,
+    pub format: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[convert(from = "OpenID4VCICredentialResponseDTO")]
+pub struct OpenID4VCICredentialResponseRestDTO {
     pub credential: String,
     pub format: String,
 }

@@ -65,3 +65,9 @@ pub struct ProofCredentialSchema {
 pub(super) struct HandleInvitationConnectRequest {
     pub did: String,
 }
+
+#[derive(Clone, Deserialize)]
+pub struct CreateCredentialResponseDTO {
+    pub credential: String,
+    pub format: String,
+}

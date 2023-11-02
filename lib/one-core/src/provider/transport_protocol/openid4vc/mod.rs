@@ -3,7 +3,7 @@ use super::{
     TransportProtocol, TransportProtocolError,
 };
 use crate::model::{credential::Credential, did::Did, proof::Proof};
-use crate::util::oidc::map_format_to_oidc_format;
+use crate::util::oidc::map_core_to_oidc_format;
 use dto::{OpenID4VCICredentialDefinition, OpenID4VCICredentialRequestRestDTO};
 
 use async_trait::async_trait;
@@ -58,7 +58,7 @@ impl TransportProtocol for OpenID4VC {
             .as_ref()
             .ok_or(TransportProtocolError::Failed("schema is None".to_string()))?;
 
-        let format = map_format_to_oidc_format(&schema.format)
+        let format = map_core_to_oidc_format(&schema.format)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
         let schema_id = schema.id.to_string();
 

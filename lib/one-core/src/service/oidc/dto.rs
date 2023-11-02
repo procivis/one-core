@@ -59,6 +59,12 @@ pub enum OpenID4VCIError {
     InvalidGrant,
     #[error("invalid_request")]
     InvalidRequest,
+    #[error("invalid_token")]
+    InvalidToken,
+    #[error("unsupported_credential_format")]
+    UnsupportedCredentialFormat,
+    #[error("unsupported_credential_type")]
+    UnsupportedCredentialType,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -67,4 +73,21 @@ pub struct OpenID4VCIInteractionDataDTO {
     pub access_token: String,
     #[serde(with = "time::serde::rfc3339")]
     pub access_token_expires_at: OffsetDateTime,
+}
+
+#[derive(Clone, Debug)]
+pub struct OpenID4VCICredentialResponseDTO {
+    pub credential: String,
+    pub format: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct OpenID4VCICredentialDefinitionRequestDTO {
+    pub r#type: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct OpenID4VCICredentialRequestDTO {
+    pub format: String,
+    pub credential_definition: OpenID4VCICredentialDefinitionRequestDTO,
 }

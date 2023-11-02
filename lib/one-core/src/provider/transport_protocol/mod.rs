@@ -7,8 +7,11 @@ use thiserror::Error;
 pub mod dto;
 pub(crate) mod provider;
 
+mod mapper;
 pub mod openid4vc;
 pub mod procivis_temp;
+#[cfg(test)]
+mod test;
 
 #[derive(Debug, Error)]
 pub enum TransportProtocolError {
