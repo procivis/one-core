@@ -14,11 +14,11 @@ strict = []
 [dependencies]
 one-core = { version = "0.1.0", path = "../../lib/one-core" }
 sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider" }
-serde_json.workspace = true
 uniffi.workspace = true
+serde_json.workspace = true
 time.workspace = true
 tokio.workspace = true
 uuid.workspace = true
 
 [build-dependencies]
-uniffi = { version = "0.24.0", features = ["build"] }
+uniffi = { version = "0.25.0", features = ["build"] }
