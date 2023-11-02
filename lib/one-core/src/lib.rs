@@ -132,10 +132,6 @@ impl OneCore {
             credential_formatters.to_owned(),
         ));
 
-        let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
-            transport_protocols.to_owned(),
-        ));
-
         let config = Arc::new(config);
 
         let revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)> = vec![
@@ -156,6 +152,16 @@ impl OneCore {
         ];
         let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
             revocation_methods.to_owned(),
+        ));
+
+        let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
+            transport_protocols.to_owned(),
+            formatter_provider.clone(),
+            data_provider.get_credential_repository(),
+            revocation_method_provider.clone(),
+            key_provider.clone(),
+            config.clone(),
+            crypto.clone(),
         ));
 
         Ok(OneCore {
@@ -190,6 +196,7 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_interaction_repository(),
                 config.clone(),
+                protocol_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 data_provider.get_credential_schema_repository(),
@@ -221,18 +228,14 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),
                 did_method_provider,
-                revocation_method_provider.clone(),
+                revocation_method_provider,
                 crypto.clone(),
                 config.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_did_repository(),
-                key_provider.clone(),
-                formatter_provider.clone(),
-                revocation_method_provider,
-                crypto.clone(),
-                config.clone(),
+                protocol_provider.clone(),
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_schema_repository(),

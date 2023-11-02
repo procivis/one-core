@@ -17,20 +17,20 @@ use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
 #[utoipa::path(
-get,
-path = "/api/proof-request/v1/{id}/presentation-definition",
-responses(
-(status = 200, description = "OK", body = PresentationDefinitionResponseRestDTO),
-(status = 400, description = "Unauthorized"),
-(status = 404, description = "Proof request not found"),
-),
-params(
-("id" = Uuid, Path, description = "Proof id")
-),
-tag = "proof_management",
-security(
-("bearer" = [])
-),
+    get,
+    path = "/api/proof-request/v1/{id}/presentation-definition",
+    responses(
+        (status = 200, description = "OK", body = PresentationDefinitionResponseRestDTO),
+        (status = 400, description = "Unauthorized"),
+        (status = 404, description = "Proof request not found"),
+    ),
+    params(
+        ("id" = Uuid, Path, description = "Proof id")
+    ),
+    tag = "proof_management",
+    security(
+        ("bearer" = [])
+    ),
 )]
 pub(crate) async fn get_proof_presentation_definition(
     state: State<AppState>,

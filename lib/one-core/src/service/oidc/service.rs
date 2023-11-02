@@ -12,14 +12,17 @@ use crate::model::credential_schema::{
 use crate::model::interaction::InteractionRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
+use crate::service::oidc::dto::{OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO};
+use crate::service::oidc::mapper::{interaction_data_to_dto, parse_authorization_header};
 use crate::service::oidc::validator::{
-    check_interaction_created_date, check_interaction_pre_authorized_code_used,
-    validate_token_request,
+    throw_if_credential_request_invalid, throw_if_interaction_created_date,
+    throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
+    throw_if_token_request_invalid,
 };
 use crate::service::oidc::{
     dto::{
-        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIInteractionDataDTO,
-        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
+        OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     },
     mapper::{create_issuer_metadata_response, create_service_discovery_response},
     OIDCService,
@@ -75,12 +78,67 @@ impl OIDCService {
         ))
     }
 
+    pub async fn oidc_create_credential(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+        authorization: &str,
+        request: OpenID4VCICredentialRequestDTO,
+    ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
+        let schema = self
+            .credential_schema_repository
+            .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
+            .await
+            .map_err(ServiceError::from)?;
+
+        throw_if_credential_request_invalid(&schema, &request)?;
+
+        let authorization_parts = parse_authorization_header(authorization)?;
+
+        let interaction = self
+            .interaction_repository
+            .get_interaction(&authorization_parts.1, &InteractionRelations::default())
+            .await
+            .map_err(ServiceError::from)?;
+
+        throw_if_interaction_data_invalid(
+            &interaction_data_to_dto(&interaction)?,
+            authorization_parts,
+        )?;
+
+        let credentials = self
+            .credential_repository
+            .get_credentials_by_interaction_id(
+                &interaction.id,
+                &CredentialRelations {
+                    interaction: Some(InteractionRelations::default()),
+                    state: Some(CredentialStateRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(ServiceError::from)?;
+
+        if credentials.is_empty() {
+            return Err(ServiceError::NotFound);
+        }
+
+        let credential = self
+            .protocol_provider
+            .issue_credential(&credentials.get(0).ok_or(ServiceError::NotFound)?.id)
+            .await?;
+
+        Ok(OpenID4VCICredentialResponseDTO {
+            credential: credential.credential,
+            format: request.format,
+        })
+    }
+
     pub async fn oidc_create_token(
         &self,
         credential_schema_id: &CredentialSchemaId,
         request: OpenID4VCITokenRequestDTO,
     ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
-        validate_token_request(&request)?;
+        throw_if_token_request_invalid(&request)?;
 
         self.credential_schema_repository
             .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
@@ -117,25 +175,14 @@ impl OIDCService {
                 "interaction is None".to_string(),
             ))?;
 
-        let interaction_data = interaction
-            .data
-            .to_owned()
-            .ok_or(ServiceError::MappingError(
-                "interaction data is missing".to_string(),
-            ))?;
-        check_interaction_created_date(
+        throw_if_interaction_created_date(
             get_exchange_param_pre_authorization_expires_in(&self.config)?,
             &interaction,
         )?;
 
-        let json_data = String::from_utf8(interaction_data)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let mut interaction_data = interaction_data_to_dto(&interaction)?;
 
-        let mut interaction_data: OpenID4VCIInteractionDataDTO =
-            serde_json::from_str(&json_data)
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
-        check_interaction_pre_authorized_code_used(&interaction_data)?;
+        throw_if_interaction_pre_authorized_code_used(&interaction_data)?;
 
         for credential in &credentials {
             throw_if_latest_credential_state_not_eq(credential, CredentialStateEnum::Pending)?;

@@ -1,38 +1,18 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::{
-    config::data_structure::{
-        AccessModifier, ConfigEntity, CoreConfig, KeyAlgorithmParams, Param, ParamsEnum,
-        TranslatableString,
-    },
-    crypto::{
-        signer::{MockSigner, Signer},
-        Crypto,
-    },
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential::{Credential, CredentialId, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        did::{Did, DidType, KeyRole, RelatedKey},
+        did::{Did, DidType},
         interaction::Interaction,
-        key::Key,
         organisation::Organisation,
-    },
-    provider::{
-        credential_formatter::{
-            model::CredentialStatus, provider::MockCredentialFormatterProvider,
-            MockCredentialFormatter,
-        },
-        key_storage::mock_key_storage::MockKeyStorage,
-        revocation::MockRevocationMethod,
-    },
-    provider::{
-        key_storage::provider::MockKeyProvider,
-        revocation::{provider::MockRevocationMethodProvider, CredentialRevocationInfo},
     },
     repository::did_repository::MockDidRepository,
     repository::mock::credential_repository::MockCredentialRepository,
@@ -79,127 +59,6 @@ async fn test_issuer_connect_succeeds() {
 }
 
 #[tokio::test]
-async fn test_issuer_submit_succeeds() {
-    let credential_id: CredentialId = Uuid::new_v4();
-    let key_storage_type = "storage type";
-    let key_type = "key_type";
-
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credential()
-        .withf(move |_credential_id, _| {
-            assert_eq!(_credential_id, &credential_id);
-            true
-        })
-        .once()
-        .return_once(move |_, _| {
-            Ok(Credential {
-                state: Some(vec![CredentialState {
-                    created_date: OffsetDateTime::now_utc(),
-                    state: CredentialStateEnum::Offered,
-                }]),
-                holder_did: Some(dummy_did()),
-                issuer_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: Key {
-                            id: Uuid::new_v4(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            public_key: b"public_key".to_vec(),
-                            name: "key name".to_string(),
-                            private_key: b"public_key".to_vec(),
-                            storage_type: key_storage_type.to_string(),
-                            key_type: key_type.to_string(),
-                            organisation: Some(Organisation {
-                                id: Uuid::new_v4(),
-                                created_date: OffsetDateTime::now_utc(),
-                                last_modified: OffsetDateTime::now_utc(),
-                            }),
-                        },
-                    }]),
-                    ..dummy_did()
-                }),
-                ..dummy_credential()
-            })
-        });
-
-    credential_repository
-        .expect_update_credential()
-        .once()
-        .return_once(|_| Ok(()));
-
-    let mut revocation_method = MockRevocationMethod::new();
-    revocation_method
-        .expect_add_issued_credential()
-        .once()
-        .return_once(|_| {
-            Ok(Some(CredentialRevocationInfo {
-                additional_vc_contexts: vec![],
-                credential_status: CredentialStatus {
-                    id: Uuid::new_v4().to_string(),
-                    r#type: "type".to_string(),
-                    status_purpose: "type".to_string(),
-                    additional_fields: HashMap::new(),
-                },
-            }))
-        });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Ok(Arc::new(revocation_method)));
-
-    let mut formatter = MockCredentialFormatter::new();
-    formatter
-        .expect_format_credentials()
-        .once()
-        .returning(|_, _, _, _, _, _, _| Ok("token".to_string()));
-
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    formatter_provider
-        .expect_get_formatter()
-        .once()
-        .return_once(move |_| Ok(Arc::new(formatter)));
-
-    let mut key_storage = MockKeyStorage::new();
-    key_storage
-        .expect_decrypt_private_key()
-        .once()
-        .return_once(|_| Ok(b"decrypted private key".to_vec()));
-
-    let mut key_provider = MockKeyProvider::new();
-    key_provider
-        .expect_get_key_storage()
-        .once()
-        .return_once(move |_| Ok(Arc::new(key_storage)));
-
-    let signer: Arc<dyn Signer + Send + Sync> = Arc::new(MockSigner::new());
-
-    let algorithm = algorithm_config(key_type);
-    let config = CoreConfig {
-        key_algorithm: HashMap::from_iter([(key_type.to_string(), algorithm)]),
-        ..dummy_config()
-    };
-
-    let service = SSIIssuerService {
-        credential_repository: Arc::new(credential_repository),
-        revocation_method_provider: Arc::new(revocation_method_provider),
-        formatter_provider: Arc::new(formatter_provider),
-        key_provider: Arc::new(key_provider),
-        crypto: Arc::new(Crypto {
-            signers: HashMap::from_iter([(key_type.to_string(), signer)]),
-            ..dummy_crypto()
-        }),
-        config: Arc::new(config),
-        ..mock_ssi_issuer_service()
-    };
-
-    service.issuer_submit(&credential_id).await.unwrap();
-}
-
-#[tokio::test]
 async fn test_issuer_reject_succeeds() {
     let credential_id: CredentialId = Uuid::new_v4();
 
@@ -238,34 +97,7 @@ fn mock_ssi_issuer_service() -> SSIIssuerService {
     SSIIssuerService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
-        formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
-        revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
-        key_provider: Arc::new(MockKeyProvider::new()),
-        crypto: Arc::new(Crypto {
-            hashers: Default::default(),
-            signers: Default::default(),
-        }),
-        config: Arc::new(dummy_config()),
-    }
-}
-
-fn dummy_config() -> CoreConfig {
-    CoreConfig {
-        format: Default::default(),
-        exchange: Default::default(),
-        transport: Default::default(),
-        revocation: Default::default(),
-        did: Default::default(),
-        datatype: Default::default(),
-        key_algorithm: Default::default(),
-        key_storage: Default::default(),
-    }
-}
-
-fn dummy_crypto() -> Crypto {
-    Crypto {
-        hashers: Default::default(),
-        signers: Default::default(),
+        protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
     }
 }
 
@@ -344,19 +176,5 @@ fn dummy_did() -> Did {
         did_method: "John".to_string(),
         keys: None,
         organisation: None,
-    }
-}
-
-fn algorithm_config(key_type: impl Into<String>) -> ConfigEntity<String, KeyAlgorithmParams> {
-    ConfigEntity {
-        r#type: "STRING".to_string(),
-        display: TranslatableString::Key("X".to_string()),
-        order: None,
-        params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {
-            algorithm: Param {
-                access: AccessModifier::Public,
-                value: key_type.into(),
-            },
-        })),
     }
 }

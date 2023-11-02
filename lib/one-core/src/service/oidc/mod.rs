@@ -1,4 +1,5 @@
 use crate::config::data_structure::CoreConfig;
+use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use std::sync::Arc;
 
@@ -17,6 +18,7 @@ pub struct OIDCService {
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     config: Arc<CoreConfig>,
+    protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
 }
 
 impl OIDCService {
@@ -26,6 +28,7 @@ impl OIDCService {
         credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
         config: Arc<CoreConfig>,
+        protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     ) -> Self {
         Self {
             credential_schema_repository,
@@ -33,6 +36,7 @@ impl OIDCService {
             interaction_repository,
             core_base_url,
             config,
+            protocol_provider,
         }
     }
 }
