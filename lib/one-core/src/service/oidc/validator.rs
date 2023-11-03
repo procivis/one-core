@@ -1,5 +1,5 @@
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::Interaction;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCIError, OpenID4VCIInteractionDataDTO,
@@ -65,14 +65,22 @@ pub(crate) fn throw_if_credential_request_invalid(
     Ok(())
 }
 
+fn is_interaction_data_valid(
+    interaction_data: &OpenID4VCIInteractionDataDTO,
+    access_token: String,
+) -> bool {
+    interaction_data.pre_authorized_code_used
+        && interaction_data.access_token == access_token
+        && interaction_data
+            .access_token_expires_at
+            .is_some_and(|expires_at| expires_at > OffsetDateTime::now_utc())
+}
+
 pub(crate) fn throw_if_interaction_data_invalid(
     interaction_data: &OpenID4VCIInteractionDataDTO,
-    token_parts: (String, InteractionId),
+    access_token: String,
 ) -> Result<(), ServiceError> {
-    if !interaction_data.pre_authorized_code_used
-        || interaction_data.access_token != token_parts.0
-        || interaction_data.access_token_expires_at < OffsetDateTime::now_utc()
-    {
+    if !is_interaction_data_valid(interaction_data, access_token) {
         return Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken));
     }
     Ok(())

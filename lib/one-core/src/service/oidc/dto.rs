@@ -71,8 +71,8 @@ pub enum OpenID4VCIError {
 pub struct OpenID4VCIInteractionDataDTO {
     pub pre_authorized_code_used: bool,
     pub access_token: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub access_token_expires_at: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub access_token_expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]

@@ -92,18 +92,15 @@ impl OIDCService {
 
         throw_if_credential_request_invalid(&schema, &request)?;
 
-        let authorization_parts = parse_authorization_header(authorization)?;
+        let (access_token, interaction_id) = parse_authorization_header(authorization)?;
 
         let interaction = self
             .interaction_repository
-            .get_interaction(&authorization_parts.1, &InteractionRelations::default())
+            .get_interaction(&interaction_id, &InteractionRelations::default())
             .await
             .map_err(ServiceError::from)?;
 
-        throw_if_interaction_data_invalid(
-            &interaction_data_to_dto(&interaction)?,
-            authorization_parts,
-        )?;
+        throw_if_interaction_data_invalid(&interaction_data_to_dto(&interaction)?, access_token)?;
 
         let credentials = self
             .credential_repository
@@ -199,9 +196,9 @@ impl OIDCService {
         }
 
         interaction_data.pre_authorized_code_used = true;
-        interaction_data.access_token_expires_at = now.add(Duration::from_secs(
+        interaction_data.access_token_expires_at = Some(now.add(Duration::from_secs(
             get_exchange_param_token_expires_in(&self.config)?,
-        ));
+        )));
 
         let data = serde_json::to_vec(&interaction_data)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
@@ -212,6 +209,6 @@ impl OIDCService {
             .update_interaction(interaction)
             .await?;
 
-        Ok(interaction_data.into())
+        interaction_data.try_into()
     }
 }
