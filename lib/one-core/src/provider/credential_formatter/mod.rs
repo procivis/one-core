@@ -6,6 +6,9 @@ pub mod jwt;
 
 pub mod jwt_formatter;
 pub mod sdjwt_formatter;
+
+pub mod json_ld_formatter;
+pub mod mdoc_formatter;
 pub mod status_list_2021_jwt_formatter;
 
 pub(crate) mod provider;

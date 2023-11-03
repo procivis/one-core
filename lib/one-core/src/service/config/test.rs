@@ -19,6 +19,7 @@ fn convert_internal_structure_to_dto() {
             "test".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::String,
+                disabled: None,
                 display: TranslatableString::Key("display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(DatatypeParams::String(
@@ -49,6 +50,7 @@ fn convert_internal_structure_to_dto() {
   "did": {},
   "datatype": {
     "test": {
+      "disabled": null,
       "display": "display",
       "order": null,
       "params": {
@@ -76,6 +78,7 @@ fn do_not_serialize_private_parameters() {
             "test".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::String,
+                disabled: None,
                 display: TranslatableString::Key("display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(DatatypeParams::String(
@@ -107,6 +110,7 @@ fn do_not_serialize_private_parameters() {
   "did": {},
   "datatype": {
     "test": {
+      "disabled": null,
       "display": "display",
       "order": null,
       "params": {},

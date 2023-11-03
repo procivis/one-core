@@ -11,6 +11,8 @@ use crate::config::{
 use crate::model::did::{Did, DidId};
 use crate::model::key::Key;
 use crate::provider::did_method::key::KeyDidMethod;
+use crate::provider::did_method::web::WebDidMethod;
+use crate::provider::did_method::x509::X509Method;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
@@ -20,6 +22,8 @@ use crate::service::did::dto::CreateDidRequestDTO;
 pub mod key;
 mod mapper;
 pub mod provider;
+pub mod web;
+pub mod x509;
 
 #[derive(Debug, Error)]
 pub enum DidMethodError {
@@ -76,6 +80,8 @@ fn storage_from_entity(
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
 ) -> Result<(String, Arc<dyn DidMethod + Send + Sync>), ConfigParseError> {
     match entity.r#type.as_str() {
+        "X509" => Ok((name.to_owned(), Arc::new(X509Method {}))),
+        "WEB" => Ok((name.to_owned(), Arc::new(WebDidMethod {}))),
         "KEY" => {
             let params = match &entity.params {
                 None => Ok(DidKeyParams::default()),

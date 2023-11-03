@@ -843,6 +843,7 @@ fn algorithm_config(key_type: impl Into<String>) -> ConfigEntity<String, KeyAlgo
         r#type: "STRING".to_string(),
         display: TranslatableString::Key("X".to_string()),
         order: None,
+        disabled: None,
         params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {
             algorithm: Param {
                 access: AccessModifier::Public,

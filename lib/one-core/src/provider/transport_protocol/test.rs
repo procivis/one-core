@@ -262,6 +262,7 @@ fn dummy_did() -> Did {
 fn algorithm_config(key_type: impl Into<String>) -> ConfigEntity<String, KeyAlgorithmParams> {
     ConfigEntity {
         r#type: "STRING".to_string(),
+        disabled: None,
         display: TranslatableString::Key("X".to_string()),
         order: None,
         params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {

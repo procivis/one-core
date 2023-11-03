@@ -97,9 +97,17 @@ impl OneCore {
             signers: HashMap::from_iter(signers),
         });
 
-        let available_transport_protocol_types =
-            ["PROCIVIS_TEMPORARY".to_string(), "OPENID4VC".to_string()];
-        let available_credential_formatter_types = ["JWT".to_string(), "SDJWT".to_string()];
+        let available_transport_protocol_types = [
+            "PROCIVIS_TEMPORARY".to_string(),
+            "OPENID4VC".to_string(),
+            "MDL".to_string(),
+        ]; // TODO: This must be removed
+        let available_credential_formatter_types = [
+            "JWT".to_string(),
+            "SDJWT".to_string(),
+            "JSON_LD".to_string(),
+            "MDOC".to_string(),
+        ]; // TODO: This must be removed
         let config = config::config_provider::parse_config(
             unparsed_config,
             &available_transport_protocol_types,

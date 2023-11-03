@@ -2,7 +2,9 @@ use super::CredentialFormatter;
 use crate::config::data_structure::{FormatEntity, FormatJwtParams, FormatParams, ParamsEnum};
 use crate::config::ConfigParseError;
 use crate::crypto::Crypto;
+use crate::provider::credential_formatter::json_ld_formatter::JsonLdFormatter;
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
+use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use crate::service::error::ServiceError;
 use std::{collections::HashMap, sync::Arc};
@@ -48,36 +50,42 @@ pub(crate) fn credential_formatters_from_config(
         .collect::<Result<HashMap<String, _>, _>>()
 }
 
+fn get_jwt_params(
+    entity: &FormatEntity,
+    name: &String,
+) -> Result<FormatJwtParams, ConfigParseError> {
+    match &entity.params {
+        None => Ok(FormatJwtParams::default()),
+        Some(value) => match value {
+            ParamsEnum::Parsed(FormatParams::Jwt(value)) => Ok(value.to_owned()),
+            _ => Err(ConfigParseError::InvalidType(
+                name.to_owned(),
+                String::new(),
+            )),
+        },
+    }
+}
+
 fn formatter_from_entity(
     name: &String,
     entity: &FormatEntity,
     crypto: Arc<Crypto>,
 ) -> Result<(String, Arc<dyn CredentialFormatter + Send + Sync>), ConfigParseError> {
     match entity.r#type.as_str() {
+        "MDOC" => {
+            let params = get_jwt_params(entity, name)?;
+            Ok((name.to_owned(), Arc::new(MdocFormatter { params })))
+        }
+        "JSON_LD" => {
+            let params = get_jwt_params(entity, name)?;
+            Ok((name.to_owned(), Arc::new(JsonLdFormatter { params })))
+        }
         "JWT" => {
-            let params = match &entity.params {
-                None => Ok(FormatJwtParams::default()),
-                Some(value) => match value {
-                    ParamsEnum::Parsed(FormatParams::Jwt(value)) => Ok(value.to_owned()),
-                    _ => Err(ConfigParseError::InvalidType(
-                        name.to_owned(),
-                        String::new(),
-                    )),
-                },
-            }?;
+            let params = get_jwt_params(entity, name)?;
             Ok((name.to_owned(), Arc::new(JWTFormatter { params })))
         }
         "SDJWT" => {
-            let params = match &entity.params {
-                None => Ok(FormatJwtParams::default()),
-                Some(value) => match value {
-                    ParamsEnum::Parsed(FormatParams::Jwt(value)) => Ok(value.to_owned()),
-                    _ => Err(ConfigParseError::InvalidType(
-                        name.to_owned(),
-                        String::new(),
-                    )),
-                },
-            }?;
+            let params = get_jwt_params(entity, name)?;
             Ok((name.to_owned(), Arc::new(SDJWTFormatter { crypto, params })))
         }
         _ => Err(ConfigParseError::InvalidType(
