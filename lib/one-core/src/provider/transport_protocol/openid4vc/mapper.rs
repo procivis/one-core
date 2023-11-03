@@ -1,7 +1,13 @@
 use std::collections::HashMap;
 
+use time::OffsetDateTime;
+use uuid::Uuid;
+
 use crate::{
-    model::{credential::Credential, interaction::InteractionId},
+    model::{
+        claim::Claim, claim_schema::ClaimSchema, credential::Credential,
+        credential_schema::CredentialSchemaClaim, interaction::InteractionId,
+    },
     provider::transport_protocol::{
         openid4vc::dto::{
             OpenID4VCICredentialDefinition, OpenID4VCICredentialRequestDTO,
@@ -71,4 +77,40 @@ pub(super) fn create_credential_offer_encoded(
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
     Ok(offer_encoded)
+}
+
+pub(super) fn create_claims_from_credential_definition(
+    credential_definition: &OpenID4VCICredentialDefinition,
+) -> Option<Vec<(CredentialSchemaClaim, Claim)>> {
+    let credential_subject = credential_definition.credential_subject.as_ref()?;
+    let created_at = OffsetDateTime::now_utc();
+
+    let claims = credential_subject
+        .keys
+        .iter()
+        .map(|(key, value_details)| {
+            let claim_schema = ClaimSchema {
+                id: Uuid::new_v4(),
+                key: key.to_string(),
+                data_type: value_details.value_type.to_string(),
+                created_date: created_at,
+                last_modified: created_at,
+            };
+            let schema_claim = CredentialSchemaClaim {
+                schema: claim_schema.clone(),
+                required: false,
+            };
+            let claim = Claim {
+                id: Uuid::new_v4(),
+                created_date: created_at,
+                last_modified: created_at,
+                value: value_details.value.to_string(),
+                schema: Some(claim_schema),
+            };
+
+            (schema_claim, claim)
+        })
+        .collect();
+
+    Some(claims)
 }

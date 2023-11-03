@@ -15,6 +15,7 @@ use crate::service::oidc::dto::{
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::generic_config;
 use mockall::predicate::eq;
+
 use serde_json::json;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -60,7 +61,7 @@ fn dummy_interaction(
         id: Uuid::new_v4(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        host: Some("host".to_string()),
+        host: Some("http://host-base-url".parse().unwrap()),
         data: Some(
             json!({
             "pre_authorized_code_used": pre_authorized_code,

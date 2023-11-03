@@ -39,24 +39,6 @@ pub fn list_response_try_into<T, F: TryInto<T>>(
     })
 }
 
-pub fn get_base_url(url: &str) -> Result<String, ServiceError> {
-    let url_parsed = reqwest::Url::parse(url).map_err(|_| ServiceError::IncorrectParameters)?;
-
-    let mut host_url = format!(
-        "{}://{}",
-        url_parsed.scheme(),
-        url_parsed
-            .host_str()
-            .ok_or(ServiceError::IncorrectParameters)?
-    );
-
-    if let Some(port) = url_parsed.port() {
-        host_url.push_str(&format!(":{port}"));
-    }
-
-    Ok(host_url)
-}
-
 pub(crate) fn get_algorithm_from_key_algorithm(
     signature_type: &str,
     config: &CoreConfig,

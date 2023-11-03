@@ -1,8 +1,12 @@
-use self::dto::{InvitationResponse, InvitationType, SubmitIssuerResponse};
-use crate::model::{credential::Credential, did::Did, interaction::Interaction, proof::Proof};
+use self::dto::{InvitationType, SubmitIssuerResponse};
+use crate::{
+    model::{credential::Credential, did::Did, interaction::Interaction, proof::Proof},
+    service::ssi_holder::dto::InvitationResponseDTO,
+};
 
 use async_trait::async_trait;
 use thiserror::Error;
+use url::Url;
 
 pub mod dto;
 pub(crate) mod provider;
@@ -19,6 +23,8 @@ pub enum TransportProtocolError {
     Failed(String),
     #[error("HTTP request error: `{0}`")]
     HttpRequestError(reqwest::Error),
+    #[error("HTTP response error: `{0}`")]
+    HttpResponse(reqwest::Error),
     #[error("JSON error: `{0}`")]
     JsonError(serde_json::Error),
     #[error("Operation not supported")]
@@ -31,13 +37,13 @@ pub enum TransportProtocolError {
 #[async_trait]
 pub trait TransportProtocol {
     // holder methods
-    fn detect_invitation_type(&self, url: &str) -> Option<InvitationType>;
+    fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType>;
 
     async fn handle_invitation(
         &self,
-        url: &str,
-        own_did: &Did,
-    ) -> Result<InvitationResponse, TransportProtocolError>;
+        url: Url,
+        own_did: Did,
+    ) -> Result<InvitationResponseDTO, TransportProtocolError>;
 
     async fn reject_proof(&self, proof: &Proof) -> Result<(), TransportProtocolError>;
 
@@ -69,11 +75,10 @@ pub trait TransportProtocol {
     async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError>;
 }
 
-pub(super) fn get_base_url(
-    interaction: &Option<Interaction>,
-) -> Result<reqwest::Url, TransportProtocolError> {
-    let base_url = interaction
-        .as_ref()
+pub(super) fn get_base_url_from_interaction(
+    interaction: Option<&Interaction>,
+) -> Result<Url, TransportProtocolError> {
+    interaction
         .ok_or(TransportProtocolError::Failed(
             "interaction is None".to_string(),
         ))?
@@ -81,8 +86,6 @@ pub(super) fn get_base_url(
         .as_ref()
         .ok_or(TransportProtocolError::Failed(
             "interaction host is missing".to_string(),
-        ))?;
-
-    reqwest::Url::parse(base_url)
-        .map_err(|_| TransportProtocolError::Failed("Invalid base URL".to_string()))
+        ))
+        .cloned()
 }

@@ -22,12 +22,7 @@ use crate::{
     },
     provider::key_storage::provider::MockKeyProvider,
     provider::transport_protocol::{
-        dto::{
-            ConnectVerifierResponse, InvitationResponse, ProofClaimSchema, ProofCredentialSchema,
-            SubmitIssuerResponse,
-        },
-        provider::MockTransportProtocolProvider,
-        MockTransportProtocol,
+        dto::SubmitIssuerResponse, provider::MockTransportProtocolProvider, MockTransportProtocol,
     },
     provider::{
         credential_formatter::{
@@ -35,314 +30,17 @@ use crate::{
         },
         key_storage::mock_key_storage::MockKeyStorage,
     },
+    repository::did_repository::MockDidRepository,
     repository::mock::credential_repository::MockCredentialRepository,
-    repository::mock::credential_schema_repository::MockCredentialSchemaRepository,
-    repository::mock::interaction_repository::MockInteractionRepository,
     repository::mock::proof_repository::MockProofRepository,
-    repository::{did_repository::MockDidRepository, error::DataLayerError},
     service::{
-        credential::dto::{CredentialDetailResponseDTO, DetailCredentialSchemaResponseDTO},
         error::ServiceError,
         ssi_holder::{
-            dto::{
-                InvitationResponseDTO, PresentationSubmitCredentialRequestDTO,
-                PresentationSubmitRequestDTO,
-            },
+            dto::{PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO},
             SSIHolderService,
         },
     },
 };
-
-#[tokio::test]
-async fn test_handle_invitation_creates_credential_for_credential_invitation() {
-    let protocol = "123".to_string();
-    let url = format!("http://www.example.com/?protocol={protocol}");
-
-    let holder_did_id = Uuid::new_v4();
-
-    let mut did_repository = MockDidRepository::new();
-
-    did_repository
-        .expect_get_did()
-        .withf(move |id, _| {
-            assert_eq!(id, &holder_did_id);
-            true
-        })
-        .once()
-        .return_once(move |_, _| {
-            Ok(Did {
-                id: holder_did_id,
-                organisation: Some(Organisation {
-                    id: Uuid::new_v4(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                }),
-                ..dummy_did()
-            })
-        });
-
-    did_repository
-        .expect_create_did()
-        .once()
-        .return_once(|_| Ok(Uuid::new_v4()));
-
-    let mut transport_protocol_mock = MockTransportProtocol::new();
-    transport_protocol_mock
-        .expect_handle_invitation()
-        .once()
-        .return_once(move |_, _| {
-            Ok(InvitationResponse::Credential(Box::new(
-                dummy_credential_detail_response_dto(),
-            )))
-        });
-
-    let mut protocol_provider = MockTransportProtocolProvider::new();
-    protocol_provider
-        .expect_get_protocol()
-        .withf(move |expected_protocol| {
-            assert_eq!(protocol, expected_protocol);
-            true
-        })
-        .once()
-        .return_once(move |_| Ok(Arc::new(transport_protocol_mock)));
-
-    let mut credential_schema_repository = MockCredentialSchemaRepository::new();
-    credential_schema_repository
-        .expect_create_credential_schema()
-        .once()
-        .return_once(move |_| Ok(Uuid::new_v4()));
-
-    let mut interaction_repository = MockInteractionRepository::new();
-    interaction_repository
-        .expect_create_interaction()
-        .once()
-        .return_once(move |_| Ok(Uuid::new_v4()));
-
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_create_credential()
-        .once()
-        .return_once(move |_| Ok(Uuid::new_v4()));
-
-    let service = SSIHolderService {
-        did_repository: Arc::new(did_repository),
-        protocol_provider: Arc::new(protocol_provider),
-        credential_schema_repository: Arc::new(credential_schema_repository),
-        interaction_repository: Arc::new(interaction_repository),
-        credential_repository: Arc::new(credential_repository),
-        ..mock_ssi_holder_service()
-    };
-
-    let res: crate::service::ssi_holder::dto::InvitationResponseDTO = service
-        .handle_invitation(&url, &holder_did_id)
-        .await
-        .unwrap();
-
-    assert2::assert!(let InvitationResponseDTO::Credential { .. } = res);
-}
-
-#[tokio::test]
-async fn test_handle_proof_invitation_when_did_already_exists() {
-    let protocol = "123".to_string();
-    let url = format!("http://www.example.com/?protocol={protocol}");
-
-    let holder_did_id = Uuid::new_v4();
-
-    let mut did_repository = MockDidRepository::new();
-
-    did_repository
-        .expect_get_did()
-        .withf(move |id, _| {
-            assert_eq!(id, &holder_did_id);
-            true
-        })
-        .once()
-        .return_once(move |_, _| {
-            Ok(Did {
-                id: holder_did_id,
-                organisation: Some(Organisation {
-                    id: Uuid::new_v4(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                }),
-                ..dummy_did()
-            })
-        });
-
-    did_repository
-        .expect_create_did()
-        .once()
-        .return_once(|_| Err(DataLayerError::AlreadyExists));
-
-    did_repository
-        .expect_get_did_by_value()
-        .once()
-        .return_once(|_, _| Ok(dummy_did()));
-
-    let mut transport_protocol_mock = MockTransportProtocol::new();
-    transport_protocol_mock
-        .expect_handle_invitation()
-        .once()
-        .return_once(move |_, _| {
-            Ok(InvitationResponse::Credential(Box::new(
-                dummy_credential_detail_response_dto(),
-            )))
-        });
-
-    let mut protocol_provider = MockTransportProtocolProvider::new();
-    protocol_provider
-        .expect_get_protocol()
-        .withf(move |expected_protocol| {
-            assert_eq!(protocol, expected_protocol);
-            true
-        })
-        .once()
-        .return_once(move |_| Ok(Arc::new(transport_protocol_mock)));
-
-    let mut credential_schema_repository = MockCredentialSchemaRepository::new();
-    credential_schema_repository
-        .expect_create_credential_schema()
-        .once()
-        .return_once(move |_| Ok(Uuid::new_v4()));
-
-    let mut interaction_repository = MockInteractionRepository::new();
-    interaction_repository
-        .expect_create_interaction()
-        .once()
-        .return_once(move |_| Ok(Uuid::new_v4()));
-
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_create_credential()
-        .once()
-        .return_once(move |_| Ok(Uuid::new_v4()));
-
-    let service = SSIHolderService {
-        did_repository: Arc::new(did_repository),
-        interaction_repository: Arc::new(interaction_repository),
-        credential_repository: Arc::new(credential_repository),
-        credential_schema_repository: Arc::new(credential_schema_repository),
-        protocol_provider: Arc::new(protocol_provider),
-        ..mock_ssi_holder_service()
-    };
-
-    let res = service
-        .handle_invitation(&url, &holder_did_id)
-        .await
-        .unwrap();
-
-    assert2::assert!(let InvitationResponseDTO::Credential { .. } = res);
-}
-
-#[tokio::test]
-async fn test_handle_invitation_creates_proof_request_for_proof_invitation() {
-    let protocol = "123".to_string();
-    let url = format!("http://www.example.com/?protocol={protocol}");
-
-    let holder_did_id = Uuid::new_v4();
-
-    let mut did_repository = MockDidRepository::new();
-
-    did_repository
-        .expect_get_did()
-        .withf(move |id, _| {
-            assert_eq!(id, &holder_did_id);
-            true
-        })
-        .once()
-        .return_once(move |_, _| {
-            Ok(Did {
-                id: holder_did_id,
-                organisation: Some(Organisation {
-                    id: Uuid::new_v4(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                }),
-                ..dummy_did()
-            })
-        });
-
-    did_repository
-        .expect_get_did_by_value()
-        .once()
-        .return_once(move |_, _| {
-            Ok(Did {
-                id: holder_did_id,
-                organisation: Some(Organisation {
-                    id: Uuid::new_v4(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                }),
-                ..dummy_did()
-            })
-        });
-
-    let mut transport_protocol_mock = MockTransportProtocol::new();
-    transport_protocol_mock
-        .expect_handle_invitation()
-        .once()
-        .return_once(move |_, _| {
-            Ok(InvitationResponse::Proof {
-                proof_request: ConnectVerifierResponse {
-                    claims: vec![ProofClaimSchema {
-                        id: "Proof claim schema id".to_string(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        key: "key".to_string(),
-                        datatype: "datatype".to_string(),
-                        required: true,
-                        credential_schema: ProofCredentialSchema {
-                            id: "credential schema id".to_string(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            name: "name".to_string(),
-                            format: "format".to_string(),
-                            revocation_method: "revocation method".to_string(),
-                        },
-                    }],
-                    verifier_did: "Verifier did".to_string(),
-                },
-                proof_id: Uuid::new_v4().to_string(),
-            })
-        });
-
-    let mut protocol_provider = MockTransportProtocolProvider::new();
-    protocol_provider
-        .expect_get_protocol()
-        .withf(move |_protocol| {
-            assert_eq!(_protocol, protocol);
-            true
-        })
-        .once()
-        .return_once(move |_| Ok(Arc::new(transport_protocol_mock)));
-
-    let mut interaction_repository = MockInteractionRepository::new();
-    interaction_repository
-        .expect_create_interaction()
-        .once()
-        .return_once(move |_| Ok(Uuid::new_v4()));
-
-    let mut proof_repository = MockProofRepository::new();
-    proof_repository
-        .expect_create_proof()
-        .once()
-        .return_once(move |_| Ok(Uuid::new_v4()));
-
-    let service = SSIHolderService {
-        did_repository: Arc::new(did_repository),
-        protocol_provider: Arc::new(protocol_provider),
-        interaction_repository: Arc::new(interaction_repository),
-        proof_repository: Arc::new(proof_repository),
-        ..mock_ssi_holder_service()
-    };
-
-    let res: crate::service::ssi_holder::dto::InvitationResponseDTO = service
-        .handle_invitation(&url, &holder_did_id)
-        .await
-        .unwrap();
-
-    assert2::assert!(let InvitationResponseDTO::ProofRequest { .. } = res);
-}
 
 #[tokio::test]
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_pending(
@@ -375,7 +73,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    host: Some("host".to_string()),
+                    host: Some("http://www.host.co".parse().unwrap()),
                     data: None,
                 }),
                 ..dummy_proof()
@@ -451,7 +149,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
                         id: interaction_id,
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
-                        host: Some("host".to_string()),
+                        host: Some("http://www.host.co".parse().unwrap()),
                         data: None,
                     }),
                     ..dummy_proof()
@@ -538,7 +236,7 @@ async fn test_submit_proof_succeeds() {
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    host: Some("host".to_string()),
+                    host: Some("http://www.host.co".parse().unwrap()),
                     data: None,
                 }),
                 ..dummy_proof()
@@ -726,11 +424,9 @@ async fn test_reject_credential() {
 
 fn mock_ssi_holder_service() -> SSIHolderService {
     SSIHolderService {
-        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         credential_repository: Arc::new(MockCredentialRepository::new()),
         proof_repository: Arc::new(MockProofRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
-        interaction_repository: Arc::new(MockInteractionRepository::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
@@ -773,28 +469,6 @@ fn dummy_did() -> Did {
     }
 }
 
-fn dummy_credential_detail_response_dto() -> CredentialDetailResponseDTO {
-    CredentialDetailResponseDTO {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
-        revocation_date: None,
-        state: CredentialStateEnum::Created.into(),
-        last_modified: OffsetDateTime::now_utc(),
-        schema: DetailCredentialSchemaResponseDTO {
-            id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "Credential schema name".to_string(),
-            format: "Credential schema format".to_string(),
-            revocation_method: "Credential schema revocation method".to_string(),
-            organisation_id: Uuid::new_v4(),
-        },
-        issuer_did: Some("Issuer DID".to_string()),
-        claims: vec![],
-    }
-}
-
 fn dummy_proof() -> Proof {
     Proof {
         id: Uuid::new_v4(),
@@ -831,7 +505,7 @@ fn dummy_credential() -> Credential {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            host: Some("host".to_string()),
+            host: Some("http://www.host.co".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
         }),
         revocation_list: None,

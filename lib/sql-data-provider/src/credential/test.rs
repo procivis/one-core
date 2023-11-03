@@ -651,7 +651,7 @@ async fn test_update_credential_success() {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                host: Some("host".to_string()),
+                host: Some("https://host.co".parse().unwrap()),
                 data: None,
             })
         });

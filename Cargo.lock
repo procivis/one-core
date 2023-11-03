@@ -759,6 +759,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "url",
  "utoipa",
  "utoipa-swagger-ui",
  "uuid",
@@ -2574,6 +2575,7 @@ dependencies = [
  "thiserror",
  "time",
  "tokio",
+ "url",
  "uuid",
 ]
 
@@ -2587,6 +2589,7 @@ dependencies = [
  "time",
  "tokio",
  "uniffi",
+ "url",
  "uuid",
 ]
 
@@ -4051,6 +4054,7 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
+ "url",
  "uuid",
 ]
 

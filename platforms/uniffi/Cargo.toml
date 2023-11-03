@@ -19,6 +19,7 @@ serde_json.workspace = true
 time.workspace = true
 tokio.workspace = true
 uuid.workspace = true
+url.workspace = true
 
 [build-dependencies]
 uniffi = { version = "0.25.0", features = ["build"] }

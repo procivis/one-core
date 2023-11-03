@@ -24,9 +24,11 @@ serde_yaml = "0.9.25"
 time.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["macros"] }
+url = { workspace = true }
 
 [dev-dependencies]
 mockall.workspace = true
-one-core = { version = "0.1.0", path = "../../lib/one-core", features = ["mock"] }
-tokio = { workspace = true, features = ["macros"] }
+one-core = { version = "0.1.0", path = "../../lib/one-core", features = [
+    "mock",
+] }
