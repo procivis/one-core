@@ -377,7 +377,7 @@ async fn test_get_proof_with_relations() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
-                host: Some("host".to_owned()),
+                host: Some("http://www.host.co".parse().unwrap()),
             })
         });
 
@@ -478,7 +478,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
-                host: Some("host".to_owned()),
+                host: Some("http://www.host.co/".parse().unwrap()),
             })
         });
 

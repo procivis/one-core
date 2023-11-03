@@ -5,6 +5,7 @@ use one_core::{
     repository::interaction_repository::InteractionRepository,
 };
 use sea_orm::DbErr;
+use url::Url;
 use uuid::Uuid;
 
 use crate::test_utilities::{
@@ -32,17 +33,19 @@ struct TestSetupWithInteraction {
     pub db: sea_orm::DatabaseConnection,
     pub provider: InteractionProvider,
     pub interaction_id: Uuid,
-    pub host: String,
+    pub host: Url,
     pub data: Vec<u8>,
 }
 
 async fn setup_with_interaction() -> TestSetupWithInteraction {
     let setup = setup().await;
 
-    let host = "host".to_string();
+    let host: Url = "http://www.host.co".parse().unwrap();
     let data = vec![1, 2, 3];
 
-    let id = insert_interaction(&setup.db, &host, &data).await.unwrap();
+    let id = insert_interaction(&setup.db, host.as_str(), &data)
+        .await
+        .unwrap();
 
     let id = Uuid::from_str(&id).unwrap();
 
@@ -64,7 +67,7 @@ async fn test_create_interaction() {
         id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        host: Some("host".to_owned()),
+        host: Some("http://www.host.co".parse().unwrap()),
         data: Some(vec![1, 2, 3]),
     };
 
@@ -74,7 +77,7 @@ async fn test_create_interaction() {
     assert_eq!(result.unwrap(), id);
 
     let model = get_interaction(&setup.db, &id).await.unwrap();
-    assert_eq!(model.host, Some("host".to_owned()));
+    assert_eq!(model.host, Some("http://www.host.co/".to_owned()));
     assert_eq!(model.data, Some(vec![1, 2, 3]));
 }
 

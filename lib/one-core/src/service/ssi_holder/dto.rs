@@ -17,11 +17,6 @@ pub enum InvitationResponseDTO {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct HandleInvitationURLQuery {
-    pub protocol: String,
-}
-
-#[derive(Clone, Debug)]
 pub struct PresentationSubmitRequestDTO {
     pub interaction_id: InteractionId,
     pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestDTO>,

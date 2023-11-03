@@ -1,40 +1,56 @@
 use std::sync::Arc;
 
 use self::{
-    dto::{OpenID4VCICredentialDefinition, OpenID4VCICredentialRequestDTO},
-    mapper::create_credential_offer_encoded,
-    model::InteractionContent,
+    dto::{
+        OpenID4VCICredentialDefinition, OpenID4VCICredentialOffer, OpenID4VCICredentialRequestDTO,
+    },
+    mapper::{create_claims_from_credential_definition, create_credential_offer_encoded},
+    model::{HolderInteractionData, InteractionContent},
 };
 
 use super::{
-    dto::{InvitationResponse, InvitationType, SubmitIssuerResponse},
+    dto::{InvitationType, SubmitIssuerResponse},
+    mapper::interaction_from_handle_invitation,
     TransportProtocol, TransportProtocolError,
 };
 use crate::{
     config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::Crypto,
     model::{
-        claim::ClaimRelations,
+        claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialStateRelations,
-            UpdateCredentialRequest,
+            Credential, CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
+            CredentialStateRelations, UpdateCredentialRequest,
         },
-        credential_schema::CredentialSchemaRelations,
+        credential_schema::{
+            CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
+        },
         did::{Did, DidRelations},
         interaction::{Interaction, InteractionId, InteractionRelations},
-        organisation::OrganisationRelations,
+        organisation::{Organisation, OrganisationRelations},
         proof::Proof,
     },
     repository::{
-        credential_repository::CredentialRepository, interaction_repository::InteractionRepository,
-        proof_repository::ProofRepository,
+        credential_repository::CredentialRepository,
+        credential_schema_repository::CredentialSchemaRepository, error::DataLayerError,
+        interaction_repository::InteractionRepository, proof_repository::ProofRepository,
     },
-    util::oidc::map_core_to_oidc_format,
+    service::{
+        oidc::dto::{
+            OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
+            OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+        },
+        ssi_holder::dto::InvitationResponseDTO,
+    },
+    util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core},
 };
+
 use async_trait::async_trait;
+use serde::de::DeserializeOwned;
 use serde_json::json;
 use time::OffsetDateTime;
+use url::Url;
 use uuid::Uuid;
 
 #[cfg(test)]
@@ -45,11 +61,15 @@ mod model;
 
 pub mod dto;
 
+const CREDENTIAL_OFFER_QUERY_PARAM_KEY: &str = "credential_offer";
+const PRESENTATION_DEFINITION_QUERY_PARAM_KEY: &str = "presentation_definition";
+
 // TODO Remove when it's used
 #[allow(unused)]
 pub struct OpenID4VC {
     client: reqwest::Client,
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     base_url: Option<String>,
@@ -60,6 +80,7 @@ impl OpenID4VC {
     pub fn new(
         base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
         config: Option<ParamsEnum<ExchangeParams>>,
@@ -72,6 +93,7 @@ impl OpenID4VC {
         Self {
             base_url,
             credential_repository,
+            credential_schema_repository,
             proof_repository,
             interaction_repository,
             client: reqwest::Client::new(),
@@ -82,16 +104,53 @@ impl OpenID4VC {
 
 #[async_trait]
 impl TransportProtocol for OpenID4VC {
-    fn detect_invitation_type(&self, _url: &str) -> Option<InvitationType> {
-        unimplemented!()
+    fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType> {
+        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
+
+        if query_has_key(CREDENTIAL_OFFER_QUERY_PARAM_KEY) {
+            return Some(InvitationType::CredentialIssuance);
+        }
+
+        if query_has_key(PRESENTATION_DEFINITION_QUERY_PARAM_KEY) {
+            return Some(InvitationType::ProofRequest);
+        }
+
+        None
     }
 
     async fn handle_invitation(
         &self,
-        _url: &str,
-        _own_did: &Did,
-    ) -> Result<InvitationResponse, TransportProtocolError> {
-        unimplemented!()
+        url: Url,
+        own_did: Did,
+    ) -> Result<InvitationResponseDTO, TransportProtocolError> {
+        let invitation_type =
+            self.detect_invitation_type(&url)
+                .ok_or(TransportProtocolError::Failed(
+                    "No OpenID4VC query params detected".to_string(),
+                ))?;
+
+        match invitation_type {
+            InvitationType::CredentialIssuance => {
+                //for credential issuance credential_offer should be always present
+                let value = url
+                    .query_pairs()
+                    .find_map(|(k, v)| (k == CREDENTIAL_OFFER_QUERY_PARAM_KEY).then_some(v))
+                    .ok_or(TransportProtocolError::Failed(
+                        "Missing credential offer param".to_string(),
+                    ))?;
+
+                // handle issuance
+                let credential_offer: OpenID4VCICredentialOffer = serde_json::from_str(&value)
+                    .map_err(|error| {
+                        TransportProtocolError::Failed(format!(
+                            "Failed decoding credential offer {error}"
+                        ))
+                    })?;
+
+                handle_credential_invitation(self, credential_offer, own_did).await
+            }
+            InvitationType::ProofRequest => unimplemented!(),
+        }
     }
 
     async fn reject_proof(&self, _proof: &Proof) -> Result<(), TransportProtocolError> {
@@ -127,7 +186,7 @@ impl TransportProtocol for OpenID4VC {
             },
         };
 
-        let mut url = super::get_base_url(&credential.interaction)?;
+        let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path(&format!("/ssi/oidc-issuer/v1/{}/credential", schema_id));
 
         let response = self
@@ -241,12 +300,18 @@ async fn add_new_interaction(
     };
 
     let now = OffsetDateTime::now_utc();
+    let host = base_url
+        .map(|url| {
+            url.parse()
+                .map_err(|_| TransportProtocolError::Failed(format!("Invalid base url {url}")))
+        })
+        .transpose()?;
 
     let new_interaction = Interaction {
         id: interaction_id,
         created_date: now,
         last_modified: now,
-        host: base_url,
+        host,
         data: serde_json::to_vec(&interaction_content).ok(),
     };
 
@@ -256,4 +321,233 @@ async fn add_new_interaction(
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
     Ok(interaction_id)
+}
+
+async fn handle_credential_invitation(
+    deps: &OpenID4VC,
+    credential_offer: OpenID4VCICredentialOffer,
+    holder_did: Did,
+) -> Result<InvitationResponseDTO, TransportProtocolError> {
+    let endpoint: Url = credential_offer.credential_issuer.parse().map_err(|_| {
+        TransportProtocolError::Failed(format!(
+            "Invalid credential issuer url {}",
+            credential_offer.credential_issuer
+        ))
+    })?;
+
+    let (oicd_discovery, issuer_metadata) =
+        get_discovery_and_issuer_metadata(&deps.client, endpoint).await?;
+
+    let token_response: OpenID4VCITokenResponseDTO = deps
+        .client
+        .post(&oicd_discovery.token_endpoint)
+        .form(&OpenID4VCITokenRequestDTO {
+            grant_type: "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
+            pre_authorized_code: credential_offer.grants.code.pre_authorized_code.clone(),
+        })
+        .send()
+        .await
+        .map_err(TransportProtocolError::HttpResponse)?
+        .json()
+        .await
+        .map_err(TransportProtocolError::HttpResponse)?;
+
+    let base_url: Url = credential_offer
+        .credential_issuer
+        .parse()
+        .map_err(|_| TransportProtocolError::MissingBaseUrl)?;
+
+    // extract schema id from the path until we find a better way
+    let credential_schema_id: CredentialSchemaId = base_url
+        .path_segments()
+        .and_then(|p| p.last())
+        .ok_or(TransportProtocolError::Failed(
+            "Invalid credential issuer url".to_string(),
+        ))?
+        .parse()
+        .map_err(|error| {
+            TransportProtocolError::Failed(format!("Invalid credential schema id {error}"))
+        })?;
+
+    // OID4VC credential offer query param should always contain one credential for the moment
+    let credential = credential_offer.credentials.first().ok_or_else(|| {
+        TransportProtocolError::Failed("Credential offer is missing credentials".to_string())
+    })?;
+
+    let credential_format = map_from_oidc_format_to_core(&credential.format)
+        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+
+    let holder_data = HolderInteractionData {
+        credential_issuer: credential_offer.credential_issuer,
+        pre_authorized_code: credential_offer.grants.code.pre_authorized_code,
+        format: credential_format.clone(),
+        credential_type: Some(credential.credential_definition.r#type.clone()),
+        token_endpoint: Some(oicd_discovery.token_endpoint),
+        credential_endpoint: Some(issuer_metadata.credential_endpoint),
+        access_token: Some(token_response.access_token),
+        access_token_expires_at: Some(token_response.expires_in),
+    };
+    let data = serde_json::to_vec(&holder_data).map_err(TransportProtocolError::JsonError)?;
+
+    let interaction = create_and_store_interaction(&deps.interaction_repository, base_url, data)
+        .await
+        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+    let interaction_id = interaction.id;
+
+    let claims = create_claims_from_credential_definition(&credential.credential_definition);
+    let (claim_schemas, claims) = claims
+        .map(|o| {
+            let (claim_schemas, claims) = o.into_iter().unzip();
+            (claim_schemas, claims)
+        })
+        .unzip();
+
+    let credential_schema = create_and_store_credential_schema(
+        &deps.credential_schema_repository,
+        credential_schema_id,
+        credential_format,
+        claim_schemas,
+        holder_did.organisation.clone(),
+    )
+    .await
+    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+
+    let credential = create_and_store_credential(
+        &deps.credential_repository,
+        holder_did,
+        credential_schema,
+        claims,
+        interaction,
+    )
+    .await
+    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+
+    Ok(InvitationResponseDTO::Credential {
+        interaction_id,
+        credential_ids: vec![credential],
+    })
+}
+
+async fn create_and_store_credential_schema(
+    repository: &Arc<dyn CredentialSchemaRepository + Send + Sync>,
+    id: CredentialSchemaId,
+    format: String,
+    claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+    organisation: Option<Organisation>,
+) -> Result<CredentialSchema, DataLayerError> {
+    let now = OffsetDateTime::now_utc();
+
+    let credential_schema = CredentialSchema {
+        id,
+        deleted_at: None,
+        created_date: now,
+        last_modified: now,
+        //todo: we need to figure out what to put here
+        name: Uuid::new_v4().to_string(),
+        format,
+        revocation_method: "NONE".to_string(),
+        claim_schemas,
+        organisation,
+    };
+
+    let result = repository
+        .create_credential_schema(credential_schema.clone())
+        .await;
+
+    let credential_schema = match result {
+        Ok(_) => credential_schema,
+        Err(DataLayerError::AlreadyExists) => {
+            repository
+                .get_credential_schema(&id, &CredentialSchemaRelations::default())
+                .await?
+        }
+        Err(error) => return Err(error),
+    };
+
+    Ok(credential_schema)
+}
+
+async fn create_and_store_interaction(
+    repository: &Arc<dyn InteractionRepository + Send + Sync>,
+    base_url: Url,
+    data: Vec<u8>,
+) -> Result<Interaction, DataLayerError> {
+    let now = OffsetDateTime::now_utc();
+
+    let interaction = interaction_from_handle_invitation(base_url, Some(data), now);
+
+    repository.create_interaction(interaction.clone()).await?;
+
+    Ok(interaction)
+}
+
+async fn create_and_store_credential(
+    repository: &Arc<dyn CredentialRepository + Send + Sync>,
+    holder_did: Did,
+    credential_schema: CredentialSchema,
+    claims: Option<Vec<Claim>>,
+    interaction: Interaction,
+) -> Result<CredentialId, DataLayerError> {
+    let now = OffsetDateTime::now_utc();
+
+    repository
+        .create_credential(Credential {
+            id: Uuid::new_v4(),
+            created_date: now,
+            issuance_date: now,
+            last_modified: now,
+            credential: vec![],
+            transport: "OPENID4VC".to_string(),
+            state: Some(vec![CredentialState {
+                created_date: now,
+                state: CredentialStateEnum::Pending,
+            }]),
+            claims,
+            // TODO: we need this to make everything work
+            issuer_did: Some(holder_did.clone()),
+            holder_did: Some(holder_did),
+            schema: Some(credential_schema),
+            interaction: Some(interaction),
+            revocation_list: None,
+        })
+        .await
+}
+
+async fn get_discovery_and_issuer_metadata(
+    client: &reqwest::Client,
+    credential_issuer_endpoint: Url,
+) -> Result<
+    (
+        OpenID4VCIDiscoveryResponseDTO,
+        OpenID4VCIIssuerMetadataResponseDTO,
+    ),
+    TransportProtocolError,
+> {
+    async fn fetch<T: DeserializeOwned>(
+        client: &reqwest::Client,
+        endpoint: impl reqwest::IntoUrl,
+    ) -> Result<T, TransportProtocolError> {
+        let response = client
+            .get(endpoint)
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+
+        response
+            .json()
+            .await
+            .map_err(TransportProtocolError::HttpResponse)
+    }
+
+    let oicd_discovery = fetch(
+        client,
+        format!("{credential_issuer_endpoint}/.well-known/openid-configuration"),
+    );
+    let issuer_metadata = fetch(
+        client,
+        format!("{credential_issuer_endpoint}/.well-known/openid-credential-issuer"),
+    );
+    let (oicd_discovery, issuer_metadata) = tokio::join!(oicd_discovery, issuer_metadata);
+
+    Ok((oicd_discovery?, issuer_metadata?))
 }

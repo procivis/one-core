@@ -1,12 +1,7 @@
-use super::dto::HandleInvitationURLQuery;
 use crate::{
     model::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        did::{Did, DidId, DidType},
-        interaction::Interaction,
-        organisation::Organisation,
-        proof::{self, Proof, ProofId, ProofStateEnum},
     },
     provider::{
         credential_formatter::model::VCCredentialClaimSchemaResponse,
@@ -18,39 +13,9 @@ use crate::{
         error::ServiceError,
     },
 };
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-pub(super) fn parse_query(url: &str) -> Result<HandleInvitationURLQuery, ServiceError> {
-    let query: HashMap<String, String> = reqwest::Url::parse(url)
-        .map_err(|_| ServiceError::IncorrectParameters)?
-        .query_pairs()
-        .map(|(key, value)| (key.to_string(), value.to_string()))
-        .collect();
-
-    Ok(HandleInvitationURLQuery {
-        protocol: query
-            .get("protocol")
-            .ok_or(ServiceError::IncorrectParameters)?
-            .to_owned(),
-    })
-}
-
-pub fn remote_did_from_value(did_value: String, organisation: &Organisation) -> Did {
-    let now = OffsetDateTime::now_utc();
-    Did {
-        id: DidId::new_v4(),
-        name: "issuer".to_string(),
-        created_date: now,
-        last_modified: now,
-        organisation: Some(organisation.to_owned()),
-        did: did_value,
-        did_type: DidType::Remote,
-        did_method: "KEY".to_string(),
-        keys: None,
-    }
-}
 
 impl TryFrom<VCCredentialClaimSchemaResponse> for CredentialSchemaClaim {
     type Error = ServiceError;
@@ -85,47 +50,6 @@ impl TryFrom<ProofCredentialSchema> for CredentialSchemaListItemResponseDTO {
             format: value.format,
             revocation_method: value.revocation_method,
         })
-    }
-}
-
-pub fn interaction_from_handle_invitation(
-    host: String,
-    data: Option<Vec<u8>>,
-    now: OffsetDateTime,
-) -> Interaction {
-    Interaction {
-        id: Uuid::new_v4(),
-        created_date: now,
-        last_modified: now,
-        host: Some(host),
-        data,
-    }
-}
-
-pub fn proof_from_handle_invitation(
-    proof_id: &ProofId,
-    protocol: &str,
-    verifier_did: Did,
-    holder_did: Did,
-    interaction: Interaction,
-    now: OffsetDateTime,
-) -> Proof {
-    Proof {
-        id: proof_id.to_owned(),
-        created_date: now,
-        last_modified: now,
-        issuance_date: now,
-        transport: protocol.to_owned(),
-        state: Some(vec![proof::ProofState {
-            created_date: now,
-            last_modified: now,
-            state: ProofStateEnum::Pending,
-        }]),
-        schema: None,
-        claims: None,
-        verifier_did: Some(verifier_did),
-        holder_did: Some(holder_did),
-        interaction: Some(interaction),
     }
 }
 

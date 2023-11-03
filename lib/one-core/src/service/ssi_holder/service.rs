@@ -1,49 +1,39 @@
 use super::{
     dto::{InvitationResponseDTO, PresentationSubmitRequestDTO},
-    mapper::{
-        interaction_from_handle_invitation, parse_query, proof_from_handle_invitation,
-        remote_did_from_value, string_to_uuid,
-    },
     SSIHolderService,
 };
 use crate::{
-    common_mapper::{get_algorithm_from_key_algorithm, get_base_url},
+    common_mapper::get_algorithm_from_key_algorithm,
     model::{
-        claim::{Claim, ClaimId, ClaimRelations},
+        claim::{Claim, ClaimRelations},
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential::{
-            Credential, CredentialRelations, CredentialState, CredentialStateEnum,
-            CredentialStateRelations, UpdateCredentialRequest,
+            CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
+            UpdateCredentialRequest,
         },
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::{Did, DidRelations, KeyRole},
+        credential_schema::CredentialSchemaRelations,
+        did::{DidRelations, KeyRole},
         interaction::{InteractionId, InteractionRelations},
         key::KeyRelations,
         organisation::OrganisationRelations,
         proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
     },
-    provider::{
-        credential_formatter::model::PresentationCredential,
-        transport_protocol::dto::{ConnectVerifierResponse, InvitationResponse},
-    },
-    repository::error::DataLayerError,
-    service::{credential::dto::CredentialDetailResponseDTO, did::dto::DidId, error::ServiceError},
+    provider::credential_formatter::model::PresentationCredential,
+    service::{did::dto::DidId, error::ServiceError},
 };
-
-use crate::common_validator::throw_if_latest_credential_state_not_eq;
+use crate::{
+    common_validator::throw_if_latest_credential_state_not_eq,
+    provider::transport_protocol::provider::DetectedProtocol,
+};
 use time::OffsetDateTime;
-use uuid::Uuid;
+use url::Url;
 
 impl SSIHolderService {
     pub async fn handle_invitation(
         &self,
-        url: &str,
+        url: Url,
         holder_did_id: &DidId,
     ) -> Result<InvitationResponseDTO, ServiceError> {
-        let url_query_params = parse_query(url)?;
-
-        let base_url = get_base_url(url)?;
-
         let holder_did = self
             .did_repository
             .get_did(
@@ -55,31 +45,14 @@ impl SSIHolderService {
             )
             .await?;
 
-        let connect_response = self
+        let DetectedProtocol { protocol, .. } = self
             .protocol_provider
-            .get_protocol(&url_query_params.protocol)?
-            .handle_invitation(url, &holder_did)
-            .await?;
+            .detect_protocol(&url)
+            .ok_or(ServiceError::MissingTransportProtocol(
+                "Cannot detect transport protocol".to_string(),
+            ))?;
 
-        match connect_response {
-            InvitationResponse::Proof {
-                proof_id,
-                proof_request,
-            } => {
-                self.handle_proof_invitation(
-                    base_url,
-                    proof_id,
-                    proof_request,
-                    &url_query_params.protocol,
-                    &holder_did,
-                )
-                .await
-            }
-            InvitationResponse::Credential(issuer_response) => {
-                self.handle_credential_invitation(base_url, holder_did, *issuer_response)
-                    .await
-            }
-        }
+        Ok(protocol.handle_invitation(url, holder_did).await?)
     }
 
     pub async fn reject_proof_request(
@@ -388,188 +361,5 @@ impl SSIHolderService {
         }
 
         Ok(())
-    }
-
-    // ====== private methods
-    async fn handle_proof_invitation(
-        &self,
-        base_url: String,
-        proof_id: String,
-        proof_request: ConnectVerifierResponse,
-        protocol: &str,
-        holder_did: &Did,
-    ) -> Result<InvitationResponseDTO, ServiceError> {
-        let verifier_did_result = self
-            .did_repository
-            .get_did_by_value(&proof_request.verifier_did, &DidRelations::default())
-            .await;
-
-        let now = OffsetDateTime::now_utc();
-        let verifier_did = match verifier_did_result {
-            Ok(did) => did,
-            Err(DataLayerError::RecordNotFound) => {
-                let new_did = Did {
-                    id: Uuid::new_v4(),
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_owned(),
-                    did: proof_request.verifier_did.clone(),
-                    did_type: crate::model::did::DidType::Remote,
-                    did_method: "KEY".to_owned(),
-                    keys: None,
-                    organisation: holder_did.organisation.to_owned(),
-                };
-                self.did_repository.create_did(new_did.clone()).await?;
-                new_did
-            }
-            Err(e) => return Err(ServiceError::GeneralRuntimeError(e.to_string())),
-        };
-
-        let data = serde_json::to_string(&proof_request.claims)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?
-            .as_bytes()
-            .to_vec();
-
-        let interaction = interaction_from_handle_invitation(base_url, Some(data), now);
-
-        let interaction_id = self
-            .interaction_repository
-            .create_interaction(interaction.clone())
-            .await?;
-
-        let proof_id = string_to_uuid(&proof_id)?;
-        let proof = proof_from_handle_invitation(
-            &proof_id,
-            protocol,
-            verifier_did,
-            holder_did.to_owned(),
-            interaction,
-            now,
-        );
-
-        self.proof_repository.create_proof(proof).await?;
-
-        Ok(InvitationResponseDTO::ProofRequest {
-            interaction_id,
-            proof_id,
-        })
-    }
-
-    async fn handle_credential_invitation(
-        &self,
-        base_url: String,
-        holder_did: Did,
-        issuer_response: CredentialDetailResponseDTO,
-    ) -> Result<InvitationResponseDTO, ServiceError> {
-        let organisation = holder_did
-            .organisation
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "organisation is None".to_string(),
-            ))?;
-        let mut credential_schema: CredentialSchema = issuer_response.schema.into();
-        credential_schema.organisation = Some(organisation.to_owned());
-        credential_schema.claim_schemas = Some(
-            issuer_response
-                .claims
-                .iter()
-                .map(|claim| claim.schema.to_owned().into())
-                .collect(),
-        );
-
-        let result = self
-            .credential_schema_repository
-            .create_credential_schema(credential_schema.clone())
-            .await;
-        if let Err(error) = result {
-            if error != DataLayerError::AlreadyExists {
-                return Err(ServiceError::from(error));
-            }
-        }
-
-        // insert issuer did if not yet known
-        let issuer_did_value = issuer_response
-            .issuer_did
-            .ok_or(ServiceError::IncorrectParameters)?;
-        let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
-        let did_insert_result = self.did_repository.create_did(issuer_did.clone()).await;
-        let issuer_did = match did_insert_result {
-            Ok(_) => issuer_did,
-            Err(DataLayerError::AlreadyExists) => {
-                self.did_repository
-                    .get_did_by_value(&issuer_did_value, &DidRelations::default())
-                    .await?
-            }
-            Err(e) => return Err(ServiceError::from(e)),
-        };
-
-        let now = OffsetDateTime::now_utc();
-
-        let interaction = interaction_from_handle_invitation(base_url, None, now);
-        let interaction_id = self
-            .interaction_repository
-            .create_interaction(interaction.clone())
-            .await?;
-
-        // create credential
-        let incoming_claims = issuer_response.claims;
-        let claims = credential_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "claim_schemas is None".to_string(),
-            ))?
-            .iter()
-            .map(|claim_schema| -> Result<Option<Claim>, ServiceError> {
-                if let Some(value) = incoming_claims
-                    .iter()
-                    .find(|claim| claim.schema.key == claim_schema.schema.key)
-                {
-                    Ok(Some(Claim {
-                        schema: Some(claim_schema.schema.to_owned()),
-                        value: value.value.to_owned(),
-                        id: ClaimId::new_v4(),
-                        created_date: now,
-                        last_modified: now,
-                    }))
-                } else if claim_schema.required {
-                    Err(ServiceError::ValidationError(format!(
-                        "Claim key {} missing",
-                        &claim_schema.schema.key
-                    )))
-                } else {
-                    Ok(None) // missing optional claim
-                }
-            })
-            .collect::<Result<Vec<Option<Claim>>, ServiceError>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-
-        self.credential_repository
-            .create_credential(Credential {
-                id: issuer_response.id,
-                created_date: now,
-                issuance_date: now,
-                last_modified: now,
-                credential: vec![],
-                transport: "PROCIVIS_TEMPORARY".to_string(),
-                state: Some(vec![CredentialState {
-                    created_date: now,
-                    state: CredentialStateEnum::Pending,
-                }]),
-                claims: Some(claims),
-                issuer_did: Some(issuer_did),
-                holder_did: Some(holder_did),
-                schema: Some(credential_schema),
-                interaction: Some(interaction),
-                revocation_list: None,
-            })
-            .await?;
-
-        Ok(InvitationResponseDTO::Credential {
-            credential_ids: vec![issuer_response.id],
-            interaction_id,
-        })
     }
 }

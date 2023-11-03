@@ -2,24 +2,24 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
     pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO>,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
     pub format: String,
     pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
     pub r#type: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIDiscoveryResponseDTO {
     pub issuer: String,
     pub authorization_endpoint: String,
@@ -35,6 +35,7 @@ pub struct OpenID4VCIDiscoveryResponseDTO {
 #[serde(transparent)]
 pub struct DurationSeconds(pub i64);
 
+#[derive(Debug, Deserialize)]
 pub struct OpenID4VCITokenResponseDTO {
     pub access_token: String,
     pub token_type: String,
@@ -46,9 +47,10 @@ pub struct OpenID4VCIErrorResponseDTO {
     pub error: OpenID4VCIError,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct OpenID4VCITokenRequestDTO {
     pub grant_type: String,
+    #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,
 }
 #[derive(Clone, Debug, PartialEq, Error)]
@@ -75,18 +77,18 @@ pub struct OpenID4VCIInteractionDataDTO {
     pub access_token_expires_at: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCICredentialResponseDTO {
     pub credential: String,
     pub format: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct OpenID4VCICredentialDefinitionRequestDTO {
     pub r#type: Vec<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct OpenID4VCICredentialRequestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCICredentialDefinitionRequestDTO,

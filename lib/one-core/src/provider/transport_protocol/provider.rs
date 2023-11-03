@@ -20,6 +20,7 @@ use crate::provider::transport_protocol::mapper::from_credential_id_and_token;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::error::ServiceError;
 use std::{collections::HashMap, sync::Arc};
+use url::Url;
 
 #[derive(Clone)]
 pub struct DetectedProtocol {
@@ -40,7 +41,7 @@ pub(crate) trait TransportProtocolProvider {
         protocol_config_key: &str,
     ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, ServiceError>;
 
-    fn detect_protocol(&self, url: &str) -> Option<DetectedProtocol>;
+    fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol>;
 
     async fn issue_credential(
         &self,
@@ -109,7 +110,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
         self.get_protocol(transport_instance)
     }
 
-    fn detect_protocol(&self, url: &str) -> Option<DetectedProtocol> {
+    fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol> {
         for protocol in self.protocols.values() {
             if let Some(invitation_type) = protocol.detect_invitation_type(url) {
                 return Some(DetectedProtocol {

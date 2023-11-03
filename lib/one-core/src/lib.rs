@@ -114,7 +114,14 @@ impl OneCore {
             &available_credential_formatter_types,
         )?;
 
-        let procivis_temp = ProcivisTemp::new(core_base_url.clone());
+        let procivis_temp = ProcivisTemp::new(
+            core_base_url.clone(),
+            data_provider.get_credential_repository(),
+            data_provider.get_proof_repository(),
+            data_provider.get_interaction_repository(),
+            data_provider.get_credential_schema_repository(),
+            data_provider.get_did_repository(),
+        );
 
         let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![
             ("PROCIVIS_TEMPORARY".to_string(), Arc::new(procivis_temp)),
@@ -123,6 +130,7 @@ impl OneCore {
                 Arc::new(OpenID4VC::new(
                     core_base_url.clone(),
                     data_provider.get_credential_repository(),
+                    data_provider.get_credential_schema_repository(),
                     data_provider.get_proof_repository(),
                     data_provider.get_interaction_repository(),
                     get_exchange_params("OPENID4VC", &config).ok(),
@@ -257,11 +265,9 @@ impl OneCore {
                 protocol_provider.clone(),
             ),
             ssi_holder_service: SSIHolderService::new(
-                data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_did_repository(),
-                data_provider.get_interaction_repository(),
                 formatter_provider,
                 protocol_provider,
                 key_provider,

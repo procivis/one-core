@@ -19,6 +19,7 @@ use crate::{
     provider::transport_protocol::TransportProtocol,
     repository::mock::{
         credential_repository::MockCredentialRepository,
+        credential_schema_repository::MockCredentialSchemaRepository,
         interaction_repository::MockInteractionRepository, proof_repository::MockProofRepository,
     },
 };
@@ -29,6 +30,7 @@ use super::OpenID4VC;
 struct Repositories {
     pub _client: reqwest::Client,
     pub credential_repository: MockCredentialRepository,
+    pub credential_schema_repository: MockCredentialSchemaRepository,
     pub proof_repository: MockProofRepository,
     pub interaction_repository: MockInteractionRepository,
     pub _base_url: Option<String>,
@@ -37,8 +39,9 @@ struct Repositories {
 
 fn setup_protocol(repositories: Repositories) -> OpenID4VC {
     OpenID4VC::new(
-        Some("BASE_URL".to_string()),
+        Some("http://base_url".to_string()),
         Arc::new(repositories.credential_repository),
+        Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.interaction_repository),
         Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(
@@ -111,7 +114,7 @@ fn generic_credential() -> Credential {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
             created_date: now,
             last_modified: now,
-            host: Some("host".to_string()),
+            host: Some("http://host.co".parse().unwrap()),
             data: Some(vec![1, 2, 3]),
         }),
         revocation_list: None,
@@ -185,8 +188,8 @@ async fn test_generate_share_credentials() {
     let result = protocol.share_credential(&credential).await.unwrap();
 
     // Everything except for interaction id is here.
-    // Genrating token with predictible interaction id it tested somewhere else.
+    // Generating token with predictable interaction id it tested somewhere else.
     assert!(
-        result.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22BASE_URL%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+        result.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
     )
 }
