@@ -4,7 +4,10 @@ use crate::{
     test_utilities::*,
 };
 use mockall::predicate::{always, eq};
-use one_core::repository::mock::revocation_list_repository::MockRevocationListRepository;
+use one_core::{
+    model::interaction::Interaction,
+    repository::mock::revocation_list_repository::MockRevocationListRepository,
+};
 use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
@@ -639,12 +642,26 @@ async fn test_update_credential_success() {
     )
     .unwrap();
 
+    let mut interaction_repository = MockInteractionRepository::default();
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .returning(|id, _| {
+            Ok(Interaction {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                host: Some("host".to_string()),
+                data: None,
+            })
+        });
+
     let provider = CredentialProvider {
         db: db.clone(),
         credential_schema_repository: Arc::from(credential_schema_repository),
         claim_repository: Arc::from(claim_repository),
         did_repository: Arc::from(did_repository),
-        interaction_repository: Arc::from(MockInteractionRepository::default()),
+        interaction_repository: Arc::from(interaction_repository),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
     };
 
@@ -658,20 +675,33 @@ async fn test_update_credential_success() {
     let token = vec![1, 2, 3];
     assert_ne!(token, credential_before_update.credential);
 
+    let interaction_id =
+        Uuid::parse_str(&insert_interaction(&db, "host", &vec![]).await.unwrap()).unwrap();
+
     assert!(provider
         .update_credential(UpdateCredentialRequest {
             id: credential_id.to_owned(),
             credential: Some(token.to_owned()),
             holder_did_id: None,
             state: None,
-            interaction: None,
+            interaction: Some(interaction_id),
         })
         .await
         .is_ok());
     let credential_after_update = provider
-        .get_credential(&credential_id, &CredentialRelations::default())
+        .get_credential(
+            &credential_id,
+            &CredentialRelations {
+                interaction: Some(InteractionRelations::default()),
+                ..Default::default()
+            },
+        )
         .await;
     assert!(credential_after_update.is_ok());
     let credential_after_update = credential_after_update.unwrap();
     assert_eq!(token, credential_after_update.credential);
+    assert_eq!(
+        interaction_id,
+        credential_after_update.interaction.unwrap().id
+    );
 }
