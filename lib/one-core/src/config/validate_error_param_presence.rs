@@ -150,6 +150,7 @@ public:
                 "JWT".to_string(),
                 FormatEntity {
                     r#type: "JWT".to_string(),
+                    disabled: None,
                     display: TranslatableString::Key("format.jwt".to_string()),
                     order: None,
                     params: None,
@@ -164,6 +165,7 @@ public:
                     "EMAIL".to_string(),
                     DatatypeEntity {
                         r#type: DatatypeType::String,
+                        disabled: None,
                         display: TranslatableString::Key("datatype.email".to_string()),
                         order: None,
                         params: Some(ParamsEnum::Unparsed(
@@ -185,6 +187,7 @@ public:
                     "COUNT".to_string(),
                     DatatypeEntity {
                         r#type: DatatypeType::Number,
+                        disabled: None,
                         display: TranslatableString::Key("datatype.count".to_string()),
                         order: None,
                         params: Some(ParamsEnum::Unparsed(
@@ -217,6 +220,7 @@ public:
                 "EMAIL".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
+                    disabled: None,
                     display: TranslatableString::Key("datatype.email".to_string()),
                     order: None,
                     params: Some(ParamsEnum::Unparsed(

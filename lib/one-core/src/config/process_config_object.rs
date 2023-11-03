@@ -83,7 +83,8 @@ fn postprocess_format_entity(entity: FormatEntity) -> Result<FormatEntity, serde
                 let merged = merge_public_and_private(public, private)?;
 
                 match entity.r#type.as_str() {
-                    "JWT" | "SDJWT" => {
+                    "JWT" | "SDJWT" | "JSON_LD" | "MDOC" => {
+                        // TODO: This must be as well removed
                         let params: FormatJwtParams = serde_json::from_value(merged)?;
                         Some(ParamsEnum::Parsed(FormatParams::Jwt(params)))
                     }
@@ -97,6 +98,7 @@ fn postprocess_format_entity(entity: FormatEntity) -> Result<FormatEntity, serde
     Ok(FormatEntity {
         r#type: entity.r#type,
         display: entity.display,
+        disabled: entity.disabled,
         order: entity.order,
         params: parsed_params,
     })
@@ -128,6 +130,7 @@ fn postprocess_exchange_entity(
     Ok(ExchangeEntity {
         r#type: entity.r#type,
         display: entity.display,
+        disabled: entity.disabled,
         order: entity.order,
         params: parsed_params,
     })
@@ -153,6 +156,7 @@ fn postprocess_transport_entity(
     Ok(TransportEntity {
         r#type: entity.r#type,
         display: entity.display,
+        disabled: entity.disabled,
         order: entity.order,
         params: parsed_params,
     })
@@ -178,6 +182,7 @@ fn postprocess_revocation_entity(
     Ok(RevocationEntity {
         r#type: entity.r#type,
         display: entity.display,
+        disabled: entity.disabled,
         order: entity.order,
         params: parsed_params,
     })
@@ -207,6 +212,7 @@ fn postprocess_did_entity(entity: DidEntity) -> Result<DidEntity, serde_json::Er
     Ok(DidEntity {
         r#type: entity.r#type,
         display: entity.display,
+        disabled: entity.disabled,
         order: entity.order,
         params: parsed_params,
     })
@@ -249,6 +255,7 @@ fn postprocess_datatype_entity(
     Ok(DatatypeEntity {
         r#type: entity.r#type,
         display: entity.display,
+        disabled: entity.disabled,
         order: entity.order,
         params: parsed_params,
     })
@@ -275,6 +282,7 @@ fn postprocess_key_algorithm_entity(
     Ok(KeyAlgorithmEntity {
         r#type: entity.r#type,
         display: entity.display,
+        disabled: entity.disabled,
         order: entity.order,
         params: parsed_params,
     })
@@ -292,7 +300,7 @@ fn postprocess_key_storage_entity(
                 let merged = merge_public_and_private(public, private)?;
 
                 match entity.r#type.as_str() {
-                    "INTERNAL" => {
+                    "INTERNAL" | "AZURE_VAULT" | "PKCS11" => {
                         let params: KeyStorageInternalParams = serde_json::from_value(merged)?;
                         Some(ParamsEnum::Parsed(KeyStorageParams::Internal(params)))
                     }
@@ -306,6 +314,7 @@ fn postprocess_key_storage_entity(
     Ok(KeyStorageEntity {
         r#type: entity.r#type,
         display: entity.display,
+        disabled: entity.disabled,
         order: entity.order,
         params: parsed_params,
     })

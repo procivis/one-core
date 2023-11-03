@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::provider::key_storage::azure_vault::AzureVaultKeyProvider;
+use crate::provider::key_storage::pkcs11::PKCS11KeyProvider;
 use crate::{
     config::{
         data_structure::{
@@ -12,7 +14,9 @@ use crate::{
     service::error::ServiceError,
 };
 
+pub mod azure_vault;
 pub mod internal;
+pub mod pkcs11;
 pub mod provider;
 
 pub struct GeneratedKey {
@@ -53,6 +57,8 @@ fn storage_from_entity(
             }?;
             Ok((name.to_owned(), Arc::new(InternalKeyProvider { params })))
         }
+        "AZURE_VAULT" => Ok((name.to_owned(), Arc::new(AzureVaultKeyProvider {}))),
+        "PKCS11" => Ok((name.to_owned(), Arc::new(PKCS11KeyProvider {}))),
         _ => Err(ConfigParseError::InvalidType(
             entity.r#type.to_owned(),
             String::new(),

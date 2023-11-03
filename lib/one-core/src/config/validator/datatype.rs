@@ -293,6 +293,7 @@ mod tests {
                 DatatypeEntity {
                     r#type: DatatypeType::String,
                     display: TranslatableString::Key("Display".to_string()),
+                    disabled: None,
                     order: None,
                     params: None,
                 },
@@ -301,6 +302,7 @@ mod tests {
                 "NUMBER".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::Number,
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
@@ -322,6 +324,7 @@ mod tests {
             "STRING".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::String,
+                disabled: None,
                 display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: None,
@@ -339,6 +342,7 @@ mod tests {
                 "EMAIL".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: Some(ParamsEnum::Parsed(DatatypeParams::String(
@@ -358,6 +362,7 @@ mod tests {
                 "EMAIL_INVALID_REGEX".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: Some(ParamsEnum::Parsed(DatatypeParams::String(
@@ -402,6 +407,7 @@ mod tests {
             "NUMBER".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::Number,
+                disabled: None,
                 display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(DatatypeParams::Number(
@@ -455,6 +461,7 @@ mod tests {
             "DATE".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::Date,
+                disabled: None,
                 display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(DatatypeParams::Date(
@@ -509,6 +516,7 @@ mod tests {
             "COUNTRY".to_string(),
             DatatypeEntity {
                 r#type: DatatypeType::Enum,
+                disabled: None,
                 display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(DatatypeParams::Enum(

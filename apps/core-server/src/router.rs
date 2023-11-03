@@ -232,6 +232,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
 
     let config_path = PathBuf::from(&config.config_file);
     let unparsed_config = load_config(&config_path).expect("Failed to load config.yml");
+
     let core = OneCore::new(
         Arc::new(DataLayer::create(&config.database_url).await),
         unparsed_config,

@@ -47,6 +47,7 @@ pub enum DatatypeType {
 pub struct ConfigEntity<TypeEnum, ParamsType> {
     pub r#type: TypeEnum,
     pub display: TranslatableString,
+    pub disabled: Option<bool>,
     pub order: Option<u32>,
     pub params: Option<ParamsEnum<ParamsType>>,
 }

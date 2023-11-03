@@ -12,6 +12,7 @@ pub fn generic_config() -> CoreConfig {
             FormatEntity {
                 r#type: "JWT".to_string(),
                 display: TranslatableString::Key("Display".to_string()),
+                disabled: None,
                 order: None,
                 params: None,
             },
@@ -23,6 +24,7 @@ pub fn generic_config() -> CoreConfig {
                     r#type: "PROCIVIS_TEMPORARY".to_string(),
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
+                    disabled: None,
                     params: None,
                 },
             ),
@@ -32,6 +34,7 @@ pub fn generic_config() -> CoreConfig {
                     r#type: "OPENID4VC".to_string(),
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
+                    disabled: None,
                     params: Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(
                         ExchangeOPENID4VCParams {
                             pre_authorized_code_expires_in: Some(Param {
@@ -53,6 +56,7 @@ pub fn generic_config() -> CoreConfig {
                 "NONE".to_string(),
                 RevocationEntity {
                     r#type: "NONE".to_string(),
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
@@ -62,6 +66,7 @@ pub fn generic_config() -> CoreConfig {
                 "STATUSLIST2021".to_string(),
                 RevocationEntity {
                     r#type: "STATUSLIST2021".to_string(),
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
@@ -72,6 +77,7 @@ pub fn generic_config() -> CoreConfig {
             "KEY".to_string(),
             DidEntity {
                 r#type: "KEY".to_string(),
+                disabled: None,
                 display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: None,
@@ -82,6 +88,7 @@ pub fn generic_config() -> CoreConfig {
                 "STRING".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::String,
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
@@ -91,6 +98,7 @@ pub fn generic_config() -> CoreConfig {
                 "NUMBER".to_string(),
                 DatatypeEntity {
                     r#type: DatatypeType::Number,
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
@@ -101,6 +109,7 @@ pub fn generic_config() -> CoreConfig {
             "EDDSA".to_string(),
             KeyAlgorithmEntity {
                 r#type: "EDDSA".to_string(),
+                disabled: None,
                 display: TranslatableString::Key("Display".to_string()),
                 order: None,
                 params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {
@@ -116,6 +125,7 @@ pub fn generic_config() -> CoreConfig {
                 "INTERNAL".to_string(),
                 KeyStorageEntity {
                     r#type: "INTERNAL".to_string(),
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
@@ -125,6 +135,7 @@ pub fn generic_config() -> CoreConfig {
                 "MEIN_AZURE_KEYVAULT".to_string(),
                 KeyStorageEntity {
                     r#type: "HSM_AZURE".to_string(),
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,
@@ -134,6 +145,7 @@ pub fn generic_config() -> CoreConfig {
                 "MOCK".to_string(),
                 KeyStorageEntity {
                     r#type: "MOCK".to_string(),
+                    disabled: None,
                     display: TranslatableString::Key("Display".to_string()),
                     order: None,
                     params: None,

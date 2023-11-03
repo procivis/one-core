@@ -60,6 +60,7 @@ fn get_did_config() -> HashMap<String, DidEntity> {
         "MOCK".to_string(),
         DidEntity {
             r#type: "MOCK".to_string(),
+            disabled: None,
             display: data_structure::TranslatableString::Key("translation".to_string()),
             order: None,
             params: None,
