@@ -44,13 +44,21 @@ pub(super) fn create_service_discovery_response(
     })
 }
 
-impl From<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
-    fn from(value: OpenID4VCIInteractionDataDTO) -> Self {
-        Self {
+impl TryFrom<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
+    type Error = ServiceError;
+    fn try_from(value: OpenID4VCIInteractionDataDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
             access_token: value.access_token.to_string(),
             token_type: "bearer".to_string(),
-            expires_in: DurationSeconds(value.access_token_expires_at.unix_timestamp()),
-        }
+            expires_in: DurationSeconds(
+                value
+                    .access_token_expires_at
+                    .ok_or(ServiceError::MappingError(
+                        "access_token_expires_at missing".to_string(),
+                    ))?
+                    .unix_timestamp(),
+            ),
+        })
     }
 }
 
