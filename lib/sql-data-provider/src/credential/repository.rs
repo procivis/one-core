@@ -462,11 +462,17 @@ impl CredentialRepository for CredentialProvider {
             Some(token) => Set(token),
         };
 
+        let interaction_id = match request.interaction {
+            None => Unchanged(Default::default()),
+            Some(interaction_id) => Set(Some(interaction_id.to_string())),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(id.to_string()),
             last_modified: Set(OffsetDateTime::now_utc()),
             holder_did_id,
             credential,
+            interaction_id,
             ..Default::default()
         };
 
