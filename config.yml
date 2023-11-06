@@ -2,14 +2,14 @@ format:
   JWT:
     type: "JWT"
     display: "format.jwt"
-    order: 0 # optional to force ordering
+    order: 0
     params:
       public:
         leeway: 60
   SDJWT:
     type: "SDJWT"
     display: "format.sdjwt"
-    order: 1 # optional to force ordering
+    order: 1
     params:
       public:
         leeway: 60
@@ -49,7 +49,7 @@ transport:
   HTTP:
     type: "HTTP"
     display: "transport.http"
-    order: 0 # optional to force ordering
+    order: 0
     params: null
 revocation:
   NONE:
@@ -172,20 +172,20 @@ keyAlgorithm:
         algorithm: "Ed25519"
 keyStorage:
   INTERNAL:
-    display: "storage.internal"
+    display: "keyStorage.internal"
     type: "INTERNAL"
     order: 0
     params:
       private:
         encryption: "my encryption key"
   PKCS11:
-    display: "storage.pkcs11"
+    display: "keyStorage.pkcs11"
     type: "PKCS11"
     disabled: true
     order: 1
     params: null
   AZURE_VAULT:
-    display: "storage.azureKeyVault"
+    display: "keyStorage.azureKeyVault"
     type: "AZURE_VAULT"
     disabled: true
     order: 2
