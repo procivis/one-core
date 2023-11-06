@@ -19,11 +19,14 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::endpoint::{
-    self, config, credential, credential_schema, did, interaction, key, misc, organisation, proof,
-    proof_schema, ssi,
+use crate::{
+    dto,
+    endpoint::{
+        self, config, credential, credential_schema, did, interaction, key, misc, organisation,
+        proof, proof_schema, ssi,
+    },
+    metrics, Config,
 };
-use crate::{dto, Config};
 
 #[derive(Clone)]
 pub(crate) struct AppState {
@@ -240,6 +243,8 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
     )
     .expect("Failed to parse config");
 
+    metrics::setup();
+
     let state = AppState { core };
 
     let protected = Router::new()
@@ -384,7 +389,8 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
         .route(
             "/ssi/temporary-verifier/v1/reject",
             post(ssi::controller::ssi_verifier_reject_proof),
-        );
+        )
+        .route("/metrics", get(metrics::get_metrics));
 
     let technical_endpoints = Router::new()
         .route("/build-info", get(misc::get_build_info))
@@ -413,7 +419,10 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                         request.uri().path()
                     )
                 })
-                .on_response(|response: &Response<_>, _latency: Duration, _span: &Span| {
+                .on_response(|response: &Response<_>, latency: Duration, _span: &Span| {
+                    // this will also count itself and the health check which is probably not what we want
+                    // TODO: add a separate layer for metrics
+                    metrics::track_request_count_and_time(latency.as_millis() as f64);
                     tracing::debug!("SERVICE CALL END {}", response.status())
                 }),
         )

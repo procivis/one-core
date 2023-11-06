@@ -43,6 +43,7 @@ sentry = { version = "0.31.7", default-features = false, features = [
 sentry-tracing = "0.31.7"
 dto_mapper = { workspace = true }
 url = { workspace = true }
+prometheus = { version = "0.13", features = ["process"] }
 
 [build-dependencies]
 shadow-rs.workspace = true
