@@ -26,11 +26,11 @@ pub struct OpenID4VCICredentialOffer {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCICredentialSubject {
     #[serde(flatten)]
-    pub keys: HashMap<String, OpenID4VCICredentialValeDetails>,
+    pub keys: HashMap<String, OpenID4VCICredentialValueDetails>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct OpenID4VCICredentialValeDetails {
+pub struct OpenID4VCICredentialValueDetails {
     pub value: String,
     pub value_type: String,
 }

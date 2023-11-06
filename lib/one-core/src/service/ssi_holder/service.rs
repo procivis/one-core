@@ -286,6 +286,7 @@ impl SSIHolderService {
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
+                    schema: Some(CredentialSchemaRelations::default()),
                     ..Default::default()
                 },
             )

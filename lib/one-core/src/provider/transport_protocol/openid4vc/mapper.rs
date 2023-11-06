@@ -5,8 +5,11 @@ use uuid::Uuid;
 
 use crate::{
     model::{
-        claim::Claim, claim_schema::ClaimSchema, credential::Credential,
-        credential_schema::CredentialSchemaClaim, interaction::InteractionId,
+        claim::Claim,
+        claim_schema::ClaimSchema,
+        credential::Credential,
+        credential_schema::{CredentialSchema, CredentialSchemaClaim},
+        interaction::InteractionId,
     },
     provider::transport_protocol::{
         openid4vc::dto::{
@@ -18,7 +21,7 @@ use crate::{
     util::oidc::map_core_to_oidc_format,
 };
 
-use super::dto::{OpenID4VCICredentialOffer, OpenID4VCICredentialValeDetails};
+use super::dto::{OpenID4VCICredentialOffer, OpenID4VCICredentialValueDetails};
 
 pub(super) fn create_credential_offer_encoded(
     base_url: Option<String>,
@@ -53,7 +56,7 @@ pub(super) fn create_credential_offer_encoded(
                         claim.schema.as_ref().map(|schema| {
                             (
                                 schema.key.clone(),
-                                OpenID4VCICredentialValeDetails {
+                                OpenID4VCICredentialValueDetails {
                                     value: claim.value.clone(),
                                     value_type: schema.data_type.clone(),
                                 },
@@ -81,36 +84,54 @@ pub(super) fn create_credential_offer_encoded(
 
 pub(super) fn create_claims_from_credential_definition(
     credential_definition: &OpenID4VCICredentialDefinition,
-) -> Option<Vec<(CredentialSchemaClaim, Claim)>> {
-    let credential_subject = credential_definition.credential_subject.as_ref()?;
-    let created_at = OffsetDateTime::now_utc();
+    credential_schema: &Option<CredentialSchema>,
+) -> Result<Vec<(CredentialSchemaClaim, Claim)>, TransportProtocolError> {
+    let credential_subject =
+        credential_definition
+            .credential_subject
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "Missing credential_subject".to_string(),
+            ))?;
 
-    let claims = credential_subject
-        .keys
-        .iter()
-        .map(|(key, value_details)| {
-            let claim_schema = ClaimSchema {
-                id: Uuid::new_v4(),
-                key: key.to_string(),
-                data_type: value_details.value_type.to_string(),
-                created_date: created_at,
-                last_modified: created_at,
-            };
-            let schema_claim = CredentialSchemaClaim {
-                schema: claim_schema.clone(),
+    let schema_claims = credential_schema
+        .as_ref()
+        .and_then(|schema| schema.claim_schemas.to_owned());
+
+    let now = OffsetDateTime::now_utc();
+    let mut result: Vec<(CredentialSchemaClaim, Claim)> = vec![];
+    for (key, value_details) in credential_subject.keys.iter() {
+        let schema_claim = if let Some(current_claims) = &schema_claims {
+            current_claims
+                .iter()
+                .find(|claim| &claim.schema.key == key)
+                .ok_or(TransportProtocolError::Failed(format!(
+                    "Missing key `{key}` in current credential schema"
+                )))?
+                .to_owned()
+        } else {
+            CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4(),
+                    key: key.to_string(),
+                    data_type: value_details.value_type.to_string(),
+                    created_date: now,
+                    last_modified: now,
+                },
                 required: false,
-            };
-            let claim = Claim {
-                id: Uuid::new_v4(),
-                created_date: created_at,
-                last_modified: created_at,
-                value: value_details.value.to_string(),
-                schema: Some(claim_schema),
-            };
+            }
+        };
 
-            (schema_claim, claim)
-        })
-        .collect();
+        let claim = Claim {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            value: value_details.value.to_string(),
+            schema: Some(schema_claim.schema.to_owned()),
+        };
 
-    Some(claims)
+        result.push((schema_claim, claim));
+    }
+
+    Ok(result)
 }

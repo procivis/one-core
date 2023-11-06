@@ -5,6 +5,7 @@ use crate::{
 };
 
 use async_trait::async_trait;
+use serde::{de, Serialize};
 use thiserror::Error;
 use url::Url;
 
@@ -88,4 +89,26 @@ pub(super) fn get_base_url_from_interaction(
             "interaction host is missing".to_string(),
         ))
         .cloned()
+}
+
+pub(super) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
+    dto: &DataDTO,
+) -> Result<Vec<u8>, TransportProtocolError> {
+    serde_json::to_vec(&dto).map_err(TransportProtocolError::JsonError)
+}
+
+pub(super) fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>(
+    interaction: Option<&Interaction>,
+) -> Result<DataDTO, TransportProtocolError> {
+    let data = interaction
+        .ok_or(TransportProtocolError::Failed(
+            "interaction is None".to_string(),
+        ))?
+        .data
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "interaction data is missing".to_string(),
+        ))?;
+
+    serde_json::from_slice(data).map_err(TransportProtocolError::JsonError)
 }
