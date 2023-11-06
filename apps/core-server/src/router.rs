@@ -166,12 +166,12 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 endpoint::ssi::dto::OpenID4VCICredentialDefinitionRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VCICredentialRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VCICredentialResponseRestDTO,
-
                 endpoint::ssi::dto::OpenID4VCIDiscoveryResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCITokenResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIErrorResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIErrorRestEnum,
                 endpoint::ssi::dto::OpenID4VCITokenRequestRestDTO,
+                endpoint::ssi::dto::DurationSecondsRest,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,

@@ -260,15 +260,31 @@ pub(crate) async fn oidc_create_token(
 )]
 pub(crate) async fn oidc_create_credential(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    Path(credential_schema_id): Path<Uuid>,
     headers: HeaderMap,
     Json(request): Json<OpenID4VCICredentialRequestRestDTO>,
 ) -> Response {
-    let auth = headers.get("Authorization").unwrap().to_str().unwrap();
+    let authorization_header_content = match headers.get("Authorization") {
+        None => {
+            tracing::error!("OpenID4VCI credential - missing Authorization header");
+            return StatusCode::BAD_REQUEST.into_response();
+        }
+        Some(auth) => match auth.to_str() {
+            Ok(auth) => auth,
+            Err(_) => {
+                return StatusCode::BAD_REQUEST.into_response();
+            }
+        },
+    };
+
     let result = state
         .core
         .oidc_service
-        .oidc_create_credential(&id, auth, request.into())
+        .oidc_create_credential(
+            &credential_schema_id,
+            authorization_header_content,
+            request.into(),
+        )
         .await;
 
     match result {
