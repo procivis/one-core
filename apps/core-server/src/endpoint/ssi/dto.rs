@@ -54,7 +54,6 @@ pub struct ConnectVerifierResponseRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[convert(from = "OpenID4VCIIssuerMetadataResponseDTO")]
-#[serde(rename_all = "camelCase")]
 pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
