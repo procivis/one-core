@@ -137,17 +137,15 @@ cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate 
 
 [tasks.add_ios_targets]
 script = '''
-rustup toolchain install nightly
-rustup target add aarch64-apple-ios-sim --toolchain nightly
+rustup target add aarch64-apple-ios-sim
 rustup target add aarch64-apple-ios x86_64-apple-ios
-rustup component add rust-src --toolchain nightly
 '''
 
 [tasks.build_ios_code]
 extend = "mobile-build"
 script.main = '''
 cargo build --package one-core-uniffi --lib --release --target x86_64-apple-ios
-cargo +nightly build --package one-core-uniffi --lib --release --target aarch64-apple-ios-sim
+cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios-sim
 cargo build --package one-core-uniffi --lib --release --target aarch64-apple-ios
 '''
 
