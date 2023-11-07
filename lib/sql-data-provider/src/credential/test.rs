@@ -683,6 +683,7 @@ async fn test_update_credential_success() {
             id: credential_id.to_owned(),
             credential: Some(token.to_owned()),
             holder_did_id: None,
+            issuer_did_id: None,
             state: None,
             interaction: Some(interaction_id),
         })

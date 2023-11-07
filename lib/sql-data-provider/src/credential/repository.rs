@@ -353,10 +353,8 @@ impl CredentialRepository for CredentialProvider {
             for state in states {
                 self.update_credential(UpdateCredentialRequest {
                     id: request.id.to_owned(),
-                    credential: None,
-                    holder_did_id: None,
                     state: Some(state),
-                    interaction: None,
+                    ..Default::default()
                 })
                 .await?;
             }
@@ -461,6 +459,11 @@ impl CredentialRepository for CredentialProvider {
             Some(holder_did) => Set(Some(holder_did.to_string())),
         };
 
+        let issuer_did_id: sea_orm::ActiveValue<Option<String>> = match request.issuer_did_id {
+            None => Unchanged(Default::default()),
+            Some(issuer_did) => Set(Some(issuer_did.to_string())),
+        };
+
         let credential = match request.credential {
             None => Unchanged(Default::default()),
             Some(token) => Set(token),
@@ -475,6 +478,7 @@ impl CredentialRepository for CredentialProvider {
             id: Unchanged(id.to_string()),
             last_modified: Set(OffsetDateTime::now_utc()),
             holder_did_id,
+            issuer_did_id,
             credential,
             interaction_id,
             ..Default::default()

@@ -498,7 +498,17 @@ fn dummy_credential() -> Credential {
             state: CredentialStateEnum::Pending,
         }]),
         claims: None,
-        issuer_did: None,
+        issuer_did: Some(Did {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "issuer_did".to_string(),
+            did: "did:key:123".to_string(),
+            did_type: DidType::Remote,
+            did_method: "KEY".to_string(),
+            keys: None,
+            organisation: None,
+        }),
         holder_did: None,
         schema: None,
         interaction: Some(Interaction {
