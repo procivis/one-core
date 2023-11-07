@@ -168,6 +168,7 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 endpoint::ssi::dto::OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCICredentialDefinitionRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VCICredentialRequestRestDTO,
+                endpoint::ssi::dto::OpenID4VCIProofRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VCICredentialResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIDiscoveryResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCITokenResponseRestDTO,
@@ -197,7 +198,6 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 dto::common::SortDirection,
             )
         ),
-        modifiers(),
         tags(
             (name = "credential_schema_management", description = "Credential schema management"),
             (name = "proof_schema_management", description = "Proof schema management"),
@@ -220,10 +220,19 @@ pub async fn router_logic(config: Config) -> Result<(), Box<dyn std::error::Erro
                 SecurityScheme::Http(
                     HttpBuilder::new()
                         .scheme(HttpAuthScheme::Bearer)
-                        .description(Some("Provide bearer token"))
+                        .description(Some("BFF access token"))
                         .build(),
                 ),
-            )
+            );
+            components.add_security_scheme(
+                "OpenID4VCI",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .description(Some("OpenID4VCI token"))
+                        .build(),
+                ),
+            );
         }
     }
 

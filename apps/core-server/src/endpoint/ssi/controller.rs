@@ -12,13 +12,12 @@ use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
 };
 use crate::router::AppState;
-use axum::extract::Path;
-use axum::http::HeaderMap;
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
+    headers::{self, authorization::Bearer},
     http::StatusCode,
     response::{IntoResponse, Response},
-    Form, Json,
+    Form, Json, TypedHeader,
 };
 use one_core::service::error::ServiceError;
 use uuid::Uuid;
@@ -254,37 +253,21 @@ pub(crate) async fn oidc_create_token(
         (status = 500, description = "Server error"),
     ),
     security(
-        ("bearer" = [])
+        ("OpenID4VCI" = [])
     ),
     tag = "ssi",
 )]
 pub(crate) async fn oidc_create_credential(
     state: State<AppState>,
     Path(credential_schema_id): Path<Uuid>,
-    headers: HeaderMap,
+    TypedHeader(token): TypedHeader<headers::Authorization<Bearer>>,
     Json(request): Json<OpenID4VCICredentialRequestRestDTO>,
 ) -> Response {
-    let authorization_header_content = match headers.get("Authorization") {
-        None => {
-            tracing::error!("OpenID4VCI credential - missing Authorization header");
-            return StatusCode::BAD_REQUEST.into_response();
-        }
-        Some(auth) => match auth.to_str() {
-            Ok(auth) => auth,
-            Err(_) => {
-                return StatusCode::BAD_REQUEST.into_response();
-            }
-        },
-    };
-
+    let access_token = token.token();
     let result = state
         .core
         .oidc_service
-        .oidc_create_credential(
-            &credential_schema_id,
-            authorization_header_content,
-            request.into(),
-        )
+        .oidc_create_credential(&credential_schema_id, access_token, request.into())
         .await;
 
     match result {

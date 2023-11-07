@@ -3,9 +3,16 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct OpenID4VCICredentialRequestDTO {
+pub struct OpenID4VCICredential {
     pub format: String,
     pub credential_definition: OpenID4VCICredentialDefinition,
+    pub proof: OpenID4VCIProof,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OpenID4VCIProof {
+    pub proof_type: String,
+    pub jwt: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -17,9 +24,15 @@ pub struct OpenID4VCICredentialDefinition {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct OpenID4VCICredentialOfferCredentialDTO {
+    pub format: String,
+    pub credential_definition: OpenID4VCICredentialDefinition,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCICredentialOffer {
     pub credential_issuer: String,
-    pub credentials: Vec<OpenID4VCICredentialRequestDTO>,
+    pub credentials: Vec<OpenID4VCICredentialOfferCredentialDTO>,
     pub grants: OpenID4VCIGrants,
 }
 

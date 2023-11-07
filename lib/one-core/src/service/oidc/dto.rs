@@ -63,6 +63,8 @@ pub enum OpenID4VCIError {
     InvalidRequest,
     #[error("invalid_token")]
     InvalidToken,
+    #[error("invalid_or_missing_proof")]
+    InvalidOrMissingProof,
     #[error("unsupported_credential_format")]
     UnsupportedCredentialFormat,
     #[error("unsupported_credential_type")]
@@ -92,4 +94,11 @@ pub struct OpenID4VCICredentialDefinitionRequestDTO {
 pub struct OpenID4VCICredentialRequestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCICredentialDefinitionRequestDTO,
+    pub proof: OpenID4VCIProofRequestDTO,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct OpenID4VCIProofRequestDTO {
+    pub proof_type: String,
+    pub jwt: String,
 }

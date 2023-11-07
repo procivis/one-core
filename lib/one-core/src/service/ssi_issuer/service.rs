@@ -1,4 +1,5 @@
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
+use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::{
     model::{
@@ -9,10 +10,9 @@ use crate::{
             CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
-        did::{Did, DidId, DidRelations, DidType},
+        did::DidRelations,
         organisation::OrganisationRelations,
     },
-    repository::error::DataLayerError,
     service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
 };
 use time::OffsetDateTime;
@@ -49,36 +49,12 @@ impl SSIIssuerService {
             .as_ref()
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
-        let holder_did =
-            match self
-                .did_repository
-                .get_did_by_value(holder_did_value, &DidRelations::default())
-                .await
-            {
-                Ok(did) => did,
-                Err(DataLayerError::RecordNotFound) => {
-                    let organisation = credential_schema.organisation.as_ref().ok_or(
-                        ServiceError::MappingError("organisation is None".to_string()),
-                    )?;
-
-                    let did = Did {
-                        id: DidId::new_v4(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                        name: "holder".to_string(),
-                        organisation: Some(organisation.to_owned()),
-                        did: holder_did_value.clone(),
-                        did_method: "KEY".to_string(),
-                        did_type: DidType::Remote,
-                        keys: None,
-                    };
-                    self.did_repository.create_did(did.clone()).await?;
-                    did
-                }
-                Err(e) => {
-                    return Err(ServiceError::from(e));
-                }
-            };
+        let holder_did = get_or_create_did(
+            &self.did_repository,
+            &credential_schema.organisation,
+            holder_did_value,
+        )
+        .await?;
 
         let now: OffsetDateTime = OffsetDateTime::now_utc();
         let new_state = CredentialStateEnum::Offered;

@@ -287,6 +287,10 @@ impl SSIHolderService {
                     state: Some(CredentialStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
                     schema: Some(CredentialSchemaRelations::default()),
+                    holder_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )

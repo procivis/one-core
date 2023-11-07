@@ -1,5 +1,6 @@
 use crate::common_mapper::{
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_token_expires_in,
+    get_or_create_did,
 };
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::model::credential::{
@@ -10,10 +11,13 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaId, CredentialSchemaRelations,
 };
 use crate::model::interaction::InteractionRelations;
+use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
-use crate::service::oidc::dto::{OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO};
-use crate::service::oidc::mapper::{interaction_data_to_dto, parse_authorization_header};
+use crate::service::oidc::dto::{
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
+};
+use crate::service::oidc::mapper::{interaction_data_to_dto, parse_access_token};
 use crate::service::oidc::validator::{
     throw_if_credential_request_invalid, throw_if_interaction_created_date,
     throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
@@ -27,6 +31,7 @@ use crate::service::oidc::{
     mapper::{create_issuer_metadata_response, create_service_discovery_response},
     OIDCService,
 };
+use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use std::ops::Add;
 use std::str::FromStr;
 use std::time::Duration;
@@ -81,19 +86,24 @@ impl OIDCService {
     pub async fn oidc_create_credential(
         &self,
         credential_schema_id: &CredentialSchemaId,
-        authorization: &str,
+        access_token: &str,
         request: OpenID4VCICredentialRequestDTO,
     ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
+            .get_credential_schema(
+                credential_schema_id,
+                &CredentialSchemaRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
+                },
+            )
             .await
             .map_err(ServiceError::from)?;
 
         throw_if_credential_request_invalid(&schema, &request)?;
 
-        let (access_token, interaction_id) = parse_authorization_header(authorization)?;
-
+        let interaction_id = parse_access_token(access_token)?;
         let interaction = self
             .interaction_repository
             .get_interaction(&interaction_id, &InteractionRelations::default())
@@ -119,9 +129,36 @@ impl OIDCService {
             return Err(ServiceError::NotFound);
         }
 
+        let credential = credentials.get(0).ok_or(ServiceError::NotFound)?.to_owned();
+
+        let holder_did = if request.proof.proof_type == "jwt" {
+            let jwt = OpenID4VCIProofJWTFormatter::verify_proof(&request.proof.jwt).await?;
+            let holder_did_value = jwt.header.key_id.ok_or(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidOrMissingProof,
+            ))?;
+            get_or_create_did(
+                &self.did_repository,
+                &schema.organisation,
+                &holder_did_value,
+            )
+            .await
+        } else {
+            Err(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidOrMissingProof,
+            ))
+        }?;
+
+        self.credential_repository
+            .update_credential(UpdateCredentialRequest {
+                id: credential.id,
+                holder_did_id: Some(holder_did.id),
+                ..Default::default()
+            })
+            .await?;
+
         let credential = self
             .protocol_provider
-            .issue_credential(&credentials.get(0).ok_or(ServiceError::NotFound)?.id)
+            .issue_credential(&credential.id)
             .await?;
 
         Ok(OpenID4VCICredentialResponseDTO {

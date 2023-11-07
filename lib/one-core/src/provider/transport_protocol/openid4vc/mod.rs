@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use self::{
     dto::{
-        OpenID4VCICredentialDefinition, OpenID4VCICredentialOffer, OpenID4VCICredentialRequestDTO,
+        OpenID4VCICredential, OpenID4VCICredentialDefinition, OpenID4VCICredentialOffer,
+        OpenID4VCIProof,
     },
     mapper::{create_claims_from_credential_definition, create_credential_offer_encoded},
     model::{HolderInteractionData, InteractionContent},
@@ -47,6 +48,7 @@ use crate::{
     util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core},
 };
 
+use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -57,10 +59,9 @@ use uuid::Uuid;
 #[cfg(test)]
 mod test;
 
+pub mod dto;
 pub(super) mod mapper;
 mod model;
-
-pub mod dto;
 
 const CREDENTIAL_OFFER_QUERY_PARAM_KEY: &str = "credential_offer";
 const PRESENTATION_DEFINITION_QUERY_PARAM_KEY: &str = "presentation_definition";
@@ -178,25 +179,43 @@ impl TransportProtocol for OpenID4VC {
         let format = map_core_to_oidc_format(&schema.format)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
-        let body = OpenID4VCICredentialRequestDTO {
+        let interaction_data: HolderInteractionData =
+            deserialize_interaction_data(credential.interaction.as_ref())?;
+
+        let holder_did = credential
+            .holder_did
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed("schema is None".to_string()))?;
+
+        // TODO: add proper signature
+        let algorithm = "EdDSA".to_string();
+        let auth_fn = Box::new(move |_data: &str| Ok(vec![1u8]));
+
+        let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
+            interaction_data.issuer_url,
+            holder_did,
+            algorithm,
+            auth_fn,
+        )
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let body = OpenID4VCICredential {
             format,
             credential_definition: OpenID4VCICredentialDefinition {
                 r#type: vec!["VerifiableCredential".to_string()],
                 credential_subject: None,
             },
+            proof: OpenID4VCIProof {
+                proof_type: "jwt".to_string(),
+                jwt: proof_jwt,
+            },
         };
-
-        let interaction_data: HolderInteractionData =
-            deserialize_interaction_data(credential.interaction.as_ref())?;
 
         let response = self
             .client
             .post(interaction_data.credential_endpoint)
             .header("Content-Type", "application/json")
-            .header(
-                "Authorization",
-                format!("Bearer {}", interaction_data.access_token),
-            )
+            .bearer_auth(interaction_data.access_token)
             .body(json!(body).to_string())
             .send()
             .await
@@ -379,6 +398,7 @@ async fn handle_credential_invitation(
         .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
 
     let holder_data = HolderInteractionData {
+        issuer_url: issuer_metadata.credential_issuer,
         credential_endpoint: issuer_metadata.credential_endpoint,
         access_token: token_response.access_token,
         access_token_expires_at: Some(

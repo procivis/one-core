@@ -62,21 +62,19 @@ impl TryFrom<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
     }
 }
 
-pub(crate) fn parse_authorization_header(
-    authorization: &str,
-) -> Result<(String, InteractionId), ServiceError> {
-    let mut parts = authorization.split(' ');
-    let token = parts
-        .nth(1)
-        .ok_or(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))?;
-    let mut splitted_token = token.split('.');
+pub(super) fn parse_access_token(access_token: &str) -> Result<InteractionId, ServiceError> {
+    let mut splitted_token = access_token.split('.');
+    if splitted_token.to_owned().count() != 2 {
+        return Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken));
+    }
+
     let interaction_id = Uuid::from_str(
         splitted_token
             .next()
             .ok_or(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))?,
     )
     .map_err(|_| ServiceError::MappingError("Not a uuid".to_string()))?;
-    Ok((token.to_string(), interaction_id))
+    Ok(interaction_id)
 }
 
 pub(crate) fn interaction_data_to_dto(
