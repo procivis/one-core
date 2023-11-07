@@ -493,11 +493,7 @@ impl MigrationTrait for Migration {
                             .char_len(36)
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(Credential::IssuerDidId)
-                            .char_len(36)
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Credential::IssuerDidId).char_len(36))
                     .col(ColumnDef::new(Credential::HolderDidId).char_len(36))
                     .col(ColumnDef::new(Credential::InteractionId).char_len(36))
                     .col(ColumnDef::new(Credential::RevocationListId).char_len(36))

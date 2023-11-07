@@ -40,7 +40,7 @@ pub async fn insert_credential(
         deleted_at: Set(None),
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
         credential: Set(vec![0, 0, 0, 0]),
-        issuer_did_id: Set(did_id.to_string()),
+        issuer_did_id: Set(Some(did_id.to_string())),
         holder_did_id: Set(None),
         interaction_id: Set(None),
         revocation_list_id: Set(None),
