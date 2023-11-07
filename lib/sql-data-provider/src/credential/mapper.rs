@@ -67,7 +67,7 @@ impl TryFrom<entity::credential::Model> for Credential {
 pub(super) fn request_to_active_model(
     request: &Credential,
     schema: CredentialSchema,
-    issuer_did: Did,
+    issuer_did: Option<Did>,
     holder_did_id: Option<DidId>,
     interaction_id: Option<InteractionId>,
     revocation_list_id: Option<RevocationListId>,
@@ -81,7 +81,7 @@ pub(super) fn request_to_active_model(
         deleted_at: Set(None),
         transport: Set(request.transport.to_owned()),
         credential: Set(request.credential.to_owned()),
-        issuer_did_id: Set(issuer_did.id.to_string()),
+        issuer_did_id: Set(issuer_did.map(|did| did.id.to_string())),
         holder_did_id: Set(holder_did_id.map(|did_id| did_id.to_string())),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),

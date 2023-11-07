@@ -542,8 +542,7 @@ async fn create_and_store_credential(
                 state: CredentialStateEnum::Pending,
             }]),
             claims: Some(claims),
-            // TODO: we need this to make everything work
-            issuer_did: Some(holder_did.clone()),
+            issuer_did: None,
             holder_did: Some(holder_did),
             schema: Some(credential_schema),
             interaction: Some(interaction),

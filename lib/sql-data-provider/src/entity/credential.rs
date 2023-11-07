@@ -20,7 +20,7 @@ pub struct Model {
     #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
     pub credential: Vec<u8>,
 
-    pub issuer_did_id: String,
+    pub issuer_did_id: Option<String>,
     pub holder_did_id: Option<String>,
     pub interaction_id: Option<String>,
     pub revocation_list_id: Option<String>,

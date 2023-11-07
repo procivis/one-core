@@ -98,14 +98,21 @@ impl CredentialProvider {
         credential: credential::Model,
         relations: &CredentialRelations,
     ) -> Result<Credential, DataLayerError> {
-        let issuer_did_id =
-            Uuid::from_str(&credential.issuer_did_id).map_err(|_| DataLayerError::MappingError)?;
-        let issuer_did = get_did(
-            &issuer_did_id,
-            &relations.issuer_did,
-            self.did_repository.clone(),
-        )
-        .await?;
+        let issuer_did = match &credential.issuer_did_id {
+            None => None,
+            Some(issuer_did_id) => {
+                let issuer_did_id: Uuid = issuer_did_id
+                    .parse()
+                    .map_err(|_| DataLayerError::MappingError)?;
+
+                get_did(
+                    &issuer_did_id,
+                    &relations.issuer_did,
+                    self.did_repository.clone(),
+                )
+                .await?
+            }
+        };
 
         let holder_did = match &credential.holder_did_id {
             None => None,
@@ -290,10 +297,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
-        let issuer_did = request
-            .issuer_did
-            .to_owned()
-            .ok_or(DataLayerError::MappingError)?;
+        let issuer_did = request.issuer_did.clone();
         let holder_did_id = request.holder_did.as_ref().map(|did| did.id);
         let schema = request
             .schema
