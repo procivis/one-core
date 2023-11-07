@@ -28,7 +28,7 @@ pub type AuthenticationFn = Box<dyn FnOnce(&str) -> Result<Vec<u8>, SignerError>
 pub trait TokenVerifier {
     async fn verify<'a>(
         &self,
-        issuer_did_value: &'a str,
+        issuer_did_value: Option<String>,
         algorithm: &'a str,
         token: &'a str,
         signature: &'a [u8],
@@ -42,7 +42,7 @@ pub struct SkipVerification;
 impl TokenVerifier for SkipVerification {
     async fn verify<'a>(
         &self,
-        _issuer_did_value: &'a str,
+        _issuer_did_value: Option<String>,
         _algorithm: &'a str,
         _token: &'a str,
         _signature: &'a [u8],
@@ -55,7 +55,7 @@ impl TokenVerifier for SkipVerification {
 impl TokenVerifier for Box<dyn TokenVerifier + Send + Sync> {
     async fn verify<'a>(
         &self,
-        issuer_did_value: &'a str,
+        issuer_did_value: Option<String>,
         algorithm: &'a str,
         token: &'a str,
         signature: &'a [u8],
@@ -106,13 +106,8 @@ impl<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> Jwt<Payload> {
             string_to_b64url_string(&payload_json)?,
         );
 
-        let issuer = payload
-            .issuer
-            .as_ref()
-            .ok_or(FormatterError::MissingIssuer)?;
-
         verification
-            .verify(issuer, &header.algorithm, &jwt, &signature)
+            .verify(payload.issuer.clone(), &header.algorithm, &jwt, &signature)
             .await
             .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
 

@@ -24,7 +24,7 @@ pub struct DummyTestVerify;
 impl TokenVerifier for DummyTestVerify {
     async fn verify<'a>(
         &self,
-        _issuer_did_value: &'a str,
+        _issuer_did_value: Option<String>,
         _algorithm: &'a str,
         _token: &'a str,
         signature: &'a [u8],

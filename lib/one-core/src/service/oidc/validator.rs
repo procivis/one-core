@@ -67,7 +67,7 @@ pub(crate) fn throw_if_credential_request_invalid(
 
 fn is_interaction_data_valid(
     interaction_data: &OpenID4VCIInteractionDataDTO,
-    access_token: String,
+    access_token: &str,
 ) -> bool {
     interaction_data.pre_authorized_code_used
         && interaction_data.access_token == access_token
@@ -78,7 +78,7 @@ fn is_interaction_data_valid(
 
 pub(crate) fn throw_if_interaction_data_invalid(
     interaction_data: &OpenID4VCIInteractionDataDTO,
-    access_token: String,
+    access_token: &str,
 ) -> Result<(), ServiceError> {
     if !is_interaction_data_valid(interaction_data, access_token) {
         return Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken));

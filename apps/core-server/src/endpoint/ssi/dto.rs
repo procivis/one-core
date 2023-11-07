@@ -10,7 +10,8 @@ use one_core::service::{
         OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
         OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
         OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO,
+        OpenID4VCITokenResponseDTO,
     },
     ssi_issuer::dto::IssuerResponseDTO,
     ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
@@ -106,6 +107,14 @@ pub struct OpenID4VCICredentialDefinitionRequestRestDTO {
 pub struct OpenID4VCICredentialRequestRestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCICredentialDefinitionRequestRestDTO,
+    pub proof: OpenID4VCIProofRequestRestDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "OpenID4VCIProofRequestDTO")]
+pub struct OpenID4VCIProofRequestRestDTO {
+    pub proof_type: String,
+    pub jwt: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -133,6 +142,7 @@ pub enum OpenID4VCIErrorRestEnum {
     InvalidGrant,
     InvalidRequest,
     InvalidToken,
+    InvalidOrMissingProof,
     UnsupportedCredentialFormat,
     UnsupportedCredentialType,
 }

@@ -4,6 +4,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use std::sync::Arc;
 
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 
 pub mod dto;
@@ -19,6 +20,7 @@ pub struct OIDCService {
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     config: Arc<CoreConfig>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+    did_repository: Arc<dyn DidRepository + Send + Sync>,
 }
 
 impl OIDCService {
@@ -29,6 +31,7 @@ impl OIDCService {
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
         config: Arc<CoreConfig>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+        did_repository: Arc<dyn DidRepository + Send + Sync>,
     ) -> Self {
         Self {
             credential_schema_repository,
@@ -37,6 +40,7 @@ impl OIDCService {
             core_base_url,
             config,
             protocol_provider,
+            did_repository,
         }
     }
 }

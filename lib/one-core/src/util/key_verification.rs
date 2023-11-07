@@ -19,7 +19,7 @@ pub(crate) struct KeyVerification {
 impl TokenVerifier for KeyVerification {
     async fn verify<'a>(
         &self,
-        issuer_did_value: &'a str,
+        issuer_did_value: Option<String>,
         algorithm: &'a str,
         token: &'a str,
         signature: &'a [u8],
@@ -35,7 +35,10 @@ impl TokenVerifier for KeyVerification {
 
         let did = self
             .did_method_provider
-            .resolve(issuer_did_value)
+            .resolve(
+                &issuer_did_value
+                    .ok_or(SignerError::CouldNotVerify("Missing issuer".to_string()))?,
+            )
             .await
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
@@ -129,7 +132,12 @@ mod test {
         };
 
         let result = verification
-            .verify("issuer_did_value", "EDDSA", "token", b"signature")
+            .verify(
+                Some("issuer_did_value".to_string()),
+                "EDDSA",
+                "token",
+                b"signature",
+            )
             .await;
         assert!(result.is_ok());
     }
@@ -155,7 +163,12 @@ mod test {
         };
 
         let result = verification
-            .verify("issuer_did_value", "EDDSA", "token", b"signature")
+            .verify(
+                Some("issuer_did_value".to_string()),
+                "EDDSA",
+                "token",
+                b"signature",
+            )
             .await;
         assert!(matches!(result, Err(SignerError::CouldNotVerify(_))));
     }
@@ -186,7 +199,12 @@ mod test {
         };
 
         let result = verification
-            .verify("issuer_did_value", "EDDSA", "token", b"signature")
+            .verify(
+                Some("issuer_did_value".to_string()),
+                "EDDSA",
+                "token",
+                b"signature",
+            )
             .await;
         assert!(matches!(result, Err(SignerError::InvalidSignature)));
     }

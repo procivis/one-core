@@ -13,15 +13,18 @@ use crate::{
     },
     provider::transport_protocol::{
         openid4vc::dto::{
-            OpenID4VCICredentialDefinition, OpenID4VCICredentialRequestDTO,
-            OpenID4VCICredentialSubject, OpenID4VCIGrant, OpenID4VCIGrants,
+            OpenID4VCICredentialDefinition, OpenID4VCICredentialSubject, OpenID4VCIGrant,
+            OpenID4VCIGrants,
         },
         TransportProtocolError,
     },
     util::oidc::map_core_to_oidc_format,
 };
 
-use super::dto::{OpenID4VCICredentialOffer, OpenID4VCICredentialValueDetails};
+use super::dto::{
+    OpenID4VCICredentialOffer, OpenID4VCICredentialOfferCredentialDTO,
+    OpenID4VCICredentialValueDetails,
+};
 
 pub(super) fn create_credential_offer_encoded(
     base_url: Option<String>,
@@ -46,7 +49,7 @@ pub(super) fn create_credential_offer_encoded(
 
     let offer = OpenID4VCICredentialOffer {
         credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", url, credential_schema.id),
-        credentials: vec![OpenID4VCICredentialRequestDTO {
+        credentials: vec![OpenID4VCICredentialOfferCredentialDTO {
             format: map_core_to_oidc_format(&credential_schema.format)
                 .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
             credential_definition: OpenID4VCICredentialDefinition {

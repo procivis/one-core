@@ -11,6 +11,7 @@ pub(super) struct InteractionContent {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct HolderInteractionData {
+    pub issuer_url: String,
     pub credential_endpoint: String,
     pub access_token: String,
     #[serde(with = "time::serde::rfc3339::option")]

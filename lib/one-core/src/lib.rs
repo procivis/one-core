@@ -222,6 +222,7 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 config.clone(),
                 protocol_provider.clone(),
+                data_provider.get_did_repository(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 data_provider.get_credential_schema_repository(),
