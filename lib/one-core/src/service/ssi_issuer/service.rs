@@ -62,13 +62,12 @@ impl SSIIssuerService {
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                credential: None,
                 holder_did_id: Some(holder_did.id),
                 state: Some(CredentialState {
                     created_date: now,
                     state: new_state.clone(),
                 }),
-                interaction: None,
+                ..Default::default()
             })
             .await?;
 
@@ -122,13 +121,11 @@ impl SSIIssuerService {
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                credential: None,
-                holder_did_id: None,
                 state: Some(CredentialState {
                     created_date: OffsetDateTime::now_utc(),
                     state: CredentialStateEnum::Rejected,
                 }),
-                interaction: None,
+                ..Default::default()
             })
             .await?;
 

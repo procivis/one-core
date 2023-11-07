@@ -176,13 +176,11 @@ impl CredentialService {
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                credential: None,
-                holder_did_id: None,
                 state: Some(CredentialState {
                     created_date: now,
                     state: credential::CredentialStateEnum::Revoked,
                 }),
-                interaction: None,
+                ..Default::default()
             })
             .await?;
 
@@ -345,13 +343,11 @@ impl CredentialService {
                 self.credential_repository
                     .update_credential(UpdateCredentialRequest {
                         id: credential_id.to_owned(),
-                        credential: None,
-                        holder_did_id: None,
                         state: Some(CredentialState {
                             created_date: now,
                             state: credential::CredentialStateEnum::Pending,
                         }),
-                        interaction: None,
+                        ..Default::default()
                     })
                     .await
                     .map_err(ServiceError::from)?;
