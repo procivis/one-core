@@ -32,7 +32,7 @@ figment.workspace = true
 
 tower-http = { version = "0.4", features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-utoipa = { version = "4.0.0", features = ["uuid", "axum_extras"] }
+utoipa = { version = "4.0.0", features = ["uuid", "axum_extras", "url"] }
 utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
 serde_qs = "0.12.0"
 sentry = { version = "0.31.7", default-features = false, features = [
