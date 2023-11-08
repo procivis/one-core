@@ -2620,6 +2620,7 @@ dependencies = [
  "one-core",
  "serde_json",
  "sql-data-provider",
+ "thiserror",
  "time",
  "tokio",
  "uniffi",

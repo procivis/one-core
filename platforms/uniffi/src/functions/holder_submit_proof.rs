@@ -1,9 +1,10 @@
 use crate::{
     dto::PresentationSubmitCredentialRequestBindingDTO,
+    error::BindingError,
     utils::{into_uuid, run_sync},
     OneCoreBinding,
 };
-use one_core::service::{error::ServiceError, ssi_holder::dto::PresentationSubmitRequestDTO};
+use one_core::service::ssi_holder::dto::PresentationSubmitRequestDTO;
 use std::collections::HashMap;
 
 impl OneCoreBinding {
@@ -11,7 +12,7 @@ impl OneCoreBinding {
         &self,
         interaction_id: String,
         submit_credentials: HashMap<String, PresentationSubmitCredentialRequestBindingDTO>,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), BindingError> {
         run_sync(async {
             self.inner
                 .ssi_holder_service
@@ -20,7 +21,7 @@ impl OneCoreBinding {
                     submit_credentials: submit_credentials
                         .into_iter()
                         .map(|(key, value)| Ok((key, value.try_into()?)))
-                        .collect::<Result<_, ServiceError>>()?,
+                        .collect::<Result<_, BindingError>>()?,
                 })
                 .await?;
 

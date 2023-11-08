@@ -1,14 +1,14 @@
-use crate::{dto::DidRequestBindingDTO, utils::run_sync, OneCoreBinding};
-use one_core::service::error::ServiceError;
+use crate::{dto::DidRequestBindingDTO, error::BindingError, utils::run_sync, OneCoreBinding};
 
 impl OneCoreBinding {
-    pub fn create_did(&self, request: DidRequestBindingDTO) -> Result<String, ServiceError> {
+    pub fn create_did(&self, request: DidRequestBindingDTO) -> Result<String, BindingError> {
         run_sync(async {
-            self.inner
+            Ok(self
+                .inner
                 .did_service
                 .create_did(request.try_into()?)
-                .await
-                .map(|id| id.to_string())
+                .await?
+                .to_string())
         })
     }
 }
