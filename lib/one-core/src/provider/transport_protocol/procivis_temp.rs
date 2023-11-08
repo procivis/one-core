@@ -11,8 +11,9 @@ use super::{
 use crate::{
     model::{
         claim::{Claim, ClaimId},
+        claim_schema::ClaimSchemaRelations,
         credential::{Credential, CredentialState, CredentialStateEnum},
-        credential_schema::CredentialSchema,
+        credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
         proof::Proof,
     },
@@ -305,11 +306,24 @@ async fn handle_credential_invitation(
         .create_credential_schema(credential_schema.clone())
         .await;
     if let Err(error) = result {
-        if error != DataLayerError::AlreadyExists {
-            return Err(TransportProtocolError::Failed(
-                "Credential schema already exists".to_string(),
-            ));
-        }
+        match error {
+            DataLayerError::AlreadyExists => {
+                credential_schema = deps
+                    .credential_schema_repository
+                    .get_credential_schema(
+                        &credential_schema.id,
+                        &CredentialSchemaRelations {
+                            claim_schemas: Some(ClaimSchemaRelations::default()),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+                    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            }
+            error => {
+                return Err(TransportProtocolError::Failed(error.to_string()));
+            }
+        };
     }
 
     // insert issuer did if not yet known
