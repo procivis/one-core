@@ -19,6 +19,11 @@ args = ["build", "-p", "core-server"]
 command = "cargo"
 args = ["run", "-p", "core-server"]
 
+[tasks.runwallet]
+command = "cargo"
+env = { "SERVER_PORT" = "3001", "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core", "CORE_BASE_URL"="http://0.0.0.0:3001" }
+args = ["run", "-p", "core-server"]
+
 [tasks.runw]
 command = "cargo"
 args = ["watch", "--ignore", "*.md", "--ignore", "*.yaml", "--ignore", "*.yml", "--exec", "make run"]
@@ -39,6 +44,7 @@ args = ["-f", "docker/db.yml", "down"]
 [tasks.dbdrop]
 script = [
   "docker rm --force docker-mariadb-1",
+  "docker rm --force docker-walletdb-1",
   "docker volume rm docker_mariadb_data",
 ]
 
