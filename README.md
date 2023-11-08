@@ -24,6 +24,14 @@ makers run
 
 We can use `Makefile.toml` to add and fine tune build/run targets later in the project.
 
+## Run Wallet
+
+You can start a separate instance of a service that will play wallet role. This instance is accessible on port 3001.
+
+```shell
+makers runwallet
+```
+
 ### Live Reload
 
 Using `cargo-watch`, the code can be automatically recompiled when changes are made.
