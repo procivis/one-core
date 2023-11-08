@@ -31,7 +31,10 @@ podAnnotations:
 
 podSecurityContext: {}
 
-securityContext: {}
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
 
 service:
   type: ClusterIP
