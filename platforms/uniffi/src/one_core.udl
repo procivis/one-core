@@ -1,16 +1,11 @@
 namespace one_core {
-  [Throws=ConfigParseError]
+  [Throws=BindingError]
   OneCoreBinding initialize_core(string data_dir_path);
 };
 
 [Error]
-enum ConfigParseError {
-  "JsonError", "InvalidType", "MissingErrorMessage"
-};
-
-[Error]
-enum ServiceError {
-  "GeneralRuntimeError", "MappingError", "AlreadyExists", "IncorrectParameters", "NotFound", "NotUpdated", "ValidationError", "ConfigValidationError", "TransportProtocolError", "FormatterError", "BitstringError", "MissingSigner", "MissingAlgorithm", "OpenID4VCError", "DidMethodError",  "MissingKey", "AlreadyShared", "MissingTransportProtocol", "Other",
+enum BindingError {
+  "AlreadyExists", "NotFound", "NotSupported", "ValidationError", "ConfigValidationError", "Unknown"
 };
 
 dictionary VersionBindingDTO {
@@ -185,42 +180,42 @@ dictionary CredentialRevocationCheckResponseBindingDTO {
 interface OneCoreBinding {
   VersionBindingDTO version();
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   string create_organisation(string? uuid);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   string generate_key(KeyRequestBindingDTO request);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   string create_did(DidRequestBindingDTO request);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   HandleInvitationResponseBindingEnum handle_invitation(string url, string did_id);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   void holder_accept_credential(string interaction_id);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   void holder_reject_credential(string interaction_id);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   PresentationDefinitionBindingDTO get_presentation_defintion(string proof_id);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   void holder_reject_proof(string interaction_id);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   void holder_submit_proof(string interaction_id, record<string, PresentationSubmitCredentialRequestBindingDTO> submit_credentials);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   CredentialListBindingDTO get_credentials([ByRef] ListQueryBindingDTO query);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   CredentialDetailBindingDTO get_credential(string credential_id);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   ProofRequestBindingDTO get_proof(string proof_id);
 
-  [Throws=ServiceError]
+  [Throws=BindingError]
   sequence<CredentialRevocationCheckResponseBindingDTO> check_revocation(sequence<string> credential_ids);
 };

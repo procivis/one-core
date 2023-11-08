@@ -1,15 +1,15 @@
 use crate::{
     dto::PresentationDefinitionBindingDTO,
+    error::BindingError,
     utils::{into_uuid, run_sync},
     OneCoreBinding,
 };
-use one_core::service::error::ServiceError;
 
 impl OneCoreBinding {
     pub fn get_presentation_defintion(
         &self,
         proof_id: String,
-    ) -> Result<PresentationDefinitionBindingDTO, ServiceError> {
+    ) -> Result<PresentationDefinitionBindingDTO, BindingError> {
         run_sync(async {
             Ok(self
                 .inner

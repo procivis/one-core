@@ -1,12 +1,12 @@
 use crate::{
     dto::ProofRequestBindingDTO,
+    error::BindingError,
     utils::{into_uuid, run_sync},
     OneCoreBinding,
 };
-use one_core::service::error::ServiceError;
 
 impl OneCoreBinding {
-    pub fn get_proof(&self, proof_id: String) -> Result<ProofRequestBindingDTO, ServiceError> {
+    pub fn get_proof(&self, proof_id: String) -> Result<ProofRequestBindingDTO, BindingError> {
         run_sync(async {
             let proof = self
                 .inner

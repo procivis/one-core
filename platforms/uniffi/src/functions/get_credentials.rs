@@ -1,11 +1,14 @@
-use crate::{utils::run_sync, CredentialListBindingDTO, ListQueryBindingDTO, OneCoreBinding};
-use one_core::service::{credential::dto::GetCredentialQueryDTO, error::ServiceError};
+use crate::{
+    error::BindingError, utils::run_sync, CredentialListBindingDTO, ListQueryBindingDTO,
+    OneCoreBinding,
+};
+use one_core::service::credential::dto::GetCredentialQueryDTO;
 
 impl OneCoreBinding {
     pub fn get_credentials(
         &self,
         query: &ListQueryBindingDTO,
-    ) -> Result<CredentialListBindingDTO, ServiceError> {
+    ) -> Result<CredentialListBindingDTO, BindingError> {
         run_sync(async {
             Ok(self
                 .inner
