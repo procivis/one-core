@@ -17,7 +17,7 @@ use super::{
 };
 use crate::{
     config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
-    crypto::Crypto,
+    crypto::CryptoProvider,
     model::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
@@ -75,6 +75,7 @@ pub struct OpenID4VC {
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     base_url: Option<String>,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
     params: ExchangeOPENID4VCParams,
 }
 
@@ -85,6 +86,7 @@ impl OpenID4VC {
         credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+        crypto: Arc<dyn CryptoProvider + Send + Sync>,
         config: Option<ParamsEnum<ExchangeParams>>,
     ) -> Self {
         let params = match config {
@@ -99,6 +101,7 @@ impl OpenID4VC {
             proof_repository,
             interaction_repository,
             client: reqwest::Client::new(),
+            crypto,
             params,
         }
     }
@@ -272,8 +275,12 @@ impl TransportProtocol for OpenID4VC {
                 .await;
         }
 
-        let interaction_id =
-            add_new_interaction(self.base_url.to_owned(), &self.interaction_repository).await?;
+        let interaction_id = add_new_interaction(
+            self.base_url.to_owned(),
+            &self.interaction_repository,
+            &self.crypto,
+        )
+        .await?;
 
         update_credentials_interaction(
             &credential.id,
@@ -314,11 +321,12 @@ async fn update_credentials_interaction(
 async fn add_new_interaction(
     base_url: Option<String>,
     interaction_repository: &Arc<dyn InteractionRepository + Send + Sync>,
+    crypto: &Arc<dyn CryptoProvider + Send + Sync>,
 ) -> Result<InteractionId, TransportProtocolError> {
     let interaction_id = Uuid::new_v4();
     let interaction_content: InteractionContent = InteractionContent {
         pre_authorized_code_used: false,
-        access_token: format!("{}.{}", interaction_id, Crypto::generate_alphanumeric(32)),
+        access_token: format!("{}.{}", interaction_id, crypto.generate_alphanumeric(32)),
         access_token_expires_at: None,
     };
 

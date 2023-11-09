@@ -1,19 +1,20 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use mockall::predicate::eq;
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::JWTFormatter;
+use super::SDJWTFormatter;
 
 use crate::{
     config::data_structure::{AccessModifier, FormatJwtParams, Param},
-    crypto::signer::error::SignerError,
+    crypto::{hasher::MockHasher, signer::error::SignerError, MockCryptoProvider},
     provider::credential_formatter::{
         jwt::model::JWTPayload,
-        jwt_formatter::model::{VC, VP},
         model::{CredentialPresentation, CredentialStatus},
+        sdjwt_formatter::model::{Sdvc, Sdvp},
         CredentialFormatter, TokenVerifier,
     },
     service::{
@@ -103,9 +104,30 @@ fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
 
 #[tokio::test]
 async fn test_format_credential() {
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64()
+        .times(2) // Number of claims
+        .returning(|_| Ok(String::from("YWJjMTIz")));
+    let hasher = Arc::new(hasher);
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .once()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
+
+    crypto
+        .expect_generate_salt_base64()
+        .times(2) // Number of claims
+        .returning(|| String::from("MTIzYWJj"));
+
     let leeway = 45u64;
 
-    let sd_formatter = JWTFormatter {
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
         params: FormatJwtParams {
             leeway: Some(Param {
                 access: AccessModifier::Public,
@@ -135,18 +157,30 @@ async fn test_format_credential() {
 
     let token = result.unwrap();
 
-    let jwt_parts: Vec<&str> = token.splitn(3, '.').collect();
+    let parts: Vec<&str> = token.splitn(3, '~').collect();
+
+    assert_eq!(parts.len(), 3);
+    assert_eq!(
+        parts[1],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"["MTIzYWJj","name","John"]"#).unwrap()
+    );
+    assert_eq!(
+        parts[2],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"["MTIzYWJj","age","42"]"#).unwrap()
+    );
+
+    let jwt_parts: Vec<&str> = parts[0].splitn(3, '.').collect();
 
     assert_eq!(
         jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"algorithm","typ":"JWT"}"#).unwrap()
+        &Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"algorithm","typ":"SDJWT"}"#).unwrap()
     );
     assert_eq!(
         jwt_parts[2],
         &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
     );
 
-    let payload: JWTPayload<VC> = serde_json::from_str(
+    let payload: JWTPayload<Sdvc> = serde_json::from_str(
         &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
             .unwrap(),
     )
@@ -168,9 +202,9 @@ async fn test_format_credential() {
 
     assert!(vc
         .credential_subject
-        .values
+        .claims
         .iter()
-        .all(|claim| ["name", "age"].contains(&claim.0.as_str())));
+        .all(|hashed_claim| hashed_claim == "YWJjMTIz"));
 
     assert!(vc.context.contains(&String::from("Context1")));
     assert!(vc.r#type.contains(&String::from("Type1")));
@@ -193,19 +227,39 @@ async fn test_format_credential() {
 
 #[tokio::test]
 async fn test_extract_credentials() {
-    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJKV1QifQ.eyJpYXQiOjE2OTkzNTQyMjgsI\
-        mV4cCI6MTc2MjQyNjIyOCwibmJmIjoxNjk5MzU0MTgzLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVy\
-        X2RpZCIsImp0aSI6IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBjb250ZXh\
-        0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiQ29udGV4dDEiXSwidHlwZSI6Wy\
-        JWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImFnZSI6IjQyIiwib\
-        mFtZSI6IkpvaG4ifSwiY3JlZGVudGlhbFN0YXR1cyI6eyJpZCI6IlNUQVRVU19JRCIsInR5cGUiOiJUWVBFIiwi\
-        c3RhdHVzUHVycG9zZSI6IlBVUlBPU0UiLCJGaWVsZDEiOiJWYWwxIn19fQ";
+    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.\
+        eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
+        MjIxLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6\
+        IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBj\
+        b250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3Yx\
+        IiwiQ29udGV4dDEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5\
+        cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7Il9zZCI6WyJZV0pqTVRJeiIsIllX\
+        SmpNVEl6Il19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwi\
+        dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
+        IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0";
+    let token = format!(
+        "{jwt_token}.QUJD~WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0~WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0"
+    );
 
-    let token = format!("{jwt_token}.QUJD");
+    let mut hasher = MockHasher::default();
+    hasher
+        .expect_hash_base64()
+        .times(2) // Number of claims
+        .returning(|_| Ok(String::from("YWJjMTIz")));
+    let hasher = Arc::new(hasher);
+
+    let mut crypto = MockCryptoProvider::default();
+
+    crypto
+        .expect_get_hasher()
+        .once()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(hasher.clone()));
 
     let leeway = 45u64;
 
-    let jwt_formatter = JWTFormatter {
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
         params: FormatJwtParams {
             leeway: Some(Param {
                 access: AccessModifier::Public,
@@ -221,7 +275,7 @@ async fn test_extract_credentials() {
         signature: vec![65u8, 66, 67],
     });
 
-    let result = jwt_formatter.extract_credentials(&token, verify_fn).await;
+    let result = sd_formatter.extract_credentials(&token, verify_fn).await;
 
     let credentials = result.unwrap();
 
@@ -251,17 +305,24 @@ async fn test_extract_credentials() {
 #[tokio::test]
 async fn test_format_credential_presentation() {
     let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.\
-        eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
-        MjIxLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6\
-        IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBj\
-        b250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3Yx\
-        IiwiQ29udGV4dDEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5\
-        cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7Il9zZCI6WyJZV0pqTVRJeiIsIllX\
-        SmpNVEl6Il19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwi\
-        dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
-        IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0.QUJD";
+    eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
+    MjIxLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6\
+    IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBj\
+    b250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3Yx\
+    IiwiQ29udGV4dDEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5\
+    cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7Il9zZCI6WyJZV0pqTVRJeiIsIllX\
+    SmpNVEl6Il19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwi\
+    dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
+    IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0";
 
-    let jwt_formatter = JWTFormatter {
+    let name_claim = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
+    let age_claim = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
+    let original_token = format!("{jwt_token}.QUJD~{name_claim}~{age_claim}");
+
+    let crypto = MockCryptoProvider::default();
+
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
         params: FormatJwtParams {
             leeway: Some(Param {
                 access: AccessModifier::Public,
@@ -272,41 +333,89 @@ async fn test_format_credential_presentation() {
 
     // Both
     let credential_presentation = CredentialPresentation {
-        token: jwt_token.to_owned(),
+        token: original_token.clone(),
         disclosed_keys: vec!["name".to_string(), "age".to_string()],
     };
 
-    let result = jwt_formatter.format_credential_presentation(credential_presentation);
+    let result = sd_formatter.format_credential_presentation(credential_presentation);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), jwt_token);
+    let token = result.unwrap();
+    assert!(token.contains(name_claim));
+    assert!(token.contains(age_claim));
 
     // Just name
     let credential_presentation = CredentialPresentation {
-        token: jwt_token.to_owned(),
+        token: original_token.clone(),
         disclosed_keys: vec!["name".to_string()],
     };
 
-    let result = jwt_formatter.format_credential_presentation(credential_presentation);
+    let result = sd_formatter.format_credential_presentation(credential_presentation);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), jwt_token);
+    let token = result.unwrap();
+    assert!(token.contains(name_claim));
+    assert!(!token.contains(age_claim));
+
+    // Just age
+    let credential_presentation = CredentialPresentation {
+        token: original_token.clone(),
+        disclosed_keys: vec!["age".to_string()],
+    };
+
+    let result = sd_formatter.format_credential_presentation(credential_presentation);
+    assert!(result.is_ok());
+    let token = result.unwrap();
+    assert!(!token.contains(name_claim));
+    assert!(token.contains(age_claim));
+
+    // No disclosures
+    let credential_presentation = CredentialPresentation {
+        token: original_token.clone(),
+        disclosed_keys: vec![],
+    };
+
+    let result = sd_formatter.format_credential_presentation(credential_presentation);
+    assert!(result.is_ok());
+    let token = result.unwrap();
+    assert!(!token.contains(name_claim));
+    assert!(!token.contains(age_claim));
+
+    // Incorrect key
+    let credential_presentation = CredentialPresentation {
+        token: original_token,
+        disclosed_keys: vec!["test".to_string()],
+    };
+
+    let result = sd_formatter.format_credential_presentation(credential_presentation);
+    assert!(result.is_ok());
+    let token = result.unwrap();
+
+    //No disclosures in the result
+    assert!(!token.contains('~'));
 }
 
 #[tokio::test]
 async fn test_format_presentation() {
     let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.\
-        eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
-        MjIxLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6\
-        IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBj\
-        b250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3Yx\
-        IiwiQ29udGV4dDEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5\
-        cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7Il9zZCI6WyJZV0pqTVRJeiIsIllX\
-        SmpNVEl6Il19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwi\
-        dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
-        IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0.QUJD";
+    eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
+    MjIxLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6\
+    IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBj\
+    b250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3Yx\
+    IiwiQ29udGV4dDEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5\
+    cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7Il9zZCI6WyJZV0pqTVRJeiIsIllX\
+    SmpNVEl6Il19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwi\
+    dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
+    IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0";
+
+    let name_claim = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
+    let age_claim = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
+    let formatted_token = format!("{jwt_token}.QUJD~{name_claim}~{age_claim}");
+
+    let crypto = MockCryptoProvider::default();
 
     let leeway = 45u64;
 
-    let jwt_formatter = JWTFormatter {
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
         params: FormatJwtParams {
             leeway: Some(Param {
                 access: AccessModifier::Public,
@@ -315,8 +424,8 @@ async fn test_format_presentation() {
         },
     };
 
-    let result = jwt_formatter.format_presentation(
-        &[jwt_token.to_owned()],
+    let result = sd_formatter.format_presentation(
+        &[formatted_token.clone()],
         "holder_did",
         "algorithm",
         Box::new(move |_: &str| Ok(vec![65u8, 66, 67])),
@@ -324,20 +433,20 @@ async fn test_format_presentation() {
 
     assert!(result.is_ok());
 
-    let presentation_token = result.unwrap();
+    let token = result.unwrap();
 
-    let jwt_parts: Vec<&str> = presentation_token.splitn(3, '.').collect();
+    let jwt_parts: Vec<&str> = token.splitn(3, '.').collect();
 
     assert_eq!(
         jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"algorithm","typ":"JWT"}"#).unwrap()
+        &Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"algorithm","typ":"SDJWT"}"#).unwrap()
     );
     assert_eq!(
         jwt_parts[2],
         &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
     );
 
-    let payload: JWTPayload<VP> = serde_json::from_str(
+    let payload: JWTPayload<Sdvp> = serde_json::from_str(
         &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
             .unwrap(),
     )
@@ -358,30 +467,34 @@ async fn test_format_presentation() {
     let vp = payload.custom.vp;
 
     assert_eq!(vp.verifiable_credential.len(), 1);
-    assert_eq!(vp.verifiable_credential[0], jwt_token);
+    assert_eq!(vp.verifiable_credential[0], formatted_token);
 }
 
 #[tokio::test]
 async fn test_extract_presentation() {
-    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJKV1QifQ.eyJpYXQiOjE2OTkzNTc1ODIsI\
-        mV4cCI6MTY5OTM1Nzg4MiwibmJmIjoxNjk5MzU3NTM3LCJpc3MiOiJob2xkZXJfZGlkIiwic3ViIjoiaG9sZGVy\
-        X2RpZCIsImp0aSI6IjY2YWFiNmE2LWQxNWMtNDNkYi1iMDk1LTM5MWE3NWFmYzc4ZSIsInZwIjp7IkBjb250ZXh\
-        0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZV\
-        ByZXNlbnRhdGlvbiJdLCJ2ZXJpZmlhYmxlQ3JlZGVudGlhbCI6WyJleUpoYkdjaU9pSmhiR2R2Y21sMGFHMGlMQ\
-        0owZVhBaU9pSlRSRXBYVkNKOS5leUpwWVhRaU9qRTJPVGt5TnpBeU5qWXNJbVY0Y0NJNk1UYzJNak0wTWpJMk5p\
-        d2libUptSWpveE5qazVNamN3TWpJeExDSnBjM01pT2lKSmMzTjFaWElnUkVsRUlpd2ljM1ZpSWpvaWFHOXNaR1Z\
-        5WDJScFpDSXNJbXAwYVNJNklqbGhOREUwWVRZd0xUbGxObUl0TkRjMU55MDRNREV4TFRsaFlUZzNNR1ZtTkRjNE\
-        9DSXNJblpqSWpwN0lrQmpiMjUwWlhoMElqcGJJbWgwZEhCek9pOHZkM2QzTG5jekxtOXlaeTh5TURFNEwyTnlaV\
-        1JsYm5ScFlXeHpMM1l4SWl3aVEyOXVkR1Y0ZERFaVhTd2lkSGx3WlNJNld5SldaWEpwWm1saFlteGxRM0psWkdW\
-        dWRHbGhiQ0lzSWxSNWNHVXhJbDBzSW1OeVpXUmxiblJwWVd4VGRXSnFaV04wSWpwN0lsOXpaQ0k2V3lKWlYwcHF\
-        UVlJKZWlJc0lsbFhTbXBOVkVsNklsMTlMQ0pqY21Wa1pXNTBhV0ZzVTNSaGRIVnpJanA3SW1sa0lqb2lVMVJCVk\
-        ZWVFgwbEVJaXdpZEhsd1pTSTZJbFJaVUVVaUxDSnpkR0YwZFhOUWRYSndiM05sSWpvaVVGVlNVRTlUUlNJc0lrW\
-        nBaV3hrTVNJNklsWmhiREVpZlgwc0lsOXpaRjloYkdjaU9pSnphR0V0TWpVMkluMC5RVUpEIl19fQ";
+    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.eyJpYXQiOjE2OT\
+    kzNTE4NDEsImV4cCI6MTY5OTM1MjE0MSwibmJmIjoxNjk5MzUxNzk2LCJpc3MiOiJob2xkZXJfZGlkIiwic3ViIjoia\
+    G9sZGVyX2RpZCIsImp0aSI6ImI0Y2M0OWQ1LThkMGUtNDgxZS1iMWViLThlNGU4Yjk2OTZiMSIsInZwIjp7IkBjb250\
+    ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZVB\
+    yZXNlbnRhdGlvbiJdLCJfc2Rfand0IjpbImV5SmhiR2NpT2lKaGJHZHZjbWwwYUcwaUxDSjBlWEFpT2lKVFJFcFhWQ0\
+    o5LmV5SnBZWFFpT2pFMk9Ua3lOekF5TmpZc0ltVjRjQ0k2TVRjMk1qTTBNakkyTml3aWJtSm1Jam94TmprNU1qY3dNa\
+    kl4TENKcGMzTWlPaUpKYzNOMVpYSWdSRWxFSWl3aWMzVmlJam9pYUc5c1pHVnlYMlJwWkNJc0ltcDBhU0k2SWpsaE5E\
+    RTBZVFl3TFRsbE5tSXRORGMxTnkwNE1ERXhMVGxoWVRnM01HVm1ORGM0T0NJc0luWmpJanA3SWtCamIyNTBaWGgwSWp\
+    wYkltaDBkSEJ6T2k4dmQzZDNMbmN6TG05eVp5OHlNREU0TDJOeVpXUmxiblJwWVd4ekwzWXhJaXdpUTI5dWRHVjRkRE\
+    VpWFN3aWRIbHdaU0k2V3lKV1pYSnBabWxoWW14bFEzSmxaR1Z1ZEdsaGJDSXNJbFI1Y0dVeElsMHNJbU55WldSbGJuU\
+    nBZV3hUZFdKcVpXTjBJanA3SWw5elpDSTZXeUpaVjBwcVRWUkplaUlzSWxsWFNtcE5WRWw2SWwxOUxDSmpjbVZrWlc1\
+    MGFXRnNVM1JoZEhWeklqcDdJbWxrSWpvaVUxUkJWRlZUWDBsRUlpd2lkSGx3WlNJNklsUlpVRVVpTENKemRHRjBkWE5\
+    RZFhKd2IzTmxJam9pVUZWU1VFOVRSU0lzSWtacFpXeGtNU0k2SWxaaGJERWlmWDBzSWw5elpGOWhiR2NpT2lKemFHRX\
+    RNalUySW4wLlFVSkR-V3lKTlZFbDZXVmRLYWlJc0ltNWhiV1VpTENKS2IyaHVJbDB-V3lKTlZFbDZXVmRLYWlJc0ltR\
+    m5aU0lzSWpReUlsMCJdfX0";
     let presentation_token = format!("{jwt_token}.QUJD");
+
+    let crypto = MockCryptoProvider::default();
 
     let leeway = 45u64;
 
-    let jwt_formatter = JWTFormatter {
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
         params: FormatJwtParams {
             leeway: Some(Param {
                 access: AccessModifier::Public,
@@ -397,7 +510,10 @@ async fn test_extract_presentation() {
         signature: vec![65u8, 66, 67],
     });
 
-    let result = jwt_formatter
+    let result: Result<
+        crate::provider::credential_formatter::model::Presentation,
+        crate::provider::credential_formatter::error::FormatterError,
+    > = sd_formatter
         .extract_presentation(&presentation_token, verify_fn)
         .await;
 

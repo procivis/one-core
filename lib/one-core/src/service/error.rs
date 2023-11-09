@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::crypto::error::CryptoProviderError;
 use crate::service::oidc::dto::OpenID4VCIError;
 use crate::{
     config::validator::ConfigValidationError,
@@ -48,6 +49,8 @@ pub enum ServiceError {
     MissingKey,
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
+    #[error("Crypto provider error: `{0}`")]
+    CryptoError(#[from] CryptoProviderError),
     #[error("Other Repository error: `{0}`")]
     Other(String),
 }

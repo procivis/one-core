@@ -5,19 +5,69 @@ use rand::distributions::{Alphanumeric, DistString};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
+use self::error::CryptoProviderError;
 use self::{hasher::Hasher, signer::Signer};
 
+pub mod error;
 pub mod hasher;
 pub mod signer;
 
-#[derive(Clone, Default)]
-pub struct Crypto {
-    pub hashers: HashMap<String, Arc<dyn Hasher + Send + Sync>>,
-    pub signers: HashMap<String, Arc<dyn Signer + Send + Sync>>,
+#[cfg_attr(test, mockall::automock)]
+pub trait CryptoProvider {
+    fn get_hasher(
+        &self,
+        hasher: &str,
+    ) -> Result<Arc<dyn Hasher + Send + Sync>, CryptoProviderError>;
+
+    fn get_signer(
+        &self,
+        signer: &str,
+    ) -> Result<Arc<dyn Signer + Send + Sync>, CryptoProviderError>;
+
+    fn generate_salt_base64(&self) -> String;
+
+    fn generate_alphanumeric(&self, length: usize) -> String;
 }
 
-impl Crypto {
-    pub fn generate_salt_base64() -> String {
+#[derive(Clone)]
+pub struct CryptoProviderImpl {
+    hashers: HashMap<String, Arc<dyn Hasher + Send + Sync>>,
+    signers: HashMap<String, Arc<dyn Signer + Send + Sync>>,
+}
+
+impl CryptoProviderImpl {
+    pub fn new(
+        hashers: HashMap<String, Arc<dyn Hasher + Send + Sync>>,
+        signers: HashMap<String, Arc<dyn Signer + Send + Sync>>,
+    ) -> Self {
+        Self { hashers, signers }
+    }
+}
+
+impl CryptoProvider for CryptoProviderImpl {
+    fn get_hasher(
+        &self,
+        hasher: &str,
+    ) -> Result<Arc<dyn Hasher + Send + Sync>, CryptoProviderError> {
+        Ok(self
+            .hashers
+            .get(hasher)
+            .ok_or(CryptoProviderError::MissingHasher(hasher.to_owned()))?
+            .clone())
+    }
+
+    fn get_signer(
+        &self,
+        signer: &str,
+    ) -> Result<Arc<dyn Signer + Send + Sync>, CryptoProviderError> {
+        Ok(self
+            .signers
+            .get(signer)
+            .ok_or(CryptoProviderError::MissingHasher(signer.to_owned()))?
+            .clone())
+    }
+
+    fn generate_salt_base64(&self) -> String {
         let mut rng = ChaCha20Rng::from_entropy();
         let mut data = [0u8; 16];
         rng.fill_bytes(&mut data);
@@ -26,13 +76,7 @@ impl Crypto {
         Base64UrlSafeNoPadding::encode_to_string(data).unwrap_or_default()
     }
 
-    pub fn generate_alphanumeric(length: usize) -> String {
+    fn generate_alphanumeric(&self, length: usize) -> String {
         Alphanumeric.sample_string(&mut rand::thread_rng(), length)
     }
-}
-
-pub trait Key {
-    fn generate();
-    fn get_private() -> Vec<u8>;
-    fn get_public() -> Vec<u8>;
 }

@@ -8,10 +8,7 @@ use crate::{
         AccessModifier, ConfigEntity, CoreConfig, KeyAlgorithmParams, Param, ParamsEnum,
         TranslatableString,
     },
-    crypto::{
-        signer::{MockSigner, Signer},
-        Crypto,
-    },
+    crypto::{signer::MockSigner, MockCryptoProvider},
     model::{
         credential::{Credential, CredentialState, CredentialStateEnum},
         did::{Did, DidType, KeyRole, RelatedKey},
@@ -268,16 +265,23 @@ async fn test_submit_proof_succeeds() {
         });
 
     let mut formatter = MockCredentialFormatter::new();
+
+    formatter
+        .expect_format_credential_presentation()
+        .once()
+        .returning(|presentation| Ok(presentation.token));
+
     formatter
         .expect_format_presentation()
         .once()
         .returning(|_, _, _, _| Ok("presentation".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_formatter()
-        .once()
-        .return_once(move |_| Ok(Arc::new(formatter)));
+        .times(2) // For credential format, and presentation format
+        .returning(move |_| Ok(formatter.clone()));
 
     let mut transport_protocol_mock = MockTransportProtocol::new();
     transport_protocol_mock
@@ -311,13 +315,21 @@ async fn test_submit_proof_succeeds() {
         .once()
         .return_once(move |_| Ok(Arc::new(key_storage)));
 
-    let signer: Arc<dyn Signer + Send + Sync> = Arc::new(MockSigner::new());
-
     let algorithm = algorithm_config(key_type);
     let config = CoreConfig {
         key_algorithm: HashMap::from_iter([(key_type.to_string(), algorithm)]),
         ..dummy_config()
     };
+
+    let mut crypto_provider = MockCryptoProvider::default();
+    crypto_provider
+        .expect_get_signer()
+        .once()
+        .withf(move |alg| {
+            assert_eq!(alg, key_type);
+            true
+        })
+        .returning(move |_| Ok(Arc::new(MockSigner::new())));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -325,10 +337,7 @@ async fn test_submit_proof_succeeds() {
         formatter_provider: Arc::new(formatter_provider),
         protocol_provider: Arc::new(protocol_provider),
         key_provider: Arc::new(key_provider),
-        crypto: Arc::new(Crypto {
-            signers: HashMap::from_iter([(key_type.to_string(), signer)]),
-            ..dummy_crypto()
-        }),
+        crypto: Arc::new(crypto_provider),
         config: Arc::new(config),
         ..mock_ssi_holder_service()
     };
@@ -400,7 +409,7 @@ async fn test_reject_credential() {
         .once()
         .returning(|_| Ok(()));
 
-    let mut transport_protocol_mock = MockTransportProtocol::new();
+    let mut transport_protocol_mock: MockTransportProtocol = MockTransportProtocol::new();
     transport_protocol_mock
         .expect_reject_credential()
         .once()
@@ -430,7 +439,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
-        crypto: Arc::new(dummy_crypto()),
+        crypto: Arc::new(MockCryptoProvider::default()),
         config: Arc::new(dummy_config()),
     }
 }
@@ -445,13 +454,6 @@ fn dummy_config() -> CoreConfig {
         datatype: Default::default(),
         key_algorithm: Default::default(),
         key_storage: Default::default(),
-    }
-}
-
-fn dummy_crypto() -> Crypto {
-    Crypto {
-        hashers: Default::default(),
-        signers: Default::default(),
     }
 }
 

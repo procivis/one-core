@@ -1,7 +1,7 @@
 use super::CredentialFormatter;
 use crate::config::data_structure::{FormatEntity, FormatJwtParams, FormatParams, ParamsEnum};
 use crate::config::ConfigParseError;
-use crate::crypto::Crypto;
+use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::json_ld_formatter::JsonLdFormatter;
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
@@ -42,7 +42,7 @@ impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
 
 pub(crate) fn credential_formatters_from_config(
     format_config: &HashMap<String, FormatEntity>,
-    crypto: Arc<Crypto>,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter + Send + Sync>>, ConfigParseError> {
     format_config
         .iter()
@@ -69,7 +69,7 @@ fn get_jwt_params(
 fn formatter_from_entity(
     name: &String,
     entity: &FormatEntity,
-    crypto: Arc<Crypto>,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
 ) -> Result<(String, Arc<dyn CredentialFormatter + Send + Sync>), ConfigParseError> {
     match entity.r#type.as_str() {
         "MDOC" => {

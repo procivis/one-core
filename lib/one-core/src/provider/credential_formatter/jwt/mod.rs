@@ -5,7 +5,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
-    crypto::signer::SignerError,
+    crypto::signer::error::SignerError,
     provider::credential_formatter::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string},
 };
 
@@ -14,26 +14,13 @@ use self::{
     model::{DecomposedToken, JWTHeader, JWTPayload},
 };
 
-use super::error::FormatterError;
+use super::{error::FormatterError, AuthenticationFn, TokenVerifier};
 
 #[cfg(test)]
 mod test;
 
 pub mod mapper;
 pub mod model;
-
-pub type AuthenticationFn = Box<dyn FnOnce(&str) -> Result<Vec<u8>, SignerError>>;
-
-#[async_trait]
-pub trait TokenVerifier {
-    async fn verify<'a>(
-        &self,
-        issuer_did_value: Option<String>,
-        algorithm: &'a str,
-        token: &'a str,
-        signature: &'a [u8],
-    ) -> Result<(), SignerError>;
-}
 
 #[derive(Default)]
 pub struct SkipVerification;

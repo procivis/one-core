@@ -12,7 +12,7 @@ use crypto::hasher::sha256::SHA256;
 use crypto::hasher::Hasher;
 use crypto::signer::eddsa::EDDSASigner;
 use crypto::signer::Signer;
-use crypto::Crypto;
+use crypto::{CryptoProvider, CryptoProviderImpl};
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::credential_formatter::CredentialFormatter;
 use provider::transport_protocol::{
@@ -74,7 +74,7 @@ pub struct OneCore {
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub config: Arc<CoreConfig>,
-    pub crypto: Arc<Crypto>,
+    pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
 }
 
 impl OneCore {
@@ -92,10 +92,10 @@ impl OneCore {
         let signers: Vec<(String, Arc<dyn Signer + Send + Sync>)> =
             vec![("Ed25519".to_string(), Arc::new(EDDSASigner {}))];
 
-        let crypto = Arc::new(Crypto {
-            hashers: HashMap::from_iter(hashers),
-            signers: HashMap::from_iter(signers),
-        });
+        let crypto = Arc::new(CryptoProviderImpl::new(
+            HashMap::from_iter(hashers),
+            HashMap::from_iter(signers),
+        ));
 
         let available_transport_protocol_types = [
             "PROCIVIS_TEMPORARY".to_string(),
@@ -133,6 +133,7 @@ impl OneCore {
                     data_provider.get_credential_schema_repository(),
                     data_provider.get_proof_repository(),
                     data_provider.get_interaction_repository(),
+                    crypto.clone(),
                     get_exchange_params("OPENID4VC", &config).ok(),
                 )),
             ),

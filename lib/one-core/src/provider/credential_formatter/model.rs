@@ -39,7 +39,7 @@ pub struct CredentialSubject {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CredentialPresentation {
+pub struct Presentation {
     pub id: Option<String>,
     pub issued_at: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
@@ -48,7 +48,7 @@ pub struct CredentialPresentation {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PresentationCredential {
+pub struct CredentialPresentation {
     pub token: String,
     pub disclosed_keys: Vec<String>,
 }

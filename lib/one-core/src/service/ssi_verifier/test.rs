@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{
     config::data_structure::CoreConfig,
-    crypto::Crypto,
+    crypto::MockCryptoProvider,
     model::{
         claim_schema::ClaimSchema,
         credential_schema::CredentialSchema,
@@ -14,8 +14,7 @@ use crate::{
     },
     provider::{
         credential_formatter::{
-            model::CredentialPresentation, provider::MockCredentialFormatterProvider,
-            MockCredentialFormatter,
+            model::Presentation, provider::MockCredentialFormatterProvider, MockCredentialFormatter,
         },
         did_method::{mock_did_method::MockDidMethod, provider::DidMethodProviderImpl, DidMethod},
         revocation::provider::MockRevocationMethodProvider,
@@ -212,7 +211,7 @@ async fn test_submit_proof_succeeds() {
         .expect_extract_presentation()
         .once()
         .returning(|_, _| {
-            Ok(CredentialPresentation {
+            Ok(Presentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
@@ -331,7 +330,7 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
         claim_repository: Arc::new(MockClaimRepository::new()),
         did_method_provider: Arc::new(did_method_provider),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
-        crypto: Arc::new(Crypto::default()),
+        crypto: Arc::new(MockCryptoProvider::default()),
         config: Arc::new(CoreConfig {
             format: Default::default(),
             exchange: Default::default(),

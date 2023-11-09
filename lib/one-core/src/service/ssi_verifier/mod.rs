@@ -1,6 +1,6 @@
 use crate::{
     config::data_structure::CoreConfig,
-    crypto::Crypto,
+    crypto::CryptoProvider,
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
         did_method::provider::DidMethodProvider, revocation::provider::RevocationMethodProvider,
@@ -31,7 +31,7 @@ pub struct SSIVerifierService {
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-    crypto: Arc<Crypto>,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
     config: Arc<CoreConfig>,
 }
 
@@ -45,7 +45,7 @@ impl SSIVerifierService {
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-        crypto: Arc<Crypto>,
+        crypto: Arc<dyn CryptoProvider + Send + Sync>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {

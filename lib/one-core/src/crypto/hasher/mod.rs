@@ -1,12 +1,9 @@
-use thiserror::Error;
+use self::error::HasherError;
+
+pub mod error;
 pub mod sha256;
 
-#[derive(Debug, PartialEq, Eq, Error)]
-pub enum HasherError {
-    #[error("Could not hash")]
-    CouldNotHash,
-}
-
+#[cfg_attr(test, mockall::automock)]
 pub trait Hasher {
     fn hash_base64(&self, input: &[u8]) -> Result<String, HasherError>;
 }

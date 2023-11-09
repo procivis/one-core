@@ -2,7 +2,7 @@ use super::{dto::InvitationType, TransportProtocol};
 use crate::common_mapper::get_algorithm_from_key_algorithm;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::config::data_structure::CoreConfig;
-use crate::crypto::Crypto;
+use crate::crypto::CryptoProvider;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -56,7 +56,7 @@ pub(crate) struct TransportProtocolProviderImpl {
     pub(crate) revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     pub(crate) key_provider: Arc<dyn KeyProvider + Send + Sync>,
     pub(crate) config: Arc<CoreConfig>,
-    pub(crate) crypto: Arc<Crypto>,
+    pub(crate) crypto: Arc<dyn CryptoProvider + Send + Sync>,
 }
 
 impl TransportProtocolProviderImpl {
@@ -67,7 +67,7 @@ impl TransportProtocolProviderImpl {
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
         config: Arc<CoreConfig>,
-        crypto: Arc<Crypto>,
+        crypto: Arc<dyn CryptoProvider + Send + Sync>,
     ) -> Self {
         Self {
             protocols: protocols.into_iter().collect(),
@@ -194,12 +194,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
 
         let algorithm = get_algorithm_from_key_algorithm(&key.key.key_type, &self.config)?;
 
-        let signer = self
-            .crypto
-            .signers
-            .get(&algorithm)
-            .ok_or(ServiceError::MissingSigner(algorithm))?
-            .clone();
+        let signer = self.crypto.get_signer(&algorithm)?;
 
         let key_provider = self.key_provider.get_key_storage(&key.key.storage_type)?;
 

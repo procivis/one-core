@@ -7,6 +7,7 @@ use mockall::{predicate, Sequence};
 
 use crate::{
     config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
+    crypto::MockCryptoProvider,
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
@@ -34,6 +35,7 @@ struct Repositories {
     pub proof_repository: MockProofRepository,
     pub interaction_repository: MockInteractionRepository,
     pub _base_url: Option<String>,
+    pub crypto: MockCryptoProvider,
     pub _params: ExchangeOPENID4VCParams,
 }
 
@@ -44,6 +46,7 @@ fn setup_protocol(repositories: Repositories) -> OpenID4VC {
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.interaction_repository),
+        Arc::new(repositories.crypto),
         Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(
             ExchangeOPENID4VCParams::default(),
         ))),
@@ -179,9 +182,16 @@ async fn test_generate_share_credentials() {
             Ok(())
         });
 
+    let mut crypto = MockCryptoProvider::default();
+    crypto
+        .expect_generate_alphanumeric()
+        .once()
+        .returning(|_| String::from("ABC123"));
+
     let protocol = setup_protocol(Repositories {
         credential_repository,
         interaction_repository,
+        crypto,
         ..Default::default()
     });
 

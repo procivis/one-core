@@ -18,9 +18,9 @@ use self::model::{VPContent, VC, VP};
 
 use super::{
     error::FormatterError,
-    jwt::{model::JWTPayload, AuthenticationFn, TokenVerifier},
-    model::{CredentialPresentation, CredentialStatus, DetailCredential, PresentationCredential},
-    CredentialFormatter,
+    jwt::model::JWTPayload,
+    model::{CredentialPresentation, CredentialStatus, DetailCredential, Presentation},
+    AuthenticationFn, CredentialFormatter, VerificationFn,
 };
 
 pub struct JWTFormatter {
@@ -52,7 +52,7 @@ impl CredentialFormatter for JWTFormatter {
         let payload = JWTPayload {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(30)),
+            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
             issuer: credential.issuer_did.clone(),
             subject: Some(holder_did.to_owned()),
             jwt_id: Some(credential.id.to_string()),
@@ -68,7 +68,7 @@ impl CredentialFormatter for JWTFormatter {
     async fn extract_credentials(
         &self,
         token: &str,
-        verification: Box<dyn TokenVerifier + Send + Sync>,
+        verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
         let jwt: Jwt<VC> = Jwt::build_from_token(token, verification).await?;
@@ -76,9 +76,16 @@ impl CredentialFormatter for JWTFormatter {
         Ok(jwt.into())
     }
 
+    fn format_credential_presentation(
+        &self,
+        credential: CredentialPresentation,
+    ) -> Result<String, FormatterError> {
+        Ok(credential.token)
+    }
+
     fn format_presentation(
         &self,
-        tokens: &[PresentationCredential],
+        tokens: &[String],
         holder_did: &str,
         algorithm: &str,
         auth_fn: AuthenticationFn,
@@ -91,7 +98,7 @@ impl CredentialFormatter for JWTFormatter {
         let payload = JWTPayload {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(30)),
+            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
             issuer: Some(holder_did.to_owned()),
             subject: Some(holder_did.to_owned()),
             jwt_id: Some(Uuid::new_v4().to_string()),
@@ -107,12 +114,12 @@ impl CredentialFormatter for JWTFormatter {
     async fn extract_presentation(
         &self,
         token: &str,
-        verification: Box<dyn TokenVerifier + Send + Sync>,
-    ) -> Result<CredentialPresentation, FormatterError> {
+        verification: VerificationFn,
+    ) -> Result<Presentation, FormatterError> {
         // Build fails if verification fails
         let jwt: Jwt<VP> = Jwt::build_from_token(token, verification).await?;
 
-        Ok(CredentialPresentation {
+        Ok(Presentation {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
@@ -129,12 +136,12 @@ impl CredentialFormatter for JWTFormatter {
     }
 }
 
-fn format_payload(credentials: &[PresentationCredential]) -> VP {
+fn format_payload(credentials: &[String]) -> VP {
     VP {
         vp: VPContent {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
             r#type: vec!["VerifiablePresentation".to_owned()],
-            verifiable_credential: credentials.iter().map(|fc| fc.token.clone()).collect(),
+            verifiable_credential: credentials.to_vec(),
         },
     }
 }
