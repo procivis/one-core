@@ -1,27 +1,25 @@
+use serde::{Deserialize, Deserializer};
 use std::collections::{HashMap, HashSet};
 
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::CredentialSchemaId;
-use crate::model::proof::Proof;
-use crate::provider::transport_protocol::openid4vc::dto::{
-    OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
-    OpenID4VPPresentationDefinitionInputDescriptors,
-};
 use crate::{
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential::Credential,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaId},
         interaction::InteractionId,
+        proof::Proof,
     },
     provider::transport_protocol::{
         openid4vc::dto::{
             OpenID4VCICredentialDefinition, OpenID4VCICredentialSubject, OpenID4VCIGrant,
-            OpenID4VCIGrants,
+            OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPFormat,
+            OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+            OpenID4VPPresentationDefinitionConstraintField,
+            OpenID4VPPresentationDefinitionInputDescriptors,
         },
         TransportProtocolError,
     },
@@ -275,4 +273,13 @@ pub(super) fn create_claims_from_credential_definition(
     }
 
     Ok(result)
+}
+
+pub(super) fn deserialize_with_serde_json<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: for<'a> Deserialize<'a>,
+{
+    let buf = String::deserialize(deserializer)?;
+    serde_json::from_str(&buf).map_err(serde::de::Error::custom)
 }

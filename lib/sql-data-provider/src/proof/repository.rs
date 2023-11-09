@@ -216,9 +216,9 @@ impl ProofRepository for ProofProvider {
             Some(holder_did) => Set(Some(holder_did.to_string())),
         };
 
-        let verifier_did_id: sea_orm::ActiveValue<String> = match proof.verifier_did_id {
+        let verifier_did_id: sea_orm::ActiveValue<Option<String>> = match proof.verifier_did_id {
             None => Unchanged(Default::default()),
-            Some(verifier_did_id) => Set(verifier_did_id.to_string()),
+            Some(verifier_did_id) => Set(Some(verifier_did_id.to_string())),
         };
 
         let interaction_id = match proof.interaction {
@@ -367,14 +367,16 @@ impl ProofProvider {
         }
 
         if let Some(did_relations) = &relations.verifier_did {
-            let verifier_did_id = Uuid::from_str(&proof_model.verifier_did_id)
-                .map_err(|_| DataLayerError::MappingError)?;
+            if let Some(verifier_did_id) = &proof_model.verifier_did_id {
+                let verifier_did_id =
+                    Uuid::from_str(verifier_did_id).map_err(|_| DataLayerError::MappingError)?;
 
-            proof.verifier_did = Some(
-                self.did_repository
-                    .get_did(&verifier_did_id, did_relations)
-                    .await?,
-            );
+                proof.verifier_did = Some(
+                    self.did_repository
+                        .get_did(&verifier_did_id, did_relations)
+                        .await?,
+                );
+            }
         }
 
         if let Some(did_relations) = &relations.holder_did {

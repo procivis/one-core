@@ -3,11 +3,7 @@ mod mapper;
 
 use std::sync::Arc;
 
-use self::mapper::{get_base_url, proof_from_handle_invitation, remote_did_from_value};
-use crate::provider::transport_protocol::dto::{ConnectVerifierResponse, SubmitIssuerResponse};
-use crate::provider::transport_protocol::mapper::interaction_from_handle_invitation;
-use crate::provider::transport_protocol::procivis_temp::dto::HandleInvitationConnectRequest;
-use crate::provider::transport_protocol::{TransportProtocol, TransportProtocolError};
+use self::mapper::{get_base_url, remote_did_from_value};
 use crate::{
     model::{
         claim::{Claim, ClaimId},
@@ -16,6 +12,12 @@ use crate::{
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
         proof::Proof,
+    },
+    provider::transport_protocol::{
+        dto::{ConnectVerifierResponse, SubmitIssuerResponse},
+        mapper::{interaction_from_handle_invitation, proof_from_handle_invitation},
+        procivis_temp::dto::HandleInvitationConnectRequest,
+        TransportProtocol, TransportProtocolError,
     },
     repository::{
         credential_repository::CredentialRepository,
@@ -488,7 +490,7 @@ async fn handle_proof_invitation(
     let proof = proof_from_handle_invitation(
         &proof_id,
         protocol,
-        verifier_did,
+        Some(verifier_did),
         holder_did.to_owned(),
         interaction,
         now,

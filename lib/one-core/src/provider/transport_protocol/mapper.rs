@@ -1,8 +1,11 @@
 use crate::model::{
     credential::{CredentialId, CredentialState, CredentialStateEnum, UpdateCredentialRequest},
+    did::Did,
     interaction::Interaction,
     key::Key,
+    proof::{self, Proof, ProofId, ProofStateEnum},
 };
+
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -35,5 +38,32 @@ pub fn interaction_from_handle_invitation(
         last_modified: now,
         host: Some(host),
         data,
+    }
+}
+
+pub fn proof_from_handle_invitation(
+    proof_id: &ProofId,
+    protocol: &str,
+    verifier_did: Option<Did>,
+    holder_did: Did,
+    interaction: Interaction,
+    now: OffsetDateTime,
+) -> Proof {
+    Proof {
+        id: proof_id.to_owned(),
+        created_date: now,
+        last_modified: now,
+        issuance_date: now,
+        transport: protocol.to_owned(),
+        state: Some(vec![proof::ProofState {
+            created_date: now,
+            last_modified: now,
+            state: ProofStateEnum::Pending,
+        }]),
+        schema: None,
+        claims: None,
+        verifier_did,
+        holder_did: Some(holder_did),
+        interaction: Some(interaction),
     }
 }

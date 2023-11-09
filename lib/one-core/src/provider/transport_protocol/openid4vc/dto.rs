@@ -1,8 +1,12 @@
 use std::collections::HashMap;
 
-use crate::model::claim_schema::ClaimSchemaId;
-use crate::model::interaction::InteractionId;
+use crate::{
+    model::{claim_schema::ClaimSchemaId, interaction::InteractionId},
+    provider::transport_protocol::openid4vc::mapper::deserialize_with_serde_json,
+};
 use serde::{Deserialize, Serialize};
+use url::Url;
+use uuid::Uuid;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCICredential {
@@ -94,4 +98,22 @@ pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub id: ClaimSchemaId,
     pub path: Vec<String>,
     pub optional: bool,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct OpenID4VPInteractionData {
+    pub response_type: String,
+    pub state: Option<Uuid>,
+    pub nonce: String,
+    pub client_id_scheme: String,
+    pub client_id: Url,
+    #[serde(deserialize_with = "deserialize_with_serde_json")]
+    pub client_metadata: OpenID4VPClientMetadata,
+    pub response_mode: String,
+    pub response_uri: Url,
+    #[serde(deserialize_with = "deserialize_with_serde_json")]
+    pub presentation_definition: OpenID4VPPresentationDefinition,
+
+    #[serde(skip_serializing)]
+    pub redirect_uri: Option<String>,
 }

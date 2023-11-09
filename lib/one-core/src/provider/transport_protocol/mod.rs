@@ -31,6 +31,8 @@ pub enum TransportProtocolError {
     OperationNotSupported,
     #[error("Base url is unknown")]
     MissingBaseUrl,
+    #[error("Invalid request: `{0}`")]
+    InvalidRequest(String),
 }
 
 #[cfg_attr(test, mockall::automock)]

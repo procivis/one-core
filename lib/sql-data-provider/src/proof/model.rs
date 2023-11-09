@@ -13,13 +13,13 @@ pub(super) struct ProofListItemModel {
     pub transport: String,
 
     // verifier_did
-    pub verifier_did_id: String,
-    pub verifier_did: String,
-    pub verifier_did_created_date: OffsetDateTime,
-    pub verifier_did_last_modified: OffsetDateTime,
-    pub verifier_did_name: String,
-    pub verifier_did_type: DidType,
-    pub verifier_did_method: String,
+    pub verifier_did_id: Option<String>,
+    pub verifier_did: Option<String>,
+    pub verifier_did_created_date: Option<OffsetDateTime>,
+    pub verifier_did_last_modified: Option<OffsetDateTime>,
+    pub verifier_did_name: Option<String>,
+    pub verifier_did_type: Option<DidType>,
+    pub verifier_did_method: Option<String>,
 
     // proof_schema
     pub schema_id: String,
