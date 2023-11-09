@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{crypto::hasher::Hasher, provider::credential_formatter::FormatterError};
 
-use super::models::Disclosure;
+use super::model::Disclosure;
 
 pub(super) fn verify_claims(
     hashed_claims: &[String],

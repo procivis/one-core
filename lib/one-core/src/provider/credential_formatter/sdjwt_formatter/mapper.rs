@@ -1,23 +1,24 @@
 use std::sync::Arc;
 
 use crate::{
-    crypto::{hasher::Hasher, Crypto},
+    crypto::{hasher::Hasher, CryptoProvider},
     provider::credential_formatter::{
         jwt::mapper::string_to_b64url_string, CredentialStatus, FormatterError,
     },
     service::credential::dto::DetailCredentialClaimResponseDTO,
 };
 
-use super::models::{SDCredentialSubject, Sdvc, VCContent};
+use super::model::{SDCredentialSubject, Sdvc, VCContent};
 
 pub(super) fn claims_to_formatted_disclosure(
     claims: &[DetailCredentialClaimResponseDTO],
+    crypto: &Arc<dyn CryptoProvider + Send + Sync>,
 ) -> Vec<String> {
     claims
         .iter()
         .filter_map(|c| {
             serde_json::to_string(&vec![
-                Crypto::generate_salt_base64(),
+                crypto.generate_salt_base64(),
                 c.schema.key.clone(),
                 c.value.clone(),
             ])

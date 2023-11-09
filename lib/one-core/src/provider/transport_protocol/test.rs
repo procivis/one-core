@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::crypto::MockCryptoProvider;
 use crate::provider::transport_protocol::provider::{
     TransportProtocolProvider, TransportProtocolProviderImpl,
 };
@@ -11,10 +12,7 @@ use crate::{
         AccessModifier, ConfigEntity, CoreConfig, KeyAlgorithmParams, Param, ParamsEnum,
         TranslatableString,
     },
-    crypto::{
-        signer::{MockSigner, Signer},
-        Crypto,
-    },
+    crypto::signer::MockSigner,
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
@@ -137,7 +135,7 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .return_once(move |_| Ok(Arc::new(key_storage)));
 
-    let signer: Arc<dyn Signer + Send + Sync> = Arc::new(MockSigner::new());
+    let signer = Arc::new(MockSigner::new());
 
     let algorithm = algorithm_config(key_type);
     let config = CoreConfig {
@@ -145,16 +143,23 @@ async fn test_issuer_submit_succeeds() {
         ..dummy_config()
     };
 
+    let mut crypto_provider = MockCryptoProvider::default();
+    crypto_provider
+        .expect_get_signer()
+        .once()
+        .withf(move |alg| {
+            assert_eq!(alg, key_type);
+            true
+        })
+        .returning(move |_| Ok(signer.clone()));
+
     let service = TransportProtocolProviderImpl {
         protocols: Default::default(),
         credential_repository: Arc::new(credential_repository),
         revocation_method_provider: Arc::new(revocation_method_provider),
         formatter_provider: Arc::new(formatter_provider),
         key_provider: Arc::new(key_provider),
-        crypto: Arc::new(Crypto {
-            signers: HashMap::from_iter([(key_type.to_string(), signer)]),
-            ..dummy_crypto()
-        }),
+        crypto: Arc::new(crypto_provider),
         config: Arc::new(config),
     };
 
@@ -171,13 +176,6 @@ fn dummy_config() -> CoreConfig {
         datatype: Default::default(),
         key_algorithm: Default::default(),
         key_storage: Default::default(),
-    }
-}
-
-fn dummy_crypto() -> Crypto {
-    Crypto {
-        hashers: Default::default(),
-        signers: Default::default(),
     }
 }
 

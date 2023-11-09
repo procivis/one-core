@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 
 use crate::common_mapper::get_algorithm_from_key_algorithm;
 use crate::config::data_structure::CoreConfig;
-use crate::crypto::Crypto;
+use crate::crypto::CryptoProvider;
 use crate::model::did::KeyRole;
 use crate::model::{
     credential::{
@@ -34,7 +34,7 @@ pub(crate) struct StatusList2021 {
     pub credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     pub revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
     pub config: Arc<CoreConfig>,
-    pub crypto: Arc<Crypto>,
+    pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
     pub key_provider: Arc<dyn KeyProvider + Send + Sync>,
     pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     pub client: reqwest::Client,
@@ -291,12 +291,7 @@ impl StatusList2021 {
 
         let algorithm = get_algorithm_from_key_algorithm(&key.key.key_type, &self.config)?;
 
-        let signer = self
-            .crypto
-            .signers
-            .get(&algorithm)
-            .ok_or(ServiceError::MissingSigner(algorithm))?
-            .clone();
+        let signer = self.crypto.get_signer(&algorithm)?;
 
         let key_storage = self.key_provider.get_key_storage(&key.key.storage_type)?;
 

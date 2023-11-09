@@ -1,9 +1,9 @@
 use crate::{
     common_mapper::get_algorithm_from_key_algorithm,
     config::data_structure::CoreConfig,
-    crypto::{signer::SignerError, Crypto},
+    crypto::{signer::error::SignerError, CryptoProvider},
     model::did::KeyRole,
-    provider::{credential_formatter::jwt::TokenVerifier, did_method::provider::DidMethodProvider},
+    provider::{credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider},
 };
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -11,7 +11,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub(crate) struct KeyVerification {
     pub config: Arc<CoreConfig>,
-    pub crypto: Arc<Crypto>,
+    pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
     pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
 }
 
@@ -27,11 +27,7 @@ impl TokenVerifier for KeyVerification {
         let algorithm = get_algorithm_from_key_algorithm(algorithm, &self.config)
             .map_err(|_| SignerError::CouldNotSign)?;
 
-        let signer = self
-            .crypto
-            .signers
-            .get(&algorithm)
-            .ok_or(SignerError::MissingAlgorithm(algorithm))?;
+        let signer = self.crypto.get_signer(&algorithm)?;
 
         let did = self
             .did_method_provider
@@ -60,7 +56,7 @@ impl TokenVerifier for KeyVerification {
 mod test {
     use super::*;
     use crate::{
-        crypto::signer::{MockSigner, Signer},
+        crypto::{signer::MockSigner, MockCryptoProvider},
         model::{
             did::{Did, DidType, RelatedKey},
             key::Key,
@@ -69,7 +65,6 @@ mod test {
         service::{error::ServiceError, test_utilities::generic_config},
     };
     use mockall::predicate::*;
-    use std::collections::HashMap;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -116,18 +111,24 @@ mod test {
                 eq(b"signature".as_slice()),
                 eq(b"public_key".as_slice()),
             )
-            .times(1)
+            .once()
             .returning(|_, _, _| Ok(()));
+
+        let signer = Arc::new(signer);
+
+        let mut crypto_provider = MockCryptoProvider::default();
+        crypto_provider
+            .expect_get_signer()
+            .once()
+            .withf(move |alg| {
+                assert_eq!(alg, "Ed25519");
+                true
+            })
+            .returning(move |_| Ok(signer.clone()));
 
         let verification = KeyVerification {
             config: Arc::new(generic_config()),
-            crypto: Arc::new(Crypto {
-                signers: HashMap::from_iter([(
-                    "Ed25519".to_string(),
-                    Arc::new(signer) as Arc<dyn Signer + Send + Sync>,
-                )]),
-                ..Default::default()
-            }),
+            crypto: Arc::new(crypto_provider),
             did_method_provider: Arc::new(did_method_provider),
         };
 
@@ -150,15 +151,19 @@ mod test {
             .times(1)
             .returning(|_| Err(ServiceError::Other("test-error".to_string())));
 
+        let mut crypto_provider = MockCryptoProvider::default();
+        crypto_provider
+            .expect_get_signer()
+            .once()
+            .withf(move |alg| {
+                assert_eq!(alg, "Ed25519");
+                true
+            })
+            .returning(move |_| Ok(Arc::new(MockSigner::default())));
+
         let verification = KeyVerification {
             config: Arc::new(generic_config()),
-            crypto: Arc::new(Crypto {
-                signers: HashMap::from_iter([(
-                    "Ed25519".to_string(),
-                    Arc::new(MockSigner::default()) as Arc<dyn Signer + Send + Sync>,
-                )]),
-                ..Default::default()
-            }),
+            crypto: Arc::new(crypto_provider),
             did_method_provider: Arc::new(did_method_provider),
         };
 
@@ -186,15 +191,21 @@ mod test {
             .expect_verify()
             .returning(|_, _, _| Err(SignerError::InvalidSignature));
 
+        let signer = Arc::new(signer);
+
+        let mut crypto_provider = MockCryptoProvider::default();
+        crypto_provider
+            .expect_get_signer()
+            .once()
+            .withf(move |alg| {
+                assert_eq!(alg, "Ed25519");
+                true
+            })
+            .returning(move |_| Ok(signer.clone()));
+
         let verification = KeyVerification {
             config: Arc::new(generic_config()),
-            crypto: Arc::new(Crypto {
-                signers: HashMap::from_iter([(
-                    "Ed25519".to_string(),
-                    Arc::new(signer) as Arc<dyn Signer + Send + Sync>,
-                )]),
-                ..Default::default()
-            }),
+            crypto: Arc::new(crypto_provider),
             did_method_provider: Arc::new(did_method_provider),
         };
 

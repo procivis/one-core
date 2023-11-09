@@ -4,6 +4,7 @@ use super::{
 };
 use crate::{
     common_mapper::get_algorithm_from_key_algorithm,
+    common_validator::throw_if_latest_credential_state_not_eq,
     model::{
         claim::{Claim, ClaimRelations},
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
@@ -18,13 +19,13 @@ use crate::{
         organisation::OrganisationRelations,
         proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
     },
-    provider::credential_formatter::{jwt::SkipVerification, model::PresentationCredential},
+    provider::credential_formatter::jwt::SkipVerification,
+    provider::{
+        credential_formatter::model::CredentialPresentation,
+        transport_protocol::provider::DetectedProtocol,
+    },
     repository::error::DataLayerError,
     service::{did::dto::DidId, error::ServiceError},
-};
-use crate::{
-    common_validator::throw_if_latest_credential_state_not_eq,
-    provider::transport_protocol::provider::DetectedProtocol,
 };
 use time::OffsetDateTime;
 use url::Url;
@@ -141,11 +142,11 @@ impl SSIHolderService {
             .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
 
         let mut submitted_claims: Vec<Claim> = vec![];
-        let mut credentials: Vec<PresentationCredential> = vec![];
+        let mut credentials: Vec<String> = vec![];
 
         // This is a temporary format selection. Will change in the future.
-        let mut format = String::from("JWT"); // Default
         for (_, credential_request) in request.submit_credentials {
+            let mut format = String::from("JWT"); // Default
             let credential = self
                 .credential_repository
                 .get_credential(
@@ -195,18 +196,26 @@ impl SSIHolderService {
             let (claims, claim_schemas): (Vec<Claim>, Vec<ClaimSchema>) =
                 requested_claims.into_iter().unzip();
 
-            credentials.push(PresentationCredential {
+            let formatter = self.formatter_provider.get_formatter(&format)?;
+
+            let credential_presentation = CredentialPresentation {
                 token: credential_content.to_owned(),
                 disclosed_keys: claim_schemas
                     .into_iter()
                     .map(|claim_schema| claim_schema.key)
                     .collect(),
-            });
+            };
+
+            let formatted_credential =
+                formatter.format_credential_presentation(credential_presentation)?;
+
+            credentials.push(formatted_credential);
 
             submitted_claims.extend(claims);
         }
 
-        let formatter = self.formatter_provider.get_formatter(&format)?;
+        // Here we have to find a way to select proper presentation format. JWT for now should be fine.
+        let presentation_formatter = self.formatter_provider.get_formatter("JWT")?;
 
         let keys = holder_did
             .keys
@@ -220,12 +229,7 @@ impl SSIHolderService {
 
         let algorithm = get_algorithm_from_key_algorithm(&key.key.key_type, &self.config)?;
 
-        let signer = self
-            .crypto
-            .signers
-            .get(&algorithm)
-            .ok_or(ServiceError::MissingSigner(algorithm.clone()))?
-            .clone();
+        let signer = self.crypto.get_signer(&algorithm)?;
 
         let key_provider = self.key_provider.get_key_storage(&key.key.storage_type)?;
 
@@ -239,7 +243,7 @@ impl SSIHolderService {
             signer.sign(data, &public_key, &private_key)
         });
 
-        let presentation = formatter.format_presentation(
+        let presentation = presentation_formatter.format_presentation(
             &credentials,
             &holder_did.did,
             &key.key.key_type,

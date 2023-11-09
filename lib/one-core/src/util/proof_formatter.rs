@@ -1,10 +1,11 @@
 use crate::provider::credential_formatter::jwt::SkipVerification;
+use crate::provider::credential_formatter::AuthenticationFn;
 use crate::service::error::ServiceError;
 use crate::{
     model::did::Did,
     provider::credential_formatter::{
         error::FormatterError,
-        jwt::{model::JWTPayload, AuthenticationFn, Jwt},
+        jwt::{model::JWTPayload, Jwt},
     },
 };
 use serde::{Deserialize, Serialize};

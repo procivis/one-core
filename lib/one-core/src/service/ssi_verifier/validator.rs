@@ -1,7 +1,7 @@
 use super::dto::ValidatedProofClaimDTO;
 use crate::{
     config::data_structure::CoreConfig,
-    crypto::Crypto,
+    crypto::CryptoProvider,
     model::{
         credential_schema::{CredentialSchema, CredentialSchemaId},
         did::Did,
@@ -30,7 +30,7 @@ pub(super) async fn validate_proof(
     holder_did: Did,
     presentation: &str,
     formatter: &(dyn CredentialFormatter + Send + Sync),
-    crypto: Arc<Crypto>,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
     config: Arc<CoreConfig>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,

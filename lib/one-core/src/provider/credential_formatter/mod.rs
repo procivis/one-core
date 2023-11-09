@@ -15,13 +15,28 @@ pub(crate) mod provider;
 
 use async_trait::async_trait;
 
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::{
+    crypto::signer::error::SignerError, service::credential::dto::CredentialDetailResponseDTO,
+};
 
 use self::{
     error::FormatterError,
-    jwt::{AuthenticationFn, TokenVerifier},
-    model::{CredentialPresentation, CredentialStatus, DetailCredential, PresentationCredential},
+    model::{CredentialPresentation, CredentialStatus, DetailCredential, Presentation},
 };
+
+pub type AuthenticationFn = Box<dyn FnOnce(&str) -> Result<Vec<u8>, SignerError>>;
+pub type VerificationFn = Box<dyn TokenVerifier + Send + Sync>;
+
+#[async_trait]
+pub trait TokenVerifier {
+    async fn verify<'a>(
+        &self,
+        issuer_did_value: Option<String>,
+        algorithm: &'a str,
+        token: &'a str,
+        signature: &'a [u8],
+    ) -> Result<(), SignerError>;
+}
 
 #[allow(clippy::too_many_arguments)]
 #[cfg_attr(test, mockall::automock)]
@@ -44,9 +59,14 @@ pub trait CredentialFormatter {
         verification: Box<dyn TokenVerifier + Send + Sync>,
     ) -> Result<DetailCredential, FormatterError>;
 
+    fn format_credential_presentation(
+        &self,
+        credential: CredentialPresentation,
+    ) -> Result<String, FormatterError>;
+
     fn format_presentation(
         &self,
-        tokens: &[PresentationCredential],
+        tokens: &[String],
         holder_did: &str,
         algorithm: &str,
         auth_fn: AuthenticationFn,
@@ -56,7 +76,7 @@ pub trait CredentialFormatter {
         &self,
         token: &str,
         verification: Box<dyn TokenVerifier + Send + Sync>,
-    ) -> Result<CredentialPresentation, FormatterError>;
+    ) -> Result<Presentation, FormatterError>;
 
     fn get_leeway(&self) -> u64;
 }

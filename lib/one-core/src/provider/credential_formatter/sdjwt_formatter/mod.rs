@@ -4,8 +4,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::config::data_structure::FormatJwtParams;
-use crate::crypto::Crypto;
-use crate::provider::credential_formatter::sdjwt_formatter::models::{
+use crate::crypto::CryptoProvider;
+use crate::provider::credential_formatter::sdjwt_formatter::model::{
     DecomposedToken, Disclosure, Sdvc,
 };
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -15,25 +15,28 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+#[cfg(test)]
+mod test;
+
 mod mapper;
 use self::mapper::*;
 
-mod models;
-use self::models::*;
+mod model;
+use self::model::*;
 
 mod verifier;
 use self::verifier::*;
 
 use super::jwt::model::JWTPayload;
-use super::jwt::{AuthenticationFn, Jwt, TokenVerifier};
-use super::model::CredentialSubject;
+use super::jwt::Jwt;
+use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
-    CredentialFormatter, CredentialPresentation, CredentialStatus, DetailCredential,
-    FormatterError, PresentationCredential,
+    AuthenticationFn, CredentialFormatter, CredentialStatus, DetailCredential, FormatterError,
+    Presentation, VerificationFn,
 };
 
 pub struct SDJWTFormatter {
-    pub crypto: Arc<Crypto>,
+    pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
     pub params: FormatJwtParams,
 }
 
@@ -63,7 +66,7 @@ impl CredentialFormatter for SDJWTFormatter {
         let payload = JWTPayload {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(30)),
+            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
             subject: Some(holder_did.to_owned()),
             issuer: credential.issuer_did.clone(),
             jwt_id: Some(credential.id.to_string()),
@@ -85,25 +88,23 @@ impl CredentialFormatter for SDJWTFormatter {
     async fn extract_credentials(
         &self,
         token: &str,
-        verification: Box<dyn TokenVerifier + Send + Sync>,
+        verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
         let DecomposedToken {
             deserialized_disclosures,
             jwt,
-        } = decompose_sd_token(token)?;
+        } = extract_disclosures(token)?;
 
         let jwt: Jwt<Sdvc> = Jwt::build_from_token(jwt, verification).await?;
 
         let hasher = self
             .crypto
-            .hashers
-            .get(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))
-            .ok_or(FormatterError::MissingHasher)?;
+            .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
 
         verify_claims(
             &jwt.payload.custom.vc.credential_subject.claims,
             &deserialized_disclosures,
-            hasher,
+            &hasher,
         )?;
 
         Ok(DetailCredential {
@@ -126,7 +127,7 @@ impl CredentialFormatter for SDJWTFormatter {
 
     fn format_presentation(
         &self,
-        credentials: &[PresentationCredential],
+        credentials: &[String],
         holder_did: &str,
         algorithm: &str,
         auth_fn: AuthenticationFn,
@@ -134,12 +135,12 @@ impl CredentialFormatter for SDJWTFormatter {
         let vp: Sdvp = format_payload(credentials);
 
         let now = OffsetDateTime::now_utc();
-        let valid_for = time::Duration::minutes(5);
+        let valid_for = Duration::minutes(5);
 
         let payload = JWTPayload {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(30)),
+            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
             issuer: Some(holder_did.to_owned()),
             subject: Some(holder_did.to_owned()),
             jwt_id: Some(Uuid::new_v4().to_string()),
@@ -155,18 +156,25 @@ impl CredentialFormatter for SDJWTFormatter {
     async fn extract_presentation(
         &self,
         token: &str,
-        verification: Box<dyn TokenVerifier + Send + Sync>,
-    ) -> Result<CredentialPresentation, FormatterError> {
+        verification: VerificationFn,
+    ) -> Result<Presentation, FormatterError> {
         // Build fails if verification fails
         let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, verification).await?;
 
-        Ok(CredentialPresentation {
+        Ok(Presentation {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
             issuer_did: jwt.payload.issuer,
             credentials: jwt.payload.custom.vp.verifiable_credential,
         })
+    }
+
+    fn format_credential_presentation(
+        &self,
+        credential: CredentialPresentation,
+    ) -> Result<String, FormatterError> {
+        prepare_sd_presentation(credential)
     }
 
     fn get_leeway(&self) -> u64 {
@@ -186,15 +194,11 @@ impl SDJWTFormatter {
         additional_context: Vec<String>,
         additional_types: Vec<String>,
     ) -> Result<(Sdvc, Vec<String>), FormatterError> {
-        let claims: Vec<String> = claims_to_formatted_disclosure(&credential.claims);
-        let hasher = self
-            .crypto
-            .hashers
-            .get(algorithm)
-            .ok_or(FormatterError::MissingHasher)?;
+        let claims: Vec<String> = claims_to_formatted_disclosure(&credential.claims, &self.crypto);
+        let hasher = self.crypto.get_hasher(algorithm)?;
 
         let vc = vc_from_credential(
-            hasher,
+            &hasher,
             &claims,
             credential_status,
             additional_context,
@@ -206,9 +210,7 @@ impl SDJWTFormatter {
     }
 }
 
-fn prepare_sd_presentation(
-    presentation: &PresentationCredential,
-) -> Result<String, FormatterError> {
+fn prepare_sd_presentation(presentation: CredentialPresentation) -> Result<String, FormatterError> {
     let DecomposedToken {
         jwt,
         deserialized_disclosures,
@@ -225,44 +227,14 @@ fn prepare_sd_presentation(
     Ok(token)
 }
 
-fn format_payload(credentials: &[PresentationCredential]) -> Sdvp {
+fn format_payload(credentials: &[String]) -> Sdvp {
     Sdvp {
         vp: VPContent {
             context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
             r#type: vec!["VerifiablePresentation".to_owned()],
-            verifiable_credential: credentials
-                .iter()
-                .filter_map(|credential| prepare_sd_presentation(credential).ok())
-                .collect(),
+            verifiable_credential: credentials.to_vec(),
         },
     }
-}
-
-fn decompose_sd_token(token: &str) -> Result<DecomposedToken, FormatterError> {
-    let mut token_parts = token.split('~');
-    let jwt = token_parts.next().ok_or(FormatterError::MissingPart)?;
-
-    let disclosures_decoded_encoded: Vec<(String, String)> = token_parts
-        .filter_map(|encoded| {
-            let bytes = Base64UrlSafeNoPadding::decode_to_vec(encoded, None).ok()?;
-            let decoded = String::from_utf8(bytes).ok()?;
-            Some((decoded, encoded.to_owned()))
-        })
-        .collect();
-
-    let deserialized_claims: Vec<(Disclosure, String, String)> = disclosures_decoded_encoded
-        .into_iter()
-        .filter_map(|(decoded, encoded)| {
-            serde_json::from_str(&decoded)
-                .ok()
-                .map(|disclosure| (disclosure, decoded, encoded))
-        })
-        .collect();
-
-    Ok(DecomposedToken {
-        jwt,
-        deserialized_disclosures: deserialized_claims,
-    })
 }
 
 fn extract_disclosures(token: &str) -> Result<DecomposedToken, FormatterError> {

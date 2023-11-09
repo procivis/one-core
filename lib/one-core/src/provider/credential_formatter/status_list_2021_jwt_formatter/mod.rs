@@ -1,8 +1,5 @@
 use self::model::{ContentType, CredentialSubject, StatusPurpose, SubjectType, VCContent, VC};
-use super::{
-    error::FormatterError,
-    jwt::{model::JWTPayload, AuthenticationFn, TokenVerifier},
-};
+use super::{error::FormatterError, jwt::model::JWTPayload, AuthenticationFn, VerificationFn};
 use crate::{model::did::Did, provider::credential_formatter::jwt::Jwt};
 use time::OffsetDateTime;
 
@@ -60,7 +57,7 @@ impl StatusList2021JWTFormatter {
     pub async fn parse_status_list(
         status_list_token: &str,
         issuer_did: &str,
-        verification: Box<dyn TokenVerifier + Send + Sync>,
+        verification: VerificationFn,
     ) -> Result<String, FormatterError> {
         let jwt: Jwt<VC> = Jwt::build_from_token(status_list_token, verification).await?;
 

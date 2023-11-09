@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::crypto::error::CryptoProviderError;
+
 #[derive(Debug, PartialEq, Eq, Error)]
 pub enum FormatterError {
     #[error("Failed: `{0}`")]
@@ -18,10 +20,6 @@ pub enum FormatterError {
     CouldNotExtractClaimsFromPresentation(String),
     #[error("Incorrect signature")]
     IncorrectSignature,
-    #[error("Missing signer")]
-    MissingSigner,
-    #[error("Missing hasher")]
-    MissingHasher,
     #[error("Missing part")]
     MissingPart,
     #[error("Missing disclosure")]
@@ -30,6 +28,8 @@ pub enum FormatterError {
     MissingIssuer,
     #[error("Missing claim")]
     MissingClaim,
+    #[error("Crypto library error: `{0}`")]
+    CryptoError(#[from] CryptoProviderError),
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]

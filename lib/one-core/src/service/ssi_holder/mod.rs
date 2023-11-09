@@ -1,6 +1,6 @@
 use crate::{
     config::data_structure::CoreConfig,
-    crypto::Crypto,
+    crypto::CryptoProvider,
     provider::credential_formatter::provider::CredentialFormatterProvider,
     provider::{
         key_storage::provider::KeyProvider, transport_protocol::provider::TransportProtocolProvider,
@@ -28,7 +28,7 @@ pub struct SSIHolderService {
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    crypto: Arc<Crypto>,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
     config: Arc<CoreConfig>,
 }
 
@@ -41,7 +41,7 @@ impl SSIHolderService {
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
-        crypto: Arc<Crypto>,
+        crypto: Arc<dyn CryptoProvider + Send + Sync>,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {
