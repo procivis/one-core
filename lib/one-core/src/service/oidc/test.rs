@@ -96,6 +96,7 @@ fn dummy_credential(state: CredentialStateEnum, pre_authroized_code: bool) -> Cr
         schema: None,
         interaction: Some(dummy_interaction(pre_authroized_code, None)),
         revocation_list: None,
+        key: None,
     }
 }
 

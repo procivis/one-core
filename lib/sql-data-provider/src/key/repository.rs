@@ -51,7 +51,6 @@ impl KeyRepository for KeyProvider {
             private_key: Set(request.private_key),
             storage_type: Set(request.storage_type),
             key_type: Set(request.key_type),
-            credential_id: Set(None),
             organisation_id: Set(organisation_id),
         }
         .insert(&self.db)

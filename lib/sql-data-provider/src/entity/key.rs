@@ -22,7 +22,6 @@ pub struct Model {
     pub storage_type: String,
     pub key_type: String,
 
-    pub credential_id: Option<String>,
     pub organisation_id: String,
 }
 
@@ -30,13 +29,7 @@ impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(
-        belongs_to = "super::credential::Entity",
-        from = "Column::CredentialId",
-        to = "super::credential::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
+    #[sea_orm(has_many = "super::credential::Entity")]
     Credential,
     #[sea_orm(has_many = "super::key_did::Entity")]
     KeyDid,

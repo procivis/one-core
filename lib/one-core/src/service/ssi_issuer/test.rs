@@ -162,6 +162,7 @@ fn dummy_credential() -> Credential {
             data: Some(b"interaction data".to_vec()),
         }),
         revocation_list: None,
+        key: None,
     }
 }
 

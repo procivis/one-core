@@ -24,6 +24,7 @@ pub struct Model {
     pub holder_did_id: Option<String>,
     pub interaction_id: Option<String>,
     pub revocation_list_id: Option<String>,
+    pub key_id: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -66,7 +67,13 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Interaction,
-    #[sea_orm(has_many = "super::key::Entity")]
+    #[sea_orm(
+        belongs_to = "super::key::Entity",
+        from = "Column::KeyId",
+        to = "super::key::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
     Key,
     #[sea_orm(
         belongs_to = "super::revocation_list::Entity",

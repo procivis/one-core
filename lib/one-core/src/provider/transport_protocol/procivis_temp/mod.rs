@@ -416,6 +416,7 @@ async fn handle_credential_invitation(
             schema: Some(credential_schema),
             interaction: Some(interaction),
             revocation_list: None,
+            key: None,
         })
         .await
         .map_err(|error| {

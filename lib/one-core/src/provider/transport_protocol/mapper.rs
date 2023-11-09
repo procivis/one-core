@@ -1,25 +1,26 @@
-use crate::model::credential::{
-    CredentialId, CredentialState, CredentialStateEnum, UpdateCredentialRequest,
+use crate::model::{
+    credential::{CredentialId, CredentialState, CredentialStateEnum, UpdateCredentialRequest},
+    interaction::Interaction,
+    key::Key,
 };
-use crate::model::interaction::Interaction;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-pub(super) fn from_credential_id_and_token(
+pub(super) fn get_issued_credential_update(
     credential_id: &CredentialId,
     token: &str,
+    key: &Key,
 ) -> UpdateCredentialRequest {
     UpdateCredentialRequest {
         id: credential_id.to_owned(),
         credential: Some(token.bytes().collect()),
-        holder_did_id: None,
-        issuer_did_id: None,
         state: Some(CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Accepted,
         }),
-        interaction: None,
+        key: Some(key.id),
+        ..Default::default()
     }
 }
 

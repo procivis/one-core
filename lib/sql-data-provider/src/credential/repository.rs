@@ -201,6 +201,19 @@ impl CredentialProvider {
             None
         };
 
+        let key = if let Some(key_relations) = &relations.key {
+            match &credential.key_id {
+                None => None,
+                Some(key_id) => {
+                    let key_id =
+                        Uuid::from_str(key_id).map_err(|_| DataLayerError::MappingError)?;
+                    Some(self.key_repository.get_key(&key_id, key_relations).await?)
+                }
+            }
+        } else {
+            None
+        };
+
         Ok(Credential {
             state,
             issuer_did,
@@ -209,6 +222,7 @@ impl CredentialProvider {
             schema,
             revocation_list,
             interaction,
+            key,
             ..credential.try_into()?
         })
     }
@@ -315,6 +329,7 @@ impl CredentialRepository for CredentialProvider {
             .revocation_list
             .as_ref()
             .map(|revocation_list| revocation_list.id);
+        let key_id = request.key.as_ref().map(|key| key.id);
 
         let credential = request_to_active_model(
             &request,
@@ -323,6 +338,7 @@ impl CredentialRepository for CredentialProvider {
             holder_did_id,
             interaction_id,
             revocation_list_id,
+            key_id,
         )
         .insert(&self.db)
         .await
@@ -474,6 +490,11 @@ impl CredentialRepository for CredentialProvider {
             Some(interaction_id) => Set(Some(interaction_id.to_string())),
         };
 
+        let key_id = match request.key {
+            None => Unchanged(Default::default()),
+            Some(key_id) => Set(Some(key_id.to_string())),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(id.to_string()),
             last_modified: Set(OffsetDateTime::now_utc()),
@@ -481,6 +502,7 @@ impl CredentialRepository for CredentialProvider {
             issuer_did_id,
             credential,
             interaction_id,
+            key_id,
             ..Default::default()
         };
 

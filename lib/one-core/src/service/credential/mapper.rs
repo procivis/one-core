@@ -178,6 +178,7 @@ pub(super) fn from_create_request(
         schema: Some(schema),
         interaction: None,
         revocation_list: None,
+        key: None,
     }
 }
 

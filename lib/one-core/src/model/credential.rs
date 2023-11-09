@@ -8,6 +8,7 @@ use super::{
     credential_schema::{CredentialSchema, CredentialSchemaRelations},
     did::{Did, DidId, DidRelations},
     interaction::{Interaction, InteractionId, InteractionRelations},
+    key::{Key, KeyId, KeyRelations},
     revocation_list::RevocationList,
 };
 
@@ -30,6 +31,7 @@ pub struct Credential {
     pub schema: Option<CredentialSchema>,
     pub interaction: Option<Interaction>,
     pub revocation_list: Option<RevocationList>,
+    pub key: Option<Key>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -41,6 +43,7 @@ pub struct CredentialRelations {
     pub schema: Option<CredentialSchemaRelations>,
     pub interaction: Option<InteractionRelations>,
     pub revocation_list: Option<RevocationListRelations>,
+    pub key: Option<KeyRelations>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -82,4 +85,5 @@ pub struct UpdateCredentialRequest {
     pub issuer_did_id: Option<DidId>,
     pub state: Option<CredentialState>,
     pub interaction: Option<InteractionId>,
+    pub key: Option<KeyId>,
 }

@@ -172,6 +172,7 @@ fn generic_credential() -> Credential {
             data: Some(vec![1, 2, 3]),
         }),
         revocation_list: None,
+        key: None,
     }
 }
 
