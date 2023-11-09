@@ -7,6 +7,7 @@ use one_core::model::{
     credential_schema::CredentialSchema,
     did::{Did, DidId},
     interaction::InteractionId,
+    key::KeyId,
     revocation_list::RevocationListId,
 };
 use one_core::repository::error::DataLayerError;
@@ -60,6 +61,7 @@ impl TryFrom<entity::credential::Model> for Credential {
             schema: None,
             interaction: None,
             revocation_list: None,
+            key: None,
         })
     }
 }
@@ -71,6 +73,7 @@ pub(super) fn request_to_active_model(
     holder_did_id: Option<DidId>,
     interaction_id: Option<InteractionId>,
     revocation_list_id: Option<RevocationListId>,
+    key_id: Option<KeyId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id.to_string()),
@@ -85,5 +88,6 @@ pub(super) fn request_to_active_model(
         holder_did_id: Set(holder_did_id.map(|did_id| did_id.to_string())),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
+        key_id: Set(key_id.map(|id| id.to_string())),
     }
 }

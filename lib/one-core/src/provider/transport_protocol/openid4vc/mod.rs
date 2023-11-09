@@ -630,6 +630,7 @@ async fn create_and_store_credential(
             schema: Some(credential_schema),
             interaction: Some(interaction),
             revocation_list: None,
+            key: None,
         })
         .await
 }

@@ -289,6 +289,7 @@ async fn test_get_presentation_definition() {
         }),
         interaction: None,
         revocation_list: None,
+        key: None,
     }];
 
     let claim_names = vec!["key".to_string()];
@@ -543,6 +544,7 @@ async fn test_get_presentation_definition_no_match() {
         }),
         interaction: None,
         revocation_list: None,
+        key: None,
     }];
 
     let claim_names = vec!["key_123".to_string()];

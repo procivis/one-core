@@ -44,6 +44,7 @@ pub async fn insert_credential(
         holder_did_id: Set(None),
         interaction_id: Set(None),
         revocation_list_id: Set(None),
+        key_id: Set(None),
     }
     .insert(db)
     .await?;
@@ -353,7 +354,6 @@ pub async fn insert_key_to_database(
         private_key: Set("private".to_string().bytes().collect()),
         storage_type: Set("INTERNAL".to_string()),
         key_type: Set("ED25519".to_string()),
-        credential_id: Set(None),
         organisation_id: Set(organisation_id.to_string()),
     }
     .insert(database)

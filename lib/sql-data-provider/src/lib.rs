@@ -114,6 +114,7 @@ impl DataLayer {
             did_repository: did_repository.clone(),
             interaction_repository: interaction_repository.clone(),
             revocation_list_repository: revocation_list_repository.clone(),
+            key_repository: key_repository.clone(),
         });
 
         Self {

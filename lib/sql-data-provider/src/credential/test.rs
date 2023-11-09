@@ -6,7 +6,9 @@ use crate::{
 use mockall::predicate::{always, eq};
 use one_core::{
     model::interaction::Interaction,
-    repository::mock::revocation_list_repository::MockRevocationListRepository,
+    repository::mock::{
+        key_repository::MockKeyRepository, revocation_list_repository::MockRevocationListRepository,
+    },
 };
 use one_core::{
     model::{
@@ -184,6 +186,7 @@ async fn test_create_credential_success() {
         did_repository: Arc::from(MockDidRepository::default()),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
     };
 
     let credential_id = Uuid::new_v4();
@@ -244,6 +247,7 @@ async fn test_create_credential_success() {
             schema: Some(credential_schema),
             interaction: None,
             revocation_list: None,
+            key: None,
         })
         .await;
 
@@ -284,6 +288,7 @@ async fn test_create_credential_empty_claims() {
         did_repository: Arc::from(MockDidRepository::default()),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
     };
 
     let credential_id = Uuid::new_v4();
@@ -302,6 +307,7 @@ async fn test_create_credential_empty_claims() {
             schema: Some(credential_schema),
             interaction: None,
             revocation_list: None,
+            key: None,
         })
         .await;
 
@@ -342,6 +348,7 @@ async fn test_create_credential_already_exists() {
         did_repository: Arc::from(MockDidRepository::default()),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
     };
 
     let claims = vec![Claim {
@@ -371,6 +378,7 @@ async fn test_create_credential_already_exists() {
             schema: Some(credential_schema),
             interaction: None,
             revocation_list: None,
+            key: None,
         })
         .await;
 
@@ -419,6 +427,7 @@ async fn test_get_credential_list_success() {
         did_repository: Arc::from(did_repository),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
     };
 
     let credentials = provider
@@ -558,6 +567,7 @@ async fn test_get_credential_success() {
         did_repository: Arc::from(did_repository),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
     };
 
     let credential = provider
@@ -576,6 +586,7 @@ async fn test_get_credential_success() {
                 holder_did: Some(DidRelations::default()),
                 interaction: Some(InteractionRelations::default()),
                 revocation_list: None, // TODO: Add check for this
+                key: None,
             },
         )
         .await;
@@ -613,6 +624,7 @@ async fn test_get_credential_fail_not_found() {
         did_repository: Arc::from(did_repository),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
     };
 
     let credential = provider
@@ -663,6 +675,7 @@ async fn test_update_credential_success() {
         did_repository: Arc::from(did_repository),
         interaction_repository: Arc::from(interaction_repository),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
     };
 
     let credential_before_update = provider
@@ -686,6 +699,7 @@ async fn test_update_credential_success() {
             issuer_did_id: None,
             state: None,
             interaction: Some(interaction_id),
+            key: None
         })
         .await
         .is_ok());

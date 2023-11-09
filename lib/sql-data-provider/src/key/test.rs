@@ -48,7 +48,6 @@ async fn setup() -> TestSetup {
         private_key: Set(vec![]),
         storage_type: Set("test".to_string()),
         key_type: Set("test".to_string()),
-        credential_id: Set(None),
         organisation_id: Set(organisation_id.to_string()),
     }
     .insert(&db)
@@ -86,7 +85,6 @@ async fn setup_list() -> TestListSetup {
         private_key: Set(vec![]),
         storage_type: Set("test2".to_string()),
         key_type: Set("test2".to_string()),
-        credential_id: Set(None),
         organisation_id: Set(organisation.id.to_string()),
     }
     .insert(&db)

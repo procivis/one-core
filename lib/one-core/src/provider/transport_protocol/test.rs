@@ -44,6 +44,7 @@ async fn test_issuer_submit_succeeds() {
     let key_storage_type = "storage type";
     let key_type = "key_type";
 
+    let key_id = Uuid::new_v4();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credential()
@@ -63,7 +64,7 @@ async fn test_issuer_submit_succeeds() {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: Key {
-                            id: Uuid::new_v4(),
+                            id: key_id,
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
                             public_key: b"public_key".to_vec(),
@@ -87,6 +88,7 @@ async fn test_issuer_submit_succeeds() {
     credential_repository
         .expect_update_credential()
         .once()
+        .withf(move |update_request| update_request.key == Some(key_id))
         .return_once(|_| Ok(()));
 
     let mut revocation_method = MockRevocationMethod::new();
@@ -240,6 +242,7 @@ fn dummy_credential() -> Credential {
             data: Some(b"interaction data".to_vec()),
         }),
         revocation_list: None,
+        key: None,
     }
 }
 

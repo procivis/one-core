@@ -16,7 +16,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
-use crate::provider::transport_protocol::mapper::from_credential_id_and_token;
+use crate::provider::transport_protocol::mapper::get_issued_credential_update;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::error::ServiceError;
 use std::{collections::HashMap, sync::Arc};
@@ -222,7 +222,11 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             )?;
 
         self.credential_repository
-            .update_credential(from_credential_id_and_token(credential_id, &token))
+            .update_credential(get_issued_credential_update(
+                credential_id,
+                &token,
+                &key.key,
+            ))
             .await?;
 
         Ok(SubmitIssuerResponse {

@@ -450,6 +450,49 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
+                    .table(Key::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Key::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(Key::CreatedDate)
+                            .custom::<CustomDateTime>(CustomDateTime(
+                                manager.get_database_backend(),
+                            ))
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Key::LastModified)
+                            .custom::<CustomDateTime>(CustomDateTime(
+                                manager.get_database_backend(),
+                            ))
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(Key::Name).string().not_null())
+                    .col(ColumnDef::new(Key::PublicKey).binary().not_null())
+                    .col(ColumnDef::new(Key::PrivateKey).binary().not_null())
+                    .col(ColumnDef::new(Key::StorageType).string().not_null())
+                    .col(ColumnDef::new(Key::KeyType).string().not_null())
+                    .col(ColumnDef::new(Key::OrganisationId).char_len(36).not_null())
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-Key-OrganisationId")
+                            .from_tbl(Key::Table)
+                            .from_col(Key::OrganisationId)
+                            .to_tbl(Organisation::Table)
+                            .to_col(Organisation::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
                     .table(Credential::Table)
                     .if_not_exists()
                     .col(
@@ -497,6 +540,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Credential::HolderDidId).char_len(36))
                     .col(ColumnDef::new(Credential::InteractionId).char_len(36))
                     .col(ColumnDef::new(Credential::RevocationListId).char_len(36))
+                    .col(ColumnDef::new(Credential::KeyId).char_len(36))
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-Credential-CredentialSchemaId")
@@ -536,6 +580,14 @@ impl MigrationTrait for Migration {
                             .from_col(Credential::RevocationListId)
                             .to_tbl(RevocationList::Table)
                             .to_col(RevocationList::Id),
+                    )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-Credential-KeyId")
+                            .from_tbl(Credential::Table)
+                            .from_col(Credential::KeyId)
+                            .to_tbl(Key::Table)
+                            .to_col(Key::Id),
                     )
                     .to_owned(),
             )
@@ -774,58 +826,6 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Key::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(Key::Id)
-                            .char_len(36)
-                            .not_null()
-                            .primary_key(),
-                    )
-                    .col(
-                        ColumnDef::new(Key::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(Key::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
-                            .not_null(),
-                    )
-                    .col(ColumnDef::new(Key::Name).string().not_null())
-                    .col(ColumnDef::new(Key::PublicKey).binary().not_null())
-                    .col(ColumnDef::new(Key::PrivateKey).binary().not_null())
-                    .col(ColumnDef::new(Key::StorageType).string().not_null())
-                    .col(ColumnDef::new(Key::KeyType).string().not_null())
-                    .col(ColumnDef::new(Key::CredentialId).char_len(36))
-                    .col(ColumnDef::new(Key::OrganisationId).char_len(36).not_null())
-                    .foreign_key(
-                        ForeignKeyCreateStatement::new()
-                            .name("fk-Key-CredentialId")
-                            .from_tbl(Key::Table)
-                            .from_col(Key::CredentialId)
-                            .to_tbl(Credential::Table)
-                            .to_col(Credential::Id),
-                    )
-                    .foreign_key(
-                        ForeignKeyCreateStatement::new()
-                            .name("fk-Key-OrganisationId")
-                            .from_tbl(Key::Table)
-                            .from_col(Key::OrganisationId)
-                            .to_tbl(Organisation::Table)
-                            .to_col(Organisation::Id),
-                    )
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_table(
-                Table::create()
                     .table(KeyDid::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(KeyDid::DidId).char_len(36).not_null())
@@ -954,9 +954,6 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(CredentialClaim::Table).to_owned())
             .await?;
         manager
-            .drop_table(Table::drop().table(Key::Table).to_owned())
-            .await?;
-        manager
             .drop_table(Table::drop().table(Claim::Table).to_owned())
             .await?;
         manager
@@ -970,6 +967,9 @@ impl MigrationTrait for Migration {
             .await?;
         manager
             .drop_table(Table::drop().table(Credential::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Key::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(RevocationList::Table).to_owned())
@@ -1107,6 +1107,7 @@ pub enum Credential {
     HolderDidId,
     InteractionId,
     RevocationListId,
+    KeyId,
 }
 
 #[derive(Iden)]
@@ -1219,7 +1220,6 @@ pub enum Key {
     PrivateKey,
     StorageType,
     KeyType,
-    CredentialId,
     OrganisationId,
 }
 
