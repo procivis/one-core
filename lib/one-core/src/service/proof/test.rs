@@ -300,19 +300,10 @@ async fn test_get_presentation_definition() {
             .with(
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
-                    schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
                     state: Some(ProofStateRelations::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
-                    }),
-                    verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(res_clone.clone()));
@@ -563,19 +554,10 @@ async fn test_get_presentation_definition_no_match() {
             .with(
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
-                    schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
                     state: Some(ProofStateRelations::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
-                    }),
-                    verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(res_clone.clone()));
@@ -710,19 +692,10 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             .with(
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
-                    schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
                     state: Some(ProofStateRelations::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
-                    }),
-                    verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
                     interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
                 }),
             )
             .returning(move |_, _| Ok(res_clone.clone()));

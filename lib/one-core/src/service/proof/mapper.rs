@@ -2,6 +2,7 @@ use super::dto::{
     CreateProofRequestDTO, PresentationDefinitionResponseDTO, ProofClaimDTO,
     ProofDetailResponseDTO, ProofListItemResponseDTO,
 };
+use super::model::CredentialGroup;
 use crate::model::credential::Credential;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::proof::dto::{
@@ -21,7 +22,7 @@ use crate::{
     provider::transport_protocol::dto::ProofClaimSchema,
     service::error::ServiceError,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -70,8 +71,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
 
 pub fn create_presentation_definition_field(
     claim_schema: &ProofClaimSchema,
-    credentials: &Vec<Credential>,
-    _index: usize,
+    credentials: &[Credential],
 ) -> Result<PresentationDefinitionFieldDTO, ServiceError> {
     let mut key_map: HashMap<String, String> = HashMap::new();
     for credential in credentials {
@@ -105,33 +105,17 @@ pub fn create_presentation_definition_field(
 }
 
 pub fn create_requested_credential(
+    index: usize,
     claim_schemas: &[ProofClaimSchema],
     credentials: &[Credential],
-    index: usize,
-    credential_schema_id: &String,
 ) -> Result<PresentationDefinitionRequestedCredentialResponseDTO, ServiceError> {
-    let credentials: Vec<_> = credentials
-        .iter()
-        .filter(|credential| {
-            if let Some(schema) = &credential.schema {
-                schema.id.to_string() == *credential_schema_id.to_string()
-            } else {
-                false
-            }
-        })
-        .cloned()
-        .collect();
-
     Ok(PresentationDefinitionRequestedCredentialResponseDTO {
         id: format!("input_{}", index),
         name: None,
         purpose: None,
         fields: claim_schemas
             .iter()
-            .enumerate()
-            .map(|(index, claim_schema)| {
-                create_presentation_definition_field(claim_schema, credentials.as_ref(), index)
-            })
+            .map(|claim_schema| create_presentation_definition_field(claim_schema, credentials))
             .collect::<Result<Vec<_>, ServiceError>>()?,
         applicable_credentials: credentials
             .iter()
@@ -140,30 +124,11 @@ pub fn create_requested_credential(
     })
 }
 
-pub fn presentation_definition_from_proof(
+pub(super) fn presentation_definition_from_proof(
     proof: Proof,
     credentials: Vec<Credential>,
-    claim_schemas: Vec<ProofClaimSchema>,
+    credential_groups: HashMap<String, CredentialGroup>,
 ) -> Result<PresentationDefinitionResponseDTO, ServiceError> {
-    let mut credential_schema_ids: HashSet<String> = HashSet::new();
-    for credential in &credentials {
-        credential_schema_ids.insert(
-            credential
-                .schema
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "credential schema is None".to_string(),
-                ))?
-                .id
-                .to_string(),
-        );
-    }
-
-    // If no match is found we need to create a dummy entry in order to generate one empty requestedCredentials
-    if credential_schema_ids.is_empty() {
-        credential_schema_ids.insert("dummy-credential-schema-id".to_string());
-    }
-
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
             id: proof.id.to_string(),
@@ -175,16 +140,11 @@ pub fn presentation_definition_from_proof(
                 max: None,
                 count: None,
             },
-            requested_credentials: credential_schema_ids
-                .iter()
+            requested_credentials: credential_groups
+                .into_iter()
                 .enumerate()
-                .map(|(index, credential_schema)| {
-                    create_requested_credential(
-                        &claim_schemas,
-                        &credentials,
-                        index,
-                        credential_schema,
-                    )
+                .map(|(index, (_, group))| {
+                    create_requested_credential(index, &group.claims, &group.applicable_credentials)
                 })
                 .collect::<Result<Vec<_>, ServiceError>>()?,
         }],
