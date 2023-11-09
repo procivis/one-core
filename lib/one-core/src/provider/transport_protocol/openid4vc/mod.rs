@@ -32,7 +32,15 @@ use crate::{
         did::{Did, DidId, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::{Organisation, OrganisationRelations},
-        proof::Proof,
+        proof::{Proof, ProofId, ProofRelations, UpdateProofRequest},
+        proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
+    },
+    provider::transport_protocol::{
+        mapper::proof_from_handle_invitation,
+        openid4vc::{
+            dto::OpenID4VPInteractionData, mapper::create_open_id_for_vp_sharing_url_encoded,
+            model::OpenID4VPInteractionContent, validator::validate_interaction_data,
+        },
     },
     provider::{
         credential_formatter::{jwt::SkipVerification, provider::CredentialFormatterProvider},
@@ -51,14 +59,12 @@ use crate::{
         },
         ssi_holder::dto::InvitationResponseDTO,
     },
-    util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core},
+    util::{
+        oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core},
+        proof_formatter::OpenID4VCIProofJWTFormatter,
+    },
 };
 
-use crate::model::proof::{ProofId, ProofRelations, UpdateProofRequest};
-use crate::model::proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations};
-use crate::provider::transport_protocol::openid4vc::mapper::create_open_id_for_vp_sharing_url_encoded;
-use crate::provider::transport_protocol::openid4vc::model::OpenID4VPInteractionContent;
-use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -72,6 +78,7 @@ mod test;
 pub mod dto;
 pub(super) mod mapper;
 mod model;
+mod validator;
 
 const CREDENTIAL_OFFER_QUERY_PARAM_KEY: &str = "credential_offer";
 const PRESENTATION_DEFINITION_QUERY_PARAM_KEY: &str = "presentation_definition";
@@ -175,7 +182,7 @@ impl TransportProtocol for OpenID4VC {
 
                 handle_credential_invitation(self, credential_offer, own_did).await
             }
-            InvitationType::ProofRequest => unimplemented!(),
+            InvitationType::ProofRequest => handle_proof_invitation(url, self, own_did).await,
         }
     }
 
@@ -760,4 +767,40 @@ async fn get_discovery_and_issuer_metadata(
     let (oicd_discovery, issuer_metadata) = tokio::join!(oicd_discovery, issuer_metadata);
 
     Ok((oicd_discovery?, issuer_metadata?))
+}
+
+async fn handle_proof_invitation(
+    url: Url,
+    deps: &OpenID4VC,
+    holder_did: Did,
+) -> Result<InvitationResponseDTO, TransportProtocolError> {
+    let query = url.query().ok_or(TransportProtocolError::InvalidRequest(
+        "Query cannot be empty".to_string(),
+    ))?;
+
+    let interaction_data: OpenID4VPInteractionData = serde_qs::from_str(query)
+        .map_err(|e| TransportProtocolError::InvalidRequest(e.to_string()))?;
+    validate_interaction_data(&interaction_data)?;
+    let data = serialize_interaction_data(&interaction_data)?;
+
+    let now = OffsetDateTime::now_utc();
+    let interaction =
+        create_and_store_interaction(&deps.interaction_repository, url.to_owned(), data)
+            .await
+            .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+    let interaction_id = interaction.id.to_owned();
+
+    let proof_id = Uuid::new_v4();
+    let proof =
+        proof_from_handle_invitation(&proof_id, url.scheme(), None, holder_did, interaction, now);
+
+    deps.proof_repository
+        .create_proof(proof)
+        .await
+        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+
+    Ok(InvitationResponseDTO::ProofRequest {
+        interaction_id,
+        proof_id,
+    })
 }

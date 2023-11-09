@@ -12,7 +12,7 @@ pub struct Model {
     pub issuance_date: OffsetDateTime,
 
     pub transport: String,
-    pub verifier_did_id: String,
+    pub verifier_did_id: Option<String>,
     pub holder_did_id: Option<String>,
     pub proof_schema_id: Option<String>,
     pub interaction_id: Option<String>,

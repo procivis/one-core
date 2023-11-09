@@ -1,15 +1,12 @@
+use std::collections::HashMap;
 use std::{str::FromStr, sync::Arc};
 
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use mockall::{predicate, Sequence};
+use url::Url;
 
-use crate::model::proof::{Proof, ProofState, ProofStateEnum};
-use crate::model::proof_schema::{ProofSchema, ProofSchemaClaim};
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::repository::did_repository::MockDidRepository;
 use crate::{
     config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::MockCryptoProvider,
@@ -21,16 +18,29 @@ use crate::{
         did::{Did, DidType},
         interaction::Interaction,
         organisation::Organisation,
+        proof::{Proof, ProofState, ProofStateEnum},
+        proof_schema::{ProofSchema, ProofSchemaClaim},
     },
-    provider::transport_protocol::TransportProtocol,
+    provider::{
+        credential_formatter::provider::MockCredentialFormatterProvider,
+        revocation::provider::MockRevocationMethodProvider,
+        transport_protocol::{
+            openid4vc::dto::{
+                OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
+            },
+            TransportProtocol, TransportProtocolError,
+        },
+    },
     repository::{
         credential_schema_repository::MockCredentialSchemaRepository,
+        did_repository::MockDidRepository,
         mock::{
             credential_repository::MockCredentialRepository,
             interaction_repository::MockInteractionRepository,
             proof_repository::MockProofRepository,
         },
     },
+    service::ssi_holder::dto::InvitationResponseDTO,
 };
 
 use super::OpenID4VC;
@@ -313,4 +323,151 @@ async fn test_generate_share_proof_open_id_flow_success() {
     let result = protocol.share_proof(&proof).await.unwrap();
 
     assert!(result.starts_with(r#"openid4vp://?response_type=vp_token"#))
+}
+
+fn generic_holder_did() -> Did {
+    let now = OffsetDateTime::now_utc();
+    Did {
+        id: Default::default(),
+        created_date: now,
+        last_modified: now,
+        name: "holder".to_string(),
+        did: "did:key:holder".to_string(),
+        did_type: DidType::Remote,
+        did_method: "KEY".to_string(),
+        keys: None,
+        organisation: None,
+    }
+}
+
+#[tokio::test]
+async fn test_handle_invitation_proof_success() {
+    let mut proof_repository = MockProofRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+
+    let mut seq = Sequence::new();
+
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .in_sequence(&mut seq)
+        .returning(move |request| Ok(request.id));
+
+    proof_repository
+        .expect_create_proof()
+        .once()
+        .in_sequence(&mut seq)
+        .returning(move |request| Ok(request.id));
+
+    let protocol = setup_protocol(Repositories {
+        proof_repository,
+        interaction_repository,
+        ..Default::default()
+    });
+
+    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        vp_formats: HashMap::from([(
+            "jwt_vp_json".to_string(),
+            OpenID4VPFormat {
+                alg: vec!["EdDSA".to_string()],
+            },
+        )]),
+        client_id_scheme: "redirect_uri".to_string(),
+    })
+    .unwrap();
+    let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
+        id: Default::default(),
+        input_descriptors: vec![],
+    })
+    .unwrap();
+
+    let nonce = Uuid::new_v4().to_string();
+    let callback_url = "http://127.0.0.1/callback";
+
+    let url = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+        , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
+
+    let result = protocol
+        .handle_invitation(url, generic_holder_did())
+        .await
+        .unwrap();
+    assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
+}
+
+#[tokio::test]
+async fn test_handle_invitation_proof_failed() {
+    let protocol = setup_protocol(Repositories {
+        ..Default::default()
+    });
+
+    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        vp_formats: HashMap::from([(
+            "jwt_vp_json".to_string(),
+            OpenID4VPFormat {
+                alg: vec!["EdDSA".to_string()],
+            },
+        )]),
+        client_id_scheme: "redirect_uri".to_string(),
+    })
+    .unwrap();
+    let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
+        id: Default::default(),
+        input_descriptors: vec![],
+    })
+    .unwrap();
+
+    let nonce = Uuid::new_v4().to_string();
+    let callback_url = "http://127.0.0.1/callback";
+
+    let incorrect_response_type = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+                                                      , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
+    let result = protocol
+        .handle_invitation(incorrect_response_type, generic_holder_did())
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let missing_nonce = Url::parse(&format!("openid4vp://?response_type=vp_token&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+                                            , callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
+    let result = protocol
+        .handle_invitation(missing_nonce, generic_holder_did())
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+                                                         , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
+    let result = protocol
+        .handle_invitation(incorrect_client_id_scheme, generic_holder_did())
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let incorrect_response_mode = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=some_mode&response_uri={}&presentation_definition={}"
+                                                      , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
+    let result = protocol
+        .handle_invitation(incorrect_response_mode, generic_holder_did())
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+                                                         , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
+    let result = protocol
+        .handle_invitation(incorrect_client_id_scheme, generic_holder_did())
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let metadata_missing_jwt_vp_json = serde_json::to_string(&OpenID4VPClientMetadata {
+        vp_formats: Default::default(),
+        client_id_scheme: "redirect_uri".to_string(),
+    })
+    .unwrap();
+    let missing_metadata_field = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}", nonce, callback_url, metadata_missing_jwt_vp_json, callback_url, presentation_definition)).unwrap();
+    let result = protocol
+        .handle_invitation(missing_metadata_field, generic_holder_did())
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
 }

@@ -27,8 +27,35 @@ impl TryFrom<ProofListItemModel> for Proof {
         let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
         let schema_id =
             Uuid::from_str(&value.schema_id).map_err(|_| DataLayerError::MappingError)?;
-        let verifier_did_id =
-            Uuid::from_str(&value.verifier_did_id).map_err(|_| DataLayerError::MappingError)?;
+        let verifier_did_id = value
+            .verifier_did_id
+            .map(|did_id| Uuid::from_str(&did_id).map_err(|_| DataLayerError::MappingError))
+            .transpose()?;
+        let verifier_did = match verifier_did_id {
+            None => None,
+            Some(verifier_did_id) => Some(Did {
+                id: verifier_did_id,
+                created_date: value
+                    .verifier_did_created_date
+                    .ok_or(DataLayerError::MappingError)?,
+                last_modified: value
+                    .verifier_did_last_modified
+                    .ok_or(DataLayerError::MappingError)?,
+                name: value
+                    .verifier_did_name
+                    .ok_or(DataLayerError::MappingError)?,
+                did: value.verifier_did.ok_or(DataLayerError::MappingError)?,
+                did_type: value
+                    .verifier_did_type
+                    .ok_or(DataLayerError::MappingError)?
+                    .into(),
+                did_method: value
+                    .verifier_did_method
+                    .ok_or(DataLayerError::MappingError)?,
+                organisation: None,
+                keys: None,
+            }),
+        };
 
         Ok(Self {
             id,
@@ -48,17 +75,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 organisation: None,
             }),
             claims: None,
-            verifier_did: Some(Did {
-                id: verifier_did_id,
-                created_date: value.verifier_did_created_date,
-                last_modified: value.verifier_did_last_modified,
-                name: value.verifier_did_name,
-                did: value.verifier_did,
-                did_type: value.verifier_did_type.into(),
-                did_method: value.verifier_did_method,
-                organisation: None,
-                keys: None,
-            }),
+            verifier_did,
             holder_did: None,
             interaction: None,
         })
@@ -97,11 +114,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             last_modified: Set(value.last_modified),
             issuance_date: Set(value.issuance_date),
             transport: Set(value.transport),
-            verifier_did_id: Set(value
-                .verifier_did
-                .ok_or(DataLayerError::IncorrectParameters)?
-                .id
-                .to_string()),
+            verifier_did_id: Set(value.verifier_did.map(|did| did.id.to_string())),
             holder_did_id: Set(value.holder_did.map(|did| did.id.to_string())),
             proof_schema_id: Set(value.schema.map(|schema| schema.id.to_string())),
             interaction_id: Set(value

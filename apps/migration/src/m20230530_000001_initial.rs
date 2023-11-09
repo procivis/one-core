@@ -677,7 +677,7 @@ impl MigrationTrait for Migration {
                             ))
                             .not_null(),
                     )
-                    .col(ColumnDef::new(Proof::VerifierDidId).char_len(36).not_null())
+                    .col(ColumnDef::new(Proof::VerifierDidId).char_len(36))
                     .col(ColumnDef::new(Proof::HolderDidId).char_len(36))
                     .col(ColumnDef::new(Proof::ProofSchemaId).char_len(36))
                     .col(ColumnDef::new(Proof::Transport).string().not_null())
