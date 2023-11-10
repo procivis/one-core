@@ -22,11 +22,8 @@ use crate::{
         transport_protocol::{provider::MockTransportProtocolProvider, MockTransportProtocol},
     },
     repository::{
-        did_repository::MockDidRepository,
-        mock::{
-            credential_repository::MockCredentialRepository,
-            credential_schema_repository::MockCredentialSchemaRepository,
-        },
+        credential_schema_repository::MockCredentialSchemaRepository,
+        did_repository::MockDidRepository, mock::credential_repository::MockCredentialRepository,
     },
     service::{
         credential::{

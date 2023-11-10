@@ -14,18 +14,16 @@ use crate::{
             UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
-        did::{Did, DidRelations, DidType, KeyRole},
+        did::{DidRelations, KeyRole},
         interaction::{InteractionId, InteractionRelations},
         key::KeyRelations,
         organisation::OrganisationRelations,
         proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
     },
-    provider::credential_formatter::jwt::SkipVerification,
     provider::{
         credential_formatter::model::CredentialPresentation,
         transport_protocol::provider::DetectedProtocol,
     },
-    repository::error::DataLayerError,
     service::{did::dto::DidId, error::ServiceError},
 };
 use time::OffsetDateTime;
@@ -299,49 +297,6 @@ impl SSIHolderService {
                 .accept_credential(&credential)
                 .await?;
 
-            let issuer_did_id = if credential.issuer_did.is_none() {
-                let schema = credential
-                    .schema
-                    .ok_or(ServiceError::MappingError("schema missing".to_string()))?;
-
-                let issuer_did_value = self
-                    .formatter_provider
-                    .get_formatter(&schema.format)?
-                    .extract_credentials(&issuer_response.credential, Box::new(SkipVerification))
-                    .await?
-                    .issuer_did
-                    .ok_or(ServiceError::MappingError("issuer_did missing".to_string()))?;
-
-                Some(
-                    match self
-                        .did_repository
-                        .get_did_by_value(&issuer_did_value, &DidRelations::default())
-                        .await
-                    {
-                        Ok(did) => did.id,
-                        Err(DataLayerError::RecordNotFound) => {
-                            let now = OffsetDateTime::now_utc();
-                            self.did_repository
-                                .create_did(Did {
-                                    id: DidId::new_v4(),
-                                    name: "issuer".to_string(),
-                                    created_date: now,
-                                    last_modified: now,
-                                    organisation: schema.organisation,
-                                    did: issuer_did_value,
-                                    did_type: DidType::Remote,
-                                    did_method: "KEY".to_string(),
-                                    keys: None,
-                                })
-                                .await?
-                        }
-                        Err(error) => return Err(error.into()),
-                    },
-                )
-            } else {
-                None
-            };
-
             self.credential_repository
                 .update_credential(UpdateCredentialRequest {
                     id: credential.id,
@@ -350,7 +305,6 @@ impl SSIHolderService {
                         state: CredentialStateEnum::Accepted,
                     }),
                     credential: Some(issuer_response.credential.bytes().collect()),
-                    issuer_did_id,
                     ..Default::default()
                 })
                 .await?;

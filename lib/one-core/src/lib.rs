@@ -114,33 +114,11 @@ impl OneCore {
             &available_credential_formatter_types,
         )?;
 
-        let procivis_temp = ProcivisTemp::new(
-            core_base_url.clone(),
-            data_provider.get_credential_repository(),
-            data_provider.get_proof_repository(),
-            data_provider.get_interaction_repository(),
-            data_provider.get_credential_schema_repository(),
-            data_provider.get_did_repository(),
-        );
-
-        let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![
-            ("PROCIVIS_TEMPORARY".to_string(), Arc::new(procivis_temp)),
-            (
-                "OPENID4VC".to_string(),
-                Arc::new(OpenID4VC::new(
-                    core_base_url.clone(),
-                    data_provider.get_credential_repository(),
-                    data_provider.get_credential_schema_repository(),
-                    data_provider.get_proof_repository(),
-                    data_provider.get_interaction_repository(),
-                    crypto.clone(),
-                    get_exchange_params("OPENID4VC", &config).ok(),
-                )),
-            ),
-        ];
-
         let credential_formatters =
             credential_formatters_from_config(&config.format, crypto.clone())?;
+        let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
+            credential_formatters.to_owned(),
+        ));
 
         let key_providers = key_providers_from_config(&config.key_storage)?;
         let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
@@ -152,10 +130,6 @@ impl OneCore {
             key_provider.clone(),
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
-
-        let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
-            credential_formatters.to_owned(),
-        ));
 
         let config = Arc::new(config);
 
@@ -178,6 +152,35 @@ impl OneCore {
         let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
             revocation_methods.to_owned(),
         ));
+
+        let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![
+            (
+                "PROCIVIS_TEMPORARY".to_string(),
+                Arc::new(ProcivisTemp::new(
+                    core_base_url.clone(),
+                    data_provider.get_credential_repository(),
+                    data_provider.get_proof_repository(),
+                    data_provider.get_interaction_repository(),
+                    data_provider.get_credential_schema_repository(),
+                    data_provider.get_did_repository(),
+                )),
+            ),
+            (
+                "OPENID4VC".to_string(),
+                Arc::new(OpenID4VC::new(
+                    core_base_url.clone(),
+                    data_provider.get_credential_repository(),
+                    data_provider.get_credential_schema_repository(),
+                    data_provider.get_did_repository(),
+                    data_provider.get_proof_repository(),
+                    data_provider.get_interaction_repository(),
+                    formatter_provider.clone(),
+                    revocation_method_provider.clone(),
+                    crypto.clone(),
+                    get_exchange_params("OPENID4VC", &config).ok(),
+                )),
+            ),
+        ];
 
         let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
             transport_protocols.to_owned(),

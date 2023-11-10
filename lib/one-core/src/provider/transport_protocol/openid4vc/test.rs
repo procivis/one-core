@@ -7,6 +7,9 @@ use mockall::{predicate, Sequence};
 
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofSchema, ProofSchemaClaim};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::repository::did_repository::MockDidRepository;
 use crate::{
     config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::MockCryptoProvider,
@@ -20,10 +23,13 @@ use crate::{
         organisation::Organisation,
     },
     provider::transport_protocol::TransportProtocol,
-    repository::mock::{
-        credential_repository::MockCredentialRepository,
+    repository::{
         credential_schema_repository::MockCredentialSchemaRepository,
-        interaction_repository::MockInteractionRepository, proof_repository::MockProofRepository,
+        mock::{
+            credential_repository::MockCredentialRepository,
+            interaction_repository::MockInteractionRepository,
+            proof_repository::MockProofRepository,
+        },
     },
 };
 
@@ -31,14 +37,14 @@ use super::OpenID4VC;
 
 #[derive(Default)]
 struct Repositories {
-    pub _client: reqwest::Client,
     pub credential_repository: MockCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
+    pub did_repository: MockDidRepository,
     pub proof_repository: MockProofRepository,
     pub interaction_repository: MockInteractionRepository,
-    pub _base_url: Option<String>,
+    pub formatter_provider: MockCredentialFormatterProvider,
+    pub revocation_provider: MockRevocationMethodProvider,
     pub crypto: MockCryptoProvider,
-    pub _params: ExchangeOPENID4VCParams,
 }
 
 fn setup_protocol(repositories: Repositories) -> OpenID4VC {
@@ -46,8 +52,11 @@ fn setup_protocol(repositories: Repositories) -> OpenID4VC {
         Some("http://base_url".to_string()),
         Arc::new(repositories.credential_repository),
         Arc::new(repositories.credential_schema_repository),
+        Arc::new(repositories.did_repository),
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.interaction_repository),
+        Arc::new(repositories.formatter_provider),
+        Arc::new(repositories.revocation_provider),
         Arc::new(repositories.crypto),
         Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(
             ExchangeOPENID4VCParams::default(),

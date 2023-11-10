@@ -12,11 +12,11 @@ use one_core::{
     },
     repository::{
         claim_schema_repository::{self, ClaimSchemaRepository},
+        credential_schema_repository::MockCredentialSchemaRepository,
         credential_schema_repository::{self, CredentialSchemaRepository},
         error::DataLayerError,
         mock::{
             claim_schema_repository::MockClaimSchemaRepository,
-            credential_schema_repository::MockCredentialSchemaRepository,
             organisation_repository::MockOrganisationRepository,
         },
         organisation_repository::{self, OrganisationRepository},

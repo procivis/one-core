@@ -46,3 +46,10 @@ pub enum SortableCredentialSchemaColumn {
 
 pub type GetCredentialSchemaList = GetListResponse<CredentialSchema>;
 pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumn>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct UpdateCredentialSchemaRequest {
+    pub id: CredentialSchemaId,
+
+    pub revocation_method: Option<RevocationMethod>,
+}
