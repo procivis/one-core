@@ -1,4 +1,5 @@
 use super::error::DataLayerError;
+use crate::model::proof::UpdateProofRequest;
 use crate::model::{
     claim::Claim,
     did::Did,
@@ -44,4 +45,6 @@ pub trait ProofRepository {
         proof_id: &ProofId,
         claims: Vec<Claim>,
     ) -> Result<(), DataLayerError>;
+
+    async fn update_proof(&self, proof: UpdateProofRequest) -> Result<(), DataLayerError>;
 }

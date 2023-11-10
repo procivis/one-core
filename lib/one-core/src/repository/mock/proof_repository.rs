@@ -1,3 +1,4 @@
+use crate::model::proof::UpdateProofRequest;
 use crate::{
     model::{
         claim::Claim,
@@ -32,6 +33,8 @@ mock! {
             &self,
             query_params: GetProofQuery,
         ) -> Result<GetProofList, DataLayerError>;
+
+        pub fn update_proof(&self, proof: UpdateProofRequest) -> Result<(), DataLayerError>;
 
         pub fn set_proof_state(
             &self,
@@ -104,5 +107,9 @@ impl crate::repository::proof_repository::ProofRepository for MockProofRepositor
         claims: Vec<Claim>,
     ) -> Result<(), DataLayerError> {
         self.set_proof_claims(proof_id, claims)
+    }
+
+    async fn update_proof(&self, proof: UpdateProofRequest) -> Result<(), DataLayerError> {
+        self.update_proof(proof)
     }
 }

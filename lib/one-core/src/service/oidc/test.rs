@@ -2,7 +2,7 @@ use crate::config::data_structure::CoreConfig;
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::interaction::Interaction;
-use crate::provider::transport_protocol::dto::CreateCredentialResponseDTO;
+use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::repository::mock::credential_repository::MockCredentialRepository;
 use crate::repository::mock::credential_schema_repository::MockCredentialSchemaRepository;
@@ -417,7 +417,7 @@ async fn test_oidc_create_credential_success() {
             .expect_issue_credential()
             .once()
             .return_once(|_| {
-                Ok(CreateCredentialResponseDTO {
+                Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     format: "jwt_vc_json".to_string(),
                 })

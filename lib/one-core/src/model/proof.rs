@@ -5,6 +5,8 @@ use super::{
     interaction::{Interaction, InteractionRelations},
     proof_schema::{ProofSchema, ProofSchemaRelations},
 };
+use crate::model::did::DidId;
+use crate::model::interaction::InteractionId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -67,3 +69,13 @@ pub struct ProofRelations {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofStateRelations {}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct UpdateProofRequest {
+    pub id: ProofId,
+
+    pub holder_did_id: Option<DidId>,
+    pub verifier_did_id: Option<DidId>,
+    pub state: Option<ProofState>,
+    pub interaction: Option<InteractionId>,
+}

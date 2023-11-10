@@ -7,6 +7,7 @@ use crate::{
     entity::{did, proof, proof_claim, proof_schema, proof_state},
     list_query::SelectWithListQuery,
 };
+use one_core::model::proof::UpdateProofRequest;
 use one_core::{
     common_mapper::vector_into,
     model::{
@@ -203,6 +204,53 @@ impl ProofRepository for ProofProvider {
             .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn update_proof(&self, proof: UpdateProofRequest) -> Result<(), DataLayerError> {
+        let id = &proof.id;
+
+        let holder_did_id = match proof.holder_did_id {
+            None => Unchanged(Default::default()),
+            Some(holder_did) => Set(Some(holder_did.to_string())),
+        };
+
+        let verifier_did_id: sea_orm::ActiveValue<String> = match proof.verifier_did_id {
+            None => Unchanged(Default::default()),
+            Some(verifier_did_id) => Set(verifier_did_id.to_string()),
+        };
+
+        let interaction_id = match proof.interaction {
+            None => Unchanged(Default::default()),
+            Some(interaction_id) => Set(Some(interaction_id.to_string())),
+        };
+
+        let update_model = proof::ActiveModel {
+            id: Unchanged(id.to_string()),
+            last_modified: Set(OffsetDateTime::now_utc()),
+            holder_did_id,
+            verifier_did_id,
+            interaction_id,
+            ..Default::default()
+        };
+
+        if let Some(state) = proof.state {
+            proof_state::Entity::insert(get_proof_state_active_model(id, state))
+                .exec(&self.db)
+                .await
+                .map_err(|e| match e.sql_err() {
+                    Some(SqlErr::ForeignKeyConstraintViolation(_)) => {
+                        DataLayerError::RecordNotFound
+                    }
+                    _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+                })?;
+        }
+
+        update_model.update(&self.db).await.map_err(|e| match e {
+            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
+            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+        })?;
 
         Ok(())
     }
