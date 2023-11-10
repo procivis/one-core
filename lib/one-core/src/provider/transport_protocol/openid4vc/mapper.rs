@@ -1,8 +1,15 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::credential_schema::CredentialSchemaId;
+use crate::model::proof::Proof;
+use crate::provider::transport_protocol::openid4vc::dto::{
+    OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPPresentationDefinitionInputDescriptors,
+};
 use crate::{
     model::{
         claim::Claim,
@@ -26,6 +33,139 @@ use super::dto::{
     OpenID4VCICredentialValueDetails,
 };
 
+pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
+    base_url: Option<String>,
+    interaction_id: InteractionId,
+    nonce: String,
+    proof: Proof,
+) -> Result<String, TransportProtocolError> {
+    let client_metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata()?)
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    let presentation_definition = serde_json::to_string(
+        &create_open_id_for_vp_presentation_definition(interaction_id, proof)?,
+    )
+    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    let callback_url = format!("{}/ssi/oidc-verifier/v1/response", get_url(base_url)?);
+    let encoded_params = serde_urlencoded::to_string([
+        ("response_type", "vp_token"),
+        ("state", &interaction_id.to_string()),
+        ("nonce", &nonce),
+        ("client_id_scheme", "redirect_uri"),
+        ("client_id", &callback_url),
+        ("client_metadata", &client_metadata),
+        ("response_mode", "direct_post"),
+        ("response_uri", &callback_url),
+        ("presentation_definition", &presentation_definition),
+    ])
+    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+    Ok(encoded_params)
+}
+
+pub(crate) fn create_open_id_for_vp_presentation_definition(
+    interaction_id: InteractionId,
+    proof: Proof,
+) -> Result<OpenID4VPPresentationDefinition, TransportProtocolError> {
+    let mut requested_credentials = HashSet::new();
+    let claim_schemas = proof
+        .clone()
+        .schema
+        .ok_or(TransportProtocolError::Failed(
+            "Proof schema not found".to_string(),
+        ))?
+        .claim_schemas
+        .ok_or(TransportProtocolError::Failed(
+            "Proof claim schemas not found".to_string(),
+        ))?;
+    for claim_schema in claim_schemas {
+        let credential_schema =
+            claim_schema
+                .clone()
+                .credential_schema
+                .ok_or(TransportProtocolError::Failed(
+                    "Credential schema not found".to_string(),
+                ))?;
+        requested_credentials.insert(credential_schema.id);
+    }
+
+    Ok(OpenID4VPPresentationDefinition {
+        id: interaction_id,
+        input_descriptors: requested_credentials
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| {
+                create_open_id_for_vp_presentation_definition_input_descriptor(i, &v, proof.clone())
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+    })
+}
+
+pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
+    index: usize,
+    credential_schema_id: &CredentialSchemaId,
+    proof: Proof,
+) -> Result<OpenID4VPPresentationDefinitionInputDescriptors, TransportProtocolError> {
+    let proof_claims = proof
+        .schema
+        .ok_or(TransportProtocolError::Failed(
+            "Schema not found".to_string(),
+        ))?
+        .claim_schemas
+        .ok_or(TransportProtocolError::Failed(
+            "Claim schemas not found".to_string(),
+        ))?;
+    let claims_for_credential: Vec<_> = proof_claims
+        .iter()
+        .filter(|claim| {
+            if let Some(schema) = claim.credential_schema.as_ref() {
+                credential_schema_id == &schema.id
+            } else {
+                false
+            }
+        })
+        .collect();
+
+    Ok(OpenID4VPPresentationDefinitionInputDescriptors {
+        id: format!("input_{}", index),
+        constraints: OpenID4VPPresentationDefinitionConstraint {
+            fields: claims_for_credential
+                .iter()
+                .map(|claim| OpenID4VPPresentationDefinitionConstraintField {
+                    id: claim.schema.id,
+                    path: vec![format!("$.vc.credentialSubject.{}", claim.schema.key)],
+                    optional: !claim.required,
+                })
+                .collect(),
+        },
+    })
+}
+
+pub(crate) fn create_open_id_for_vp_client_metadata(
+) -> Result<OpenID4VPClientMetadata, TransportProtocolError> {
+    Ok(OpenID4VPClientMetadata {
+        vp_formats: create_open_id_for_vp_formats()?,
+        client_id_scheme: "redirect_uri".to_string(),
+    })
+}
+// TODO: This method needs to be refactored as soon as we have a new config value access and remove the static values from this method
+pub(crate) fn create_open_id_for_vp_formats(
+) -> Result<HashMap<String, OpenID4VPFormat>, TransportProtocolError> {
+    let mut formats = HashMap::new();
+    let algorithms = OpenID4VPFormat {
+        alg: vec!["EdDSA".to_owned()],
+    };
+    formats.insert("jwt_vp_json".to_owned(), algorithms.clone());
+    formats.insert("jwt_vc_json".to_owned(), algorithms.clone());
+    formats.insert("vc+sd-jwt".to_owned(), algorithms);
+    Ok(formats)
+}
+
+fn get_url(base_url: Option<String>) -> Result<String, TransportProtocolError> {
+    base_url.ok_or(TransportProtocolError::Failed(
+        "Missing base_url".to_owned(),
+    ))
+}
+
 pub(super) fn create_credential_offer_encoded(
     base_url: Option<String>,
     interaction_id: &InteractionId,
@@ -43,9 +183,7 @@ pub(super) fn create_credential_offer_encoded(
         .as_ref()
         .ok_or(TransportProtocolError::Failed("Missing claims".to_owned()))?;
 
-    let url = base_url.ok_or(TransportProtocolError::Failed(
-        "Missing base_url".to_owned(),
-    ))?;
+    let url = get_url(base_url)?;
 
     let offer = OpenID4VCICredentialOffer {
         credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", url, credential_schema.id),

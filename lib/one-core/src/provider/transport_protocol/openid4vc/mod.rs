@@ -6,7 +6,7 @@ use self::{
         OpenID4VCIProof,
     },
     mapper::{create_claims_from_credential_definition, create_credential_offer_encoded},
-    model::{HolderInteractionData, InteractionContent},
+    model::{HolderInteractionData, OpenID4VCIInteractionContent},
 };
 
 use super::{
@@ -48,6 +48,10 @@ use crate::{
     util::oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core},
 };
 
+use crate::model::proof::{ProofId, ProofRelations, UpdateProofRequest};
+use crate::model::proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations};
+use crate::provider::transport_protocol::openid4vc::mapper::create_open_id_for_vp_sharing_url_encoded;
+use crate::provider::transport_protocol::openid4vc::model::OpenID4VPInteractionContent;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
@@ -266,38 +270,97 @@ impl TransportProtocol for OpenID4VC {
             )
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-
-        // fetch and delete interactions
-        if let Some(interaction) = credential.interaction.as_ref() {
-            _ = self
-                .interaction_repository
-                .delete_interaction(&interaction.id)
-                .await;
-        }
-
-        let interaction_id = add_new_interaction(
-            self.base_url.to_owned(),
+        let interaction_id = Uuid::new_v4();
+        let interaction_content: OpenID4VCIInteractionContent = OpenID4VCIInteractionContent {
+            pre_authorized_code_used: false,
+            access_token: format!(
+                "{}.{}",
+                interaction_id,
+                self.crypto.generate_alphanumeric(32)
+            ),
+            access_token_expires_at: None,
+        };
+        add_new_interaction(
+            interaction_id,
+            &self.base_url,
             &self.interaction_repository,
-            &self.crypto,
+            serde_json::to_vec(&interaction_content).ok(),
         )
         .await?;
-
         update_credentials_interaction(
             &credential.id,
             &interaction_id,
             &self.credential_repository,
         )
         .await?;
-
+        clear_previous_interaction(&self.interaction_repository, &credential.interaction).await?;
         let encoded_offer =
             create_credential_offer_encoded(self.base_url.clone(), &interaction_id, &credential)?;
-
         Ok(format!("openid-credential-offer://?{encoded_offer}"))
     }
 
-    async fn share_proof(&self, _proof: &Proof) -> Result<String, TransportProtocolError> {
-        unimplemented!()
+    async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError> {
+        let proof = self
+            .proof_repository
+            .get_proof(
+                &proof.id,
+                &ProofRelations {
+                    interaction: Some(InteractionRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    schema: Some(ProofSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations {
+                            credential_schema: Some(CredentialSchemaRelations {
+                                claim_schemas: Some(ClaimSchemaRelations::default()),
+                                ..Default::default()
+                            }),
+                        }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let interaction_id = Uuid::new_v4();
+        let interaction_content = OpenID4VPInteractionContent {
+            nonce: self.crypto.generate_alphanumeric(32),
+        };
+
+        add_new_interaction(
+            interaction_id,
+            &self.base_url,
+            &self.interaction_repository,
+            serde_json::to_vec(&interaction_content).ok(),
+        )
+        .await?;
+        update_proof_interaction(&proof.id, &interaction_id, &self.proof_repository).await?;
+
+        clear_previous_interaction(&self.interaction_repository, &proof.interaction).await?;
+
+        let encoded_offer = create_open_id_for_vp_sharing_url_encoded(
+            self.base_url.clone(),
+            interaction_id,
+            interaction_content.nonce,
+            proof,
+        )?;
+
+        Ok(format!("openid4vp://?{encoded_offer}"))
     }
+}
+async fn clear_previous_interaction(
+    interaction_repository: &Arc<dyn InteractionRepository + Send + Sync>,
+    interaction: &Option<Interaction>,
+) -> Result<(), TransportProtocolError> {
+    if let Some(interaction) = interaction.as_ref() {
+        interaction_repository
+            .delete_interaction(&interaction.id)
+            .await
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    }
+    Ok(())
 }
 
 async fn update_credentials_interaction(
@@ -318,20 +381,33 @@ async fn update_credentials_interaction(
     Ok(())
 }
 
-async fn add_new_interaction(
-    base_url: Option<String>,
-    interaction_repository: &Arc<dyn InteractionRepository + Send + Sync>,
-    crypto: &Arc<dyn CryptoProvider + Send + Sync>,
-) -> Result<InteractionId, TransportProtocolError> {
-    let interaction_id = Uuid::new_v4();
-    let interaction_content: InteractionContent = InteractionContent {
-        pre_authorized_code_used: false,
-        access_token: format!("{}.{}", interaction_id, crypto.generate_alphanumeric(32)),
-        access_token_expires_at: None,
+async fn update_proof_interaction(
+    proof_id: &ProofId,
+    interaction_id: &InteractionId,
+    proof_repository: &Arc<dyn ProofRepository + Send + Sync>,
+) -> Result<(), TransportProtocolError> {
+    let update = UpdateProofRequest {
+        id: proof_id.to_owned(),
+        interaction: Some(interaction_id.to_owned()),
+        ..Default::default()
     };
 
+    proof_repository
+        .update_proof(update)
+        .await
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    Ok(())
+}
+
+async fn add_new_interaction(
+    interaction_id: InteractionId,
+    base_url: &Option<String>,
+    interaction_repository: &Arc<dyn InteractionRepository + Send + Sync>,
+    data: Option<Vec<u8>>,
+) -> Result<(), TransportProtocolError> {
     let now = OffsetDateTime::now_utc();
     let host = base_url
+        .as_ref()
         .map(|url| {
             url.parse()
                 .map_err(|_| TransportProtocolError::Failed(format!("Invalid base url {url}")))
@@ -343,15 +419,14 @@ async fn add_new_interaction(
         created_date: now,
         last_modified: now,
         host,
-        data: serde_json::to_vec(&interaction_content).ok(),
+        data,
     };
-
     interaction_repository
         .create_interaction(new_interaction)
         .await
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
-    Ok(interaction_id)
+    Ok(())
 }
 
 async fn handle_credential_invitation(

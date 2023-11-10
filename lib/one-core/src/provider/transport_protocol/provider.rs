@@ -15,7 +15,7 @@ use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::transport_protocol::dto::CreateCredentialResponseDTO;
+use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::mapper::from_credential_id_and_token;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::error::ServiceError;
@@ -46,7 +46,7 @@ pub(crate) trait TransportProtocolProvider {
     async fn issue_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<CreateCredentialResponseDTO, ServiceError>;
+    ) -> Result<SubmitIssuerResponse, ServiceError>;
 }
 
 pub(crate) struct TransportProtocolProviderImpl {
@@ -125,7 +125,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
     async fn issue_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<CreateCredentialResponseDTO, ServiceError> {
+    ) -> Result<SubmitIssuerResponse, ServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -225,7 +225,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .update_credential(from_credential_id_and_token(credential_id, &token))
             .await?;
 
-        Ok(CreateCredentialResponseDTO {
+        Ok(SubmitIssuerResponse {
             credential: token,
             format,
         })

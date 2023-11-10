@@ -7,8 +7,9 @@ use super::{
     model::CredentialGroup,
     ProofService,
 };
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::model::credential::{CredentialRelations, CredentialStateRelations};
-use crate::service::proof::validator::{check_holder_did_is_local, check_last_proof_state};
+use crate::service::proof::validator::check_holder_did_is_local;
 use crate::{
     common_mapper::list_response_try_into,
     model::{
@@ -97,7 +98,7 @@ impl ProofService {
             .map_err(ServiceError::from)?;
 
         check_holder_did_is_local(&proof)?;
-        check_last_proof_state(&proof, ProofStateEnum::Pending)?;
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         let requested_claims = get_proof_claim_schemas_from_proof(&proof)?;
         let requested_claim_keys: Vec<String> = requested_claims

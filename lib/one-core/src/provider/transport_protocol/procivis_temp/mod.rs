@@ -1,13 +1,13 @@
+mod dto;
+mod mapper;
+
 use std::sync::Arc;
 
-use super::{
-    dto::{ConnectVerifierResponse, HandleInvitationConnectRequest, SubmitIssuerResponse},
-    mapper::{
-        get_base_url, interaction_from_handle_invitation, proof_from_handle_invitation,
-        remote_did_from_value,
-    },
-    TransportProtocol, TransportProtocolError,
-};
+use self::mapper::{get_base_url, proof_from_handle_invitation, remote_did_from_value};
+use crate::provider::transport_protocol::dto::{ConnectVerifierResponse, SubmitIssuerResponse};
+use crate::provider::transport_protocol::mapper::interaction_from_handle_invitation;
+use crate::provider::transport_protocol::procivis_temp::dto::HandleInvitationConnectRequest;
+use crate::provider::transport_protocol::{TransportProtocol, TransportProtocolError};
 use crate::{
     model::{
         claim::{Claim, ClaimId},

@@ -10,11 +10,10 @@ use thiserror::Error;
 use url::Url;
 
 pub mod dto;
-pub(crate) mod provider;
-
 mod mapper;
 pub mod openid4vc;
 pub mod procivis_temp;
+pub(crate) mod provider;
 #[cfg(test)]
 mod test;
 

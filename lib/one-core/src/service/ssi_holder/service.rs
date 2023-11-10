@@ -2,6 +2,7 @@ use super::{
     dto::{InvitationResponseDTO, PresentationSubmitRequestDTO},
     SSIHolderService,
 };
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::{
     common_mapper::get_algorithm_from_key_algorithm,
     common_validator::throw_if_latest_credential_state_not_eq,
@@ -73,17 +74,7 @@ impl SSIHolderService {
             )
             .await?;
 
-        let latest_state = proof
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?
-            .get(0)
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?
-            .to_owned();
-
-        if latest_state.state != ProofStateEnum::Pending {
-            return Err(ServiceError::AlreadyExists);
-        }
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         self.protocol_provider
             .get_protocol(&proof.transport)?
@@ -124,17 +115,7 @@ impl SSIHolderService {
             )
             .await?;
 
-        let latest_state = proof
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?
-            .get(0)
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?
-            .to_owned();
-
-        if latest_state.state != ProofStateEnum::Pending {
-            return Err(ServiceError::AlreadyExists);
-        }
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         let holder_did = proof
             .holder_did

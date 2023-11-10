@@ -5,6 +5,8 @@ use uuid::Uuid;
 
 use mockall::{predicate, Sequence};
 
+use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof_schema::{ProofSchema, ProofSchemaClaim};
 use crate::{
     config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::MockCryptoProvider,
@@ -51,6 +53,55 @@ fn setup_protocol(repositories: Repositories) -> OpenID4VC {
             ExchangeOPENID4VCParams::default(),
         ))),
     )
+}
+
+fn construct_proof_with_state() -> Proof {
+    Proof {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        issuance_date: OffsetDateTime::now_utc(),
+        transport: "OPENID4VC".to_string(),
+        state: Some(vec![ProofState {
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            state: ProofStateEnum::Pending,
+        }]),
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "schema".to_string(),
+            expire_duration: 10,
+            claim_schemas: Some(vec![ProofSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4(),
+                    key: "first_name".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                },
+                required: true,
+                credential_schema: Some(CredentialSchema {
+                    id: Uuid::new_v4(),
+                    deleted_at: None,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    name: "credential schema".to_string(),
+                    format: "JWT".to_string(),
+                    revocation_method: "NONE".to_string(),
+                    claim_schemas: None,
+                    organisation: None,
+                }),
+            }]),
+            organisation: None,
+        }),
+        claims: None,
+        verifier_did: None,
+        holder_did: None,
+        interaction: None,
+    }
 }
 
 fn generic_credential() -> Credential {
@@ -161,13 +212,6 @@ async fn test_generate_share_credentials() {
         .returning(move |_, _| Ok(credential_moved.clone()));
 
     interaction_repository
-        .expect_delete_interaction()
-        .once()
-        .in_sequence(&mut seq)
-        .with(predicate::eq(credential.id))
-        .returning(move |_| Ok(()));
-
-    interaction_repository
         .expect_create_interaction()
         .once()
         .in_sequence(&mut seq)
@@ -181,6 +225,13 @@ async fn test_generate_share_credentials() {
             assert_eq!(update.id, interaction_id);
             Ok(())
         });
+
+    interaction_repository
+        .expect_delete_interaction()
+        .once()
+        .in_sequence(&mut seq)
+        .with(predicate::eq(credential.id))
+        .returning(move |_| Ok(()));
 
     let mut crypto = MockCryptoProvider::default();
     crypto
@@ -202,4 +253,54 @@ async fn test_generate_share_credentials() {
     assert!(
         result.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
     )
+}
+
+#[tokio::test]
+async fn test_generate_share_proof_open_id_flow_success() {
+    let proof = construct_proof_with_state();
+    let interaction_id: Uuid = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
+
+    let mut proof_repository = MockProofRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+
+    let mut seq = Sequence::new();
+
+    let proof_moved = proof.clone();
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .in_sequence(&mut seq)
+        .returning(move |_, _| Ok(proof_moved.clone()));
+
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .in_sequence(&mut seq)
+        .returning(move |_| Ok(interaction_id));
+
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .in_sequence(&mut seq)
+        .returning(move |update| {
+            assert_eq!(update.id, proof.id);
+            Ok(())
+        });
+
+    let mut crypto = MockCryptoProvider::default();
+    crypto
+        .expect_generate_alphanumeric()
+        .once()
+        .returning(|_| String::from("ABC123"));
+
+    let protocol = setup_protocol(Repositories {
+        proof_repository,
+        interaction_repository,
+        crypto,
+        ..Default::default()
+    });
+
+    let result = protocol.share_proof(&proof).await.unwrap();
+
+    assert!(result.starts_with(r#"openid4vp://?response_type=vp_token"#))
 }
