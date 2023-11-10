@@ -1,7 +1,7 @@
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
-    PaginatorTrait, QueryFilter, QueryOrder, SqlErr,
+    PaginatorTrait, QueryFilter, QueryOrder, SqlErr, Unchanged,
 };
 use std::str::FromStr;
 use time::OffsetDateTime;
@@ -13,7 +13,7 @@ use one_core::{
         claim_schema::ClaimSchemaId,
         credential_schema::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
-            GetCredentialSchemaList, GetCredentialSchemaQuery,
+            GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
         },
         organisation::Organisation,
     },
@@ -198,5 +198,31 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
         Ok(create_list_response(credential_schemas, limit, items_count))
+    }
+
+    async fn update_credential_schema(
+        &self,
+        request: UpdateCredentialSchemaRequest,
+    ) -> Result<(), DataLayerError> {
+        let id = &request.id;
+
+        let revocation_method = match request.revocation_method {
+            None => Unchanged(Default::default()),
+            Some(revocation_method) => Set(revocation_method),
+        };
+
+        let update_model = credential_schema::ActiveModel {
+            id: Unchanged(id.to_string()),
+            last_modified: Set(OffsetDateTime::now_utc()),
+            revocation_method,
+            ..Default::default()
+        };
+
+        update_model.update(&self.db).await.map_err(|e| match e {
+            DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
+            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+        })?;
+
+        Ok(())
     }
 }

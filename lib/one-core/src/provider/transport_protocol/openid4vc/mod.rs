@@ -27,16 +27,22 @@ use crate::{
         },
         credential_schema::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
+            UpdateCredentialSchemaRequest,
         },
-        did::{Did, DidRelations},
+        did::{Did, DidId, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::{Organisation, OrganisationRelations},
         proof::Proof,
     },
+    provider::{
+        credential_formatter::{jwt::SkipVerification, provider::CredentialFormatterProvider},
+        revocation::provider::RevocationMethodProvider,
+    },
     repository::{
         credential_repository::CredentialRepository,
-        credential_schema_repository::CredentialSchemaRepository, error::DataLayerError,
-        interaction_repository::InteractionRepository, proof_repository::ProofRepository,
+        credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
+        error::DataLayerError, interaction_repository::InteractionRepository,
+        proof_repository::ProofRepository,
     },
     service::{
         oidc::dto::{
@@ -70,26 +76,34 @@ mod model;
 const CREDENTIAL_OFFER_QUERY_PARAM_KEY: &str = "credential_offer";
 const PRESENTATION_DEFINITION_QUERY_PARAM_KEY: &str = "presentation_definition";
 
-// TODO Remove when it's used
-#[allow(unused)]
-pub struct OpenID4VC {
+pub(crate) struct OpenID4VC {
     client: reqwest::Client,
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
+    did_repository: Arc<dyn DidRepository + Send + Sync>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     base_url: Option<String>,
     crypto: Arc<dyn CryptoProvider + Send + Sync>,
+
+    // TODO Remove when it's used
+    #[allow(unused)]
     params: ExchangeOPENID4VCParams,
 }
 
 impl OpenID4VC {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
+        did_repository: Arc<dyn DidRepository + Send + Sync>,
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+        revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         crypto: Arc<dyn CryptoProvider + Send + Sync>,
         config: Option<ParamsEnum<ExchangeParams>>,
     ) -> Self {
@@ -102,8 +116,11 @@ impl OpenID4VC {
             base_url,
             credential_repository,
             credential_schema_repository,
+            did_repository,
             proof_repository,
             interaction_repository,
+            formatter_provider,
+            revocation_provider,
             client: reqwest::Client::new(),
             crypto,
             params,
@@ -235,7 +252,78 @@ impl TransportProtocol for OpenID4VC {
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;
 
-        serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)
+        let result: SubmitIssuerResponse =
+            serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?;
+
+        // revocation method must be updated based on the issued credential (unknown in credential offer)
+        let response_credential = self
+            .formatter_provider
+            .get_formatter(&schema.format)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+            .extract_credentials(&result.credential, Box::new(SkipVerification))
+            .await
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        if let Some(credential_status) = response_credential.status {
+            let (_, revocation_method) = self
+                .revocation_provider
+                .get_revocation_method_by_status_type(&credential_status.r#type)
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+            self.credential_schema_repository
+                .update_credential_schema(UpdateCredentialSchemaRequest {
+                    id: schema.id,
+                    revocation_method: Some(revocation_method),
+                })
+                .await
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        }
+
+        // issuer_did must be set based on issued credential (unknown in credential offer)
+        let issuer_did_value =
+            response_credential
+                .issuer_did
+                .ok_or(TransportProtocolError::Failed(
+                    "issuer_did missing".to_string(),
+                ))?;
+
+        let now = OffsetDateTime::now_utc();
+        let issuer_did_id = match self
+            .did_repository
+            .get_did_by_value(&issuer_did_value, &DidRelations::default())
+            .await
+        {
+            Ok(did) => did.id,
+            Err(DataLayerError::RecordNotFound) => self
+                .did_repository
+                .create_did(Did {
+                    id: DidId::new_v4(),
+                    name: "issuer".to_string(),
+                    created_date: now,
+                    last_modified: now,
+                    organisation: schema.organisation.to_owned(),
+                    did: issuer_did_value,
+                    did_type: DidType::Remote,
+                    did_method: "KEY".to_string(),
+                    keys: None,
+                })
+                .await
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+            Err(error) => {
+                return Err(TransportProtocolError::Failed(error.to_string()));
+            }
+        };
+
+        self.credential_repository
+            .update_credential(UpdateCredentialRequest {
+                id: credential.id,
+                issuer_did_id: Some(issuer_did_id),
+                ..Default::default()
+            })
+            .await
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        Ok(result)
     }
 
     async fn reject_credential(

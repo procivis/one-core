@@ -25,11 +25,11 @@ use one_core::{
     },
     repository::{
         credential_repository::CredentialRepository,
+        credential_schema_repository::MockCredentialSchemaRepository,
         did_repository::MockDidRepository,
         error::DataLayerError,
         mock::{
             claim_repository::MockClaimRepository,
-            credential_schema_repository::MockCredentialSchemaRepository,
             interaction_repository::MockInteractionRepository,
         },
     },

@@ -1,10 +1,11 @@
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaId, CredentialSchemaRelations, GetCredentialSchemaList,
-    GetCredentialSchemaQuery,
+    GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
 };
 
 use super::error::DataLayerError;
 
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait CredentialSchemaRepository {
     async fn create_credential_schema(
@@ -25,4 +26,9 @@ pub trait CredentialSchemaRepository {
         &self,
         query_params: GetCredentialSchemaQuery,
     ) -> Result<GetCredentialSchemaList, DataLayerError>;
+
+    async fn update_credential_schema(
+        &self,
+        schema: UpdateCredentialSchemaRequest,
+    ) -> Result<(), DataLayerError>;
 }

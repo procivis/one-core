@@ -12,7 +12,7 @@ pub(crate) trait RevocationMethodProvider {
     fn get_revocation_method_by_status_type(
         &self,
         credential_status_type: &str,
-    ) -> Result<Arc<dyn RevocationMethod + Send + Sync>, ServiceError>;
+    ) -> Result<(Arc<dyn RevocationMethod + Send + Sync>, String), ServiceError>;
 }
 
 pub(crate) struct RevocationMethodProviderImpl {
@@ -42,12 +42,13 @@ impl RevocationMethodProvider for RevocationMethodProviderImpl {
     fn get_revocation_method_by_status_type(
         &self,
         credential_status_type: &str,
-    ) -> Result<Arc<dyn RevocationMethod + Send + Sync>, ServiceError> {
-        Ok(self
+    ) -> Result<(Arc<dyn RevocationMethod + Send + Sync>, String), ServiceError> {
+        let result = self
             .revocation_methods
-            .values()
-            .find(|method| method.get_status_type() == credential_status_type)
-            .ok_or(ServiceError::NotFound)?
-            .to_owned())
+            .iter()
+            .find(|(_id, method)| method.get_status_type() == credential_status_type)
+            .ok_or(ServiceError::NotFound)?;
+
+        Ok((result.1.to_owned(), result.0.to_owned()))
     }
 }

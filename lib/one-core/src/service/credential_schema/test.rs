@@ -14,11 +14,8 @@ use crate::{
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
-        error::DataLayerError,
-        mock::{
-            credential_schema_repository::MockCredentialSchemaRepository,
-            organisation_repository::MockOrganisationRepository,
-        },
+        credential_schema_repository::MockCredentialSchemaRepository, error::DataLayerError,
+        mock::organisation_repository::MockOrganisationRepository,
     },
     service::{
         credential_schema::{

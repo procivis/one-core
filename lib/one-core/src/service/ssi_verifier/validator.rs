@@ -110,7 +110,7 @@ pub(super) async fn validate_proof(
         validate_expiration_time(credential.expires_at, formatter.get_leeway())?;
 
         if let Some(credential_status) = credential.status {
-            let revocation_method = revocation_method_provider
+            let (revocation_method, _) = revocation_method_provider
                 .get_revocation_method_by_status_type(&credential_status.r#type)?;
 
             let issuer_did = credential.issuer_did.ok_or(ServiceError::ValidationError(

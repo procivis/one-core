@@ -3,7 +3,10 @@ use crate::{entity::credential_schema, list_query::from_pagination, test_utiliti
 use one_core::{
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
-        credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations},
+        credential_schema::{
+            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
+            UpdateCredentialSchemaRequest,
+        },
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
@@ -430,4 +433,30 @@ async fn test_delete_credential_schema_not_found() {
 
     let result = repository.delete_credential_schema(&Uuid::new_v4()).await;
     assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+}
+
+#[tokio::test]
+async fn test_update_credential_schema_success() {
+    let TestSetupWithCredentialSchema {
+        credential_schema,
+        repository,
+        db,
+        ..
+    } = setup_with_schema(Repositories::default()).await;
+
+    let new_revocation_method = "new-method";
+    let result = repository
+        .update_credential_schema(UpdateCredentialSchemaRequest {
+            id: credential_schema.id,
+            revocation_method: Some(new_revocation_method.to_string()),
+        })
+        .await;
+    assert!(result.is_ok());
+
+    let db_schemas = crate::entity::CredentialSchema::find()
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(db_schemas.len(), 1);
+    assert_eq!(db_schemas[0].revocation_method, new_revocation_method);
 }

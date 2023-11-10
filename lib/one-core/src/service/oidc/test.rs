@@ -4,8 +4,8 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::interaction::Interaction;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::mock::credential_repository::MockCredentialRepository;
-use crate::repository::mock::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::mock::interaction_repository::MockInteractionRepository;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
