@@ -1,3 +1,6 @@
+image:
+  tag: "v0.3.1"
+
 baseUrl: "https://core.test.one-trust-solution.com"
 
 sentry:
