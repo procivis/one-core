@@ -8,6 +8,7 @@ publish = false
 # Treat build warnings as error
 strict = []
 mysql = ["migration/mysql", "sea-orm/sqlx-mysql"]
+test_utils = []
 
 [dependencies]
 one-core = { version = "0.1.0", path = "../../lib/one-core" }

@@ -212,7 +212,9 @@ impl SSIHolderService {
 
         let key_provider = self.key_provider.get_key_storage(&key.key.storage_type)?;
 
-        let private_key_moved = key_provider.decrypt_private_key(&key.key.private_key)?;
+        let private_key_moved = key_provider
+            .decrypt_private_key(&key.key.private_key)
+            .await?;
         let public_key_moved = key.key.public_key.clone();
 
         let auth_fn = Box::new(move |data: &str| {

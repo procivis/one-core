@@ -63,7 +63,7 @@ impl KeyService {
             .map_err(ServiceError::from)?;
 
         let provider = self.key_provider.get_key_storage(&request.storage_type)?;
-        let key = provider.generate(&algorithm)?;
+        let key = provider.generate(&algorithm).await?;
 
         let uuid = self
             .key_repository

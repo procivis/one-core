@@ -33,6 +33,17 @@ workspace = true
 command = "cargo"
 args = ["test"]
 
+
+[tasks.unit-tests]
+workspace = true
+command = "cargo"
+args = ["test --lib"]
+
+[tasks.integration-tests]
+workspace = true
+command = "cargo"
+args = ["test --tests integraion_tests"]
+
 [tasks.dbstart]
 command = "docker-compose"
 args = ["-f", "docker/db.yml", "up", "-d"]

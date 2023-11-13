@@ -1,5 +1,5 @@
-use crate::credential::CredentialProvider;
-use crate::credential_schema::CredentialSchemaProvider;
+use std::sync::Arc;
+
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
@@ -17,11 +17,12 @@ use one_core::repository::{
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
-use sea_orm::DatabaseConnection;
+use sea_orm::{ConnectOptions, DatabaseConnection};
 
+use crate::credential::CredentialProvider;
+use crate::credential_schema::CredentialSchemaProvider;
 use crate::key::KeyProvider;
 use crate::revocation_list::RevocationListProvider;
-use std::sync::Arc;
 
 mod common;
 mod entity;
@@ -43,6 +44,9 @@ pub mod proof;
 pub mod proof_schema;
 pub mod revocation_list;
 
+// Re-exporting the DatabaseConnection to avoid unnecessary dependency on sea_orm in cases where we only need the DB connection
+pub type DbConn = DatabaseConnection;
+
 #[derive(Clone)]
 pub struct DataLayer {
     // Used for tests for now
@@ -62,13 +66,7 @@ pub struct DataLayer {
 }
 
 impl DataLayer {
-    pub async fn create(database_url: &str) -> Self {
-        let db = sea_orm::Database::connect(database_url)
-            .await
-            .expect("Database Connected");
-
-        Migrator::up(&db, None).await.unwrap();
-
+    pub async fn build(db: DbConn) -> Self {
         let interaction_repository = Arc::new(InteractionProvider { db: db.clone() });
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
         let claim_repository = Arc::new(ClaimProvider {
@@ -173,5 +171,16 @@ impl DataRepository for DataLayer {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_utilities;
+/// Connects to the database and runs the pending migrations (until we externalize them)
+pub async fn db_conn(database_url: impl Into<ConnectOptions>) -> DatabaseConnection {
+    let db = sea_orm::Database::connect(database_url)
+        .await
+        .expect("Database Connected");
+
+    Migrator::up(&db, None).await.unwrap();
+
+    db
+}
+
+#[cfg(any(test, feature = "test_utils"))]
+pub mod test_utilities;

@@ -5,6 +5,10 @@ edition = "2021"
 build = "build.rs"
 publish = false
 
+# disable doctests
+[lib]
+doctest = false
+
 [features]
 # Treat build warnings as error
 strict = []
@@ -46,3 +50,10 @@ prometheus = { version = "0.13", features = ["process"] }
 
 [build-dependencies]
 shadow-rs.workspace = true
+
+[dev-dependencies]
+reqwest = { version = "0.11", features = ["json"] }
+httpmock = { version = "0.6" }
+sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = [
+    "test_utils",
+] }

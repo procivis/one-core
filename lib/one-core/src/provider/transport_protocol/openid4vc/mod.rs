@@ -551,6 +551,8 @@ async fn handle_credential_invitation(
         .send()
         .await
         .map_err(TransportProtocolError::HttpResponse)?
+        .error_for_status()
+        .map_err(TransportProtocolError::HttpResponse)?
         .json()
         .await
         .map_err(TransportProtocolError::HttpResponse)?;
@@ -748,6 +750,8 @@ async fn get_discovery_and_issuer_metadata(
             .get(endpoint)
             .send()
             .await
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .error_for_status()
             .map_err(TransportProtocolError::HttpRequestError)?;
 
         response

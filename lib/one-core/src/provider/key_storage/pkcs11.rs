@@ -6,8 +6,9 @@ use crate::{
 #[derive(Default)]
 pub struct PKCS11KeyProvider {}
 
+#[async_trait::async_trait]
 impl KeyStorage for PKCS11KeyProvider {
-    fn decrypt_private_key(&self, _private_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
+    async fn decrypt_private_key(&self, _private_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
         todo!()
     }
 
@@ -15,7 +16,7 @@ impl KeyStorage for PKCS11KeyProvider {
         todo!()
     }
 
-    fn generate(&self, _algorithm: &str) -> Result<GeneratedKey, ServiceError> {
+    async fn generate(&self, _algorithm: &str) -> Result<GeneratedKey, ServiceError> {
         todo!()
     }
 }
