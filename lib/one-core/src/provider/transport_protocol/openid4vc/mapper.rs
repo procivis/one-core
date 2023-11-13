@@ -280,6 +280,9 @@ where
     D: Deserializer<'de>,
     T: for<'a> Deserialize<'a>,
 {
-    let buf = String::deserialize(deserializer)?;
-    serde_json::from_str(&buf).map_err(serde::de::Error::custom)
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value.as_str() {
+        None => serde_json::from_value(value).map_err(serde::de::Error::custom),
+        Some(buffer) => serde_json::from_str(buffer).map_err(serde::de::Error::custom),
+    }
 }

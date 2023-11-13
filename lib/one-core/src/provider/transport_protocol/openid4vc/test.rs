@@ -26,7 +26,8 @@ use crate::{
         revocation::provider::MockRevocationMethodProvider,
         transport_protocol::{
             openid4vc::dto::{
-                OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
+                OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPInteractionData,
+                OpenID4VPPresentationDefinition,
             },
             TransportProtocol, TransportProtocolError,
         },
@@ -470,4 +471,32 @@ async fn test_handle_invitation_proof_failed() {
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+}
+
+#[test]
+fn test_serialize_and_deserialize_interaction_data() {
+    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        vp_formats: HashMap::from([(
+            "jwt_vp_json".to_string(),
+            OpenID4VPFormat {
+                alg: vec!["EdDSA".to_string()],
+            },
+        )]),
+        client_id_scheme: "redirect_uri".to_string(),
+    })
+    .unwrap();
+    let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
+        id: Default::default(),
+        input_descriptors: vec![],
+    })
+    .unwrap();
+
+    let nonce = Uuid::new_v4().to_string();
+    let callback_url = "http://127.0.0.1/callback";
+
+    let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+                                    , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap().query().unwrap().to_string();
+    let data: OpenID4VPInteractionData = serde_qs::from_str(&query).unwrap();
+    let json = serde_json::to_string(&data).unwrap();
+    let _data_from_json: OpenID4VPInteractionData = serde_json::from_str(&json).unwrap();
 }
