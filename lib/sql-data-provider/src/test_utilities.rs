@@ -11,6 +11,7 @@ use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
+    db_conn,
     entity::{
         claim, claim_schema, credential, credential_claim, credential_schema,
         credential_schema_claim_schema, credential_state, did, interaction, key, key_did,
@@ -369,7 +370,8 @@ pub async fn get_proof_schema_with_id(
 }
 
 pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: &str) -> DataLayer {
-    DataLayer::create(database_url).await
+    let db_conn = db_conn(database_url).await;
+    DataLayer::build(db_conn).await
 }
 
 pub async fn insert_did(

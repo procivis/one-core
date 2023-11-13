@@ -142,6 +142,7 @@ tests:
 linter:clippy:
   stage: test
   script:
+    - apt-get update && apt-get install pkg-config libssl-dev -y
     - rustup component add clippy
     - cargo clippy --all-targets -- -W clippy::redundant_clone -W clippy::dbg_macro -D warnings
     - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used

@@ -70,11 +70,9 @@ impl RevocationMethod for StatusList2021 {
                     .await?;
 
                 let revocation_list_id = RevocationListId::new_v4();
-                let list_credential = self.format_status_list_credential(
-                    &revocation_list_id,
-                    &issuer_did,
-                    encoded_list,
-                )?;
+                let list_credential = self
+                    .format_status_list_credential(&revocation_list_id, &issuer_did, encoded_list)
+                    .await?;
 
                 let now = OffsetDateTime::now_utc();
                 Ok(self
@@ -118,8 +116,9 @@ impl RevocationMethod for StatusList2021 {
             .generate_bitstring_from_credentials(&issuer_did.id, Some(credential.id))
             .await?;
 
-        let list_credential =
-            self.format_status_list_credential(&revocation_list.id, &issuer_did, encoded_list)?;
+        let list_credential = self
+            .format_status_list_credential(&revocation_list.id, &issuer_did, encoded_list)
+            .await?;
 
         self.revocation_list_repository
             .update_credentials(&revocation_list.id, list_credential.as_bytes().to_vec())
@@ -271,7 +270,7 @@ impl StatusList2021 {
         })
     }
 
-    fn format_status_list_credential(
+    async fn format_status_list_credential(
         &self,
         revocation_list_id: &RevocationListId,
         issuer_did: &Did,
@@ -295,7 +294,9 @@ impl StatusList2021 {
 
         let key_storage = self.key_provider.get_key_storage(&key.key.storage_type)?;
 
-        let private_key = key_storage.decrypt_private_key(&key.key.private_key)?;
+        let private_key = key_storage
+            .decrypt_private_key(&key.key.private_key)
+            .await?;
         let public_key = key.key.public_key.clone();
         let auth_fn = Box::new(move |data: &str| signer.sign(data, &public_key, &private_key));
 

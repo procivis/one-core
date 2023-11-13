@@ -2,7 +2,7 @@
 
 use error::BindingError;
 use one_core::config::data_structure::{ConfigKind, UnparsedConfig};
-use sql_data_provider::DataLayer;
+use sql_data_provider::{self, DataLayer};
 use std::sync::Arc;
 use utils::run_sync;
 
@@ -24,14 +24,13 @@ fn initialize_core(data_dir_path: String) -> Result<Arc<OneCoreBinding>, Binding
         content: include_str!("../../../config.yml").to_string(),
         kind: ConfigKind::Yaml,
     };
+
     let core = run_sync(async {
+        let db_url = format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc");
+        let db_conn = sql_data_provider::db_conn(db_url).await;
+
         one_core::OneCore::new(
-            Arc::new(
-                DataLayer::create(
-                    format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc").as_str(),
-                )
-                .await,
-            ),
+            Arc::new(DataLayer::build(db_conn).await),
             placeholder_config,
             None,
         )

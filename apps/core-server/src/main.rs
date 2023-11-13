@@ -1,38 +1,17 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::panic;
 use std::sync::Arc;
 
 use figment::{providers::Env, Figment};
-use router::{router_logic, HttpRequestContext, SENTRY_HTTP_REQUEST};
 use sentry_tracing::EventFilter;
-use serde::Deserialize;
-use shadow_rs::shadow;
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::prelude::*;
 
-pub(crate) mod dto;
-pub(crate) mod endpoint;
-pub(crate) mod extractor;
-pub(crate) mod mapper;
-pub(crate) mod metrics;
-pub(crate) mod router;
-pub(crate) mod serialize;
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct Config {
-    config_file: String,
-    database_url: String,
-    server_ip: Option<IpAddr>,
-    server_port: Option<u16>,
-    trace_json: Option<bool>,
-    auth_token: String,
-    core_base_url: String,
-    sentry_dsn: Option<String>,
-    sentry_environment: Option<String>,
-}
+use core_server::router::{start_server, HttpRequestContext, SENTRY_HTTP_REQUEST};
+use core_server::{build_info, metrics, Config};
 
 fn main() {
     let config: Config = Figment::new()
@@ -46,24 +25,35 @@ fn main() {
 
     initialize_tracing(&config);
     log_build_info();
+    metrics::setup();
+
+    let addr = SocketAddr::new(
+        config
+            .server_ip
+            .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
+        config.server_port.unwrap_or(3000),
+    );
+    let listener = TcpListener::bind(addr).expect("Failed to bind to address");
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(async { router_logic(config).await })
-        .unwrap()
+        .block_on(async {
+            let db_conn = sql_data_provider::db_conn(&config.database_url).await;
+
+            start_server(listener, config, db_conn).await
+        })
 }
 
 fn log_build_info() {
-    shadow!(build);
-    info!("Build target: {}", build::BUILD_RUST_CHANNEL);
-    info!("Build time: {}", build::BUILD_TIME);
-    info!("Branch: {}", build::BRANCH);
-    info!("Tag: {}", build::TAG);
-    info!("Commit: {}", build::COMMIT_HASH);
-    info!("Rust version: {}", build::RUST_VERSION);
-    info!("Pipeline ID: {}", build::CI_PIPELINE_ID);
+    info!("Build target: {}", build_info::BUILD_RUST_CHANNEL);
+    info!("Build time: {}", build_info::BUILD_TIME);
+    info!("Branch: {}", build_info::BRANCH);
+    info!("Tag: {}", build_info::TAG);
+    info!("Commit: {}", build_info::COMMIT_HASH);
+    info!("Rust version: {}", build_info::RUST_VERSION);
+    info!("Pipeline ID: {}", build_info::CI_PIPELINE_ID);
 }
 
 fn initialize_sentry(config: &Config) -> Option<sentry::ClientInitGuard> {

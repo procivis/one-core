@@ -24,10 +24,11 @@ pub struct GeneratedKey {
     pub private: Vec<u8>,
 }
 
+#[async_trait::async_trait]
 pub trait KeyStorage {
-    fn decrypt_private_key(&self, private_key: &[u8]) -> Result<Vec<u8>, ServiceError>;
+    async fn decrypt_private_key(&self, private_key: &[u8]) -> Result<Vec<u8>, ServiceError>;
     fn fingerprint(&self, bytes: &[u8]) -> String;
-    fn generate(&self, algorithm: &str) -> Result<GeneratedKey, ServiceError>;
+    async fn generate(&self, algorithm: &str) -> Result<GeneratedKey, ServiceError>;
 }
 
 pub fn key_providers_from_config(
