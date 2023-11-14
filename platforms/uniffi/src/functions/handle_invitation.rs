@@ -15,10 +15,12 @@ impl OneCoreBinding {
         let url = Url::parse(&url).map_err(|e| BindingError::ValidationError(e.to_string()))?;
 
         run_sync(async {
+            let did_id = into_uuid(&did_id)?.into();
+
             let invitation_response = self
                 .inner
                 .ssi_holder_service
-                .handle_invitation(url, &into_uuid(&did_id)?)
+                .handle_invitation(url, &did_id)
                 .await?;
 
             Ok(invitation_response.into())

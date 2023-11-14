@@ -1,3 +1,4 @@
+use shared_types::{DidId, DidValue};
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -11,7 +12,7 @@ use crate::model::{
         Credential, CredentialId, CredentialRelations, CredentialStateEnum,
         CredentialStateRelations,
     },
-    did::{Did, DidId},
+    did::Did,
     revocation_list::{RevocationList, RevocationListId, RevocationListRelations},
 };
 use crate::provider::credential_formatter::{
@@ -130,7 +131,7 @@ impl RevocationMethod for StatusList2021 {
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
-        issuer_did: &str,
+        issuer_did: &DidValue,
     ) -> Result<bool, ServiceError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(ServiceError::ValidationError(format!(

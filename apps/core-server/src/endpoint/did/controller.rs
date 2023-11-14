@@ -3,7 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 
 use one_core::service::error::ServiceError;
-use uuid::Uuid;
+use shared_types::DidId;
 
 use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::extractor::Qs;
@@ -28,7 +28,7 @@ use super::dto::{CreateDidRequestRestDTO, DidResponseRestDTO, GetDidQuery};
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn get_did(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
+pub(crate) async fn get_did(state: State<AppState>, Path(id): Path<DidId>) -> Response {
     let result = state.core.did_service.get_did(&id).await;
 
     match result {
@@ -120,6 +120,10 @@ pub(crate) async fn post_did(
             tracing::error!("Error while creating did: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
-        Ok(id) => (StatusCode::CREATED, Json(EntityResponseRestDTO { id })).into_response(),
+        Ok(id) => (
+            StatusCode::CREATED,
+            Json(EntityResponseRestDTO { id: id.into() }),
+        )
+            .into_response(),
     }
 }

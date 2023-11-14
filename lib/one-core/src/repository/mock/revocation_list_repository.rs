@@ -3,7 +3,7 @@ use crate::{
     repository::error::DataLayerError,
 };
 use mockall::*;
-use uuid::Uuid;
+use shared_types::DidId;
 
 #[derive(Default)]
 struct RevocationListRepository;
@@ -21,7 +21,7 @@ mock! {
         ) -> Result<RevocationList, DataLayerError>;
         pub fn get_revocation_by_issuer_did_id(
             &self,
-            issuer_did_id: &Uuid,
+            issuer_did_id: &DidId,
             relations: &RevocationListRelations,
         ) -> Result<RevocationList, DataLayerError>;
         pub fn update_credentials(
@@ -53,7 +53,7 @@ impl crate::repository::revocation_list_repository::RevocationListRepository
 
     async fn get_revocation_by_issuer_did_id(
         &self,
-        issuer_did_id: &Uuid,
+        issuer_did_id: &DidId,
         relations: &RevocationListRelations,
     ) -> Result<RevocationList, DataLayerError> {
         self.get_revocation_by_issuer_did_id(issuer_did_id, relations)

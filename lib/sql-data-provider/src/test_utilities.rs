@@ -6,6 +6,7 @@ use one_core::{
     model::interaction::InteractionId,
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
+use shared_types::{DidId, DidValue};
 use std::collections::HashMap;
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -28,7 +29,7 @@ pub fn get_dummy_date() -> OffsetDateTime {
 pub async fn insert_credential(
     db: &DatabaseConnection,
     credential_schema_id: &str,
-    did_id: &str,
+    did_id: DidId,
 ) -> Result<String, DbErr> {
     let now = OffsetDateTime::now_utc();
 
@@ -41,7 +42,7 @@ pub async fn insert_credential(
         deleted_at: Set(None),
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
         credential: Set(vec![0, 0, 0, 0]),
-        issuer_did_id: Set(Some(did_id.to_string())),
+        issuer_did_id: Set(Some(did_id)),
         holder_did_id: Set(None),
         interaction_id: Set(None),
         revocation_list_id: Set(None),
@@ -176,8 +177,8 @@ pub async fn get_proof_by_id(
 
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
-    verifier_did_id: &str,
-    holder_did_id: Option<String>,
+    verifier_did_id: DidId,
+    holder_did_id: Option<DidId>,
     proof_schema_id: &str,
     interaction_id: Option<String>,
 ) -> Result<String, DbErr> {
@@ -187,7 +188,7 @@ pub async fn insert_proof_request_to_database(
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
-        verifier_did_id: Set(Some(verifier_did_id.to_string())),
+        verifier_did_id: Set(Some(verifier_did_id)),
         holder_did_id: Set(holder_did_id),
         proof_schema_id: Set(Some(proof_schema_id.to_string())),
         interaction_id: Set(interaction_id),
@@ -216,8 +217,8 @@ pub async fn insert_proof_state_to_database(
 #[allow(clippy::ptr_arg, dead_code)]
 pub async fn insert_proof_request_to_database_with_claims(
     database: &DatabaseConnection,
-    verifier_did_id: &str,
-    holder_did_id: Option<String>,
+    verifier_did_id: DidId,
+    holder_did_id: Option<DidId>,
     proof_schema_id: &str,
     state: ProofRequestState,
     claims: &Vec<(Uuid, Uuid, String)>,
@@ -228,7 +229,7 @@ pub async fn insert_proof_request_to_database_with_claims(
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
         transport: Set("PROCIVIS_TEMPORARY".to_string()),
-        verifier_did_id: Set(Some(verifier_did_id.to_string())),
+        verifier_did_id: Set(Some(verifier_did_id)),
         holder_did_id: Set(holder_did_id),
         proof_schema_id: Set(Some(proof_schema_id.to_string())),
         interaction_id: Set(None),
@@ -377,14 +378,14 @@ pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: 
 pub async fn insert_did(
     database: &DatabaseConnection,
     name: &str,
-    did: &str,
+    did: DidValue,
     organisation_id: &str,
-) -> Result<String, DbErr> {
+) -> Result<DidId, DbErr> {
     let now = OffsetDateTime::now_utc();
 
     let did = did::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
-        did: Set(did.to_owned()),
+        id: Set(Uuid::new_v4().into()),
+        did: Set(did),
         created_date: Set(now),
         last_modified: Set(now),
         name: Set(name.to_owned()),

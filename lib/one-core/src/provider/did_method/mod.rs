@@ -2,13 +2,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
 use crate::config::{
     data_structure::{DidEntity, DidKeyParams, DidParams, ParamsEnum},
     ConfigParseError,
 };
-use crate::model::did::{Did, DidId};
+use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::web::WebDidMethod;
@@ -47,7 +48,7 @@ pub trait DidMethod {
     async fn create(&self, request: CreateDidRequestDTO, key: Key) -> Result<Did, DidMethodError>;
 
     fn check_authorization(&self) -> bool;
-    async fn resolve(&self, did: &str) -> Result<Did, DidMethodError>;
+    async fn resolve(&self, did: &DidValue) -> Result<Did, DidMethodError>;
     fn update(&self) -> Result<(), DidMethodError>;
     fn deactivate(&self) -> Result<(), DidMethodError>;
 }

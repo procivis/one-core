@@ -1,4 +1,5 @@
 use core_server::Config;
+use shared_types::DidId;
 use sql_data_provider::{self, test_utilities::*, DbConn};
 use uuid::Uuid;
 
@@ -20,8 +21,8 @@ pub async fn create_db(config: &Config) -> DbConn {
     sql_data_provider::db_conn(&config.database_url).await
 }
 
-pub async fn create_did_key(db_conn: &DbConn) -> String {
-    let did_id = Uuid::new_v4().to_string();
+pub async fn create_did_key(db_conn: &DbConn) -> DidId {
+    let did_id = Uuid::new_v4().to_string().parse().unwrap();
 
     let organization_id = insert_organisation_to_database(db_conn, None)
         .await
@@ -30,7 +31,7 @@ pub async fn create_did_key(db_conn: &DbConn) -> String {
         .await
         .unwrap();
 
-    insert_did(db_conn, "test-did-key", &did_id, &organization_id)
+    insert_did(db_conn, "test-did-key", did_id, &organization_id)
         .await
         .unwrap()
 }

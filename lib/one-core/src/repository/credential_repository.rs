@@ -6,7 +6,7 @@ use crate::model::{
     },
     interaction::InteractionId,
 };
-use uuid::Uuid;
+use shared_types::DidId;
 
 #[async_trait::async_trait]
 pub trait CredentialRepository {
@@ -26,7 +26,7 @@ pub trait CredentialRepository {
 
     async fn get_credentials_by_issuer_did_id(
         &self,
-        issuer_did_id: &Uuid,
+        issuer_did_id: &DidId,
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError>;
 

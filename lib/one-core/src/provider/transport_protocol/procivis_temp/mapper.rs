@@ -1,16 +1,18 @@
 use crate::model::{
-    did::{Did, DidId, DidType},
+    did::{Did, DidType},
     organisation::Organisation,
 };
+use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
+use uuid::Uuid;
 
 use super::TransportProtocolError;
 
-pub fn remote_did_from_value(did_value: String, organisation: &Organisation) -> Did {
+pub fn remote_did_from_value(did_value: DidValue, organisation: &Organisation) -> Did {
     let now = OffsetDateTime::now_utc();
     Did {
-        id: DidId::new_v4(),
+        id: Uuid::new_v4().into(),
         name: "issuer".to_string(),
         created_date: now,
         last_modified: now,

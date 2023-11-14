@@ -7,12 +7,13 @@ use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::{
     common::SortDirection,
-    did::{Did, DidId, DidRelations, DidType, DidValue, SortableDidColumn},
+    did::{Did, DidRelations, DidType, SortableDidColumn},
 };
 use one_core::repository::mock::key_repository::MockKeyRepository;
 use one_core::repository::mock::organisation_repository::MockOrganisationRepository;
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
+use shared_types::{DidId, DidValue};
 use std::sync::Arc;
 use time::macros::datetime;
 use uuid::Uuid;
@@ -82,12 +83,14 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
     } = setup_empty(repositories).await;
 
     let did_name = "test did name";
-    let did_value = "test:did";
-    let did_id = Uuid::parse_str(
-        &insert_did(&db, did_name, did_value, &organisation.id.to_string())
-            .await
-            .unwrap(),
+    let did_value: DidValue = "test:did".parse().unwrap();
+    let did_id = &insert_did(
+        &db,
+        did_name,
+        did_value.clone(),
+        &organisation.id.to_string(),
     )
+    .await
     .unwrap();
 
     insert_key_did(&db, &did_id.to_string(), &key.id.to_string())
@@ -97,8 +100,8 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
     TestSetupWithDid {
         provider,
         organisation,
-        did_id,
-        did_value: did_value.to_string(),
+        did_id: did_id.clone(),
+        did_value,
         did_name: did_name.to_string(),
         key,
     }
@@ -114,13 +117,13 @@ async fn test_create_did() {
         ..
     } = setup_empty(Repositories::default()).await;
 
-    let id = Uuid::new_v4();
+    let id: DidId = Uuid::new_v4().into();
     let result = provider
         .create_did(Did {
-            id,
+            id: id.clone(),
             name: "Name".to_string(),
             organisation: Some(organisation),
-            did: "did:key:123".to_owned(),
+            did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -154,10 +157,10 @@ async fn test_create_did_invalid_organisation() {
 
     let result = provider
         .create_did(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             name: "Name".to_string(),
             organisation: None,
-            did: "did:key:123".to_owned(),
+            did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -197,7 +200,7 @@ async fn test_get_did_by_value_existing() {
 
     let result = provider
         .get_did_by_value(
-            &did_value.to_string(),
+            &did_value,
             &DidRelations {
                 organisation: Some(OrganisationRelations::default()),
                 ..Default::default()
@@ -221,7 +224,7 @@ async fn test_get_did_by_value_missing() {
     let TestSetupWithDid { provider, .. } = setup_with_did(Repositories::default()).await;
 
     let result = provider
-        .get_did_by_value(&"missing".to_string(), &DidRelations::default())
+        .get_did_by_value(&"missing".parse().unwrap(), &DidRelations::default())
         .await;
 
     assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
@@ -300,7 +303,7 @@ async fn test_get_did_not_existing() {
     let TestSetup { provider, .. } = setup_empty(Repositories::default()).await;
 
     let result = provider
-        .get_did(&Uuid::new_v4(), &DidRelations::default())
+        .get_did(&Uuid::new_v4().into(), &DidRelations::default())
         .await;
 
     assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
@@ -388,7 +391,7 @@ async fn test_get_did_list_pages() {
         insert_did(
             &db,
             "test did name",
-            &format!("did:key:{}", i),
+            format!("did:key:{}", i).parse().unwrap(),
             &organisation.id.to_string(),
         )
         .await
@@ -504,7 +507,7 @@ async fn test_get_did_list_filtering() {
             }),
             filtering: Some(ListFilterCondition::Value(DidFilterValue::Did(
                 StringMatch {
-                    value: did_value.to_owned(),
+                    value: did_value.to_string(),
                     r#match: StringMatchType::Equals,
                 },
             ))),
@@ -546,8 +549,8 @@ async fn test_get_did_list_sorting() {
     } = setup_empty(Repositories::default()).await;
 
     let older_a_did = did::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
-        did: Set("did1:did1".to_owned()),
+        id: Set(Uuid::new_v4().into()),
+        did: Set("did1:did1".parse().unwrap()),
         created_date: Set(datetime!(2023-02-01 21:00 +0)),
         last_modified: Set(get_dummy_date()),
         name: Set("a".to_owned()),
@@ -560,8 +563,8 @@ async fn test_get_did_list_sorting() {
     .unwrap();
 
     let newer_b_did = did::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
-        did: Set("did2:did2".to_owned()),
+        id: Set(Uuid::new_v4().into()),
+        did: Set("did2:did2".parse().unwrap()),
         created_date: Set(datetime!(2023-02-02 21:00 +0)),
         last_modified: Set(get_dummy_date()),
         name: Set("b".to_owned()),
@@ -593,7 +596,7 @@ async fn test_get_did_list_sorting() {
     assert_eq!(2, response.total_items);
     assert_eq!(1, response.total_pages);
     assert_eq!(2, response.values.len());
-    assert_eq!(older_a_did.id, response.values[0].id.to_string());
+    assert_eq!(older_a_did.id, response.values[0].id);
 
     // sort by name - explicit Descending
     let result = provider
@@ -614,7 +617,7 @@ async fn test_get_did_list_sorting() {
     assert_eq!(2, response.total_items);
     assert_eq!(1, response.total_pages);
     assert_eq!(2, response.values.len());
-    assert_eq!(newer_b_did.id, response.values[0].id.to_string());
+    assert_eq!(newer_b_did.id, response.values[0].id);
 
     // sort by name - explicit Ascending
     let result = provider
@@ -635,7 +638,7 @@ async fn test_get_did_list_sorting() {
     assert_eq!(2, response.total_items);
     assert_eq!(1, response.total_pages);
     assert_eq!(2, response.values.len());
-    assert_eq!(older_a_did.id, response.values[0].id.to_string());
+    assert_eq!(older_a_did.id, response.values[0].id);
 
     // sort by CreatedDate - default Ascending
     let result = provider
@@ -656,7 +659,7 @@ async fn test_get_did_list_sorting() {
     assert_eq!(2, response.total_items);
     assert_eq!(1, response.total_pages);
     assert_eq!(2, response.values.len());
-    assert_eq!(older_a_did.id, response.values[0].id.to_string());
+    assert_eq!(older_a_did.id, response.values[0].id);
 
     // sort by CreatedDate - explicit Descending
     let result = provider
@@ -677,7 +680,7 @@ async fn test_get_did_list_sorting() {
     assert_eq!(2, response.total_items);
     assert_eq!(1, response.total_pages);
     assert_eq!(2, response.values.len());
-    assert_eq!(newer_b_did.id, response.values[0].id.to_string());
+    assert_eq!(newer_b_did.id, response.values[0].id);
 
     // sort by CreatedDate - explicit Ascending
     let result = provider
@@ -698,7 +701,7 @@ async fn test_get_did_list_sorting() {
     assert_eq!(2, response.total_items);
     assert_eq!(1, response.total_pages);
     assert_eq!(2, response.values.len());
-    assert_eq!(older_a_did.id, response.values[0].id.to_string());
+    assert_eq!(older_a_did.id, response.values[0].id);
 
     // no sorting specified - default Descending by CreatedDate
     let result = provider
@@ -715,7 +718,7 @@ async fn test_get_did_list_sorting() {
     assert_eq!(2, response.total_items);
     assert_eq!(1, response.total_pages);
     assert_eq!(2, response.values.len());
-    assert_eq!(newer_b_did.id, response.values[0].id.to_string());
+    assert_eq!(newer_b_did.id, response.values[0].id);
 }
 
 #[tokio::test]
@@ -728,8 +731,8 @@ async fn test_get_did_list_complex_filter_condition() {
     } = setup_empty(Repositories::default()).await;
 
     let older_a_did = did::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
-        did: Set("did1:did1".to_owned()),
+        id: Set(Uuid::new_v4().into()),
+        did: Set("did1:did1".parse().unwrap()),
         created_date: Set(datetime!(2023-02-01 21:00 +0)),
         last_modified: Set(get_dummy_date()),
         name: Set("a".to_owned()),
@@ -742,8 +745,8 @@ async fn test_get_did_list_complex_filter_condition() {
     .unwrap();
 
     let newer_b_did = did::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
-        did: Set("did2:did2".to_owned()),
+        id: Set(Uuid::new_v4().into()),
+        did: Set("did2:did2".parse().unwrap()),
         created_date: Set(datetime!(2023-02-02 21:00 +0)),
         last_modified: Set(get_dummy_date()),
         name: Set("b".to_owned()),
@@ -761,7 +764,7 @@ async fn test_get_did_list_complex_filter_condition() {
             filtering: Some(ListFilterCondition::<DidFilterValue>::And(vec![
                 DidFilterValue::Did(StringMatch {
                     r#match: StringMatchType::Equals,
-                    value: older_a_did.did.to_owned(),
+                    value: older_a_did.did.to_string(),
                 })
                 .into(),
                 DidFilterValue::OrganisationId(organisation.id).into(),
@@ -774,7 +777,7 @@ async fn test_get_did_list_complex_filter_condition() {
     let response = result.unwrap();
     assert_eq!(1, response.total_items);
     assert_eq!(1, response.values.len());
-    assert_eq!(older_a_did.id, response.values[0].id.to_string());
+    assert_eq!(older_a_did.id, response.values[0].id);
 
     // combined filter OR
     let result = provider
@@ -782,7 +785,7 @@ async fn test_get_did_list_complex_filter_condition() {
             filtering: Some(ListFilterCondition::<DidFilterValue>::Or(vec![
                 DidFilterValue::Did(StringMatch {
                     r#match: StringMatchType::Equals,
-                    value: older_a_did.did.to_owned(),
+                    value: older_a_did.did.to_string(),
                 })
                 .into(),
                 DidFilterValue::Name(StringMatch {
@@ -799,13 +802,13 @@ async fn test_get_did_list_complex_filter_condition() {
     let response = result.unwrap();
     assert_eq!(1, response.total_items);
     assert_eq!(1, response.values.len());
-    assert_eq!(older_a_did.id, response.values[0].id.to_string());
+    assert_eq!(older_a_did.id, response.values[0].id);
 
     // combined filter OR/AND
     let condition: ListFilterCondition<DidFilterValue> =
         ListFilterCondition::<DidFilterValue>::from(DidFilterValue::Did(StringMatch {
             r#match: StringMatchType::Equals,
-            value: newer_b_did.did.to_owned(),
+            value: newer_b_did.did.to_string(),
         })) | DidFilterValue::Name(StringMatch {
             r#match: StringMatchType::Equals,
             value: newer_b_did.name.to_owned(),
@@ -827,5 +830,5 @@ async fn test_get_did_list_complex_filter_condition() {
     let response = result.unwrap();
     assert_eq!(1, response.total_items);
     assert_eq!(1, response.values.len());
-    assert_eq!(newer_b_did.id, response.values[0].id.to_string());
+    assert_eq!(newer_b_did.id, response.values[0].id);
 }

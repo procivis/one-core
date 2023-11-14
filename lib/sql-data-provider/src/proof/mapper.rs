@@ -17,6 +17,7 @@ use one_core::{
     repository::error::DataLayerError,
 };
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
+use shared_types::DidId;
 use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;
 
@@ -29,7 +30,11 @@ impl TryFrom<ProofListItemModel> for Proof {
             Uuid::from_str(&value.schema_id).map_err(|_| DataLayerError::MappingError)?;
         let verifier_did_id = value
             .verifier_did_id
-            .map(|did_id| Uuid::from_str(&did_id).map_err(|_| DataLayerError::MappingError))
+            .map(|did_id| {
+                Uuid::from_str(&did_id)
+                    .map(DidId::from)
+                    .map_err(|_| DataLayerError::MappingError)
+            })
             .transpose()?;
         let verifier_did = match verifier_did_id {
             None => None,
@@ -114,8 +119,8 @@ impl TryFrom<Proof> for proof::ActiveModel {
             last_modified: Set(value.last_modified),
             issuance_date: Set(value.issuance_date),
             transport: Set(value.transport),
-            verifier_did_id: Set(value.verifier_did.map(|did| did.id.to_string())),
-            holder_did_id: Set(value.holder_did.map(|did| did.id.to_string())),
+            verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
+            holder_did_id: Set(value.holder_did.map(|did| did.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id.to_string())),
             interaction_id: Set(value
                 .interaction

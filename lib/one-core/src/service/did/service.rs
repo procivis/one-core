@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
+use shared_types::DidId;
+
 use super::{
-    dto::{CreateDidRequestDTO, DidId, DidResponseDTO, GetDidListResponseDTO},
+    dto::{CreateDidRequestDTO, DidResponseDTO, GetDidListResponseDTO},
     DidService,
 };
 use crate::{

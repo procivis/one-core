@@ -73,7 +73,7 @@ async fn test_get_did_exists() {
     let mut repository = MockDidRepository::default();
 
     let did = Did {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
@@ -82,7 +82,7 @@ async fn test_get_did_exists() {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
         }),
-        did: "did:key:abc".to_string(),
+        did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "MOCK".to_string(),
         keys: Some(vec![RelatedKey {
@@ -146,14 +146,14 @@ async fn test_get_did_missing() {
         HashMap::<String, DidEntity>::new(),
     );
 
-    let result = service.get_did(&Uuid::new_v4()).await;
+    let result = service.get_did(&Uuid::new_v4().into()).await;
     assert!(matches!(result, Err(ServiceError::NotFound)));
 }
 
 #[tokio::test]
 async fn test_get_did_list() {
     let did = Did {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
@@ -162,7 +162,7 @@ async fn test_get_did_list() {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
         }),
-        did: "did:key:abc".to_string(),
+        did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "MOCK".to_string(),
         keys: None,
@@ -253,11 +253,11 @@ async fn test_create_did_success() {
         .times(1)
         .returning(|request, _key| {
             Ok(Did {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: request.name,
-                did: "did:key:123".to_string(),
+                did: "did:key:123".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: request.did_method,
                 keys: None,

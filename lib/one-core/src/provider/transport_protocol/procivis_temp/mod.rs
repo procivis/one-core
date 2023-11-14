@@ -449,11 +449,11 @@ async fn handle_proof_invitation(
         Ok(did) => did,
         Err(DataLayerError::RecordNotFound) => {
             let new_did = Did {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
                 name: "verifier".to_owned(),
-                did: proof_request.verifier_did.clone(),
+                did: proof_request.verifier_did,
                 did_type: crate::model::did::DidType::Remote,
                 did_method: "KEY".to_owned(),
                 keys: None,

@@ -483,6 +483,9 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 dto::common::EntityResponseRestDTO,
                 dto::common::EntityShareResponseRestDTO,
                 dto::common::SortDirection,
+
+                shared_types::DidId,
+                shared_types::DidValue,
             )
         ),
         tags(

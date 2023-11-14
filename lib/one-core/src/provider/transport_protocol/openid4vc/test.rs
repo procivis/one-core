@@ -159,12 +159,14 @@ fn generic_credential() -> Credential {
             schema: Some(claim_schema.clone()),
         }]),
         issuer_did: Some(Did {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                .unwrap()
+                .into(),
             created_date: now,
             last_modified: now,
             name: "did1".to_string(),
             organisation: Some(organisation.clone()),
-            did: "did1".to_string(),
+            did: "did1".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             keys: None,
@@ -329,11 +331,11 @@ async fn test_generate_share_proof_open_id_flow_success() {
 fn generic_holder_did() -> Did {
     let now = OffsetDateTime::now_utc();
     Did {
-        id: Default::default(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         name: "holder".to_string(),
-        did: "did:key:holder".to_string(),
+        did: "did:key:holder".parse().unwrap(),
         did_type: DidType::Remote,
         did_method: "KEY".to_string(),
         keys: None,

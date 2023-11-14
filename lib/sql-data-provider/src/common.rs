@@ -1,5 +1,5 @@
+use shared_types::DidId;
 use std::sync::Arc;
-use uuid::Uuid;
 
 use one_core::{
     model::did::{Did, DidRelations},
@@ -15,7 +15,7 @@ pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u
 }
 
 pub(crate) async fn get_did(
-    did_id: &Uuid,
+    did_id: &DidId,
     relations: &Option<DidRelations>,
     repository: Arc<dyn DidRepository + Send + Sync>,
 ) -> Result<Option<Did>, DataLayerError> {

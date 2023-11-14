@@ -16,6 +16,7 @@ use one_core::service::credential::dto::CredentialStateEnum;
 use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
 use one_core::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use serde::{Deserialize, Serialize};
+use shared_types::DidValue;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -39,7 +40,7 @@ pub struct CredentialListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseRestDTO,
-    pub issuer_did: Option<String>,
+    pub issuer_did: Option<DidValue>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -61,7 +62,7 @@ pub struct GetCredentialResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub schema: CredentialDetailSchemaResponseRestDTO,
-    pub issuer_did: Option<String>,
+    pub issuer_did: Option<DidValue>,
     #[convert(with_fn = "vector_into")]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
 }

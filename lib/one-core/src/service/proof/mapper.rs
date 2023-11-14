@@ -156,7 +156,7 @@ pub(super) fn presentation_definition_from_proof(
 }
 
 pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
-    let holder_did_id = value.holder_did.as_ref().map(|did| did.id).to_owned();
+    let holder_did_id = value.holder_did.as_ref().map(|did| did.id.clone());
     let schema = value
         .schema
         .as_ref()
@@ -245,7 +245,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         ))?
         .id;
 
-    let holder_did_id = value.holder_did.as_ref().map(|did| did.id).to_owned();
+    let holder_did_id = value.holder_did.as_ref().map(|did| did.id.clone());
 
     let claims = value
         .claims

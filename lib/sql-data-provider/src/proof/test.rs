@@ -11,7 +11,7 @@ use one_core::{
     model::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaId,
-        did::{Did, DidId, DidRelations, DidType},
+        did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::OrganisationId,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
@@ -32,6 +32,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
+use shared_types::DidId;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -96,11 +97,13 @@ async fn setup(
     )
     .unwrap();
 
-    let did_id = Uuid::parse_str(
-        &insert_did(&db, "verifier", "did:key:123", &organisation_id.to_string())
-            .await
-            .unwrap(),
+    let did_id = &insert_did(
+        &db,
+        "verifier",
+        "did:key:123".parse().unwrap(),
+        &organisation_id.to_string(),
     )
+    .await
     .unwrap();
 
     let interaction_id = Uuid::parse_str(
@@ -121,7 +124,7 @@ async fn setup(
         db,
         organisation_id,
         proof_schema_id,
-        did_id,
+        did_id: did_id.clone(),
         claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.0).collect(),
         interaction_id,
     }
@@ -164,7 +167,7 @@ async fn setup_with_proof(
     let proof_id = Uuid::parse_str(
         &insert_proof_request_to_database(
             &db,
-            &did_id.to_string(),
+            did_id.clone(),
             None,
             &proof_schema_id.to_string(),
             Some(interaction_id.to_string()),
@@ -254,7 +257,7 @@ async fn test_create_proof_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "verifier".to_string(),
-            did: "did:key:123".to_string(),
+            did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             organisation: None,
@@ -388,7 +391,7 @@ async fn test_get_proof_with_relations() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "verifier".to_string(),
-            did: "did:key:123".to_string(),
+            did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             organisation: None,
@@ -489,7 +492,7 @@ async fn test_get_proof_by_interaction_id_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "verifier".to_string(),
-            did: "did:key:123".to_string(),
+            did: "did:key:123".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             organisation: None,
@@ -581,22 +584,24 @@ async fn test_set_proof_holder_did() {
     )
     .await;
 
-    let holder_did_id = Uuid::parse_str(
-        &insert_did(&db, "holder", "did:holder", &organisation_id.to_string())
-            .await
-            .unwrap(),
+    let holder_did_id = &insert_did(
+        &db,
+        "holder",
+        "did:holder".to_owned().parse().unwrap(),
+        &organisation_id.to_string(),
     )
+    .await
     .unwrap();
 
     let result = repository
         .set_proof_holder_did(
             &proof_id,
             Did {
-                id: holder_did_id,
+                id: holder_did_id.clone(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "holder".to_string(),
-                did: "did:holder".to_string(),
+                did: "did:holder".parse().unwrap(),
                 did_type: DidType::Remote,
                 did_method: "KEY".to_string(),
                 organisation: None,
@@ -612,7 +617,7 @@ async fn test_set_proof_holder_did() {
         .unwrap()
         .unwrap();
     assert!(proof.holder_did_id.is_some());
-    assert_eq!(proof.holder_did_id.unwrap(), holder_did_id.to_string());
+    assert_eq!(&proof.holder_did_id.unwrap(), holder_did_id);
 }
 
 #[tokio::test]

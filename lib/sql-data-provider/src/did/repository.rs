@@ -5,13 +5,14 @@ use crate::{
     mapper::to_data_layer_error,
 };
 use one_core::model::{
-    did::{Did, DidId, DidListQuery, DidRelations, DidValue, GetDidList, RelatedKey},
+    did::{Did, DidListQuery, DidRelations, GetDidList, RelatedKey},
     key::{Key, KeyId},
 };
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
 };
+use shared_types::{DidId, DidValue};
 use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;
 
@@ -69,7 +70,7 @@ impl DidProvider {
 #[async_trait::async_trait]
 impl DidRepository for DidProvider {
     async fn get_did(&self, id: &DidId, relations: &DidRelations) -> Result<Did, DataLayerError> {
-        let did = did::Entity::find_by_id(id.to_string())
+        let did = did::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
@@ -129,7 +130,7 @@ impl DidRepository for DidProvider {
             key_did::Entity::insert_many(
                 keys.into_iter()
                     .map(|key| key_did::ActiveModel {
-                        did_id: Set(did.id.to_owned()),
+                        did_id: Set(did.id.to_string()),
                         key_id: Set(key.key.id.to_string()),
                         role: Set(key.role.into()),
                     })
@@ -140,6 +141,6 @@ impl DidRepository for DidProvider {
             .map_err(to_data_layer_error)?;
         }
 
-        Uuid::from_str(&did.id).map_err(|_| DataLayerError::MappingError)
+        Ok(did.id)
     }
 }

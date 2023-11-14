@@ -49,7 +49,10 @@ impl From<Jwt<VC>> for DetailCredential {
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
             invalid_before: jwt.payload.invalid_before,
-            issuer_did: jwt.payload.issuer,
+            issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
+                Ok(v) => v,
+                Err(err) => match err {},
+            }),
             subject: jwt.payload.subject,
             claims: jwt.payload.custom.vc.credential_subject,
             status: jwt.payload.custom.vc.credential_status,

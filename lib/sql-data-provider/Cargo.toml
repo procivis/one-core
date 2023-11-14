@@ -14,7 +14,7 @@ test_utils = []
 one-core = { version = "0.1.0", path = "../../lib/one-core" }
 async-trait = "0.1.68"
 migration = { version = "0.1.0", path = "../../apps/migration", default-features = false }
-sea-orm = { version = "0.12.1", default-features = false, features = [
+sea-orm = { workspace = true, features = [
     "sqlx-sqlite",
     "runtime-tokio-rustls",
     "macros",
@@ -28,6 +28,9 @@ tracing.workspace = true
 uuid.workspace = true
 tokio = { workspace = true, features = ["macros"] }
 url = { workspace = true }
+shared-types = { version = "0.1.0", path = "../shared-types", features = [
+    "sea-orm",
+] }
 
 [dev-dependencies]
 mockall.workspace = true

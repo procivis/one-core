@@ -15,13 +15,14 @@ use crate::{
     },
     service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
 };
+use shared_types::DidValue;
 use time::OffsetDateTime;
 
 impl SSIIssuerService {
     pub async fn issuer_connect(
         &self,
         credential_id: &CredentialId,
-        holder_did_value: &String,
+        holder_did_value: &DidValue,
     ) -> Result<CredentialDetailResponseDTO, ServiceError> {
         let mut credential = self
             .credential_repository
@@ -62,7 +63,7 @@ impl SSIIssuerService {
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                holder_did_id: Some(holder_did.id),
+                holder_did_id: Some(holder_did.id.clone()),
                 state: Some(CredentialState {
                     created_date: now,
                     state: new_state.clone(),

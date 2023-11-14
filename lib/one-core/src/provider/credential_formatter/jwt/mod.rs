@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::{de::DeserializeOwned, Serialize};
+use shared_types::DidValue;
 
 use crate::{
     crypto::signer::error::SignerError,
@@ -29,7 +30,7 @@ pub struct SkipVerification;
 impl TokenVerifier for SkipVerification {
     async fn verify<'a>(
         &self,
-        _issuer_did_value: Option<String>,
+        _issuer_did_value: Option<DidValue>,
         _algorithm: &'a str,
         _token: &'a str,
         _signature: &'a [u8],
@@ -42,7 +43,7 @@ impl TokenVerifier for SkipVerification {
 impl TokenVerifier for Box<dyn TokenVerifier + Send + Sync> {
     async fn verify<'a>(
         &self,
-        issuer_did_value: Option<String>,
+        issuer_did_value: Option<DidValue>,
         algorithm: &'a str,
         token: &'a str,
         signature: &'a [u8],
@@ -63,13 +64,13 @@ impl<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> Jwt<Payload> {
     pub fn new(
         signature_type: String,
         algorithm: String,
-        key_id: Option<String>,
+        key_id: Option<DidValue>,
         payload: JWTPayload<Payload>,
     ) -> Jwt<Payload> {
         let header = JWTHeader {
             signature_type: Some(signature_type),
             algorithm,
-            key_id,
+            key_id: key_id.map(|x| x.to_string()),
         };
 
         Jwt { header, payload }
@@ -94,7 +95,15 @@ impl<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> Jwt<Payload> {
         );
 
         verification
-            .verify(payload.issuer.clone(), &header.algorithm, &jwt, &signature)
+            .verify(
+                payload.issuer.as_ref().map(|v| match v.parse() {
+                    Ok(x) => x,
+                    Err(err) => match err {},
+                }),
+                &header.algorithm,
+                &jwt,
+                &signature,
+            )
             .await
             .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
 

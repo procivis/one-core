@@ -962,6 +962,7 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "shadow-rs",
+ "shared-types",
  "sql-data-provider",
  "thiserror",
  "time",
@@ -3103,6 +3104,7 @@ dependencies = [
  "serde_yaml",
  "sha2 0.10.7",
  "shadow-rs",
+ "shared-types",
  "ssh-key",
  "strum",
  "strum_macros",
@@ -4638,6 +4640,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "shared-types"
+version = "0.1.0"
+dependencies = [
+ "sea-orm",
+ "serde",
+ "utoipa",
+ "uuid",
+]
+
+[[package]]
 name = "shellexpand"
 version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4789,6 +4801,7 @@ dependencies = [
  "one-core",
  "sea-orm",
  "serde_yaml",
+ "shared-types",
  "time",
  "tokio",
  "tracing",

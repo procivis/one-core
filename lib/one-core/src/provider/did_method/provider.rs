@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
+use shared_types::DidValue;
+
 use super::DidMethod;
 use crate::{
     model::did::Did, provider::did_method::mapper::get_did_method_id, service::error::ServiceError,
@@ -13,7 +15,7 @@ pub trait DidMethodProvider {
         did_method_id: &str,
     ) -> Result<Arc<dyn DidMethod + Send + Sync>, ServiceError>;
 
-    async fn resolve(&self, did: &str) -> Result<Did, ServiceError>;
+    async fn resolve(&self, did: &DidValue) -> Result<Did, ServiceError>;
 }
 
 pub struct DidMethodProviderImpl {
@@ -39,8 +41,8 @@ impl DidMethodProvider for DidMethodProviderImpl {
             .clone())
     }
 
-    async fn resolve(&self, did: &str) -> Result<Did, ServiceError> {
-        let parts = did.splitn(3, ':').collect::<Vec<_>>();
+    async fn resolve(&self, did: &DidValue) -> Result<Did, ServiceError> {
+        let parts = did.as_str().splitn(3, ':').collect::<Vec<_>>();
         let did_method = parts.get(1).ok_or(ServiceError::ValidationError(
             "Did method not found".to_string(),
         ))?;

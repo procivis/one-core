@@ -1,6 +1,7 @@
 use dto_mapper::From;
 use one_core::service::did::dto::{CreateDidRequestKeysDTO, DidListItemResponseDTO};
 use serde::{Deserialize, Serialize};
+use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -26,7 +27,7 @@ pub enum DidType {
 #[serde(rename_all = "camelCase")]
 #[convert(from = "DidListItemResponseDTO")]
 pub struct DidListItemResponseRestDTO {
-    pub id: Uuid,
+    pub id: DidId,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
@@ -34,7 +35,7 @@ pub struct DidListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub did: String,
+    pub did: DidValue,
     #[serde(rename = "type")]
     pub did_type: DidType,
     #[serde(rename = "method")]
@@ -44,7 +45,7 @@ pub struct DidListItemResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DidResponseRestDTO {
-    pub id: Uuid,
+    pub id: DidId,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
@@ -53,7 +54,7 @@ pub struct DidResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub organisation_id: Uuid,
-    pub did: String,
+    pub did: DidValue,
     #[serde(rename = "type")]
     pub did_type: DidType,
     #[serde(rename = "method")]

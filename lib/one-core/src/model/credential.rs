@@ -1,4 +1,5 @@
 use crate::model::revocation_list::RevocationListRelations;
+use shared_types::DidId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -6,7 +7,7 @@ use super::{
     claim::{Claim, ClaimRelations},
     common::{GetListQueryParams, GetListResponse},
     credential_schema::{CredentialSchema, CredentialSchemaRelations},
-    did::{Did, DidId, DidRelations},
+    did::{Did, DidRelations},
     interaction::{Interaction, InteractionId, InteractionRelations},
     key::{Key, KeyId, KeyRelations},
     revocation_list::RevocationList,

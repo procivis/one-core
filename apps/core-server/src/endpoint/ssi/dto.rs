@@ -17,6 +17,7 @@ use one_core::service::{
     ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
 };
 use serde::{Deserialize, Serialize};
+use shared_types::DidValue;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -31,7 +32,7 @@ pub(crate) struct ProofRequestQueryParams {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectRequestRestDTO {
-    pub did: String,
+    pub did: DidValue,
 }
 
 // verifier specific
@@ -49,7 +50,7 @@ pub struct PostSsiVerifierConnectQueryParams {
 pub struct ConnectVerifierResponseRestDTO {
     #[convert(with_fn = "vector_into")]
     pub claims: Vec<ProofRequestClaimRestDTO>,
-    pub verifier_did: String,
+    pub verifier_did: DidValue,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

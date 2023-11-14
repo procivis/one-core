@@ -9,7 +9,7 @@ use crate::{
     repository::error::DataLayerError,
 };
 use mockall::*;
-use uuid::Uuid;
+use shared_types::DidId;
 
 #[derive(Default)]
 struct CredentialRepository;
@@ -32,7 +32,7 @@ mock! {
 
         pub fn get_credentials_by_issuer_did_id(
             &self,
-            issuer_did_id: &Uuid,
+            issuer_did_id: &DidId,
             relations: &CredentialRelations
         ) -> Result<Vec<Credential>, DataLayerError>;
 
@@ -78,7 +78,7 @@ impl crate::repository::credential_repository::CredentialRepository for MockCred
 
     async fn get_credentials_by_issuer_did_id(
         &self,
-        issuer_did_id: &Uuid,
+        issuer_did_id: &DidId,
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError> {
         self.get_credentials_by_issuer_did_id(issuer_did_id, relations)

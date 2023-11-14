@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use shared_types::DidId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -12,8 +13,8 @@ pub struct Model {
     pub issuance_date: OffsetDateTime,
 
     pub transport: String,
-    pub verifier_did_id: Option<String>,
-    pub holder_did_id: Option<String>,
+    pub verifier_did_id: Option<DidId>,
+    pub holder_did_id: Option<DidId>,
     pub proof_schema_id: Option<String>,
     pub interaction_id: Option<String>,
 }

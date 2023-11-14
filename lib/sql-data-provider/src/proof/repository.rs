@@ -177,7 +177,7 @@ impl ProofRepository for ProofProvider {
 
         let model = proof::ActiveModel {
             id: Unchanged(proof_id.to_string()),
-            holder_did_id: Set(Some(holder_did.id.to_string())),
+            holder_did_id: Set(Some(holder_did.id)),
             last_modified: Set(now),
             ..Default::default()
         };
@@ -213,12 +213,12 @@ impl ProofRepository for ProofProvider {
 
         let holder_did_id = match proof.holder_did_id {
             None => Unchanged(Default::default()),
-            Some(holder_did) => Set(Some(holder_did.to_string())),
+            Some(holder_did) => Set(Some(holder_did)),
         };
 
-        let verifier_did_id: sea_orm::ActiveValue<Option<String>> = match proof.verifier_did_id {
+        let verifier_did_id = match proof.verifier_did_id {
             None => Unchanged(Default::default()),
-            Some(verifier_did_id) => Set(Some(verifier_did_id.to_string())),
+            Some(verifier_did_id) => Set(Some(verifier_did_id)),
         };
 
         let interaction_id = match proof.interaction {
@@ -368,12 +368,9 @@ impl ProofProvider {
 
         if let Some(did_relations) = &relations.verifier_did {
             if let Some(verifier_did_id) = &proof_model.verifier_did_id {
-                let verifier_did_id =
-                    Uuid::from_str(verifier_did_id).map_err(|_| DataLayerError::MappingError)?;
-
                 proof.verifier_did = Some(
                     self.did_repository
-                        .get_did(&verifier_did_id, did_relations)
+                        .get_did(verifier_did_id, did_relations)
                         .await?,
                 );
             }
@@ -381,12 +378,9 @@ impl ProofProvider {
 
         if let Some(did_relations) = &relations.holder_did {
             if let Some(holder_did_id) = &proof_model.holder_did_id {
-                let holder_did_id =
-                    Uuid::from_str(holder_did_id).map_err(|_| DataLayerError::MappingError)?;
-
                 proof.holder_did = Some(
                     self.did_repository
-                        .get_did(&holder_did_id, did_relations)
+                        .get_did(holder_did_id, did_relations)
                         .await?,
                 );
             }

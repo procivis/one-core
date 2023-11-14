@@ -1,8 +1,9 @@
 use super::DidMethodError;
-use crate::model::did::{Did, DidId};
+use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::service::did::dto::CreateDidRequestDTO;
 use async_trait::async_trait;
+use shared_types::{DidId, DidValue};
 
 pub struct WebDidMethod {}
 
@@ -28,7 +29,7 @@ impl super::DidMethod for WebDidMethod {
         todo!()
     }
 
-    async fn resolve(&self, _did: &str) -> Result<Did, DidMethodError> {
+    async fn resolve(&self, _did: &DidValue) -> Result<Did, DidMethodError> {
         todo!()
     }
 

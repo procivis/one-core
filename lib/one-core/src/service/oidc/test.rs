@@ -15,6 +15,7 @@ use crate::service::oidc::dto::{
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::generic_config;
 use mockall::predicate::{always, eq};
+use shared_types::DidId;
 
 use crate::model::did::{Did, DidType};
 use crate::repository::did_repository::MockDidRepository;
@@ -394,7 +395,7 @@ async fn test_oidc_create_credential_success() {
 
     let schema = generic_credential_schema();
     let credential = dummy_credential(CredentialStateEnum::Pending, true);
-    let holder_did_id = Uuid::new_v4();
+    let holder_did_id: DidId = Uuid::new_v4().into();
     {
         let clone = schema.clone();
         repository
@@ -424,16 +425,17 @@ async fn test_oidc_create_credential_success() {
                 })
             });
 
+        let holder_did_id_clone = holder_did_id.clone();
         did_repository
             .expect_get_did_by_value()
             .times(1)
             .returning(move |did_value, _| {
                 Ok(Did {
-                    id: holder_did_id,
+                    id: holder_did_id_clone.clone(),
                     created_date: now,
                     last_modified: now,
                     name: "verifier".to_string(),
-                    did: did_value.to_string(),
+                    did: did_value.clone(),
                     did_type: DidType::Remote,
                     did_method: "KEY".to_string(),
                     organisation: None,
@@ -445,7 +447,7 @@ async fn test_oidc_create_credential_success() {
             .expect_update_credential()
             .once()
             .withf(move |request| {
-                request.id == credential.id && request.holder_did_id == Some(holder_did_id)
+                request.id == credential.id && request.holder_did_id == Some(holder_did_id.clone())
             })
             .returning(move |_| Ok(()));
     }

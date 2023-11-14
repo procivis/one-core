@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use shared_types::DidId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -20,8 +21,8 @@ pub struct Model {
     #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
     pub credential: Vec<u8>,
 
-    pub issuer_did_id: Option<String>,
-    pub holder_did_id: Option<String>,
+    pub issuer_did_id: Option<DidId>,
+    pub holder_did_id: Option<DidId>,
     pub interaction_id: Option<String>,
     pub revocation_list_id: Option<String>,
     pub key_id: Option<String>,

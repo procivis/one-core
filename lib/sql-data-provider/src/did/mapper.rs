@@ -3,8 +3,6 @@ use one_core::{
     repository::error::DataLayerError,
 };
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
-use std::str::FromStr;
-use uuid::Uuid;
 
 use crate::{
     common::calculate_pages_count,
@@ -18,10 +16,8 @@ impl TryFrom<entity::did::Model> for Did {
     type Error = DataLayerError;
 
     fn try_from(value: entity::did::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
-
         Ok(Self {
-            id,
+            id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
@@ -89,7 +85,7 @@ impl TryFrom<Did> for did::ActiveModel {
         let organisation = value.organisation.ok_or(DataLayerError::MappingError)?;
 
         Ok(Self {
-            id: Set(value.id.to_string()),
+            id: Set(value.id),
             did: Set(value.did.to_owned()),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),

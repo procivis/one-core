@@ -9,7 +9,7 @@ use crate::{
         claim::Claim,
         claim_schema::{ClaimSchemaId, ClaimSchemaRelations},
         credential_schema::CredentialSchemaRelations,
-        did::{Did, DidRelations, DidValue},
+        did::{Did, DidRelations},
         organisation::OrganisationRelations,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
@@ -18,6 +18,7 @@ use crate::{
     repository::error::DataLayerError,
     service::error::ServiceError,
 };
+use shared_types::DidValue;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -169,7 +170,7 @@ impl SSIVerifierService {
     async fn set_holder_connected(
         &self,
         id: &ProofId,
-        holder_did_value: &String,
+        holder_did_value: &DidValue,
         did_method_provider: &(dyn DidMethodProvider + Send + Sync),
     ) -> Result<(), ServiceError> {
         let (proof, proof_state) = self

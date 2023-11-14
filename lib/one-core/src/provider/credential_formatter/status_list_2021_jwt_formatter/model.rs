@@ -1,4 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use shared_types::DidValue;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 fn into_timestamp<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
@@ -41,7 +42,7 @@ pub struct VCContent {
     pub context: Vec<String>,
     pub id: String,
     pub r#type: Vec<ContentType>,
-    pub issuer: String,
+    pub issuer: DidValue,
     #[serde(serialize_with = "into_timestamp", deserialize_with = "from_timestamp")]
     pub issued: OffsetDateTime,
     pub credential_subject: CredentialSubject,

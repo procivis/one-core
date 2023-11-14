@@ -24,8 +24,9 @@ use crate::{
         credential_formatter::model::CredentialPresentation,
         transport_protocol::provider::DetectedProtocol,
     },
-    service::{did::dto::DidId, error::ServiceError},
+    service::error::ServiceError,
 };
+use shared_types::DidId;
 use time::OffsetDateTime;
 use url::Url;
 

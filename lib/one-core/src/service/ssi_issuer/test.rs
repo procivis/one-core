@@ -50,7 +50,7 @@ async fn test_issuer_connect_succeeds() {
         ..mock_ssi_issuer_service()
     };
 
-    let holder_did_value = "holder did".to_string();
+    let holder_did_value = "holder did".parse().unwrap();
 
     service
         .issuer_connect(&credential_id, &holder_did_value)
@@ -168,11 +168,11 @@ fn dummy_credential() -> Credential {
 
 fn dummy_did() -> Did {
     Did {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "John".to_string(),
-        did: "did".to_string(),
+        did: "did".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "John".to_string(),
         keys: None,
