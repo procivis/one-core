@@ -15,6 +15,7 @@ use one_core::service::proof::dto::{
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, ProofClaimDTO,
 };
 use serde::{Deserialize, Serialize};
+use shared_types::{DidId, DidValue};
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -33,12 +34,12 @@ pub enum ProofStateRestEnum {
 }
 
 // create endpoint
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofRequestRestDTO {
     pub proof_schema_id: Uuid,
     #[schema(example = "<uuid; did identifier>")]
-    pub verifier_did: Uuid,
+    pub verifier_did: DidId,
     pub transport: String,
 }
 
@@ -82,7 +83,7 @@ pub struct ProofListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
-    pub verifier_did: String,
+    pub verifier_did: DidValue,
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
@@ -182,7 +183,7 @@ pub struct ProofDetailResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
-    pub verifier_did: String,
+    pub verifier_did: DidValue,
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub organisation_id: Uuid,

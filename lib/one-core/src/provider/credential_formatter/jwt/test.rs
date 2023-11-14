@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use shared_types::DidValue;
 use time::{macros::datetime, OffsetDateTime};
 
 use crate::{
@@ -29,12 +30,15 @@ pub struct TestVerify {
 impl TokenVerifier for TestVerify {
     async fn verify<'a>(
         &self,
-        issuer_did_value: Option<String>,
+        issuer_did_value: Option<DidValue>,
         algorithm: &'a str,
         token: &'a str,
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
-        assert_eq!(issuer_did_value, self.issuer_did_value);
+        assert_eq!(
+            issuer_did_value.map(|v| v.to_string()),
+            self.issuer_did_value
+        );
         assert_eq!(algorithm, self.algorithm);
         assert_eq!(token, self.token);
 

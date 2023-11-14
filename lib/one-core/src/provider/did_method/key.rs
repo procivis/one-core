@@ -1,12 +1,13 @@
 use async_trait::async_trait;
 use did_key::KeyMaterial;
+use shared_types::{DidId, DidValue};
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::DidMethodError;
 use crate::config::data_structure::DidKeyParams;
-use crate::model::did::{Did, DidId, DidRelations, DidType, KeyRole, RelatedKey};
+use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::key::{Key, KeyId, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::key_storage::provider::KeyProvider;
@@ -57,7 +58,11 @@ impl super::DidMethod for KeyDidMethod {
             .get_key_storage(&key.storage_type)
             .map_err(|_| DidMethodError::KeyStorageNotFound)?;
         let fingerprint = key_storage.fingerprint(&key.public_key);
-        let did_value = format!("did:key:{}", fingerprint);
+        // todo(mite): add constructor for this
+        let did_value: DidValue = match format!("did:key:{}", fingerprint).parse() {
+            Ok(v) => v,
+            Err(err) => match err {},
+        };
 
         if did_already_exists(&self.did_repository, &did_value).await? {
             return Err(DidMethodError::AlreadyExists);
@@ -83,15 +88,15 @@ impl super::DidMethod for KeyDidMethod {
         todo!()
     }
 
-    async fn resolve(&self, did: &str) -> Result<Did, DidMethodError> {
+    async fn resolve(&self, did: &DidValue) -> Result<Did, DidMethodError> {
         // only allow Ed25519 keys for now
-        if !did.starts_with("did:key:z6Mk") {
+        if !did.as_str().starts_with("did:key:z6Mk") {
             return Err(DidMethodError::ResolutionError(
                 "Unsupported key algorithm".to_string(),
             ));
         }
 
-        let resolved = did_key::resolve(did)
+        let resolved = did_key::resolve(did.as_str())
             .map_err(|_| DidMethodError::ResolutionError("Failed to resolve".to_string()))?;
 
         let public_key = resolved.public_key_bytes();
@@ -117,11 +122,11 @@ impl super::DidMethod for KeyDidMethod {
         };
 
         Ok(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
             name: did.to_string(),
-            did: did.to_string(),
+            did: did.clone(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             keys: Some(vec![
@@ -158,10 +163,10 @@ impl super::DidMethod for KeyDidMethod {
 
 async fn did_already_exists(
     repository: &Arc<dyn DidRepository + Send + Sync>,
-    did_value: &str,
+    did_value: &DidValue,
 ) -> Result<bool, DidMethodError> {
     let result = repository
-        .get_did_by_value(&did_value.to_string(), &DidRelations::default())
+        .get_did_by_value(did_value, &DidRelations::default())
         .await;
 
     match result {
@@ -174,7 +179,7 @@ async fn did_already_exists(
 fn did_from_did_request(
     request: CreateDidRequestDTO,
     organisation: Organisation,
-    did_value: String,
+    did_value: DidValue,
     key: Key,
     now: OffsetDateTime,
 ) -> Result<Did, DidMethodError> {
@@ -201,7 +206,7 @@ fn did_from_did_request(
     );
 
     Ok(Did {
-        id: Uuid::new_v4(),
+        id: DidId::from(Uuid::new_v4()),
         created_date: now,
         last_modified: now,
         name: request.name,

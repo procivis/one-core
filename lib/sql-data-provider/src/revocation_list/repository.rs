@@ -1,4 +1,5 @@
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set, Unchanged};
+use shared_types::DidId;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -15,10 +16,8 @@ impl RevocationListProvider {
         revocation_list: revocation_list::Model,
         relations: &RevocationListRelations,
     ) -> Result<RevocationList, DataLayerError> {
-        let issuer_did_id = Uuid::from_str(&revocation_list.issuer_did_id)
-            .map_err(|_| DataLayerError::MappingError)?;
         let issuer_did = get_did(
-            &issuer_did_id,
+            &revocation_list.issuer_did_id,
             &relations.issuer_did,
             self.did_repository.clone(),
         )
@@ -47,7 +46,7 @@ impl RevocationListRepository for RevocationListProvider {
             created_date: Set(request.created_date),
             last_modified: Set(request.last_modified),
             credentials: Set(request.credentials),
-            issuer_did_id: Set(issuer_did.id.to_string()),
+            issuer_did_id: Set(issuer_did.id),
         }
         .insert(&self.db)
         .await
@@ -72,11 +71,11 @@ impl RevocationListRepository for RevocationListProvider {
 
     async fn get_revocation_by_issuer_did_id(
         &self,
-        issuer_did_id: &Uuid,
+        issuer_did_id: &DidId,
         relations: &RevocationListRelations,
     ) -> Result<RevocationList, DataLayerError> {
         let revocation_list = revocation_list::Entity::find()
-            .filter(revocation_list::Column::IssuerDidId.eq(&issuer_did_id.to_string()))
+            .filter(revocation_list::Column::IssuerDidId.eq(issuer_did_id))
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?

@@ -38,7 +38,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             last_modified: value.last_modified.format_timestamp(),
             issuance_date: value.issuance_date.format_timestamp(),
             revocation_date: value.revocation_date.map(|date| date.format_timestamp()),
-            issuer_did: value.issuer_did,
+            issuer_did: value.issuer_did.map(|v| v.to_string()),
             state: value.state.into(),
             schema: value.schema.into(),
         }
@@ -53,7 +53,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             last_modified: value.last_modified.format_timestamp(),
             issuance_date: value.issuance_date.format_timestamp(),
             revocation_date: value.revocation_date.map(|date| date.format_timestamp()),
-            issuer_did: value.issuer_did,
+            issuer_did: value.issuer_did.map(|v| v.to_string()),
             state: value.state.into(),
             schema: value.schema.into(),
             claims: vector_into(value.claims),
@@ -105,7 +105,7 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
-            verifier_did: value.verifier_did,
+            verifier_did: value.verifier_did.to_string(),
             transport: value.transport,
         }
     }

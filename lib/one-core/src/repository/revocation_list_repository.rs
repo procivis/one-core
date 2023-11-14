@@ -1,7 +1,8 @@
-use uuid::Uuid;
+use shared_types::DidId;
+
+use crate::model::revocation_list::{RevocationList, RevocationListId, RevocationListRelations};
 
 use super::error::DataLayerError;
-use crate::model::revocation_list::{RevocationList, RevocationListId, RevocationListRelations};
 
 #[async_trait::async_trait]
 pub trait RevocationListRepository {
@@ -16,7 +17,7 @@ pub trait RevocationListRepository {
     ) -> Result<RevocationList, DataLayerError>;
     async fn get_revocation_by_issuer_did_id(
         &self,
-        issuer_did_id: &Uuid,
+        issuer_did_id: &DidId,
         relations: &RevocationListRelations,
     ) -> Result<RevocationList, DataLayerError>;
     async fn update_credentials(

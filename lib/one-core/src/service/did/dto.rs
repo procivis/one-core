@@ -1,7 +1,7 @@
-use time::OffsetDateTime;
-use uuid::Uuid;
-
 use dto_mapper::From;
+use time::OffsetDateTime;
+
+use shared_types::{DidId, DidValue};
 
 use crate::{
     model::{
@@ -12,9 +12,6 @@ use crate::{
     },
     service::key::dto::KeyListItemResponseDTO,
 };
-
-pub type DidId = Uuid;
-pub type DidValue = String;
 
 #[derive(Clone, Debug)]
 pub struct DidResponseDTO {

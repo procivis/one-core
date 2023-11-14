@@ -1,5 +1,6 @@
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use serde::{Deserialize, Serialize};
+use shared_types::DidId;
 use std::collections::HashMap;
 use url::Url;
 use utoipa::ToSchema;
@@ -9,7 +10,7 @@ use uuid::Uuid;
 #[serde(rename_all = "camelCase")]
 pub struct HandleInvitationRequestRestDTO {
     pub url: Url,
-    pub did_id: Uuid,
+    pub did_id: DidId,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]

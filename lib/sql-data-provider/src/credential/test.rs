@@ -104,14 +104,17 @@ async fn setup_empty() -> TestSetup {
         }),
     };
 
-    let did_id = Uuid::parse_str(
-        &insert_did(&db, "issuer", "did:key:123", &organisation_id.to_string())
-            .await
-            .unwrap(),
+    let did_id = &insert_did(
+        &db,
+        "issuer",
+        "did:key:123".parse().unwrap(),
+        &organisation_id.to_string(),
     )
+    .await
     .unwrap();
+
     let did = Did {
-        id: did_id,
+        id: did_id.clone(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "name".to_string(),
@@ -120,7 +123,7 @@ async fn setup_empty() -> TestSetup {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         }),
-        did: "did:key:123".to_string(),
+        did: "did:key:123".parse().unwrap(),
         did_type: one_core::model::did::DidType::Local,
         did_method: "KEY".to_string(),
         keys: None,
@@ -149,7 +152,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
     } = setup_empty().await;
 
     let credential_id = Uuid::parse_str(
-        &insert_credential(&db, &credential_schema.id.to_string(), &did.id.to_string())
+        &insert_credential(&db, &credential_schema.id.to_string(), did.id.clone())
             .await
             .unwrap(),
     )
@@ -406,11 +409,11 @@ async fn test_get_credential_list_success() {
         .returning(move |_, _| Ok(did_clone.clone()));
 
     let _credential_one_id =
-        insert_credential(&db, &credential_schema.id.to_string(), &did.id.to_string())
+        insert_credential(&db, &credential_schema.id.to_string(), did.id.clone())
             .await
             .unwrap();
     let _credential_two_id =
-        insert_credential(&db, &credential_schema.id.to_string(), &did.id.to_string())
+        insert_credential(&db, &credential_schema.id.to_string(), did.id.clone())
             .await
             .unwrap();
 
@@ -467,7 +470,7 @@ async fn test_get_credential_success() {
     } = setup_empty().await;
 
     let credential_id = Uuid::parse_str(
-        &insert_credential(&db, &credential_schema.id.to_string(), &did.id.to_string())
+        &insert_credential(&db, &credential_schema.id.to_string(), did.id.clone())
             .await
             .unwrap(),
     )
@@ -648,7 +651,7 @@ async fn test_update_credential_success() {
     } = setup_empty().await;
 
     let credential_id = Uuid::parse_str(
-        &insert_credential(&db, &credential_schema.id.to_string(), &did.id.to_string())
+        &insert_credential(&db, &credential_schema.id.to_string(), did.id)
             .await
             .unwrap(),
     )

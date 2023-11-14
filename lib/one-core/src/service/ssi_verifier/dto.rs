@@ -2,12 +2,13 @@ use crate::{
     model::claim_schema::ClaimSchemaId,
     service::credential_schema::dto::CredentialSchemaListItemResponseDTO,
 };
+use shared_types::DidValue;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
 pub struct ConnectVerifierResponseDTO {
     pub claims: Vec<ProofRequestClaimDTO>,
-    pub verifier_did: String,
+    pub verifier_did: DidValue,
 }
 
 #[derive(Clone, Debug)]

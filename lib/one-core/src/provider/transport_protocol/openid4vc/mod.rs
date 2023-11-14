@@ -29,7 +29,7 @@ use crate::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
             UpdateCredentialSchemaRequest,
         },
-        did::{Did, DidId, DidRelations, DidType},
+        did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::{Organisation, OrganisationRelations},
         proof::{Proof, ProofId, ProofRelations, UpdateProofRequest},
@@ -304,7 +304,7 @@ impl TransportProtocol for OpenID4VC {
             Err(DataLayerError::RecordNotFound) => self
                 .did_repository
                 .create_did(Did {
-                    id: DidId::new_v4(),
+                    id: Uuid::new_v4().into(),
                     name: "issuer".to_string(),
                     created_date: now,
                     last_modified: now,

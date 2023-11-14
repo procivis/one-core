@@ -5,6 +5,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use async_trait::async_trait;
+use shared_types::DidValue;
 
 use super::model::{CredentialPresentation, Presentation};
 use super::{AuthenticationFn, CredentialFormatter, VerificationFn};
@@ -19,7 +20,7 @@ impl CredentialFormatter for JsonLdFormatter {
         &self,
         _credential: &CredentialDetailResponseDTO,
         _credential_status: Option<CredentialStatus>,
-        _holder_did: &str,
+        _holder_did: &DidValue,
         _algorithm: &str,
         _additional_context: Vec<String>,
         _additional_types: Vec<String>,
@@ -46,7 +47,7 @@ impl CredentialFormatter for JsonLdFormatter {
     fn format_presentation(
         &self,
         _tokens: &[String],
-        _holder_did: &str,
+        _holder_did: &DidValue,
         _algorithm: &str,
         _auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {

@@ -83,7 +83,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         schema: None,
         claims: None,
         verifier_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
@@ -92,7 +92,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: None,
@@ -154,7 +154,7 @@ async fn test_get_presentation_definition() {
         }),
         claims: Some(vec![]),
         verifier_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
@@ -163,13 +163,13 @@ async fn test_get_presentation_definition() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: None,
         }),
         holder_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
@@ -178,7 +178,7 @@ async fn test_get_presentation_definition() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: None,
@@ -244,7 +244,7 @@ async fn test_get_presentation_definition() {
             schema: Some(claim_schema.clone()),
         }]),
         issuer_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
             name: "did1".to_string(),
@@ -253,13 +253,13 @@ async fn test_get_presentation_definition() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
-            did: "did1".to_string(),
+            did: "did1".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             keys: None,
         }),
         holder_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
@@ -268,7 +268,7 @@ async fn test_get_presentation_definition() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: None,
@@ -434,22 +434,22 @@ async fn test_get_presentation_definition_no_match() {
         }),
         claims: Some(vec![]),
         verifier_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
         }),
         holder_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             organisation: None,
@@ -517,11 +517,11 @@ async fn test_get_presentation_definition_no_match() {
             schema: Some(claim_schema.clone()),
         }]),
         issuer_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
             name: "did1".to_string(),
-            did: "did1".to_string(),
+            did: "did1".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             organisation: None,
@@ -662,22 +662,22 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         }),
         claims: Some(vec![]),
         verifier_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
         }),
         holder_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             organisation: None,
@@ -764,11 +764,11 @@ async fn test_get_proof_exists() {
         }),
         claims: Some(vec![]),
         verifier_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             organisation: None,
@@ -863,11 +863,11 @@ async fn test_get_proof_list_success() {
         }),
         claims: None,
         verifier_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
-            did: "did".to_string(),
+            did: "did".parse().unwrap(),
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             organisation: None,
@@ -920,7 +920,7 @@ async fn test_create_proof() {
     let transport = "transport".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
-        verifier_did_id: Uuid::new_v4(),
+        verifier_did_id: Uuid::new_v4().into(),
         transport: transport.to_owned(),
     };
 
@@ -942,18 +942,19 @@ async fn test_create_proof() {
             })
         });
 
+    let request_clone = request.clone();
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did()
         .times(1)
-        .withf(move |id, _| &request.verifier_did_id == id)
+        .withf(move |id, _| &request_clone.verifier_did_id == id)
         .returning(|id, _| {
             Ok(Did {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "did".to_string(),
-                did: "did".to_string(),
+                did: "did".parse().unwrap(),
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
@@ -1013,7 +1014,7 @@ async fn test_create_proof_schema_deleted() {
     let result = service
         .create_proof(CreateProofRequestDTO {
             proof_schema_id: Uuid::new_v4(),
-            verifier_did_id: Uuid::new_v4(),
+            verifier_did_id: Uuid::new_v4().into(),
             transport: "transport".to_string(),
         })
         .await;

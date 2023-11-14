@@ -1,6 +1,7 @@
 use self::model::{ContentType, CredentialSubject, StatusPurpose, SubjectType, VCContent, VC};
 use super::{error::FormatterError, jwt::model::JWTPayload, AuthenticationFn, VerificationFn};
 use crate::{model::did::Did, provider::credential_formatter::jwt::Jwt};
+use shared_types::DidValue;
 use time::OffsetDateTime;
 
 mod model;
@@ -39,7 +40,7 @@ impl StatusList2021JWTFormatter {
         };
 
         let payload = JWTPayload {
-            issuer: Some(issuer_did.did.to_owned()),
+            issuer: Some(issuer_did.did.to_string()),
             jwt_id: Some(revocation_list_url),
             subject: Some(subject),
             custom: vc,
@@ -56,19 +57,22 @@ impl StatusList2021JWTFormatter {
 
     pub async fn parse_status_list(
         status_list_token: &str,
-        issuer_did: &str,
+        issuer_did: &DidValue,
         verification: VerificationFn,
     ) -> Result<String, FormatterError> {
         let jwt: Jwt<VC> = Jwt::build_from_token(status_list_token, verification).await?;
 
         let payload = jwt.payload;
-        if !payload.issuer.is_some_and(|issuer| issuer == issuer_did) {
+        if !payload
+            .issuer
+            .is_some_and(|issuer| issuer == issuer_did.as_str())
+        {
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid issuer".to_string(),
             ));
         }
 
-        if payload.custom.vc.issuer != issuer_did {
+        if issuer_did != &payload.custom.vc.issuer {
             return Err(FormatterError::CouldNotExtractCredentials(
                 "Invalid issuer".to_string(),
             ));

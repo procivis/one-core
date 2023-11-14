@@ -1,3 +1,4 @@
+use shared_types::{DidId, DidValue};
 use std::{collections::HashMap, sync::Arc, vec};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -30,9 +31,11 @@ use crate::{
 #[tokio::test]
 async fn test_connect_to_holder_succeeds() {
     let proof_id = Uuid::new_v4();
-    let holder_did_value = "holder did value";
+    let holder_did_value: DidValue = "holder did value".parse().unwrap();
 
-    let verifier_did = "verifier did";
+    let verifier_did: DidValue = "verifier did".parse().unwrap();
+
+    let verifier_did_clone = verifier_did.clone();
     let mut proof_repository = MockProofRepository::new();
     proof_repository
         .expect_get_proof()
@@ -41,10 +44,10 @@ async fn test_connect_to_holder_succeeds() {
             true
         })
         .once()
-        .return_once(|_, _| {
+        .return_once(move |_, _| {
             Ok(Proof {
                 verifier_did: Some(Did {
-                    did: verifier_did.to_string(),
+                    did: verifier_did_clone,
                     ..dummy_did()
                 }),
                 schema: Some(ProofSchema {
@@ -104,18 +107,22 @@ async fn test_connect_to_holder_succeeds() {
         .once()
         .returning(|_, _| Ok(()));
 
-    let did_id = Uuid::new_v4();
+    let did_id: DidId = Uuid::new_v4().into();
+
+    let holder_did_value_clone = holder_did_value.clone();
+    let did_id_clone = did_id.clone();
+
     let mut did_repository = MockDidRepository::new();
     did_repository
         .expect_get_did_by_value()
         .withf(move |_holder_did_value, _| {
-            assert_eq!(_holder_did_value, &holder_did_value);
+            assert_eq!(_holder_did_value, &holder_did_value_clone.clone());
             true
         })
         .once()
         .return_once(move |_, _| {
             Ok(Did {
-                id: did_id,
+                id: did_id_clone,
                 ..dummy_did()
             })
         });
@@ -137,7 +144,7 @@ async fn test_connect_to_holder_succeeds() {
     };
 
     let res = service
-        .connect_to_holder(&proof_id, &holder_did_value.to_string())
+        .connect_to_holder(&proof_id, &holder_did_value)
         .await
         .unwrap();
 
@@ -147,7 +154,7 @@ async fn test_connect_to_holder_succeeds() {
 #[tokio::test]
 async fn test_submit_proof_succeeds() {
     let proof_id = Uuid::new_v4();
-    let verifier_did = "verifier did";
+    let verifier_did = "verifier did".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -160,7 +167,7 @@ async fn test_submit_proof_succeeds() {
         .return_once(move |_, _| {
             Ok(Proof {
                 verifier_did: Some(Did {
-                    did: verifier_did.to_string(),
+                    did: verifier_did,
                     ..dummy_did()
                 }),
                 holder_did: Some(dummy_did()),
@@ -215,7 +222,7 @@ async fn test_submit_proof_succeeds() {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some("issuer did".to_string()),
+                issuer_did: Some("issuer did".parse().unwrap()),
                 credentials: vec![],
             })
         });
@@ -375,11 +382,11 @@ fn dummy_proof_schema() -> ProofSchema {
 
 fn dummy_did() -> Did {
     Did {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "John".to_string(),
-        did: "did".to_string(),
+        did: "did".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "John".to_string(),
         keys: None,

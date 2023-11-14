@@ -1,5 +1,6 @@
 use dto_mapper::From;
 use sea_orm::entity::prelude::*;
+use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
 use one_core::model::did::DidType as ModelDidType;
@@ -8,9 +9,9 @@ use one_core::model::did::DidType as ModelDidType;
 #[sea_orm(table_name = "did")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: DidId,
     #[sea_orm(unique)]
-    pub did: String,
+    pub did: DidValue,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub name: String,

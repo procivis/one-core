@@ -68,7 +68,7 @@ async fn test_did_key_resolve() {
         .expect_get_did_by_value()
         .returning(|did, _| {
             Ok(Did {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "name".to_string(),
@@ -86,7 +86,7 @@ async fn test_did_key_resolve() {
     );
 
     for (did, public_key) in TEST_VECTORS {
-        let result = provider.resolve(did).await;
+        let result = provider.resolve(&did.parse().unwrap()).await;
 
         assert!(result.is_ok());
         let result = result.unwrap();
@@ -103,11 +103,11 @@ async fn test_did_key_resolve() {
 
 fn generic_did() -> Did {
     Did {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "".to_string(),
-        did: "did:key:MOCK".to_string(),
+        did: "did:key:MOCK".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: None,
@@ -158,10 +158,11 @@ async fn test_create_did_success() {
         .returning(|_, _| Err(crate::repository::error::DataLayerError::RecordNotFound));
 
     let did = generic_did();
+    let did_clone = did.clone();
     did_repository
         .expect_create_did()
         .times(1)
-        .returning(move |_| Ok(did.id));
+        .returning(move |_| Ok(did_clone.id.clone()));
     did_repository
         .expect_get_did()
         .times(1)

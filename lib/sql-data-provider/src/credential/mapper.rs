@@ -5,13 +5,14 @@ use crate::{
 use one_core::model::{
     credential::{Credential, CredentialId, CredentialState, SortableCredentialColumn},
     credential_schema::CredentialSchema,
-    did::{Did, DidId},
+    did::Did,
     interaction::InteractionId,
     key::KeyId,
     revocation_list::RevocationListId,
 };
 use one_core::repository::error::DataLayerError;
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
+use shared_types::DidId;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -84,8 +85,8 @@ pub(super) fn request_to_active_model(
         deleted_at: Set(None),
         transport: Set(request.transport.to_owned()),
         credential: Set(request.credential.to_owned()),
-        issuer_did_id: Set(issuer_did.map(|did| did.id.to_string())),
-        holder_did_id: Set(holder_did_id.map(|did_id| did_id.to_string())),
+        issuer_did_id: Set(issuer_did.map(|did| did.id)),
+        holder_did_id: Set(holder_did_id),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
         key_id: Set(key_id.map(|id| id.to_string())),

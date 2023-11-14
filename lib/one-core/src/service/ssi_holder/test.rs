@@ -459,11 +459,11 @@ fn dummy_config() -> CoreConfig {
 
 fn dummy_did() -> Did {
     Did {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "John".to_string(),
-        did: "did".to_string(),
+        did: "did".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "John".to_string(),
         keys: None,
@@ -501,11 +501,11 @@ fn dummy_credential() -> Credential {
         }]),
         claims: None,
         issuer_did: Some(Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "issuer_did".to_string(),
-            did: "did:key:123".to_string(),
+            did: "did:key:123".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             keys: None,

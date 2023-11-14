@@ -248,11 +248,11 @@ fn dummy_credential() -> Credential {
 
 fn dummy_did() -> Did {
     Did {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "John".to_string(),
-        did: "did".to_string(),
+        did: "did".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "John".to_string(),
         keys: None,

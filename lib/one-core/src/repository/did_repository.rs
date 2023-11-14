@@ -1,5 +1,7 @@
+use shared_types::{DidId, DidValue};
+
 use super::error::DataLayerError;
-use crate::model::did::{Did, DidId, DidListQuery, DidRelations, DidValue, GetDidList};
+use crate::model::did::{Did, DidListQuery, DidRelations, GetDidList};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

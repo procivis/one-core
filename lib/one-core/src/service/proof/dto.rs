@@ -1,3 +1,4 @@
+use shared_types::{DidId, DidValue};
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -10,7 +11,6 @@ use crate::{
     },
     service::{
         credential::dto::CredentialDetailResponseDTO,
-        did::dto::{DidId, DidValue},
         proof_schema::dto::{
             GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO, ProofSchemaId,
         },

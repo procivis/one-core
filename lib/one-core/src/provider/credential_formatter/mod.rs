@@ -14,6 +14,7 @@ pub mod status_list_2021_jwt_formatter;
 pub(crate) mod provider;
 
 use async_trait::async_trait;
+use shared_types::DidValue;
 
 use crate::{
     crypto::signer::error::SignerError, service::credential::dto::CredentialDetailResponseDTO,
@@ -31,7 +32,7 @@ pub type VerificationFn = Box<dyn TokenVerifier + Send + Sync>;
 pub trait TokenVerifier {
     async fn verify<'a>(
         &self,
-        issuer_did_value: Option<String>,
+        issuer_did_value: Option<DidValue>,
         algorithm: &'a str,
         token: &'a str,
         signature: &'a [u8],
@@ -46,7 +47,7 @@ pub trait CredentialFormatter {
         &self,
         credential: &CredentialDetailResponseDTO,
         credential_status: Option<CredentialStatus>,
-        holder_did: &str,
+        holder_did: &DidValue,
         algorithm: &str,
         additional_context: Vec<String>,
         additional_types: Vec<String>,
@@ -67,7 +68,7 @@ pub trait CredentialFormatter {
     fn format_presentation(
         &self,
         tokens: &[String],
-        holder_did: &str,
+        holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError>;

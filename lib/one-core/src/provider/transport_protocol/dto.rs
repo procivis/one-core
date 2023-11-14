@@ -1,5 +1,6 @@
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use serde::{Deserialize, Serialize};
+use shared_types::DidValue;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
@@ -28,7 +29,7 @@ pub enum InvitationResponse {
 /// deserializes matching `ConnectVerifierResponseRestDTO`
 pub struct ConnectVerifierResponse {
     pub claims: Vec<ProofClaimSchema>,
-    pub verifier_did: String,
+    pub verifier_did: DidValue,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

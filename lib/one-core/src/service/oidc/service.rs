@@ -133,9 +133,17 @@ impl OIDCService {
 
         let holder_did = if request.proof.proof_type == "jwt" {
             let jwt = OpenID4VCIProofJWTFormatter::verify_proof(&request.proof.jwt).await?;
-            let holder_did_value = jwt.header.key_id.ok_or(ServiceError::OpenID4VCError(
-                OpenID4VCIError::InvalidOrMissingProof,
-            ))?;
+            let holder_did_value = jwt
+                .header
+                .key_id
+                .ok_or(ServiceError::OpenID4VCError(
+                    OpenID4VCIError::InvalidOrMissingProof,
+                ))
+                .map(|v| match v.parse() {
+                    Ok(v) => v,
+                    Err(err) => match err {},
+                })?;
+
             get_or_create_did(
                 &self.did_repository,
                 &schema.organisation,

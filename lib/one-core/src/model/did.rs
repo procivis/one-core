@@ -1,5 +1,5 @@
+use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::{
     common::GetListResponse,
@@ -8,9 +8,6 @@ use super::{
     list_query::ListQuery,
     organisation::{Organisation, OrganisationId, OrganisationRelations},
 };
-
-pub type DidId = Uuid;
-pub type DidValue = String;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DidType {

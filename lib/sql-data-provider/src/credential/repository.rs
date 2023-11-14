@@ -36,6 +36,7 @@ use sea_orm::{
     PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
     Unchanged,
 };
+use shared_types::DidId;
 use std::{str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -101,12 +102,8 @@ impl CredentialProvider {
         let issuer_did = match &credential.issuer_did_id {
             None => None,
             Some(issuer_did_id) => {
-                let issuer_did_id: Uuid = issuer_did_id
-                    .parse()
-                    .map_err(|_| DataLayerError::MappingError)?;
-
                 get_did(
-                    &issuer_did_id,
+                    issuer_did_id,
                     &relations.issuer_did,
                     self.did_repository.clone(),
                 )
@@ -117,9 +114,12 @@ impl CredentialProvider {
         let holder_did = match &credential.holder_did_id {
             None => None,
             Some(holder_did_id) => {
-                let uuid =
-                    Uuid::from_str(holder_did_id).map_err(|_| DataLayerError::MappingError)?;
-                get_did(&uuid, &relations.holder_did, self.did_repository.clone()).await?
+                get_did(
+                    holder_did_id,
+                    &relations.holder_did,
+                    self.did_repository.clone(),
+                )
+                .await?
             }
         };
 
@@ -312,7 +312,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
         let issuer_did = request.issuer_did.clone();
-        let holder_did_id = request.holder_did.as_ref().map(|did| did.id);
+        let holder_did_id = request.holder_did.as_ref().map(|did| did.id.clone());
         let schema = request
             .schema
             .to_owned()
@@ -410,11 +410,13 @@ impl CredentialRepository for CredentialProvider {
 
     async fn get_credentials_by_issuer_did_id(
         &self,
-        issuer_did_id: &Uuid,
+        issuer_did_id: &DidId,
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError> {
+        let issuer_did_id = issuer_did_id.to_string();
+
         let credentials = credential::Entity::find()
-            .filter(credential::Column::IssuerDidId.eq(&issuer_did_id.to_string()))
+            .filter(credential::Column::IssuerDidId.eq(&issuer_did_id))
             .order_by_asc(credential::Column::CreatedDate)
             .all(&self.db)
             .await
@@ -472,12 +474,12 @@ impl CredentialRepository for CredentialProvider {
 
         let holder_did_id = match request.holder_did_id {
             None => Unchanged(Default::default()),
-            Some(holder_did) => Set(Some(holder_did.to_string())),
+            Some(holder_did) => Set(Some(holder_did)),
         };
 
-        let issuer_did_id: sea_orm::ActiveValue<Option<String>> = match request.issuer_did_id {
+        let issuer_did_id = match request.issuer_did_id {
             None => Unchanged(Default::default()),
-            Some(issuer_did) => Set(Some(issuer_did.to_string())),
+            Some(issuer_did) => Set(Some(issuer_did)),
         };
 
         let credential = match request.credential {

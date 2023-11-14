@@ -1,5 +1,6 @@
 use crate::entity::did::DidType;
 use sea_orm::FromQueryResult;
+use shared_types::DidValue;
 use time::OffsetDateTime;
 
 /// temporary struct to map items returned from the list DB query
@@ -14,7 +15,7 @@ pub(super) struct ProofListItemModel {
 
     // verifier_did
     pub verifier_did_id: Option<String>,
-    pub verifier_did: Option<String>,
+    pub verifier_did: Option<DidValue>,
     pub verifier_did_created_date: Option<OffsetDateTime>,
     pub verifier_did_last_modified: Option<OffsetDateTime>,
     pub verifier_did_name: Option<String>,

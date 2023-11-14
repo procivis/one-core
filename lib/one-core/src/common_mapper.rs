@@ -1,6 +1,6 @@
 use crate::config::data_structure::ExchangeParams::OPENID4VC;
 use crate::config::data_structure::{ExchangeParams, ParamsEnum};
-use crate::model::did::{Did, DidId, DidRelations, DidType};
+use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
@@ -8,8 +8,10 @@ use crate::{
     config::data_structure::CoreConfig, model::common::GetListResponse,
     service::error::ServiceError,
 };
+use shared_types::{DidId, DidValue};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
 
 pub fn vector_into<T, F: Into<T>>(input: Vec<F>) -> Vec<T> {
     input.into_iter().map(|item| item.into()).collect()
@@ -123,7 +125,7 @@ pub(crate) fn get_exchange_param_token_expires_in(
 pub(crate) async fn get_or_create_did(
     did_repository: &Arc<dyn DidRepository + Send + Sync>,
     organisation: &Option<Organisation>,
-    holder_did_value: &String,
+    holder_did_value: &DidValue,
 ) -> Result<Did, ServiceError> {
     Ok(
         match did_repository
@@ -136,12 +138,12 @@ pub(crate) async fn get_or_create_did(
                     "organisation is None".to_string(),
                 ))?;
                 let did = Did {
-                    id: DidId::new_v4(),
+                    id: DidId::from(Uuid::new_v4()),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "holder".to_string(),
                     organisation: Some(organisation.to_owned()),
-                    did: holder_did_value.parse().unwrap(),
+                    did: holder_did_value.to_owned(),
                     did_method: "KEY".to_string(),
                     did_type: DidType::Remote,
                     keys: None,

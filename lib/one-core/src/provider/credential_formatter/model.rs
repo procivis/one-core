@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use shared_types::DidValue;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 
@@ -8,7 +9,7 @@ pub struct DetailCredential {
     pub issued_at: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
     pub invalid_before: Option<OffsetDateTime>,
-    pub issuer_did: Option<String>,
+    pub issuer_did: Option<DidValue>,
     pub subject: Option<String>,
     pub claims: CredentialSubject,
     pub status: Option<CredentialStatus>,
@@ -43,7 +44,7 @@ pub struct Presentation {
     pub id: Option<String>,
     pub issued_at: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
-    pub issuer_did: Option<String>,
+    pub issuer_did: Option<DidValue>,
     pub credentials: Vec<String>,
 }
 

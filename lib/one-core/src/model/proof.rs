@@ -1,3 +1,10 @@
+use time::OffsetDateTime;
+use uuid::Uuid;
+
+use shared_types::DidId;
+
+use crate::model::interaction::InteractionId;
+
 use super::{
     claim::{Claim, ClaimRelations},
     common::{GetListQueryParams, GetListResponse},
@@ -5,10 +12,6 @@ use super::{
     interaction::{Interaction, InteractionRelations},
     proof_schema::{ProofSchema, ProofSchemaRelations},
 };
-use crate::model::did::DidId;
-use crate::model::interaction::InteractionId;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 pub type ProofId = Uuid;
 

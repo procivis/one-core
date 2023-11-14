@@ -137,7 +137,7 @@ pub(super) async fn validate_proof(
             Some(did) => did,
         };
 
-        if claim_subject != holder_did.did {
+        if claim_subject != holder_did.did.as_str() {
             return Err(ServiceError::ValidationError(
                 "Holder DID doesn't match.".to_owned(),
             ));

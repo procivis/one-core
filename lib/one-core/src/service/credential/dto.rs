@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -25,7 +26,7 @@ pub struct CredentialListItemResponseDTO {
     pub state: CredentialStateEnum,
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseDTO,
-    pub issuer_did: Option<String>,
+    pub issuer_did: Option<DidValue>,
     pub credential: Vec<u8>,
 }
 
@@ -43,7 +44,7 @@ pub struct CredentialDetailResponseDTO {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub schema: DetailCredentialSchemaResponseDTO,
-    pub issuer_did: Option<String>,
+    pub issuer_did: Option<DidValue>,
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
 }
 
@@ -87,7 +88,7 @@ pub type GetCredentialQueryDTO = GetListQueryParams<SortableCredentialColumn>;
 #[derive(Clone, Debug)]
 pub struct CreateCredentialRequestDTO {
     pub credential_schema_id: Uuid,
-    pub issuer_did: Uuid,
+    pub issuer_did: DidId,
     pub transport: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
 }

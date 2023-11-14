@@ -18,6 +18,9 @@ one-core = { version = "0.1.0", path = "../../lib/one-core" }
 sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = [
     "mysql",
 ] }
+shared-types = { version = "0.1.0", path = "../../lib/shared-types", features = [
+    "utoipa",
+] }
 
 axum.workspace = true
 ct-codecs.workspace = true
@@ -37,7 +40,7 @@ figment.workspace = true
 
 tower-http = { version = "0.4", features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-utoipa = { version = "4.0.0", features = ["uuid", "axum_extras", "url"] }
+utoipa = { workspace = true, features = ["uuid", "axum_extras", "url"] }
 utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
 sentry = { version = "0.31.7", default-features = false, features = [
     "backtrace",
@@ -47,6 +50,7 @@ sentry = { version = "0.31.7", default-features = false, features = [
 ] }
 sentry-tracing = "0.31.7"
 prometheus = { version = "0.13", features = ["process"] }
+
 
 [build-dependencies]
 shadow-rs.workspace = true

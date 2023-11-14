@@ -2,6 +2,7 @@ use std::{collections::HashMap, str::FromStr};
 
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use shared_types::DidValue;
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -40,12 +41,15 @@ struct VerifyVerification {
 impl TokenVerifier for VerifyVerification {
     async fn verify<'a>(
         &self,
-        issuer_did_value: Option<String>,
+        issuer_did_value: Option<DidValue>,
         algorithm: &'a str,
         token: &'a str,
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
-        assert_eq!(self.issuer_did_value, issuer_did_value);
+        assert_eq!(
+            self.issuer_did_value,
+            issuer_did_value.map(|v| v.to_string())
+        );
         assert_eq!(self.algorithm.as_str(), algorithm);
         assert_eq!(self.token.as_str(), token);
         assert_eq!(self.signature, signature);
@@ -73,7 +77,7 @@ fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
             revocation_method: "Credential schema revocation method".to_string(),
             organisation_id: id,
         },
-        issuer_did: Some("Issuer DID".to_string()),
+        issuer_did: Some("Issuer DID".parse().unwrap()),
         claims: vec![
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {
@@ -124,7 +128,7 @@ async fn test_format_credential() {
             status_purpose: "PURPOSE".to_string(),
             additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
         }),
-        "holder_did",
+        &"holder_did".parse().unwrap(),
         "algorithm",
         vec!["Context1".to_string()],
         vec!["Type1".to_string()],
@@ -225,7 +229,7 @@ async fn test_extract_credentials() {
 
     let credentials = result.unwrap();
 
-    assert_eq!(credentials.issuer_did, Some("Issuer DID".to_string()));
+    assert_eq!(credentials.issuer_did, Some("Issuer DID".parse().unwrap()),);
     assert_eq!(credentials.subject, Some("holder_did".to_string()));
 
     assert_eq!(credentials.status.as_ref().unwrap().id, "STATUS_ID");
@@ -317,7 +321,7 @@ async fn test_format_presentation() {
 
     let result = jwt_formatter.format_presentation(
         &[jwt_token.to_owned()],
-        "holder_did",
+        &"holder_did".parse().unwrap(),
         "algorithm",
         Box::new(move |_: &str| Ok(vec![65u8, 66, 67])),
     );
@@ -411,5 +415,5 @@ async fn test_extract_presentation() {
     );
 
     assert_eq!(presentation.credentials.len(), 1);
-    assert_eq!(presentation.issuer_did, Some("holder_did".to_owned()));
+    assert_eq!(presentation.issuer_did, Some("holder_did".parse().unwrap()));
 }

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -33,7 +34,7 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         credential: &CredentialDetailResponseDTO,
         credential_status: Option<CredentialStatus>,
-        holder_did: &str,
+        holder_did: &DidValue,
         algorithm: &str,
         additional_context: Vec<String>,
         additional_types: Vec<String>,
@@ -53,8 +54,8 @@ impl CredentialFormatter for JWTFormatter {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
             invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            issuer: credential.issuer_did.clone(),
-            subject: Some(holder_did.to_owned()),
+            issuer: credential.issuer_did.clone().map(|x| x.to_string()),
+            subject: Some(holder_did.to_string()),
             jwt_id: Some(credential.id.to_string()),
             custom: vc,
             nonce: None,
@@ -86,7 +87,7 @@ impl CredentialFormatter for JWTFormatter {
     fn format_presentation(
         &self,
         tokens: &[String],
-        holder_did: &str,
+        holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
@@ -99,8 +100,8 @@ impl CredentialFormatter for JWTFormatter {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
             invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            issuer: Some(holder_did.to_owned()),
-            subject: Some(holder_did.to_owned()),
+            issuer: Some(holder_did.to_string()),
+            subject: Some(holder_did.to_string()),
             jwt_id: Some(Uuid::new_v4().to_string()),
             custom: vp,
             nonce: None,
@@ -123,7 +124,10 @@ impl CredentialFormatter for JWTFormatter {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
-            issuer_did: jwt.payload.issuer,
+            issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
+                Ok(v) => v,
+                Err(err) => match err {},
+            }),
             credentials: jwt.payload.custom.vp.verifiable_credential,
         })
     }

@@ -6,6 +6,7 @@ use crate::{
     provider::{credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider},
 };
 use async_trait::async_trait;
+use shared_types::DidValue;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -19,7 +20,7 @@ pub(crate) struct KeyVerification {
 impl TokenVerifier for KeyVerification {
     async fn verify<'a>(
         &self,
-        issuer_did_value: Option<String>,
+        issuer_did_value: Option<DidValue>,
         algorithm: &'a str,
         token: &'a str,
         signature: &'a [u8],
@@ -70,11 +71,11 @@ mod test {
 
     fn get_dummy_did() -> Did {
         Did {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "issuer_did".to_string(),
-            did: "issuer_did_value".to_string(),
+            did: "issuer_did_value".parse().unwrap(),
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             keys: Some(vec![RelatedKey {
@@ -134,7 +135,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some("issuer_did_value".to_string()),
+                Some("issuer_did_value".parse().unwrap()),
                 "EDDSA",
                 "token",
                 b"signature",
@@ -169,7 +170,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some("issuer_did_value".to_string()),
+                Some("issuer_did_value".parse().unwrap()),
                 "EDDSA",
                 "token",
                 b"signature",
@@ -211,7 +212,7 @@ mod test {
 
         let result = verification
             .verify(
-                Some("issuer_did_value".to_string()),
+                Some("issuer_did_value".parse().unwrap()),
                 "EDDSA",
                 "token",
                 b"signature",
