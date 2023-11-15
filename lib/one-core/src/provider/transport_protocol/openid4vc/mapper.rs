@@ -4,6 +4,15 @@ use std::collections::{HashMap, HashSet};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::proof::ProofId;
+use crate::provider::transport_protocol::dto::{
+    CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+};
+use crate::provider::transport_protocol::mapper::{
+    create_presentation_definition_field, credential_model_to_credential_dto,
+};
 use crate::{
     model::{
         claim::Claim,
@@ -58,6 +67,60 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
     Ok(encoded_params)
+}
+
+pub(super) fn presentation_definition_from_interaction_data(
+    proof_id: ProofId,
+    credentials: Vec<Credential>,
+    credential_groups: HashMap<String, CredentialGroup>,
+) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
+    Ok(PresentationDefinitionResponseDTO {
+        request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
+            id: proof_id.to_string(),
+            name: None,
+            purpose: None,
+            rule: PresentationDefinitionRuleDTO {
+                r#type: PresentationDefinitionRuleTypeEnum::All,
+                min: None,
+                max: None,
+                count: None,
+            },
+            requested_credentials: credential_groups
+                .iter()
+                .map(|(k, v)| {
+                    Ok(PresentationDefinitionRequestedCredentialResponseDTO {
+                        id: k.to_string(),
+                        name: None,
+                        purpose: None,
+                        fields: v
+                            .claims
+                            .iter()
+                            .map(|field| create_presentation_definition_field(field, &credentials))
+                            .collect::<Result<Vec<_>, _>>()?,
+                        applicable_credentials: credentials
+                            .iter()
+                            .map(|credential| credential.id.to_string())
+                            .collect(),
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        }],
+        credentials: credential_model_to_credential_dto(credentials)?,
+    })
+}
+
+pub(crate) fn get_claim_name_by_json_path(
+    path: &[String],
+) -> Result<String, TransportProtocolError> {
+    Ok(path
+        .first()
+        .ok_or(TransportProtocolError::Failed("No path".to_string()))?
+        .split('.')
+        .last()
+        .ok_or(TransportProtocolError::Failed(
+            "Invalid json path".to_string(),
+        ))?
+        .to_string())
 }
 
 pub(crate) fn create_open_id_for_vp_presentation_definition(

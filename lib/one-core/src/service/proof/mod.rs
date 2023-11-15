@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 pub mod dto;
 mod mapper;
-mod model;
 pub mod service;
 mod validator;
 

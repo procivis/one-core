@@ -1,6 +1,8 @@
+use crate::model::credential::Credential;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
+use std::collections::HashMap;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
@@ -59,4 +61,64 @@ pub struct ProofCredentialSchema {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationDefinitionResponseDTO {
+    pub request_groups: Vec<PresentationDefinitionRequestGroupResponseDTO>,
+    pub credentials: Vec<CredentialDetailResponseDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationDefinitionRequestGroupResponseDTO {
+    pub id: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub rule: PresentationDefinitionRuleDTO,
+    pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationDefinitionRequestedCredentialResponseDTO {
+    pub id: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub fields: Vec<PresentationDefinitionFieldDTO>,
+    pub applicable_credentials: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationDefinitionFieldDTO {
+    pub id: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub required: Option<bool>,
+    pub key_map: HashMap<String, String>,
+}
+
+#[derive(Clone, Debug)]
+pub enum PresentationDefinitionRuleTypeEnum {
+    All,
+    Pick,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationDefinitionRuleDTO {
+    pub r#type: PresentationDefinitionRuleTypeEnum,
+    pub min: Option<u32>,
+    pub max: Option<u32>,
+    pub count: Option<u32>,
+}
+
+#[derive(Default)]
+pub struct CredentialGroup {
+    pub claims: Vec<CredentialGroupItem>,
+    pub applicable_credentials: Vec<Credential>,
+}
+
+#[derive(Default)]
+pub struct CredentialGroupItem {
+    pub id: String,
+    pub key: String,
+    pub required: bool,
 }

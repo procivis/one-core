@@ -5,16 +5,13 @@ use dto_mapper::From;
 use one_core::{
     common_mapper::vector_into,
     model::did::DidType,
-    service::{
-        credential::dto::{
-            CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
-        },
-        proof::dto::{
-            PresentationDefinitionRequestGroupResponseDTO,
-            PresentationDefinitionRequestedCredentialResponseDTO,
-            PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
-            PresentationDefinitionRuleTypeEnum,
-        },
+    provider::transport_protocol::dto::{
+        PresentationDefinitionRequestGroupResponseDTO,
+        PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+        PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    },
+    service::credential::dto::{
+        CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
     },
 };
 

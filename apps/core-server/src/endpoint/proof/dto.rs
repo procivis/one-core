@@ -9,11 +9,12 @@ use crate::{
 use dto_mapper::From;
 use one_core::common_mapper::vector_into;
 use one_core::model::proof::ProofStateEnum;
-use one_core::service::proof::dto::{
+use one_core::provider::transport_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, ProofClaimDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
+use one_core::service::proof::dto::ProofClaimDTO;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue};
 use std::collections::HashMap;

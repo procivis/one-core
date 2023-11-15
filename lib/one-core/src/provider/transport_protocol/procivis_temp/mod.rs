@@ -1,9 +1,17 @@
 mod dto;
 mod mapper;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use self::mapper::{get_base_url, remote_did_from_value};
+use crate::common_mapper::get_proof_claim_schemas_from_proof;
+use crate::provider::transport_protocol::dto::{
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
+};
+use crate::provider::transport_protocol::mapper::get_relevant_credentials;
+use crate::provider::transport_protocol::procivis_temp::mapper::{
+    get_base_url, presentation_definition_from_proof, remote_did_from_value,
+};
 use crate::{
     model::{
         claim::{Claim, ClaimId},
@@ -277,6 +285,45 @@ impl TransportProtocol for ProcivisTemp {
                 )
             })
             .ok_or(TransportProtocolError::MissingBaseUrl)?)
+    }
+
+    async fn get_presentation_definition(
+        &self,
+        proof: &Proof,
+    ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
+        let requested_claims = get_proof_claim_schemas_from_proof(proof)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let requested_claim_keys: Vec<String> = requested_claims
+            .iter()
+            .map(|claim_schema| claim_schema.key.to_owned())
+            .collect();
+        let mut credential_groups: HashMap<String, CredentialGroup> = HashMap::new();
+        for requested_claim in requested_claims {
+            let group_id = &requested_claim.credential_schema.id;
+            let credential_group_item = CredentialGroupItem {
+                id: requested_claim.id,
+                key: requested_claim.key,
+                required: requested_claim.required,
+            };
+            if let Some(group) = credential_groups.get_mut(group_id) {
+                group.claims.push(credential_group_item);
+            } else {
+                credential_groups.insert(
+                    group_id.to_string(),
+                    CredentialGroup {
+                        claims: vec![credential_group_item],
+                        ..Default::default()
+                    },
+                );
+            }
+        }
+        let result = get_relevant_credentials(
+            &self.credential_repository,
+            credential_groups,
+            requested_claim_keys,
+        )
+        .await?;
+        presentation_definition_from_proof(proof, result.0, result.1)
     }
 }
 

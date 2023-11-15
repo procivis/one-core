@@ -57,14 +57,16 @@ async fn setup_empty() -> TestSetup {
             None,
             &organisation_id.to_string(),
             "credential schema",
+            "JWT",
+            "NONE",
         )
         .await
         .unwrap(),
     )
     .unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, bool, u32, &str)> = (0..2)
-        .map(|i| (Uuid::new_v4(), i % 2 == 0, i as u32, "STRING"))
+    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..2)
+        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i as u32, "STRING"))
         .collect();
     insert_many_claims_schema_to_database(
         &db,
@@ -152,9 +154,14 @@ async fn setup_with_credential() -> TestSetupWithCredential {
     } = setup_empty().await;
 
     let credential_id = Uuid::parse_str(
-        &insert_credential(&db, &credential_schema.id.to_string(), did.id.clone())
-            .await
-            .unwrap(),
+        &insert_credential(
+            &db,
+            &credential_schema.id.to_string(),
+            "PROCIVIS_TEMPORARY",
+            did.id.clone(),
+        )
+        .await
+        .unwrap(),
     )
     .unwrap();
 
@@ -408,14 +415,22 @@ async fn test_get_credential_list_success() {
         .with(eq(did_clone.id.to_owned()), always())
         .returning(move |_, _| Ok(did_clone.clone()));
 
-    let _credential_one_id =
-        insert_credential(&db, &credential_schema.id.to_string(), did.id.clone())
-            .await
-            .unwrap();
-    let _credential_two_id =
-        insert_credential(&db, &credential_schema.id.to_string(), did.id.clone())
-            .await
-            .unwrap();
+    let _credential_one_id = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        "PROCIVIS_TEMPORARY",
+        did.id.clone(),
+    )
+    .await
+    .unwrap();
+    let _credential_two_id = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        "PROCIVIS_TEMPORARY",
+        did.id.clone(),
+    )
+    .await
+    .unwrap();
 
     let credential_schema_clone = credential_schema.clone();
     credential_schema_repository
@@ -470,9 +485,14 @@ async fn test_get_credential_success() {
     } = setup_empty().await;
 
     let credential_id = Uuid::parse_str(
-        &insert_credential(&db, &credential_schema.id.to_string(), did.id.clone())
-            .await
-            .unwrap(),
+        &insert_credential(
+            &db,
+            &credential_schema.id.to_string(),
+            "PROCIVIS_TEMPORARY",
+            did.id.clone(),
+        )
+        .await
+        .unwrap(),
     )
     .unwrap();
 
@@ -651,9 +671,14 @@ async fn test_update_credential_success() {
     } = setup_empty().await;
 
     let credential_id = Uuid::parse_str(
-        &insert_credential(&db, &credential_schema.id.to_string(), did.id)
-            .await
-            .unwrap(),
+        &insert_credential(
+            &db,
+            &credential_schema.id.to_string(),
+            "PROCIVIS_TEMPORARY",
+            did.id,
+        )
+        .await
+        .unwrap(),
     )
     .unwrap();
 
