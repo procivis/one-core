@@ -103,7 +103,7 @@ fn generic_credential() -> Credential {
             name: "did1".to_string(),
             organisation: Some(organisation.clone()),
             did: "did1".parse().unwrap(),
-            did_type: DidType::Remote,
+            did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: None,
         }),

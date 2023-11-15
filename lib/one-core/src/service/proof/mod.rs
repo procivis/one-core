@@ -10,7 +10,6 @@ use std::sync::Arc;
 pub mod dto;
 mod mapper;
 pub mod service;
-mod validator;
 
 #[allow(dead_code)] // FIXME: Remove when interaction is used
 #[derive(Clone)]

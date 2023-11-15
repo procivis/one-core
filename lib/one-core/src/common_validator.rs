@@ -1,4 +1,5 @@
 use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::did::{Did, DidType};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::service::error::ServiceError;
 
@@ -33,6 +34,13 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
 
     if latest_state.state != state {
         return Err(ServiceError::AlreadyExists);
+    }
+    Ok(())
+}
+
+pub(crate) fn throw_if_did_type_is_eq(did: &Did, did_type: DidType) -> Result<(), ServiceError> {
+    if did.did_type == did_type {
+        return Err(ServiceError::IncorrectParameters);
     }
     Ok(())
 }
