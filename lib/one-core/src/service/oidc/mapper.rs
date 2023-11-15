@@ -11,6 +11,8 @@ use crate::util::oidc::map_core_to_oidc_format;
 use std::str::FromStr;
 use uuid::Uuid;
 
+use super::dto::OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO;
+
 pub(super) fn create_issuer_metadata_response(
     base_url: String,
     schema: CredentialSchema,
@@ -23,6 +25,9 @@ pub(super) fn create_issuer_metadata_response(
             credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
                 r#type: vec!["VerifiableCredential".to_string()],
             },
+            display: Some(vec![
+                OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
+            ]),
         }],
     })
 }

@@ -19,6 +19,10 @@ pub fn vector_into<T, F: Into<T>>(input: Vec<F>) -> Vec<T> {
     input.into_iter().map(|item| item.into()).collect()
 }
 
+pub fn opt_vector_into<T, F: Into<T>>(input: Option<Vec<F>>) -> Option<Vec<T>> {
+    input.map(vector_into)
+}
+
 pub fn vector_try_into<T, F: TryInto<T>>(
     input: Vec<F>,
 ) -> Result<Vec<T>, <F as TryInto<T>>::Error> {

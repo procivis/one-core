@@ -3,12 +3,13 @@ use crate::{
     serialize::front_time,
 };
 use dto_mapper::From;
-use one_core::common_mapper::vector_into;
+use one_core::common_mapper::{opt_vector_into, vector_into};
 use one_core::service::{
     oidc::dto::{
         OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
         OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
         OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+        OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
         OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
         OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO,
         OpenID4VCITokenResponseDTO,
@@ -67,6 +68,15 @@ pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[convert(with_fn = "opt_vector_into")]
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO")]
+pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
+    pub name: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

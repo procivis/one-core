@@ -5,8 +5,8 @@ use crate::model::interaction::Interaction;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::mock::credential_repository::MockCredentialRepository;
-use crate::repository::mock::interaction_repository::MockInteractionRepository;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIError,
@@ -126,9 +126,11 @@ async fn test_get_issuer_metadata_jwt() {
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
+    let credential = result.credentials_supported.get(0).unwrap().to_owned();
+    assert_eq!("jwt_vc_json".to_string(), credential.format);
     assert_eq!(
-        "jwt_vc_json".to_string(),
-        result.credentials_supported.get(0).unwrap().format
+        schema.name,
+        credential.display.unwrap().get(0).unwrap().name
     );
 }
 
@@ -159,9 +161,11 @@ async fn test_get_issuer_metadata_sd_jwt() {
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
+    let credential = result.credentials_supported.get(0).unwrap().to_owned();
+    assert_eq!("vc+sd-jwt".to_string(), credential.format);
     assert_eq!(
-        "vc+sd-jwt".to_string(),
-        result.credentials_supported.get(0).unwrap().format
+        schema.name,
+        credential.display.unwrap().get(0).unwrap().name
     );
 }
 

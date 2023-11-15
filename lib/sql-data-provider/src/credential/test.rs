@@ -26,12 +26,9 @@ use one_core::{
     repository::{
         credential_repository::CredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository,
-        error::DataLayerError,
-        mock::{
-            claim_repository::MockClaimRepository,
-            interaction_repository::MockInteractionRepository,
-        },
+        did_repository::MockDidRepository, error::DataLayerError,
+        interaction_repository::MockInteractionRepository,
+        mock::claim_repository::MockClaimRepository,
     },
 };
 use sea_orm::{DatabaseConnection, EntityTrait, Set};

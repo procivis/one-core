@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use std::{str::FromStr, sync::Arc};
 
-use time::OffsetDateTime;
-use uuid::Uuid;
-
 use mockall::{predicate, Sequence};
+use time::OffsetDateTime;
 use url::Url;
+use uuid::Uuid;
 
 use crate::{
     config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
@@ -35,10 +34,9 @@ use crate::{
     repository::{
         credential_schema_repository::MockCredentialSchemaRepository,
         did_repository::MockDidRepository,
+        interaction_repository::MockInteractionRepository,
         mock::{
-            credential_repository::MockCredentialRepository,
-            interaction_repository::MockInteractionRepository,
-            proof_repository::MockProofRepository,
+            credential_repository::MockCredentialRepository, proof_repository::MockProofRepository,
         },
     },
     service::ssi_holder::dto::InvitationResponseDTO,
@@ -220,7 +218,6 @@ async fn test_generate_offer() {
 #[tokio::test]
 async fn test_generate_share_credentials() {
     let credential = generic_credential();
-    let interaction_id: Uuid = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
 
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
@@ -238,22 +235,20 @@ async fn test_generate_share_credentials() {
         .expect_create_interaction()
         .once()
         .in_sequence(&mut seq)
-        .returning(move |_| Ok(interaction_id));
+        .returning(move |req| Ok(req.id));
 
     credential_repository
         .expect_update_credential()
         .once()
         .in_sequence(&mut seq)
-        .returning(move |update| {
-            assert_eq!(update.id, interaction_id);
-            Ok(())
-        });
+        .withf(move |req| req.id == credential.id)
+        .returning(|_| Ok(()));
 
     interaction_repository
         .expect_delete_interaction()
         .once()
         .in_sequence(&mut seq)
-        .with(predicate::eq(credential.id))
+        .with(predicate::eq(credential.interaction.as_ref().unwrap().id))
         .returning(move |_| Ok(()));
 
     let mut crypto = MockCryptoProvider::default();

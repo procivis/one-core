@@ -22,9 +22,9 @@ use one_core::{
         did_repository::{DidRepository, MockDidRepository},
         error::DataLayerError,
         interaction_repository::InteractionRepository,
+        interaction_repository::MockInteractionRepository,
         mock::{
             claim_repository::MockClaimRepository,
-            interaction_repository::MockInteractionRepository,
             proof_schema_repository::MockProofSchemaRepository,
         },
         proof_repository::ProofRepository,

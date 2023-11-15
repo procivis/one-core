@@ -172,23 +172,7 @@ impl TransportProtocol for OpenID4VC {
 
         match invitation_type {
             InvitationType::CredentialIssuance => {
-                //for credential issuance credential_offer should be always present
-                let value = url
-                    .query_pairs()
-                    .find_map(|(k, v)| (k == CREDENTIAL_OFFER_QUERY_PARAM_KEY).then_some(v))
-                    .ok_or(TransportProtocolError::Failed(
-                        "Missing credential offer param".to_string(),
-                    ))?;
-
-                // handle issuance
-                let credential_offer: OpenID4VCICredentialOffer = serde_json::from_str(&value)
-                    .map_err(|error| {
-                        TransportProtocolError::Failed(format!(
-                            "Failed decoding credential offer {error}"
-                        ))
-                    })?;
-
-                handle_credential_invitation(self, credential_offer, own_did).await
+                handle_credential_invitation(self, url, own_did).await
             }
             InvitationType::ProofRequest => handle_proof_invitation(url, self, own_did).await,
         }
@@ -576,9 +560,21 @@ async fn add_new_interaction(
 
 async fn handle_credential_invitation(
     deps: &OpenID4VC,
-    credential_offer: OpenID4VCICredentialOffer,
+    url: Url,
     holder_did: Did,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
+    let credential_offer = url
+        .query_pairs()
+        .find_map(|(k, v)| (k == CREDENTIAL_OFFER_QUERY_PARAM_KEY).then_some(v))
+        .ok_or(TransportProtocolError::Failed(
+            "Missing credential offer param".to_string(),
+        ))?;
+
+    let credential_offer: OpenID4VCICredentialOffer = serde_json::from_str(&credential_offer)
+        .map_err(|error| {
+            TransportProtocolError::Failed(format!("Failed decoding credential offer {error}"))
+        })?;
+
     let credential_issuer_endpoint: Url =
         credential_offer.credential_issuer.parse().map_err(|_| {
             TransportProtocolError::Failed(format!(
@@ -607,18 +603,6 @@ async fn handle_credential_invitation(
         .await
         .map_err(TransportProtocolError::HttpResponse)?;
 
-    // extract schema id from the path until we find a better way
-    let credential_schema_id: CredentialSchemaId = credential_issuer_endpoint
-        .path_segments()
-        .and_then(|p| p.last())
-        .ok_or(TransportProtocolError::Failed(
-            "Invalid credential issuer url".to_string(),
-        ))?
-        .parse()
-        .map_err(|error| {
-            TransportProtocolError::Failed(format!("Invalid credential schema id {error}"))
-        })?;
-
     // OID4VC credential offer query param should always contain one credential for the moment
     let credential = credential_offer.credentials.first().ok_or_else(|| {
         TransportProtocolError::Failed("Credential offer is missing credentials".to_string())
@@ -646,40 +630,42 @@ async fn handle_credential_invitation(
     .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id;
 
-    let credential_schema = match deps
-        .credential_schema_repository
-        .get_credential_schema(
-            &credential_schema_id,
-            &CredentialSchemaRelations {
-                claim_schemas: Some(ClaimSchemaRelations::default()),
-                ..Default::default()
-            },
-        )
-        .await
-    {
-        Ok(schema) => Ok(Some(schema)),
-        Err(DataLayerError::RecordNotFound) => Ok(None),
-        Err(error) => Err(TransportProtocolError::Failed(error.to_string())),
-    }?;
+    // for now generate a new credential_schema for each issued OpenID4VCI credential
+    let credential_schema_id = CredentialSchemaId::new_v4();
 
-    let claims = create_claims_from_credential_definition(
-        &credential.credential_definition,
-        &credential_schema,
-    )?;
+    let claims =
+        create_claims_from_credential_definition(&credential.credential_definition, &None)?;
     let (claim_schemas, claims): (Vec<_>, Vec<_>) = claims.into_iter().unzip();
 
-    let credential_schema = match credential_schema {
-        Some(schema) => schema,
-        None => create_and_store_credential_schema(
-            &deps.credential_schema_repository,
-            credential_schema_id,
-            credential_format,
-            claim_schemas,
-            holder_did.organisation.clone(),
-        )
-        .await
-        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?,
+    let display_name = issuer_metadata
+        .credentials_supported
+        .first()
+        .and_then(|credential| credential.display.as_ref())
+        .and_then(|displays| displays.first())
+        .map(|display| display.name.to_owned());
+    let credential_schema_name = match display_name {
+        Some(display_name) => display_name,
+        // fallback to credential type
+        None => credential
+            .credential_definition
+            .r#type
+            .last()
+            .ok_or(TransportProtocolError::Failed(
+                "no type specified".to_string(),
+            ))?
+            .to_owned(),
     };
+
+    let credential_schema = create_and_store_credential_schema(
+        &deps.credential_schema_repository,
+        credential_schema_id,
+        credential_schema_name,
+        credential_format,
+        claim_schemas,
+        holder_did.organisation.clone(),
+    )
+    .await
+    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
 
     let credential = create_and_store_credential(
         &deps.credential_repository,
@@ -700,6 +686,7 @@ async fn handle_credential_invitation(
 async fn create_and_store_credential_schema(
     repository: &Arc<dyn CredentialSchemaRepository + Send + Sync>,
     id: CredentialSchemaId,
+    name: String,
     format: String,
     claim_schemas: Vec<CredentialSchemaClaim>,
     organisation: Option<Organisation>,
@@ -711,8 +698,7 @@ async fn create_and_store_credential_schema(
         deleted_at: None,
         created_date: now,
         last_modified: now,
-        //todo: we need to figure out what to put here
-        name: Uuid::new_v4().to_string(),
+        name,
         format,
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(claim_schemas),
