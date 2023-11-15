@@ -17,7 +17,8 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let did_id = fixtures::create_did_key(&db_conn).await;
+    let organisation_id = fixtures::create_organisation(&db_conn).await;
+    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
 
     let credential_id = Uuid::new_v4();
 
@@ -100,7 +101,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let did_id = fixtures::create_did_key(&db_conn).await;
+    let organisation_id = fixtures::create_organisation(&db_conn).await;
+    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
 
     let credential_id = "90eb3e0f-cc34-4994-8093-0bdb3983ef21";
     let credential_issuer = mock_server.url(format!("/ssi/oidc-issuer/v1/{credential_id}"));

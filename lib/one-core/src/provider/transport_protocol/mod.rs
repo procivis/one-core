@@ -1,4 +1,4 @@
-use self::dto::{InvitationType, SubmitIssuerResponse};
+use self::dto::{InvitationType, PresentationDefinitionResponseDTO, SubmitIssuerResponse};
 use crate::{
     model::{credential::Credential, did::Did, interaction::Interaction, proof::Proof},
     service::ssi_holder::dto::InvitationResponseDTO,
@@ -75,6 +75,11 @@ pub trait TransportProtocol {
     // verifier methods
     /// Generates QR-code content to start the proof request flow
     async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError>;
+
+    async fn get_presentation_definition(
+        &self,
+        proof: &Proof,
+    ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError>;
 }
 
 pub(super) fn get_base_url_from_interaction(

@@ -1,15 +1,7 @@
 use super::dto::{
-    CreateProofRequestDTO, PresentationDefinitionResponseDTO, ProofClaimDTO,
-    ProofDetailResponseDTO, ProofListItemResponseDTO,
+    CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
 };
-use super::model::CredentialGroup;
-use crate::model::credential::Credential;
-use crate::service::credential::dto::CredentialDetailResponseDTO;
-use crate::service::proof::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionRuleDTO,
-    PresentationDefinitionRuleTypeEnum,
-};
+use crate::common_mapper::get_proof_claim_schemas_from_proof;
 use crate::{
     model::{
         claim::Claim,
@@ -22,7 +14,6 @@ use crate::{
     provider::transport_protocol::dto::ProofClaimSchema,
     service::error::ServiceError,
 };
-use std::collections::HashMap;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -67,92 +58,6 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             schema: value.schema.map(|schema| schema.into()),
         })
     }
-}
-
-pub fn create_presentation_definition_field(
-    claim_schema: &ProofClaimSchema,
-    credentials: &[Credential],
-) -> Result<PresentationDefinitionFieldDTO, ServiceError> {
-    let mut key_map: HashMap<String, String> = HashMap::new();
-    for credential in credentials {
-        for claim in credential
-            .claims
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "credential claims is None".to_string(),
-            ))?
-        {
-            if claim
-                .schema
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "claim schema is None".to_string(),
-                ))?
-                .key
-                == claim_schema.key
-            {
-                key_map.insert(credential.id.to_string(), claim_schema.key.to_string());
-            }
-        }
-    }
-    Ok(PresentationDefinitionFieldDTO {
-        id: claim_schema.id.to_string(),
-        name: Some(claim_schema.key.to_string()),
-        purpose: None,
-        required: Some(claim_schema.required),
-        key_map,
-    })
-}
-
-pub fn create_requested_credential(
-    index: usize,
-    claim_schemas: &[ProofClaimSchema],
-    credentials: &[Credential],
-) -> Result<PresentationDefinitionRequestedCredentialResponseDTO, ServiceError> {
-    Ok(PresentationDefinitionRequestedCredentialResponseDTO {
-        id: format!("input_{}", index),
-        name: None,
-        purpose: None,
-        fields: claim_schemas
-            .iter()
-            .map(|claim_schema| create_presentation_definition_field(claim_schema, credentials))
-            .collect::<Result<Vec<_>, ServiceError>>()?,
-        applicable_credentials: credentials
-            .iter()
-            .map(|credential| credential.id.to_string())
-            .collect(),
-    })
-}
-
-pub(super) fn presentation_definition_from_proof(
-    proof: Proof,
-    credentials: Vec<Credential>,
-    credential_groups: HashMap<String, CredentialGroup>,
-) -> Result<PresentationDefinitionResponseDTO, ServiceError> {
-    Ok(PresentationDefinitionResponseDTO {
-        request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
-            id: proof.id.to_string(),
-            name: None,
-            purpose: None,
-            rule: PresentationDefinitionRuleDTO {
-                r#type: PresentationDefinitionRuleTypeEnum::All,
-                min: None,
-                max: None,
-                count: None,
-            },
-            requested_credentials: credential_groups
-                .into_iter()
-                .enumerate()
-                .map(|(index, (_, group))| {
-                    create_requested_credential(index, &group.claims, &group.applicable_credentials)
-                })
-                .collect::<Result<Vec<_>, ServiceError>>()?,
-        }],
-        credentials: credentials
-            .into_iter()
-            .map(|credential| credential.try_into())
-            .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()?,
-    })
 }
 
 pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
@@ -209,28 +114,6 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         organisation_id,
         schema: list_item_response.schema,
     })
-}
-
-pub fn get_proof_claim_schemas_from_proof(
-    value: &Proof,
-) -> Result<Vec<ProofClaimSchema>, ServiceError> {
-    let interaction_data = value
-        .interaction
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "interaction is None".to_string(),
-        ))?
-        .data
-        .to_owned()
-        .ok_or(ServiceError::MappingError(
-            "interaction data is missing".to_string(),
-        ))?;
-    let json_data = String::from_utf8(interaction_data)
-        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
-    let proof_claim_schemas: Vec<ProofClaimSchema> =
-        serde_json::from_str(&json_data).map_err(|e| ServiceError::MappingError(e.to_string()))?;
-    Ok(proof_claim_schemas)
 }
 
 pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {

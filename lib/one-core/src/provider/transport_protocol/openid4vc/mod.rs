@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use self::{
@@ -65,6 +66,13 @@ use crate::{
     },
 };
 
+use crate::provider::transport_protocol::dto::{
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
+};
+use crate::provider::transport_protocol::mapper::get_relevant_credentials;
+use crate::provider::transport_protocol::openid4vc::mapper::{
+    get_claim_name_by_json_path, presentation_definition_from_interaction_data,
+};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -444,6 +452,48 @@ impl TransportProtocol for OpenID4VC {
 
         Ok(format!("openid4vp://?{encoded_offer}"))
     }
+
+    async fn get_presentation_definition(
+        &self,
+        proof: &Proof,
+    ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
+        let interaction_data: OpenID4VPInteractionData =
+            deserialize_interaction_data(proof.interaction.as_ref())?;
+        let mut requested_claims = vec![];
+
+        let mut credential_groups: HashMap<String, CredentialGroup> = HashMap::new();
+        for input_descriptor in &interaction_data.presentation_definition.input_descriptors {
+            let mut requested_claims_for_input = vec![];
+            for field in &input_descriptor.constraints.fields {
+                let field_name = get_claim_name_by_json_path(&field.path)?;
+                requested_claims.push(field_name);
+                requested_claims_for_input.push(field.clone());
+            }
+            credential_groups.insert(
+                input_descriptor.id.clone(),
+                CredentialGroup {
+                    claims: requested_claims_for_input
+                        .iter()
+                        .map(|requested_claim| {
+                            Ok(CredentialGroupItem {
+                                id: requested_claim.id.to_string(),
+                                key: get_claim_name_by_json_path(&requested_claim.path)?,
+                                required: !requested_claim.optional,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()?,
+                    applicable_credentials: vec![],
+                },
+            );
+        }
+        let result = get_relevant_credentials(
+            &self.credential_repository,
+            credential_groups,
+            requested_claims,
+        )
+        .await?;
+        presentation_definition_from_interaction_data(proof.id, result.0, result.1)
+    }
 }
 async fn clear_previous_interaction(
     interaction_repository: &Arc<dyn InteractionRepository + Send + Sync>,
@@ -788,15 +838,18 @@ async fn handle_proof_invitation(
     let data = serialize_interaction_data(&interaction_data)?;
 
     let now = OffsetDateTime::now_utc();
-    let interaction =
-        create_and_store_interaction(&deps.interaction_repository, url.to_owned(), data)
-            .await
-            .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+    let interaction = create_and_store_interaction(
+        &deps.interaction_repository,
+        interaction_data.response_uri,
+        data,
+    )
+    .await
+    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id.to_owned();
 
     let proof_id = Uuid::new_v4();
     let proof =
-        proof_from_handle_invitation(&proof_id, url.scheme(), None, holder_did, interaction, now);
+        proof_from_handle_invitation(&proof_id, "OPENID4VC", None, holder_did, interaction, now);
 
     deps.proof_repository
         .create_proof(proof)

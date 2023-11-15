@@ -1,3 +1,4 @@
+use one_core::model::proof::ProofStateEnum;
 use one_core::{
     config::data_structure::{
         DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
@@ -29,6 +30,7 @@ pub fn get_dummy_date() -> OffsetDateTime {
 pub async fn insert_credential(
     db: &DatabaseConnection,
     credential_schema_id: &str,
+    protocol: &str,
     did_id: DidId,
 ) -> Result<String, DbErr> {
     let now = OffsetDateTime::now_utc();
@@ -40,7 +42,7 @@ pub async fn insert_credential(
         last_modified: Set(now),
         issuance_date: Set(now),
         deleted_at: Set(None),
-        transport: Set("PROCIVIS_TEMPORARY".to_string()),
+        transport: Set(protocol.to_owned()),
         credential: Set(vec![0, 0, 0, 0]),
         issuer_did_id: Set(Some(did_id)),
         holder_did_id: Set(None),
@@ -67,14 +69,16 @@ pub async fn insert_credential_schema_to_database(
     deleted_at: Option<OffsetDateTime>,
     organisation_id: &str,
     name: &str,
+    format: &str,
+    revocation_method: &str,
 ) -> Result<String, DbErr> {
     let schema = credential_schema::ActiveModel {
         id: Set(Uuid::new_v4().to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        format: Set(Default::default()),
+        format: Set(format.to_owned()),
         name: Set(name.to_owned()),
-        revocation_method: Set(Default::default()),
+        revocation_method: Set(revocation_method.to_owned()),
         organisation_id: Set(organisation_id.to_owned()),
 
         deleted_at: Set(deleted_at),
@@ -88,14 +92,14 @@ pub async fn insert_credential_schema_to_database(
 pub async fn insert_many_claims_schema_to_database(
     database: &DatabaseConnection,
     credential_schema_id: &str,
-    claims: &Vec<(Uuid, bool, u32, &str)>,
+    claims: &Vec<(Uuid, &str, bool, u32, &str)>,
 ) -> Result<(), DbErr> {
-    for (id, required, order, datatype) in claims {
+    for (id, key, required, order, datatype) in claims {
         claim_schema::ActiveModel {
             id: Set(id.to_string()),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
-            key: Set("TestKey".to_string()),
+            key: Set(key.to_string()),
             datatype: Set(datatype.to_string()),
         }
         .insert(database)
@@ -214,25 +218,27 @@ pub async fn insert_proof_state_to_database(
     Ok(())
 }
 
-#[allow(clippy::ptr_arg, dead_code)]
+#[allow(clippy::ptr_arg, dead_code, clippy::too_many_arguments)]
 pub async fn insert_proof_request_to_database_with_claims(
     database: &DatabaseConnection,
     verifier_did_id: DidId,
     holder_did_id: Option<DidId>,
-    proof_schema_id: &str,
-    state: ProofRequestState,
+    proof_schema_id: Option<String>,
+    state: ProofStateEnum,
+    transport: &str,
     claims: &Vec<(Uuid, Uuid, String)>,
+    interaction_id: Option<String>,
 ) -> Result<String, DbErr> {
     let proof = proof::ActiveModel {
         id: Set(Uuid::new_v4().to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
-        transport: Set("PROCIVIS_TEMPORARY".to_string()),
+        transport: Set(transport.to_owned()),
         verifier_did_id: Set(Some(verifier_did_id)),
         holder_did_id: Set(holder_did_id),
-        proof_schema_id: Set(Some(proof_schema_id.to_string())),
-        interaction_id: Set(None),
+        proof_schema_id: Set(proof_schema_id),
+        interaction_id: Set(interaction_id),
     }
     .insert(database)
     .await?;
@@ -241,7 +247,7 @@ pub async fn insert_proof_request_to_database_with_claims(
         proof_id: Set(proof.id.to_owned()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        state: Set(state),
+        state: Set(state.into()),
     }
     .insert(database)
     .await?;
@@ -277,7 +283,7 @@ pub async fn insert_proof_request_to_database_with_claims(
 pub async fn insert_proof_schema_with_claims_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    claims: &Vec<(Uuid, bool, u32, &str)>,
+    claims: &Vec<(Uuid, &str, bool, u32, &str)>,
     organisation_id: &str,
     name: &str,
 ) -> Result<String, DbErr> {
@@ -294,7 +300,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
     .insert(database)
     .await?;
 
-    for (id, required, order, _) in claims {
+    for (id, _key, required, order, _) in claims {
         proof_schema_claim_schema::ActiveModel {
             claim_schema_id: Set(id.to_string()),
             proof_schema_id: Set(schema.id.clone()),

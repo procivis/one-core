@@ -13,6 +13,7 @@ use crate::{
 };
 use one_core::{
     common_mapper::vector_into,
+    provider::transport_protocol::dto::PresentationDefinitionFieldDTO,
     service::{
         credential::dto::{
             CredentialDetailResponseDTO, CredentialListItemResponseDTO,
@@ -22,7 +23,7 @@ use one_core::{
         did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
         error::ServiceError,
         key::dto::KeyRequestDTO,
-        proof::dto::{PresentationDefinitionFieldDTO, ProofClaimDTO, ProofDetailResponseDTO},
+        proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
         ssi_holder::dto::{InvitationResponseDTO, PresentationSubmitCredentialRequestDTO},
     },
 };

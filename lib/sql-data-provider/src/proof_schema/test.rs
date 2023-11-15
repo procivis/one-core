@@ -212,12 +212,14 @@ async fn test_create_proof_schema_success() {
         None,
         &organisation_id.to_string(),
         "cred-schema",
+        "JWT",
+        "NONE",
     )
     .await
     .unwrap();
 
-    let claim_schemas: Vec<(Uuid, bool, u32, &str)> = (0..5)
-        .map(|i| (Uuid::new_v4(), i % 2 == 0, i, "STRING"))
+    let claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..5)
+        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i, "STRING"))
         .collect();
 
     insert_many_claims_schema_to_database(&db, &cred_schema_id, &claim_schemas)
@@ -473,12 +475,14 @@ async fn test_get_proof_schema_with_relations() {
         None,
         &organisation_id.to_string(),
         "credential schema",
+        "JWT",
+        "NONE",
     )
     .await
     .unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, bool, u32, &str)> = (0..2)
-        .map(|i| (Uuid::new_v4(), i % 2 == 0, i as u32, "STRING"))
+    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..2)
+        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i as u32, "STRING"))
         .collect();
     insert_many_claims_schema_to_database(&db, &credential_schema_id, &new_claim_schemas)
         .await

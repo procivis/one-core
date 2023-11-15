@@ -77,14 +77,16 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             None,
             &organisation.id.to_string(),
             "credential schema",
+            "JWT",
+            "NONE",
         )
         .await
         .unwrap(),
     )
     .unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, bool, u32, &str)> = (0..2)
-        .map(|i| (Uuid::new_v4(), i % 2 == 0, i as u32, "STRING"))
+    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..2)
+        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i as u32, "STRING"))
         .collect();
     insert_many_claims_schema_to_database(
         &db,
