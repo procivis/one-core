@@ -1,4 +1,5 @@
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{Proof, ProofStateEnum};
+use one_core::repository::error::DataLayerError;
 use one_core::{
     config::data_structure::{
         DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
@@ -177,6 +178,20 @@ pub async fn get_proof_by_id(
     id: &str,
 ) -> Result<Option<proof::Model>, DbErr> {
     proof::Entity::find_by_id(id).one(database).await
+}
+
+// TODO: Will be removed after this task is implemented https://procivis.atlassian.net/browse/ONE-1133
+#[allow(dead_code)]
+pub async fn get_proof_object_by_id(
+    database: &DatabaseConnection,
+    id: &str,
+) -> Result<Proof, DbErr> {
+    proof::Entity::find_by_id(id)
+        .one(database)
+        .await?
+        .unwrap()
+        .try_into()
+        .map_err(|e: DataLayerError| DbErr::RecordNotFound(e.to_string()))
 }
 
 pub async fn insert_proof_request_to_database(

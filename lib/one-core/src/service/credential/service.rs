@@ -1,5 +1,7 @@
 use time::OffsetDateTime;
 
+use crate::common_validator::throw_if_did_type_is_eq;
+use crate::model::did::DidType;
 use crate::{
     common_mapper::list_response_try_into,
     model::{
@@ -45,6 +47,9 @@ impl CredentialService {
             .get_did(&request.issuer_did, &DidRelations::default())
             .await
             .map_err(ServiceError::from)?;
+
+        throw_if_did_type_is_eq(&issuer_did, DidType::Remote)?;
+
         let schema = self
             .credential_schema_repository
             .get_credential_schema(

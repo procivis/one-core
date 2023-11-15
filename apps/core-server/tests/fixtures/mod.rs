@@ -1,5 +1,5 @@
 use core_server::Config;
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::proof::{Proof, ProofStateEnum};
 use shared_types::{DidId, DidValue};
 use sql_data_provider::{self, test_utilities::*, DbConn};
 use std::str::FromStr;
@@ -44,6 +44,17 @@ pub async fn create_did_key(db_conn: &DbConn, organisation_id: &str) -> DidId {
     )
     .await
     .unwrap()
+}
+
+pub async fn create_proof_schema(
+    db_conn: &DbConn,
+    name: &str,
+    organisation_id: &str,
+    claims: &Vec<(Uuid, &str, bool, u32, &str)>,
+) -> String {
+    insert_proof_schema_with_claims_to_database(db_conn, None, claims, organisation_id, name)
+        .await
+        .unwrap()
 }
 
 pub async fn create_credential_schema(
@@ -107,4 +118,8 @@ pub async fn create_credentials_with_claims(
         .unwrap();
 
     credential_id
+}
+
+pub async fn get_proof(db_conn: &DbConn, proof_id: &str) -> Proof {
+    get_proof_object_by_id(db_conn, proof_id).await.unwrap()
 }

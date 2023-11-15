@@ -6,9 +6,9 @@ use super::{
     mapper::{get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request},
     ProofService,
 };
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::common_validator::{throw_if_did_type_is_eq, throw_if_latest_proof_state_not_eq};
+use crate::model::did::DidType;
 use crate::provider::transport_protocol::dto::PresentationDefinitionResponseDTO;
-use crate::service::proof::validator::check_holder_did_is_local;
 use crate::{
     common_mapper::list_response_try_into,
     model::{
@@ -88,7 +88,14 @@ impl ProofService {
             )
             .await
             .map_err(ServiceError::from)?;
-        check_holder_did_is_local(&proof)?;
+
+        let holder_did = proof
+            .holder_did
+            .as_ref()
+            .ok_or(ServiceError::MappingError("holder did is None".to_string()))?;
+
+        throw_if_did_type_is_eq(holder_did, DidType::Remote)?;
+
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         let transport_instance = &self
             .config
@@ -144,6 +151,8 @@ impl ProofService {
             .did_repository
             .get_did(&request.verifier_did_id, &DidRelations::default())
             .await?;
+
+        throw_if_did_type_is_eq(&verifier_did, DidType::Remote)?;
 
         self.proof_repository
             .create_proof(proof_from_create_request(
