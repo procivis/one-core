@@ -21,10 +21,9 @@ use crate::{
     repository::{
         did_repository::MockDidRepository,
         error::DataLayerError,
+        interaction_repository::MockInteractionRepository,
         mock::{
-            credential_repository::MockCredentialRepository,
-            interaction_repository::MockInteractionRepository,
-            proof_repository::MockProofRepository,
+            credential_repository::MockCredentialRepository, proof_repository::MockProofRepository,
             proof_schema_repository::MockProofSchemaRepository,
         },
     },

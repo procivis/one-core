@@ -2,6 +2,7 @@ use crate::model::interaction::{Interaction, InteractionId, InteractionRelations
 
 use super::error::DataLayerError;
 
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait InteractionRepository {
     async fn create_interaction(

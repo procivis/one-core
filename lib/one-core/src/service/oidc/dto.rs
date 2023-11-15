@@ -12,6 +12,12 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
     pub format: String,
     pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
+    pub name: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
