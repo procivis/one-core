@@ -47,7 +47,7 @@ pub(crate) async fn post_proof_schema(
             tracing::error!("Name duplicated in the organisation");
             StatusCode::CONFLICT.into_response()
         }
-        Err(ServiceError::IncorrectParameters) => {
+        Err(ServiceError::IncorrectParameters) | Err(ServiceError::NotFound) => {
             tracing::error!("Invalid request");
             StatusCode::BAD_REQUEST.into_response()
         }
