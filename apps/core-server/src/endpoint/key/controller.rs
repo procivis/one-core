@@ -84,7 +84,7 @@ pub(crate) async fn post_key(
             tracing::error!("Config validation error: {:?}", error);
             StatusCode::UNPROCESSABLE_ENTITY.into_response()
         }
-        Err(ServiceError::IncorrectParameters) => {
+        Err(ServiceError::IncorrectParameters) | Err(ServiceError::NotFound) => {
             tracing::error!("Invalid parameters: {:?}", result);
             StatusCode::BAD_REQUEST.into_response()
         }
