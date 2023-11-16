@@ -4,8 +4,8 @@ variables:
   DOCKER_DRIVER: overlay2
 
   # Required variables in GitLab config:
-  # - AD_APP_ID: Azure Active directory application id
-  # - AD_APP_SECRET: Application secret
+  # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
+  # - AAD_SERVICE_PRINCIPAL_CLIENT_SECRET: Application secret. Use for RBAC SP kubelogin
   # - AD_TENANT_ID: Azure Active Directory Tenant ID
   # - RESOURCE_GROUP: Azure Resource group where AKS deployed
   # - CLUSTER_NAME: AKS cluster name
@@ -70,9 +70,11 @@ before_script:
     HELM_APP_NAME: one-core
     HELM_PATH: onecorechart
   before_script:
-    - az login --service-principal -u "$AD_APP_ID" -p "$AD_APP_SECRET" --tenant "$AD_TENANT_ID"
-    - az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --admin
+    - az aks install-cli
     - gpg --import "$PGP_PRIVATE_KEY"
+    - az login --service-principal -u "$AAD_SERVICE_PRINCIPAL_CLIENT_ID" -p "$AAD_SERVICE_PRINCIPAL_CLIENT_SECRET" --tenant "$AD_TENANT_ID"
+    - az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+    - kubelogin convert-kubeconfig -l spn
   script:
     - cd "$HELM_PATH"
     - helm repo add bitnami https://charts.bitnami.com/bitnami
