@@ -1,6 +1,5 @@
 use serde::{Deserialize, Deserializer};
 use std::collections::{HashMap, HashSet};
-
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -8,10 +7,14 @@ use crate::model::proof::ProofId;
 use crate::provider::transport_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentedCredential,
 };
 use crate::provider::transport_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
+};
+use crate::service::oidc::dto::{
+    NestedPresentationSubmissionDescriptorDTO, PresentationSubmissionDescriptorDTO,
+    PresentationSubmissionMappingDTO,
 };
 use crate::{
     model::{
@@ -24,8 +27,10 @@ use crate::{
     },
     provider::transport_protocol::{
         openid4vc::dto::{
-            OpenID4VCICredentialDefinition, OpenID4VCICredentialSubject, OpenID4VCIGrant,
-            OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPFormat,
+            OpenID4VCICredentialDefinition, OpenID4VCICredentialOffer,
+            OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialSubject,
+            OpenID4VCICredentialValueDetails, OpenID4VCIGrant, OpenID4VCIGrants,
+            OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPInteractionData,
             OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
             OpenID4VPPresentationDefinitionConstraintField,
             OpenID4VPPresentationDefinitionInputDescriptors,
@@ -33,11 +38,6 @@ use crate::{
         TransportProtocolError,
     },
     util::oidc::map_core_to_oidc_format,
-};
-
-use super::dto::{
-    OpenID4VCICredentialOffer, OpenID4VCICredentialOfferCredentialDTO,
-    OpenID4VCICredentialValueDetails,
 };
 
 pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
@@ -348,4 +348,32 @@ where
         None => serde_json::from_value(value).map_err(serde::de::Error::custom),
         Some(buffer) => serde_json::from_str(buffer).map_err(serde::de::Error::custom),
     }
+}
+
+pub(super) fn create_presentation_submission(
+    interaction_data: &OpenID4VPInteractionData,
+    credential_presentations: Vec<PresentedCredential>,
+) -> Result<PresentationSubmissionMappingDTO, TransportProtocolError> {
+    Ok(PresentationSubmissionMappingDTO {
+        id: Uuid::new_v4().to_string(),
+        definition_id: interaction_data.presentation_definition.id.to_string(),
+        descriptor_map: credential_presentations
+            .into_iter()
+            .enumerate()
+            .map(|(index, presented_credential)| {
+                Ok(PresentationSubmissionDescriptorDTO {
+                    id: presented_credential.request.id,
+                    format: "jwt_vp_json".to_string(),
+                    path: "$".to_string(),
+                    path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
+                        format: map_core_to_oidc_format(
+                            &presented_credential.credential_schema.format,
+                        )
+                        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+                        path: format!("$.vp.verifiableCredential[{index}]"),
+                    }),
+                })
+            })
+            .collect::<Result<_, _>>()?,
+    })
 }

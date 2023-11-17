@@ -7,7 +7,7 @@ use crate::model::{
 use crate::provider::transport_protocol::dto::{
     CredentialGroup, CredentialGroupItem, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, ProofClaimSchema,
 };
 use crate::provider::transport_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
@@ -99,4 +99,26 @@ pub(super) fn presentation_definition_from_proof(
         }],
         credentials: credential_model_to_credential_dto(credentials)?,
     })
+}
+
+pub fn get_proof_claim_schemas_from_proof(
+    value: &Proof,
+) -> Result<Vec<ProofClaimSchema>, TransportProtocolError> {
+    let interaction_data = value
+        .interaction
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "interaction is None".to_string(),
+        ))?
+        .data
+        .to_owned()
+        .ok_or(TransportProtocolError::Failed(
+            "interaction data is missing".to_string(),
+        ))?;
+    let json_data = String::from_utf8(interaction_data)
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+    let proof_claim_schemas: Vec<ProofClaimSchema> = serde_json::from_str(&json_data)
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    Ok(proof_claim_schemas)
 }

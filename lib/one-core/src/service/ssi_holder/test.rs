@@ -1,31 +1,32 @@
-use std::{collections::HashMap, sync::Arc};
-
+use mockall::predicate::eq;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    config::data_structure::{
-        AccessModifier, ConfigEntity, CoreConfig, KeyAlgorithmParams, Param, ParamsEnum,
-        TranslatableString,
-    },
-    crypto::{signer::MockSigner, MockCryptoProvider},
     model::{
         credential::{Credential, CredentialState, CredentialStateEnum},
+        credential_schema::CredentialSchema,
         did::{Did, DidType, KeyRole, RelatedKey},
         interaction::Interaction,
         key::Key,
         organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
     },
-    provider::key_storage::provider::MockKeyProvider,
     provider::transport_protocol::{
-        dto::SubmitIssuerResponse, provider::MockTransportProtocolProvider, MockTransportProtocol,
+        dto::{
+            PresentationDefinitionRequestGroupResponseDTO,
+            PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionRuleDTO,
+            PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
+        },
+        provider::MockTransportProtocolProvider,
+        MockTransportProtocol,
     },
     provider::{
         credential_formatter::{
             provider::MockCredentialFormatterProvider, MockCredentialFormatter,
         },
-        key_storage::mock_key_storage::MockKeyStorage,
+        transport_protocol::dto::PresentationDefinitionResponseDTO,
     },
     repository::did_repository::MockDidRepository,
     repository::mock::credential_repository::MockCredentialRepository,
@@ -260,6 +261,7 @@ async fn test_submit_proof_succeeds() {
                 id: credential_id,
                 credential: b"credential data".to_vec(),
                 transport: "protocol".to_string(),
+                claims: Some(vec![]),
                 ..dummy_credential()
             })
         });
@@ -271,23 +273,51 @@ async fn test_submit_proof_succeeds() {
         .once()
         .returning(|presentation| Ok(presentation.token));
 
-    formatter
-        .expect_format_presentation()
-        .once()
-        .returning(|_, _, _, _| Ok("presentation".to_string()));
-
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_formatter()
-        .times(2) // For credential format, and presentation format
+        .times(1)
         .returning(move |_| Ok(formatter.clone()));
 
-    let mut transport_protocol_mock = MockTransportProtocol::new();
-    transport_protocol_mock
+    let mut transport_protocol = MockTransportProtocol::new();
+    transport_protocol
+        .expect_get_presentation_definition()
+        .withf(move |proof| {
+            assert_eq!(proof.id, proof_id);
+            true
+        })
+        .once()
+        .returning(|_| {
+            Ok(PresentationDefinitionResponseDTO {
+                request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
+                    id: "random".to_string(),
+                    name: None,
+                    purpose: None,
+                    rule: PresentationDefinitionRuleDTO {
+                        r#type: PresentationDefinitionRuleTypeEnum::All,
+                        min: None,
+                        max: None,
+                        count: None,
+                    },
+                    requested_credentials: vec![
+                        PresentationDefinitionRequestedCredentialResponseDTO {
+                            id: "cred1".to_string(),
+                            name: None,
+                            purpose: None,
+                            fields: vec![],
+                            applicable_credentials: vec![],
+                        },
+                    ],
+                }],
+                credentials: vec![],
+            })
+        });
+
+    transport_protocol
         .expect_submit_proof()
-        .withf(move |_proof_id, _| {
-            assert_eq!(_proof_id.id, proof_id);
+        .withf(move |proof, _| {
+            assert_eq!(proof.id, proof_id);
             true
         })
         .once()
@@ -296,49 +326,15 @@ async fn test_submit_proof_succeeds() {
     let mut protocol_provider = MockTransportProtocolProvider::new();
     protocol_provider
         .expect_get_protocol()
-        .withf(move |_protocol| {
-            assert_eq!(_protocol, protocol);
-            true
-        })
+        .with(eq(protocol))
         .once()
-        .return_once(move |_| Ok(Arc::new(transport_protocol_mock)));
-
-    let mut key_storage = MockKeyStorage::new();
-    key_storage
-        .expect_decrypt_private_key()
-        .once()
-        .return_once(|_| Ok(b"decrypted private key".to_vec()));
-
-    let mut key_provider = MockKeyProvider::new();
-    key_provider
-        .expect_get_key_storage()
-        .once()
-        .return_once(move |_| Ok(Arc::new(key_storage)));
-
-    let algorithm = algorithm_config(key_type);
-    let config = CoreConfig {
-        key_algorithm: HashMap::from_iter([(key_type.to_string(), algorithm)]),
-        ..dummy_config()
-    };
-
-    let mut crypto_provider = MockCryptoProvider::default();
-    crypto_provider
-        .expect_get_signer()
-        .once()
-        .withf(move |alg| {
-            assert_eq!(alg, key_type);
-            true
-        })
-        .returning(move |_| Ok(Arc::new(MockSigner::new())));
+        .return_once(move |_| Ok(Arc::new(transport_protocol)));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         protocol_provider: Arc::new(protocol_provider),
-        key_provider: Arc::new(key_provider),
-        crypto: Arc::new(crypto_provider),
-        config: Arc::new(config),
         ..mock_ssi_holder_service()
     };
 
@@ -438,22 +434,6 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         did_repository: Arc::new(MockDidRepository::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
-        key_provider: Arc::new(MockKeyProvider::new()),
-        crypto: Arc::new(MockCryptoProvider::default()),
-        config: Arc::new(dummy_config()),
-    }
-}
-
-fn dummy_config() -> CoreConfig {
-    CoreConfig {
-        format: Default::default(),
-        exchange: Default::default(),
-        transport: Default::default(),
-        revocation: Default::default(),
-        did: Default::default(),
-        datatype: Default::default(),
-        key_algorithm: Default::default(),
-        key_storage: Default::default(),
     }
 }
 
@@ -512,7 +492,17 @@ fn dummy_credential() -> Credential {
             organisation: None,
         }),
         holder_did: None,
-        schema: None,
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "schema".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            claim_schemas: None,
+            organisation: None,
+            deleted_at: None,
+        }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
@@ -522,20 +512,5 @@ fn dummy_credential() -> Credential {
         }),
         revocation_list: None,
         key: None,
-    }
-}
-
-fn algorithm_config(key_type: impl Into<String>) -> ConfigEntity<String, KeyAlgorithmParams> {
-    ConfigEntity {
-        r#type: "STRING".to_string(),
-        display: TranslatableString::Key("X".to_string()),
-        order: None,
-        disabled: None,
-        params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {
-            algorithm: Param {
-                access: AccessModifier::Public,
-                value: key_type.into(),
-            },
-        })),
     }
 }

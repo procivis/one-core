@@ -2,8 +2,6 @@ use crate::config::data_structure::ExchangeParams::OPENID4VC;
 use crate::config::data_structure::{ExchangeParams, KeyAlgorithmEntity, ParamsEnum};
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
-use crate::provider::transport_protocol::dto::ProofClaimSchema;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
 use crate::{
@@ -166,26 +164,4 @@ pub(crate) async fn get_or_create_did(
             }
         },
     )
-}
-
-pub fn get_proof_claim_schemas_from_proof(
-    value: &Proof,
-) -> Result<Vec<ProofClaimSchema>, ServiceError> {
-    let interaction_data = value
-        .interaction
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "interaction is None".to_string(),
-        ))?
-        .data
-        .to_owned()
-        .ok_or(ServiceError::MappingError(
-            "interaction data is missing".to_string(),
-        ))?;
-    let json_data = String::from_utf8(interaction_data)
-        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
-    let proof_claim_schemas: Vec<ProofClaimSchema> =
-        serde_json::from_str(&json_data).map_err(|e| ServiceError::MappingError(e.to_string()))?;
-    Ok(proof_claim_schemas)
 }

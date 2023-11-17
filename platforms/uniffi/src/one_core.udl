@@ -74,7 +74,7 @@ dictionary ProofRequestBindingDTO {
     string created_date;
     string last_modified;
     sequence<ProofRequestClaimBindingDTO> claims;
-    string verifier_did;
+    string? verifier_did;
     string transport;
 };
 

@@ -324,6 +324,7 @@ async fn test_format_presentation() {
         &"holder_did".parse().unwrap(),
         "algorithm",
         Box::new(move |_: &str| Ok(vec![65u8, 66, 67])),
+        None,
     );
 
     assert!(result.is_ok());

@@ -90,6 +90,7 @@ impl CredentialFormatter for JWTFormatter {
         holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
+        nonce: Option<String>,
     ) -> Result<String, FormatterError> {
         let vp: VP = format_payload(tokens);
 
@@ -104,7 +105,7 @@ impl CredentialFormatter for JWTFormatter {
             subject: Some(holder_did.to_string()),
             jwt_id: Some(Uuid::new_v4().to_string()),
             custom: vp,
-            nonce: None,
+            nonce,
         };
 
         let jwt = Jwt::new("JWT".to_owned(), algorithm.to_owned(), None, payload);

@@ -71,6 +71,7 @@ pub trait CredentialFormatter {
         holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
+        nonce: Option<String>,
     ) -> Result<String, FormatterError>;
 
     async fn extract_presentation(

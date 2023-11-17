@@ -170,6 +170,10 @@ impl OneCore {
                     data_provider.get_interaction_repository(),
                     data_provider.get_credential_schema_repository(),
                     data_provider.get_did_repository(),
+                    formatter_provider.clone(),
+                    key_provider.clone(),
+                    crypto.clone(),
+                    config.clone(),
                 )),
             ),
             (
@@ -183,6 +187,8 @@ impl OneCore {
                     data_provider.get_interaction_repository(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
+                    key_provider.clone(),
+                    config.clone(),
                     crypto.clone(),
                     get_exchange_params("OPENID4VC", &config).ok(),
                 )),
@@ -250,7 +256,7 @@ impl OneCore {
             key_service: KeyService::new(
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
-                key_provider.clone(),
+                key_provider,
                 config.clone(),
             ),
             proof_schema_service: ProofSchemaService::new(
@@ -289,9 +295,6 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 formatter_provider,
                 protocol_provider,
-                key_provider,
-                crypto.clone(),
-                config.clone(),
             ),
             config_service: ConfigService::new(config.clone()),
             crypto,

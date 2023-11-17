@@ -13,6 +13,7 @@ pub struct VCContent {
     pub credential_status: Option<CredentialStatus>,
 }
 
+// TODO: remove the presentation models, since only JWT formatted presentations are used
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VPContent {

@@ -6,7 +6,6 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
-use uuid::Uuid;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCICredential {
@@ -66,44 +65,44 @@ pub struct OpenID4VCIGrant {
     pub pre_authorized_code: String,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPClientMetadata {
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
     pub client_id_scheme: String,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPFormat {
     pub alg: Vec<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPPresentationDefinition {
     pub id: InteractionId,
     pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptors>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptors {
     pub id: String,
     pub constraints: OpenID4VPPresentationDefinitionConstraint,
 }
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub id: ClaimSchemaId,
     pub path: Vec<String>,
     pub optional: bool,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPInteractionData {
     pub response_type: String,
-    pub state: Option<Uuid>,
+    pub state: Option<String>,
     pub nonce: String,
     pub client_id_scheme: String,
     pub client_id: Url,

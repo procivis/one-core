@@ -4,28 +4,39 @@ mod mapper;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::common_mapper::get_proof_claim_schemas_from_proof;
-use crate::provider::transport_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
-};
-use crate::provider::transport_protocol::mapper::get_relevant_credentials;
-use crate::provider::transport_protocol::procivis_temp::mapper::{
-    get_base_url, presentation_definition_from_proof, remote_did_from_value,
+use self::{
+    dto::HandleInvitationConnectRequest,
+    mapper::{
+        get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
+        remote_did_from_value,
+    },
 };
 use crate::{
+    common_mapper::get_algorithm_from_key_algorithm,
+    config::data_structure::CoreConfig,
+    crypto::CryptoProvider,
     model::{
         claim::{Claim, ClaimId},
         claim_schema::ClaimSchemaRelations,
         credential::{Credential, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::{Did, DidRelations},
+        did::{Did, DidRelations, KeyRole},
         proof::Proof,
     },
-    provider::transport_protocol::{
-        dto::{ConnectVerifierResponse, SubmitIssuerResponse},
-        mapper::{interaction_from_handle_invitation, proof_from_handle_invitation},
-        procivis_temp::dto::HandleInvitationConnectRequest,
-        TransportProtocol, TransportProtocolError,
+    provider::{
+        credential_formatter::provider::CredentialFormatterProvider,
+        key_storage::provider::KeyProvider,
+        transport_protocol::{
+            dto::{
+                ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
+                PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
+            },
+            mapper::{
+                get_relevant_credentials, interaction_from_handle_invitation,
+                proof_from_handle_invitation,
+            },
+            TransportProtocol, TransportProtocolError,
+        },
     },
     repository::{
         credential_repository::CredentialRepository,
@@ -42,7 +53,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-pub struct ProcivisTemp {
+pub(crate) struct ProcivisTemp {
     client: reqwest::Client,
     base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
@@ -50,9 +61,14 @@ pub struct ProcivisTemp {
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    config: Arc<CoreConfig>,
 }
 
 impl ProcivisTemp {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
@@ -60,6 +76,10 @@ impl ProcivisTemp {
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
         did_repository: Arc<dyn DidRepository + Send + Sync>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+        key_provider: Arc<dyn KeyProvider + Send + Sync>,
+        crypto: Arc<dyn CryptoProvider + Send + Sync>,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -69,6 +89,10 @@ impl ProcivisTemp {
             interaction_repository,
             credential_schema_repository,
             did_repository,
+            formatter_provider,
+            key_provider,
+            crypto,
+            config,
         }
     }
 }
@@ -192,8 +216,59 @@ impl TransportProtocol for ProcivisTemp {
     async fn submit_proof(
         &self,
         proof: &Proof,
-        presentation: &str,
+        credential_presentations: Vec<PresentedCredential>,
     ) -> Result<(), TransportProtocolError> {
+        let presentation_formatter = self
+            .formatter_provider
+            .get_formatter("JWT")
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let holder_did = proof
+            .holder_did
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "holder_did is None".to_string(),
+            ))?;
+
+        let keys = holder_did
+            .keys
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "Holder has no keys".to_string(),
+            ))?;
+
+        let key = keys
+            .iter()
+            .find(|k| k.role == KeyRole::AssertionMethod)
+            .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
+
+        let algorithm =
+            get_algorithm_from_key_algorithm(&key.key.key_type, &self.config.key_algorithm)
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let signer = self
+            .crypto
+            .get_signer(&algorithm)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let key_provider = self
+            .key_provider
+            .get_key_storage(&key.key.storage_type)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let private_key = key_provider
+            .decrypt_private_key(&key.key.private_key)
+            .await
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let public_key = key.key.public_key.clone();
+        let auth_fn = Box::new(move |data: &str| signer.sign(data, &public_key, &private_key));
+
+        let tokens: Vec<String> = credential_presentations
+            .into_iter()
+            .map(|presented_credential| presented_credential.presentation)
+            .collect();
+        let presentation = presentation_formatter
+            .format_presentation(&tokens, &holder_did.did, &key.key.key_type, auth_fn, None)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
         let mut url = super::get_base_url_from_interaction(proof.interaction.as_ref())?;
         url.set_path("/ssi/temporary-verifier/v1/submit");
         url.set_query(Some(&format!("proof={}", proof.id)));
@@ -201,7 +276,7 @@ impl TransportProtocol for ProcivisTemp {
         let response = self
             .client
             .post(url)
-            .body(presentation.to_owned())
+            .body(presentation)
             .send()
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;
@@ -291,8 +366,7 @@ impl TransportProtocol for ProcivisTemp {
         &self,
         proof: &Proof,
     ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
-        let requested_claims = get_proof_claim_schemas_from_proof(proof)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let requested_claims = get_proof_claim_schemas_from_proof(proof)?;
         let requested_claim_keys: Vec<String> = requested_claims
             .iter()
             .map(|claim_schema| claim_schema.key.to_owned())
