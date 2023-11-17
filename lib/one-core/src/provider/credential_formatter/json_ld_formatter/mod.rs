@@ -50,6 +50,7 @@ impl CredentialFormatter for JsonLdFormatter {
         _holder_did: &DidValue,
         _algorithm: &str,
         _auth_fn: AuthenticationFn,
+        _nonce: Option<String>,
     ) -> Result<String, FormatterError> {
         todo!()
     }

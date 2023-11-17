@@ -2,19 +2,19 @@ use super::{
     dto::{InvitationResponseDTO, PresentationSubmitRequestDTO},
     SSIHolderService,
 };
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::{
-    common_mapper::get_algorithm_from_key_algorithm,
-    common_validator::throw_if_latest_credential_state_not_eq,
+    common_validator::{
+        throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
+    },
     model::{
         claim::{Claim, ClaimRelations},
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
+        claim_schema::ClaimSchemaRelations,
         credential::{
             CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
             UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
-        did::{DidRelations, KeyRole},
+        did::DidRelations,
         interaction::{InteractionId, InteractionRelations},
         key::KeyRelations,
         organisation::OrganisationRelations,
@@ -22,7 +22,10 @@ use crate::{
     },
     provider::{
         credential_formatter::model::CredentialPresentation,
-        transport_protocol::provider::DetectedProtocol,
+        transport_protocol::{
+            dto::{PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential},
+            provider::DetectedProtocol,
+        },
     },
     service::error::ServiceError,
 };
@@ -116,17 +119,45 @@ impl SSIHolderService {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
-        let holder_did = proof
-            .holder_did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+        let transport_protocol = self.protocol_provider.get_protocol(&proof.transport)?;
+        let presentation_definition = transport_protocol
+            .get_presentation_definition(&proof)
+            .await?;
+
+        let requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseDTO> =
+            presentation_definition
+                .request_groups
+                .into_iter()
+                .flat_map(|group| group.requested_credentials)
+                .collect();
 
         let mut submitted_claims: Vec<Claim> = vec![];
-        let mut credentials: Vec<String> = vec![];
+        let mut credential_presentations: Vec<PresentedCredential> = vec![];
 
-        // This is a temporary format selection. Will change in the future.
-        for (_, credential_request) in request.submit_credentials {
-            let mut format = String::from("JWT"); // Default
+        for (requested_credential_id, credential_request) in request.submit_credentials {
+            let requested_credential = requested_credentials
+                .iter()
+                .find(|credential| credential.id == requested_credential_id)
+                .ok_or(ServiceError::MappingError(format!(
+                    "requested credential `{requested_credential_id}` not found"
+                )))?;
+
+            let submitted_keys = requested_credential
+                .fields
+                .iter()
+                .filter(|field| credential_request.submit_claims.contains(&field.id))
+                .map(|field| {
+                    Ok(field
+                        .key_map
+                        .get(&credential_request.credential_id.to_string())
+                        .ok_or(ServiceError::MappingError(format!(
+                            "no matching key for credential_id `{}`",
+                            credential_request.credential_id
+                        )))?
+                        .to_owned())
+                })
+                .collect::<Result<Vec<String>, ServiceError>>()?;
+
             let credential = self
                 .credential_repository
                 .get_credential(
@@ -148,95 +179,43 @@ impl SSIHolderService {
             let credential_content = std::str::from_utf8(&credential_data)
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-            if let Some(schema) = &credential.schema {
-                format = schema.format.clone();
+            let credential_schema = credential.schema.ok_or(ServiceError::MappingError(
+                "credential_schema missing".to_string(),
+            ))?;
+
+            for claim in credential
+                .claims
+                .ok_or(ServiceError::MappingError("claims missing".to_string()))?
+            {
+                let claim_schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
+                    "claim_schema missing".to_string(),
+                ))?;
+                if submitted_keys.contains(&claim_schema.key) {
+                    submitted_claims.push(claim);
+                }
             }
 
-            let requested_claims: Vec<(Claim, ClaimSchema)> = credential
-                .claims
-                .as_ref()
-                .map(|claims| {
-                    claims
-                        .iter()
-                        .filter_map(|claim| {
-                            claim
-                                .schema
-                                .as_ref()
-                                .map(|claim_schema| (claim.clone(), claim_schema.clone()))
-                        })
-                        .filter(|(_, schema)| {
-                            credential_request
-                                .submit_claims
-                                .contains(&schema.id.to_string())
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
-
-            let (claims, claim_schemas): (Vec<Claim>, Vec<ClaimSchema>) =
-                requested_claims.into_iter().unzip();
-
-            let formatter = self.formatter_provider.get_formatter(&format)?;
+            let formatter = self
+                .formatter_provider
+                .get_formatter(&credential_schema.format)?;
 
             let credential_presentation = CredentialPresentation {
                 token: credential_content.to_owned(),
-                disclosed_keys: claim_schemas
-                    .into_iter()
-                    .map(|claim_schema| claim_schema.key)
-                    .collect(),
+                disclosed_keys: submitted_keys,
             };
 
-            let formatted_credential =
+            let formatted_credential_presentation =
                 formatter.format_credential_presentation(credential_presentation)?;
 
-            credentials.push(formatted_credential);
-
-            submitted_claims.extend(claims);
+            credential_presentations.push(PresentedCredential {
+                presentation: formatted_credential_presentation,
+                credential_schema,
+                request: requested_credential.to_owned(),
+            });
         }
 
-        // Here we have to find a way to select proper presentation format. JWT for now should be fine.
-        let presentation_formatter = self.formatter_provider.get_formatter("JWT")?;
-
-        let keys = holder_did
-            .keys
-            .as_ref()
-            .ok_or(ServiceError::MappingError("Holder has no keys".to_string()))?;
-
-        let key = keys
-            .iter()
-            .find(|k| k.role == KeyRole::AssertionMethod)
-            .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
-
-        let algorithm =
-            get_algorithm_from_key_algorithm(&key.key.key_type, &self.config.key_algorithm)?;
-
-        let signer = self.crypto.get_signer(&algorithm)?;
-
-        let key_provider = self.key_provider.get_key_storage(&key.key.storage_type)?;
-
-        let private_key_moved = key_provider
-            .decrypt_private_key(&key.key.private_key)
-            .await?;
-        let public_key_moved = key.key.public_key.clone();
-
-        let auth_fn = Box::new(move |data: &str| {
-            let signer = signer;
-            let private_key = private_key_moved;
-            let public_key = public_key_moved;
-            signer.sign(data, &public_key, &private_key)
-        });
-
-        let presentation = presentation_formatter.format_presentation(
-            &credentials,
-            &holder_did.did,
-            &key.key.key_type,
-            auth_fn,
-        )?;
-
-        let submit_result = self
-            .protocol_provider
-            .get_protocol(&proof.transport)?
-            .submit_proof(&proof, &presentation)
+        let submit_result = transport_protocol
+            .submit_proof(&proof, credential_presentations)
             .await;
 
         if submit_result.is_ok() {
@@ -259,8 +238,9 @@ impl SSIHolderService {
                     },
                 },
             )
-            .await
-            .map_err(ServiceError::from)
+            .await?;
+
+        submit_result.map_err(ServiceError::from)
     }
 
     pub async fn accept_credential(

@@ -106,7 +106,7 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
             claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
-            verifier_did: value.verifier_did.to_string(),
+            verifier_did: value.verifier_did.map(|did| did.to_string()),
             transport: value.transport,
         }
     }

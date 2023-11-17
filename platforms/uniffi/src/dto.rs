@@ -99,7 +99,7 @@ pub struct ProofRequestBindingDTO {
     pub created_date: String,
     pub last_modified: String,
     pub claims: Vec<ProofRequestClaimBindingDTO>,
-    pub verifier_did: String,
+    pub verifier_did: Option<String>,
     pub transport: String,
 }
 

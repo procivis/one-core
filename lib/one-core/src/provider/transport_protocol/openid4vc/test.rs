@@ -7,7 +7,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::{
-    config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
+    config::data_structure::{CoreConfig, ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::MockCryptoProvider,
     model::{
         claim::Claim,
@@ -22,6 +22,7 @@ use crate::{
     },
     provider::{
         credential_formatter::provider::MockCredentialFormatterProvider,
+        key_storage::provider::MockKeyProvider,
         revocation::provider::MockRevocationMethodProvider,
         transport_protocol::{
             openid4vc::dto::{
@@ -53,6 +54,8 @@ struct Repositories {
     pub interaction_repository: MockInteractionRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
+    pub key_provider: MockKeyProvider,
+    pub config: CoreConfig,
     pub crypto: MockCryptoProvider,
 }
 
@@ -66,6 +69,8 @@ fn setup_protocol(repositories: Repositories) -> OpenID4VC {
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.revocation_provider),
+        Arc::new(repositories.key_provider),
+        Arc::new(repositories.config),
         Arc::new(repositories.crypto),
         Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(
             ExchangeOPENID4VCParams::default(),

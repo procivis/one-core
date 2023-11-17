@@ -1,23 +1,26 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use self::{
     dto::{
         OpenID4VCICredential, OpenID4VCICredentialDefinition, OpenID4VCICredentialOffer,
         OpenID4VCIProof,
     },
-    mapper::{create_claims_from_credential_definition, create_credential_offer_encoded},
+    mapper::{
+        create_claims_from_credential_definition, create_credential_offer_encoded,
+        create_presentation_submission,
+    },
     model::{HolderInteractionData, OpenID4VCIInteractionContent},
 };
 
 use super::{
     deserialize_interaction_data,
-    dto::{InvitationType, SubmitIssuerResponse},
+    dto::{InvitationType, PresentedCredential, SubmitIssuerResponse},
     mapper::interaction_from_handle_invitation,
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
 };
 use crate::{
-    config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
+    common_mapper::get_algorithm_from_key_algorithm,
+    config::data_structure::{CoreConfig, ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::CryptoProvider,
     model::{
         claim::{Claim, ClaimRelations},
@@ -30,22 +33,25 @@ use crate::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
             UpdateCredentialSchemaRequest,
         },
-        did::{Did, DidRelations, DidType},
+        did::{Did, DidRelations, DidType, KeyRole},
         interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::{Organisation, OrganisationRelations},
         proof::{Proof, ProofId, ProofRelations, UpdateProofRequest},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
-    provider::transport_protocol::{
-        mapper::proof_from_handle_invitation,
-        openid4vc::{
-            dto::OpenID4VPInteractionData, mapper::create_open_id_for_vp_sharing_url_encoded,
-            model::OpenID4VPInteractionContent, validator::validate_interaction_data,
-        },
-    },
     provider::{
         credential_formatter::{jwt::SkipVerification, provider::CredentialFormatterProvider},
         revocation::provider::RevocationMethodProvider,
+    },
+    provider::{
+        key_storage::provider::KeyProvider,
+        transport_protocol::{
+            mapper::proof_from_handle_invitation,
+            openid4vc::{
+                dto::OpenID4VPInteractionData, mapper::create_open_id_for_vp_sharing_url_encoded,
+                model::OpenID4VPInteractionContent, validator::validate_interaction_data,
+            },
+        },
     },
     repository::{
         credential_repository::CredentialRepository,
@@ -100,6 +106,8 @@ pub(crate) struct OpenID4VC {
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
+    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    config: Arc<CoreConfig>,
     base_url: Option<String>,
     crypto: Arc<dyn CryptoProvider + Send + Sync>,
 
@@ -119,10 +127,12 @@ impl OpenID4VC {
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
+        key_provider: Arc<dyn KeyProvider + Send + Sync>,
+        config: Arc<CoreConfig>,
         crypto: Arc<dyn CryptoProvider + Send + Sync>,
-        config: Option<ParamsEnum<ExchangeParams>>,
+        params: Option<ParamsEnum<ExchangeParams>>,
     ) -> Self {
-        let params = match config {
+        let params = match params {
             Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(val))) => val,
             _ => ExchangeOPENID4VCParams::default(),
         };
@@ -136,6 +146,8 @@ impl OpenID4VC {
             interaction_repository,
             formatter_provider,
             revocation_provider,
+            key_provider,
+            config,
             client: reqwest::Client::new(),
             crypto,
             params,
@@ -179,15 +191,99 @@ impl TransportProtocol for OpenID4VC {
     }
 
     async fn reject_proof(&self, _proof: &Proof) -> Result<(), TransportProtocolError> {
-        unimplemented!()
+        Err(TransportProtocolError::OperationNotSupported)
     }
 
     async fn submit_proof(
         &self,
-        _proof: &Proof,
-        _presentation: &str,
+        proof: &Proof,
+        credential_presentations: Vec<PresentedCredential>,
     ) -> Result<(), TransportProtocolError> {
-        unimplemented!()
+        let interaction_data: OpenID4VPInteractionData =
+            deserialize_interaction_data(proof.interaction.as_ref())?;
+
+        let presentation_formatter = self
+            .formatter_provider
+            .get_formatter("JWT")
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let holder_did = proof
+            .holder_did
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "holder_did is None".to_string(),
+            ))?;
+
+        let key = holder_did
+            .keys
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "Holder has no keys".to_string(),
+            ))?
+            .iter()
+            .find(|k| k.role == KeyRole::AssertionMethod)
+            .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
+
+        let algorithm =
+            get_algorithm_from_key_algorithm(&key.key.key_type, &self.config.key_algorithm)
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let signer = self
+            .crypto
+            .get_signer(&algorithm)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let key_provider = self
+            .key_provider
+            .get_key_storage(&key.key.storage_type)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let private_key = key_provider
+            .decrypt_private_key(&key.key.private_key)
+            .await
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let public_key = key.key.public_key.clone();
+        let auth_fn = Box::new(move |data: &str| signer.sign(data, &public_key, &private_key));
+
+        let tokens: Vec<String> = credential_presentations
+            .iter()
+            .map(|presented_credential| presented_credential.presentation.to_owned())
+            .collect();
+
+        let presentation_submission =
+            create_presentation_submission(&interaction_data, credential_presentations)?;
+
+        let vp_token = presentation_formatter
+            .format_presentation(
+                &tokens,
+                &holder_did.did,
+                &key.key.key_type,
+                auth_fn,
+                Some(interaction_data.nonce),
+            )
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let mut params = HashMap::new();
+        params.insert("vp_token", vp_token);
+        params.insert(
+            "presentation_submission",
+            serde_json::to_string(&presentation_submission)
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+        );
+        if let Some(state) = interaction_data.state {
+            params.insert("state", state);
+        }
+
+        let response = self
+            .client
+            .post(interaction_data.response_uri)
+            .form(&params)
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+        response
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?;
+
+        Ok(())
     }
 
     async fn accept_credential(

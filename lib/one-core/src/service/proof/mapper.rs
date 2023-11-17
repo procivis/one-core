@@ -1,7 +1,6 @@
 use super::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
 };
-use crate::common_mapper::get_proof_claim_schemas_from_proof;
 use crate::{
     model::{
         claim::Claim,
@@ -47,12 +46,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             issuance_date: value.issuance_date,
             requested_date,
             completed_date,
-            verifier_did: value
-                .verifier_did
-                .ok_or(ServiceError::MappingError(
-                    "verifier_did is None".to_string(),
-                ))?
-                .did,
+            verifier_did: value.verifier_did.map(|did| did.did),
             transport: value.transport,
             state: latest_state.state.clone(),
             schema: value.schema.map(|schema| schema.into()),
@@ -117,10 +111,12 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
 }
 
 pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
-    let organisation_id = value
+    let holder_did = value
         .holder_did
         .as_ref()
-        .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?
+        .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+
+    let organisation_id = holder_did
         .organisation
         .as_ref()
         .ok_or(ServiceError::MappingError(
@@ -128,38 +124,12 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         ))?
         .id;
 
-    let holder_did_id = value.holder_did.as_ref().map(|did| did.id.clone());
-
-    let claims = value
-        .claims
-        .as_ref()
-        .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
-
-    let proof_claim_schemas: Vec<ProofClaimSchema> = get_proof_claim_schemas_from_proof(&value)?;
-
-    let claims = claims
-        .iter()
-        .map(|claim| -> Result<ProofClaimDTO, ServiceError> {
-            let proof_claim_schema = proof_claim_schemas
-                .iter()
-                .find(|c| {
-                    claim
-                        .schema
-                        .as_ref()
-                        .is_some_and(|s| s.id.to_string() == c.id)
-                })
-                .ok_or(ServiceError::MappingError(
-                    "proof claim not found".to_string(),
-                ))?
-                .to_owned();
-
-            proof_claim_from_claim(proof_claim_schema.try_into()?, Some(claim.to_owned()))
-        })
-        .collect::<Result<Vec<ProofClaimDTO>, ServiceError>>()?;
+    let holder_did_id = holder_did.id.to_owned();
 
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
     Ok(ProofDetailResponseDTO {
-        claims,
+        // TODO: properly reconstruct claims when proof submitted
+        claims: vec![],
         id: list_item_response.id,
         created_date: list_item_response.created_date,
         last_modified: list_item_response.last_modified,
@@ -167,7 +137,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         requested_date: list_item_response.requested_date,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
-        holder_did_id,
+        holder_did_id: Some(holder_did_id),
         transport: list_item_response.transport,
         state: list_item_response.state,
         organisation_id,

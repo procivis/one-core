@@ -84,7 +84,7 @@ pub struct ProofListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
-    pub verifier_did: DidValue,
+    pub verifier_did: Option<DidValue>,
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
@@ -184,7 +184,7 @@ pub struct ProofDetailResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
-    pub verifier_did: DidValue,
+    pub verifier_did: Option<DidValue>,
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub organisation_id: Uuid,

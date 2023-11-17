@@ -14,7 +14,6 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 #[cfg(test)]
 mod test;
@@ -131,30 +130,14 @@ impl CredentialFormatter for SDJWTFormatter {
 
     fn format_presentation(
         &self,
-        credentials: &[String],
-        holder_did: &DidValue,
-        algorithm: &str,
-        auth_fn: AuthenticationFn,
+        _credentials: &[String],
+        _holder_did: &DidValue,
+        _algorithm: &str,
+        _auth_fn: AuthenticationFn,
+        _nonce: Option<String>,
     ) -> Result<String, FormatterError> {
-        let vp: Sdvp = format_payload(credentials);
-
-        let now = OffsetDateTime::now_utc();
-        let valid_for = Duration::minutes(5);
-
-        let payload = JWTPayload {
-            issued_at: Some(now),
-            expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            issuer: Some(holder_did.to_string()),
-            subject: Some(holder_did.to_string()),
-            jwt_id: Some(Uuid::new_v4().to_string()),
-            custom: vp,
-            nonce: None,
-        };
-
-        let jwt = Jwt::new("SDJWT".to_owned(), algorithm.to_owned(), None, payload);
-
-        jwt.tokenize(auth_fn)
+        // for presentation the JWT formatter is used
+        unreachable!()
     }
 
     async fn extract_presentation(
@@ -233,16 +216,6 @@ fn prepare_sd_presentation(presentation: CredentialPresentation) -> Result<Strin
     }
 
     Ok(token)
-}
-
-fn format_payload(credentials: &[String]) -> Sdvp {
-    Sdvp {
-        vp: VPContent {
-            context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
-            r#type: vec!["VerifiablePresentation".to_owned()],
-            verifiable_credential: credentials.to_vec(),
-        },
-    }
 }
 
 fn extract_disclosures(token: &str) -> Result<DecomposedToken, FormatterError> {

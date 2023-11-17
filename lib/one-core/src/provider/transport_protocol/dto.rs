@@ -1,4 +1,4 @@
-use crate::model::credential::Credential;
+use crate::model::{credential::Credential, credential_schema::CredentialSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
@@ -110,15 +110,22 @@ pub struct PresentationDefinitionRuleDTO {
     pub count: Option<u32>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, Debug)]
 pub struct CredentialGroup {
     pub claims: Vec<CredentialGroupItem>,
     pub applicable_credentials: Vec<Credential>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Debug)]
 pub struct CredentialGroupItem {
     pub id: String,
     pub key: String,
     pub required: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentedCredential {
+    pub presentation: String,
+    pub credential_schema: CredentialSchema,
+    pub request: PresentationDefinitionRequestedCredentialResponseDTO,
 }

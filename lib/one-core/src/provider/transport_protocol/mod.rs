@@ -1,4 +1,6 @@
-use self::dto::{InvitationType, PresentationDefinitionResponseDTO, SubmitIssuerResponse};
+use self::dto::{
+    InvitationType, PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
+};
 use crate::{
     model::{credential::Credential, did::Did, interaction::Interaction, proof::Proof},
     service::ssi_holder::dto::InvitationResponseDTO,
@@ -52,7 +54,7 @@ pub trait TransportProtocol {
     async fn submit_proof(
         &self,
         proof: &Proof,
-        presentation: &str,
+        credential_presentations: Vec<PresentedCredential>,
     ) -> Result<(), TransportProtocolError>;
 
     async fn accept_credential(
@@ -65,6 +67,11 @@ pub trait TransportProtocol {
         credential: &Credential,
     ) -> Result<(), TransportProtocolError>;
 
+    async fn get_presentation_definition(
+        &self,
+        proof: &Proof,
+    ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError>;
+
     // issuer methods
     /// Generates QR-code content to start the credential issuance flow
     async fn share_credential(
@@ -75,11 +82,6 @@ pub trait TransportProtocol {
     // verifier methods
     /// Generates QR-code content to start the proof request flow
     async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError>;
-
-    async fn get_presentation_definition(
-        &self,
-        proof: &Proof,
-    ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError>;
 }
 
 pub(super) fn get_base_url_from_interaction(

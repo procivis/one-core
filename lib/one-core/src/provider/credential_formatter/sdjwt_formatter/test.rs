@@ -15,7 +15,7 @@ use crate::{
     provider::credential_formatter::{
         jwt::model::JWTPayload,
         model::{CredentialPresentation, CredentialStatus},
-        sdjwt_formatter::model::{Sdvc, Sdvp},
+        sdjwt_formatter::model::Sdvc,
         CredentialFormatter, TokenVerifier,
     },
     service::{
@@ -395,83 +395,6 @@ async fn test_format_credential_presentation() {
 
     //No disclosures in the result
     assert!(!token.contains('~'));
-}
-
-#[tokio::test]
-async fn test_format_presentation() {
-    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.\
-    eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
-    MjIxLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6\
-    IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBj\
-    b250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3Yx\
-    IiwiQ29udGV4dDEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5\
-    cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7Il9zZCI6WyJZV0pqTVRJeiIsIllX\
-    SmpNVEl6Il19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwi\
-    dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
-    IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0";
-
-    let name_claim = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
-    let age_claim = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
-    let formatted_token = format!("{jwt_token}.QUJD~{name_claim}~{age_claim}");
-
-    let crypto = MockCryptoProvider::default();
-
-    let leeway = 45u64;
-
-    let sd_formatter = SDJWTFormatter {
-        crypto: Arc::new(crypto),
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: leeway,
-            }),
-        },
-    };
-
-    let result = sd_formatter.format_presentation(
-        &[formatted_token.clone()],
-        &"holder_did".parse().unwrap(),
-        "algorithm",
-        Box::new(move |_: &str| Ok(vec![65u8, 66, 67])),
-    );
-
-    assert!(result.is_ok());
-
-    let token = result.unwrap();
-
-    let jwt_parts: Vec<&str> = token.splitn(3, '.').collect();
-
-    assert_eq!(
-        jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"algorithm","typ":"SDJWT"}"#).unwrap()
-    );
-    assert_eq!(
-        jwt_parts[2],
-        &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
-    );
-
-    let payload: JWTPayload<Sdvp> = serde_json::from_str(
-        &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
-            .unwrap(),
-    )
-    .unwrap();
-
-    assert_eq!(
-        payload.expires_at,
-        Some(payload.issued_at.unwrap() + Duration::minutes(5)),
-    );
-    assert_eq!(
-        payload.invalid_before,
-        Some(payload.issued_at.unwrap() - Duration::seconds(leeway as i64)),
-    );
-
-    assert_eq!(payload.issuer, Some(String::from("holder_did")));
-    assert_eq!(payload.subject, Some(String::from("holder_did")));
-
-    let vp = payload.custom.vp;
-
-    assert_eq!(vp.verifiable_credential.len(), 1);
-    assert_eq!(vp.verifiable_credential[0], formatted_token);
 }
 
 #[tokio::test]
