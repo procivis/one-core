@@ -7,7 +7,7 @@ use one_core::common_mapper::{opt_vector_into, option_into, vector_into};
 use one_core::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
     OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO, PresentationToken,
+    PresentationSubmissionMappingDTO,
 };
 use one_core::service::{
     oidc::dto::{
@@ -173,8 +173,7 @@ pub struct OpenID4VPDirectPostRequestRestDTO {
     #[serde_as(as = "JsonString")]
     pub presentation_submission: PresentationSubmissionMappingRestDTO,
     #[schema(example = "<jwt/sdjwt token>")]
-    #[serde_as(as = "JsonString")]
-    pub vp_token: PresentationTokenRestDto,
+    pub vp_token: String,
     #[schema(example = "<UUID>")]
     pub state: Uuid,
 }
@@ -264,20 +263,4 @@ pub struct PostSsiIssuerRejectQueryParams {
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerSubmitQueryParams {
     pub credential_id: Uuid,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(untagged)]
-pub enum PresentationTokenRestDto {
-    One(String),
-    Multiple(Vec<String>),
-}
-
-impl From<PresentationTokenRestDto> for PresentationToken {
-    fn from(value: PresentationTokenRestDto) -> Self {
-        match value {
-            PresentationTokenRestDto::One(content) => PresentationToken::One(content),
-            PresentationTokenRestDto::Multiple(content) => PresentationToken::Multiple(content),
-        }
-    }
 }
