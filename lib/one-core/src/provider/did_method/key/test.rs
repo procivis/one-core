@@ -1,6 +1,9 @@
-use super::key::KeyDidMethod;
-use super::provider::DidMethodProvider;
-use crate::config::data_structure::DidKeyParams;
+use super::super::key::KeyDidMethod;
+use super::super::provider::DidMethodProvider;
+use crate::config::data_structure::{
+    AccessModifier, DidKeyParams, KeyAlgorithmEntity, KeyAlgorithmParams, Param, ParamsEnum,
+    TranslatableString,
+};
 use crate::model::did::{Did, DidType};
 use crate::model::key::Key;
 use crate::provider::did_method::DidMethodError;
@@ -39,14 +42,31 @@ fn setup_provider(
             key_provider: Arc::new(key_provider),
             method_key: "KEY".to_string(),
             params: DidKeyParams::default(),
+            key_algorithm_config: HashMap::from([(
+                "EDDSA".to_string(),
+                KeyAlgorithmEntity {
+                    r#type: "EDDSA".to_string(),
+                    display: TranslatableString::Key("EDDSA".to_string()),
+                    disabled: None,
+                    order: None,
+                    params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {
+                        algorithm: Param {
+                            access: AccessModifier::Public,
+                            value: "Ed25519".to_string(),
+                        },
+                    })),
+                },
+            )]),
         }),
     );
 
     Arc::new(DidMethodProviderImpl::new(did_methods))
 }
 
-// test vectors taken from: https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/ed25519-x25519.json
-const TEST_VECTORS: [(&str, &str); 3] = [
+// test vectors taken from:
+// - https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/ed25519-x25519.json
+// - https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/nist-curves.json
+const TEST_VECTORS: [(&str, &str); 4] = [
     (
         "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp",
         "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS",
@@ -58,6 +78,10 @@ const TEST_VECTORS: [(&str, &str); 3] = [
     (
         "did:key:z6MknGc3ocHs3zdPiJbnaaqDi58NGb4pk1Sp9WxWufuXSdxf",
         "8pM1DN3RiT8vbom5u1sNryaNT1nyL8CTTW3b5PwWXRBH",
+    ),
+    (
+        "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb",
+        "ekVhkcBFq3w7jULLkBVye6PwaTuMbhJYuzwFnNcgQAPV",
     ),
 ];
 
@@ -86,10 +110,7 @@ async fn test_did_key_resolve() {
     );
 
     for (did, public_key) in TEST_VECTORS {
-        let result = provider.resolve(&did.parse().unwrap()).await;
-
-        assert!(result.is_ok());
-        let result = result.unwrap();
+        let result = provider.resolve(&did.parse().unwrap()).await.unwrap();
         let key = result
             .keys
             .unwrap()
@@ -149,7 +170,7 @@ async fn test_create_did_success() {
     key_storage
         .expect_fingerprint()
         .times(1)
-        .returning(move |_| "did:key:MOCK".to_string());
+        .returning(move |_, _| Ok("did:key:MOCK".to_string()));
 
     let mut did_repository = MockDidRepository::default();
     did_repository
@@ -220,7 +241,7 @@ async fn test_create_did_already_exists() {
     key_storage
         .expect_fingerprint()
         .times(1)
-        .returning(move |_| "did:key:MOCK".to_string());
+        .returning(move |_, _| Ok("did:key:MOCK".to_string()));
 
     let mut did_repository = MockDidRepository::default();
     did_repository

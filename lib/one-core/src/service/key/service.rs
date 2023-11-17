@@ -1,11 +1,5 @@
 use crate::{
-    config::{
-        data_structure::{KeyAlgorithmEntity, ParamsEnum},
-        validator::{
-            key::{find_key_algorithm, validate_key_storage},
-            ConfigValidationError,
-        },
-    },
+    config::validator::key::validate_key_storage,
     model::{
         key::{KeyId, KeyRelations},
         organisation::OrganisationRelations,
@@ -51,10 +45,7 @@ impl KeyService {
     ///
     /// * `request` - key data
     pub async fn generate_key(&self, request: KeyRequestDTO) -> Result<KeyId, ServiceError> {
-        let algorithm_entity = find_key_algorithm(&request.key_type, &self.config.key_algorithm)?;
         validate_key_storage(&request.storage_type, &self.config.key_storage)?;
-
-        let algorithm = get_algorithm_from_storage(algorithm_entity)?;
 
         let organisation = self
             .organisation_repository
@@ -63,7 +54,7 @@ impl KeyService {
             .map_err(ServiceError::from)?;
 
         let provider = self.key_provider.get_key_storage(&request.storage_type)?;
-        let key = provider.generate(&algorithm).await?;
+        let key = provider.generate(&request.key_type).await?;
 
         let uuid = self
             .key_repository
@@ -90,20 +81,5 @@ impl KeyService {
             .map_err(ServiceError::from)?;
 
         Ok(result.into())
-    }
-}
-
-fn get_algorithm_from_storage(
-    algorithm_entity: &KeyAlgorithmEntity,
-) -> Result<String, ConfigValidationError> {
-    let params = algorithm_entity
-        .params
-        .as_ref()
-        .ok_or(ConfigValidationError::KeyNotFound(
-            "params is None".to_string(),
-        ))?;
-    match params {
-        ParamsEnum::Parsed(value) => Ok(value.algorithm.value.to_owned()),
-        _ => Err(ConfigValidationError::UnparsedParameterTree),
     }
 }

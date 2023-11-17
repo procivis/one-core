@@ -4,9 +4,8 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::{config::data_structure::CoreConfig, repository::key_repository::KeyRepository};
 
-pub mod service;
-
 pub mod dto;
+pub mod service;
 
 pub(crate) mod mapper;
 pub(crate) mod validator;

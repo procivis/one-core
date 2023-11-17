@@ -1,5 +1,5 @@
 use crate::config::data_structure::ExchangeParams::OPENID4VC;
-use crate::config::data_structure::{ExchangeParams, ParamsEnum};
+use crate::config::data_structure::{ExchangeParams, KeyAlgorithmEntity, ParamsEnum};
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
@@ -11,6 +11,7 @@ use crate::{
     service::error::ServiceError,
 };
 use shared_types::{DidId, DidValue};
+use std::collections::HashMap;
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -58,10 +59,9 @@ pub fn list_response_try_into<T, F: TryInto<T>>(
 
 pub(crate) fn get_algorithm_from_key_algorithm(
     signature_type: &str,
-    config: &CoreConfig,
+    key_algorithm_config: &HashMap<String, KeyAlgorithmEntity>,
 ) -> Result<String, ServiceError> {
-    let algorithm = config
-        .key_algorithm
+    let algorithm = key_algorithm_config
         .get(signature_type)
         .ok_or(ServiceError::MissingSigner(signature_type.to_owned()))?;
 

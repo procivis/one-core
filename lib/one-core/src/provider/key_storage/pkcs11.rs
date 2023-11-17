@@ -1,5 +1,5 @@
 use crate::{
-    provider::key_storage::{GeneratedKey, KeyStorage},
+    provider::{key_algorithm::GeneratedKey, key_storage::KeyStorage},
     service::error::ServiceError,
 };
 
@@ -12,11 +12,11 @@ impl KeyStorage for PKCS11KeyProvider {
         todo!()
     }
 
-    fn fingerprint(&self, _public_key: &[u8]) -> String {
+    fn fingerprint(&self, _public_key: &[u8], _key_type: &str) -> Result<String, ServiceError> {
         todo!()
     }
 
-    async fn generate(&self, _algorithm: &str) -> Result<GeneratedKey, ServiceError> {
+    async fn generate(&self, _key_type: &str) -> Result<GeneratedKey, ServiceError> {
         todo!()
     }
 }

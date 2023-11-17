@@ -25,7 +25,7 @@ impl TokenVerifier for KeyVerification {
         token: &'a str,
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
-        let algorithm = get_algorithm_from_key_algorithm(algorithm, &self.config)
+        let algorithm = get_algorithm_from_key_algorithm(algorithm, &self.config.key_algorithm)
             .map_err(|_| SignerError::CouldNotSign)?;
 
         let signer = self.crypto.get_signer(&algorithm)?;

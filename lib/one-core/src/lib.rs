@@ -42,6 +42,8 @@ use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 use crate::provider::credential_formatter::provider::credential_formatters_from_config;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+use crate::provider::key_algorithm::{key_algorithms_from_config, KeyAlgorithm};
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::RevocationMethodProviderImpl;
 use crate::provider::revocation::status_list_2021::StatusList2021;
@@ -56,6 +58,7 @@ use crate::service::revocation_list::RevocationListService;
 #[derive(Clone)]
 pub struct OneCore {
     pub did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>>,
+    pub key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>>,
     pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
     pub credential_formatters: HashMap<String, Arc<dyn CredentialFormatter + Send + Sync>>,
@@ -120,7 +123,10 @@ impl OneCore {
             credential_formatters.to_owned(),
         ));
 
-        let key_providers = key_providers_from_config(&config.key_storage)?;
+        let key_algorithms = key_algorithms_from_config(&config.key_algorithm)?;
+        let key_algorithm_provider =
+            Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms.to_owned()));
+        let key_providers = key_providers_from_config(&config.key_storage, key_algorithm_provider)?;
         let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
 
         let did_methods = did_method_providers_from_config(
@@ -128,6 +134,7 @@ impl OneCore {
             data_provider.get_did_repository(),
             data_provider.get_organisation_repository(),
             key_provider.clone(),
+            &config.key_algorithm,
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
 
@@ -194,6 +201,7 @@ impl OneCore {
 
         Ok(OneCore {
             did_methods,
+            key_algorithms,
             key_providers,
             transport_protocols,
             credential_formatters,

@@ -18,4 +18,6 @@ pub enum ConfigParseError {
     InvalidType(String, String),
     #[error("Missing error key in params of `{0}`")]
     MissingErrorMessage(String),
+    #[error("Missing parameter `{0}` in params of `{1}`")]
+    MissingParameter(String, String),
 }

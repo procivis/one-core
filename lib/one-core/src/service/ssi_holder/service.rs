@@ -207,7 +207,8 @@ impl SSIHolderService {
             .find(|k| k.role == KeyRole::AssertionMethod)
             .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
 
-        let algorithm = get_algorithm_from_key_algorithm(&key.key.key_type, &self.config)?;
+        let algorithm =
+            get_algorithm_from_key_algorithm(&key.key.key_type, &self.config.key_algorithm)?;
 
         let signer = self.crypto.get_signer(&algorithm)?;
 

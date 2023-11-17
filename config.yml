@@ -170,6 +170,13 @@ keyAlgorithm:
     params:
       public:
         algorithm: "Ed25519"
+  ES256:
+    display: "keyAlgorithm.ecdsa"
+    order: 3
+    type: "ES256"
+    params:
+      public:
+        algorithm: "ES256"
 keyStorage:
   INTERNAL:
     display: "keyStorage.internal"
