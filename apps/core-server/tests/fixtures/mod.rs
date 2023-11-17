@@ -1,5 +1,8 @@
 use core_server::Config;
-use one_core::model::proof::{Proof, ProofStateEnum};
+use one_core::model::{
+    claim::Claim,
+    proof::{Proof, ProofStateEnum},
+};
 use shared_types::{DidId, DidValue};
 use sql_data_provider::{self, test_utilities::*, DbConn};
 use std::str::FromStr;
@@ -57,6 +60,26 @@ pub async fn create_proof_schema(
         .unwrap()
 }
 
+pub async fn get_claims(db_conn: &DbConn) -> Vec<Claim> {
+    get_all_claims(db_conn).await.unwrap()
+}
+
+pub async fn create_did_details(
+    db_conn: &DbConn,
+    did_name: &str,
+    did_value: &str,
+    organisation_id: &str,
+) -> DidId {
+    insert_did(
+        db_conn,
+        did_name,
+        DidValue::from_str(did_value).unwrap(),
+        organisation_id,
+    )
+    .await
+    .unwrap()
+}
+
 pub async fn create_credential_schema(
     db_conn: &DbConn,
     name: &str,
@@ -99,7 +122,7 @@ pub async fn create_proof(
     .unwrap()
 }
 
-pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &Vec<u8>) -> String {
+pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> String {
     insert_interaction(db_conn, host, data).await.unwrap()
 }
 

@@ -98,3 +98,25 @@ pub(crate) fn interaction_data_to_dto(
         serde_json::from_str(&json_data).map_err(|e| ServiceError::MappingError(e.to_string()))?;
     Ok(interaction_data_parsed)
 }
+
+pub(crate) fn vec_last_position_from_token_path(path: &str) -> Result<usize, ServiceError> {
+    // Find the position of '[' and ']'
+    if let Some(open_bracket) = path.rfind('[') {
+        if let Some(close_bracket) = path.rfind(']') {
+            // Extract the substring between '[' and ']'
+            let value = &path[open_bracket + 1..close_bracket];
+
+            let parsed_value = value.parse().map_err(|_| {
+                ServiceError::MappingError("Could not parse vec position".to_string())
+            })?;
+
+            Ok(parsed_value)
+        } else {
+            Err(ServiceError::MappingError(
+                "Credential path is incorrect".to_string(),
+            ))
+        }
+    } else {
+        Ok(0)
+    }
+}

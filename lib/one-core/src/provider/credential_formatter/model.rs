@@ -45,6 +45,7 @@ pub struct Presentation {
     pub issued_at: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
     pub issuer_did: Option<DidValue>,
+    pub nonce: Option<String>,
     pub credentials: Vec<String>,
 }
 

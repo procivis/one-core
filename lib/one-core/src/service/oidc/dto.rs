@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
+use url::Url;
+use uuid::Uuid;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataResponseDTO {
@@ -75,6 +77,10 @@ pub enum OpenID4VCIError {
     UnsupportedCredentialFormat,
     #[error("unsupported_credential_type")]
     UnsupportedCredentialType,
+    #[error("vp_formats_not_supported")]
+    VPFormatsNotSupported,
+    #[error("vc_formats_not_supported")]
+    VCFormatsNotSupported,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -107,4 +113,44 @@ pub struct OpenID4VCICredentialRequestDTO {
 pub struct OpenID4VCIProofRequestDTO {
     pub proof_type: String,
     pub jwt: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenID4VPDirectPostRequestDTO {
+    pub presentation_submission: PresentationSubmissionMappingDTO,
+    pub vp_token: PresentationToken,
+    pub state: Uuid,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PresentationSubmissionMappingDTO {
+    pub id: String,
+    pub definition_id: String,
+    pub descriptor_map: Vec<PresentationSubmissionDescriptorDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PresentationSubmissionDescriptorDTO {
+    pub id: String,
+    pub format: String,
+    pub path: String,
+    pub path_nested: Option<NestedPresentationSubmissionDescriptorDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NestedPresentationSubmissionDescriptorDTO {
+    pub format: String,
+    pub path: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct OpenID4VPDirectPostResponseDTO {
+    pub redirect_uri: Option<Url>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum PresentationToken {
+    One(String),
+    Multiple(Vec<String>),
 }

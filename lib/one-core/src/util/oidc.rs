@@ -27,3 +27,12 @@ pub fn map_from_oidc_format_to_core(format: &str) -> Result<String, ServiceError
         )),
     }
 }
+
+pub fn map_from_oidc_vp_format_to_core(format: &str) -> Result<String, ServiceError> {
+    match format {
+        "jwt_vp_json" => Ok("JWT".to_string()),
+        _ => Err(ServiceError::OpenID4VCError(
+            OpenID4VCIError::UnsupportedCredentialFormat,
+        )),
+    }
+}

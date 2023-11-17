@@ -8,6 +8,8 @@ mod create_credential_tests;
 // PROOF
 #[path = "api/proof/create_proof_tests.rs"]
 mod create_proof_tests;
+#[path = "api/oidc/direct_post_tests.rs"]
+mod direct_post_tests;
 #[path = "api/proof/get_presentation_definition_tests.rs"]
 mod get_presentation_definition_tests;
 

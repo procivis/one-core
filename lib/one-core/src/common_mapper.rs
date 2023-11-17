@@ -34,6 +34,10 @@ pub fn vector_try_into<T, F: TryInto<T>>(
 //     input.iter().map(|item| item.clone().into()).collect()
 // }
 
+pub fn option_into<U, T: Into<U>>(o: Option<T>) -> Option<U> {
+    o.map(Into::into)
+}
+
 pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListResponse<T> {
     GetListResponse::<T> {
         values: vector_into(input.values),

@@ -3,7 +3,12 @@ use crate::{
     serialize::front_time,
 };
 use dto_mapper::From;
-use one_core::common_mapper::{opt_vector_into, vector_into};
+use one_core::common_mapper::{opt_vector_into, option_into, vector_into};
+use one_core::service::oidc::dto::{
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
+    OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
+    PresentationSubmissionMappingDTO, PresentationToken,
+};
 use one_core::service::{
     oidc::dto::{
         OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
@@ -18,8 +23,10 @@ use one_core::service::{
     ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
 };
 use serde::{Deserialize, Serialize};
+use serde_with::{self, json::JsonString};
 use shared_types::DidValue;
 use time::OffsetDateTime;
+use url::Url;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
@@ -155,6 +162,54 @@ pub enum OpenID4VCIErrorRestEnum {
     InvalidOrMissingProof,
     UnsupportedCredentialFormat,
     UnsupportedCredentialType,
+    VPFormatsNotSupported,
+    VCFormatsNotSupported,
+}
+
+#[serde_with::serde_as]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "OpenID4VPDirectPostRequestDTO")]
+pub struct OpenID4VPDirectPostRequestRestDTO {
+    #[serde_as(as = "JsonString")]
+    pub presentation_submission: PresentationSubmissionMappingRestDTO,
+    #[schema(example = "<jwt/sdjwt token>")]
+    #[serde_as(as = "JsonString")]
+    pub vp_token: PresentationTokenRestDto,
+    #[schema(example = "<UUID>")]
+    pub state: Uuid,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "PresentationSubmissionMappingDTO")]
+pub struct PresentationSubmissionMappingRestDTO {
+    pub id: String,
+    pub definition_id: String,
+    #[convert(with_fn = "vector_into")]
+    pub descriptor_map: Vec<PresentationSubmissionDescriptorRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "PresentationSubmissionDescriptorDTO")]
+pub struct PresentationSubmissionDescriptorRestDTO {
+    pub id: String,
+    #[schema(example = "SDJWT")]
+    pub format: String,
+    pub path: String,
+    #[convert(with_fn = "option_into")]
+    pub path_nested: Option<NestedPresentationSubmissionDescriptorRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = "NestedPresentationSubmissionDescriptorDTO")]
+pub struct NestedPresentationSubmissionDescriptorRestDTO {
+    pub format: String,
+    pub path: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = "OpenID4VPDirectPostResponseDTO")]
+pub struct OpenID4VPDirectPostResponseRestDTO {
+    pub redirect_uri: Option<Url>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
@@ -209,4 +264,20 @@ pub struct PostSsiIssuerRejectQueryParams {
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerSubmitQueryParams {
     pub credential_id: Uuid,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(untagged)]
+pub enum PresentationTokenRestDto {
+    One(String),
+    Multiple(Vec<String>),
+}
+
+impl From<PresentationTokenRestDto> for PresentationToken {
+    fn from(value: PresentationTokenRestDto) -> Self {
+        match value {
+            PresentationTokenRestDto::One(content) => PresentationToken::One(content),
+            PresentationTokenRestDto::Multiple(content) => PresentationToken::Multiple(content),
+        }
+    }
 }

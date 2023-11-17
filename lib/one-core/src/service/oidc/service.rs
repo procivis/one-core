@@ -2,7 +2,10 @@ use crate::common_mapper::{
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_token_expires_in,
     get_or_create_did,
 };
-use crate::common_validator::throw_if_latest_credential_state_not_eq;
+use crate::common_validator::{
+    throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
+};
+use crate::model::claim::Claim;
 use crate::model::credential::{
     CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
     UpdateCredentialRequest,
@@ -12,16 +15,26 @@ use crate::model::credential_schema::{
 };
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
+use crate::model::proof::{
+    ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
+};
+use crate::model::proof_schema::{
+    ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
+};
 use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
+    PresentationToken,
 };
-use crate::service::oidc::mapper::{interaction_data_to_dto, parse_access_token};
+use crate::service::oidc::mapper::{
+    interaction_data_to_dto, parse_access_token, vec_last_position_from_token_path,
+};
+use crate::service::oidc::model::OpenID4VPInteractionContent;
 use crate::service::oidc::validator::{
     throw_if_credential_request_invalid, throw_if_interaction_created_date,
     throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
-    throw_if_token_request_invalid,
+    throw_if_token_request_invalid, validate_credential, validate_presentation,
 };
 use crate::service::oidc::{
     dto::{
@@ -31,12 +44,16 @@ use crate::service::oidc::{
     mapper::{create_issuer_metadata_response, create_service_discovery_response},
     OIDCService,
 };
+use crate::util::key_verification::KeyVerification;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
+use std::collections::HashMap;
 use std::ops::Add;
 use std::str::FromStr;
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::dto::{OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO};
 
 impl OIDCService {
     pub async fn oidc_get_issuer_metadata(
@@ -255,5 +272,185 @@ impl OIDCService {
             .await?;
 
         interaction_data.try_into()
+    }
+
+    pub async fn oidc_verifier_direct_post(
+        &self,
+        request: OpenID4VPDirectPostRequestDTO,
+    ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
+        let interaction_id = request.state;
+
+        let proof_request = self
+            .proof_repository
+            .get_proof_by_interaction_id(
+                &interaction_id,
+                &ProofRelations {
+                    schema: Some(ProofSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                        ..Default::default()
+                    }),
+                    interaction: Some(InteractionRelations::default()),
+                    state: Some(ProofStateRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let interaction =
+            proof_request
+                .interaction
+                .as_ref()
+                .ok_or(ServiceError::OpenID4VCError(
+                    OpenID4VCIError::InvalidRequest,
+                ))?;
+
+        let interaction_data: OpenID4VPInteractionContent =
+            if let Some(interaction_data) = interaction.data.as_ref() {
+                serde_json::from_slice(interaction_data)
+                    .map_err(|e| ServiceError::MappingError(e.to_string()))
+            } else {
+                Err(ServiceError::MappingError(
+                    "Interaction data is missing or incorrect".to_string(),
+                ))
+            }?;
+
+        throw_if_latest_proof_state_not_eq(&proof_request, ProofStateEnum::Pending)?;
+
+        let presentation_submission = &request.presentation_submission;
+
+        if presentation_submission.definition_id != interaction_id.to_string() {
+            return Err(OpenID4VCIError::InvalidRequest.into());
+        }
+
+        //collect expected keys
+        let mut expected_claims: Vec<ProofSchemaClaim> = Vec::new();
+        if let Some(proof_schema) = proof_request.schema {
+            if let Some(claim_schemas) = proof_schema.claim_schemas {
+                for proof_claim_schema in claim_schemas {
+                    expected_claims.push(proof_claim_schema);
+                }
+            }
+        }
+
+        let presentation_strings = match request.vp_token {
+            PresentationToken::One(content) => {
+                vec![content]
+            }
+            PresentationToken::Multiple(contents) => contents,
+        };
+
+        let mut received_claims: HashMap<String, String> = HashMap::new();
+
+        let key_verification = KeyVerification {
+            config: self.config.clone(),
+            crypto: self.crypto.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+        };
+
+        //Unpack presentations and credentials
+        for presentation_submitted in &presentation_submission.descriptor_map {
+            if !presentation_submitted.id.starts_with("input_") {
+                return Err(OpenID4VCIError::InvalidOrMissingProof.into());
+            }
+
+            let presentation_string_index =
+                vec_last_position_from_token_path(&presentation_submitted.path)?;
+            let presentation_string = presentation_strings
+                .get(presentation_string_index)
+                .ok_or(OpenID4VCIError::InvalidRequest)?;
+
+            let presentation = validate_presentation(
+                presentation_string,
+                &interaction_data.nonce,
+                &presentation_submitted.format,
+                &self.formatter_provider,
+                Box::new(key_verification.clone()),
+            )
+            .await?;
+
+            if let Some(path_nested) = &presentation_submitted.path_nested {
+                let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
+                let credential_string = presentation
+                    .credentials
+                    .get(credential_index)
+                    .ok_or(OpenID4VCIError::InvalidRequest)?;
+
+                let credential = validate_credential(
+                    credential_string,
+                    presentation
+                        .issuer_did
+                        .as_ref()
+                        .ok_or(ServiceError::ValidationError(
+                            "Missing holder id".to_string(),
+                        ))?,
+                    &path_nested.format,
+                    &self.formatter_provider,
+                    Box::new(key_verification.clone()),
+                    &self.revocation_method_provider,
+                )
+                .await?;
+
+                received_claims.extend(credential.claims.values);
+            }
+        }
+
+        let matched_claims: Result<Vec<(ProofSchemaClaim, String)>, ServiceError> = expected_claims
+            .into_iter()
+            .filter_map(|expected_claim| {
+                if let Some((_, value)) = received_claims
+                    .iter()
+                    .find(|(key, _)| key == &&expected_claim.schema.key)
+                {
+                    Some(Ok((expected_claim, value.to_owned())))
+                } else if !expected_claim.required {
+                    None //Skip that one
+                } else {
+                    Some(Err(ServiceError::ValidationError(
+                        "Proof has missing claim".to_string(),
+                    )))
+                }
+            })
+            .collect();
+
+        let proved_claims = matched_claims?;
+
+        self.accept_proof(&proof_request.id, proved_claims).await?;
+
+        Ok(OpenID4VPDirectPostResponseDTO { redirect_uri: None })
+    }
+
+    async fn accept_proof(
+        &self,
+        id: &ProofId,
+        proved_claims: Vec<(ProofSchemaClaim, String)>,
+    ) -> Result<(), ServiceError> {
+        let now = OffsetDateTime::now_utc();
+        let claims: Vec<Claim> = proved_claims
+            .into_iter()
+            .map(|(proof_schema, value)| Claim {
+                id: Uuid::new_v4(),
+                created_date: now,
+                last_modified: now,
+                value,
+                schema: Some(proof_schema.schema),
+            })
+            .collect();
+
+        self.claim_repository
+            .create_claim_list(claims.clone())
+            .await?;
+        self.proof_repository.set_proof_claims(id, claims).await?;
+
+        self.proof_repository
+            .set_proof_state(
+                id,
+                ProofState {
+                    created_date: now,
+                    last_modified: now,
+                    state: ProofStateEnum::Accepted,
+                },
+            )
+            .await
+            .map_err(ServiceError::from)
     }
 }

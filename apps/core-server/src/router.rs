@@ -187,6 +187,10 @@ fn router(state: AppState, config: Config) -> Router {
             post(ssi::controller::oidc_create_credential),
         )
         .route(
+            "/ssi/oidc-verifier/v1/response",
+            post(ssi::controller::oidc_verifier_direct_post),
+        )
+        .route(
             "/ssi/revocation/v1/list/:id",
             get(ssi::controller::get_revocation_list_by_id),
         )
@@ -382,6 +386,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::oidc_service_discovery,
             endpoint::ssi::controller::oidc_create_token,
             endpoint::ssi::controller::oidc_create_credential,
+            endpoint::ssi::controller::oidc_verifier_direct_post,
 
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_submit,
@@ -463,6 +468,12 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::OpenID4VCIErrorResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIErrorRestEnum,
                 endpoint::ssi::dto::OpenID4VCITokenRequestRestDTO,
+                endpoint::ssi::dto::OpenID4VPDirectPostRequestRestDTO,
+                endpoint::ssi::dto::OpenID4VPDirectPostResponseRestDTO,
+                endpoint::ssi::dto::PresentationTokenRestDto,
+                endpoint::ssi::dto::NestedPresentationSubmissionDescriptorRestDTO,
+                endpoint::ssi::dto::PresentationSubmissionMappingRestDTO,
+                endpoint::ssi::dto::PresentationSubmissionDescriptorRestDTO,
                 endpoint::ssi::dto::DurationSecondsRest,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
