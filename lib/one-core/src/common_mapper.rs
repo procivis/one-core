@@ -8,6 +8,7 @@ use crate::{
     config::data_structure::CoreConfig, model::common::GetListResponse,
     service::error::ServiceError,
 };
+use serde::{Deserialize, Deserializer};
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
@@ -143,4 +144,16 @@ pub(crate) async fn get_or_create_did(
             }
         },
     )
+}
+
+pub(super) fn deserialize_with_serde_json<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: for<'a> Deserialize<'a>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value.as_str() {
+        None => serde_json::from_value(value).map_err(serde::de::Error::custom),
+        Some(buffer) => serde_json::from_str(buffer).map_err(serde::de::Error::custom),
+    }
 }

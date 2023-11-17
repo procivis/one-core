@@ -1,4 +1,3 @@
-use serde::{Deserialize, Deserializer};
 use std::collections::{HashMap, HashSet};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -49,7 +48,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     let client_metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata()?)
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
     let presentation_definition = serde_json::to_string(
-        &create_open_id_for_vp_presentation_definition(interaction_id, proof)?,
+        &create_open_id_for_vp_presentation_definition(interaction_id, &proof)?,
     )
     .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
     let callback_url = format!("{}/ssi/oidc-verifier/v1/response", get_url(base_url)?);
@@ -125,7 +124,7 @@ pub(crate) fn get_claim_name_by_json_path(
 
 pub(crate) fn create_open_id_for_vp_presentation_definition(
     interaction_id: InteractionId,
-    proof: Proof,
+    proof: &Proof,
 ) -> Result<OpenID4VPPresentationDefinition, TransportProtocolError> {
     let mut requested_credentials = HashSet::new();
     let claim_schemas = proof
@@ -336,18 +335,6 @@ pub(super) fn create_claims_from_credential_definition(
     }
 
     Ok(result)
-}
-
-pub(super) fn deserialize_with_serde_json<'de, D, T>(deserializer: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: for<'a> Deserialize<'a>,
-{
-    let value = serde_json::Value::deserialize(deserializer)?;
-    match value.as_str() {
-        None => serde_json::from_value(value).map_err(serde::de::Error::custom),
-        Some(buffer) => serde_json::from_str(buffer).map_err(serde::de::Error::custom),
-    }
 }
 
 pub(super) fn create_presentation_submission(

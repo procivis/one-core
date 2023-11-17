@@ -1,8 +1,11 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
-use crate::model::credential_schema::CredentialSchema;
+use crate::model::claim_schema::ClaimSchemaId;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaId};
 use crate::model::interaction::Interaction;
+use crate::model::proof_schema::ProofSchemaClaim;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{DetailCredential, Presentation};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -16,6 +19,8 @@ use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::{map_from_oidc_format_to_core, map_from_oidc_vp_format_to_core};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
+
+use super::model::OpenID4VPPresentationDefinitionInputDescriptors;
 
 pub(crate) fn throw_if_token_request_invalid(
     request: &OpenID4VCITokenRequestDTO,
@@ -207,4 +212,69 @@ pub(super) async fn validate_credential(
     }
 
     Ok(credential)
+}
+
+pub(super) fn validate_claims(
+    credential: DetailCredential,
+    descriptor: &OpenID4VPPresentationDefinitionInputDescriptors,
+    claim_to_credential_schema_mapping: &HashMap<ClaimSchemaId, CredentialSchemaId>,
+    expected_credential_claims: &mut HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>>,
+) -> Result<Vec<(ProofSchemaClaim, String)>, ServiceError> {
+    let first_claim_schema =
+        descriptor
+            .constraints
+            .fields
+            .get(0)
+            .ok_or(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            ))?;
+
+    let expected_credential_schema_id = claim_to_credential_schema_mapping
+        .get(&first_claim_schema.id)
+        .ok_or(ServiceError::OpenID4VCError(
+            OpenID4VCIError::InvalidRequest,
+        ))?;
+
+    let mut expected_credential_claims = expected_credential_claims
+        .remove(expected_credential_schema_id)
+        .ok_or(ServiceError::OpenID4VCError(
+            OpenID4VCIError::InvalidRequest,
+        ))?;
+
+    let mut proved_claims: Vec<(ProofSchemaClaim, String)> = Vec::new();
+    for field in &descriptor.constraints.fields {
+        if let Some(expected_claim_index) = expected_credential_claims
+            .iter()
+            .position(|item| item.schema.id == field.id)
+        {
+            // Remove the item at the found index
+            let matched_claim = expected_credential_claims.remove(expected_claim_index);
+
+            let value = credential
+                .claims
+                .values
+                .get(&matched_claim.schema.key)
+                .ok_or(ServiceError::OpenID4VCError(
+                    OpenID4VCIError::InvalidRequest,
+                ))?;
+
+            proved_claims.push((matched_claim.clone(), value.to_owned()))
+        } else {
+            return Err(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            ));
+        }
+    }
+
+    if expected_credential_claims
+        .iter()
+        .any(|claim| claim.required)
+    {
+        // Required proof claim not provided
+        return Err(ServiceError::OpenID4VCError(
+            OpenID4VCIError::InvalidRequest,
+        ));
+    }
+
+    Ok(proved_claims)
 }

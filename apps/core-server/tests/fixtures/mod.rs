@@ -54,11 +54,17 @@ pub async fn create_proof_schema(
     db_conn: &DbConn,
     name: &str,
     organisation_id: &str,
-    claims: &Vec<(Uuid, &str, bool, u32, &str)>,
+    claims: &[(Uuid, &str, bool, u32, &str)],
 ) -> String {
-    insert_proof_schema_with_claims_to_database(db_conn, None, claims, organisation_id, name)
-        .await
-        .unwrap()
+    insert_proof_schema_with_claims_to_database(
+        db_conn,
+        None,
+        &claims.to_vec(),
+        organisation_id,
+        name,
+    )
+    .await
+    .unwrap()
 }
 
 pub async fn get_claims(db_conn: &DbConn) -> Vec<Claim> {

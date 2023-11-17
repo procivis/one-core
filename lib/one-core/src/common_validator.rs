@@ -4,8 +4,10 @@ use std::time::Duration;
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialStateEnum};
+
 use crate::model::did::{Did, DidType};
 use crate::model::proof::{Proof, ProofStateEnum};
+
 use crate::service::error::ServiceError;
 
 pub(crate) fn throw_if_latest_credential_state_not_eq(

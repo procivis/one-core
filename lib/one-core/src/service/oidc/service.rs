@@ -6,6 +6,7 @@ use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchemaId;
 use crate::model::credential::{
     CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
     UpdateCredentialRequest,
@@ -21,6 +22,7 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+
 use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
@@ -33,7 +35,7 @@ use crate::service::oidc::model::OpenID4VPInteractionContent;
 use crate::service::oidc::validator::{
     throw_if_credential_request_invalid, throw_if_interaction_created_date,
     throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
-    throw_if_token_request_invalid, validate_credential, validate_presentation,
+    throw_if_token_request_invalid, validate_claims, validate_credential, validate_presentation,
 };
 use crate::service::oidc::{
     dto::{
@@ -285,7 +287,9 @@ impl OIDCService {
                 &interaction_id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                        claim_schemas: Some(ProofSchemaClaimRelations {
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations::default()),
@@ -321,34 +325,46 @@ impl OIDCService {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
-        //collect expected keys
-        let mut expected_claims: Vec<ProofSchemaClaim> = Vec::new();
-        if let Some(proof_schema) = proof_request.schema {
-            if let Some(claim_schemas) = proof_schema.claim_schemas {
-                for proof_claim_schema in claim_schemas {
-                    expected_claims.push(proof_claim_schema);
-                }
-            }
-        }
-
         let presentation_strings: Vec<String> = if request.vp_token.starts_with('[') {
             serde_json::from_str(&request.vp_token).map_err(|_| OpenID4VCIError::InvalidRequest)?
         } else {
             vec![request.vp_token]
         };
 
-        let mut received_claims: HashMap<String, String> = HashMap::new();
+        // collect expected credentials
+        let mut claim_to_credential_schema_mapping: HashMap<ClaimSchemaId, CredentialSchemaId> =
+            HashMap::new();
+        let mut expected_credential_claims: HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>> =
+            HashMap::new();
+        if let Some(proof_schema) = &proof_request.schema {
+            if let Some(claim_schemas) = &proof_schema.claim_schemas {
+                for proof_claim_schema in claim_schemas {
+                    if let Some(credential_schema) = &proof_claim_schema.credential_schema {
+                        let entry = expected_credential_claims
+                            .entry(credential_schema.id)
+                            .or_default();
+                        entry.push(proof_claim_schema);
+                        claim_to_credential_schema_mapping
+                            .insert(proof_claim_schema.schema.id, credential_schema.id);
+                    }
+                }
+            }
+        }
 
         let key_verification = KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
         };
 
+        let mut total_proved_claims: Vec<(ProofSchemaClaim, String)> = Vec::new();
         //Unpack presentations and credentials
         for presentation_submitted in &presentation_submission.descriptor_map {
-            if !presentation_submitted.id.starts_with("input_") {
-                return Err(OpenID4VCIError::InvalidOrMissingProof.into());
-            }
+            let credential_definition = interaction_data
+                .presentation_definition
+                .input_descriptors
+                .iter()
+                .find(|descriptor| descriptor.id == presentation_submitted.id)
+                .ok_or(OpenID4VCIError::InvalidRequest)?;
 
             let presentation_string_index =
                 vec_last_position_from_token_path(&presentation_submitted.path)?;
@@ -387,31 +403,19 @@ impl OIDCService {
                 )
                 .await?;
 
-                received_claims.extend(credential.claims.values);
+                let proved_claims: Vec<(ProofSchemaClaim, String)> = validate_claims(
+                    credential,
+                    credential_definition,
+                    &claim_to_credential_schema_mapping,
+                    &mut expected_credential_claims,
+                )?;
+
+                total_proved_claims.extend(proved_claims);
             }
         }
 
-        let matched_claims: Result<Vec<(ProofSchemaClaim, String)>, ServiceError> = expected_claims
-            .into_iter()
-            .filter_map(|expected_claim| {
-                if let Some((_, value)) = received_claims
-                    .iter()
-                    .find(|(key, _)| key == &&expected_claim.schema.key)
-                {
-                    Some(Ok((expected_claim, value.to_owned())))
-                } else if !expected_claim.required {
-                    None //Skip that one
-                } else {
-                    Some(Err(ServiceError::ValidationError(
-                        "Proof has missing claim".to_string(),
-                    )))
-                }
-            })
-            .collect();
-
-        let proved_claims = matched_claims?;
-
-        self.accept_proof(&proof_request.id, proved_claims).await?;
+        self.accept_proof(&proof_request.id, total_proved_claims)
+            .await?;
 
         Ok(OpenID4VPDirectPostResponseDTO { redirect_uri: None })
     }
