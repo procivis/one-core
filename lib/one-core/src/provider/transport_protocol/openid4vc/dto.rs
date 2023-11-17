@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
+    common_mapper::deserialize_with_serde_json,
     model::{claim_schema::ClaimSchemaId, interaction::InteractionId},
-    provider::transport_protocol::openid4vc::mapper::deserialize_with_serde_json,
 };
 use serde::{Deserialize, Serialize};
 use url::Url;

@@ -7,7 +7,7 @@ use self::{
     },
     mapper::{
         create_claims_from_credential_definition, create_credential_offer_encoded,
-        create_presentation_submission,
+        create_open_id_for_vp_presentation_definition, create_presentation_submission,
     },
     model::{HolderInteractionData, OpenID4VCIInteractionContent},
 };
@@ -503,8 +503,13 @@ impl TransportProtocol for OpenID4VC {
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let interaction_id = Uuid::new_v4();
+
+        // Pass the expected presentation content to interaction for verification
+        let presentation_definition =
+            create_open_id_for_vp_presentation_definition(interaction_id, &proof)?;
         let interaction_content = OpenID4VPInteractionContent {
             nonce: self.crypto.generate_alphanumeric(32),
+            presentation_definition,
         };
 
         add_new_interaction(

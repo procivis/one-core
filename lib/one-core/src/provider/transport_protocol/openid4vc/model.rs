@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use super::dto::OpenID4VPPresentationDefinition;
+
 #[derive(Clone, Serialize, Deserialize)]
 pub(super) struct OpenID4VCIInteractionContent {
     pub pre_authorized_code_used: bool,
@@ -12,6 +14,7 @@ pub(super) struct OpenID4VCIInteractionContent {
 #[derive(Clone, Serialize, Deserialize)]
 pub(super) struct OpenID4VPInteractionContent {
     pub nonce: String,
+    pub presentation_definition: OpenID4VPPresentationDefinition,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
