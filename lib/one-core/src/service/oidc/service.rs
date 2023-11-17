@@ -25,7 +25,6 @@ use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
-    PresentationToken,
 };
 use crate::service::oidc::mapper::{
     interaction_data_to_dto, parse_access_token, vec_last_position_from_token_path,
@@ -332,11 +331,10 @@ impl OIDCService {
             }
         }
 
-        let presentation_strings = match request.vp_token {
-            PresentationToken::One(content) => {
-                vec![content]
-            }
-            PresentationToken::Multiple(contents) => contents,
+        let presentation_strings: Vec<String> = if request.vp_token.starts_with('[') {
+            serde_json::from_str(&request.vp_token).map_err(|_| OpenID4VCIError::InvalidRequest)?
+        } else {
+            vec![request.vp_token]
         };
 
         let mut received_claims: HashMap<String, String> = HashMap::new();

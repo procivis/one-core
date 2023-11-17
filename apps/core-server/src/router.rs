@@ -470,7 +470,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::OpenID4VCITokenRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VPDirectPostRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VPDirectPostResponseRestDTO,
-                endpoint::ssi::dto::PresentationTokenRestDto,
                 endpoint::ssi::dto::NestedPresentationSubmissionDescriptorRestDTO,
                 endpoint::ssi::dto::PresentationSubmissionMappingRestDTO,
                 endpoint::ssi::dto::PresentationSubmissionDescriptorRestDTO,
