@@ -11,8 +11,9 @@ use crate::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
-    provider::key_storage::{
-        mock_key_storage::MockKeyStorage, provider::KeyProviderImpl, GeneratedKey, KeyStorage,
+    provider::{
+        key_algorithm::GeneratedKey,
+        key_storage::{mock_key_storage::MockKeyStorage, provider::KeyProviderImpl, KeyStorage},
     },
     repository::mock::{
         key_repository::MockKeyRepository, organisation_repository::MockOrganisationRepository,

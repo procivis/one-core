@@ -6,7 +6,7 @@ use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
 use crate::config::{
-    data_structure::{DidEntity, DidKeyParams, DidParams, ParamsEnum},
+    data_structure::{DidEntity, DidKeyParams, DidParams, KeyAlgorithmEntity, ParamsEnum},
     ConfigParseError,
 };
 use crate::model::did::Did;
@@ -58,6 +58,7 @@ pub fn did_method_providers_from_config(
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    key_algorithm_config: &HashMap<String, KeyAlgorithmEntity>,
 ) -> Result<HashMap<String, Arc<dyn DidMethod + Send + Sync>>, ConfigParseError> {
     did_config
         .iter()
@@ -68,6 +69,7 @@ pub fn did_method_providers_from_config(
                 did_repository.clone(),
                 organisation_repository.clone(),
                 key_provider.clone(),
+                key_algorithm_config,
             )
         })
         .collect::<Result<HashMap<String, _>, _>>()
@@ -79,6 +81,7 @@ fn storage_from_entity(
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    key_algorithm_config: &HashMap<String, KeyAlgorithmEntity>,
 ) -> Result<(String, Arc<dyn DidMethod + Send + Sync>), ConfigParseError> {
     match entity.r#type.as_str() {
         "X509" => Ok((name.to_owned(), Arc::new(X509Method {}))),
@@ -102,6 +105,7 @@ fn storage_from_entity(
                     key_provider: key_provider.clone(),
                     method_key: "KEY".to_string(),
                     params,
+                    key_algorithm_config: key_algorithm_config.to_owned(),
                 }),
             ))
         }
@@ -114,6 +118,3 @@ fn storage_from_entity(
 
 #[cfg(test)]
 pub mod mock_did_method;
-
-#[cfg(test)]
-mod test;

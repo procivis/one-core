@@ -6,7 +6,7 @@ use crate::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
-    provider::key_storage::GeneratedKey,
+    provider::key_algorithm::GeneratedKey,
     service::{
         error::ServiceError,
         key::dto::{KeyRequestDTO, KeyResponseDTO},

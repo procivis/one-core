@@ -1,5 +1,5 @@
 use age::secrecy::Secret;
-use did_key::{Fingerprint, Generate, KeyMaterial};
+use std::sync::Arc;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
@@ -7,12 +7,15 @@ use tokio_util::compat::FuturesAsyncWriteCompatExt;
 
 use crate::{
     config::data_structure::KeyStorageInternalParams,
-    provider::key_storage::{GeneratedKey, KeyStorage},
+    provider::{
+        key_algorithm::{provider::KeyAlgorithmProvider, GeneratedKey},
+        key_storage::KeyStorage,
+    },
     service::error::ServiceError,
 };
 
-#[derive(Default)]
 pub struct InternalKeyProvider {
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     pub params: KeyStorageInternalParams,
 }
 
@@ -23,14 +26,20 @@ impl KeyStorage for InternalKeyProvider {
         decrypt_if_password_is_provided(private_key, passphrase).await
     }
 
-    fn fingerprint(&self, public_key: &[u8]) -> String {
-        let key = did_key::Ed25519KeyPair::from_public_key(public_key);
-        key.fingerprint()
+    fn fingerprint(&self, public_key: &[u8], key_type: &str) -> Result<String, ServiceError> {
+        Ok(self
+            .key_algorithm_provider
+            .get_key_algorithm(key_type)
+            .map_err(|_| ServiceError::IncorrectParameters)?
+            .fingerprint(public_key))
     }
 
-    async fn generate(&self, algorithm: &str) -> Result<GeneratedKey, ServiceError> {
-        // Note: RSA private key generation takes around a minute in debug mode
-        let key_pair = get_key_pair_from_algorithm_string(algorithm)?;
+    async fn generate(&self, key_type: &str) -> Result<GeneratedKey, ServiceError> {
+        let key_pair = self
+            .key_algorithm_provider
+            .get_key_algorithm(key_type)
+            .map_err(|_| ServiceError::IncorrectParameters)?
+            .generate_key_pair();
         let passphrase = self.params.encryption.as_ref().map(|value| &value.value);
 
         Ok(GeneratedKey {
@@ -102,19 +111,5 @@ async fn encrypt_if_password_is_provided(
 
             Ok(encrypted)
         }
-    }
-}
-
-fn get_key_pair_from_algorithm_string(value: &str) -> Result<GeneratedKey, ServiceError> {
-    // TODO: use crypto module to search these dynamically
-    match value {
-        "Ed25519" => {
-            let key_pair = did_key::Ed25519KeyPair::new();
-            Ok(GeneratedKey {
-                public: key_pair.public_key_bytes(),
-                private: key_pair.private_key_bytes(),
-            })
-        }
-        _ => Err(ServiceError::IncorrectParameters),
     }
 }

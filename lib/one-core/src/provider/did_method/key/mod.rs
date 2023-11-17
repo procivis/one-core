@@ -1,20 +1,32 @@
+mod mapper;
+mod validator;
+
 use async_trait::async_trait;
 use did_key::KeyMaterial;
 use shared_types::{DidId, DidValue};
+use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::DidMethodError;
-use crate::config::data_structure::DidKeyParams;
-use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
-use crate::model::key::{Key, KeyId, KeyRelations};
-use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::provider::key_storage::provider::KeyProvider;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::error::DataLayerError;
-use crate::repository::organisation_repository::OrganisationRepository;
-use crate::service::did::dto::CreateDidRequestDTO;
+use crate::{
+    config::data_structure::{DidKeyParams, KeyAlgorithmEntity},
+    model::{
+        did::{Did, DidRelations, DidType, KeyRole, RelatedKey},
+        key::{Key, KeyRelations},
+        organisation::OrganisationRelations,
+    },
+    provider::key_storage::provider::KeyProvider,
+    repository::{
+        did_repository::DidRepository, error::DataLayerError,
+        organisation_repository::OrganisationRepository,
+    },
+    service::did::dto::CreateDidRequestDTO,
+};
+
+use mapper::{categorize_did, did_from_did_request};
+use validator::{did_already_exists, validate_public_key_length};
 
 pub struct KeyDidMethod {
     pub did_repository: Arc<dyn DidRepository + Send + Sync>,
@@ -22,6 +34,7 @@ pub struct KeyDidMethod {
     pub key_provider: Arc<dyn KeyProvider + Send + Sync>,
     pub method_key: String,
     pub params: DidKeyParams,
+    pub key_algorithm_config: HashMap<String, KeyAlgorithmEntity>,
 }
 
 #[async_trait]
@@ -57,7 +70,9 @@ impl super::DidMethod for KeyDidMethod {
             .key_provider
             .get_key_storage(&key.storage_type)
             .map_err(|_| DidMethodError::KeyStorageNotFound)?;
-        let fingerprint = key_storage.fingerprint(&key.public_key);
+        let fingerprint = key_storage
+            .fingerprint(&key.public_key, &key.key_type)
+            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
         // todo(mite): add constructor for this
         let did_value: DidValue = match format!("did:key:{}", fingerprint).parse() {
             Ok(v) => v,
@@ -89,24 +104,14 @@ impl super::DidMethod for KeyDidMethod {
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<Did, DidMethodError> {
-        // only allow Ed25519 keys for now
-        if !did.as_str().starts_with("did:key:z6Mk") {
-            return Err(DidMethodError::ResolutionError(
-                "Unsupported key algorithm".to_string(),
-            ));
-        }
+        let key_type = categorize_did(did)?;
 
         let resolved = did_key::resolve(did.as_str())
             .map_err(|_| DidMethodError::ResolutionError("Failed to resolve".to_string()))?;
 
         let public_key = resolved.public_key_bytes();
 
-        // check Ed25519 key length
-        if public_key.len() != 32 {
-            return Err(DidMethodError::ResolutionError(
-                "Invalid key length".to_string(),
-            ));
-        }
+        validate_public_key_length(&public_key, key_type)?;
 
         let now = OffsetDateTime::now_utc();
         let key = Key {
@@ -161,59 +166,5 @@ impl super::DidMethod for KeyDidMethod {
     }
 }
 
-async fn did_already_exists(
-    repository: &Arc<dyn DidRepository + Send + Sync>,
-    did_value: &DidValue,
-) -> Result<bool, DidMethodError> {
-    let result = repository
-        .get_did_by_value(did_value, &DidRelations::default())
-        .await;
-
-    match result {
-        Ok(_) => Ok(true),
-        Err(DataLayerError::RecordNotFound) => Ok(false),
-        Err(e) => Err(DidMethodError::from(e)),
-    }
-}
-
-fn did_from_did_request(
-    request: CreateDidRequestDTO,
-    organisation: Organisation,
-    did_value: DidValue,
-    key: Key,
-    now: OffsetDateTime,
-) -> Result<Did, DidMethodError> {
-    let mut keys: Vec<RelatedKey> = vec![];
-    let mut add_keys = |key_ids: Vec<KeyId>, role: KeyRole| {
-        for _ in key_ids {
-            keys.push(RelatedKey {
-                role: role.to_owned(),
-                key: key.to_owned(),
-            });
-        }
-    };
-
-    add_keys(request.keys.authentication, KeyRole::Authentication);
-    add_keys(request.keys.assertion, KeyRole::AssertionMethod);
-    add_keys(request.keys.key_agreement, KeyRole::KeyAgreement);
-    add_keys(
-        request.keys.capability_invocation,
-        KeyRole::CapabilityInvocation,
-    );
-    add_keys(
-        request.keys.capability_delegation,
-        KeyRole::CapabilityDelegation,
-    );
-
-    Ok(Did {
-        id: DidId::from(Uuid::new_v4()),
-        created_date: now,
-        last_modified: now,
-        name: request.name,
-        organisation: Some(organisation),
-        did: did_value,
-        did_type: request.did_type,
-        did_method: request.did_method,
-        keys: Some(keys),
-    })
-}
+#[cfg(test)]
+mod test;
