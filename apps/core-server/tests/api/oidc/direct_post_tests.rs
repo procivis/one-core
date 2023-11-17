@@ -30,6 +30,7 @@ async fn test_direct_post() {
         "NewCredentialSchema",
         &organisation_id,
         &new_claim_schemas,
+        "NONE",
     )
     .await;
 

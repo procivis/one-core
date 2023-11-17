@@ -1,10 +1,9 @@
-use crate::model::credential::CredentialStateEnum;
 use crate::{
     config::{
         data_structure::CoreConfig,
         validator::{datatype::validate_value, exchange::validate_exchange_type},
     },
-    model::{credential::CredentialState, credential_schema::CredentialSchema},
+    model::credential_schema::CredentialSchema,
     service::{credential::dto::CredentialRequestClaimDTO, error::ServiceError},
 };
 
@@ -63,22 +62,4 @@ pub(crate) fn validate_create_request(
         .collect::<Result<Vec<_>, ServiceError>>()?;
 
     Ok(())
-}
-
-pub(crate) fn validate_state_for_revocation(
-    states: &Option<Vec<CredentialState>>,
-) -> Result<(), ServiceError> {
-    let current_state = states
-        .as_ref()
-        .ok_or(ServiceError::MappingError("state is None".to_string()))?
-        .get(0)
-        .ok_or(ServiceError::MappingError(
-            "latest state not found".to_string(),
-        ))?
-        .to_owned();
-
-    match current_state.state {
-        CredentialStateEnum::Accepted => Ok(()),
-        _ => Err(ServiceError::AlreadyExists),
-    }
 }

@@ -1,4 +1,5 @@
 use one_core::model::claim::Claim;
+use one_core::model::credential::CredentialStateEnum;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use one_core::repository::error::DataLayerError;
 use one_core::{
@@ -32,6 +33,7 @@ pub fn get_dummy_date() -> OffsetDateTime {
 pub async fn insert_credential(
     db: &DatabaseConnection,
     credential_schema_id: &str,
+    state: CredentialStateEnum,
     protocol: &str,
     did_id: DidId,
 ) -> Result<String, DbErr> {
@@ -58,7 +60,7 @@ pub async fn insert_credential(
     credential_state::ActiveModel {
         credential_id: Set(credential.id.to_owned()),
         created_date: Set(now),
-        state: Set(credential_state::CredentialState::Created),
+        state: Set(state.into()),
     }
     .insert(db)
     .await?;
@@ -124,26 +126,27 @@ pub async fn insert_many_claims_schema_to_database(
 pub async fn insert_many_credential_claims_to_database(
     database: &DatabaseConnection,
     credential_id: &str,
-    claims: &Vec<(Uuid, String)>,
+    claims: &Vec<(Uuid, Uuid, String)>,
 ) -> Result<(), DbErr> {
-    let claims_to_insert = claims
-        .iter()
-        .map(|(claim_schema_id, value)| claim::ActiveModel {
-            // Just for tests id of a claim will be the same as id for a schema it instantiates
-            id: Set(claim_schema_id.to_string()),
-            claim_schema_id: Set(claim_schema_id.to_string()),
-            value: Set(value.to_owned()),
-            created_date: Set(get_dummy_date()),
-            last_modified: Set(get_dummy_date()),
-        });
-
-    let credential_claims =
+    let claims_to_insert =
         claims
             .iter()
-            .map(|(claim_schema_id, ..)| credential_claim::ActiveModel {
-                claim_id: Set(claim_schema_id.to_string()),
-                credential_id: Set(credential_id.to_owned()),
+            .map(|(claim_schema_id, claim_id, value)| claim::ActiveModel {
+                // Just for tests id of a claim will be the same as id for a schema it instantiates
+                id: Set(claim_id.to_string()),
+                claim_schema_id: Set(claim_schema_id.to_string()),
+                value: Set(value.to_owned()),
+                created_date: Set(get_dummy_date()),
+                last_modified: Set(get_dummy_date()),
             });
+
+    let credential_claims =
+        claims.iter().map(
+            |(_claim_schema_id, claim_id, ..)| credential_claim::ActiveModel {
+                claim_id: Set(claim_id.to_string()),
+                credential_id: Set(credential_id.to_owned()),
+            },
+        );
 
     claim::Entity::insert_many(claims_to_insert)
         .exec(database)

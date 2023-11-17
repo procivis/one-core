@@ -4,6 +4,7 @@ use crate::{
     test_utilities::*,
 };
 use mockall::predicate::{always, eq};
+use one_core::model::credential::CredentialStateEnum;
 use one_core::{
     model::interaction::Interaction,
     repository::mock::{
@@ -154,6 +155,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         &insert_credential(
             &db,
             &credential_schema.id.to_string(),
+            CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
             did.id.clone(),
         )
@@ -415,6 +417,7 @@ async fn test_get_credential_list_success() {
     let _credential_one_id = insert_credential(
         &db,
         &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id.clone(),
     )
@@ -423,6 +426,7 @@ async fn test_get_credential_list_success() {
     let _credential_two_id = insert_credential(
         &db,
         &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id.clone(),
     )
@@ -485,6 +489,7 @@ async fn test_get_credential_success() {
         &insert_credential(
             &db,
             &credential_schema.id.to_string(),
+            CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
             did.id.clone(),
         )
@@ -671,6 +676,7 @@ async fn test_update_credential_success() {
         &insert_credential(
             &db,
             &credential_schema.id.to_string(),
+            CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
             did.id,
         )

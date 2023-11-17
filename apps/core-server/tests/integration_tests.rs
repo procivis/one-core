@@ -4,6 +4,15 @@ mod utils;
 // CREDENTIAL
 #[path = "api/credential/create_credential_tests.rs"]
 mod create_credential_tests;
+#[path = "api/credential/get_credential_tests.rs"]
+mod get_credential_tests;
+#[path = "api/credential/list_credential_tests.rs"]
+mod list_credential_tests;
+#[path = "api/credential/revoke_credential_tests.rs"]
+mod revoke_credential_tests;
+
+#[path = "api/credential/share_credential_tests.rs"]
+mod share_credential_tests;
 
 // PROOF
 #[path = "api/proof/create_proof_tests.rs"]

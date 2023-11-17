@@ -16,8 +16,14 @@ async fn test_create_proof_success() {
     let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
     let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
         vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    fixtures::create_credential_schema(&db_conn, "test", &organisation_id, &new_claim_schemas)
-        .await;
+    fixtures::create_credential_schema(
+        &db_conn,
+        "test",
+        &organisation_id,
+        &new_claim_schemas,
+        "NONE",
+    )
+    .await;
     let proof_schema =
         fixtures::create_proof_schema(&db_conn, "test", &organisation_id, &new_claim_schemas).await;
 
