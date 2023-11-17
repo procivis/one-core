@@ -1,6 +1,7 @@
 use time::OffsetDateTime;
 
-use crate::common_validator::throw_if_did_type_is_eq;
+use crate::common_validator::{throw_if_did_type_is_eq, throw_if_latest_credential_state_not_eq};
+use crate::model::credential::CredentialStateEnum;
 use crate::model::did::DidType;
 use crate::{
     common_mapper::list_response_try_into,
@@ -22,8 +23,8 @@ use crate::{
         credential::{
             dto::{
                 CreateCredentialRequestDTO, CredentialDetailResponseDTO,
-                CredentialRevocationCheckResponseDTO, CredentialStateEnum,
-                GetCredentialListResponseDTO, GetCredentialQueryDTO,
+                CredentialRevocationCheckResponseDTO, GetCredentialListResponseDTO,
+                GetCredentialQueryDTO,
             },
             mapper::{claims_from_create_request, from_create_request},
             CredentialService,
@@ -162,7 +163,7 @@ impl CredentialService {
             )
             .await?;
 
-        super::validator::validate_state_for_revocation(&credential.state)?;
+        throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Accepted)?;
 
         let revocation_method = self.revocation_method_provider.get_revocation_method(
             &credential
@@ -183,7 +184,7 @@ impl CredentialService {
                 id: credential_id.to_owned(),
                 state: Some(CredentialState {
                     created_date: now,
-                    state: credential::CredentialStateEnum::Revoked,
+                    state: CredentialStateEnum::Revoked,
                 }),
                 ..Default::default()
             })
@@ -233,7 +234,7 @@ impl CredentialService {
                 .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
             let credential_status = match current_state {
-                credential::CredentialStateEnum::Accepted => {
+                CredentialStateEnum::Accepted => {
                     let formatter = self
                         .formatter_provider
                         .get_formatter(&credential_schema.format)?;
@@ -250,17 +251,17 @@ impl CredentialService {
                     } else {
                         result.push(CredentialRevocationCheckResponseDTO {
                             credential_id,
-                            status: CredentialStateEnum::Accepted,
+                            status: CredentialStateEnum::Accepted.into(),
                             success: true,
                             reason: None,
                         });
                         continue;
                     }
                 }
-                credential::CredentialStateEnum::Revoked => {
+                CredentialStateEnum::Revoked => {
                     result.push(CredentialRevocationCheckResponseDTO {
                         credential_id,
-                        status: CredentialStateEnum::Revoked,
+                        status: CredentialStateEnum::Revoked.into(),
                         success: true,
                         reason: None,
                     });
@@ -304,9 +305,9 @@ impl CredentialService {
             result.push(CredentialRevocationCheckResponseDTO {
                 credential_id,
                 status: if revoked {
-                    CredentialStateEnum::Revoked
+                    CredentialStateEnum::Revoked.into()
                 } else {
-                    CredentialStateEnum::Accepted
+                    CredentialStateEnum::Accepted.into()
                 },
                 success: true,
                 reason: None,
@@ -403,8 +404,7 @@ impl CredentialService {
             .get(0)
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?
             .state
-            .clone()
-            .into();
+            .clone();
         Ok((credential, latest_state))
     }
 }

@@ -1,5 +1,6 @@
 use core_server::router::start_server;
 use httpmock::MockServer;
+use one_core::model::credential::CredentialStateEnum;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -16,9 +17,14 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
     let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
         vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation_id, &new_claim_schemas)
-            .await;
+    let credential_schema = fixtures::create_credential_schema(
+        &db_conn,
+        "test",
+        &organisation_id,
+        &new_claim_schemas,
+        "NONE",
+    )
+    .await;
     let claims: Vec<(Uuid, Uuid, String)> = vec![(
         Uuid::new_v4(),
         new_claim_schemas.first().unwrap().0,
@@ -27,9 +33,14 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     let credential_id = fixtures::create_credentials_with_claims(
         &db_conn,
         &credential_schema,
+        CredentialStateEnum::Created,
         did_id.clone(),
         "PROCIVIS_TEMPORARY",
-        &vec![(new_claim_schemas.first().unwrap().0, "test".to_string())],
+        &vec![(
+            new_claim_schemas.first().unwrap().0,
+            Uuid::new_v4(),
+            "test".to_string(),
+        )],
     )
     .await;
     let interaction = fixtures::create_interaction(
@@ -104,9 +115,14 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
     let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
     let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
         vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation_id, &new_claim_schemas)
-            .await;
+    let credential_schema = fixtures::create_credential_schema(
+        &db_conn,
+        "test",
+        &organisation_id,
+        &new_claim_schemas,
+        "NONE",
+    )
+    .await;
     let claims: Vec<(Uuid, Uuid, String)> = vec![(
         Uuid::new_v4(),
         new_claim_schemas.first().unwrap().0,
@@ -270,9 +286,14 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
     let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
         vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation_id, &new_claim_schemas)
-            .await;
+    let credential_schema = fixtures::create_credential_schema(
+        &db_conn,
+        "test",
+        &organisation_id,
+        &new_claim_schemas,
+        "NONE",
+    )
+    .await;
     let claims: Vec<(Uuid, Uuid, String)> = vec![(
         Uuid::new_v4(),
         new_claim_schemas.first().unwrap().0,
@@ -281,9 +302,14 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     let credential_id = fixtures::create_credentials_with_claims(
         &db_conn,
         &credential_schema,
+        CredentialStateEnum::Created,
         did_id.clone(),
         "OPENID4VC",
-        &vec![(new_claim_schemas.first().unwrap().0, "test".to_string())],
+        &vec![(
+            new_claim_schemas.first().unwrap().0,
+            Uuid::new_v4(),
+            "test".to_string(),
+        )],
     )
     .await;
     let interaction = fixtures::create_interaction(
@@ -359,8 +385,14 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
     let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
         vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    fixtures::create_credential_schema(&db_conn, "test", &organisation_id, &new_claim_schemas)
-        .await;
+    fixtures::create_credential_schema(
+        &db_conn,
+        "test",
+        &organisation_id,
+        &new_claim_schemas,
+        "NONE",
+    )
+    .await;
     let claims: Vec<(Uuid, Uuid, String)> = vec![(
         Uuid::new_v4(),
         new_claim_schemas.first().unwrap().0,
