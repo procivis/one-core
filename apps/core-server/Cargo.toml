@@ -28,6 +28,7 @@ dto_mapper.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_qs.workspace = true
+serde_urlencoded.workspace = true
 shadow-rs.workspace = true
 thiserror.workspace = true
 time.workspace = true
@@ -42,6 +43,7 @@ tower-http = { version = "0.4", features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 utoipa = { workspace = true, features = ["uuid", "axum_extras", "url"] }
 utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
+serde_with = { version = "3.4.0", features = ["json"] }
 sentry = { version = "0.31.7", default-features = false, features = [
     "backtrace",
     "panic",

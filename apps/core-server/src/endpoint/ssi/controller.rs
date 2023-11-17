@@ -1,6 +1,7 @@
 use super::dto::{
     ConnectIssuerResponseRestDTO, ConnectRequestRestDTO, ConnectVerifierResponseRestDTO,
-    OpenID4VCIDiscoveryResponseRestDTO, PostSsiIssuerConnectQueryParams,
+    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VPDirectPostRequestRestDTO,
+    OpenID4VPDirectPostResponseRestDTO, PostSsiIssuerConnectQueryParams,
     PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::endpoint::ssi::dto::{
@@ -291,6 +292,57 @@ pub(crate) async fn oidc_create_credential(
         Err(ServiceError::AlreadyExists) => {
             tracing::warn!("Already finished");
             (StatusCode::CONFLICT, "Wrong credential state").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/ssi/oidc-verifier/v1/response",
+    request_body(content = OpenID4VPDirectPostRequestRestDTO, description = "Verifier request", content_type = "application/x-www-form-urlencoded"),
+    responses(
+        (status = 200, description = "OK", body = OpenID4VPDirectPostResponseRestDTO),
+        (status = 400, description = "OIDC Verifier errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 409, description = "Wrong proof state"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn oidc_verifier_direct_post(
+    state: State<AppState>,
+    Form(request): Form<OpenID4VPDirectPostRequestRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .oidc_service
+        .oidc_verifier_direct_post(request.into())
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(OpenID4VPDirectPostResponseRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(ServiceError::OpenID4VCError(error)) => {
+            tracing::error!("OpenID4VCI validation error: {:?}", error);
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO::from(error)),
+            )
+                .into_response()
+        }
+        Err(ServiceError::NotFound) => {
+            tracing::error!("Missing interaction or proof");
+            (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()
+        }
+        Err(ServiceError::AlreadyExists) => {
+            tracing::warn!("Already finished");
+            (StatusCode::CONFLICT, "Wrong proof state").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

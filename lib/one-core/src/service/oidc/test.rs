@@ -1,17 +1,24 @@
 use crate::config::data_structure::CoreConfig;
+use crate::crypto::MockCryptoProvider;
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::interaction::Interaction;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::mock::claim_repository::MockClaimRepository;
 use crate::repository::mock::credential_repository::MockCredentialRepository;
+use crate::repository::mock::proof_repository::MockProofRepository;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIError,
     OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO,
 };
+use crate::service::oidc::mapper::vec_last_position_from_token_path;
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::generic_config;
 use mockall::predicate::{always, eq};
@@ -24,22 +31,38 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-fn setup_service(
-    repository: MockCredentialSchemaRepository,
-    credential_repository: MockCredentialRepository,
-    interaction_repository: MockInteractionRepository,
-    config: CoreConfig,
-    transport_provider: MockTransportProtocolProvider,
-    did_repository: MockDidRepository,
-) -> OIDCService {
+#[derive(Default)]
+struct Mocks {
+    pub credential_schema_repository: MockCredentialSchemaRepository,
+    pub credential_repository: MockCredentialRepository,
+    pub proof_repository: MockProofRepository,
+    pub interaction_repository: MockInteractionRepository,
+    pub claim_repository: MockClaimRepository,
+    pub config: CoreConfig,
+    pub transport_provider: MockTransportProtocolProvider,
+    pub did_repository: MockDidRepository,
+    pub formatter_provider: MockCredentialFormatterProvider,
+    pub did_method_provider: MockDidMethodProvider,
+    pub crypto: MockCryptoProvider,
+    pub revocation_method_provider: MockRevocationMethodProvider,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn setup_service(mocks: Mocks) -> OIDCService {
     OIDCService::new(
         Some("http://127.0.0.1:3000".to_string()),
-        Arc::new(repository),
-        Arc::new(credential_repository),
-        Arc::new(interaction_repository),
-        Arc::new(config),
-        Arc::new(transport_provider),
-        Arc::new(did_repository),
+        Arc::new(mocks.credential_schema_repository),
+        Arc::new(mocks.credential_repository),
+        Arc::new(mocks.proof_repository),
+        Arc::new(mocks.interaction_repository),
+        Arc::new(mocks.claim_repository),
+        Arc::new(mocks.config),
+        Arc::new(mocks.transport_provider),
+        Arc::new(mocks.did_repository),
+        Arc::new(mocks.formatter_provider),
+        Arc::new(mocks.did_method_provider),
+        Arc::new(mocks.crypto),
+        Arc::new(mocks.revocation_method_provider),
     )
 }
 
@@ -115,14 +138,12 @@ async fn test_get_issuer_metadata_jwt() {
             .with(eq(schema.id.to_owned()), eq(relations))
             .returning(move |_, _| Ok(clone.clone()));
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
-        MockInteractionRepository::default(),
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+        config: generic_config(),
+        ..Default::default()
+    });
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -150,14 +171,12 @@ async fn test_get_issuer_metadata_sd_jwt() {
             .with(eq(schema.id.to_owned()), eq(relations))
             .returning(move |_, _| Ok(clone.clone()));
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
-        MockInteractionRepository::default(),
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+        config: generic_config(),
+        ..Default::default()
+    });
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -186,14 +205,12 @@ async fn test_service_discovery() {
             )
             .returning(move |_, _| Ok(clone.clone()));
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
-        MockInteractionRepository::default(),
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+        config: generic_config(),
+        ..Default::default()
+    });
     let result = service.oidc_service_discovery(&schema.id).await;
     assert!(result.is_ok());
 }
@@ -233,14 +250,13 @@ async fn test_oidc_create_token() {
             .once()
             .return_once(|_| Ok(()));
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+        config: generic_config(),
+        ..Default::default()
+    });
     let result = service
         .oidc_create_token(
             &schema.id,
@@ -264,14 +280,7 @@ async fn test_oidc_create_token() {
 #[tokio::test]
 async fn test_oidc_create_token_invalid_grant_type() {
     let schema = generic_credential_schema();
-    let service = setup_service(
-        MockCredentialSchemaRepository::default(),
-        MockCredentialRepository::default(),
-        MockInteractionRepository::default(),
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+    let service = setup_service(Mocks::default());
     let result = service
         .oidc_create_token(
             &schema.id,
@@ -316,14 +325,13 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
                 Ok(vec![dummy_credential(CredentialStateEnum::Pending, true)])
             });
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+        config: generic_config(),
+        ..Default::default()
+    });
     let result = service
         .oidc_create_token(
             &schema.id,
@@ -366,14 +374,13 @@ async fn test_oidc_create_token_wrong_credential_state() {
                 Ok(vec![dummy_credential(CredentialStateEnum::Offered, false)])
             });
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+        config: generic_config(),
+        ..Default::default()
+    });
     let result = service
         .oidc_create_token(
             &schema.id,
@@ -456,14 +463,15 @@ async fn test_oidc_create_credential_success() {
             .returning(move |_| Ok(()));
     }
 
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        generic_config(),
+        config: generic_config(),
         transport_provider,
         did_repository,
-    );
+        ..Default::default()
+    });
 
     let result = service
         .oidc_create_credential(
@@ -501,14 +509,10 @@ async fn test_oidc_create_credential_format_invalid() {
             .with(eq(schema.id.to_owned()), always())
             .returning(move |_, _| Ok(clone.clone()));
     }
-    let service = setup_service(
-        repository,
-        MockCredentialRepository::default(),
-        MockInteractionRepository::default(),
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        ..Default::default()
+    });
 
     let result = service
         .oidc_create_credential(
@@ -549,14 +553,10 @@ async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
             .with(eq(schema.id.to_owned()), always())
             .returning(move |_, _| Ok(clone.clone()));
     }
-    let service = setup_service(
-        repository,
-        MockCredentialRepository::default(),
-        MockInteractionRepository::default(),
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        ..Default::default()
+    });
 
     let result = service
         .oidc_create_credential(
@@ -597,14 +597,11 @@ async fn test_oidc_create_credential_format_invalid_credential_definition() {
             .with(eq(schema.id.to_owned()), always())
             .returning(move |_, _| Ok(clone.clone()));
     }
-    let service = setup_service(
-        repository,
-        MockCredentialRepository::default(),
-        MockInteractionRepository::default(),
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        config: generic_config(),
+        ..Default::default()
+    });
 
     let result = service
         .oidc_create_credential(
@@ -645,14 +642,11 @@ async fn test_oidc_create_credential_format_invalid_bearer_token() {
             .with(eq(schema.id.to_owned()), always())
             .returning(move |_, _| Ok(clone.clone()));
     }
-    let service = setup_service(
-        repository,
-        MockCredentialRepository::default(),
-        MockInteractionRepository::default(),
-        generic_config(),
-        MockTransportProtocolProvider::default(),
-        MockDidRepository::default(),
-    );
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        config: generic_config(),
+        ..Default::default()
+    });
 
     let result = service
         .oidc_create_credential(
@@ -699,14 +693,14 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
             .once()
             .return_once(|_, _| Ok(dummy_interaction(false, None)));
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        generic_config(),
+        config: generic_config(),
         transport_provider,
-        MockDidRepository::default(),
-    );
+        ..Default::default()
+    });
 
     let result = service
         .oidc_create_credential(
@@ -753,14 +747,14 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
             .once()
             .return_once(|_, _| Ok(dummy_interaction(true, None)));
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        generic_config(),
+        config: generic_config(),
         transport_provider,
-        MockDidRepository::default(),
-    );
+        ..Default::default()
+    });
 
     let result = service
         .oidc_create_credential(
@@ -812,14 +806,14 @@ async fn test_oidc_create_credential_access_token_expired() {
                 ))
             });
     }
-    let service = setup_service(
-        repository,
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        generic_config(),
+        config: generic_config(),
         transport_provider,
-        MockDidRepository::default(),
-    );
+        ..Default::default()
+    });
 
     let result = service
         .oidc_create_credential(
@@ -843,4 +837,31 @@ async fn test_oidc_create_credential_access_token_expired() {
         result,
         Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))
     ));
+}
+
+#[test]
+fn test_vec_last_position_from_token_path() {
+    assert_eq!(
+        vec_last_position_from_token_path("$[0].verifiableCredential[0]").unwrap(),
+        0
+    );
+    assert_eq!(
+        vec_last_position_from_token_path("$[0].verifiableCredential[1]").unwrap(),
+        1
+    );
+    assert_eq!(
+        vec_last_position_from_token_path("$[1].verifiableCredential[2]").unwrap(),
+        2
+    );
+    assert_eq!(
+        vec_last_position_from_token_path("$.verifiableCredential[3]").unwrap(),
+        3
+    );
+    assert_eq!(vec_last_position_from_token_path("$[4]").unwrap(), 4);
+    assert_eq!(
+        vec_last_position_from_token_path("$[152046]").unwrap(),
+        152046
+    );
+    assert_eq!(vec_last_position_from_token_path("$").unwrap(), 0);
+    assert!(vec_last_position_from_token_path("$[ABC]").is_err());
 }

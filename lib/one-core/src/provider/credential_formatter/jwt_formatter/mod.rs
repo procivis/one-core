@@ -128,6 +128,7 @@ impl CredentialFormatter for JWTFormatter {
                 Ok(v) => v,
                 Err(err) => match err {},
             }),
+            nonce: jwt.payload.nonce,
             credentials: jwt.payload.custom.vp.verifiable_credential,
         })
     }

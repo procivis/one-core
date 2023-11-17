@@ -1,3 +1,4 @@
+use one_core::model::claim::Claim;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use one_core::repository::error::DataLayerError;
 use one_core::{
@@ -267,30 +268,32 @@ pub async fn insert_proof_request_to_database_with_claims(
     .insert(database)
     .await?;
 
-    let claims_to_insert: Vec<claim::ActiveModel> = claims
-        .iter()
-        .map(|claim| claim::ActiveModel {
-            id: Set(claim.0.to_string()),
-            claim_schema_id: Set(claim.1.to_string()),
-            value: Set(claim.2.to_owned()),
-            created_date: Set(get_dummy_date()),
-            last_modified: Set(get_dummy_date()),
-        })
-        .collect();
-    claim::Entity::insert_many(claims_to_insert)
-        .exec(database)
-        .await?;
+    if !claims.is_empty() {
+        let claims_to_insert: Vec<claim::ActiveModel> = claims
+            .iter()
+            .map(|claim| claim::ActiveModel {
+                id: Set(claim.0.to_string()),
+                claim_schema_id: Set(claim.1.to_string()),
+                value: Set(claim.2.to_owned()),
+                created_date: Set(get_dummy_date()),
+                last_modified: Set(get_dummy_date()),
+            })
+            .collect();
+        claim::Entity::insert_many(claims_to_insert)
+            .exec(database)
+            .await?;
 
-    let claim_relations: Vec<proof_claim::ActiveModel> = claims
-        .iter()
-        .map(|claim| proof_claim::ActiveModel {
-            claim_id: Set(claim.0.to_string()),
-            proof_id: Set(proof.id.clone()),
-        })
-        .collect();
-    proof_claim::Entity::insert_many(claim_relations)
-        .exec(database)
-        .await?;
+        let claim_relations: Vec<proof_claim::ActiveModel> = claims
+            .iter()
+            .map(|claim| proof_claim::ActiveModel {
+                claim_id: Set(claim.0.to_string()),
+                proof_id: Set(proof.id.clone()),
+            })
+            .collect();
+        proof_claim::Entity::insert_many(claim_relations)
+            .exec(database)
+            .await?;
+    }
 
     Ok(proof.id)
 }
@@ -439,7 +442,7 @@ pub async fn insert_key_did(
 pub async fn insert_interaction(
     database: &DatabaseConnection,
     host: &str,
-    data: &Vec<u8>,
+    data: &[u8],
 ) -> Result<String, DbErr> {
     let now = OffsetDateTime::now_utc();
 
@@ -454,6 +457,15 @@ pub async fn insert_interaction(
     .await?;
 
     Ok(interaction.id)
+}
+
+// TODO: Will be removed after this task is implemented https://procivis.atlassian.net/browse/ONE-1133
+pub async fn get_all_claims(database: &DatabaseConnection) -> Result<Vec<Claim>, DbErr> {
+    let claims = claim::Entity::find().all(database).await?;
+    Ok(claims
+        .into_iter()
+        .filter_map(|claim_model| claim_model.try_into().ok())
+        .collect())
 }
 
 pub async fn get_interaction(

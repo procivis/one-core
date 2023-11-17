@@ -714,7 +714,7 @@ async fn test_update_credential_success() {
     assert_ne!(token, credential_before_update.credential);
 
     let interaction_id =
-        Uuid::parse_str(&insert_interaction(&db, "host", &vec![]).await.unwrap()).unwrap();
+        Uuid::parse_str(&insert_interaction(&db, "host", &[]).await.unwrap()).unwrap();
 
     assert!(provider
         .update_credential(UpdateCredentialRequest {

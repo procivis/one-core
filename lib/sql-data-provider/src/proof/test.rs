@@ -108,12 +108,8 @@ async fn setup(
     .await
     .unwrap();
 
-    let interaction_id = Uuid::parse_str(
-        &insert_interaction(&db, "host", &vec![1, 2, 3])
-            .await
-            .unwrap(),
-    )
-    .unwrap();
+    let interaction_id =
+        Uuid::parse_str(&insert_interaction(&db, "host", &[1, 2, 3]).await.unwrap()).unwrap();
 
     TestSetup {
         repository: Box::new(ProofProvider {

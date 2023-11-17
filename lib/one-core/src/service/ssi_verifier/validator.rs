@@ -1,5 +1,6 @@
 use super::dto::ValidatedProofClaimDTO;
 use crate::{
+    common_validator::{validate_expiration_time, validate_issuance_time},
     config::data_structure::CoreConfig,
     crypto::CryptoProvider,
     model::{
@@ -15,13 +16,11 @@ use crate::{
     service::error::ServiceError,
     util::key_verification::KeyVerification,
 };
-use std::ops::{Add, Sub};
-use std::time::Duration;
+
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[allow(clippy::too_many_arguments)]
@@ -221,40 +220,13 @@ fn find_matching_schema(
     ))
 }
 
-fn validate_issuance_time(
-    issued_at: Option<OffsetDateTime>,
-    leeway: u64,
-) -> Result<(), ServiceError> {
-    let now = OffsetDateTime::now_utc();
-    let issued = issued_at.ok_or(ServiceError::ValidationError(
-        "Missing issuance date".to_owned(),
-    ))?;
-
-    if issued > now.add(Duration::from_secs(leeway)) {
-        return Err(ServiceError::ValidationError("Issued in future".to_owned()));
-    }
-
-    Ok(())
-}
-
-fn validate_expiration_time(
-    expires_at: Option<OffsetDateTime>,
-    leeway: u64,
-) -> Result<(), ServiceError> {
-    let now = OffsetDateTime::now_utc();
-    let expires = expires_at.ok_or(ServiceError::ValidationError(
-        "Missing expiration date".to_owned(),
-    ))?;
-
-    if expires < now.sub(Duration::from_secs(leeway)) {
-        return Err(ServiceError::ValidationError("Expired".to_owned()));
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
+    use std::{
+        ops::{Add, Sub},
+        time::Duration,
+    };
+
     use time::OffsetDateTime;
 
     use super::*;

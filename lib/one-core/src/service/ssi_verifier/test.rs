@@ -223,6 +223,7 @@ async fn test_submit_proof_succeeds() {
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 issuer_did: Some("issuer did".parse().unwrap()),
+                nonce: None,
                 credentials: vec![],
             })
         });
