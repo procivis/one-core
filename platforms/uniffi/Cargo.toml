@@ -25,3 +25,6 @@ thiserror.workspace = true
 
 [build-dependencies]
 uniffi = { version = "0.25.0", features = ["build"] }
+
+[lints]
+workspace = true
