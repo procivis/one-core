@@ -166,7 +166,7 @@ pub(crate) async fn issuance_reject(
     responses(
         (status = 204, description = "No content"),
         (status = 404, description = "Not found"),
-        (status = 409, description = "Invalid state"),
+        (status = 409, description = "Interaction is not a proof request in pending state"),
     ),
     tag = "interaction",
     security(

@@ -20,8 +20,10 @@ use uuid::Uuid;
     path = "/api/proof-request/v1/{id}/presentation-definition",
     responses(
         (status = 200, description = "OK", body = PresentationDefinitionResponseRestDTO),
-        (status = 400, description = "Unauthorized"),
+        (status = 400, description = "Referenced proof request is sent in verifier role (i.e. not as holder)"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Proof request not found"),
+        (status = 409, description = "Proof not in pending state"),
     ),
     params(
         ("id" = Uuid, Path, description = "Proof id")
@@ -48,6 +50,7 @@ pub(crate) async fn get_proof_presentation_definition(
         )
             .into_response(),
         Err(error) => match error {
+            ServiceError::AlreadyExists => StatusCode::CONFLICT.into_response(),
             ServiceError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
             ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
             _ => {
@@ -130,7 +133,7 @@ pub(crate) async fn get_proofs(state: State<AppState>, Qs(query): Qs<GetProofQue
         (status = 201, description = "Created", body = EntityResponseRestDTO),
         (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Not found"),
+        (status = 404, description = "Proof schema or Verifier DID not found"),
         (status = 500, description = "Internal server error")
     ),
     tag = "proof_management",
