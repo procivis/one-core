@@ -2,6 +2,7 @@ use self::error::SignerError;
 
 pub mod eddsa;
 pub mod error;
+pub mod es256;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait Signer {

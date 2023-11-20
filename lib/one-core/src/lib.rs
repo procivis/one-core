@@ -39,6 +39,7 @@ mod common_validator;
 pub mod util;
 
 use crate::config::data_structure::{CoreConfig, UnparsedConfig};
+use crate::crypto::signer::es256::ES256Signer;
 use crate::provider::credential_formatter::provider::credential_formatters_from_config;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
@@ -92,8 +93,10 @@ impl OneCore {
         let hashers: Vec<(String, Arc<dyn Hasher + Send + Sync>)> =
             vec![("sha-256".to_string(), Arc::new(SHA256 {}))];
 
-        let signers: Vec<(String, Arc<dyn Signer + Send + Sync>)> =
-            vec![("Ed25519".to_string(), Arc::new(EDDSASigner {}))];
+        let signers: Vec<(String, Arc<dyn Signer + Send + Sync>)> = vec![
+            ("Ed25519".to_string(), Arc::new(EDDSASigner {})),
+            ("ES256".to_string(), Arc::new(ES256Signer {})),
+        ];
 
         let crypto = Arc::new(CryptoProviderImpl::new(
             HashMap::from_iter(hashers),

@@ -171,7 +171,7 @@ keyAlgorithm:
       public:
         algorithm: "Ed25519"
   ES256:
-    display: "keyAlgorithm.ecdsa"
+    display: "keyAlgorithm.es256"
     order: 3
     type: "ES256"
     params:
