@@ -378,7 +378,7 @@ pub(crate) async fn ssi_verifier_reject_proof(
     match result {
         Ok(_) => StatusCode::NO_CONTENT.into_response(),
         Err(error) => match error {
-            ServiceError::NotUpdated => StatusCode::BAD_REQUEST.into_response(),
+            ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
             ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
             _ => {
                 tracing::error!("Error while rejecting proof");
@@ -445,6 +445,7 @@ pub(crate) async fn ssi_verifier_submit_proof(
         (status = 400, description = "Invalid request"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Credential not found"),
+        (status = 409, description = "Already issued"),
         (status = 500, description = "Server error"),
     ),
     params(
@@ -493,6 +494,7 @@ pub(crate) async fn ssi_issuer_connect(
     path = "/ssi/temporary-issuer/v1/reject",
     responses(
         (status = 200, description = "OK"),
+        (status = 400, description = "Invalid credential state"),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Server error"),
     ),
@@ -533,6 +535,7 @@ pub(crate) async fn ssi_issuer_reject(
     path = "/ssi/temporary-issuer/v1/submit",
     responses(
         (status = 200, description = "OK", body = ConnectIssuerResponseRestDTO),
+        (status = 400, description = "Bad request"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Not found"),
         (status = 409, description = "Already issued"),
