@@ -37,3 +37,6 @@ mockall.workspace = true
 one-core = { version = "0.1.0", path = "../../lib/one-core", features = [
     "mock",
 ] }
+
+[lints]
+workspace = true

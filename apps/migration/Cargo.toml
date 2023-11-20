@@ -27,3 +27,6 @@ tokio = { workspace = true, features = [
 default = ["cli", "mysql"]
 cli = ["sea-orm-migration/cli", "tokio"]
 mysql = ["sea-orm-migration/sqlx-mysql"]
+
+[lints]
+workspace = true

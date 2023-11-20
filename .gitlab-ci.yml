@@ -1,4 +1,4 @@
-image: rust:1.73.0-slim-buster
+image: rust:1.74.0-slim-buster
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -15,12 +15,10 @@ variables:
   # - AZURE_STORAGE_KEY: storage account key
   # - PGP_PRIVATE_KEY: helm-secrets
 
-
 workflow:
   rules:
     - if: $CI_COMMIT_BRANCH
     - if: $CI_COMMIT_TAG
-
 
 stages:
   - build
@@ -89,7 +87,7 @@ before_script:
 
 .cargo_build:
   script:
-    - cargo build --release --features strict
+    - cargo build --release
   artifacts:
     expire_in: 1 hour
     paths:
@@ -118,7 +116,6 @@ before_script:
     branch: main
     strategy: depend
 
-
 build:
   stage: build
   extends:
@@ -146,7 +143,7 @@ linter:clippy:
   script:
     - apt-get update && apt-get install pkg-config libssl-dev -y
     - rustup component add clippy
-    - cargo clippy --all-targets -- -W clippy::redundant_clone -W clippy::dbg_macro -D warnings
+    - cargo clippy --all-targets -- -D warnings
     - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
     - cargo clippy --message-format=json &> report.json
   artifacts:
@@ -185,7 +182,6 @@ sonarqube-check:
   allow_failure: true
   extends:
     - .only_main_or_tag
-
 
 publish:
   stage: publish
@@ -285,7 +281,6 @@ upload_sdk_artifacts:
         =========================
       EOM
 
-
 test_e2e:
   stage: e2e_tests
   needs: [publish]
@@ -313,7 +308,6 @@ deploy:test:
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
       when: manual
-
 
 run_e2e_tests:
   stage: manual_e2e_tests

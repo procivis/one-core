@@ -42,7 +42,6 @@ strum_macros = "0.25.2"
 
 age = { version = "0.9.2", features = ["async"] }
 tokio-util = { version = "0.7", features = ["compat"] }
-ssh-key = { version = "0.6.1", features = ["ed25519", "rsa"] }
 
 shared-types = { version = "0.1.0", path = "../shared-types" }
 
@@ -58,3 +57,6 @@ shadow-rs.workspace = true
 [features]
 default = []
 mock = ["mockall"]
+
+[lints]
+workspace = true

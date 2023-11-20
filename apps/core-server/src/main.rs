@@ -1,5 +1,3 @@
-#![cfg_attr(feature = "strict", deny(warnings))]
-
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::panic;
 use std::sync::Arc;

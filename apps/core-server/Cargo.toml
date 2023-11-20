@@ -63,3 +63,6 @@ httpmock = { version = "0.6" }
 sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = [
     "test_utils",
 ] }
+
+[lints]
+workspace = true

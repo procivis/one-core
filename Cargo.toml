@@ -43,3 +43,7 @@ figment = { version = "0.10.10", features = ["env"] }
 url = { version = "2.4", features = ["serde"] }
 utoipa = { version = "4.0", default-features = false }
 sea-orm = { version = "0.12", default-features = false }
+
+[workspace.lints.clippy]
+redundant_clone = "warn"
+dbg_macro = "warn"

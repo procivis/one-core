@@ -1,5 +1,3 @@
-#![cfg_attr(feature = "strict", deny(warnings))]
-
 use std::collections::HashMap;
 use std::sync::Arc;
 

@@ -12,9 +12,11 @@ doctest = false
 sea-orm = ["dep:sea-orm"]
 utoipa = ["dep:utoipa"]
 
-
 [dependencies]
 uuid = { workspace = true }
 sea-orm = { workspace = true, features = ["macros"], optional = true }
 utoipa = { workspace = true, features = ["uuid"], optional = true }
 serde = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true
