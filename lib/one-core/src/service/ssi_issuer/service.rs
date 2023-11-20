@@ -50,6 +50,10 @@ impl SSIIssuerService {
             .as_ref()
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
+        /*
+         * TODO: holder_did_value is not verified if it's a valid/supported DID
+         * I was able to insert 'test' string as a DID value and it got accepted
+         */
         let holder_did = get_or_create_did(
             &self.did_repository,
             &credential_schema.organisation,
