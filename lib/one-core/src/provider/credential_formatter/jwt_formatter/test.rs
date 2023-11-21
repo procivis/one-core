@@ -15,7 +15,7 @@ use crate::{
         jwt::model::JWTPayload,
         jwt_formatter::model::{VC, VP},
         model::{CredentialPresentation, CredentialStatus},
-        CredentialFormatter, TokenVerifier,
+        CredentialFormatter, MockAuth, TokenVerifier,
     },
     service::{
         credential::dto::{
@@ -120,20 +120,24 @@ async fn test_format_credential() {
 
     let credential_details = test_credential_detail_response_dto();
 
-    let result = sd_formatter.format_credentials(
-        &credential_details,
-        Some(CredentialStatus {
-            id: "STATUS_ID".to_string(),
-            r#type: "TYPE".to_string(),
-            status_purpose: "PURPOSE".to_string(),
-            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
-        }),
-        &"holder_did".parse().unwrap(),
-        "algorithm",
-        vec!["Context1".to_string()],
-        vec!["Type1".to_string()],
-        Box::new(move |_: &str| Ok(vec![65u8, 66, 67])),
-    );
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+
+    let result = sd_formatter
+        .format_credentials(
+            &credential_details,
+            Some(CredentialStatus {
+                id: "STATUS_ID".to_string(),
+                r#type: "TYPE".to_string(),
+                status_purpose: "PURPOSE".to_string(),
+                additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
+            }),
+            &"holder_did".parse().unwrap(),
+            "algorithm",
+            vec!["Context1".to_string()],
+            vec!["Type1".to_string()],
+            Box::new(auth_fn),
+        )
+        .await;
 
     assert!(result.is_ok());
 
@@ -319,13 +323,17 @@ async fn test_format_presentation() {
         },
     };
 
-    let result = jwt_formatter.format_presentation(
-        &[jwt_token.to_owned()],
-        &"holder_did".parse().unwrap(),
-        "algorithm",
-        Box::new(move |_: &str| Ok(vec![65u8, 66, 67])),
-        None,
-    );
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+
+    let result = jwt_formatter
+        .format_presentation(
+            &[jwt_token.to_owned()],
+            &"holder_did".parse().unwrap(),
+            "algorithm",
+            Box::new(auth_fn),
+            None,
+        )
+        .await;
 
     assert!(result.is_ok());
 

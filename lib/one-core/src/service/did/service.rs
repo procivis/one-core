@@ -92,10 +92,9 @@ impl DidService {
             .get_key(&key_id, &KeyRelations::default())
             .await?;
 
-        Ok(did_method
+        did_method
             .create(request, key)
             .await
-            .map_err(ServiceError::from)?
-            .id)
+            .map_err(ServiceError::from)
     }
 }

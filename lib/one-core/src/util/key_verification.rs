@@ -1,9 +1,10 @@
 use crate::{
-    common_mapper::get_algorithm_from_key_algorithm,
-    config::data_structure::CoreConfig,
-    crypto::{signer::error::SignerError, CryptoProvider},
+    crypto::signer::error::SignerError,
     model::did::KeyRole,
-    provider::{credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider},
+    provider::{
+        credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider,
+        key_algorithm::provider::KeyAlgorithmProvider,
+    },
 };
 use async_trait::async_trait;
 use shared_types::DidValue;
@@ -11,9 +12,8 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub(crate) struct KeyVerification {
-    pub config: Arc<CoreConfig>,
-    pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
     pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
 }
 
 #[async_trait]
@@ -25,10 +25,10 @@ impl TokenVerifier for KeyVerification {
         token: &'a str,
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
-        let algorithm = get_algorithm_from_key_algorithm(algorithm, &self.config.key_algorithm)
-            .map_err(|_| SignerError::CouldNotSign)?;
-
-        let signer = self.crypto.get_signer(&algorithm)?;
+        let signer = self
+            .key_algorithm_provider
+            .get_signer(algorithm)
+            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
         let did = self
             .did_method_provider
@@ -57,13 +57,16 @@ impl TokenVerifier for KeyVerification {
 mod test {
     use super::*;
     use crate::{
-        crypto::{signer::MockSigner, MockCryptoProvider},
+        crypto::signer::MockSigner,
         model::{
             did::{Did, DidType, RelatedKey},
             key::Key,
         },
-        provider::did_method::provider::MockDidMethodProvider,
-        service::{error::ServiceError, test_utilities::generic_config},
+        provider::{
+            did_method::provider::MockDidMethodProvider,
+            key_algorithm::provider::MockKeyAlgorithmProvider,
+        },
+        service::error::ServiceError,
     };
     use mockall::predicate::*;
     use time::OffsetDateTime;
@@ -117,19 +120,18 @@ mod test {
 
         let signer = Arc::new(signer);
 
-        let mut crypto_provider = MockCryptoProvider::default();
-        crypto_provider
+        let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+        key_algorithm_provider
             .expect_get_signer()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "Ed25519");
+                assert_eq!(alg, "EDDSA");
                 true
             })
             .returning(move |_| Ok(signer.clone()));
 
         let verification = KeyVerification {
-            config: Arc::new(generic_config()),
-            crypto: Arc::new(crypto_provider),
+            key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
         };
 
@@ -152,19 +154,18 @@ mod test {
             .times(1)
             .returning(|_| Err(ServiceError::Other("test-error".to_string())));
 
-        let mut crypto_provider = MockCryptoProvider::default();
-        crypto_provider
+        let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+        key_algorithm_provider
             .expect_get_signer()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "Ed25519");
+                assert_eq!(alg, "EDDSA");
                 true
             })
             .returning(move |_| Ok(Arc::new(MockSigner::default())));
 
         let verification = KeyVerification {
-            config: Arc::new(generic_config()),
-            crypto: Arc::new(crypto_provider),
+            key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
         };
 
@@ -194,19 +195,18 @@ mod test {
 
         let signer = Arc::new(signer);
 
-        let mut crypto_provider = MockCryptoProvider::default();
-        crypto_provider
+        let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+        key_algorithm_provider
             .expect_get_signer()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "Ed25519");
+                assert_eq!(alg, "EDDSA");
                 true
             })
             .returning(move |_| Ok(signer.clone()));
 
         let verification = KeyVerification {
-            config: Arc::new(generic_config()),
-            crypto: Arc::new(crypto_provider),
+            key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
         };
 

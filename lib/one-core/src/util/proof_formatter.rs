@@ -24,7 +24,7 @@ impl OpenID4VCIProofJWTFormatter {
         // TODO: Later it will be necessary to verify with nonce
         Ok(Jwt::build_from_token(content, SkipVerification).await?)
     }
-    pub fn format_proof(
+    pub async fn format_proof(
         issuer_url: String,
         holder_did: &Did,
         algorithm: String,
@@ -52,6 +52,6 @@ impl OpenID4VCIProofJWTFormatter {
             payload,
         );
 
-        jwt.tokenize(auth_fn)
+        jwt.tokenize(auth_fn).await
     }
 }

@@ -13,15 +13,11 @@ impl super::DidMethod for X509Method {
         "x509".to_string()
     }
 
-    async fn load(&self, _did_id: &DidId) -> Result<Did, DidMethodError> {
-        todo!()
-    }
-
     async fn create(
         &self,
         _request: CreateDidRequestDTO,
         _key: Key,
-    ) -> Result<Did, DidMethodError> {
+    ) -> Result<DidId, DidMethodError> {
         todo!()
     }
 

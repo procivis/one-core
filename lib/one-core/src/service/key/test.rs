@@ -13,7 +13,7 @@ use crate::{
     },
     provider::{
         key_algorithm::GeneratedKey,
-        key_storage::{mock_key_storage::MockKeyStorage, provider::KeyProviderImpl, KeyStorage},
+        key_storage::{provider::KeyProviderImpl, KeyStorage, MockKeyStorage},
     },
     repository::mock::{
         key_repository::MockKeyRepository, organisation_repository::MockOrganisationRepository,

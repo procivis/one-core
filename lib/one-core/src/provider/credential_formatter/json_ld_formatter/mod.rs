@@ -16,7 +16,7 @@ pub struct JsonLdFormatter {
 
 #[async_trait]
 impl CredentialFormatter for JsonLdFormatter {
-    fn format_credentials(
+    async fn format_credentials(
         &self,
         _credential: &CredentialDetailResponseDTO,
         _credential_status: Option<CredentialStatus>,
@@ -44,7 +44,7 @@ impl CredentialFormatter for JsonLdFormatter {
         todo!()
     }
 
-    fn format_presentation(
+    async fn format_presentation(
         &self,
         _tokens: &[String],
         _holder_did: &DidValue,

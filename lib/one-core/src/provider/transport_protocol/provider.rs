@@ -1,8 +1,6 @@
 use super::{dto::InvitationType, TransportProtocol};
-use crate::common_mapper::get_algorithm_from_key_algorithm;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::config::data_structure::CoreConfig;
-use crate::crypto::CryptoProvider;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -50,13 +48,12 @@ pub(crate) trait TransportProtocolProvider {
 }
 
 pub(crate) struct TransportProtocolProviderImpl {
-    pub(crate) protocols: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>,
-    pub(crate) formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    pub(crate) credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-    pub(crate) revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-    pub(crate) key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    pub(crate) config: Arc<CoreConfig>,
-    pub(crate) crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    protocols: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
+    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    config: Arc<CoreConfig>,
 }
 
 impl TransportProtocolProviderImpl {
@@ -67,7 +64,6 @@ impl TransportProtocolProviderImpl {
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
         config: Arc<CoreConfig>,
-        crypto: Arc<dyn CryptoProvider + Send + Sync>,
     ) -> Self {
         Self {
             protocols: protocols.into_iter().collect(),
@@ -76,7 +72,6 @@ impl TransportProtocolProviderImpl {
             revocation_method_provider,
             key_provider,
             config,
-            crypto,
         }
     }
 }
@@ -192,24 +187,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .find(|k| k.role == KeyRole::AssertionMethod)
             .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
 
-        let algorithm =
-            get_algorithm_from_key_algorithm(&key.key.key_type, &self.config.key_algorithm)?;
-
-        let signer = self.crypto.get_signer(&algorithm)?;
-
-        let key_provider = self.key_provider.get_key_storage(&key.key.storage_type)?;
-
-        let private_key_moved = key_provider
-            .decrypt_private_key(&key.key.private_key)
-            .await?;
-        let public_key_moved = key.key.public_key.clone();
-
-        let auth_fn = Box::new(move |data: &str| {
-            let signer = signer;
-            let private_key = private_key_moved;
-            let public_key = public_key_moved;
-            signer.sign(data, &public_key, &private_key)
-        });
+        let auth_fn = self.key_provider.get_signature_provider(&key.key)?;
 
         let token: String = self
             .formatter_provider
@@ -222,7 +200,8 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
                 additional_context,
                 vec![],
                 auth_fn,
-            )?;
+            )
+            .await?;
 
         self.credential_repository
             .update_credential(get_issued_credential_update(

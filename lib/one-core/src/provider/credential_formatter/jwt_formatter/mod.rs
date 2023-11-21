@@ -30,7 +30,7 @@ pub struct JWTFormatter {
 
 #[async_trait]
 impl CredentialFormatter for JWTFormatter {
-    fn format_credentials(
+    async fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,
         credential_status: Option<CredentialStatus>,
@@ -63,7 +63,7 @@ impl CredentialFormatter for JWTFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), algorithm.to_owned(), None, payload);
 
-        jwt.tokenize(auth_fn)
+        jwt.tokenize(auth_fn).await
     }
 
     async fn extract_credentials(
@@ -84,7 +84,7 @@ impl CredentialFormatter for JWTFormatter {
         Ok(credential.token)
     }
 
-    fn format_presentation(
+    async fn format_presentation(
         &self,
         tokens: &[String],
         holder_did: &DidValue,
@@ -110,7 +110,7 @@ impl CredentialFormatter for JWTFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), algorithm.to_owned(), None, payload);
 
-        jwt.tokenize(auth_fn)
+        jwt.tokenize(auth_fn).await
     }
 
     async fn extract_presentation(

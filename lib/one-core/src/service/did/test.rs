@@ -11,7 +11,7 @@ use crate::{
         organisation::{Organisation, OrganisationRelations},
     },
     provider::did_method::{
-        mock_did_method::MockDidMethod, provider::DidMethodProviderImpl, DidMethod, DidMethodError,
+        provider::DidMethodProviderImpl, DidMethod, DidMethodError, MockDidMethod,
     },
     repository::did_repository::MockDidRepository,
     repository::mock::key_repository::MockKeyRepository,
@@ -251,19 +251,7 @@ async fn test_create_did_success() {
     did_method
         .expect_create()
         .times(1)
-        .returning(|request, _key| {
-            Ok(Did {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                name: request.name,
-                did: "did:key:123".parse().unwrap(),
-                did_type: DidType::Local,
-                did_method: request.did_method,
-                keys: None,
-                organisation: None,
-            })
-        });
+        .returning(|_request, _key| Ok(Uuid::new_v4().into()));
 
     let service = setup_service(
         MockDidRepository::default(),

@@ -1,4 +1,6 @@
 use crate::{
+    crypto::signer::error::SignerError,
+    model::key::Key,
     provider::{key_algorithm::GeneratedKey, key_storage::KeyStorage},
     service::error::ServiceError,
 };
@@ -8,11 +10,7 @@ pub struct PKCS11KeyProvider {}
 
 #[async_trait::async_trait]
 impl KeyStorage for PKCS11KeyProvider {
-    async fn decrypt_private_key(&self, _private_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
-        todo!()
-    }
-
-    fn fingerprint(&self, _public_key: &[u8], _key_type: &str) -> Result<String, ServiceError> {
+    async fn sign(&self, _key: &Key, _message: &str) -> Result<Vec<u8>, SignerError> {
         todo!()
     }
 

@@ -20,7 +20,13 @@ pub struct GeneratedKey {
 
 #[cfg_attr(test, mockall::automock)]
 pub trait KeyAlgorithm {
-    fn fingerprint(&self, public_key: &[u8]) -> String;
+    /// related crypto signer ID
+    fn get_signer_algorithm_id(&self) -> String;
+
+    /// base58-btc representation of the public key (following did:key spec)
+    fn get_multibase(&self, public_key: &[u8]) -> String;
+
+    /// generate a new in-memory key-pair
     fn generate_key_pair(&self) -> GeneratedKey;
 }
 

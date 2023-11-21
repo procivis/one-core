@@ -5,6 +5,8 @@ use tokio::io::AsyncWriteExt;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::compat::FuturesAsyncWriteCompatExt;
 
+use crate::crypto::signer::error::SignerError;
+use crate::model::key::Key;
 use crate::{
     config::data_structure::KeyStorageInternalParams,
     provider::{
@@ -21,17 +23,18 @@ pub struct InternalKeyProvider {
 
 #[async_trait::async_trait]
 impl KeyStorage for InternalKeyProvider {
-    async fn decrypt_private_key(&self, private_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
-        let passphrase = self.params.encryption.as_ref().map(|value| &value.value);
-        decrypt_if_password_is_provided(private_key, passphrase).await
-    }
-
-    fn fingerprint(&self, public_key: &[u8], key_type: &str) -> Result<String, ServiceError> {
-        Ok(self
+    async fn sign(&self, key: &Key, message: &str) -> Result<Vec<u8>, SignerError> {
+        let signer = self
             .key_algorithm_provider
-            .get_key_algorithm(key_type)
-            .map_err(|_| ServiceError::IncorrectParameters)?
-            .fingerprint(public_key))
+            .get_signer(&key.key_type)
+            .map_err(|e| SignerError::MissingAlgorithm(e.to_string()))?;
+
+        let passphrase = self.params.encryption.as_ref().map(|value| &value.value);
+        let private_key = decrypt_if_password_is_provided(&key.private_key, passphrase)
+            .await
+            .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
+
+        signer.sign(message, &key.public_key, &private_key)
     }
 
     async fn generate(&self, key_type: &str) -> Result<GeneratedKey, ServiceError> {

@@ -25,7 +25,7 @@ use self::{
     model::{CredentialPresentation, CredentialStatus, DetailCredential, Presentation},
 };
 
-pub type AuthenticationFn = Box<dyn FnOnce(&str) -> Result<Vec<u8>, SignerError>>;
+pub type AuthenticationFn = Box<dyn SignatureProvider + Send + Sync>;
 pub type VerificationFn = Box<dyn TokenVerifier + Send + Sync>;
 
 #[async_trait]
@@ -39,11 +39,17 @@ pub trait TokenVerifier {
     ) -> Result<(), SignerError>;
 }
 
+#[cfg_attr(test, mockall::automock)]
+#[async_trait]
+pub trait SignatureProvider {
+    async fn sign(&self, message: &str) -> Result<Vec<u8>, SignerError>;
+}
+
 #[allow(clippy::too_many_arguments)]
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait CredentialFormatter {
-    fn format_credentials(
+    async fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,
         credential_status: Option<CredentialStatus>,
@@ -65,7 +71,7 @@ pub trait CredentialFormatter {
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError>;
 
-    fn format_presentation(
+    async fn format_presentation(
         &self,
         tokens: &[String],
         holder_did: &DidValue,
@@ -81,4 +87,15 @@ pub trait CredentialFormatter {
     ) -> Result<Presentation, FormatterError>;
 
     fn get_leeway(&self) -> u64;
+}
+
+#[cfg(test)]
+#[derive(Clone)]
+pub(crate) struct MockAuth<F: Fn(&str) -> Vec<u8> + Send + Sync>(pub F);
+#[cfg(test)]
+#[async_trait::async_trait]
+impl<F: Fn(&str) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
+    async fn sign(&self, message: &str) -> Result<Vec<u8>, SignerError> {
+        Ok(self.0(message))
+    }
 }

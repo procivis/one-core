@@ -7,7 +7,11 @@ use crate::provider::key_algorithm::GeneratedKey;
 pub struct Es256;
 
 impl KeyAlgorithm for Es256 {
-    fn fingerprint(&self, public_key: &[u8]) -> String {
+    fn get_signer_algorithm_id(&self) -> String {
+        "ES256".to_string()
+    }
+
+    fn get_multibase(&self, public_key: &[u8]) -> String {
         let key = did_key::P256KeyPair::from_public_key(public_key);
         key.fingerprint()
     }

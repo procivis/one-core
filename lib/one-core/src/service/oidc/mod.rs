@@ -1,7 +1,7 @@
 use crate::config::data_structure::CoreConfig;
-use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::claim_repository::ClaimRepository;
@@ -33,7 +33,7 @@ pub struct OIDCService {
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
 }
 
@@ -51,7 +51,7 @@ impl OIDCService {
         did_repository: Arc<dyn DidRepository + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-        crypto: Arc<dyn CryptoProvider + Send + Sync>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     ) -> Self {
         Self {
@@ -66,7 +66,7 @@ impl OIDCService {
             did_repository,
             formatter_provider,
             did_method_provider,
-            crypto,
+            key_algorithm_provider,
             revocation_method_provider,
         }
     }

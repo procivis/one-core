@@ -9,7 +9,7 @@ mod model;
 pub struct StatusList2021JWTFormatter {}
 
 impl StatusList2021JWTFormatter {
-    pub fn format_status_list(
+    pub async fn format_status_list(
         revocation_list_url: String,
         issuer_did: &Did,
         encoded_list: String,
@@ -52,7 +52,7 @@ impl StatusList2021JWTFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), algorithm, None, payload);
 
-        jwt.tokenize(auth_fn)
+        jwt.tokenize(auth_fn).await
     }
 
     pub async fn parse_status_list(
