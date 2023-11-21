@@ -125,16 +125,19 @@ impl OneCore {
         ));
 
         let key_algorithms = key_algorithms_from_config(&config.key_algorithm)?;
-        let key_algorithm_provider =
-            Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms.to_owned()));
-        let key_providers = key_providers_from_config(&config.key_storage, key_algorithm_provider)?;
+        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+            key_algorithms.to_owned(),
+            crypto.clone(),
+        ));
+        let key_providers =
+            key_providers_from_config(&config.key_storage, key_algorithm_provider.clone())?;
         let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
 
         let did_methods = did_method_providers_from_config(
             &config.did,
             data_provider.get_did_repository(),
             data_provider.get_organisation_repository(),
-            key_provider.clone(),
+            key_algorithm_provider.clone(),
             &config.key_algorithm,
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
@@ -149,9 +152,8 @@ impl OneCore {
                     core_base_url: core_base_url.clone(),
                     credential_repository: data_provider.get_credential_repository(),
                     revocation_list_repository: data_provider.get_revocation_list_repository(),
-                    crypto: crypto.clone(),
-                    config: config.clone(),
                     key_provider: key_provider.clone(),
+                    key_algorithm_provider: key_algorithm_provider.clone(),
                     did_method_provider: did_method_provider.clone(),
                     client: reqwest::Client::new(),
                 }),
@@ -173,8 +175,6 @@ impl OneCore {
                     data_provider.get_did_repository(),
                     formatter_provider.clone(),
                     key_provider.clone(),
-                    crypto.clone(),
-                    config.clone(),
                 )),
             ),
             (
@@ -189,7 +189,6 @@ impl OneCore {
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     key_provider.clone(),
-                    config.clone(),
                     crypto.clone(),
                     get_exchange_params("OPENID4VC", &config).ok(),
                 )),
@@ -203,7 +202,6 @@ impl OneCore {
             revocation_method_provider.clone(),
             key_provider.clone(),
             config.clone(),
-            crypto.clone(),
         ));
 
         Ok(OneCore {
@@ -246,7 +244,7 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),
                 did_method_provider.clone(),
-                crypto.clone(),
+                key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
@@ -282,8 +280,7 @@ impl OneCore {
                 formatter_provider.clone(),
                 did_method_provider,
                 revocation_method_provider,
-                crypto.clone(),
-                config.clone(),
+                key_algorithm_provider,
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_repository(),

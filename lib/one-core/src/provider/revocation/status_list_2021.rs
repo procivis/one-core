@@ -3,9 +3,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
 
-use crate::common_mapper::get_algorithm_from_key_algorithm;
-use crate::config::data_structure::CoreConfig;
-use crate::crypto::CryptoProvider;
 use crate::model::did::KeyRole;
 use crate::model::{
     credential::{
@@ -19,6 +16,7 @@ use crate::provider::credential_formatter::{
     model::CredentialStatus, status_list_2021_jwt_formatter::StatusList2021JWTFormatter,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{CredentialRevocationInfo, RevocationMethod};
 use crate::provider::transport_protocol::TransportProtocolError;
@@ -34,9 +32,8 @@ pub(crate) struct StatusList2021 {
     pub core_base_url: Option<String>,
     pub credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     pub revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
-    pub config: Arc<CoreConfig>,
-    pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
     pub key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     pub client: reqwest::Client,
 }
@@ -172,8 +169,7 @@ impl RevocationMethod for StatusList2021 {
             .map_err(TransportProtocolError::HttpRequestError)?;
 
         let key_verification = Box::new(KeyVerification {
-            config: self.config.clone(),
-            crypto: self.crypto.clone(),
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
         });
 
@@ -289,18 +285,7 @@ impl StatusList2021 {
             .find(|k| k.role == KeyRole::AssertionMethod)
             .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
 
-        let algorithm =
-            get_algorithm_from_key_algorithm(&key.key.key_type, &self.config.key_algorithm)?;
-
-        let signer = self.crypto.get_signer(&algorithm)?;
-
-        let key_storage = self.key_provider.get_key_storage(&key.key.storage_type)?;
-
-        let private_key = key_storage
-            .decrypt_private_key(&key.key.private_key)
-            .await?;
-        let public_key = key.key.public_key.clone();
-        let auth_fn = Box::new(move |data: &str| signer.sign(data, &public_key, &private_key));
+        let auth_fn = self.key_provider.get_signature_provider(&key.key)?;
 
         StatusList2021JWTFormatter::format_status_list(
             revocation_list_url,
@@ -309,6 +294,7 @@ impl StatusList2021 {
             key.key.key_type.to_owned(),
             auth_fn,
         )
+        .await
         .map_err(ServiceError::from)
     }
 

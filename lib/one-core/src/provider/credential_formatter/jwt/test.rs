@@ -5,7 +5,10 @@ use time::{macros::datetime, OffsetDateTime};
 
 use crate::{
     crypto::signer::error::SignerError,
-    provider::credential_formatter::jwt::{model::JWTPayload, Jwt},
+    provider::credential_formatter::{
+        jwt::{model::JWTPayload, Jwt},
+        MockAuth,
+    },
 };
 
 use super::TokenVerifier;
@@ -83,14 +86,14 @@ async fn test_tokenize() {
 
     let reference_token_moved = reference_token.clone();
 
-    let auth_fn = Box::new(move |data: &str| {
-        let jwt = extract_jwt_part(reference_token_moved);
+    let auth_fn = MockAuth(move |data: &str| {
+        let jwt = extract_jwt_part(reference_token_moved.clone());
         assert_eq!(data, jwt);
 
-        Ok(vec![1u8, 2, 3])
+        vec![1u8, 2, 3]
     });
 
-    let token = json.tokenize(auth_fn).unwrap();
+    let token = json.tokenize(Box::new(auth_fn)).await.unwrap();
 
     assert_eq!(token, reference_token);
 }

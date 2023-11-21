@@ -12,9 +12,6 @@ use self::{
     },
 };
 use crate::{
-    common_mapper::get_algorithm_from_key_algorithm,
-    config::data_structure::CoreConfig,
-    crypto::CryptoProvider,
     model::{
         claim::{Claim, ClaimId},
         claim_schema::ClaimSchemaRelations,
@@ -63,8 +60,6 @@ pub(crate) struct ProcivisTemp {
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
-    config: Arc<CoreConfig>,
 }
 
 impl ProcivisTemp {
@@ -78,8 +73,6 @@ impl ProcivisTemp {
         did_repository: Arc<dyn DidRepository + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
-        crypto: Arc<dyn CryptoProvider + Send + Sync>,
-        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -91,8 +84,6 @@ impl ProcivisTemp {
             did_repository,
             formatter_provider,
             key_provider,
-            crypto,
-            config,
         }
     }
 }
@@ -242,24 +233,10 @@ impl TransportProtocol for ProcivisTemp {
             .find(|k| k.role == KeyRole::AssertionMethod)
             .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
 
-        let algorithm =
-            get_algorithm_from_key_algorithm(&key.key.key_type, &self.config.key_algorithm)
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-        let signer = self
-            .crypto
-            .get_signer(&algorithm)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-        let key_provider = self
+        let auth_fn = self
             .key_provider
-            .get_key_storage(&key.key.storage_type)
+            .get_signature_provider(&key.key)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-
-        let private_key = key_provider
-            .decrypt_private_key(&key.key.private_key)
-            .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-        let public_key = key.key.public_key.clone();
-        let auth_fn = Box::new(move |data: &str| signer.sign(data, &public_key, &private_key));
 
         let tokens: Vec<String> = credential_presentations
             .into_iter()
@@ -267,6 +244,7 @@ impl TransportProtocol for ProcivisTemp {
             .collect();
         let presentation = presentation_formatter
             .format_presentation(&tokens, &holder_did.did, &key.key.key_type, auth_fn, None)
+            .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let mut url = super::get_base_url_from_interaction(proof.interaction.as_ref())?;

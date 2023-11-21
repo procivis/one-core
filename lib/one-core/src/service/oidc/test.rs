@@ -1,10 +1,10 @@
 use crate::config::data_structure::CoreConfig;
-use crate::crypto::MockCryptoProvider;
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::interaction::Interaction;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
@@ -43,7 +43,7 @@ struct Mocks {
     pub did_repository: MockDidRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
-    pub crypto: MockCryptoProvider,
+    pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
 }
 
@@ -61,7 +61,7 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Arc::new(mocks.did_repository),
         Arc::new(mocks.formatter_provider),
         Arc::new(mocks.did_method_provider),
-        Arc::new(mocks.crypto),
+        Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.revocation_method_provider),
     )
 }

@@ -16,7 +16,7 @@ use crate::{
         jwt::model::JWTPayload,
         model::{CredentialPresentation, CredentialStatus},
         sdjwt_formatter::model::Sdvc,
-        CredentialFormatter, TokenVerifier,
+        CredentialFormatter, MockAuth, TokenVerifier,
     },
     service::{
         credential::dto::{
@@ -142,20 +142,24 @@ async fn test_format_credential() {
 
     let credential_details = test_credential_detail_response_dto();
 
-    let result = sd_formatter.format_credentials(
-        &credential_details,
-        Some(CredentialStatus {
-            id: "STATUS_ID".to_string(),
-            r#type: "TYPE".to_string(),
-            status_purpose: "PURPOSE".to_string(),
-            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
-        }),
-        &"holder_did".parse().unwrap(),
-        "algorithm",
-        vec!["Context1".to_string()],
-        vec!["Type1".to_string()],
-        Box::new(move |_: &str| Ok(vec![65u8, 66, 67])),
-    );
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+
+    let result = sd_formatter
+        .format_credentials(
+            &credential_details,
+            Some(CredentialStatus {
+                id: "STATUS_ID".to_string(),
+                r#type: "TYPE".to_string(),
+                status_purpose: "PURPOSE".to_string(),
+                additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
+            }),
+            &"holder_did".parse().unwrap(),
+            "algorithm",
+            vec!["Context1".to_string()],
+            vec!["Type1".to_string()],
+            Box::new(auth_fn),
+        )
+        .await;
 
     assert!(result.is_ok());
 

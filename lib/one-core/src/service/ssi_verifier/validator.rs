@@ -1,8 +1,6 @@
 use super::dto::ValidatedProofClaimDTO;
 use crate::{
     common_validator::{validate_expiration_time, validate_issuance_time},
-    config::data_structure::CoreConfig,
-    crypto::CryptoProvider,
     model::{
         credential_schema::{CredentialSchema, CredentialSchemaId},
         did::Did,
@@ -11,6 +9,7 @@ use crate::{
     provider::{
         credential_formatter::{model::DetailCredential, CredentialFormatter},
         did_method::provider::DidMethodProvider,
+        key_algorithm::provider::KeyAlgorithmProvider,
         revocation::provider::RevocationMethodProvider,
     },
     service::error::ServiceError,
@@ -29,15 +28,13 @@ pub(super) async fn validate_proof(
     holder_did: Did,
     presentation: &str,
     formatter: &(dyn CredentialFormatter + Send + Sync),
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
-    config: Arc<CoreConfig>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
     let key_verification = Box::new(KeyVerification {
-        config: config.clone(),
-        crypto: crypto.clone(),
-        did_method_provider: did_method_provider.clone(),
+        key_algorithm_provider,
+        did_method_provider,
     });
 
     let presentation = formatter

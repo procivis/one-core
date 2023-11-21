@@ -42,7 +42,7 @@ pub struct SDJWTFormatter {
 
 #[async_trait]
 impl CredentialFormatter for SDJWTFormatter {
-    fn format_credentials(
+    async fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,
         credential_status: Option<CredentialStatus>,
@@ -76,7 +76,7 @@ impl CredentialFormatter for SDJWTFormatter {
 
         let jwt = Jwt::new("SDJWT".to_owned(), algorithm.to_owned(), None, payload);
 
-        let mut token = jwt.tokenize(auth_fn)?;
+        let mut token = jwt.tokenize(auth_fn).await?;
 
         let disclosures_token = tokenize_claims(disclosures)?;
 
@@ -128,7 +128,7 @@ impl CredentialFormatter for SDJWTFormatter {
         })
     }
 
-    fn format_presentation(
+    async fn format_presentation(
         &self,
         _credentials: &[String],
         _holder_did: &DidValue,

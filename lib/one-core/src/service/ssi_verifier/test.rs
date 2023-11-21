@@ -4,8 +4,6 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
-    config::data_structure::CoreConfig,
-    crypto::MockCryptoProvider,
     model::{
         claim_schema::ClaimSchema,
         credential_schema::CredentialSchema,
@@ -17,7 +15,8 @@ use crate::{
         credential_formatter::{
             model::Presentation, provider::MockCredentialFormatterProvider, MockCredentialFormatter,
         },
-        did_method::{mock_did_method::MockDidMethod, provider::DidMethodProviderImpl, DidMethod},
+        did_method::{provider::DidMethodProviderImpl, DidMethod, MockDidMethod},
+        key_algorithm::provider::MockKeyAlgorithmProvider,
         revocation::provider::MockRevocationMethodProvider,
     },
     repository::did_repository::MockDidRepository,
@@ -338,17 +337,7 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
         claim_repository: Arc::new(MockClaimRepository::new()),
         did_method_provider: Arc::new(did_method_provider),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
-        crypto: Arc::new(MockCryptoProvider::default()),
-        config: Arc::new(CoreConfig {
-            format: Default::default(),
-            exchange: Default::default(),
-            transport: Default::default(),
-            revocation: Default::default(),
-            did: Default::default(),
-            datatype: Default::default(),
-            key_algorithm: Default::default(),
-            key_storage: Default::default(),
-        }),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     }
 }
 

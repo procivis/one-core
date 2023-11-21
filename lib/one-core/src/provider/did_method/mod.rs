@@ -14,11 +14,12 @@ use crate::model::key::Key;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::web::WebDidMethod;
 use crate::provider::did_method::x509::X509Method;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::service::did::dto::CreateDidRequestDTO;
+
+use super::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub mod key;
 mod mapper;
@@ -32,20 +33,21 @@ pub enum DidMethodError {
     AlreadyExists,
     #[error("Data layer error: `{0}`")]
     DataLayerError(#[from] DataLayerError),
-    #[error("Key storage not found")]
-    KeyStorageNotFound,
+    #[error("Key algorithm not found")]
+    KeyAlgorithmNotFound,
     #[error("Could not resolve: `{0}`")]
     ResolutionError(String),
     #[error("Not supported")]
     NotSupported,
 }
 
+#[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait DidMethod {
     fn get_method(&self) -> String;
 
-    async fn load(&self, did_id: &DidId) -> Result<Did, DidMethodError>;
-    async fn create(&self, request: CreateDidRequestDTO, key: Key) -> Result<Did, DidMethodError>;
+    async fn create(&self, request: CreateDidRequestDTO, key: Key)
+        -> Result<DidId, DidMethodError>;
 
     fn check_authorization(&self) -> bool;
     async fn resolve(&self, did: &DidValue) -> Result<Did, DidMethodError>;
@@ -57,30 +59,30 @@ pub fn did_method_providers_from_config(
     did_config: &HashMap<String, DidEntity>,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
-    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     key_algorithm_config: &HashMap<String, KeyAlgorithmEntity>,
 ) -> Result<HashMap<String, Arc<dyn DidMethod + Send + Sync>>, ConfigParseError> {
     did_config
         .iter()
         .map(|(name, entity)| {
-            storage_from_entity(
+            method_from_entity(
                 name,
                 entity,
                 did_repository.clone(),
                 organisation_repository.clone(),
-                key_provider.clone(),
+                key_algorithm_provider.clone(),
                 key_algorithm_config,
             )
         })
         .collect::<Result<HashMap<String, _>, _>>()
 }
 
-fn storage_from_entity(
+fn method_from_entity(
     name: &String,
     entity: &DidEntity,
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
-    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     key_algorithm_config: &HashMap<String, KeyAlgorithmEntity>,
 ) -> Result<(String, Arc<dyn DidMethod + Send + Sync>), ConfigParseError> {
     match entity.r#type.as_str() {
@@ -102,7 +104,7 @@ fn storage_from_entity(
                 Arc::new(KeyDidMethod {
                     did_repository: did_repository.clone(),
                     organisation_repository: organisation_repository.clone(),
-                    key_provider: key_provider.clone(),
+                    key_algorithm_provider,
                     method_key: "KEY".to_string(),
                     params,
                     key_algorithm_config: key_algorithm_config.to_owned(),
@@ -115,6 +117,3 @@ fn storage_from_entity(
         )),
     }
 }
-
-#[cfg(test)]
-pub mod mock_did_method;

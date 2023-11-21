@@ -19,8 +19,7 @@ use super::{
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
 };
 use crate::{
-    common_mapper::get_algorithm_from_key_algorithm,
-    config::data_structure::{CoreConfig, ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
+    config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::CryptoProvider,
     model::{
         claim::{Claim, ClaimRelations},
@@ -107,7 +106,6 @@ pub(crate) struct OpenID4VC {
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    config: Arc<CoreConfig>,
     base_url: Option<String>,
     crypto: Arc<dyn CryptoProvider + Send + Sync>,
 
@@ -128,7 +126,6 @@ impl OpenID4VC {
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
-        config: Arc<CoreConfig>,
         crypto: Arc<dyn CryptoProvider + Send + Sync>,
         params: Option<ParamsEnum<ExchangeParams>>,
     ) -> Self {
@@ -147,7 +144,6 @@ impl OpenID4VC {
             formatter_provider,
             revocation_provider,
             key_provider,
-            config,
             client: reqwest::Client::new(),
             crypto,
             params,
@@ -224,24 +220,10 @@ impl TransportProtocol for OpenID4VC {
             .find(|k| k.role == KeyRole::AssertionMethod)
             .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
 
-        let algorithm =
-            get_algorithm_from_key_algorithm(&key.key.key_type, &self.config.key_algorithm)
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-        let signer = self
-            .crypto
-            .get_signer(&algorithm)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-        let key_provider = self
+        let auth_fn = self
             .key_provider
-            .get_key_storage(&key.key.storage_type)
+            .get_signature_provider(&key.key)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-
-        let private_key = key_provider
-            .decrypt_private_key(&key.key.private_key)
-            .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-        let public_key = key.key.public_key.clone();
-        let auth_fn = Box::new(move |data: &str| signer.sign(data, &public_key, &private_key));
 
         let tokens: Vec<String> = credential_presentations
             .iter()
@@ -259,6 +241,7 @@ impl TransportProtocol for OpenID4VC {
                 auth_fn,
                 Some(interaction_data.nonce),
             )
+            .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let mut params = HashMap::new();
@@ -306,16 +289,28 @@ impl TransportProtocol for OpenID4VC {
             .as_ref()
             .ok_or(TransportProtocolError::Failed("schema is None".to_string()))?;
 
-        // TODO: add proper signature
-        let algorithm = "EdDSA".to_string();
-        let auth_fn = Box::new(move |_data: &str| Ok(vec![1u8]));
+        let key = holder_did
+            .keys
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "Holder has no keys".to_string(),
+            ))?
+            .iter()
+            .find(|k| k.role == KeyRole::AssertionMethod)
+            .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(&key.key)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url,
             holder_did,
-            algorithm,
+            key.key.key_type.to_owned(),
             auth_fn,
         )
+        .await
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let body = OpenID4VCICredential {

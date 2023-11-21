@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::crypto::MockCryptoProvider;
+use crate::provider::credential_formatter::MockSignatureProvider;
 use crate::provider::transport_protocol::provider::{
     TransportProtocolProvider, TransportProtocolProviderImpl,
 };
@@ -12,7 +12,6 @@ use crate::{
         AccessModifier, ConfigEntity, CoreConfig, KeyAlgorithmParams, Param, ParamsEnum,
         TranslatableString,
     },
-    crypto::signer::MockSigner,
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
@@ -28,12 +27,10 @@ use crate::{
             model::CredentialStatus, provider::MockCredentialFormatterProvider,
             MockCredentialFormatter,
         },
-        key_storage::mock_key_storage::MockKeyStorage,
-        revocation::MockRevocationMethod,
-    },
-    provider::{
         key_storage::provider::MockKeyProvider,
-        revocation::{provider::MockRevocationMethodProvider, CredentialRevocationInfo},
+        revocation::{
+            provider::MockRevocationMethodProvider, CredentialRevocationInfo, MockRevocationMethod,
+        },
     },
     repository::mock::credential_repository::MockCredentialRepository,
 };
@@ -125,19 +122,11 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .return_once(move |_| Ok(Arc::new(formatter)));
 
-    let mut key_storage = MockKeyStorage::new();
-    key_storage
-        .expect_decrypt_private_key()
-        .once()
-        .return_once(|_| Ok(b"decrypted private key".to_vec()));
-
     let mut key_provider = MockKeyProvider::new();
     key_provider
-        .expect_get_key_storage()
+        .expect_get_signature_provider()
         .once()
-        .return_once(move |_| Ok(Arc::new(key_storage)));
-
-    let signer = Arc::new(MockSigner::new());
+        .returning(|_| Ok(Box::<MockSignatureProvider>::default()));
 
     let algorithm = algorithm_config(key_type);
     let config = CoreConfig {
@@ -145,25 +134,14 @@ async fn test_issuer_submit_succeeds() {
         ..dummy_config()
     };
 
-    let mut crypto_provider = MockCryptoProvider::default();
-    crypto_provider
-        .expect_get_signer()
-        .once()
-        .withf(move |alg| {
-            assert_eq!(alg, key_type);
-            true
-        })
-        .returning(move |_| Ok(signer.clone()));
-
-    let service = TransportProtocolProviderImpl {
-        protocols: Default::default(),
-        credential_repository: Arc::new(credential_repository),
-        revocation_method_provider: Arc::new(revocation_method_provider),
-        formatter_provider: Arc::new(formatter_provider),
-        key_provider: Arc::new(key_provider),
-        crypto: Arc::new(crypto_provider),
-        config: Arc::new(config),
-    };
+    let service = TransportProtocolProviderImpl::new(
+        Default::default(),
+        Arc::new(formatter_provider),
+        Arc::new(credential_repository),
+        Arc::new(revocation_method_provider),
+        Arc::new(key_provider),
+        Arc::new(config),
+    );
 
     service.issue_credential(&credential_id).await.unwrap();
 }

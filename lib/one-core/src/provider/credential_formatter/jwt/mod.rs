@@ -112,7 +112,7 @@ impl<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> Jwt<Payload> {
         Ok(jwt)
     }
 
-    pub fn tokenize(&self, auth_fn: AuthenticationFn) -> Result<String, FormatterError> {
+    pub async fn tokenize(&self, auth_fn: AuthenticationFn) -> Result<String, FormatterError> {
         let jwt_header_json = serde_json::to_string(&self.header)
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
         let payload_json = serde_json::to_string(&self.payload)
@@ -123,7 +123,10 @@ impl<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> Jwt<Payload> {
             string_to_b64url_string(&payload_json)?,
         );
 
-        let signature = auth_fn(&token).map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
+        let signature = auth_fn
+            .sign(&token)
+            .await
+            .map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
 
         if !signature.is_empty() {
             let signature_encoded = bin_to_b64url_string(&signature)?;

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::crypto::signer::error::SignerError;
+use crate::model::key::Key;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::{
     config::{
@@ -24,11 +26,11 @@ pub mod internal;
 pub mod pkcs11;
 pub mod provider;
 
+#[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait KeyStorage {
-    async fn decrypt_private_key(&self, private_key: &[u8]) -> Result<Vec<u8>, ServiceError>;
-    fn fingerprint(&self, bytes: &[u8], key_type: &str) -> Result<String, ServiceError>;
     async fn generate(&self, key_type: &str) -> Result<GeneratedKey, ServiceError>;
+    async fn sign(&self, key: &Key, message: &str) -> Result<Vec<u8>, SignerError>;
 }
 
 pub fn key_providers_from_config(
@@ -61,7 +63,7 @@ fn storage_from_entity(
             Ok((
                 name.to_owned(),
                 Arc::new(InternalKeyProvider {
-                    key_algorithm_provider: key_algorithm_provider.clone(),
+                    key_algorithm_provider,
                     params,
                 }),
             ))
@@ -74,6 +76,3 @@ fn storage_from_entity(
         )),
     }
 }
-
-#[cfg(test)]
-pub mod mock_key_storage;

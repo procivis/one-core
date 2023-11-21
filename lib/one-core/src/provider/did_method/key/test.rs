@@ -4,12 +4,12 @@ use crate::config::data_structure::{
     AccessModifier, DidKeyParams, KeyAlgorithmEntity, KeyAlgorithmParams, Param, ParamsEnum,
     TranslatableString,
 };
+use crate::crypto::MockCryptoProvider;
 use crate::model::did::{Did, DidType};
 use crate::model::key::Key;
 use crate::provider::did_method::DidMethodError;
-use crate::provider::key_storage::mock_key_storage::MockKeyStorage;
-use crate::provider::key_storage::provider::KeyProviderImpl;
-use crate::provider::key_storage::KeyStorage;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::repository::mock::organisation_repository::MockOrganisationRepository;
 use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
 use crate::{
@@ -23,15 +23,16 @@ use uuid::Uuid;
 
 fn setup_provider(
     did_repository: MockDidRepository,
-    key_storage: MockKeyStorage,
+    key_algorithm: MockKeyAlgorithm,
     organisation_repository: MockOrganisationRepository,
 ) -> Arc<dyn DidMethodProvider + Send + Sync> {
     let did_repository = Arc::new(did_repository);
 
-    let mut key_storages: HashMap<String, Arc<dyn KeyStorage + Send + Sync>> = HashMap::new();
-    key_storages.insert("MOCK".to_string(), Arc::new(key_storage));
+    let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>> = HashMap::new();
+    key_algorithms.insert("EDDSA".to_string(), Arc::new(key_algorithm));
 
-    let key_provider = KeyProviderImpl::new(key_storages);
+    let key_algorithm_provider =
+        KeyAlgorithmProviderImpl::new(key_algorithms, Arc::new(MockCryptoProvider::new()));
 
     let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
     did_methods.insert(
@@ -39,7 +40,7 @@ fn setup_provider(
         Arc::new(KeyDidMethod {
             did_repository,
             organisation_repository: Arc::new(organisation_repository),
-            key_provider: Arc::new(key_provider),
+            key_algorithm_provider: Arc::new(key_algorithm_provider),
             method_key: "KEY".to_string(),
             params: DidKeyParams::default(),
             key_algorithm_config: HashMap::from([(
@@ -105,7 +106,7 @@ async fn test_did_key_resolve() {
         });
     let provider = setup_provider(
         did_repository,
-        MockKeyStorage::default(),
+        MockKeyAlgorithm::default(),
         MockOrganisationRepository::default(),
     );
 
@@ -166,11 +167,11 @@ async fn test_create_did_success() {
         organisation: None,
     };
 
-    let mut key_storage = MockKeyStorage::default();
-    key_storage
-        .expect_fingerprint()
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_get_multibase()
         .times(1)
-        .returning(move |_, _| Ok("did:key:MOCK".to_string()));
+        .returning(|_| "MULTIBASE".to_string());
 
     let mut did_repository = MockDidRepository::default();
     did_repository
@@ -184,10 +185,6 @@ async fn test_create_did_success() {
         .expect_create_did()
         .times(1)
         .returning(move |_| Ok(did_clone.id.clone()));
-    did_repository
-        .expect_get_did()
-        .times(1)
-        .returning(move |_, _| Ok(did.clone()));
 
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
@@ -201,7 +198,7 @@ async fn test_create_did_success() {
             })
         });
 
-    let provider = setup_provider(did_repository, key_storage, organisation_repository);
+    let provider = setup_provider(did_repository, key_algorithm, organisation_repository);
     let did_method = provider.get_did_method("KEY").unwrap();
     let result = did_method.create(create_request, key).await;
     result.unwrap();
@@ -237,11 +234,11 @@ async fn test_create_did_already_exists() {
         organisation: None,
     };
 
-    let mut key_storage = MockKeyStorage::default();
-    key_storage
-        .expect_fingerprint()
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_get_multibase()
         .times(1)
-        .returning(move |_, _| Ok("did:key:MOCK".to_string()));
+        .returning(|_| "MULTIBASE".to_string());
 
     let mut did_repository = MockDidRepository::default();
     did_repository
@@ -251,7 +248,7 @@ async fn test_create_did_already_exists() {
 
     let provider = setup_provider(
         did_repository,
-        key_storage,
+        key_algorithm,
         MockOrganisationRepository::default(),
     );
     let did_method = provider.get_did_method("KEY").unwrap();

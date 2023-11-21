@@ -13,15 +13,12 @@ use super::DidMethodError;
 use crate::{
     config::data_structure::{DidKeyParams, KeyAlgorithmEntity},
     model::{
-        did::{Did, DidRelations, DidType, KeyRole, RelatedKey},
-        key::{Key, KeyRelations},
+        did::{Did, DidType, KeyRole, RelatedKey},
+        key::Key,
         organisation::OrganisationRelations,
     },
-    provider::key_storage::provider::KeyProvider,
-    repository::{
-        did_repository::DidRepository, error::DataLayerError,
-        organisation_repository::OrganisationRepository,
-    },
+    provider::key_algorithm::provider::KeyAlgorithmProvider,
+    repository::{did_repository::DidRepository, organisation_repository::OrganisationRepository},
     service::did::dto::CreateDidRequestDTO,
 };
 
@@ -31,7 +28,7 @@ use validator::{did_already_exists, validate_public_key_length};
 pub struct KeyDidMethod {
     pub did_repository: Arc<dyn DidRepository + Send + Sync>,
     pub organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
-    pub key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     pub method_key: String,
     pub params: DidKeyParams,
     pub key_algorithm_config: HashMap<String, KeyAlgorithmEntity>,
@@ -43,38 +40,18 @@ impl super::DidMethod for KeyDidMethod {
         "key".to_string()
     }
 
-    async fn load(&self, did_id: &DidId) -> Result<Did, DidMethodError> {
-        let result = self
-            .did_repository
-            .get_did(
-                did_id,
-                &DidRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    keys: Some(KeyRelations::default()),
-                },
-            )
-            .await
-            .map_err(DidMethodError::from)?;
-
-        if result.did_method == self.method_key {
-            Ok(result)
-        } else {
-            Err(DidMethodError::DataLayerError(
-                DataLayerError::RecordNotFound,
-            ))
-        }
-    }
-
-    async fn create(&self, request: CreateDidRequestDTO, key: Key) -> Result<Did, DidMethodError> {
-        let key_storage = self
-            .key_provider
-            .get_key_storage(&key.storage_type)
-            .map_err(|_| DidMethodError::KeyStorageNotFound)?;
-        let fingerprint = key_storage
-            .fingerprint(&key.public_key, &key.key_type)
-            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
+    async fn create(
+        &self,
+        request: CreateDidRequestDTO,
+        key: Key,
+    ) -> Result<DidId, DidMethodError> {
+        let key_algorithm = self
+            .key_algorithm_provider
+            .get_key_algorithm(&key.key_type)
+            .map_err(|_| DidMethodError::KeyAlgorithmNotFound)?;
+        let multibase = key_algorithm.get_multibase(&key.public_key);
         // todo(mite): add constructor for this
-        let did_value: DidValue = match format!("did:key:{}", fingerprint).parse() {
+        let did_value: DidValue = match format!("did:key:{}", multibase).parse() {
             Ok(v) => v,
             Err(err) => match err {},
         };
@@ -90,13 +67,10 @@ impl super::DidMethod for KeyDidMethod {
             .await?;
         let request = did_from_did_request(request, organisation, did_value, key, now)?;
 
-        let did_id = self
-            .did_repository
+        self.did_repository
             .create_did(request)
             .await
-            .map_err(DidMethodError::from)?;
-
-        self.load(&did_id).await
+            .map_err(DidMethodError::from)
     }
 
     fn check_authorization(&self) -> bool {

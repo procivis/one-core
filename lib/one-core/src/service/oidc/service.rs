@@ -340,8 +340,7 @@ impl OIDCService {
         let mut received_claims: HashMap<String, String> = HashMap::new();
 
         let key_verification = KeyVerification {
-            config: self.config.clone(),
-            crypto: self.crypto.clone(),
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
         };
 

@@ -116,8 +116,7 @@ impl SSIVerifierService {
             holder_did,
             presentation_content,
             &*self.formatter_provider.get_formatter(&format)?,
-            self.crypto.clone(),
-            self.config.clone(),
+            self.key_algorithm_provider.clone(),
             self.did_method_provider.clone(),
             self.revocation_method_provider.clone(),
         )
