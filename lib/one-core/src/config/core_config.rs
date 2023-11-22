@@ -1,7 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    io,
+    io::Cursor,
     str::FromStr,
 };
 
@@ -32,14 +32,14 @@ impl CoreConfig {
 
         let config = match path.as_ref().extension() {
             Some(v) if v == "json" => serde_json::from_reader(file)?,
-            _ => Self::yaml_from_reader(file)?,
+            _ => serde_yaml::from_reader(file)?,
         };
 
         Ok(config)
     }
 
-    pub fn yaml_from_reader(rdr: impl io::Read) -> Result<Self, ConfigParsingError> {
-        Ok(serde_yaml::from_reader(rdr)?)
+    pub fn from_yaml_str(config: impl AsRef<str>) -> Result<Self, ConfigParsingError> {
+        Ok(serde_yaml::from_reader(Cursor::new(config.as_ref()))?)
     }
 }
 

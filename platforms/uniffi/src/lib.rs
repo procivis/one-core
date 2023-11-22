@@ -23,7 +23,8 @@ fn initialize_core(
     data_dir_path: String,
     _key_storage: Option<Box<dyn NativeKeyStorage>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
-    let placeholder_config = core_config::CoreConfig::from_file("../../../config.yml")?;
+    let placeholder_config =
+        core_config::CoreConfig::from_yaml_str(include_str!("../../../config.yml"))?;
 
     let core = run_sync(async {
         let db_url = format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc");
