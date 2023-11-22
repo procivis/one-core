@@ -195,9 +195,10 @@ xcodebuild -create-xcframework -framework target/aarch64-apple-ios/release/one_c
 [tasks.package_ios_bindings]
 script = '''
 pushd target >/dev/null
-rm -rf bindings/ios && mkdir -p bindings/ios/one_core/Sources/one_core
+rm -rf bindings/ios && mkdir -p bindings/ios/one_core
+cp -r ../platforms/ios/Sources bindings/ios/one_core/
 cp -r one_coreFFI.xcframework bindings/ios/one_core/Sources/
-cp uniffi/ios/one_core.swift bindings/ios/one_core/Sources/one_core/
+cp uniffi/ios/one_core.swift bindings/ios/one_core/Sources/
 cp ../platforms/ios/Package.swift bindings/ios/one_core/Package.swift
 '''
 

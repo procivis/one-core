@@ -1,5 +1,3 @@
-use std::io::Cursor;
-
 use indoc::indoc;
 
 use crate::config::core_config::CoreConfig;
@@ -79,5 +77,5 @@ pub fn generic_config() -> CoreConfig {
 
     "};
 
-    CoreConfig::yaml_from_reader(Cursor::new(config)).unwrap()
+    CoreConfig::from_yaml_str(config).unwrap()
 }
