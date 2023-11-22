@@ -1,5 +1,6 @@
-use crate::config::data_structure::CoreConfig;
 use std::sync::Arc;
+
+use crate::config::core_config::CoreConfig;
 
 pub mod dto;
 pub mod service;

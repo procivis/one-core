@@ -8,6 +8,7 @@ use axum::http::{Request, Response, StatusCode};
 use axum::middleware::{self, Next};
 use axum::routing::{delete, get, post};
 use axum::{Extension, Router};
+use one_core::config::core_config;
 use sql_data_provider::{DataLayer, DbConn};
 use tower_http::trace::TraceLayer;
 use tracing::{info, info_span, Span};
@@ -15,7 +16,6 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-use one_core::config::data_structure::{ConfigKind, UnparsedConfig};
 use one_core::OneCore;
 
 use crate::build_info;
@@ -45,11 +45,11 @@ tokio::task_local! {
 }
 
 pub async fn start_server(listener: TcpListener, config: Config, db_conn: DbConn) {
-    let unparsed_config = load_config(&config.config_file).expect("Failed to load config.yml");
+    let core_config = core_config::CoreConfig::from_file(&config.config_file).unwrap();
 
     let core = OneCore::new(
         Arc::new(DataLayer::build(db_conn).await),
-        unparsed_config,
+        core_config,
         Some(config.core_base_url.to_owned()),
     )
     .expect("Failed to parse config");
@@ -259,17 +259,6 @@ fn router(state: AppState, config: Config) -> Router {
         .layer(middleware::from_fn(sentry_context))
         .layer(Extension(config))
         .with_state(state)
-}
-
-fn load_config(path: impl AsRef<std::path::Path>) -> Result<UnparsedConfig, std::io::Error> {
-    let content = std::fs::read_to_string(&path)?;
-
-    let kind = match path.as_ref().extension() {
-        Some(value) if value == "json" => ConfigKind::Json,
-        _ => ConfigKind::Yaml,
-    };
-
-    Ok(UnparsedConfig { content, kind })
 }
 
 #[derive(Debug, Clone)]

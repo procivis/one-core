@@ -1,13 +1,10 @@
-use std::collections::HashMap;
-
-use crate::config::{data_structure::ExchangeEntity, validator::ConfigValidationError};
+use crate::config::{core_config::ExchangeConfig, ConfigValidationError};
 
 pub fn validate_exchange_type(
     value: &str,
-    exchange: &HashMap<String, ExchangeEntity>,
+    config: &ExchangeConfig,
 ) -> Result<(), ConfigValidationError> {
-    exchange
-        .get(value)
-        .map(|_| ())
-        .ok_or(ConfigValidationError::KeyNotFound(value.to_string()))
+    _ = config.get_fields(value)?;
+
+    Ok(())
 }

@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use crate::config::core_config;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
-use crate::{config::data_structure::CoreConfig, repository::key_repository::KeyRepository};
 
 pub mod dto;
 pub mod service;
@@ -15,7 +16,7 @@ pub struct KeyService {
     key_repository: Arc<dyn KeyRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    config: Arc<CoreConfig>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 impl KeyService {
@@ -23,7 +24,7 @@ impl KeyService {
         key_repository: Arc<dyn KeyRepository + Send + Sync>,
         organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
-        config: Arc<CoreConfig>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             key_repository,

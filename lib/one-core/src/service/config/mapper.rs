@@ -1,5 +1,5 @@
 use super::dto::ConfigDTO;
-use crate::config::data_structure::{AccessModifier, CoreConfig, Param};
+use crate::config::core_config::CoreConfig;
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -29,35 +29,16 @@ fn filter_config_entities(map: HashMap<String, Value>) -> HashMap<String, Value>
 }
 
 fn filter_config_entity(mut value: Value) -> Value {
-    let params = value.get("params");
-    match params {
-        None => value,
-        Some(unpacked) => {
-            value["params"] = unpack_and_filter_json_values(unpacked.to_owned());
-            value
-        }
-    }
-}
+    if let Some(params) = value["params"].as_object_mut() {
+        _ = params.remove("private");
+        let public_params = params
+            .remove("public")
+            .and_then(|v| v.as_object().cloned())
+            .into_iter()
+            .flatten();
 
-fn unpack_and_filter_json_values(params: Value) -> Value {
-    match params.as_object() {
-        None => params,
-        Some(value) => {
-            let parsed: HashMap<String, Value> = value
-                .into_iter()
-                .filter_map(|(k, v)| {
-                    Some((k.to_owned(), unpack_and_filter_json_value(v.to_owned())?))
-                })
-                .collect();
-            serde_json::to_value(parsed).ok().unwrap_or(params)
-        }
+        params.extend(public_params);
     }
-}
 
-fn unpack_and_filter_json_value(param: Value) -> Option<Value> {
-    let deserialized: Param<Value> = serde_json::from_value(param).ok()?;
-    match deserialized.access {
-        AccessModifier::Public => Some(deserialized.value),
-        AccessModifier::Private => None,
-    }
+    value
 }

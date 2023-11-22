@@ -1,17 +1,15 @@
 use std::{collections::HashMap, sync::Arc};
 
+use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
 use crate::provider::credential_formatter::MockSignatureProvider;
 use crate::provider::transport_protocol::provider::{
     TransportProtocolProvider, TransportProtocolProviderImpl,
 };
 use crate::{
-    config::data_structure::{
-        AccessModifier, ConfigEntity, CoreConfig, KeyAlgorithmParams, Param, ParamsEnum,
-        TranslatableString,
-    },
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
@@ -39,7 +37,8 @@ use crate::{
 async fn test_issuer_submit_succeeds() {
     let credential_id: CredentialId = Uuid::new_v4();
     let key_storage_type = "storage type";
-    let key_type = "key_type";
+    let key_type = "EDDSA";
+    let algorithm = "algorithm";
 
     let key_id = Uuid::new_v4();
     let mut credential_repository = MockCredentialRepository::new();
@@ -128,11 +127,22 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(|_| Ok(Box::<MockSignatureProvider>::default()));
 
-    let algorithm = algorithm_config(key_type);
-    let config = CoreConfig {
-        key_algorithm: HashMap::from_iter([(key_type.to_string(), algorithm)]),
-        ..dummy_config()
-    };
+    let mut config = dummy_config();
+    config.key_algorithm.insert(
+        KeyAlgorithmType::Eddsa,
+        Fields {
+            r#type: "EDDSA".to_string(),
+            display: "display".to_string(),
+            order: None,
+            disabled: None,
+            params: Some(Params {
+                public: Some(json!({
+                    "algorithm": algorithm
+                })),
+                private: None,
+            }),
+        },
+    );
 
     let service = TransportProtocolProviderImpl::new(
         Default::default(),
@@ -147,16 +157,7 @@ async fn test_issuer_submit_succeeds() {
 }
 
 fn dummy_config() -> CoreConfig {
-    CoreConfig {
-        format: Default::default(),
-        exchange: Default::default(),
-        transport: Default::default(),
-        revocation: Default::default(),
-        did: Default::default(),
-        datatype: Default::default(),
-        key_algorithm: Default::default(),
-        key_storage: Default::default(),
-    }
+    CoreConfig::default()
 }
 
 fn dummy_credential() -> Credential {
@@ -235,20 +236,5 @@ fn dummy_did() -> Did {
         did_method: "John".to_string(),
         keys: None,
         organisation: None,
-    }
-}
-
-fn algorithm_config(key_type: impl Into<String>) -> ConfigEntity<String, KeyAlgorithmParams> {
-    ConfigEntity {
-        r#type: "STRING".to_string(),
-        disabled: None,
-        display: TranslatableString::Key("X".to_string()),
-        order: None,
-        params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {
-            algorithm: Param {
-                access: AccessModifier::Public,
-                value: key_type.into(),
-            },
-        })),
     }
 }

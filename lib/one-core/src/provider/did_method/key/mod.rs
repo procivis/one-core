@@ -4,14 +4,13 @@ mod validator;
 use async_trait::async_trait;
 use did_key::KeyMaterial;
 use shared_types::{DidId, DidValue};
-use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::DidMethodError;
 use crate::{
-    config::data_structure::{DidKeyParams, KeyAlgorithmEntity},
+    config::core_config::KeyAlgorithmConfig,
     model::{
         did::{Did, DidType, KeyRole, RelatedKey},
         key::Key,
@@ -31,7 +30,29 @@ pub struct KeyDidMethod {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     pub method_key: String,
     pub params: DidKeyParams,
-    pub key_algorithm_config: HashMap<String, KeyAlgorithmEntity>,
+    pub key_algorithm_config: KeyAlgorithmConfig,
+}
+
+pub struct DidKeyParams;
+
+impl KeyDidMethod {
+    pub fn new(
+        did_repository: Arc<dyn DidRepository + Send + Sync>,
+        organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+        key_algorithm_config: KeyAlgorithmConfig,
+        params: DidKeyParams,
+        method_key: impl Into<String>,
+    ) -> Self {
+        Self {
+            did_repository,
+            organisation_repository,
+            key_algorithm_provider,
+            method_key: method_key.into(),
+            params,
+            key_algorithm_config,
+        }
+    }
 }
 
 #[async_trait]

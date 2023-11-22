@@ -6,7 +6,6 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    config::data_structure::CoreConfig,
     model::{
         key::{GetKeyList, Key},
         organisation::Organisation,
@@ -28,10 +27,10 @@ fn setup_service(
     repository: MockKeyRepository,
     organisation_repository: MockOrganisationRepository,
     key_storage: MockKeyStorage,
-    config: CoreConfig,
+    config: crate::config::core_config::CoreConfig,
 ) -> KeyService {
     let mut storages: HashMap<String, Arc<dyn KeyStorage + Send + Sync>> = HashMap::new();
-    storages.insert("MOCK".to_string(), Arc::new(key_storage));
+    storages.insert("INTERNAL".to_string(), Arc::new(key_storage));
 
     let provider = KeyProviderImpl::new(storages);
 
@@ -52,7 +51,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         public_key: vec![],
         name: name.to_owned(),
         private_key: vec![],
-        storage_type: "MOCK".to_string(),
+        storage_type: "INTERNAL".to_string(),
         key_type: "RSA4096".to_string(),
         organisation: Some(Organisation {
             id: organisation_id,
@@ -106,7 +105,7 @@ async fn test_create_key_success() {
             key_type: "EDDSA".to_string(),
             key_params: Default::default(),
             name: "NAME".to_string(),
-            storage_type: "MOCK".to_string(),
+            storage_type: "INTERNAL".to_string(),
             storage_params: Default::default(),
         })
         .await;

@@ -18,3 +18,9 @@ impl KeyStorage for PKCS11KeyProvider {
         todo!()
     }
 }
+
+impl PKCS11KeyProvider {
+    pub fn new() -> Self {
+        PKCS11KeyProvider {}
+    }
+}

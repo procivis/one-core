@@ -18,3 +18,9 @@ impl KeyStorage for AzureVaultKeyProvider {
         todo!()
     }
 }
+
+impl AzureVaultKeyProvider {
+    pub fn new() -> Self {
+        Self {}
+    }
+}

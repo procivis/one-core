@@ -1,43 +1,32 @@
+use serde_json::json;
+
 use crate::{
-    config::data_structure::{
-        AccessModifier, CoreConfig, DatatypeEntity, DatatypeParams, DatatypeStringParams,
-        DatatypeType, Param, ParamsEnum, TranslatableString,
-    },
+    config::core_config::{CoreConfig, DatatypeType, Fields, Params},
     service::config::dto::ConfigDTO,
 };
-use std::collections::HashMap;
 
 #[test]
 fn convert_internal_structure_to_dto() {
-    let config = CoreConfig {
-        format: Default::default(),
-        exchange: Default::default(),
-        transport: Default::default(),
-        revocation: Default::default(),
-        did: Default::default(),
-        datatype: HashMap::from([(
-            "test".to_string(),
-            DatatypeEntity {
-                r#type: DatatypeType::String,
-                disabled: None,
-                display: TranslatableString::Key("display".to_string()),
-                order: None,
-                params: Some(ParamsEnum::Parsed(DatatypeParams::String(
-                    DatatypeStringParams {
-                        autocomplete: Some(Param::<bool> {
-                            access: AccessModifier::Public,
-                            value: false,
-                        }),
-                        placeholder: None,
-                        error: None,
-                        pattern: None,
-                    },
-                ))),
-            },
-        )]),
-        key_algorithm: Default::default(),
-        key_storage: Default::default(),
-    };
+    let mut config = CoreConfig::default();
+
+    config.datatype.insert(
+        "STRING".to_string(),
+        Fields {
+            r#type: DatatypeType::String,
+            display: "display".to_string(),
+            order: None,
+            disabled: None,
+            params: Some(Params {
+                public: Some(json!({
+                    "autocomplete": false
+                })),
+                private: Some(json!({
+                    "other": false
+                })),
+            }),
+        },
+    );
+
     let output = ConfigDTO::try_from(&config).unwrap();
     let text_output = serde_json::to_string_pretty(&output).unwrap();
 
@@ -49,7 +38,7 @@ fn convert_internal_structure_to_dto() {
   "revocation": {},
   "did": {},
   "datatype": {
-    "test": {
+    "STRING": {
       "disabled": null,
       "display": "display",
       "order": null,
@@ -68,35 +57,23 @@ fn convert_internal_structure_to_dto() {
 
 #[test]
 fn do_not_serialize_private_parameters() {
-    let config = CoreConfig {
-        format: Default::default(),
-        exchange: Default::default(),
-        transport: Default::default(),
-        revocation: Default::default(),
-        did: Default::default(),
-        datatype: HashMap::from([(
-            "test".to_string(),
-            DatatypeEntity {
-                r#type: DatatypeType::String,
-                disabled: None,
-                display: TranslatableString::Key("display".to_string()),
-                order: None,
-                params: Some(ParamsEnum::Parsed(DatatypeParams::String(
-                    DatatypeStringParams {
-                        autocomplete: Some(Param::<bool> {
-                            access: AccessModifier::Private,
-                            value: false,
-                        }),
-                        placeholder: None,
-                        error: None,
-                        pattern: None,
-                    },
-                ))),
-            },
-        )]),
-        key_algorithm: Default::default(),
-        key_storage: Default::default(),
-    };
+    let mut config = CoreConfig::default();
+
+    config.datatype.insert(
+        "STRING".to_string(),
+        Fields {
+            r#type: DatatypeType::String,
+            display: "display".to_string(),
+            order: None,
+            disabled: None,
+            params: Some(Params {
+                public: None,
+                private: Some(json!({
+                    "autocomplete": false
+                })),
+            }),
+        },
+    );
 
     let output = ConfigDTO::try_from(&config).unwrap();
     let text_output = serde_json::to_string_pretty(&output).unwrap();
@@ -109,7 +86,7 @@ fn do_not_serialize_private_parameters() {
   "revocation": {},
   "did": {},
   "datatype": {
-    "test": {
+    "STRING": {
       "disabled": null,
       "display": "display",
       "order": null,

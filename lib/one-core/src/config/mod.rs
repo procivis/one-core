@@ -1,23 +1,38 @@
-use thiserror::Error;
+use self::validator::datatype::DatatypeValidationError;
 
-pub mod config_provider;
-pub mod data_structure;
 pub mod validator;
 
-mod json_config_provider;
-mod process_config_object;
-mod validate_error_param_presence;
-mod validate_types;
-mod yaml_config_provider;
+pub mod core_config;
 
-#[derive(Debug, Error)]
-pub enum ConfigParseError {
-    #[error("JSON error: `{0}`")]
-    JsonError(#[from] serde_json::Error),
-    #[error("Invalid type `{1}` on field `{0}`")]
-    InvalidType(String, String),
-    #[error("Missing error key in params of `{0}`")]
-    MissingErrorMessage(String),
-    #[error("Missing parameter `{0}` in params of `{1}`")]
-    MissingParameter(String, String),
+#[derive(thiserror::Error, Debug)]
+pub enum ConfigError {
+    #[error(transparent)]
+    Parsing(#[from] ConfigParsingError),
+    #[error(transparent)]
+    Validation(#[from] ConfigValidationError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ConfigParsingError {
+    #[error("file error: {0}")]
+    File(#[from] std::io::Error),
+    #[error("json error: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("yaml error: {0}")]
+    Yaml(#[from] serde_yaml::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ConfigValidationError {
+    #[error("invalid configuration key: {0}")]
+    InvalidKey(String),
+    #[error("configuration key `{0}` not found")]
+    KeyNotFound(String),
+    #[error("fields deserialization for key: {key}. error: {source}")]
+    FieldsDeserialization {
+        key: String,
+        source: serde_json::Error,
+    },
+    #[error("Datatype validation error: `{0}`")]
+    DatatypeValidation(#[from] DatatypeValidationError),
 }

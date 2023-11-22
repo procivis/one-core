@@ -1,13 +1,10 @@
-use crate::config::data_structure::ExchangeParams::OPENID4VC;
-use crate::config::data_structure::{ExchangeParams, ParamsEnum};
+use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
+use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
-use crate::{
-    config::data_structure::CoreConfig, model::common::GetListResponse,
-    service::error::ServiceError,
-};
+use crate::{model::common::GetListResponse, service::error::ServiceError};
 use serde::{Deserialize, Deserializer};
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
@@ -55,59 +52,22 @@ pub fn list_response_try_into<T, F: TryInto<T>>(
     })
 }
 
-pub(crate) fn get_exchange_params(
-    key_type: &str,
-    config: &CoreConfig,
-) -> Result<ParamsEnum<ExchangeParams>, ServiceError> {
-    let entity_param = config
-        .exchange
-        .get(key_type)
-        .ok_or(ServiceError::MappingError(format!(
-            "Missing entity param {}",
-            key_type
-        )))?;
-    entity_param
-        .params
-        .clone()
-        .ok_or(ServiceError::MappingError(format!(
-            "Exchange {} not found",
-            key_type
-        )))
-}
-
 pub(crate) fn get_exchange_param_pre_authorization_expires_in(
     config: &CoreConfig,
 ) -> Result<Duration, ServiceError> {
-    let params = get_exchange_params("OPENID4VC", config)?;
-    match params {
-        ParamsEnum::Parsed(OPENID4VC(val)) => Ok(Duration::seconds(
-            val.pre_authorized_code_expires_in
-                .ok_or(ServiceError::MappingError(
-                    "Pre authorized code expires in not found".to_string(),
-                ))?
-                .value as i64,
-        )),
-        _ => Err(ServiceError::Other(
-            "Missing key preAuthorizedCodeExpiresIn in config".to_owned(),
-        )),
-    }
+    let params: OpenID4VCParams = config.exchange.get(ExchangeType::OpenId4Vc)?;
+
+    Ok(Duration::seconds(
+        params.pre_authorized_code_expires_in as _,
+    ))
 }
 
 pub(crate) fn get_exchange_param_token_expires_in(
     config: &CoreConfig,
-) -> Result<u64, ServiceError> {
-    let params = get_exchange_params("OPENID4VC", config)?;
-    match params {
-        ParamsEnum::Parsed(OPENID4VC(val)) => Ok(val
-            .token_expires_in
-            .ok_or(ServiceError::MappingError(
-                "Token expires in not found".to_string(),
-            ))?
-            .value),
-        _ => Err(ServiceError::Other(
-            "Missing key tokenExpiresIn in config".to_owned(),
-        )),
-    }
+) -> Result<Duration, ServiceError> {
+    let params: OpenID4VCParams = config.exchange.get(ExchangeType::OpenId4Vc)?;
+
+    Ok(Duration::seconds(params.token_expires_in as _))
 }
 
 pub(crate) async fn get_or_create_did(

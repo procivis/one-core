@@ -1,6 +1,6 @@
 use super::{dto::InvitationType, TransportProtocol};
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
-use crate::config::data_structure::CoreConfig;
+use crate::config::core_config::{self};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -53,7 +53,7 @@ pub(crate) struct TransportProtocolProviderImpl {
     credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    config: Arc<CoreConfig>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 impl TransportProtocolProviderImpl {
@@ -63,7 +63,7 @@ impl TransportProtocolProviderImpl {
         credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
-        config: Arc<CoreConfig>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             protocols: protocols.into_iter().collect(),
@@ -96,11 +96,9 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
         let transport_instance = &self
             .config
             .exchange
-            .get(protocol_key)
-            .ok_or(ServiceError::MissingTransportProtocol(
-                protocol_key.to_owned(),
-            ))?
-            .r#type;
+            .get_fields(protocol_key)
+            .map_err(|err| ServiceError::MissingTransportProtocol(err.to_string()))?
+            .r#type();
 
         self.get_protocol(transport_instance)
     }

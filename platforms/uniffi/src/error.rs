@@ -1,5 +1,5 @@
 use one_core::{
-    config::ConfigParseError, provider::transport_protocol::TransportProtocolError,
+    config::ConfigError, provider::transport_protocol::TransportProtocolError,
     service::error::ServiceError,
 };
 use thiserror::Error;
@@ -40,8 +40,8 @@ impl From<ServiceError> for BindingError {
     }
 }
 
-impl From<ConfigParseError> for BindingError {
-    fn from(error: ConfigParseError) -> Self {
+impl From<ConfigError> for BindingError {
+    fn from(error: ConfigError) -> Self {
         Self::ConfigValidationError(error.to_string())
     }
 }

@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::config::data_structure::FormatJwtParams;
 use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::sdjwt_formatter::model::{
     DecomposedToken, Disclosure, Sdvc,
@@ -12,6 +11,7 @@ use crate::service::credential::dto::CredentialDetailResponseDTO;
 use async_trait::async_trait;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use serde::Deserialize;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
@@ -37,7 +37,13 @@ use super::{
 
 pub struct SDJWTFormatter {
     pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
-    pub params: FormatJwtParams,
+    params: Params,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Params {
+    leeway: u64,
 }
 
 #[async_trait]
@@ -169,14 +175,15 @@ impl CredentialFormatter for SDJWTFormatter {
     }
 
     fn get_leeway(&self) -> u64 {
-        match &self.params.leeway {
-            None => 0,
-            Some(leeway) => leeway.value,
-        }
+        self.params.leeway
     }
 }
 
 impl SDJWTFormatter {
+    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider + Send + Sync>) -> Self {
+        Self { params, crypto }
+    }
+
     fn format_hashed_credential(
         &self,
         credential: &CredentialDetailResponseDTO,

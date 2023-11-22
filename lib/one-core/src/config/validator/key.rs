@@ -1,45 +1,30 @@
-use std::collections::HashMap;
+use serde::Deserialize;
 
 use crate::config::{
-    data_structure::{FormatEntity, KeyAlgorithmEntity, KeyStorageEntity},
-    validator::ConfigValidationError,
+    core_config::{KeyAlgorithmConfig, KeyStorageConfig},
+    ConfigValidationError,
 };
 
-pub fn find_key_algorithm<'a>(
+pub fn find_key_algorithm(
     value: &str,
-    algorithms: &'a HashMap<String, KeyAlgorithmEntity>,
-) -> Result<&'a KeyAlgorithmEntity, ConfigValidationError> {
-    algorithms
-        .get(value)
-        .ok_or(ConfigValidationError::UnknownType(value.to_string()))
-}
+    config: &KeyAlgorithmConfig,
+) -> Result<String, ConfigValidationError> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Params {
+        algorithm: String,
+    }
 
-pub fn validate_key(
-    value: &str,
-    formats: &HashMap<String, FormatEntity>,
-) -> Result<(), ConfigValidationError> {
-    formats
-        .get(value)
-        .map(|_| ())
-        .ok_or(ConfigValidationError::KeyNotFound(value.to_string()))
-}
+    let params: Params = config.get(value)?;
 
-pub fn validate_key_algorithm(
-    value: &str,
-    algorithms: &HashMap<String, KeyAlgorithmEntity>,
-) -> Result<(), ConfigValidationError> {
-    algorithms
-        .get(value)
-        .map(|_| ())
-        .ok_or(ConfigValidationError::UnknownType(value.to_string()))
+    Ok(params.algorithm)
 }
 
 pub fn validate_key_storage(
     value: &str,
-    storage: &HashMap<String, KeyStorageEntity>,
+    config: &KeyStorageConfig,
 ) -> Result<(), ConfigValidationError> {
-    storage
-        .get(value)
-        .map(|_| ())
-        .ok_or(ConfigValidationError::UnknownType(value.to_string()))
+    _ = config.get_fields(value)?;
+
+    Ok(())
 }

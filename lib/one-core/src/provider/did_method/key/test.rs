@@ -1,12 +1,8 @@
-use super::super::key::KeyDidMethod;
-use super::super::provider::DidMethodProvider;
-use crate::config::data_structure::{
-    AccessModifier, DidKeyParams, KeyAlgorithmEntity, KeyAlgorithmParams, Param, ParamsEnum,
-    TranslatableString,
-};
+use crate::config::core_config::{Fields, KeyAlgorithmConfig, KeyAlgorithmType, Params};
 use crate::crypto::MockCryptoProvider;
 use crate::model::did::{Did, DidType};
 use crate::model::key::Key;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::DidMethodError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
@@ -17,9 +13,12 @@ use crate::{
     provider::did_method::{provider::DidMethodProviderImpl, DidMethod},
     repository::did_repository::MockDidRepository,
 };
+use serde_json::json;
 use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::{DidKeyParams, KeyDidMethod};
 
 fn setup_provider(
     did_repository: MockDidRepository,
@@ -34,31 +33,34 @@ fn setup_provider(
     let key_algorithm_provider =
         KeyAlgorithmProviderImpl::new(key_algorithms, Arc::new(MockCryptoProvider::new()));
 
+    let mut key_algorithm_config = KeyAlgorithmConfig::default();
+    key_algorithm_config.insert(
+        KeyAlgorithmType::Eddsa,
+        Fields {
+            r#type: "EDDSA".to_string(),
+            display: "EDDSA".to_string(),
+            order: None,
+            disabled: None,
+            params: Some(Params {
+                public: Some(json!({
+                    "algorithm": "Ed25519"
+                })),
+                private: None,
+            }),
+        },
+    );
+
     let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
     did_methods.insert(
         "KEY".to_string(),
-        Arc::new(KeyDidMethod {
+        Arc::new(KeyDidMethod::new(
             did_repository,
-            organisation_repository: Arc::new(organisation_repository),
-            key_algorithm_provider: Arc::new(key_algorithm_provider),
-            method_key: "KEY".to_string(),
-            params: DidKeyParams::default(),
-            key_algorithm_config: HashMap::from([(
-                "EDDSA".to_string(),
-                KeyAlgorithmEntity {
-                    r#type: "EDDSA".to_string(),
-                    display: TranslatableString::Key("EDDSA".to_string()),
-                    disabled: None,
-                    order: None,
-                    params: Some(ParamsEnum::Parsed(KeyAlgorithmParams {
-                        algorithm: Param {
-                            access: AccessModifier::Public,
-                            value: "Ed25519".to_string(),
-                        },
-                    })),
-                },
-            )]),
-        }),
+            Arc::new(organisation_repository),
+            Arc::new(key_algorithm_provider),
+            key_algorithm_config,
+            DidKeyParams,
+            "KEY".to_string(),
+        )),
     );
 
     Arc::new(DidMethodProviderImpl::new(did_methods))
@@ -162,7 +164,7 @@ async fn test_create_did_success() {
         public_key: vec![],
         name: "".to_string(),
         private_key: vec![],
-        storage_type: "MOCK".to_string(),
+        storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
         organisation: None,
     };
@@ -229,7 +231,7 @@ async fn test_create_did_already_exists() {
         public_key: vec![],
         name: "".to_string(),
         private_key: vec![],
-        storage_type: "MOCK".to_string(),
+        storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
         organisation: None,
     };

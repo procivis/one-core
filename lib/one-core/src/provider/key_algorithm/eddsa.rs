@@ -1,10 +1,30 @@
 use did_key::{Fingerprint, Generate, KeyMaterial};
+use serde::Deserialize;
 
-use super::KeyAlgorithm;
-use crate::config::ConfigParseError;
 use crate::provider::key_algorithm::GeneratedKey;
 
+use super::KeyAlgorithm;
+
 pub struct Eddsa;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EddsaParams {
+    algorithm: Algorithm,
+}
+
+#[derive(Deserialize)]
+enum Algorithm {
+    #[serde(rename = "Ed25519")]
+    Ed25519,
+}
+
+impl Eddsa {
+    pub fn new(params: EddsaParams) -> Self {
+        _ = params.algorithm;
+        Self
+    }
+}
 
 impl KeyAlgorithm for Eddsa {
     fn get_signer_algorithm_id(&self) -> String {
@@ -21,18 +41,6 @@ impl KeyAlgorithm for Eddsa {
         GeneratedKey {
             public: key_pair.public_key_bytes(),
             private: key_pair.private_key_bytes(),
-        }
-    }
-}
-
-impl Eddsa {
-    pub fn new(algorithm: &str) -> Result<Self, ConfigParseError> {
-        match algorithm {
-            "Ed25519" => Ok(Self {}),
-            _ => Err(ConfigParseError::InvalidType(
-                "EDDSA".to_string(),
-                algorithm.to_string(),
-            )),
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::ProofService;
-use crate::config::data_structure::CoreConfig;
+use crate::config::core_config::CoreConfig;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
 use crate::service::test_utilities::generic_config;

@@ -1,4 +1,5 @@
 use age::secrecy::Secret;
+use serde::Deserialize;
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
@@ -8,7 +9,6 @@ use tokio_util::compat::FuturesAsyncWriteCompatExt;
 use crate::crypto::signer::error::SignerError;
 use crate::model::key::Key;
 use crate::{
-    config::data_structure::KeyStorageInternalParams,
     provider::{
         key_algorithm::{provider::KeyAlgorithmProvider, GeneratedKey},
         key_storage::KeyStorage,
@@ -17,8 +17,26 @@ use crate::{
 };
 
 pub struct InternalKeyProvider {
-    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-    pub params: KeyStorageInternalParams,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    params: Params,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Params {
+    encryption: Option<String>,
+}
+
+impl InternalKeyProvider {
+    pub fn new(
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+        params: Params,
+    ) -> Self {
+        Self {
+            key_algorithm_provider,
+            params,
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -29,7 +47,7 @@ impl KeyStorage for InternalKeyProvider {
             .get_signer(&key.key_type)
             .map_err(|e| SignerError::MissingAlgorithm(e.to_string()))?;
 
-        let passphrase = self.params.encryption.as_ref().map(|value| &value.value);
+        let passphrase = self.params.encryption.as_ref();
         let private_key = decrypt_if_password_is_provided(&key.private_key, passphrase)
             .await
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
@@ -43,7 +61,7 @@ impl KeyStorage for InternalKeyProvider {
             .get_key_algorithm(key_type)
             .map_err(|_| ServiceError::IncorrectParameters)?
             .generate_key_pair();
-        let passphrase = self.params.encryption.as_ref().map(|value| &value.value);
+        let passphrase = self.params.encryption.as_ref();
 
         Ok(GeneratedKey {
             public: key_pair.public,
@@ -60,6 +78,7 @@ async fn decrypt_if_password_is_provided(
         None => Ok(data.to_vec()),
         Some(passphrase) => {
             let decryptor =
+            //TODO: use the async version of new
                 match age::Decryptor::new(data).map_err(|e| ServiceError::Other(e.to_string()))? {
                     age::Decryptor::Passphrase(d) => Ok(d),
                     _ => Err(ServiceError::Other(

@@ -9,11 +9,13 @@ use uuid::Uuid;
 use super::JWTFormatter;
 
 use crate::{
-    config::data_structure::{AccessModifier, FormatJwtParams, Param},
     crypto::signer::error::SignerError,
     provider::credential_formatter::{
         jwt::model::JWTPayload,
-        jwt_formatter::model::{VC, VP},
+        jwt_formatter::{
+            model::{VC, VP},
+            Params,
+        },
         model::{CredentialPresentation, CredentialStatus},
         CredentialFormatter, MockAuth, TokenVerifier,
     },
@@ -110,12 +112,7 @@ async fn test_format_credential() {
     let leeway = 45u64;
 
     let sd_formatter = JWTFormatter {
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: leeway,
-            }),
-        },
+        params: Params { leeway },
     };
 
     let credential_details = test_credential_detail_response_dto();
@@ -214,12 +211,7 @@ async fn test_extract_credentials() {
     let leeway = 45u64;
 
     let jwt_formatter = JWTFormatter {
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: leeway,
-            }),
-        },
+        params: Params { leeway },
     };
 
     let verify_fn: Box<dyn TokenVerifier + Send + Sync> = Box::new(VerifyVerification {
@@ -270,12 +262,7 @@ async fn test_format_credential_presentation() {
         IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0.QUJD";
 
     let jwt_formatter = JWTFormatter {
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: 45u64,
-            }),
-        },
+        params: Params { leeway: 45 },
     };
 
     // Both
@@ -315,12 +302,7 @@ async fn test_format_presentation() {
     let leeway = 45u64;
 
     let jwt_formatter = JWTFormatter {
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: leeway,
-            }),
-        },
+        params: Params { leeway },
     };
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -395,12 +377,7 @@ async fn test_extract_presentation() {
     let leeway = 45u64;
 
     let jwt_formatter = JWTFormatter {
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: leeway,
-            }),
-        },
+        params: Params { leeway },
     };
 
     let verify_fn: Box<dyn TokenVerifier + Send + Sync> = Box::new(VerifyVerification {

@@ -1,9 +1,9 @@
 use thiserror::Error;
 
+use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
 use crate::service::oidc::dto::OpenID4VCIError;
 use crate::{
-    config::validator::ConfigValidationError,
     provider::credential_formatter::error::FormatterError,
     provider::did_method::DidMethodError,
     provider::transport_protocol::TransportProtocolError,

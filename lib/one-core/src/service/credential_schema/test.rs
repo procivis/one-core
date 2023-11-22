@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    config::data_structure::CoreConfig,
+    config::core_config::CoreConfig,
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential_schema::{
@@ -420,5 +420,6 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             }],
         })
         .await;
+
     assert!(result.is_err_and(|e| matches!(e, ServiceError::NotFound)));
 }

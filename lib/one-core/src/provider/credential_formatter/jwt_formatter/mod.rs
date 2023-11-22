@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use serde::Deserialize;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -10,7 +11,6 @@ mod mapper;
 mod model;
 
 use crate::{
-    config::data_structure::FormatJwtParams,
     provider::credential_formatter::{jwt::Jwt, jwt_formatter::mapper::format_vc},
     service::credential::dto::CredentialDetailResponseDTO,
 };
@@ -25,7 +25,19 @@ use super::{
 };
 
 pub struct JWTFormatter {
-    pub params: FormatJwtParams,
+    params: Params,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Params {
+    leeway: u64,
+}
+
+impl JWTFormatter {
+    pub fn new(params: Params) -> Self {
+        Self { params }
+    }
 }
 
 #[async_trait]
@@ -135,10 +147,7 @@ impl CredentialFormatter for JWTFormatter {
     }
 
     fn get_leeway(&self) -> u64 {
-        match &self.params.leeway {
-            None => 0,
-            Some(leeway) => leeway.value,
-        }
+        self.params.leeway
     }
 }
 
@@ -151,5 +160,3 @@ fn format_payload(credentials: &[String]) -> VP {
         },
     }
 }
-
-impl JWTFormatter {}

@@ -1,6 +1,5 @@
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
 
-use crate::config::data_structure::FormatJwtParams;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -10,9 +9,7 @@ use shared_types::DidValue;
 use super::model::{CredentialPresentation, Presentation};
 use super::{AuthenticationFn, CredentialFormatter, VerificationFn};
 
-pub struct MdocFormatter {
-    pub params: FormatJwtParams,
-}
+pub struct MdocFormatter {}
 
 #[async_trait]
 impl CredentialFormatter for MdocFormatter {
@@ -65,5 +62,12 @@ impl CredentialFormatter for MdocFormatter {
 
     fn get_leeway(&self) -> u64 {
         todo!()
+    }
+}
+
+impl MdocFormatter {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {}
     }
 }
