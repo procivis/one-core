@@ -1,11 +1,31 @@
 namespace one_core {
   [Throws=BindingError]
-  OneCoreBinding initialize_core(string data_dir_path);
+  OneCoreBinding initialize_core(string data_dir_path, NativeKeyStorage? key_storage);
 };
 
 [Error]
 enum BindingError {
   "AlreadyExists", "NotFound", "NotSupported", "ValidationError", "ConfigValidationError", "Unknown"
+};
+
+[Error]
+interface NativeKeyStorageError {
+  KeyGenerationFailure(string reason);
+  SignatureFailure(string reason);
+  Unknown(string reason);
+};
+
+dictionary GeneratedKeyBindingDTO {
+  bytes key_reference;
+  bytes public_key;
+};
+
+callback interface NativeKeyStorage {
+    [Throws=NativeKeyStorageError]
+    GeneratedKeyBindingDTO generate_key(string key_alias);
+
+    [Throws=NativeKeyStorageError]
+    bytes sign(bytes key_reference, bytes message);
 };
 
 dictionary VersionBindingDTO {

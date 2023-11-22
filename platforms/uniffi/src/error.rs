@@ -1,5 +1,6 @@
 use one_core::{
-    config::ConfigError, provider::transport_protocol::TransportProtocolError,
+    config::{ConfigError, ConfigParsingError},
+    provider::transport_protocol::TransportProtocolError,
     service::error::ServiceError,
 };
 use thiserror::Error;
@@ -40,8 +41,32 @@ impl From<ServiceError> for BindingError {
     }
 }
 
+impl From<ConfigParsingError> for BindingError {
+    fn from(error: ConfigParsingError) -> Self {
+        Self::ConfigValidationError(error.to_string())
+    }
+}
+
 impl From<ConfigError> for BindingError {
     fn from(error: ConfigError) -> Self {
         Self::ConfigValidationError(error.to_string())
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum NativeKeyStorageError {
+    #[error("Failed to generate key: {reason:?}")]
+    KeyGenerationFailure { reason: String },
+    #[error("Failed to crate signature: {reason:?}")]
+    SignatureFailure { reason: String },
+    #[error("Unknown error: {reason:?}")]
+    Unknown { reason: String },
+}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for NativeKeyStorageError {
+    fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        Self::Unknown {
+            reason: e.to_string(),
+        }
     }
 }
