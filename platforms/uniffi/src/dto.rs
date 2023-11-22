@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
+use crate::error::NativeKeyStorageError;
 use dto_mapper::From;
-
 use one_core::{
     common_mapper::vector_into,
     model::did::DidType,
@@ -14,6 +12,7 @@ use one_core::{
         CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
     },
 };
+use std::collections::HashMap;
 
 #[derive(From)]
 #[convert(from = "CredentialStateEnum")]
@@ -211,4 +210,21 @@ pub struct CredentialRevocationCheckResponseBindingDTO {
     pub status: CredentialStateBindingEnum,
     pub success: bool,
     pub reason: Option<String>,
+}
+
+pub struct GeneratedKeyBindingDTO {
+    pub key_reference: Vec<u8>,
+    pub public_key: Vec<u8>,
+}
+
+pub trait NativeKeyStorage: Send + Sync {
+    fn generate_key(
+        &self,
+        key_alias: String,
+    ) -> Result<GeneratedKeyBindingDTO, NativeKeyStorageError>;
+    fn sign(
+        &self,
+        key_reference: Vec<u8>,
+        message: Vec<u8>,
+    ) -> Result<Vec<u8>, NativeKeyStorageError>;
 }

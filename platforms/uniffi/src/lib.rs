@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
-use error::BindingError;
+use error::{BindingError, NativeKeyStorageError};
 use one_core::config::core_config;
 use sql_data_provider::{self, DataLayer};
 use std::sync::Arc;
@@ -19,8 +19,11 @@ pub struct OneCoreBinding {
     inner: one_core::OneCore,
 }
 
-fn initialize_core(data_dir_path: String) -> Result<Arc<OneCoreBinding>, BindingError> {
-    let placeholder_config = core_config::CoreConfig::from_file("../../../config.yml").unwrap();
+fn initialize_core(
+    data_dir_path: String,
+    _key_storage: Option<Box<dyn NativeKeyStorage>>,
+) -> Result<Arc<OneCoreBinding>, BindingError> {
+    let placeholder_config = core_config::CoreConfig::from_file("../../../config.yml")?;
 
     let core = run_sync(async {
         let db_url = format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc");
