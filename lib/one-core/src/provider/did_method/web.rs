@@ -7,6 +7,13 @@ use shared_types::{DidId, DidValue};
 
 pub struct WebDidMethod {}
 
+impl WebDidMethod {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 #[async_trait]
 impl super::DidMethod for WebDidMethod {
     fn get_method(&self) -> String {

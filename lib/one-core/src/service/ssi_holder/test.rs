@@ -183,7 +183,7 @@ async fn test_submit_proof_succeeds() {
     let protocol = "protocol";
 
     let key_storage_type = "storage type";
-    let key_type = "key_type";
+    let key_type = "ECDSA";
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository

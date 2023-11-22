@@ -2,18 +2,12 @@ use one_core::model::claim::Claim;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use one_core::repository::error::DataLayerError;
-use one_core::{
-    config::data_structure::{
-        DatatypeEntity, DatatypeType, DidEntity, ExchangeEntity, FormatEntity, RevocationEntity,
-        TranslatableString,
-    },
-    model::interaction::InteractionId,
-};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
-use shared_types::{DidId, DidValue};
-use std::collections::HashMap;
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
+
+use one_core::model::interaction::InteractionId;
+use shared_types::{DidId, DidValue};
 
 use crate::{
     db_conn,
@@ -481,117 +475,8 @@ pub async fn get_interaction(
         .ok_or(DbErr::RecordNotFound(String::default()))
 }
 
-// We will bring it back with service unit tests
-#[allow(dead_code)]
-pub fn get_datatypes() -> HashMap<String, DatatypeEntity> {
-    HashMap::from([
-        (
-            "STRING".to_string(),
-            DatatypeEntity {
-                r#type: DatatypeType::String,
-                disabled: None,
-                display: TranslatableString::Key("Display".to_string()),
-                order: None,
-                params: None,
-            },
-        ),
-        (
-            "NUMBER".to_string(),
-            DatatypeEntity {
-                r#type: DatatypeType::Number,
-                disabled: None,
-                display: TranslatableString::Key("Display".to_string()),
-                order: None,
-                params: None,
-            },
-        ),
-        (
-            "DATE".to_string(),
-            DatatypeEntity {
-                r#type: DatatypeType::Date,
-                disabled: None,
-                display: TranslatableString::Key("Display".to_string()),
-                order: None,
-                params: None,
-            },
-        ),
-    ])
-}
-
 pub async fn setup_test_data_layer_and_connection() -> DataLayer {
     setup_test_data_layer_and_connection_with_custom_url("sqlite::memory:").await
-}
-
-// We will bring it back with service unit tests
-#[allow(dead_code)]
-pub fn get_exchange() -> HashMap<String, ExchangeEntity> {
-    HashMap::from([(
-        "PROCIVIS_TEMPORARY".to_string(),
-        serde_yaml::from_str(
-            r#"display: "exchange.procivis"
-type: "PROCIVIS_TEMPORARY"
-order: 0 # optional to force ordering
-params: null"#,
-        )
-        .unwrap(),
-    )])
-}
-
-// We will bring it back with service unit tests
-#[allow(dead_code)]
-pub fn get_did_methods() -> HashMap<String, DidEntity> {
-    HashMap::from([(
-        "KEY".to_string(),
-        serde_yaml::from_str(
-            r#"display: "did.key"
-type: "KEY"
-order: 1
-params: null"#,
-        )
-        .unwrap(),
-    )])
-}
-
-// We will bring it back with service unit tests
-#[allow(dead_code)]
-pub fn get_formats() -> HashMap<String, FormatEntity> {
-    HashMap::from([(
-        "JWT".to_string(),
-        serde_yaml::from_str(
-            r#"display: "format.jwt"
-type: "JWT"
-order: 0
-params: null"#,
-        )
-        .unwrap(),
-    )])
-}
-
-// We will bring it back with service unit tests
-#[allow(dead_code)]
-pub fn get_revocation_methods() -> HashMap<String, RevocationEntity> {
-    HashMap::from([
-        (
-            "NONE".to_string(),
-            serde_yaml::from_str(
-                r#"display: "revocation.none"
-type: "NONE"
-order: 1
-params: null"#,
-            )
-            .unwrap(),
-        ),
-        (
-            "STATUSLIST2021".to_string(),
-            serde_yaml::from_str(
-                r#"display: "revocation.statuslist2021"
-type: "STATUSLIST2021"
-order: 10
-params: null"#,
-            )
-            .unwrap(),
-        ),
-    ])
 }
 
 pub fn are_datetimes_within_minute(d1: OffsetDateTime, d2: OffsetDateTime) -> bool {

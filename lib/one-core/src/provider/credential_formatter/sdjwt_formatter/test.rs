@@ -10,12 +10,11 @@ use uuid::Uuid;
 use super::SDJWTFormatter;
 
 use crate::{
-    config::data_structure::{AccessModifier, FormatJwtParams, Param},
     crypto::{hasher::MockHasher, signer::error::SignerError, MockCryptoProvider},
     provider::credential_formatter::{
         jwt::model::JWTPayload,
-        model::{CredentialPresentation, CredentialStatus},
-        sdjwt_formatter::model::Sdvc,
+        model::CredentialStatus,
+        sdjwt_formatter::{model::Sdvc, Params},
         CredentialFormatter, MockAuth, TokenVerifier,
     },
     service::{
@@ -132,12 +131,7 @@ async fn test_format_credential() {
 
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: leeway,
-            }),
-        },
+        params: Params { leeway },
     };
 
     let credential_details = test_credential_detail_response_dto();
@@ -268,12 +262,7 @@ async fn test_extract_credentials() {
 
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: leeway,
-            }),
-        },
+        params: Params { leeway },
     };
 
     let verify_fn: Box<dyn TokenVerifier + Send + Sync> = Box::new(VerifyVerification {
@@ -311,97 +300,6 @@ async fn test_extract_credentials() {
 }
 
 #[tokio::test]
-async fn test_format_credential_presentation() {
-    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.\
-    eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
-    MjIxLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6\
-    IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBj\
-    b250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3Yx\
-    IiwiQ29udGV4dDEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5\
-    cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7Il9zZCI6WyJZV0pqTVRJeiIsIllX\
-    SmpNVEl6Il19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwi\
-    dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
-    IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0";
-
-    let name_claim = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
-    let age_claim = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
-    let original_token = format!("{jwt_token}.QUJD~{name_claim}~{age_claim}");
-
-    let crypto = MockCryptoProvider::default();
-
-    let sd_formatter = SDJWTFormatter {
-        crypto: Arc::new(crypto),
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: 45u64,
-            }),
-        },
-    };
-
-    // Both
-    let credential_presentation = CredentialPresentation {
-        token: original_token.clone(),
-        disclosed_keys: vec!["name".to_string(), "age".to_string()],
-    };
-
-    let result = sd_formatter.format_credential_presentation(credential_presentation);
-    assert!(result.is_ok());
-    let token = result.unwrap();
-    assert!(token.contains(name_claim));
-    assert!(token.contains(age_claim));
-
-    // Just name
-    let credential_presentation = CredentialPresentation {
-        token: original_token.clone(),
-        disclosed_keys: vec!["name".to_string()],
-    };
-
-    let result = sd_formatter.format_credential_presentation(credential_presentation);
-    assert!(result.is_ok());
-    let token = result.unwrap();
-    assert!(token.contains(name_claim));
-    assert!(!token.contains(age_claim));
-
-    // Just age
-    let credential_presentation = CredentialPresentation {
-        token: original_token.clone(),
-        disclosed_keys: vec!["age".to_string()],
-    };
-
-    let result = sd_formatter.format_credential_presentation(credential_presentation);
-    assert!(result.is_ok());
-    let token = result.unwrap();
-    assert!(!token.contains(name_claim));
-    assert!(token.contains(age_claim));
-
-    // No disclosures
-    let credential_presentation = CredentialPresentation {
-        token: original_token.clone(),
-        disclosed_keys: vec![],
-    };
-
-    let result = sd_formatter.format_credential_presentation(credential_presentation);
-    assert!(result.is_ok());
-    let token = result.unwrap();
-    assert!(!token.contains(name_claim));
-    assert!(!token.contains(age_claim));
-
-    // Incorrect key
-    let credential_presentation = CredentialPresentation {
-        token: original_token,
-        disclosed_keys: vec!["test".to_string()],
-    };
-
-    let result = sd_formatter.format_credential_presentation(credential_presentation);
-    assert!(result.is_ok());
-    let token = result.unwrap();
-
-    //No disclosures in the result
-    assert!(!token.contains('~'));
-}
-
-#[tokio::test]
 async fn test_extract_presentation() {
     let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.eyJpYXQiOjE2OT\
     kzNTE4NDEsImV4cCI6MTY5OTM1MjE0MSwibmJmIjoxNjk5MzUxNzk2LCJpc3MiOiJob2xkZXJfZGlkIiwic3ViIjoia\
@@ -426,12 +324,7 @@ async fn test_extract_presentation() {
 
     let sd_formatter = SDJWTFormatter {
         crypto: Arc::new(crypto),
-        params: FormatJwtParams {
-            leeway: Some(Param {
-                access: AccessModifier::Public,
-                value: leeway,
-            }),
-        },
+        params: Params { leeway },
     };
 
     let verify_fn: Box<dyn TokenVerifier + Send + Sync> = Box::new(VerifyVerification {

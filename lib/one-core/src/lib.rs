@@ -1,18 +1,17 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::config::ConfigParseError;
 use crate::provider::key_storage::key_providers_from_config;
 use crate::provider::key_storage::provider::KeyProviderImpl;
 use crate::provider::key_storage::KeyStorage;
-use common_mapper::get_exchange_params;
+use config::core_config::{CoreConfig, ExchangeType};
+use config::ConfigError;
 use crypto::hasher::sha256::SHA256;
 use crypto::hasher::Hasher;
 use crypto::signer::eddsa::EDDSASigner;
 use crypto::signer::Signer;
 use crypto::{CryptoProvider, CryptoProviderImpl};
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
-use provider::credential_formatter::CredentialFormatter;
 use provider::transport_protocol::{
     procivis_temp::ProcivisTemp, provider::TransportProtocolProviderImpl, TransportProtocol,
 };
@@ -36,7 +35,6 @@ pub mod common_mapper;
 mod common_validator;
 pub mod util;
 
-use crate::config::data_structure::{CoreConfig, UnparsedConfig};
 use crate::crypto::signer::es256::ES256Signer;
 use crate::provider::credential_formatter::provider::credential_formatters_from_config;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
@@ -60,7 +58,6 @@ pub struct OneCore {
     pub key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>>,
     pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
     pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
-    pub credential_formatters: HashMap<String, Arc<dyn CredentialFormatter + Send + Sync>>,
     pub revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
@@ -82,9 +79,9 @@ pub struct OneCore {
 impl OneCore {
     pub fn new(
         data_provider: Arc<dyn DataRepository>,
-        unparsed_config: UnparsedConfig,
+        core_config: CoreConfig,
         core_base_url: Option<String>,
-    ) -> Result<OneCore, ConfigParseError> {
+    ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
 
@@ -101,48 +98,30 @@ impl OneCore {
             HashMap::from_iter(signers),
         ));
 
-        let available_transport_protocol_types = [
-            "PROCIVIS_TEMPORARY".to_string(),
-            "OPENID4VC".to_string(),
-            "MDL".to_string(),
-        ]; // TODO: This must be removed
-        let available_credential_formatter_types = [
-            "JWT".to_string(),
-            "SDJWT".to_string(),
-            "JSON_LD".to_string(),
-            "MDOC".to_string(),
-        ]; // TODO: This must be removed
-        let config = config::config_provider::parse_config(
-            unparsed_config,
-            &available_transport_protocol_types,
-            &available_credential_formatter_types,
-        )?;
-
         let credential_formatters =
-            credential_formatters_from_config(&config.format, crypto.clone())?;
-        let formatter_provider = Arc::new(CredentialFormatterProviderImpl::new(
-            credential_formatters.to_owned(),
-        ));
+            credential_formatters_from_config(&core_config.format, crypto.clone())?;
+        let formatter_provider =
+            Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
 
-        let key_algorithms = key_algorithms_from_config(&config.key_algorithm)?;
+        let key_algorithms = key_algorithms_from_config(&core_config.key_algorithm)?;
         let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
             key_algorithms.to_owned(),
             crypto.clone(),
         ));
         let key_providers =
-            key_providers_from_config(&config.key_storage, key_algorithm_provider.clone())?;
+            key_providers_from_config(&core_config.key_storage, key_algorithm_provider.clone())?;
         let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
 
         let did_methods = did_method_providers_from_config(
-            &config.did,
+            &core_config.did,
             data_provider.get_did_repository(),
             data_provider.get_organisation_repository(),
             key_algorithm_provider.clone(),
-            &config.key_algorithm,
+            &core_config.key_algorithm,
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
 
-        let config = Arc::new(config);
+        let config = Arc::new(core_config);
 
         let revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)> = vec![
             ("NONE".to_string(), Arc::new(NoneRevocation {})),
@@ -190,7 +169,7 @@ impl OneCore {
                     revocation_method_provider.clone(),
                     key_provider.clone(),
                     crypto.clone(),
-                    get_exchange_params("OPENID4VC", &config).ok(),
+                    config.exchange.get(ExchangeType::OpenId4Vc)?,
                 )),
             ),
         ];
@@ -209,7 +188,6 @@ impl OneCore {
             key_algorithms,
             key_providers,
             transport_protocols,
-            credential_formatters,
             revocation_methods,
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),

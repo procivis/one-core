@@ -1,4 +1,4 @@
-use crate::config::data_structure::CoreConfig;
+use crate::config::core_config;
 use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::{
@@ -20,7 +20,7 @@ pub struct ProofService {
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
-    config: Arc<CoreConfig>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 impl ProofService {
@@ -31,7 +31,7 @@ impl ProofService {
         did_repository: Arc<dyn DidRepository + Send + Sync>,
         interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
-        config: Arc<CoreConfig>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             credential_repository,

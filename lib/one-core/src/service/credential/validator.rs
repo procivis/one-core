@@ -1,6 +1,6 @@
 use crate::{
     config::{
-        data_structure::CoreConfig,
+        core_config::CoreConfig,
         validator::{datatype::validate_value, exchange::validate_exchange_type},
     },
     model::credential_schema::CredentialSchema,
@@ -34,13 +34,13 @@ pub(crate) fn validate_create_request(
             let schema = claim_schemas
                 .iter()
                 .find(|schema| schema.schema.id == claim.claim_schema_id);
+
             match schema {
                 None => Err(ServiceError::NotFound),
                 Some(schema) => {
-                    {
-                        validate_value(&claim.value, &schema.schema.data_type, &config.datatype)
-                            .map_err(ServiceError::ConfigValidationError)?
-                    }
+                    validate_value(&claim.value, &schema.schema.data_type, &config.datatype)
+                        .map_err(ServiceError::ConfigValidationError)?;
+
                     Ok(())
                 }
             }

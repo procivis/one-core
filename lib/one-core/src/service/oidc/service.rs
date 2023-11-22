@@ -50,7 +50,6 @@ use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use std::collections::HashMap;
 use std::ops::Add;
 use std::str::FromStr;
-use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -259,9 +258,8 @@ impl OIDCService {
         }
 
         interaction_data.pre_authorized_code_used = true;
-        interaction_data.access_token_expires_at = Some(now.add(Duration::from_secs(
-            get_exchange_param_token_expires_in(&self.config)?,
-        )));
+        interaction_data.access_token_expires_at =
+            Some(now.add(get_exchange_param_token_expires_in(&self.config)?));
 
         let data = serde_json::to_vec(&interaction_data)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;

@@ -1,13 +1,7 @@
-use std::collections::HashMap;
+use crate::config::{core_config::FormatConfig, ConfigValidationError};
 
-use crate::config::{data_structure::FormatEntity, validator::ConfigValidationError};
+pub fn validate_format(value: &str, config: &FormatConfig) -> Result<(), ConfigValidationError> {
+    _ = config.get_fields(value)?;
 
-pub fn validate_format(
-    value: &str,
-    formats: &HashMap<String, FormatEntity>,
-) -> Result<(), ConfigValidationError> {
-    formats
-        .get(value)
-        .map(|_| ())
-        .ok_or(ConfigValidationError::KeyNotFound(value.to_string()))
+    Ok(())
 }

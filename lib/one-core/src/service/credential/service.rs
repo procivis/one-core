@@ -362,14 +362,16 @@ impl CredentialService {
             _ => return Err(ServiceError::AlreadyShared),
         }
 
+        let credential_transport = &credential.transport;
+
         let transport_instance = &self
             .config
             .exchange
-            .get(&credential.transport)
-            .ok_or(ServiceError::MissingTransportProtocol(
-                credential.transport.to_owned(),
-            ))?
-            .r#type;
+            .get_fields(credential_transport)
+            .map_err(|err| {
+                ServiceError::MissingTransportProtocol(format!("{credential_transport}: {err}"))
+            })?
+            .r#type();
 
         let transport = self.protocol_provider.get_protocol(transport_instance)?;
 

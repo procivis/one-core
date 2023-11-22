@@ -1,10 +1,29 @@
 use did_key::{Fingerprint, Generate, KeyMaterial};
+use serde::Deserialize;
 
 use super::KeyAlgorithm;
-use crate::config::ConfigParseError;
 use crate::provider::key_algorithm::GeneratedKey;
 
 pub struct Es256;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Es256Params {
+    algorithm: Algorithm,
+}
+
+#[derive(Deserialize)]
+enum Algorithm {
+    #[serde(rename = "ES256")]
+    Es256,
+}
+
+impl Es256 {
+    pub fn new(params: Es256Params) -> Self {
+        _ = params.algorithm;
+        Self
+    }
+}
 
 impl KeyAlgorithm for Es256 {
     fn get_signer_algorithm_id(&self) -> String {
@@ -21,18 +40,6 @@ impl KeyAlgorithm for Es256 {
         GeneratedKey {
             public: key_pair.public_key_bytes(),
             private: key_pair.private_key_bytes(),
-        }
-    }
-}
-
-impl Es256 {
-    pub fn new(algorithm: &str) -> Result<Self, ConfigParseError> {
-        match algorithm {
-            "ES256" => Ok(Self {}),
-            _ => Err(ConfigParseError::InvalidType(
-                "ES256".to_string(),
-                algorithm.to_string(),
-            )),
         }
     }
 }

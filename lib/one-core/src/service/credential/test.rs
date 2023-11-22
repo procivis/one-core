@@ -1,6 +1,6 @@
 use super::CredentialService;
 use crate::{
-    config::data_structure::CoreConfig,
+    config::core_config::CoreConfig,
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,

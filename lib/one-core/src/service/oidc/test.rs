@@ -1,4 +1,4 @@
-use crate::config::data_structure::CoreConfig;
+use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::interaction::Interaction;

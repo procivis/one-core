@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    config::data_structure::CoreConfig,
+    config::core_config,
     provider::did_method::provider::DidMethodProvider,
     repository::{did_repository::DidRepository, key_repository::KeyRepository},
 };
@@ -18,7 +18,7 @@ pub struct DidService {
     did_repository: Arc<dyn DidRepository + Send + Sync>,
     key_repository: Arc<dyn KeyRepository + Send + Sync>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-    config: Arc<CoreConfig>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 impl DidService {
@@ -26,7 +26,7 @@ impl DidService {
         did_repository: Arc<dyn DidRepository + Send + Sync>,
         key_repository: Arc<dyn KeyRepository + Send + Sync>,
         did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-        config: Arc<CoreConfig>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             did_repository,

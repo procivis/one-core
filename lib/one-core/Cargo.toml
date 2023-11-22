@@ -50,6 +50,7 @@ bs58 = "0.5"
 mockall.workspace = true
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 assert2 = { version = "0.3.11" }
+indoc = "2.0.0"
 
 [build-dependencies]
 shadow-rs.workspace = true

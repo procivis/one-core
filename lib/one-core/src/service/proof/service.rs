@@ -100,11 +100,11 @@ impl ProofService {
         let transport_instance = &self
             .config
             .exchange
-            .get(&proof.transport)
-            .ok_or(ServiceError::MissingTransportProtocol(
-                proof.transport.to_owned(),
-            ))?
-            .r#type;
+            .get_fields(&proof.transport)
+            .map_err(|err| {
+                ServiceError::MissingTransportProtocol(format!("{}. {err}", proof.transport))
+            })?
+            .r#type();
         let transport = self.protocol_provider.get_protocol(transport_instance)?;
         Ok(transport.get_presentation_definition(&proof).await?)
     }
@@ -198,11 +198,11 @@ impl ProofService {
         let transport_instance = &self
             .config
             .exchange
-            .get(&proof.transport)
-            .ok_or(ServiceError::MissingTransportProtocol(
-                proof.transport.to_owned(),
-            ))?
-            .r#type;
+            .get_fields(&proof.transport)
+            .map_err(|err| {
+                ServiceError::MissingTransportProtocol(format!("{}. {err}", proof.transport))
+            })?
+            .r#type();
 
         let transport = self.protocol_provider.get_protocol(transport_instance)?;
 

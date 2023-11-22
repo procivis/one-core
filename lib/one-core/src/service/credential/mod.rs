@@ -6,7 +6,7 @@ pub(crate) mod validator;
 
 use std::sync::Arc;
 
-use crate::config::data_structure::CoreConfig;
+use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -23,7 +23,7 @@ pub struct CredentialService {
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
-    config: Arc<CoreConfig>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 impl CredentialService {
@@ -34,7 +34,7 @@ impl CredentialService {
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
-        config: Arc<CoreConfig>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             credential_repository: repository,

@@ -7,7 +7,6 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::{
-    config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::MockCryptoProvider,
     model::{
         claim::Claim,
@@ -43,7 +42,7 @@ use crate::{
     service::ssi_holder::dto::InvitationResponseDTO,
 };
 
-use super::OpenID4VC;
+use super::{OpenID4VC, OpenID4VCParams};
 
 #[derive(Default)]
 struct Repositories {
@@ -70,9 +69,10 @@ fn setup_protocol(repositories: Repositories) -> OpenID4VC {
         Arc::new(repositories.revocation_provider),
         Arc::new(repositories.key_provider),
         Arc::new(repositories.crypto),
-        Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(
-            ExchangeOPENID4VCParams::default(),
-        ))),
+        OpenID4VCParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+        },
     )
 }
 

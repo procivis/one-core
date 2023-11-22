@@ -19,7 +19,6 @@ use super::{
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
 };
 use crate::{
-    config::data_structure::{ExchangeOPENID4VCParams, ExchangeParams, ParamsEnum},
     crypto::CryptoProvider,
     model::{
         claim::{Claim, ClaimRelations},
@@ -79,7 +78,7 @@ use crate::provider::transport_protocol::openid4vc::mapper::{
     get_claim_name_by_json_path, presentation_definition_from_interaction_data,
 };
 use async_trait::async_trait;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::json;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -108,10 +107,14 @@ pub(crate) struct OpenID4VC {
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
     base_url: Option<String>,
     crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    _params: OpenID4VCParams,
+}
 
-    // TODO Remove when it's used
-    #[allow(unused)]
-    params: ExchangeOPENID4VCParams,
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VCParams {
+    pub(crate) pre_authorized_code_expires_in: u64,
+    pub(crate) token_expires_in: u64,
 }
 
 impl OpenID4VC {
@@ -127,13 +130,8 @@ impl OpenID4VC {
         revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
         crypto: Arc<dyn CryptoProvider + Send + Sync>,
-        params: Option<ParamsEnum<ExchangeParams>>,
+        params: OpenID4VCParams,
     ) -> Self {
-        let params = match params {
-            Some(ParamsEnum::Parsed(ExchangeParams::OPENID4VC(val))) => val,
-            _ => ExchangeOPENID4VCParams::default(),
-        };
-
         Self {
             base_url,
             credential_repository,
@@ -146,7 +144,7 @@ impl OpenID4VC {
             key_provider,
             client: reqwest::Client::new(),
             crypto,
-            params,
+            _params: params,
         }
     }
 }

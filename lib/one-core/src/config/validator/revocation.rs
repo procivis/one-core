@@ -1,13 +1,10 @@
-use std::collections::HashMap;
-
-use crate::config::{data_structure::RevocationEntity, validator::ConfigValidationError};
+use crate::config::{core_config::RevocationConfig, ConfigValidationError};
 
 pub fn validate_revocation(
     value: &str,
-    revocation_methods: &HashMap<String, RevocationEntity>,
+    config: &RevocationConfig,
 ) -> Result<(), ConfigValidationError> {
-    revocation_methods
-        .get(value)
-        .map(|_| ())
-        .ok_or(ConfigValidationError::KeyNotFound(value.to_string()))
+    _ = config.get_fields(value)?;
+
+    Ok(())
 }

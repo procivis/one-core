@@ -1,25 +1,16 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::config::core_config::{KeyStorageConfig, KeyStorageType};
+use crate::config::ConfigValidationError;
 use crate::crypto::signer::error::SignerError;
 use crate::model::key::Key;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::{
-    config::{
-        data_structure::{
-            KeyStorageEntity, KeyStorageInternalParams, KeyStorageParams, ParamsEnum,
-        },
-        ConfigParseError,
-    },
-    provider::{
-        key_algorithm::GeneratedKey,
-        key_storage::{
-            azure_vault::AzureVaultKeyProvider, internal::InternalKeyProvider,
-            pkcs11::PKCS11KeyProvider,
-        },
-    },
-    service::error::ServiceError,
-};
+use crate::provider::key_storage::azure_vault::AzureVaultKeyProvider;
+use crate::provider::key_storage::pkcs11::PKCS11KeyProvider;
+use crate::{provider::key_storage::internal::InternalKeyProvider, service::error::ServiceError};
+
+use super::key_algorithm::provider::KeyAlgorithmProvider;
+use super::key_algorithm::GeneratedKey;
 
 pub mod azure_vault;
 pub mod internal;
@@ -34,45 +25,33 @@ pub trait KeyStorage {
 }
 
 pub fn key_providers_from_config(
-    key_config: &HashMap<String, KeyStorageEntity>,
+    config: &KeyStorageConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-) -> Result<HashMap<String, Arc<dyn KeyStorage + Send + Sync>>, ConfigParseError> {
-    key_config
-        .iter()
-        .map(|(name, entity)| storage_from_entity(name, entity, key_algorithm_provider.clone()))
-        .collect::<Result<HashMap<String, _>, _>>()
-}
+) -> Result<HashMap<String, Arc<dyn KeyStorage + Send + Sync>>, ConfigValidationError> {
+    let mut providers = HashMap::new();
 
-fn storage_from_entity(
-    name: &String,
-    entity: &KeyStorageEntity,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-) -> Result<(String, Arc<dyn KeyStorage + Send + Sync>), ConfigParseError> {
-    match entity.r#type.as_str() {
-        "INTERNAL" => {
-            let params = match &entity.params {
-                None => Ok(KeyStorageInternalParams::default()),
-                Some(value) => match value {
-                    ParamsEnum::Parsed(KeyStorageParams::Internal(value)) => Ok(value.to_owned()),
-                    _ => Err(ConfigParseError::InvalidType(
-                        name.to_owned(),
-                        String::new(),
-                    )),
-                },
-            }?;
-            Ok((
-                name.to_owned(),
-                Arc::new(InternalKeyProvider {
-                    key_algorithm_provider,
+    for key_storage_type in config.as_inner().keys() {
+        match key_storage_type {
+            KeyStorageType::Internal => {
+                let params = config.get(key_storage_type)?;
+
+                let key_storage = Arc::new(InternalKeyProvider::new(
+                    key_algorithm_provider.clone(),
                     params,
-                }),
-            ))
+                ));
+
+                providers.insert(key_storage_type.to_string(), key_storage as _);
+            }
+            KeyStorageType::Pkcs11 => {
+                let key_storage = Arc::new(PKCS11KeyProvider::new());
+                providers.insert(key_storage_type.to_string(), key_storage as _);
+            }
+            KeyStorageType::AzureVault => {
+                let key_storage = Arc::new(AzureVaultKeyProvider::new());
+                providers.insert(key_storage_type.to_string(), key_storage as _);
+            }
         }
-        "AZURE_VAULT" => Ok((name.to_owned(), Arc::new(AzureVaultKeyProvider {}))),
-        "PKCS11" => Ok((name.to_owned(), Arc::new(PKCS11KeyProvider {}))),
-        _ => Err(ConfigParseError::InvalidType(
-            entity.r#type.to_owned(),
-            String::new(),
-        )),
     }
+
+    Ok(providers)
 }

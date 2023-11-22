@@ -1,8 +1,8 @@
 use thiserror::Error;
 
-use crate::config::validator::ConfigValidationError;
+use crate::config::ConfigValidationError;
 
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, Error)]
 pub enum DataLayerError {
     #[error("General Data Layer error `{0}`")]
     GeneralRuntimeError(String),
