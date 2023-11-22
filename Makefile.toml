@@ -96,8 +96,8 @@ args = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--rev
 [tasks.generateuniffi_android]
 script = '''
 cargo run --features=uniffi/cli -p uniffi-bindgen --bin uniffi-bindgen generate -l kotlin -o target/android_tmp platforms/uniffi/src/one_core.udl
-mkdir -p target/uniffi/android/java/one_core/
-mv target/android_tmp/uniffi/one_core/* target/uniffi/android/java/one_core
+mkdir -p target/uniffi/android/java/uniffi/one_core/
+mv target/android_tmp/uniffi/one_core/* target/uniffi/android/java/uniffi/one_core
 rm -rf target/android_tmp
 '''
 

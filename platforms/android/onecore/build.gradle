@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'ch.procivis.onecore'
+    namespace 'ch.procivis.one.core'
     compileSdk 33
 
     defaultConfig {
