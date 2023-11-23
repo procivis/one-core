@@ -135,3 +135,6 @@ async fn encrypt_if_password_is_provided(
         }
     }
 }
+
+#[cfg(test)]
+mod test;
