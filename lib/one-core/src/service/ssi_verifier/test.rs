@@ -1,5 +1,6 @@
-use shared_types::{DidId, DidValue};
 use std::{collections::HashMap, sync::Arc, vec};
+
+use shared_types::{DidId, DidValue};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -381,5 +382,6 @@ fn dummy_did() -> Did {
         did_method: "John".to_string(),
         keys: None,
         organisation: None,
+        deactivated: false,
     }
 }

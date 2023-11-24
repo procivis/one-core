@@ -4,6 +4,11 @@ mod mapper;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use async_trait::async_trait;
+use time::OffsetDateTime;
+use url::Url;
+use uuid::Uuid;
+
 use self::{
     dto::HandleInvitationConnectRequest,
     mapper::{
@@ -45,10 +50,6 @@ use crate::{
         credential::dto::CredentialDetailResponseDTO, ssi_holder::dto::InvitationResponseDTO,
     },
 };
-use async_trait::async_trait;
-use time::OffsetDateTime;
-use url::Url;
-use uuid::Uuid;
 
 pub(crate) struct ProcivisTemp {
     client: reqwest::Client,
@@ -557,6 +558,7 @@ async fn handle_proof_invitation(
                 did_method: "KEY".to_owned(),
                 keys: None,
                 organisation: holder_did.organisation.to_owned(),
+                deactivated: false,
             };
             deps.did_repository
                 .create_did(new_did.clone())

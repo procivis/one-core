@@ -171,6 +171,7 @@ fn generic_credential() -> Credential {
             did_type: DidType::Remote,
             did_method: "KEY".to_string(),
             keys: None,
+            deactivated: false,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
@@ -338,6 +339,7 @@ fn generic_holder_did() -> Did {
         did_method: "KEY".to_string(),
         keys: None,
         organisation: None,
+        deactivated: false,
     }
 }
 

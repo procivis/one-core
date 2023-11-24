@@ -97,6 +97,7 @@ async fn test_get_did_exists() {
                 organisation: None,
             },
         }]),
+        deactivated: false,
     };
     {
         let did_clone = did.clone();
@@ -166,6 +167,7 @@ async fn test_get_did_list() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: None,
+        deactivated: false,
     };
 
     let mut repository = MockDidRepository::default();
@@ -299,6 +301,7 @@ fn dummy_did() -> Did {
         did_method: "John".to_string(),
         keys: None,
         organisation: None,
+        deactivated: false,
     }
 }
 

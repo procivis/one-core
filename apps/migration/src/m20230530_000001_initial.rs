@@ -376,6 +376,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Did::Method).string().not_null())
                     .col(ColumnDef::new(Did::OrganisationId).char_len(36).not_null())
+                    .col(ColumnDef::new(Did::Deactivated).boolean().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-Did-OrganisationId")
@@ -1148,6 +1149,7 @@ pub enum Did {
     Type,
     Method,
     OrganisationId,
+    Deactivated,
 }
 
 #[derive(Iden)]

@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use super::did::DidDeactivationError;
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
 use crate::service::oidc::dto::OpenID4VCIError;
@@ -53,6 +54,8 @@ pub enum ServiceError {
     CryptoError(#[from] CryptoProviderError),
     #[error("Other Repository error: `{0}`")]
     Other(String),
+    #[error(transparent)]
+    DidDeactivation(#[from] DidDeactivationError),
 }
 
 impl From<DataLayerError> for ServiceError {

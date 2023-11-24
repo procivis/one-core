@@ -1,9 +1,8 @@
 use dto_mapper::From;
+use one_core::model::did::DidType as ModelDidType;
 use sea_orm::entity::prelude::*;
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
-
-use one_core::model::did::DidType as ModelDidType;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "did")]
@@ -19,6 +18,7 @@ pub struct Model {
     pub type_field: DidType,
     pub method: String,
     pub organisation_id: String,
+    pub deactivated: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

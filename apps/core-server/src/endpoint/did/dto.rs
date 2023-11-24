@@ -1,5 +1,7 @@
 use dto_mapper::From;
-use one_core::service::did::dto::{CreateDidRequestKeysDTO, DidListItemResponseDTO};
+use one_core::service::did::dto::{
+    CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO,
+};
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
@@ -10,6 +12,8 @@ use crate::{
     dto::common::ListQueryParamsRest, endpoint::key::dto::KeyListItemResponseRestDTO,
     serialize::front_time,
 };
+
+pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -124,4 +128,9 @@ pub struct DidFilterQueryParamsRest {
     pub organisation_id: Uuid,
 }
 
-pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[convert(into = "DidPatchRequestDTO")]
+pub struct DidPatchRequestRestDTO {
+    pub deactivated: Option<bool>,
+}

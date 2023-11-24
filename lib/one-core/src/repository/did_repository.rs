@@ -1,7 +1,7 @@
 use shared_types::{DidId, DidValue};
 
 use super::error::DataLayerError;
-use crate::model::did::{Did, DidListQuery, DidRelations, GetDidList};
+use crate::model::did::{Did, DidListQuery, DidRelations, GetDidList, UpdateDidRequest};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
@@ -17,4 +17,6 @@ pub trait DidRepository {
     ) -> Result<Did, DataLayerError>;
 
     async fn get_did_list(&self, query: DidListQuery) -> Result<GetDidList, DataLayerError>;
+
+    async fn update_did(&self, request: UpdateDidRequest) -> Result<(), DataLayerError>;
 }

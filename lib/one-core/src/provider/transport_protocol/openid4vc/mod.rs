@@ -1,5 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
+use async_trait::async_trait;
+use serde::{de::DeserializeOwned, Deserialize};
+use serde_json::json;
+use time::{Duration, OffsetDateTime};
+use url::Url;
+use uuid::Uuid;
+
 use self::{
     dto::{
         OpenID4VCICredential, OpenID4VCICredentialDefinition, OpenID4VCICredentialOffer,
@@ -11,12 +18,18 @@ use self::{
     },
     model::{HolderInteractionData, OpenID4VCIInteractionContent},
 };
-
 use super::{
     deserialize_interaction_data,
     dto::{InvitationType, PresentedCredential, SubmitIssuerResponse},
     mapper::interaction_from_handle_invitation,
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
+};
+use crate::provider::transport_protocol::dto::{
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
+};
+use crate::provider::transport_protocol::mapper::get_relevant_credentials;
+use crate::provider::transport_protocol::openid4vc::mapper::{
+    get_claim_name_by_json_path, presentation_definition_from_interaction_data,
 };
 use crate::{
     crypto::CryptoProvider,
@@ -69,20 +82,6 @@ use crate::{
         proof_formatter::OpenID4VCIProofJWTFormatter,
     },
 };
-
-use crate::provider::transport_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
-};
-use crate::provider::transport_protocol::mapper::get_relevant_credentials;
-use crate::provider::transport_protocol::openid4vc::mapper::{
-    get_claim_name_by_json_path, presentation_definition_from_interaction_data,
-};
-use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Deserialize};
-use serde_json::json;
-use time::{Duration, OffsetDateTime};
-use url::Url;
-use uuid::Uuid;
 
 #[cfg(test)]
 mod test;
@@ -394,6 +393,7 @@ impl TransportProtocol for OpenID4VC {
                     did_type: DidType::Remote,
                     did_method: "KEY".to_string(),
                     keys: None,
+                    deactivated: false,
                 })
                 .await
                 .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,

@@ -1,5 +1,6 @@
-use mockall::predicate::eq;
 use std::sync::Arc;
+
+use mockall::predicate::eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -448,6 +449,7 @@ fn dummy_did() -> Did {
         did_method: "John".to_string(),
         keys: None,
         organisation: None,
+        deactivated: false,
     }
 }
 
@@ -490,6 +492,7 @@ fn dummy_credential() -> Credential {
             did_method: "KEY".to_string(),
             keys: None,
             organisation: None,
+            deactivated: false,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {

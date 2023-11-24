@@ -1,3 +1,11 @@
+use std::collections::HashMap;
+
+use shared_types::DidValue;
+use time::OffsetDateTime;
+use url::Url;
+use uuid::Uuid;
+
+use super::TransportProtocolError;
 use crate::model::credential::Credential;
 use crate::model::{
     did::{Did, DidType},
@@ -12,13 +20,6 @@ use crate::provider::transport_protocol::dto::{
 use crate::provider::transport_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
-use shared_types::DidValue;
-use std::collections::HashMap;
-use time::OffsetDateTime;
-use url::Url;
-use uuid::Uuid;
-
-use super::TransportProtocolError;
 
 pub fn remote_did_from_value(did_value: DidValue, organisation: &Organisation) -> Did {
     let now = OffsetDateTime::now_utc();
@@ -32,6 +33,7 @@ pub fn remote_did_from_value(did_value: DidValue, organisation: &Organisation) -
         did_type: DidType::Remote,
         did_method: "KEY".to_string(),
         keys: None,
+        deactivated: false,
     }
 }
 

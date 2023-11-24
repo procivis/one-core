@@ -15,6 +15,12 @@ pub enum DidType {
     Local,
 }
 
+impl DidType {
+    pub fn is_remote(&self) -> bool {
+        matches!(self, Self::Remote)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum KeyRole {
     Authentication,
@@ -39,6 +45,7 @@ pub struct Did {
     pub did: DidValue,
     pub did_type: DidType,
     pub did_method: String,
+    pub deactivated: bool,
 
     // Relations:
     pub keys: Option<Vec<RelatedKey>>,
@@ -72,4 +79,9 @@ pub type DidListQuery = ListQuery<SortableDidColumn, DidFilterValue>;
 pub struct DidRelations {
     pub keys: Option<KeyRelations>,
     pub organisation: Option<OrganisationRelations>,
+}
+
+pub struct UpdateDidRequest {
+    pub id: DidId,
+    pub deactivated: Option<bool>,
 }

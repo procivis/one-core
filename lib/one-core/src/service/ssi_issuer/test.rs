@@ -177,5 +177,6 @@ fn dummy_did() -> Did {
         did_method: "John".to_string(),
         keys: None,
         organisation: None,
+        deactivated: false,
     }
 }

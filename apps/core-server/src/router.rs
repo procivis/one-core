@@ -6,17 +6,16 @@ use std::time::Duration;
 
 use axum::http::{Request, Response, StatusCode};
 use axum::middleware::{self, Next};
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Router};
 use one_core::config::core_config;
+use one_core::OneCore;
 use sql_data_provider::{DataLayer, DbConn};
 use tower_http::trace::TraceLayer;
 use tracing::{info, info_span, Span};
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
-
-use one_core::OneCore;
 
 use crate::build_info;
 use crate::{
@@ -146,6 +145,7 @@ fn router(state: AppState, config: Config) -> Router {
             get(organisation::controller::get_organisation),
         )
         .route("/api/did/v1/:id", get(did::controller::get_did))
+        .route("/api/did/v1/:id", patch(did::controller::update_did))
         .route("/api/did/v1", get(did::controller::get_did_list))
         .route("/api/did/v1", post(did::controller::post_did))
         .route(
@@ -350,6 +350,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::did::controller::get_did,
             endpoint::did::controller::get_did_list,
             endpoint::did::controller::post_did,
+            endpoint::did::controller::update_did,
 
             endpoint::key::controller::get_key,
             endpoint::key::controller::get_key_list,
@@ -412,6 +413,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
                 endpoint::did::dto::CreateDidRequestRestDTO,
                 endpoint::did::dto::CreateDidRequestKeysRestDTO,
+                endpoint::did::dto::DidPatchRequestRestDTO,
                 endpoint::did::dto::DidResponseRestDTO,
                 endpoint::did::dto::DidResponseKeysRestDTO,
                 endpoint::did::dto::DidListItemResponseRestDTO,
