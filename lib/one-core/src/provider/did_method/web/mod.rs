@@ -9,25 +9,30 @@ use shared_types::{DidId, DidValue};
 use url::Url;
 
 pub struct WebDidMethod {
-    did_base_string: String,
+    did_base_string: Option<String>,
 }
 
 impl WebDidMethod {
-    #[allow(clippy::new_without_default)]
-    pub fn new(base_url: &str) -> Result<Self, DidMethodError> {
-        let url =
-            Url::parse(base_url).map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
+    pub fn new(base_url: &Option<String>) -> Result<Self, DidMethodError> {
+        let did_base_string = if let Some(base_url) = base_url {
+            let url =
+                Url::parse(base_url).map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
 
-        let mut host_str = url
-            .host_str()
-            .ok_or(DidMethodError::CouldNotCreate("Missing host".to_string()))?
-            .to_owned();
+            let mut host_str = url
+                .host_str()
+                .ok_or(DidMethodError::CouldNotCreate("Missing host".to_string()))?
+                .to_owned();
 
-        if let Some(port) = url.port() {
-            host_str.push_str(&format!("%3A{port}"));
-        }
+            if let Some(port) = url.port() {
+                host_str.push_str(&format!("%3A{port}"));
+            }
 
-        let did_base_string = format!("did:web:{}:ssi:did-web:v1", host_str);
+            let did_base_string = format!("did:web:{}:ssi:did-web:v1", host_str);
+
+            Some(did_base_string)
+        } else {
+            None
+        };
 
         Ok(Self { did_base_string })
     }
@@ -45,7 +50,14 @@ impl super::DidMethod for WebDidMethod {
         _params: &Option<serde_json::Value>,
         _key: &Option<Key>,
     ) -> Result<DidValue, DidMethodError> {
-        let did_value = format!("{}:{}", self.did_base_string, id);
+        let did_base_string =
+            self.did_base_string
+                .as_ref()
+                .ok_or(DidMethodError::CouldNotCreate(
+                    "Missing base_url".to_string(),
+                ))?;
+
+        let did_value = format!("{did_base_string}:{id}");
         Ok(DidValue::from_str(&did_value).unwrap())
     }
 

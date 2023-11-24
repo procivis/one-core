@@ -65,7 +65,6 @@ pub fn did_method_providers_from_config(
     base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn DidMethod + Send + Sync>>, ConfigError> {
     let mut providers = HashMap::new();
-    let base_url = base_url.unwrap_or_default();
 
     for did_type in did_config.as_inner().keys() {
         match did_type {
