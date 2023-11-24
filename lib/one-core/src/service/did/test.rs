@@ -7,11 +7,12 @@ use crate::{
         list_query::ListPagination,
         organisation::{Organisation, OrganisationRelations},
     },
-    provider::did_method::{
-        provider::DidMethodProviderImpl, DidMethod, DidMethodError, MockDidMethod,
-    },
-    repository::did_repository::MockDidRepository,
+    provider::did_method::{provider::DidMethodProviderImpl, DidMethod, MockDidMethod},
     repository::mock::key_repository::MockKeyRepository,
+    repository::{
+        did_repository::MockDidRepository,
+        mock::organisation_repository::MockOrganisationRepository,
+    },
     service::{
         did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
         error::ServiceError,
@@ -19,13 +20,15 @@ use crate::{
 };
 use did_key::{Generate, KeyMaterial};
 use mockall::predicate::*;
-use std::{collections::HashMap, sync::Arc};
+use shared_types::{DidId, DidValue};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 fn setup_service(
     did_repository: MockDidRepository,
     key_repository: MockKeyRepository,
+    organisation_repository: MockOrganisationRepository,
     did_method: MockDidMethod,
     did_config: DidConfig,
 ) -> DidService {
@@ -38,6 +41,7 @@ fn setup_service(
     DidService::new(
         did_repository,
         Arc::new(key_repository),
+        Arc::new(organisation_repository),
         Arc::new(did_method_provider),
         Arc::new(CoreConfig {
             did: did_config,
@@ -113,6 +117,7 @@ async fn test_get_did_exists() {
     let service = setup_service(
         repository,
         MockKeyRepository::default(),
+        MockOrganisationRepository::default(),
         MockDidMethod::default(),
         DidConfig::default(),
     );
@@ -137,6 +142,7 @@ async fn test_get_did_missing() {
     let service = setup_service(
         repository,
         MockKeyRepository::default(),
+        MockOrganisationRepository::default(),
         MockDidMethod::default(),
         DidConfig::default(),
     );
@@ -181,6 +187,7 @@ async fn test_get_did_list() {
     let service = setup_service(
         repository,
         MockKeyRepository::default(),
+        MockOrganisationRepository::default(),
         MockDidMethod::default(),
         DidConfig::default(),
     );
@@ -245,18 +252,56 @@ async fn test_create_did_success() {
     let mut did_method = MockDidMethod::default();
     did_method
         .expect_create()
-        .times(1)
-        .returning(|_request, _key| Ok(Uuid::new_v4().into()));
+        .once()
+        .returning(|_, _request, _key| Ok(DidValue::from_str("value").unwrap()));
+
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did_by_value()
+        .once()
+        .returning(|_, _| Err(crate::repository::error::DataLayerError::RecordNotFound));
+
+    did_repository
+        .expect_create_did()
+        .once()
+        .returning(move |_| Ok(DidId::from_str("788c8151-e62d-40bb-abd5-97483f426e66").unwrap()));
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .once()
+        .returning(|id, _| {
+            Ok(Organisation {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            })
+        });
 
     let service = setup_service(
-        MockDidRepository::default(),
+        did_repository,
         key_repository,
+        organisation_repository,
         did_method,
         get_did_config(),
     );
 
     let result = service.create_did(create_request).await;
     result.unwrap();
+}
+
+fn dummy_did() -> Did {
+    Did {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "John".to_string(),
+        did: "did".parse().unwrap(),
+        did_type: DidType::Local,
+        did_method: "John".to_string(),
+        keys: None,
+        organisation: None,
+    }
 }
 
 #[tokio::test]
@@ -300,20 +345,24 @@ async fn test_create_did_value_already_exists() {
     did_method
         .expect_create()
         .times(1)
-        .returning(|_, _| Err(DidMethodError::AlreadyExists));
+        .returning(|_, _, _| Ok(DidValue::from_str("value").unwrap()));
+
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did_by_value()
+        .once()
+        .returning(|_, _| Ok(dummy_did()));
 
     let service = setup_service(
-        MockDidRepository::default(),
+        did_repository,
         key_repository,
+        MockOrganisationRepository::default(),
         did_method,
         get_did_config(),
     );
 
     let result = service.create_did(create_request).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::DidMethodError(DidMethodError::AlreadyExists))
-    ));
+    assert!(matches!(result, Err(ServiceError::AlreadyExists)));
 }
 
 #[tokio::test]
@@ -336,6 +385,7 @@ async fn test_create_did_value_invalid_did_method() {
     let service = setup_service(
         MockDidRepository::default(),
         MockKeyRepository::default(),
+        MockOrganisationRepository::default(),
         MockDidMethod::default(),
         get_did_config(),
     );

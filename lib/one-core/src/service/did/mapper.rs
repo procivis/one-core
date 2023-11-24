@@ -1,7 +1,15 @@
-use super::dto::{DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
+use shared_types::{DidId, DidValue};
+use time::OffsetDateTime;
+
+use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
 use crate::{
     common_mapper::vector_into,
-    model::did::{Did, GetDidList, KeyRole},
+    model::{
+        did::{Did, GetDidList, KeyRole, RelatedKey},
+        key::{Key, KeyId},
+        organisation::Organisation,
+    },
+    provider::did_method::DidMethodError,
     service::{error::ServiceError, key::dto::KeyListItemResponseDTO},
 };
 
@@ -50,4 +58,47 @@ impl From<GetDidList> for GetDidListResponseDTO {
             total_items: value.total_items,
         }
     }
+}
+
+pub(super) fn did_from_did_request(
+    did_id: DidId,
+    request: CreateDidRequestDTO,
+    organisation: Organisation,
+    did_value: DidValue,
+    key: Key,
+    now: OffsetDateTime,
+) -> Result<Did, DidMethodError> {
+    let mut keys: Vec<RelatedKey> = vec![];
+    let mut add_keys = |key_ids: Vec<KeyId>, role: KeyRole| {
+        for _ in key_ids {
+            keys.push(RelatedKey {
+                role: role.to_owned(),
+                key: key.to_owned(),
+            });
+        }
+    };
+
+    add_keys(request.keys.authentication, KeyRole::Authentication);
+    add_keys(request.keys.assertion, KeyRole::AssertionMethod);
+    add_keys(request.keys.key_agreement, KeyRole::KeyAgreement);
+    add_keys(
+        request.keys.capability_invocation,
+        KeyRole::CapabilityInvocation,
+    );
+    add_keys(
+        request.keys.capability_delegation,
+        KeyRole::CapabilityDelegation,
+    );
+
+    Ok(Did {
+        id: did_id,
+        created_date: now,
+        last_modified: now,
+        name: request.name,
+        organisation: Some(organisation),
+        did: did_value,
+        did_type: request.did_type,
+        did_method: request.did_method,
+        keys: Some(keys),
+    })
 }
