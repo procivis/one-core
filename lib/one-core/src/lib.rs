@@ -114,10 +114,9 @@ impl OneCore {
 
         let did_methods = did_method_providers_from_config(
             &core_config.did,
-            data_provider.get_did_repository(),
-            data_provider.get_organisation_repository(),
             key_algorithm_provider.clone(),
             &core_config.key_algorithm,
+            core_base_url.clone(),
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
 
@@ -204,6 +203,7 @@ impl OneCore {
             did_service: DidService::new(
                 data_provider.get_did_repository(),
                 data_provider.get_key_repository(),
+                data_provider.get_organisation_repository(),
                 did_method_provider.clone(),
                 config.clone(),
             ),

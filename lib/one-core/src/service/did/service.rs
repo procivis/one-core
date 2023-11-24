@@ -1,9 +1,13 @@
 use std::collections::HashSet;
 
 use shared_types::DidId;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 use super::{
     dto::{CreateDidRequestDTO, DidResponseDTO, GetDidListResponseDTO},
+    mapper::did_from_did_request,
+    validator::did_already_exists,
     DidService,
 };
 use crate::{
@@ -92,9 +96,30 @@ impl DidService {
             .get_key(&key_id, &KeyRelations::default())
             .await?;
 
-        did_method
-            .create(request, key)
+        let new_did_id = DidId::from(Uuid::new_v4());
+
+        let did_value = did_method
+            .create(&new_did_id, &request.params, &Some(key.clone()))
             .await
-            .map_err(ServiceError::from)
+            .map_err(ServiceError::from)?;
+
+        if did_already_exists(&self.did_repository, &did_value).await? {
+            return Err(ServiceError::AlreadyExists);
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .await?;
+        let did = did_from_did_request(new_did_id, request, organisation, did_value, key, now)?;
+
+        let did_id = self
+            .did_repository
+            .create_did(did)
+            .await
+            .map_err(ServiceError::from)?;
+
+        Ok(did_id)
     }
 }

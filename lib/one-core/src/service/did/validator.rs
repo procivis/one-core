@@ -1,7 +1,11 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
+
+use shared_types::DidValue;
 
 use crate::{
-    model::key::KeyId,
+    model::{did::DidRelations, key::KeyId},
+    provider::did_method::DidMethodError,
+    repository::{did_repository::DidRepository, error::DataLayerError},
     service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError},
 };
 
@@ -36,5 +40,20 @@ pub(crate) fn validate_request_only_one_key_of_each_type(
         ))
     } else {
         Ok(())
+    }
+}
+
+pub(super) async fn did_already_exists(
+    repository: &Arc<dyn DidRepository + Send + Sync>,
+    did_value: &DidValue,
+) -> Result<bool, DidMethodError> {
+    let result = repository
+        .get_did_by_value(did_value, &DidRelations::default())
+        .await;
+
+    match result {
+        Ok(_) => Ok(true),
+        Err(DataLayerError::RecordNotFound) => Ok(false),
+        Err(e) => Err(DidMethodError::from(e)),
     }
 }

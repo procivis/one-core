@@ -6,16 +6,13 @@ use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
 use crate::config::core_config::{self, DidConfig, KeyAlgorithmConfig};
-use crate::config::ConfigError;
+use crate::config::{ConfigError, ConfigValidationError};
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::web::WebDidMethod;
 use crate::provider::did_method::x509::X509Method;
-use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
-use crate::repository::organisation_repository::OrganisationRepository;
-use crate::service::did::dto::CreateDidRequestDTO;
 
 use super::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -29,14 +26,16 @@ pub mod x509;
 
 #[derive(Debug, Error)]
 pub enum DidMethodError {
-    #[error("Did already exists")]
-    AlreadyExists,
     #[error("Data layer error: `{0}`")]
     DataLayerError(#[from] DataLayerError),
     #[error("Key algorithm not found")]
     KeyAlgorithmNotFound,
+    #[error("Could not create: `{0}`")]
+    CreationError(String),
     #[error("Could not resolve: `{0}`")]
     ResolutionError(String),
+    #[error("Could not create: `{0}`")]
+    CouldNotCreate(String),
     #[error("Not supported")]
     NotSupported,
 }
@@ -46,8 +45,12 @@ pub enum DidMethodError {
 pub trait DidMethod {
     fn get_method(&self) -> String;
 
-    async fn create(&self, request: CreateDidRequestDTO, key: Key)
-        -> Result<DidId, DidMethodError>;
+    async fn create(
+        &self,
+        id: &DidId,
+        params: &Option<serde_json::Value>,
+        key: &Option<Key>,
+    ) -> Result<DidValue, DidMethodError>;
 
     fn check_authorization(&self) -> bool;
     async fn resolve(&self, did: &DidValue) -> Result<Did, DidMethodError>;
@@ -57,19 +60,17 @@ pub trait DidMethod {
 
 pub fn did_method_providers_from_config(
     did_config: &DidConfig,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
-    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     key_algorithm_config: &KeyAlgorithmConfig,
+    base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn DidMethod + Send + Sync>>, ConfigError> {
     let mut providers = HashMap::new();
+    let base_url = base_url.unwrap_or_default();
 
     for did_type in did_config.as_inner().keys() {
         match did_type {
             core_config::DidType::Key => {
                 let method = Arc::new(KeyDidMethod::new(
-                    did_repository.clone(),
-                    organisation_repository.clone(),
                     key_algorithm_provider.clone(),
                     key_algorithm_config.clone(),
                     DidKeyParams,
@@ -79,7 +80,12 @@ pub fn did_method_providers_from_config(
                 providers.insert(did_type.to_string(), method as _);
             }
             core_config::DidType::Web => {
-                let method = Arc::new(WebDidMethod::new());
+                let did_web = WebDidMethod::new(&base_url).map_err(|_| {
+                    ConfigError::Validation(ConfigValidationError::KeyNotFound(
+                        "Base url".to_string(),
+                    ))
+                })?;
+                let method = Arc::new(did_web);
                 providers.insert(did_type.to_string(), method as _);
             }
             core_config::DidType::X509 => {

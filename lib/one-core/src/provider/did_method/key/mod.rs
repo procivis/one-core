@@ -14,19 +14,14 @@ use crate::{
     model::{
         did::{Did, DidType, KeyRole, RelatedKey},
         key::Key,
-        organisation::OrganisationRelations,
     },
     provider::key_algorithm::provider::KeyAlgorithmProvider,
-    repository::{did_repository::DidRepository, organisation_repository::OrganisationRepository},
-    service::did::dto::CreateDidRequestDTO,
 };
 
-use mapper::{categorize_did, did_from_did_request};
-use validator::{did_already_exists, validate_public_key_length};
+use mapper::categorize_did;
+use validator::validate_public_key_length;
 
 pub struct KeyDidMethod {
-    pub did_repository: Arc<dyn DidRepository + Send + Sync>,
-    pub organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     pub method_key: String,
     pub params: DidKeyParams,
@@ -37,16 +32,12 @@ pub struct DidKeyParams;
 
 impl KeyDidMethod {
     pub fn new(
-        did_repository: Arc<dyn DidRepository + Send + Sync>,
-        organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
         key_algorithm_config: KeyAlgorithmConfig,
         params: DidKeyParams,
         method_key: impl Into<String>,
     ) -> Self {
         Self {
-            did_repository,
-            organisation_repository,
             key_algorithm_provider,
             method_key: method_key.into(),
             params,
@@ -63,9 +54,13 @@ impl super::DidMethod for KeyDidMethod {
 
     async fn create(
         &self,
-        request: CreateDidRequestDTO,
-        key: Key,
-    ) -> Result<DidId, DidMethodError> {
+        _id: &DidId,
+        _params: &Option<serde_json::Value>,
+        key: &Option<Key>,
+    ) -> Result<DidValue, DidMethodError> {
+        let key = key
+            .as_ref()
+            .ok_or(DidMethodError::CouldNotCreate("Missing key".to_string()))?;
         let key_algorithm = self
             .key_algorithm_provider
             .get_key_algorithm(&key.key_type)
@@ -76,22 +71,7 @@ impl super::DidMethod for KeyDidMethod {
             Ok(v) => v,
             Err(err) => match err {},
         };
-
-        if did_already_exists(&self.did_repository, &did_value).await? {
-            return Err(DidMethodError::AlreadyExists);
-        }
-
-        let now = OffsetDateTime::now_utc();
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
-        let request = did_from_did_request(request, organisation, did_value, key, now)?;
-
-        self.did_repository
-            .create_did(request)
-            .await
-            .map_err(DidMethodError::from)
+        Ok(did_value)
     }
 
     fn check_authorization(&self) -> bool {
