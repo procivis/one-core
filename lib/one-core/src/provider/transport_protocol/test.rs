@@ -65,7 +65,7 @@ async fn test_issuer_submit_succeeds() {
                             last_modified: OffsetDateTime::now_utc(),
                             public_key: b"public_key".to_vec(),
                             name: "key name".to_string(),
-                            private_key: b"public_key".to_vec(),
+                            key_reference: b"private_key".to_vec(),
                             storage_type: key_storage_type.to_string(),
                             key_type: key_type.to_string(),
                             organisation: Some(Organisation {

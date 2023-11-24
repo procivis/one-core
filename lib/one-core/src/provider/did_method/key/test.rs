@@ -103,7 +103,7 @@ async fn test_create_did_success() {
         last_modified: OffsetDateTime::now_utc(),
         public_key: vec![],
         name: "".to_string(),
-        private_key: vec![],
+        key_reference: vec![],
         storage_type: "INTERNAL".to_string(),
         key_type: "EDDSA".to_string(),
         organisation: None,

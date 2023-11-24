@@ -18,7 +18,6 @@ use crate::{
         error::ServiceError,
     },
 };
-use did_key::{Generate, KeyMaterial};
 use mockall::predicate::*;
 use shared_types::{DidId, DidValue};
 use std::{collections::HashMap, str::FromStr, sync::Arc};
@@ -92,7 +91,7 @@ async fn test_get_did_exists() {
                 last_modified: OffsetDateTime::now_utc(),
                 public_key: vec![],
                 name: "key_name".to_string(),
-                private_key: vec![],
+                key_reference: vec![],
                 storage_type: "INTERNAL".to_string(),
                 key_type: "EDDSA".to_string(),
                 organisation: None,
@@ -235,14 +234,13 @@ async fn test_create_did_success() {
         .expect_get_key()
         .times(1)
         .returning(move |_, _| {
-            let key_pair = did_key::Ed25519KeyPair::new();
             Ok(Key {
                 id: key_id,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                public_key: key_pair.public_key_bytes(),
+                public_key: b"public".to_vec(),
                 name: "".to_string(),
-                private_key: key_pair.private_key_bytes(),
+                key_reference: b"private".to_vec(),
                 storage_type: "INTERNAL".to_string(),
                 key_type: "".to_string(),
                 organisation: None,
@@ -327,14 +325,13 @@ async fn test_create_did_value_already_exists() {
         .expect_get_key()
         .times(1)
         .returning(move |_, _| {
-            let key_pair = did_key::Ed25519KeyPair::new();
             Ok(Key {
                 id: key_id,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                public_key: key_pair.public_key_bytes(),
+                public_key: b"public".to_vec(),
                 name: "".to_string(),
-                private_key: key_pair.private_key_bytes(),
+                key_reference: b"private".to_vec(),
                 storage_type: "INTERNAL".to_string(),
                 key_type: "".to_string(),
                 organisation: None,

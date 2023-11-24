@@ -176,6 +176,9 @@ pub enum KeyStorageType {
     #[serde(rename = "AZURE_VAULT")]
     #[strum(serialize = "AZURE_VAULT")]
     AzureVault,
+    #[serde(rename = "SECURE_ELEMENT")]
+    #[strum(serialize = "SECURE_ELEMENT")]
+    SecureElement,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

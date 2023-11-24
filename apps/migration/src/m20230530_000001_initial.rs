@@ -474,7 +474,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Key::Name).string().not_null())
                     .col(ColumnDef::new(Key::PublicKey).binary().not_null())
-                    .col(ColumnDef::new(Key::PrivateKey).binary().not_null())
+                    .col(ColumnDef::new(Key::KeyReference).binary().not_null())
                     .col(ColumnDef::new(Key::StorageType).string().not_null())
                     .col(ColumnDef::new(Key::KeyType).string().not_null())
                     .col(ColumnDef::new(Key::OrganisationId).char_len(36).not_null())
@@ -1217,7 +1217,7 @@ pub enum Key {
     LastModified,
     Name,
     PublicKey,
-    PrivateKey,
+    KeyReference,
     StorageType,
     KeyType,
     OrganisationId,

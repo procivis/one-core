@@ -8,10 +8,11 @@ use tokio_util::compat::FuturesAsyncWriteCompatExt;
 
 use crate::crypto::signer::error::SignerError;
 use crate::model::key::Key;
+use crate::model::key::KeyId;
 use crate::{
     provider::{
-        key_algorithm::{provider::KeyAlgorithmProvider, GeneratedKey},
-        key_storage::KeyStorage,
+        key_algorithm::provider::KeyAlgorithmProvider,
+        key_storage::{GeneratedKey, KeyStorage},
     },
     service::error::ServiceError,
 };
@@ -48,14 +49,18 @@ impl KeyStorage for InternalKeyProvider {
             .map_err(|e| SignerError::MissingAlgorithm(e.to_string()))?;
 
         let passphrase = self.params.encryption.as_ref();
-        let private_key = decrypt_if_password_is_provided(&key.private_key, passphrase)
+        let private_key = decrypt_if_password_is_provided(&key.key_reference, passphrase)
             .await
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
         signer.sign(message, &key.public_key, &private_key)
     }
 
-    async fn generate(&self, key_type: &str) -> Result<GeneratedKey, ServiceError> {
+    async fn generate(
+        &self,
+        _key_id: &KeyId,
+        key_type: &str,
+    ) -> Result<GeneratedKey, ServiceError> {
         let key_pair = self
             .key_algorithm_provider
             .get_key_algorithm(key_type)
@@ -64,8 +69,8 @@ impl KeyStorage for InternalKeyProvider {
         let passphrase = self.params.encryption.as_ref();
 
         Ok(GeneratedKey {
-            public: key_pair.public,
-            private: encrypt_if_password_is_provided(&key_pair.private, passphrase).await?,
+            public_key: key_pair.public,
+            key_reference: encrypt_if_password_is_provided(&key_pair.private, passphrase).await?,
         })
     }
 }

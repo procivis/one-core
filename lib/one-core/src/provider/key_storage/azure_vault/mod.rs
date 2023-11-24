@@ -1,7 +1,7 @@
 use crate::{
     crypto::signer::error::SignerError,
-    model::key::Key,
-    provider::{key_algorithm::GeneratedKey, key_storage::KeyStorage},
+    model::key::{Key, KeyId},
+    provider::key_storage::{GeneratedKey, KeyStorage},
     service::error::ServiceError,
 };
 
@@ -14,7 +14,11 @@ impl KeyStorage for AzureVaultKeyProvider {
         todo!()
     }
 
-    async fn generate(&self, _key_type: &str) -> Result<GeneratedKey, ServiceError> {
+    async fn generate(
+        &self,
+        _key_id: &KeyId,
+        _key_type: &str,
+    ) -> Result<GeneratedKey, ServiceError> {
         todo!()
     }
 }

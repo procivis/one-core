@@ -3,6 +3,8 @@ use std::future::Future;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+pub(crate) mod native_key_storage;
+
 /// Run synchronously
 pub fn run_sync<F: Future>(future: F) -> F::Output {
     tokio::runtime::Builder::new_current_thread()

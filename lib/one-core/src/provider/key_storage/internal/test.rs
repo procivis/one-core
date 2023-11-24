@@ -1,6 +1,6 @@
 use super::InternalKeyProvider;
 use crate::crypto::signer::{MockSigner, Signer};
-use crate::model::key::Key;
+use crate::model::key::{Key, KeyId};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::{GeneratedKey, KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_storage::internal::Params;
@@ -33,8 +33,8 @@ async fn test_internal_generate() {
         params: Params { encryption: None },
     };
 
-    let result = provider.generate("").await.unwrap();
-    assert_eq!(3, result.private.len());
+    let result = provider.generate(&KeyId::new_v4(), "").await.unwrap();
+    assert_eq!(3, result.key_reference.len());
 }
 
 #[tokio::test]
@@ -63,8 +63,8 @@ async fn test_internal_generate_with_encryption() {
         },
     };
 
-    let result = provider.generate("").await.unwrap();
-    assert!(result.private.starts_with("age".as_bytes()));
+    let result = provider.generate(&KeyId::new_v4(), "").await.unwrap();
+    assert!(result.key_reference.starts_with("age".as_bytes()));
 }
 
 #[tokio::test]
@@ -105,15 +105,15 @@ async fn test_internal_sign_with_encryption() {
         },
     };
 
-    let generated_key = provider.generate("").await.unwrap();
+    let generated_key = provider.generate(&KeyId::new_v4(), "").await.unwrap();
 
     let key = Key {
         id: Uuid::new_v4(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        public_key: generated_key.public,
+        public_key: generated_key.public_key,
         name: "".to_string(),
-        private_key: generated_key.private,
+        key_reference: generated_key.key_reference,
         storage_type: "".to_string(),
         key_type: "".to_string(),
         organisation: None,

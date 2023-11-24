@@ -6,8 +6,8 @@ use crate::crypto::error::CryptoProviderError;
 pub enum SignerError {
     #[error("Crypto provider error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
-    #[error("Could not sign")]
-    CouldNotSign,
+    #[error("Could not sign: `{0}`")]
+    CouldNotSign(String),
     #[error("Could not extract keypair")]
     CouldNotExtractKeyPair,
     #[error("Could not extract public key: `{0}`")]
