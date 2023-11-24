@@ -5,15 +5,15 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    dto::{CreateDidRequestDTO, DidResponseDTO, GetDidListResponseDTO},
+    dto::{CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, GetDidListResponseDTO},
     mapper::did_from_did_request,
     validator::did_already_exists,
-    DidService,
+    DidDeactivationError, DidService,
 };
 use crate::{
     config::validator::did::validate_did_method,
     model::{
-        did::{DidListQuery, DidRelations},
+        did::{DidListQuery, DidRelations, UpdateDidRequest},
         key::{KeyId, KeyRelations},
         organisation::OrganisationRelations,
     },
@@ -121,5 +121,48 @@ impl DidService {
             .map_err(ServiceError::from)?;
 
         Ok(did_id)
+    }
+
+    pub async fn update_did(
+        &self,
+        id: &DidId,
+        request: DidPatchRequestDTO,
+    ) -> Result<(), ServiceError> {
+        let did = self
+            .did_repository
+            .get_did(id, &DidRelations::default())
+            .await
+            .map_err(ServiceError::from)?;
+
+        let did_method = self.did_method_provider.get_did_method(&did.did_method)?;
+
+        if let Some(deactivated) = request.deactivated {
+            if did.did_type.is_remote() {
+                return Err(DidDeactivationError::RemoteDid.into());
+            }
+
+            if !did_method.can_be_deactivated() {
+                return Err(DidDeactivationError::CannotBeDeactivated {
+                    method: did.did_method,
+                }
+                .into());
+            }
+
+            if deactivated == did.deactivated {
+                return Err(DidDeactivationError::DeactivatedSameValue {
+                    value: did.deactivated,
+                    method: did.did_method,
+                }
+                .into());
+            }
+        }
+
+        let update_did = UpdateDidRequest {
+            id: did.id,
+            deactivated: request.deactivated,
+        };
+        self.did_repository.update_did(update_did).await?;
+
+        Ok(())
     }
 }

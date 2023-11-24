@@ -100,5 +100,6 @@ pub(super) fn did_from_did_request(
         did_type: request.did_type,
         did_method: request.did_method,
         keys: Some(keys),
+        deactivated: false,
     })
 }

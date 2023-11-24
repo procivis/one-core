@@ -129,6 +129,7 @@ impl super::DidMethod for KeyDidMethod {
                 // skipping KeyAgreement (only supported using X25519 converted key)
             ]),
             organisation: None,
+            deactivated: false,
         })
     }
 
@@ -136,8 +137,8 @@ impl super::DidMethod for KeyDidMethod {
         Err(DidMethodError::NotSupported)
     }
 
-    fn deactivate(&self) -> Result<(), DidMethodError> {
-        Err(DidMethodError::NotSupported)
+    fn can_be_deactivated(&self) -> bool {
+        false
     }
 }
 

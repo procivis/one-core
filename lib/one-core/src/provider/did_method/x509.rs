@@ -41,7 +41,7 @@ impl super::DidMethod for X509Method {
         Err(DidMethodError::NotSupported)
     }
 
-    fn deactivate(&self) -> Result<(), DidMethodError> {
-        Err(DidMethodError::NotSupported)
+    fn can_be_deactivated(&self) -> bool {
+        false
     }
 }

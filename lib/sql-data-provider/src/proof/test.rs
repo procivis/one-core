@@ -1,12 +1,5 @@
-use super::ProofProvider;
-use crate::{
-    entity::{
-        claim,
-        proof_state::{self, ProofRequestState},
-    },
-    list_query::from_pagination,
-    test_utilities::*,
-};
+use std::sync::Arc;
+
 use one_core::{
     model::{
         claim::{Claim, ClaimRelations},
@@ -33,9 +26,18 @@ use one_core::{
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
 use shared_types::DidId;
-use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::ProofProvider;
+use crate::{
+    entity::{
+        claim,
+        proof_state::{self, ProofRequestState},
+    },
+    list_query::from_pagination,
+    test_utilities::*,
+};
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -99,7 +101,7 @@ async fn setup(
     )
     .unwrap();
 
-    let did_id = &insert_did(
+    let did_id = &insert_did_key(
         &db,
         "verifier",
         "did:key:123".parse().unwrap(),
@@ -260,6 +262,7 @@ async fn test_create_proof_success() {
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
+            deactivated: false,
         }),
         holder_did: None,
         interaction: None,
@@ -394,6 +397,7 @@ async fn test_get_proof_with_relations() {
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
+            deactivated: false,
         })
     });
 
@@ -495,6 +499,7 @@ async fn test_get_proof_by_interaction_id_success() {
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
+            deactivated: false,
         })
     });
 
@@ -582,7 +587,7 @@ async fn test_set_proof_holder_did() {
     )
     .await;
 
-    let holder_did_id = &insert_did(
+    let holder_did_id = &insert_did_key(
         &db,
         "holder",
         "did:holder".to_owned().parse().unwrap(),
@@ -604,6 +609,7 @@ async fn test_set_proof_holder_did() {
                 did_method: "KEY".to_string(),
                 organisation: None,
                 keys: None,
+                deactivated: false,
             },
         )
         .await;

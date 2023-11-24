@@ -1,12 +1,14 @@
+use std::str::FromStr;
+
 use core_server::Config;
 use one_core::model::credential::CredentialStateEnum;
+use one_core::model::did::DidType;
 use one_core::model::{
     claim::Claim,
     proof::{Proof, ProofStateEnum},
 };
 use shared_types::{DidId, DidValue};
 use sql_data_provider::{self, test_utilities::*, DbConn};
-use std::str::FromStr;
 use uuid::Uuid;
 
 pub fn create_config(core_base_url: impl Into<String>) -> Config {
@@ -40,11 +42,36 @@ pub async fn create_did_key(db_conn: &DbConn, organisation_id: &str) -> DidId {
         .await
         .unwrap();
 
+    insert_did_key(
+        db_conn,
+        "test-did-key",
+        DidValue::from_str(&did_id).unwrap(),
+        organisation_id,
+    )
+    .await
+    .unwrap()
+}
+
+pub async fn create_did_web(
+    db_conn: &DbConn,
+    organisation_id: &str,
+    deactivated: bool,
+    did_type: DidType,
+) -> DidId {
+    let did_id = Uuid::new_v4().to_string();
+
+    let _key_id = insert_key_to_database(db_conn, organisation_id)
+        .await
+        .unwrap();
+
     insert_did(
         db_conn,
         "test-did-key",
         DidValue::from_str(&did_id).unwrap(),
         organisation_id,
+        "WEB",
+        did_type.into(),
+        deactivated,
     )
     .await
     .unwrap()
@@ -77,7 +104,7 @@ pub async fn create_did_details(
     did_value: &str,
     organisation_id: &str,
 ) -> DidId {
-    insert_did(
+    insert_did_key(
         db_conn,
         did_name,
         DidValue::from_str(did_value).unwrap(),

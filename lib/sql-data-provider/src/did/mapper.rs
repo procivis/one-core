@@ -26,6 +26,7 @@ impl TryFrom<entity::did::Model> for Did {
             did_method: value.method,
             organisation: None,
             keys: None,
+            deactivated: value.deactivated,
         })
     }
 }
@@ -93,6 +94,7 @@ impl TryFrom<Did> for did::ActiveModel {
             type_field: Set(value.did_type.into()),
             method: Set(value.did_method),
             organisation_id: Set(organisation.id.to_string()),
+            deactivated: Set(value.deactivated),
         })
     }
 }

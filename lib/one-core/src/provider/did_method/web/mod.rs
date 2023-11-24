@@ -61,8 +61,8 @@ impl super::DidMethod for WebDidMethod {
         Err(DidMethodError::NotSupported)
     }
 
-    fn deactivate(&self) -> Result<(), DidMethodError> {
-        Err(DidMethodError::NotSupported)
+    fn can_be_deactivated(&self) -> bool {
+        true
     }
 }
 

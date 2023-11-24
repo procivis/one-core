@@ -1,20 +1,23 @@
+use std::{collections::HashMap, str::FromStr};
+
+use one_core::model::{
+    did::{Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest},
+    key::{Key, KeyId},
+};
+use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
+    Unchanged,
+};
+use shared_types::{DidId, DidValue};
+use uuid::Uuid;
+
 use super::{mapper::create_list_response, DidProvider};
 use crate::{
     entity::{did, key_did},
     list_query_generic::SelectWithListQuery,
     mapper::to_data_layer_error,
 };
-use one_core::model::{
-    did::{Did, DidListQuery, DidRelations, GetDidList, RelatedKey},
-    key::{Key, KeyId},
-};
-use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
-};
-use shared_types::{DidId, DidValue};
-use std::{collections::HashMap, str::FromStr};
-use uuid::Uuid;
 
 impl DidProvider {
     async fn resolve_relations(
@@ -142,5 +145,22 @@ impl DidRepository for DidProvider {
         }
 
         Ok(did.id)
+    }
+
+    async fn update_did(&self, request: UpdateDidRequest) -> Result<(), DataLayerError> {
+        let UpdateDidRequest { id, deactivated } = request;
+
+        let did: did::ActiveModel = did::ActiveModel {
+            id: Unchanged(id),
+            deactivated: deactivated.map(Set).unwrap_or_default(),
+            ..Default::default()
+        };
+
+        did.update(&self.db).await.map_err(|err| match err {
+            sea_orm::DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
+            other => DataLayerError::GeneralRuntimeError(other.to_string()),
+        })?;
+
+        Ok(())
     }
 }

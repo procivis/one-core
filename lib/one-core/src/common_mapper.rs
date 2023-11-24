@@ -1,3 +1,10 @@
+use std::sync::Arc;
+
+use serde::{Deserialize, Deserializer};
+use shared_types::{DidId, DidValue};
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
@@ -5,11 +12,6 @@ use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
 use crate::{model::common::GetListResponse, service::error::ServiceError};
-use serde::{Deserialize, Deserializer};
-use shared_types::{DidId, DidValue};
-use std::sync::Arc;
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 pub fn vector_into<T, F: Into<T>>(input: Vec<F>) -> Vec<T> {
     input.into_iter().map(|item| item.into()).collect()
@@ -95,6 +97,7 @@ pub(crate) async fn get_or_create_did(
                     did_method: "KEY".to_string(),
                     did_type: DidType::Remote,
                     keys: None,
+                    deactivated: false,
                 };
                 did_repository.create_did(did.clone()).await?;
                 did

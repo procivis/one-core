@@ -1,8 +1,5 @@
-use super::CredentialProvider;
-use crate::{
-    entity::{claim, credential_claim},
-    test_utilities::*,
-};
+use std::sync::Arc;
+
 use mockall::predicate::{always, eq};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::{
@@ -33,8 +30,13 @@ use one_core::{
     },
 };
 use sea_orm::{DatabaseConnection, EntityTrait, Set};
-use std::sync::Arc;
 use uuid::Uuid;
+
+use super::CredentialProvider;
+use crate::{
+    entity::{claim, credential_claim},
+    test_utilities::*,
+};
 
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
@@ -104,7 +106,7 @@ async fn setup_empty() -> TestSetup {
         }),
     };
 
-    let did_id = &insert_did(
+    let did_id = &insert_did_key(
         &db,
         "issuer",
         "did:key:123".parse().unwrap(),
@@ -127,6 +129,7 @@ async fn setup_empty() -> TestSetup {
         did_type: one_core::model::did::DidType::Local,
         did_method: "KEY".to_string(),
         keys: None,
+        deactivated: false,
     };
 
     TestSetup {

@@ -1,6 +1,15 @@
+use std::sync::Arc;
+
+use mockall::predicate::{always, eq};
+use serde_json::json;
+use shared_types::DidId;
+use time::OffsetDateTime;
+use uuid::Uuid;
+
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -9,6 +18,7 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::mock::claim_repository::MockClaimRepository;
 use crate::repository::mock::credential_repository::MockCredentialRepository;
@@ -21,15 +31,6 @@ use crate::service::oidc::dto::{
 use crate::service::oidc::mapper::vec_last_position_from_token_path;
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::generic_config;
-use mockall::predicate::{always, eq};
-use shared_types::DidId;
-
-use crate::model::did::{Did, DidType};
-use crate::repository::did_repository::MockDidRepository;
-use serde_json::json;
-use std::sync::Arc;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[derive(Default)]
 struct Mocks {
@@ -451,6 +452,7 @@ async fn test_oidc_create_credential_success() {
                     did_method: "KEY".to_string(),
                     organisation: None,
                     keys: None,
+                    deactivated: false,
                 })
             });
 

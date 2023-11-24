@@ -106,6 +106,7 @@ fn generic_credential() -> Credential {
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: None,
+            deactivated: false,
         }),
         holder_did: None,
         schema: Some(CredentialSchema {

@@ -1,4 +1,5 @@
-use crate::{did::DidProvider, entity::did, test_utilities::*};
+use std::sync::Arc;
+
 use one_core::model::did::{DidFilterValue, DidListQuery};
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::key::{Key, KeyRelations};
@@ -14,9 +15,10 @@ use one_core::repository::mock::organisation_repository::MockOrganisationReposit
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use shared_types::{DidId, DidValue};
-use std::sync::Arc;
 use time::macros::datetime;
 use uuid::Uuid;
+
+use crate::{did::DidProvider, entity::did, test_utilities::*};
 
 struct TestSetup {
     pub provider: DidProvider,
@@ -84,7 +86,7 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
 
     let did_name = "test did name";
     let did_value: DidValue = "test:did".parse().unwrap();
-    let did_id = &insert_did(
+    let did_id = &insert_did_key(
         &db,
         did_name,
         did_value.clone(),
@@ -132,6 +134,7 @@ async fn test_create_did() {
                 role: KeyRole::Authentication,
                 key,
             }]),
+            deactivated: false,
         })
         .await;
 
@@ -166,6 +169,7 @@ async fn test_create_did_invalid_organisation() {
             last_modified: get_dummy_date(),
             did_method: "KEY".to_string(),
             keys: None,
+            deactivated: false,
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::MappingError)));
@@ -388,7 +392,7 @@ async fn test_get_did_list_pages() {
     } = setup_empty(Repositories::default()).await;
 
     for i in 0..50 {
-        insert_did(
+        insert_did_key(
             &db,
             "test did name",
             format!("did:key:{}", i).parse().unwrap(),
@@ -557,6 +561,7 @@ async fn test_get_did_list_sorting() {
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
         organisation_id: Set(organisation.id.to_string()),
+        deactivated: Set(false),
     }
     .insert(&db)
     .await
@@ -571,6 +576,7 @@ async fn test_get_did_list_sorting() {
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
         organisation_id: Set(organisation.id.to_string()),
+        deactivated: Set(false),
     }
     .insert(&db)
     .await
@@ -739,6 +745,7 @@ async fn test_get_did_list_complex_filter_condition() {
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
         organisation_id: Set(organisation.id.to_string()),
+        deactivated: Set(false),
     }
     .insert(&db)
     .await
@@ -753,6 +760,7 @@ async fn test_get_did_list_complex_filter_condition() {
         type_field: Set(did::DidType::Local),
         method: Set("KEY".to_string()),
         organisation_id: Set(organisation.id.to_string()),
+        deactivated: Set(false),
     }
     .insert(&db)
     .await

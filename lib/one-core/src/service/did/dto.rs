@@ -1,7 +1,6 @@
 use dto_mapper::From;
-use time::OffsetDateTime;
-
 use shared_types::{DidId, DidValue};
+use time::OffsetDateTime;
 
 use crate::{
     model::{
@@ -72,4 +71,9 @@ pub struct CreateDidRequestKeysDTO {
 #[derive(Clone, Debug)]
 pub struct CreateDidResponseDTO {
     pub id: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct DidPatchRequestDTO {
+    pub deactivated: Option<bool>,
 }

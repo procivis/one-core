@@ -96,6 +96,7 @@ mod test {
                 },
             }]),
             organisation: None,
+            deactivated: false,
         }
     }
 

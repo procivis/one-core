@@ -36,3 +36,7 @@ mod get_presentation_definition_tests;
 // INTERACTION
 #[path = "api/interaction/handle_invitation_tests.rs"]
 mod handle_invitation_tests;
+
+//DID
+#[path = "api/did/update_did_tests.rs"]
+mod update_did_tests;

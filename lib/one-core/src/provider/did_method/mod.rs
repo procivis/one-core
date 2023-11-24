@@ -55,7 +55,7 @@ pub trait DidMethod {
     fn check_authorization(&self) -> bool;
     async fn resolve(&self, did: &DidValue) -> Result<Did, DidMethodError>;
     fn update(&self) -> Result<(), DidMethodError>;
-    fn deactivate(&self) -> Result<(), DidMethodError>;
+    fn can_be_deactivated(&self) -> bool;
 }
 
 pub fn did_method_providers_from_config(

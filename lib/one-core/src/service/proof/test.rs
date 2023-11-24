@@ -1,3 +1,9 @@
+use std::sync::Arc;
+
+use mockall::{predicate::*, Sequence};
+use time::OffsetDateTime;
+use uuid::Uuid;
+
 use super::ProofService;
 use crate::config::core_config::CoreConfig;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
@@ -32,10 +38,6 @@ use crate::{
         proof::dto::{CreateProofRequestDTO, GetProofQueryDTO, ProofId},
     },
 };
-use mockall::{predicate::*, Sequence};
-use std::sync::Arc;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[derive(Default)]
 struct Repositories {
@@ -88,6 +90,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             did_type: DidType::Local,
             did_method: "KEY".to_string(),
             keys: None,
+            deactivated: false,
         }),
         holder_did: None,
         interaction: None,
@@ -154,6 +157,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
+            deactivated: false,
         }),
         holder_did: Some(Did {
             id: Uuid::new_v4().into(),
@@ -165,6 +169,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
+            deactivated: false,
         }),
         interaction: None,
     };
@@ -256,6 +261,7 @@ async fn test_get_proof_exists() {
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
+            deactivated: false,
         }),
         holder_did: None,
         interaction: None,
@@ -355,6 +361,7 @@ async fn test_get_proof_list_success() {
             did_method: "KEY".to_string(),
             organisation: None,
             keys: None,
+            deactivated: false,
         }),
         holder_did: None,
         interaction: None,
@@ -442,6 +449,7 @@ async fn test_create_proof() {
                 did_method: "KEY".to_string(),
                 organisation: None,
                 keys: None,
+                deactivated: false,
             })
         });
 

@@ -1,12 +1,5 @@
-use super::model::ProofListItemModel;
-use crate::{
-    common::calculate_pages_count,
-    entity::{
-        did, proof, proof_claim, proof_schema,
-        proof_state::{self},
-    },
-    list_query::GetEntityColumn,
-};
+use std::{collections::HashMap, str::FromStr};
+
 use one_core::{
     model::{
         claim::Claim,
@@ -18,8 +11,17 @@ use one_core::{
 };
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
 use shared_types::DidId;
-use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;
+
+use super::model::ProofListItemModel;
+use crate::{
+    common::calculate_pages_count,
+    entity::{
+        did, proof, proof_claim, proof_schema,
+        proof_state::{self},
+    },
+    list_query::GetEntityColumn,
+};
 
 impl TryFrom<ProofListItemModel> for Proof {
     type Error = DataLayerError;
@@ -59,6 +61,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                     .ok_or(DataLayerError::MappingError)?,
                 organisation: None,
                 keys: None,
+                deactivated: false,
             }),
         };
 

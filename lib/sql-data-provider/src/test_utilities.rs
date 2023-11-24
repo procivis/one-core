@@ -1,14 +1,14 @@
 use one_core::model::claim::Claim;
 use one_core::model::credential::CredentialStateEnum;
+use one_core::model::interaction::InteractionId;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use one_core::repository::error::DataLayerError;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
+use shared_types::{DidId, DidValue};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use one_core::model::interaction::InteractionId;
-use shared_types::{DidId, DidValue};
-
+use crate::entity::did::DidType;
 use crate::{
     db_conn,
     entity::{
@@ -381,6 +381,7 @@ pub async fn insert_key_to_database(
     }
     .insert(database)
     .await?;
+
     Ok(key.id)
 }
 
@@ -396,11 +397,32 @@ pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: 
     DataLayer::build(db_conn).await
 }
 
+pub async fn insert_did_key(
+    database: &DatabaseConnection,
+    name: &str,
+    did: DidValue,
+    organisation_id: &str,
+) -> Result<DidId, DbErr> {
+    insert_did(
+        database,
+        name,
+        did,
+        organisation_id,
+        "KEY",
+        DidType::Local,
+        None,
+    )
+    .await
+}
+
 pub async fn insert_did(
     database: &DatabaseConnection,
     name: &str,
     did: DidValue,
     organisation_id: &str,
+    method: impl Into<String>,
+    did_type: DidType,
+    deactivated: impl Into<Option<bool>>,
 ) -> Result<DidId, DbErr> {
     let now = OffsetDateTime::now_utc();
 
@@ -410,9 +432,10 @@ pub async fn insert_did(
         created_date: Set(now),
         last_modified: Set(now),
         name: Set(name.to_owned()),
-        type_field: Set(did::DidType::Local),
-        method: Set("KEY".to_string()),
+        type_field: Set(did_type),
+        method: Set(method.into()),
         organisation_id: Set(organisation_id.to_owned()),
+        deactivated: Set(deactivated.into().unwrap_or_default()),
     }
     .insert(database)
     .await?;

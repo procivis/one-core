@@ -1,15 +1,16 @@
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
-
+use one_core::service::did::DidDeactivationError;
 use one_core::service::error::ServiceError;
 use shared_types::DidId;
 
+use super::dto::{
+    CreateDidRequestRestDTO, DidPatchRequestRestDTO, DidResponseRestDTO, GetDidQuery,
+};
 use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::extractor::Qs;
 use crate::router::AppState;
-
-use super::dto::{CreateDidRequestRestDTO, DidResponseRestDTO, GetDidQuery};
 
 #[utoipa::path(
     get,
@@ -125,5 +126,59 @@ pub(crate) async fn post_did(
             Json(EntityResponseRestDTO { id: id.into() }),
         )
             .into_response(),
+    }
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/did/v1/{id}",
+    request_body = DidPatchRequestRestDTO,
+    responses(
+        (status = 204, description = "Created"),
+        (status = 400, description = "Did cannot be deactivated"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Did not found"),
+        (status = 409, description = "Did already deactivated"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "did_management",
+    params(
+        ("id" = DidId, Path, description = "DID id")
+    ),
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn update_did(
+    state: State<AppState>,
+    Path(id): Path<DidId>,
+    Json(request): Json<DidPatchRequestRestDTO>,
+) -> Response {
+    match state.core.did_service.update_did(&id, request.into()).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(ref error @ ServiceError::DidDeactivation(ref did_activation_err)) => {
+            match did_activation_err {
+                DidDeactivationError::DeactivatedSameValue { .. } => {
+                    tracing::error!(%error, %id, "DID deactivation has already has been updated");
+                    StatusCode::CONFLICT.into_response()
+                }
+                DidDeactivationError::CannotBeDeactivated { .. } => {
+                    tracing::error!(%error, %id, "DID cannot be deactivated");
+                    StatusCode::BAD_REQUEST.into_response()
+                }
+                DidDeactivationError::RemoteDid => {
+                    tracing::error!(%id, "Remote DID cannot be deactivated");
+                    StatusCode::BAD_REQUEST.into_response()
+                }
+            }
+        }
+        Err(ServiceError::NotFound) => {
+            tracing::error!(%id, "DID not found");
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(error) => {
+            tracing::error!(%error, %id, "Error while updating DID");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
     }
 }

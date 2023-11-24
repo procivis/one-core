@@ -43,5 +43,15 @@ impl DidService {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum DidDeactivationError {
+    #[error("DID {method} already has the same value `{value}` for deactivated field")]
+    DeactivatedSameValue { value: bool, method: String },
+    #[error("DID method {method} cannot be deactivated")]
+    CannotBeDeactivated { method: String },
+    #[error("Remote DID cannot be deactivated")]
+    RemoteDid,
+}
+
 #[cfg(test)]
 mod test;
