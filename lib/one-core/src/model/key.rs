@@ -13,7 +13,7 @@ pub struct Key {
     pub last_modified: OffsetDateTime,
     pub public_key: Vec<u8>,
     pub name: String,
-    pub private_key: Vec<u8>,
+    pub key_reference: Vec<u8>,
     pub storage_type: String,
     pub key_type: String,
 

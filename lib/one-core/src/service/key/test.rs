@@ -10,10 +10,7 @@ use crate::{
         key::{GetKeyList, Key},
         organisation::Organisation,
     },
-    provider::{
-        key_algorithm::GeneratedKey,
-        key_storage::{provider::KeyProviderImpl, KeyStorage, MockKeyStorage},
-    },
+    provider::key_storage::{provider::KeyProviderImpl, GeneratedKey, KeyStorage, MockKeyStorage},
     repository::mock::{
         key_repository::MockKeyRepository, organisation_repository::MockOrganisationRepository,
     },
@@ -50,7 +47,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         last_modified: now,
         public_key: vec![],
         name: name.to_owned(),
-        private_key: vec![],
+        key_reference: vec![],
         storage_type: "INTERNAL".to_string(),
         key_type: "RSA4096".to_string(),
         organisation: Some(Organisation {
@@ -76,19 +73,19 @@ async fn test_create_key_success() {
 
         organisation_repository
             .expect_get_organisation()
-            .times(1)
+            .once()
             .returning(move |_, _| Ok(organisation.clone()));
 
-        key_storage.expect_generate().times(1).returning(move |_| {
+        key_storage.expect_generate().once().returning(|_, _| {
             Ok(GeneratedKey {
-                public: vec![],
-                private: vec![],
+                public_key: vec![],
+                key_reference: vec![],
             })
         });
 
         repository
             .expect_create_key()
-            .times(1)
+            .once()
             .returning(move |_| Ok(key.id));
     }
 
@@ -126,7 +123,7 @@ async fn test_get_key_success() {
         let key = key.clone();
         repository
             .expect_get_key()
-            .times(1)
+            .once()
             .returning(move |_, _| Ok(key.clone()));
     }
 
@@ -152,16 +149,13 @@ async fn test_get_key_list() {
     let keys = vec![generic_key("NAME1", org_id), generic_key("NAME2", org_id)];
 
     let moved_keys = keys.clone();
-    repository
-        .expect_get_key_list()
-        .times(1)
-        .returning(move |_| {
-            Ok(GetKeyList {
-                values: moved_keys.clone(),
-                total_pages: 1,
-                total_items: 2,
-            })
-        });
+    repository.expect_get_key_list().once().returning(move |_| {
+        Ok(GetKeyList {
+            values: moved_keys.clone(),
+            total_pages: 1,
+            total_items: 2,
+        })
+    });
 
     let service = setup_service(
         repository,

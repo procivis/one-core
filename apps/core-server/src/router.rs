@@ -51,6 +51,7 @@ pub async fn start_server(listener: TcpListener, config: Config, db_conn: DbConn
         Arc::new(DataLayer::build(db_conn).await),
         core_config,
         Some(config.core_base_url.to_owned()),
+        None,
     )
     .expect("Failed to parse config");
 

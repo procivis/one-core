@@ -12,6 +12,7 @@ use crypto::signer::eddsa::EDDSASigner;
 use crypto::signer::Signer;
 use crypto::{CryptoProvider, CryptoProviderImpl};
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
+use provider::key_storage::secure_element::NativeKeyStorage;
 use provider::transport_protocol::{
     procivis_temp::ProcivisTemp, provider::TransportProtocolProviderImpl, TransportProtocol,
 };
@@ -81,6 +82,7 @@ impl OneCore {
         data_provider: Arc<dyn DataRepository>,
         core_config: CoreConfig,
         core_base_url: Option<String>,
+        secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -108,8 +110,11 @@ impl OneCore {
             key_algorithms.to_owned(),
             crypto.clone(),
         ));
-        let key_providers =
-            key_providers_from_config(&core_config.key_storage, key_algorithm_provider.clone())?;
+        let key_providers = key_providers_from_config(
+            &core_config.key_storage,
+            key_algorithm_provider.clone(),
+            secure_element_key_storage,
+        )?;
         let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
 
         let did_methods = did_method_providers_from_config(

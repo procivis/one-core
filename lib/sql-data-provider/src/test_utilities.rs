@@ -374,7 +374,7 @@ pub async fn insert_key_to_database(
         last_modified: Set(get_dummy_date()),
         name: Set("test_key".to_string()),
         public_key: Set(vec![]),
-        private_key: Set("private".to_string().bytes().collect()),
+        key_reference: Set("private".to_string().bytes().collect()),
         storage_type: Set("INTERNAL".to_string()),
         key_type: Set("ED25519".to_string()),
         organisation_id: Set(organisation_id.to_string()),

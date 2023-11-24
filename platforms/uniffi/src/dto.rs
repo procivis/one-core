@@ -3,10 +3,14 @@ use dto_mapper::From;
 use one_core::{
     common_mapper::vector_into,
     model::did::DidType,
-    provider::transport_protocol::dto::{
-        PresentationDefinitionRequestGroupResponseDTO,
-        PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-        PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    provider::{
+        key_storage::GeneratedKey,
+        transport_protocol::dto::{
+            PresentationDefinitionRequestGroupResponseDTO,
+            PresentationDefinitionRequestedCredentialResponseDTO,
+            PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
+            PresentationDefinitionRuleTypeEnum,
+        },
     },
     service::credential::dto::{
         CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
@@ -212,6 +216,8 @@ pub struct CredentialRevocationCheckResponseBindingDTO {
     pub reason: Option<String>,
 }
 
+#[derive(From)]
+#[convert(into = "GeneratedKey")]
 pub struct GeneratedKeyBindingDTO {
     pub key_reference: Vec<u8>,
     pub public_key: Vec<u8>,

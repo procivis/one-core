@@ -1,12 +1,11 @@
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::{
     model::{
-        key::{GetKeyList, Key},
+        key::{GetKeyList, Key, KeyId},
         organisation::Organisation,
     },
-    provider::key_algorithm::GeneratedKey,
+    provider::key_storage::GeneratedKey,
     service::{
         error::ServiceError,
         key::dto::{KeyRequestDTO, KeyResponseDTO},
@@ -16,6 +15,7 @@ use crate::{
 use super::dto::GetKeyListResponseDTO;
 
 pub(super) fn from_create_request(
+    key_id: KeyId,
     request: KeyRequestDTO,
     organisation: Organisation,
     generated_key: GeneratedKey,
@@ -23,12 +23,12 @@ pub(super) fn from_create_request(
     let now = OffsetDateTime::now_utc();
 
     Key {
-        id: Uuid::new_v4(),
+        id: key_id,
         created_date: now,
         last_modified: now,
-        public_key: generated_key.public,
+        public_key: generated_key.public_key,
         name: request.name.to_owned(),
-        private_key: generated_key.private,
+        key_reference: generated_key.key_reference,
         storage_type: request.storage_type.to_owned(),
         key_type: request.key_type,
         organisation: Some(organisation),

@@ -95,7 +95,7 @@ impl super::DidMethod for KeyDidMethod {
             last_modified: now,
             public_key,
             name: did.to_string(),
-            private_key: vec![],
+            key_reference: vec![],
             storage_type: "EPHEMERAL".to_string(),
             key_type: "EDDSA".to_string(),
             organisation: None,

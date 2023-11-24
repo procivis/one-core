@@ -54,11 +54,13 @@ impl KeyService {
             .map_err(ServiceError::from)?;
 
         let provider = self.key_provider.get_key_storage(&request.storage_type)?;
-        let key = provider.generate(&request.key_type).await?;
+
+        let key_id = KeyId::new_v4();
+        let key = provider.generate(&key_id, &request.key_type).await?;
 
         let uuid = self
             .key_repository
-            .create_key(from_create_request(request, organisation, key))
+            .create_key(from_create_request(key_id, request, organisation, key))
             .await
             .map_err(ServiceError::from)?;
 

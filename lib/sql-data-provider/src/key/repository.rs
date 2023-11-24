@@ -48,7 +48,7 @@ impl KeyRepository for KeyProvider {
             last_modified: Set(request.last_modified),
             name: Set(request.name),
             public_key: Set(request.public_key),
-            private_key: Set(request.private_key),
+            key_reference: Set(request.key_reference),
             storage_type: Set(request.storage_type),
             key_type: Set(request.key_type),
             organisation_id: Set(organisation_id),
