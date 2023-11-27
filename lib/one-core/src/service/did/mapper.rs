@@ -46,6 +46,7 @@ impl TryFrom<Did> for DidResponseDTO {
                 capability_invocation: filter_keys(KeyRole::CapabilityInvocation),
                 capability_delegation: filter_keys(KeyRole::CapabilityDelegation),
             },
+            deactivated: value.deactivated,
         })
     }
 }

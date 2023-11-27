@@ -366,10 +366,16 @@ pub async fn insert_organisation_to_database(
 
 pub async fn insert_key_to_database(
     database: &DatabaseConnection,
+    did_id: Option<DidId>,
     organisation_id: &str,
 ) -> Result<String, DbErr> {
+    let id = did_id
+        .as_ref()
+        .map(ToString::to_string)
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+
     let key = key::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(id),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set("test_key".to_string()),
@@ -400,12 +406,14 @@ pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: 
 pub async fn insert_did_key(
     database: &DatabaseConnection,
     name: &str,
+    did_id: impl Into<DidId>,
     did: DidValue,
     organisation_id: &str,
 ) -> Result<DidId, DbErr> {
     insert_did(
         database,
         name,
+        did_id.into(),
         did,
         organisation_id,
         "KEY",
@@ -415,9 +423,11 @@ pub async fn insert_did_key(
     .await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_did(
     database: &DatabaseConnection,
     name: &str,
+    did_id: DidId,
     did: DidValue,
     organisation_id: &str,
     method: impl Into<String>,
@@ -427,7 +437,7 @@ pub async fn insert_did(
     let now = OffsetDateTime::now_utc();
 
     let did = did::ActiveModel {
-        id: Set(Uuid::new_v4().into()),
+        id: Set(did_id),
         did: Set(did),
         created_date: Set(now),
         last_modified: Set(now),

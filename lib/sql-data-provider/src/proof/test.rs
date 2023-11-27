@@ -104,6 +104,7 @@ async fn setup(
     let did_id = &insert_did_key(
         &db,
         "verifier",
+        Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
         &organisation_id.to_string(),
     )
@@ -590,6 +591,7 @@ async fn test_set_proof_holder_did() {
     let holder_did_id = &insert_did_key(
         &db,
         "holder",
+        Uuid::new_v4(),
         "did:holder".to_owned().parse().unwrap(),
         &organisation_id.to_string(),
     )

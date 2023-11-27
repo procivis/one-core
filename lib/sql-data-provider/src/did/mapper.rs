@@ -60,6 +60,9 @@ impl IntoFilterCondition for DidFilterValue {
             DidFilterValue::OrganisationId(organisation_id) => {
                 get_equals_condition(did::Column::OrganisationId, organisation_id.to_string())
             }
+            DidFilterValue::Deactivated(is_deactivated) => {
+                get_equals_condition(did::Column::Deactivated, is_deactivated)
+            }
         }
     }
 }
