@@ -68,6 +68,13 @@ pub enum DidFilterValue {
     Type(DidType),
     Did(StringMatch),
     OrganisationId(OrganisationId),
+    Deactivated(bool),
+}
+
+impl DidFilterValue {
+    pub fn deactivated(v: impl Into<bool>) -> Self {
+        Self::Deactivated(v.into())
+    }
 }
 
 impl ListFilterValue for DidFilterValue {}

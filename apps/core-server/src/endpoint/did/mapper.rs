@@ -26,6 +26,7 @@ impl TryFrom<DidResponseDTO> for DidResponseRestDTO {
             did_type: value.did_type.into(),
             did_method: value.did_method,
             keys: value.keys.try_into()?,
+            deactivated: value.deactivated,
         })
     }
 }
@@ -91,6 +92,8 @@ impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
             })
         });
 
-        organisation_id & r#type & (name | did_value)
+        let deactivated = value.deactivated.map(DidFilterValue::deactivated);
+
+        organisation_id & r#type & (name | did_value) & deactivated
     }
 }

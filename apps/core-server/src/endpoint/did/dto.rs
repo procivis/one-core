@@ -44,6 +44,7 @@ pub struct DidListItemResponseRestDTO {
     pub did_type: DidType,
     #[serde(rename = "method")]
     pub did_method: String,
+    pub deactivated: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
@@ -64,6 +65,7 @@ pub struct DidResponseRestDTO {
     #[serde(rename = "method")]
     pub did_method: String,
     pub keys: DidResponseKeysRestDTO,
+    pub deactivated: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
@@ -116,6 +118,19 @@ pub enum ExactDidFilterColumnRestEnum {
     Did,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum Boolean {
+    True,
+    False,
+}
+
+impl From<Boolean> for bool {
+    fn from(boolean: Boolean) -> Self {
+        matches!(boolean, Boolean::True)
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct DidFilterQueryParamsRest {
@@ -126,6 +141,8 @@ pub struct DidFilterQueryParamsRest {
     #[param(inline, rename = "exact[]")]
     pub exact: Option<Vec<ExactDidFilterColumnRestEnum>>,
     pub organisation_id: Uuid,
+    #[param(inline)]
+    pub deactivated: Option<Boolean>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]

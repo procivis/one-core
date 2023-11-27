@@ -38,13 +38,14 @@ pub async fn create_organisation(db_conn: &DbConn) -> String {
 pub async fn create_did_key(db_conn: &DbConn, organisation_id: &str) -> DidId {
     let did_id = Uuid::new_v4().to_string();
 
-    let _key_id = insert_key_to_database(db_conn, organisation_id)
+    let _key_id = insert_key_to_database(db_conn, None, organisation_id)
         .await
         .unwrap();
 
     insert_did_key(
         db_conn,
         "test-did-key",
+        Uuid::new_v4(),
         DidValue::from_str(&did_id).unwrap(),
         organisation_id,
     )
@@ -58,16 +59,17 @@ pub async fn create_did_web(
     deactivated: bool,
     did_type: DidType,
 ) -> DidId {
-    let did_id = Uuid::new_v4().to_string();
-
-    let _key_id = insert_key_to_database(db_conn, organisation_id)
+    let did_id: DidId = Uuid::new_v4().into();
+    let did = format!("did:web:{did_id}").parse().unwrap();
+    let _key_id = insert_key_to_database(db_conn, Some(did_id.clone()), organisation_id)
         .await
         .unwrap();
 
     insert_did(
         db_conn,
         "test-did-key",
-        DidValue::from_str(&did_id).unwrap(),
+        did_id,
+        did,
         organisation_id,
         "WEB",
         did_type.into(),
@@ -107,6 +109,7 @@ pub async fn create_did_details(
     insert_did_key(
         db_conn,
         did_name,
+        Uuid::new_v4(),
         DidValue::from_str(did_value).unwrap(),
         organisation_id,
     )

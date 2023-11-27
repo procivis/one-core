@@ -109,6 +109,7 @@ async fn setup_empty() -> TestSetup {
     let did_id = &insert_did_key(
         &db,
         "issuer",
+        Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
         &organisation_id.to_string(),
     )

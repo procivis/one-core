@@ -23,6 +23,7 @@ pub struct DidResponseDTO {
     pub did_type: DidType,
     pub did_method: String,
     pub keys: DidResponseKeysDTO,
+    pub deactivated: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -44,6 +45,7 @@ pub struct DidListItemResponseDTO {
     pub did: DidValue,
     pub did_type: DidType,
     pub did_method: String,
+    pub deactivated: bool,
 }
 
 pub type GetDidListResponseDTO = GetListResponse<DidListItemResponseDTO>;
