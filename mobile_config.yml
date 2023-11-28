@@ -153,15 +153,6 @@ keyAlgorithm:
       public:
         algorithm: "Ed25519"
   # TODO: The algorithm needs to be changed for this key
-  ECDSA:
-    display: "keyAlgorithm.ecdsa"
-    order: 1
-    disabled: true
-    type: "ECDSA"
-    params:
-      public:
-        algorithm: "Ed25519"
-  # TODO: The algorithm needs to be changed for this key
   BBS_PLUS:
     display: "keyAlgorithm.bbs_plus"
     order: 2
@@ -190,12 +181,6 @@ keyStorage:
     type: "PKCS11"
     disabled: true
     order: 1
-    params: null
-  AZURE_VAULT:
-    display: "keyStorage.azureKeyVault"
-    type: "AZURE_VAULT"
-    disabled: true
-    order: 2
     params: null
   SECURE_ELEMENT:
     display: "keyStorage.secureElement"
