@@ -10,6 +10,9 @@ mod api_credential_tests;
 #[path = "api/oidc/mod.rs"]
 mod api_oidc_tests;
 
+#[path = "api/proof_schema/mod.rs"]
+mod api_proof_schema_tests;
+
 #[path = "api/proof/mod.rs"]
 mod api_proof_tests;
 
