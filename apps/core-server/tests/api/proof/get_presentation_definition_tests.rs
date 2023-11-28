@@ -345,7 +345,6 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did_key(&db_conn, &organisation).await;
-
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",

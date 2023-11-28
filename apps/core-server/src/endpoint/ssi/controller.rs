@@ -5,7 +5,7 @@ use super::dto::{
     PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::endpoint::ssi::dto::{
-    OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
+    DidWebResponseRestDTO, OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
     OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
     OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
 };
@@ -21,6 +21,7 @@ use axum::{
     Form, Json, TypedHeader,
 };
 use one_core::service::error::ServiceError;
+use shared_types::DidId;
 use uuid::Uuid;
 
 #[utoipa::path(
@@ -67,6 +68,43 @@ pub(crate) async fn ssi_verifier_connect(
         Err(ServiceError::NotFound) => {
             tracing::error!("Missing proof");
             (StatusCode::NOT_FOUND, "Missing proof").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/did-web/v1/{id}/did.json",
+    params(
+        ("id" = Uuid, Path, description = "Did id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = DidWebResponseRestDTO),
+        (status = 400, description = "Did method wrong"),
+        (status = 404, description = "Did does not exist"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn get_did_web_document(
+    state: State<AppState>,
+    Path(id): Path<DidId>,
+) -> Response {
+    let result = state.core.did_service.get_did_web_document(&id).await;
+
+    match result {
+        Ok(result) => (StatusCode::OK, Json(DidWebResponseRestDTO::from(result))).into_response(),
+        Err(ServiceError::AlreadyExists) => {
+            tracing::error!("Did method wrong");
+            (StatusCode::BAD_REQUEST, "Did method wrong").into_response()
+        }
+        Err(ServiceError::NotFound) => {
+            tracing::error!("Did not found");
+            (StatusCode::NOT_FOUND, "Did not found").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

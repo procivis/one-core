@@ -106,6 +106,7 @@ async fn setup(
         "verifier",
         Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
+        "KEY",
         &organisation_id.to_string(),
     )
     .await
@@ -593,6 +594,7 @@ async fn test_set_proof_holder_did() {
         "holder",
         Uuid::new_v4(),
         "did:holder".to_owned().parse().unwrap(),
+        "KEY",
         &organisation_id.to_string(),
     )
     .await

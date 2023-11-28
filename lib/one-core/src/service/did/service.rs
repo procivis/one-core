@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -10,6 +10,11 @@ use super::{
     validator::did_already_exists,
     DidDeactivationError, DidService,
 };
+use crate::model::key::Key;
+use crate::service::did::dto::DidWebResponseDTO;
+use crate::service::did::mapper::map_did_model_to_did_web_response;
+use crate::service::did::mapper::map_key_to_verification_method;
+use crate::service::did::validator::throw_if_did_method_not_eq;
 use crate::{
     config::validator::did::validate_did_method,
     model::{
@@ -21,6 +26,59 @@ use crate::{
 };
 
 impl DidService {
+    /// Returns did document for did:web
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Did uuid
+    pub async fn get_did_web_document(
+        &self,
+        id: &DidId,
+    ) -> Result<DidWebResponseDTO, ServiceError> {
+        let result = self
+            .did_repository
+            .get_did(
+                id,
+                &DidRelations {
+                    keys: Some(KeyRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(ServiceError::from)?;
+        throw_if_did_method_not_eq(&result, "WEB")?;
+        let mut grouped_key: HashMap<KeyId, Key> = HashMap::new();
+        let keys = result
+            .keys
+            .as_ref()
+            .ok_or(ServiceError::MappingError("No keys found".to_string()))?;
+        for key in keys {
+            grouped_key.insert(key.key.id, key.key.clone());
+        }
+        map_did_model_to_did_web_response(
+            &result,
+            keys,
+            &grouped_key
+                .iter()
+                .enumerate()
+                .map(|(index, (key, value))| {
+                    let key_algorithm = self
+                        .key_algorithm_provider
+                        .get_key_algorithm(&value.key_type)
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                    Ok((
+                        key.to_owned(),
+                        map_key_to_verification_method(
+                            index,
+                            &result.did,
+                            key_algorithm.bytes_to_jwk(&value.public_key)?,
+                        )?,
+                    ))
+                })
+                .collect::<Result<HashMap<_, _>, ServiceError>>()?,
+        )
+    }
+
     /// Returns details of a did
     ///
     /// # Arguments

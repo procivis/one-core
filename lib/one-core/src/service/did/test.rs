@@ -1,4 +1,5 @@
 use super::DidService;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::{
     config::core_config::{self, CoreConfig, DidConfig, Fields},
     model::{
@@ -29,6 +30,7 @@ fn setup_service(
     key_repository: MockKeyRepository,
     organisation_repository: MockOrganisationRepository,
     did_method: MockDidMethod,
+    key_algorithm_provider: MockKeyAlgorithmProvider,
     did_config: DidConfig,
 ) -> DidService {
     let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
@@ -42,6 +44,7 @@ fn setup_service(
         Arc::new(key_repository),
         Arc::new(organisation_repository),
         Arc::new(did_method_provider),
+        Arc::new(key_algorithm_provider),
         Arc::new(CoreConfig {
             did: did_config,
             ..CoreConfig::default()
@@ -119,6 +122,7 @@ async fn test_get_did_exists() {
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
+        MockKeyAlgorithmProvider::default(),
         DidConfig::default(),
     );
 
@@ -144,6 +148,7 @@ async fn test_get_did_missing() {
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
+        MockKeyAlgorithmProvider::default(),
         DidConfig::default(),
     );
 
@@ -190,6 +195,7 @@ async fn test_get_did_list() {
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
+        MockKeyAlgorithmProvider::default(),
         DidConfig::default(),
     );
 
@@ -283,6 +289,7 @@ async fn test_create_did_success() {
         key_repository,
         organisation_repository,
         did_method,
+        MockKeyAlgorithmProvider::default(),
         get_did_config(),
     );
 
@@ -358,6 +365,7 @@ async fn test_create_did_value_already_exists() {
         key_repository,
         MockOrganisationRepository::default(),
         did_method,
+        MockKeyAlgorithmProvider::default(),
         get_did_config(),
     );
 
@@ -387,6 +395,7 @@ async fn test_create_did_value_invalid_did_method() {
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
         MockDidMethod::default(),
+        MockKeyAlgorithmProvider::default(),
         get_did_config(),
     );
 

@@ -30,7 +30,8 @@ sha2 = "0.10"
 ed25519-compact = { version = "2.0.4" }
 bit-vec = "0.6.3"
 flate2 = "1.0.27"
-
+elliptic-curve = { version = "0.13.8" }
+p256 = { version = "0.13.2", features = ["arithmetic"] }
 regex = "1.8.4"
 url = { workspace = true }
 

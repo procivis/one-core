@@ -1,7 +1,10 @@
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use did_key::{Fingerprint, Generate, KeyMaterial};
 use serde::Deserialize;
 
 use crate::provider::key_algorithm::GeneratedKey;
+use crate::service::did::dto::PublicKeyJwkResponseDTO;
+use crate::service::error::ServiceError;
 
 use super::KeyAlgorithm;
 
@@ -42,5 +45,15 @@ impl KeyAlgorithm for Eddsa {
             public: key_pair.public_key_bytes(),
             private: key_pair.private_key_bytes(),
         }
+    }
+
+    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkResponseDTO, ServiceError> {
+        Ok(PublicKeyJwkResponseDTO {
+            kty: "OKP".to_string(),
+            crv: "Ed25519".to_string(),
+            x: Base64UrlSafeNoPadding::encode_to_string(bytes)
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+            y: None,
+        })
     }
 }
