@@ -1,4 +1,6 @@
 use dto_mapper::From;
+
+use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
@@ -78,4 +80,33 @@ pub struct CreateDidResponseDTO {
 #[derive(Clone, Debug)]
 pub struct DidPatchRequestDTO {
     pub deactivated: Option<bool>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DidWebResponseDTO {
+    pub context: Vec<String>,
+    pub id: DidValue,
+    pub verification_method: Vec<DidWebVerificationMethodResponseDTO>,
+    pub authentication: Vec<String>,
+    pub assertion_method: Vec<String>,
+    pub key_agreement: Vec<String>,
+    pub capability_invocation: Vec<String>,
+    pub capability_delegation: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DidWebVerificationMethodResponseDTO {
+    pub id: String,
+    pub r#type: String,
+    pub controller: DidValue,
+    pub public_key_jwk: PublicKeyJwkResponseDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PublicKeyJwkResponseDTO {
+    pub kty: String,
+    pub crv: String,
+    pub x: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub y: Option<String>,
 }

@@ -111,6 +111,7 @@ async fn setup_empty() -> TestSetup {
         "issuer",
         Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
+        "KEY",
         &organisation_id.to_string(),
     )
     .await

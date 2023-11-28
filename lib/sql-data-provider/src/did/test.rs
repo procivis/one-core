@@ -38,7 +38,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
     let db = data_layer.db;
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
-    let key_id = insert_key_to_database(&db, None, &organisation_id)
+    let key_id = insert_key_to_database(&db, "ED25519".to_string(), vec![], None, &organisation_id)
         .await
         .unwrap();
 
@@ -93,14 +93,20 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
         did_name,
         Uuid::new_v4(),
         did_value.clone(),
+        "KEY",
         &organisation.id.to_string(),
     )
     .await
     .unwrap();
 
-    insert_key_did(&db, &did_id.to_string(), &key.id.to_string())
-        .await
-        .unwrap();
+    insert_key_did(
+        &db,
+        &did_id.to_string(),
+        &key.id.to_string(),
+        KeyRole::Authentication.into(),
+    )
+    .await
+    .unwrap();
 
     TestSetupWithDid {
         provider,
@@ -400,6 +406,7 @@ async fn test_get_did_list_pages() {
             "test did name",
             Uuid::new_v4(),
             format!("did:key:{}", i).parse().unwrap(),
+            "KEY",
             &organisation.id.to_string(),
         )
         .await

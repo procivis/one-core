@@ -6,6 +6,7 @@ use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::did::DidType;
+use crate::entity::key_did::KeyRole;
 use crate::{
     db_conn,
     entity::{
@@ -229,6 +230,8 @@ pub async fn insert_organisation_to_database(
 
 pub async fn insert_key_to_database(
     database: &DatabaseConnection,
+    key_type: String,
+    public_key: Vec<u8>,
     did_id: Option<DidId>,
     organisation_id: &str,
 ) -> Result<String, DbErr> {
@@ -242,10 +245,10 @@ pub async fn insert_key_to_database(
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set("test_key".to_string()),
-        public_key: Set(vec![]),
+        public_key: Set(public_key),
         key_reference: Set("private".to_string().bytes().collect()),
         storage_type: Set("INTERNAL".to_string()),
-        key_type: Set("ED25519".to_string()),
+        key_type: Set(key_type),
         organisation_id: Set(organisation_id.to_string()),
     }
     .insert(database)
@@ -271,6 +274,7 @@ pub async fn insert_did_key(
     name: &str,
     did_id: impl Into<DidId>,
     did: DidValue,
+    method: &str,
     organisation_id: &str,
 ) -> Result<DidId, DbErr> {
     insert_did(
@@ -279,7 +283,7 @@ pub async fn insert_did_key(
         did_id.into(),
         did,
         organisation_id,
-        "KEY",
+        method,
         DidType::Local,
         None,
     )
@@ -320,11 +324,12 @@ pub async fn insert_key_did(
     database: &DatabaseConnection,
     did_id: &str,
     key_id: &str,
+    role: KeyRole,
 ) -> Result<(), DbErr> {
     key_did::ActiveModel {
         did_id: Set(did_id.to_string()),
         key_id: Set(key_id.to_string()),
-        role: Set(key_did::KeyRole::Authentication),
+        role: Set(role),
     }
     .insert(database)
     .await?;

@@ -196,6 +196,10 @@ fn router(state: AppState, config: Config) -> Router {
             get(ssi::controller::get_revocation_list_by_id),
         )
         .route(
+            "/ssi/did-web/v1/:id/did.json",
+            get(ssi::controller::get_did_web_document),
+        )
+        .route(
             "/ssi/temporary-issuer/v1/connect",
             post(ssi::controller::ssi_issuer_connect),
         )
@@ -373,6 +377,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::ssi_issuer_connect,
             endpoint::ssi::controller::ssi_issuer_submit,
             endpoint::ssi::controller::get_revocation_list_by_id,
+            endpoint::ssi::controller::get_did_web_document,
             endpoint::ssi::controller::oidc_get_issuer_metadata,
             endpoint::ssi::controller::oidc_service_discovery,
             endpoint::ssi::controller::oidc_create_token,
@@ -466,6 +471,9 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::PresentationSubmissionMappingRestDTO,
                 endpoint::ssi::dto::PresentationSubmissionDescriptorRestDTO,
                 endpoint::ssi::dto::DurationSecondsRest,
+                endpoint::ssi::dto::DidWebResponseRestDTO,
+                endpoint::ssi::dto::DidWebVerificationMethodResponseRestDTO,
+                endpoint::ssi::dto::PublicKeyJwkResponseRestDTO,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,

@@ -2,6 +2,9 @@ use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
 use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
+use crate::service::did::dto::{
+    DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO,
+};
 use crate::{
     common_mapper::vector_into,
     model::{
@@ -12,7 +15,7 @@ use crate::{
     provider::did_method::DidMethodError,
     service::{error::ServiceError, key::dto::KeyListItemResponseDTO},
 };
-
+use std::collections::HashMap;
 impl TryFrom<Did> for DidResponseDTO {
     type Error = ServiceError;
     fn try_from(value: Did) -> Result<Self, Self::Error> {
@@ -102,5 +105,63 @@ pub(super) fn did_from_did_request(
         did_method: request.did_method,
         keys: Some(keys),
         deactivated: false,
+    })
+}
+
+pub(super) fn map_did_model_to_did_web_response(
+    did: &Did,
+    keys: &[RelatedKey],
+    grouped_key: &HashMap<KeyId, DidWebVerificationMethodResponseDTO>,
+) -> Result<DidWebResponseDTO, ServiceError> {
+    Ok(DidWebResponseDTO {
+        context: vec![
+            "https://www.w3.org/ns/did/v1".to_string(),
+            "https://w3id.org/security/suites/jws-2020/v1".to_string(),
+        ],
+        id: did.did.clone(),
+        verification_method: grouped_key.values().cloned().collect(),
+        authentication: get_key_id_by_role(KeyRole::Authentication, keys, grouped_key)?,
+        assertion_method: get_key_id_by_role(KeyRole::AssertionMethod, keys, grouped_key)?,
+        key_agreement: get_key_id_by_role(KeyRole::KeyAgreement, keys, grouped_key)?,
+        capability_invocation: get_key_id_by_role(
+            KeyRole::CapabilityInvocation,
+            keys,
+            grouped_key,
+        )?,
+        capability_delegation: get_key_id_by_role(
+            KeyRole::CapabilityDelegation,
+            keys,
+            grouped_key,
+        )?,
+    })
+}
+
+pub(super) fn get_key_id_by_role(
+    role: KeyRole,
+    keys: &[RelatedKey],
+    group: &HashMap<KeyId, DidWebVerificationMethodResponseDTO>,
+) -> Result<Vec<String>, ServiceError> {
+    keys.iter()
+        .filter(|key| key.role == role)
+        .map(|key| {
+            Ok(group
+                .get(&key.key.id)
+                .ok_or(ServiceError::MappingError("Missing key".to_string()))?
+                .id
+                .to_string())
+        })
+        .collect::<Result<Vec<_>, _>>()
+}
+
+pub(super) fn map_key_to_verification_method(
+    index: usize,
+    did: &DidValue,
+    public_key_jwk: PublicKeyJwkResponseDTO,
+) -> Result<DidWebVerificationMethodResponseDTO, ServiceError> {
+    Ok(DidWebVerificationMethodResponseDTO {
+        id: format!("{}#key-{}", did, index),
+        r#type: "JsonWebKey2020".to_string(),
+        controller: did.clone(),
+        public_key_jwk,
     })
 }

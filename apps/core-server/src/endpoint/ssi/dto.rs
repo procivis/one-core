@@ -10,6 +10,7 @@ use one_core::service::oidc::dto::{
     PresentationSubmissionMappingDTO,
 };
 use one_core::service::{
+    did::dto::{DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO},
     oidc::dto::{
         OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
         OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
@@ -132,6 +133,43 @@ pub struct OpenID4VCICredentialRequestRestDTO {
 pub struct OpenID4VCIProofRequestRestDTO {
     pub proof_type: String,
     pub jwt: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[convert(from = "DidWebResponseDTO")]
+pub struct DidWebResponseRestDTO {
+    #[serde(rename = "@context")]
+    pub context: Vec<String>,
+    pub id: DidValue,
+    #[convert(with_fn = "vector_into")]
+    pub verification_method: Vec<DidWebVerificationMethodResponseRestDTO>,
+    pub authentication: Vec<String>,
+    pub assertion_method: Vec<String>,
+    pub key_agreement: Vec<String>,
+    pub capability_invocation: Vec<String>,
+    pub capability_delegation: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[convert(from = "DidWebVerificationMethodResponseDTO")]
+pub struct DidWebVerificationMethodResponseRestDTO {
+    pub id: String,
+    pub r#type: String,
+    pub controller: DidValue,
+    pub public_key_jwk: PublicKeyJwkResponseRestDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[convert(from = "PublicKeyJwkResponseDTO")]
+pub struct PublicKeyJwkResponseRestDTO {
+    pub kty: String,
+    pub crv: String,
+    pub x: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub y: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]

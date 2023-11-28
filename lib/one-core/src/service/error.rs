@@ -48,6 +48,8 @@ pub enum ServiceError {
     MissingTransportProtocol(String),
     #[error("Missing key")]
     MissingKey,
+    #[error("Key algorithm error `{0}`")]
+    KeyAlgorithmError(String),
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
     #[error("Crypto provider error: `{0}`")]

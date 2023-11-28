@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::{
     config::core_config,
     provider::did_method::provider::DidMethodProvider,
@@ -22,6 +23,7 @@ pub struct DidService {
     key_repository: Arc<dyn KeyRepository + Send + Sync>,
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -31,6 +33,7 @@ impl DidService {
         key_repository: Arc<dyn KeyRepository + Send + Sync>,
         organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
         did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
@@ -38,6 +41,7 @@ impl DidService {
             key_repository,
             organisation_repository,
             did_method_provider,
+            key_algorithm_provider,
             config,
         }
     }

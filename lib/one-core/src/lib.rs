@@ -210,6 +210,7 @@ impl OneCore {
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
                 did_method_provider.clone(),
+                key_algorithm_provider.clone(),
                 config.clone(),
             ),
             revocation_list_service: RevocationListService::new(

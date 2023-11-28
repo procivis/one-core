@@ -7,9 +7,8 @@ use one_core::model::credential::{Credential, CredentialState, CredentialStateEn
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
 };
-use one_core::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
+use one_core::model::did::{Did, DidRelations, DidType, KeyRole};
 use one_core::model::interaction::{Interaction, InteractionRelations};
-use one_core::model::key::Key;
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{Proof, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
@@ -54,38 +53,56 @@ pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
         .create_organisation(organisation.to_owned())
         .await
         .unwrap();
-
     organisation
 }
 
-pub async fn create_key(db_conn: &DbConn, organisation: &Organisation) -> Key {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-
-    let key = Key {
-        id: Uuid::new_v4(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        public_key: b"public".into(),
-        name: "key".to_string(),
-        key_reference: b"private".into(),
-        storage_type: "INTERNAL".to_string(),
-        key_type: "ES256".to_string(),
-        organisation: Some(organisation.to_owned()),
-    };
-
-    data_layer
-        .get_key_repository()
-        .create_key(key.to_owned())
+pub async fn create_key_did(db_conn: &DbConn, did_id: &str, key_id: &str, key_role: KeyRole) {
+    insert_key_did(db_conn, did_id, key_id, key_role.into())
         .await
-        .unwrap();
+        .unwrap()
+}
+pub async fn create_es256_key(
+    db_conn: &DbConn,
+    algorithm: String,
+    organisation_id: &str,
+    did_id: &DidId,
+) -> String {
+    insert_key_to_database(
+        db_conn,
+        algorithm,
+        vec![
+            2, 212, 74, 108, 171, 101, 55, 25, 228, 113, 137, 107, 244, 59, 53, 18, 151, 14, 117,
+            14, 156, 106, 178, 135, 104, 150, 113, 122, 229, 191, 40, 5, 96,
+        ],
+        Some(did_id.to_owned()),
+        organisation_id,
+    )
+    .await
+    .unwrap()
+}
 
-    key
+pub async fn create_eddsa_key(
+    db_conn: &DbConn,
+    algorithm: String,
+    organisation_id: &str,
+    did_id: &DidId,
+) -> String {
+    insert_key_to_database(
+        db_conn,
+        algorithm,
+        vec![
+            155, 176, 4, 229, 68, 29, 140, 187, 130, 58, 118, 71, 7, 88, 2, 21, 250, 54, 186, 248,
+            76, 233, 111, 248, 196, 89, 169, 36, 173, 54, 175, 187,
+        ],
+        Some(did_id.to_owned()),
+        organisation_id,
+    )
+    .await
+    .unwrap()
 }
 
 pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Did {
     let data_layer = DataLayer::build(db_conn.to_owned());
-
-    let key = create_key(db_conn, organisation).await;
 
     let did = Did {
         id: DidId::from(Uuid::new_v4()),
@@ -97,10 +114,7 @@ pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Di
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         deactivated: false,
-        keys: Some(vec![RelatedKey {
-            role: KeyRole::AssertionMethod,
-            key,
-        }]),
+        keys: None,
     };
 
     data_layer
@@ -120,8 +134,6 @@ pub async fn create_did_web(
 ) -> Did {
     let data_layer = DataLayer::build(db_conn.to_owned());
 
-    let key = create_key(db_conn, organisation).await;
-
     let did_id = DidId::from(Uuid::new_v4());
     let did = Did {
         id: did_id.to_owned(),
@@ -133,10 +145,7 @@ pub async fn create_did_web(
         did_type,
         did_method: "WEB".to_string(),
         deactivated,
-        keys: Some(vec![RelatedKey {
-            role: KeyRole::AssertionMethod,
-            key,
-        }]),
+        keys: None,
     };
 
     data_layer

@@ -2,12 +2,20 @@ use std::{collections::HashSet, sync::Arc};
 
 use shared_types::DidValue;
 
+use crate::model::did::Did;
 use crate::{
     model::{did::DidRelations, key::KeyId},
     provider::did_method::DidMethodError,
     repository::{did_repository::DidRepository, error::DataLayerError},
     service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError},
 };
+
+pub(crate) fn throw_if_did_method_not_eq(did: &Did, method_type: &str) -> Result<(), ServiceError> {
+    if did.did_method != method_type {
+        return Err(ServiceError::AlreadyExists);
+    }
+    Ok(())
+}
 
 pub(crate) fn validate_request_only_one_key_of_each_type(
     keys: CreateDidRequestKeysDTO,
