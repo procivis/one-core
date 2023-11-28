@@ -13,7 +13,7 @@ use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{Proof, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
-    ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
+    ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaId, ProofSchemaRelations,
 };
 use one_core::repository::DataRepository;
 use shared_types::{DidId, DidValue};
@@ -394,6 +394,26 @@ pub async fn create_proof(
         .unwrap();
 
     proof
+}
+
+pub async fn get_proof_schema(db_conn: &DbConn, proof_schema_id: &ProofSchemaId) -> ProofSchema {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    data_layer
+        .get_proof_schema_repository()
+        .get_proof_schema(
+            proof_schema_id,
+            &ProofSchemaRelations {
+                claim_schemas: Some(ProofSchemaClaimRelations {
+                    credential_schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations {}),
+                        ..Default::default()
+                    }),
+                }),
+                organisation: Some(OrganisationRelations {}),
+            },
+        )
+        .await
+        .unwrap()
 }
 
 pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
