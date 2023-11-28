@@ -31,7 +31,7 @@ fn initialize_core(
         let db_conn = sql_data_provider::db_conn(db_url).await;
 
         one_core::OneCore::new(
-            Arc::new(DataLayer::build(db_conn).await),
+            Arc::new(DataLayer::build(db_conn)),
             placeholder_config,
             None,
             native_key_storage.map(|storage| {

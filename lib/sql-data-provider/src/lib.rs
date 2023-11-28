@@ -66,7 +66,7 @@ pub struct DataLayer {
 }
 
 impl DataLayer {
-    pub async fn build(db: DbConn) -> Self {
+    pub fn build(db: DbConn) -> Self {
         let interaction_repository = Arc::new(InteractionProvider { db: db.clone() });
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
         let claim_repository = Arc::new(ClaimProvider {

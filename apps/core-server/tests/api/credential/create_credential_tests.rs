@@ -1,7 +1,6 @@
 use core_server::router::start_server;
 use httpmock::MockServer;
 use serde_json::{json, Value};
-use uuid::Uuid;
 
 use crate::{fixtures, utils};
 
@@ -11,19 +10,11 @@ async fn test_create_credential_success() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
-    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
-    let claim_id = Uuid::new_v4();
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(claim_id, "firstName", true, 1, "STRING")];
-    let credential_schema = fixtures::create_credential_schema(
-        &db_conn,
-        "test",
-        &organisation_id,
-        &new_claim_schemas,
-        "NONE",
-    )
-    .await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+
+    let credential_schema =
+        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
 
     // WHEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -37,12 +28,12 @@ async fn test_create_credential_success() {
         .post(url)
         .bearer_auth("test")
         .json(&json!({
-          "credentialSchemaId": credential_schema,
+          "credentialSchemaId": credential_schema.id,
           "transport": "OPENID4VC",
-          "issuerDid": did_id,
+          "issuerDid": did.id,
           "claimValues": [
                 {
-                    "claimId": claim_id,
+                    "claimId": credential_schema.claim_schemas.unwrap().first().unwrap().schema.id,
                     "value": "some value"
                 }
             ]

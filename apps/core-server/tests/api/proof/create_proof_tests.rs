@@ -12,20 +12,31 @@ async fn test_create_proof_success() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
-    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    fixtures::create_credential_schema(
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+
+    let credential_schema =
+        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = fixtures::create_proof_schema(
         &db_conn,
         "test",
-        &organisation_id,
-        &new_claim_schemas,
-        "NONE",
+        &organisation,
+        &[(
+            claim_schema.id,
+            &claim_schema.key,
+            true,
+            &claim_schema.data_type,
+        )],
     )
     .await;
-    let proof_schema =
-        fixtures::create_proof_schema(&db_conn, "test", &organisation_id, &new_claim_schemas).await;
 
     // WHEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -40,9 +51,9 @@ async fn test_create_proof_success() {
         .post(url)
         .bearer_auth("test")
         .json(&json!({
-          "proofSchemaId": proof_schema,
+          "proofSchemaId": proof_schema.id,
           "transport": "OPENID4VC",
-          "verifierDid": did_id,
+          "verifierDid": did.id,
         }))
         .send()
         .await
@@ -54,6 +65,10 @@ async fn test_create_proof_success() {
 
     assert!(resp.get("id").is_some());
 
-    let proof = get_proof(&db_conn_check, resp["id"].as_str().unwrap()).await;
+    let proof = get_proof(
+        &db_conn_check,
+        &Uuid::parse_str(resp["id"].as_str().unwrap()).unwrap(),
+    )
+    .await;
     assert_eq!(proof.transport, "OPENID4VC");
 }

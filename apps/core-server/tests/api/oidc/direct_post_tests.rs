@@ -5,7 +5,9 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::{
-    fixtures::{self, create_credential_schema, create_proof, create_proof_schema, get_claims},
+    fixtures::{
+        self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_proof,
+    },
     utils,
 };
 
@@ -49,33 +51,27 @@ async fn test_direct_post_one_credential_correct() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
     let nonce = "nonce123";
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = vec![
-        (Uuid::new_v4(), "cat1", true, 1, "STRING"), // Presentation 2 token 1
-        (Uuid::new_v4(), "cat2", false, 1, "STRING"), // Optional - not provided
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING"), // Presentation 2 token 1
+        (Uuid::new_v4(), "cat2", false, "STRING"), // Optional - not provided
     ];
 
-    let _ = create_credential_schema(
+    create_credential_schema_with_claims(
         &db_conn,
         "NewCredentialSchema",
-        &organisation_id,
-        &new_claim_schemas,
+        &organisation,
         "NONE",
+        &new_claim_schemas,
     )
     .await;
 
-    let proof_schema_id =
-        create_proof_schema(&db_conn, "Schema1", &organisation_id, &new_claim_schemas).await;
+    let proof_schema =
+        create_proof_schema(&db_conn, "Schema1", &organisation, &new_claim_schemas).await;
 
-    let verifier_did_id = fixtures::create_did_details(
-        &db_conn,
-        "Verifier",
-        "did:key:z6MkomfxPXoXaCKXdkMGSvzEdCKe73RueovdEDEQiLk1KwyC",
-        &organisation_id,
-    )
-    .await;
+    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -98,24 +94,23 @@ async fn test_direct_post_one_credential_correct() {
         }
     });
 
-    let interaction_id =
+    let interaction =
         fixtures::create_interaction(&db_conn, &base_url, interaction_data.to_string().as_bytes())
             .await;
 
-    let _ = create_proof(
+    let proof = create_proof(
         &db_conn,
-        verifier_did_id,
+        &verifier_did,
         None,
-        Some(proof_schema_id),
+        Some(&proof_schema),
         ProofStateEnum::Pending,
         "OPENID4VC",
-        &Vec::new(), //No claims so far
-        Some(interaction_id.clone()),
+        Some(&interaction),
     )
     .await;
 
     let presentation_submission = json!({
-        "definition_id": interaction_id,
+        "definition_id": interaction.id,
         "descriptor_map": [
             {
                 "format": "jwt_vp_json",
@@ -136,7 +131,7 @@ async fn test_direct_post_one_credential_correct() {
             presentation_submission.to_string(),
         ),
         ("vp_token", TOKEN2.to_owned()),
-        ("state", interaction_id),
+        ("state", interaction.id.to_string()),
     ];
 
     // WHEN
@@ -156,7 +151,8 @@ async fn test_direct_post_one_credential_correct() {
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let claims = get_claims(&db_conn).await;
+    let proof = get_proof(&db_conn, &proof.id).await;
+    let claims = proof.claims.unwrap();
 
     assert!(new_claim_schemas
         .iter()
@@ -175,33 +171,27 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
     let nonce = "nonce123";
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = vec![
-        (Uuid::new_v4(), "cat1", true, 1, "STRING"), // Presentation 2 token 1
-        (Uuid::new_v4(), "cat2", true, 1, "STRING"), // required - not provided
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING"), // Presentation 2 token 1
+        (Uuid::new_v4(), "cat2", true, "STRING"), // required - not provided
     ];
 
-    let _ = create_credential_schema(
+    create_credential_schema_with_claims(
         &db_conn,
         "NewCredentialSchema",
-        &organisation_id,
-        &new_claim_schemas,
+        &organisation,
         "NONE",
+        &new_claim_schemas,
     )
     .await;
 
-    let proof_schema_id =
-        create_proof_schema(&db_conn, "Schema1", &organisation_id, &new_claim_schemas).await;
+    let proof_schema =
+        create_proof_schema(&db_conn, "Schema1", &organisation, &new_claim_schemas).await;
 
-    let verifier_did_id = fixtures::create_did_details(
-        &db_conn,
-        "Verifier",
-        "did:key:z6MkomfxPXoXaCKXdkMGSvzEdCKe73RueovdEDEQiLk1KwyC",
-        &organisation_id,
-    )
-    .await;
+    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -224,24 +214,23 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         }
     });
 
-    let interaction_id =
+    let interaction =
         fixtures::create_interaction(&db_conn, &base_url, interaction_data.to_string().as_bytes())
             .await;
 
-    let _ = create_proof(
+    let proof = create_proof(
         &db_conn,
-        verifier_did_id,
+        &verifier_did,
         None,
-        Some(proof_schema_id),
+        Some(&proof_schema),
         ProofStateEnum::Pending,
         "OPENID4VC",
-        &Vec::new(), //No claims so far
-        Some(interaction_id.clone()),
+        Some(&interaction),
     )
     .await;
 
     let presentation_submission = json!({
-        "definition_id": interaction_id,
+        "definition_id": interaction.id,
         "descriptor_map": [
             {
                 "format": "jwt_vp_json",
@@ -262,7 +251,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
             presentation_submission.to_string(),
         ),
         ("vp_token", TOKEN2.to_owned()),
-        ("state", interaction_id),
+        ("state", interaction.id.to_string()),
     ];
 
     // WHEN
@@ -282,7 +271,8 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     // THEN
     assert_eq!(resp.status(), 400);
 
-    let claims = get_claims(&db_conn).await;
+    let proof = get_proof(&db_conn, &proof.id).await;
+    let claims = proof.claims.unwrap();
 
     assert!(claims.is_empty());
 
@@ -295,22 +285,22 @@ async fn test_direct_post_multiple_presentations() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
     let nonce = "nonce123";
 
     let credential1_claims = vec![
-        (Uuid::new_v4(), "name1", true, 1, "STRING"), // Presentation 1 token 1
-        (Uuid::new_v4(), "name2", false, 1, "STRING"), // Provided, not requested
+        (Uuid::new_v4(), "name1", true, "STRING"), // Presentation 1 token 1
+        (Uuid::new_v4(), "name2", false, "STRING"), // Provided, not requested
     ];
 
     let credential2_claims = vec![
-        (Uuid::new_v4(), "pet1", true, 1, "STRING"), // Presentation 1 token 0
-        (Uuid::new_v4(), "pet2", false, 1, "STRING"), // Provided, not requested
+        (Uuid::new_v4(), "pet1", true, "STRING"), // Presentation 1 token 0
+        (Uuid::new_v4(), "pet2", false, "STRING"), // Provided, not requested
     ];
 
     let credential3_claims = vec![
-        (Uuid::new_v4(), "cat1", true, 1, "STRING"), // Presentation 2 token 0
-        (Uuid::new_v4(), "cat2", false, 1, "STRING"), // Optional - not provided but requested
+        (Uuid::new_v4(), "cat1", true, "STRING"), // Presentation 2 token 0
+        (Uuid::new_v4(), "cat2", false, "STRING"), // Optional - not provided but requested
     ];
 
     let proof_claim_claims = [
@@ -320,43 +310,37 @@ async fn test_direct_post_multiple_presentations() {
         credential3_claims[1],
     ];
 
-    let _ = create_credential_schema(
+    create_credential_schema_with_claims(
         &db_conn,
         "NameSchema",
-        &organisation_id,
-        &credential1_claims,
+        &organisation,
         "NONE",
+        &credential1_claims,
     )
     .await;
 
-    let _ = create_credential_schema(
+    create_credential_schema_with_claims(
         &db_conn,
         "PetSchema",
-        &organisation_id,
-        &credential2_claims,
+        &organisation,
         "NONE",
+        &credential2_claims,
     )
     .await;
 
-    let _ = create_credential_schema(
+    create_credential_schema_with_claims(
         &db_conn,
         "CatSchema",
-        &organisation_id,
-        &credential3_claims,
+        &organisation,
         "NONE",
+        &credential3_claims,
     )
     .await;
 
-    let proof_schema_id =
-        create_proof_schema(&db_conn, "Schema1", &organisation_id, &proof_claim_claims).await;
+    let proof_schema =
+        create_proof_schema(&db_conn, "Schema1", &organisation, &proof_claim_claims).await;
 
-    let verifier_did_id = fixtures::create_did_details(
-        &db_conn,
-        "Verifier",
-        "did:key:z6MkomfxPXoXaCKXdkMGSvzEdCKe73RueovdEDEQiLk1KwyC",
-        &organisation_id,
-    )
-    .await;
+    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -404,24 +388,23 @@ async fn test_direct_post_multiple_presentations() {
         }
     });
 
-    let interaction_id =
+    let interaction =
         fixtures::create_interaction(&db_conn, &base_url, interaction_data.to_string().as_bytes())
             .await;
 
-    let _ = create_proof(
+    let proof = create_proof(
         &db_conn,
-        verifier_did_id,
+        &verifier_did,
         None,
-        Some(proof_schema_id),
+        Some(&proof_schema),
         ProofStateEnum::Pending,
         "OPENID4VC",
-        &Vec::new(), //No claims so far
-        Some(interaction_id.clone()),
+        Some(&interaction),
     )
     .await;
 
     let presentation_submission = json!({
-        "definition_id": interaction_id,
+        "definition_id": interaction.id,
         "descriptor_map": [
             {
                 "format": "jwt_vp_json",
@@ -460,7 +443,7 @@ async fn test_direct_post_multiple_presentations() {
             presentation_submission.to_string(),
         ),
         ("vp_token", json!([TOKEN1, TOKEN2]).to_string()),
-        ("state", interaction_id),
+        ("state", interaction.id.to_string()),
     ];
 
     // WHEN
@@ -480,7 +463,8 @@ async fn test_direct_post_multiple_presentations() {
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let claims = get_claims(&db_conn).await;
+    let proof = get_proof(&db_conn, &proof.id).await;
+    let claims = proof.claims.unwrap();
 
     assert!(proof_claim_claims
         .iter()

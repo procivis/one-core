@@ -400,7 +400,7 @@ pub async fn get_proof_schema_with_id(
 
 pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: &str) -> DataLayer {
     let db_conn = db_conn(database_url).await;
-    DataLayer::build(db_conn).await
+    DataLayer::build(db_conn)
 }
 
 pub async fn insert_did_key(
