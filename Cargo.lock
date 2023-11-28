@@ -2975,6 +2975,7 @@ dependencies = [
  "dto_mapper",
  "ed25519-compact",
  "flate2",
+ "httpmock",
  "indoc",
  "mockall",
  "rand 0.8.5",

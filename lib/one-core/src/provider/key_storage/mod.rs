@@ -54,7 +54,8 @@ pub fn key_providers_from_config(
                 providers.insert(key_storage_type.to_string(), key_storage);
             }
             KeyStorageType::AzureVault => {
-                let key_storage = Arc::new(AzureVaultKeyProvider::new());
+                let params = config.get(key_storage_type)?;
+                let key_storage = Arc::new(AzureVaultKeyProvider::new(params));
                 providers.insert(key_storage_type.to_string(), key_storage);
             }
             KeyStorageType::SecureElement => {

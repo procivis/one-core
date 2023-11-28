@@ -25,6 +25,7 @@ shared-types = { version = "0.1.0", path = "../../lib/shared-types", features = 
 axum.workspace = true
 ct-codecs.workspace = true
 dto_mapper.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_qs.workspace = true
@@ -59,7 +60,7 @@ shadow-rs.workspace = true
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["json"] }
-httpmock = { version = "0.6" }
+httpmock.workspace = true
 sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = [
     "test_utils",
 ] }

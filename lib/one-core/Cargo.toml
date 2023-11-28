@@ -9,6 +9,7 @@ publish = false
 async-trait = "0.1.68"
 ct-codecs.workspace = true
 dto_mapper.workspace = true
+reqwest.workspace = true
 serde_yaml = "0.9.25"
 serde.workspace = true
 serde_json.workspace = true
@@ -31,11 +32,6 @@ bit-vec = "0.6.3"
 flate2 = "1.0.27"
 
 regex = "1.8.4"
-reqwest = { version = "0.11.18", default-features = false, features = [
-    "rustls-tls",
-    "rustls-tls-native-roots",
-    "json",
-] }
 url = { workspace = true }
 
 strum_macros = "0.25.2"
@@ -47,6 +43,7 @@ shared-types = { version = "0.1.0", path = "../shared-types" }
 
 [dev-dependencies]
 bs58 = "0.5"
+httpmock.workspace = true
 mockall.workspace = true
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 assert2 = { version = "0.3.11" }

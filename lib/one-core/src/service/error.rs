@@ -28,7 +28,7 @@ pub enum ServiceError {
     NotFound,
     #[error("Not updated")]
     NotUpdated,
-    #[error("Validation errror: `{0}`")]
+    #[error("Validation error: `{0}`")]
     ValidationError(String),
     #[error("OpenID4VCI validation error `{0}`")]
     OpenID4VCError(#[from] OpenID4VCIError),
