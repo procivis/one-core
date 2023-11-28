@@ -1,8 +1,5 @@
-use one_core::model::claim::Claim;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::interaction::InteractionId;
-use one_core::model::proof::{Proof, ProofStateEnum};
-use one_core::repository::error::DataLayerError;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{DidId, DidValue};
 use time::{macros::datetime, Duration, OffsetDateTime};
@@ -12,9 +9,9 @@ use crate::entity::did::DidType;
 use crate::{
     db_conn,
     entity::{
-        claim, claim_schema, credential, credential_claim, credential_schema,
-        credential_schema_claim_schema, credential_state, did, interaction, key, key_did,
-        organisation, proof, proof_claim, proof_schema, proof_schema_claim_schema,
+        claim_schema, credential, credential_schema, credential_schema_claim_schema,
+        credential_state, did, interaction, key, key_did, organisation, proof, proof_schema,
+        proof_schema_claim_schema,
         proof_state::{self, ProofRequestState},
     },
     DataLayer,
@@ -115,81 +112,11 @@ pub async fn insert_many_claims_schema_to_database(
     Ok(())
 }
 
-#[allow(clippy::ptr_arg)]
-#[allow(dead_code)]
-pub async fn insert_many_credential_claims_to_database(
-    database: &DatabaseConnection,
-    credential_id: &str,
-    claims: &Vec<(Uuid, Uuid, String)>,
-) -> Result<(), DbErr> {
-    let claims_to_insert =
-        claims
-            .iter()
-            .map(|(claim_schema_id, claim_id, value)| claim::ActiveModel {
-                // Just for tests id of a claim will be the same as id for a schema it instantiates
-                id: Set(claim_id.to_string()),
-                claim_schema_id: Set(claim_schema_id.to_string()),
-                value: Set(value.to_owned()),
-                created_date: Set(get_dummy_date()),
-                last_modified: Set(get_dummy_date()),
-            });
-
-    let credential_claims =
-        claims.iter().map(
-            |(_claim_schema_id, claim_id, ..)| credential_claim::ActiveModel {
-                claim_id: Set(claim_id.to_string()),
-                credential_id: Set(credential_id.to_owned()),
-            },
-        );
-
-    claim::Entity::insert_many(claims_to_insert)
-        .exec(database)
-        .await?;
-
-    credential_claim::Entity::insert_many(credential_claims)
-        .exec(database)
-        .await?;
-
-    Ok(())
-}
-
-// pub async fn get_credential_schema_by_id(
-//     database: &DatabaseConnection,
-//     id: &str,
-// ) -> Result<Option<credential_schema::Model>, DbErr> {
-//     credential_schema::Entity::find_by_id(id)
-//         .one(database)
-//         .await
-// }
-
-#[allow(dead_code)]
-pub async fn get_credential_by_id(
-    database: &DatabaseConnection,
-    id: &str,
-) -> Result<Option<credential::Model>, DbErr> {
-    credential::Entity::find_by_id(id).one(database).await
-}
-
-#[allow(dead_code)]
 pub async fn get_proof_by_id(
     database: &DatabaseConnection,
     id: &str,
 ) -> Result<Option<proof::Model>, DbErr> {
     proof::Entity::find_by_id(id).one(database).await
-}
-
-// TODO: Will be removed after this task is implemented https://procivis.atlassian.net/browse/ONE-1133
-#[allow(dead_code)]
-pub async fn get_proof_object_by_id(
-    database: &DatabaseConnection,
-    id: &str,
-) -> Result<Proof, DbErr> {
-    proof::Entity::find_by_id(id)
-        .one(database)
-        .await?
-        .unwrap()
-        .try_into()
-        .map_err(|e: DataLayerError| DbErr::RecordNotFound(e.to_string()))
 }
 
 pub async fn insert_proof_request_to_database(
@@ -229,70 +156,6 @@ pub async fn insert_proof_state_to_database(
     .insert(database)
     .await?;
     Ok(())
-}
-
-#[allow(clippy::ptr_arg, dead_code, clippy::too_many_arguments)]
-pub async fn insert_proof_request_to_database_with_claims(
-    database: &DatabaseConnection,
-    verifier_did_id: DidId,
-    holder_did_id: Option<DidId>,
-    proof_schema_id: Option<String>,
-    state: ProofStateEnum,
-    transport: &str,
-    claims: &Vec<(Uuid, Uuid, String)>,
-    interaction_id: Option<String>,
-) -> Result<String, DbErr> {
-    let proof = proof::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
-        created_date: Set(get_dummy_date()),
-        last_modified: Set(get_dummy_date()),
-        issuance_date: Set(get_dummy_date()),
-        transport: Set(transport.to_owned()),
-        verifier_did_id: Set(Some(verifier_did_id)),
-        holder_did_id: Set(holder_did_id),
-        proof_schema_id: Set(proof_schema_id),
-        interaction_id: Set(interaction_id),
-    }
-    .insert(database)
-    .await?;
-
-    proof_state::ActiveModel {
-        proof_id: Set(proof.id.to_owned()),
-        created_date: Set(get_dummy_date()),
-        last_modified: Set(get_dummy_date()),
-        state: Set(state.into()),
-    }
-    .insert(database)
-    .await?;
-
-    if !claims.is_empty() {
-        let claims_to_insert: Vec<claim::ActiveModel> = claims
-            .iter()
-            .map(|claim| claim::ActiveModel {
-                id: Set(claim.0.to_string()),
-                claim_schema_id: Set(claim.1.to_string()),
-                value: Set(claim.2.to_owned()),
-                created_date: Set(get_dummy_date()),
-                last_modified: Set(get_dummy_date()),
-            })
-            .collect();
-        claim::Entity::insert_many(claims_to_insert)
-            .exec(database)
-            .await?;
-
-        let claim_relations: Vec<proof_claim::ActiveModel> = claims
-            .iter()
-            .map(|claim| proof_claim::ActiveModel {
-                claim_id: Set(claim.0.to_string()),
-                proof_id: Set(proof.id.clone()),
-            })
-            .collect();
-        proof_claim::Entity::insert_many(claim_relations)
-            .exec(database)
-            .await?;
-    }
-
-    Ok(proof.id)
 }
 
 pub async fn insert_proof_schema_with_claims_to_database(
@@ -487,15 +350,6 @@ pub async fn insert_interaction(
     .await?;
 
     Ok(interaction.id)
-}
-
-// TODO: Will be removed after this task is implemented https://procivis.atlassian.net/browse/ONE-1133
-pub async fn get_all_claims(database: &DatabaseConnection) -> Result<Vec<Claim>, DbErr> {
-    let claims = claim::Entity::find().all(database).await?;
-    Ok(claims
-        .into_iter()
-        .filter_map(|claim_model| claim_model.try_into().ok())
-        .collect())
 }
 
 pub async fn get_interaction(
