@@ -47,7 +47,7 @@ pub async fn start_server(listener: TcpListener, config: Config, db_conn: DbConn
     let core_config = core_config::CoreConfig::from_file(&config.config_file).unwrap();
 
     let core = OneCore::new(
-        Arc::new(DataLayer::build(db_conn).await),
+        Arc::new(DataLayer::build(db_conn)),
         core_config,
         Some(config.core_base_url.to_owned()),
         None,

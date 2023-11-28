@@ -13,51 +13,37 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
-    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    let credential_schema = fixtures::create_credential_schema(
-        &db_conn,
-        "test",
-        &organisation_id,
-        &new_claim_schemas,
-        "NONE",
-    )
-    .await;
-    let claims: Vec<(Uuid, Uuid, String)> = vec![(
-        Uuid::new_v4(),
-        new_claim_schemas.first().unwrap().0,
-        "some value".to_string(),
-    )];
-    let credential_id = fixtures::create_credentials_with_claims(
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+
+    let credential_schema =
+        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+
+    let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
         CredentialStateEnum::Created,
-        did_id.clone(),
+        &did,
         "PROCIVIS_TEMPORARY",
-        &vec![(
-            new_claim_schemas.first().unwrap().0,
-            Uuid::new_v4(),
-            "test".to_string(),
-        )],
     )
     .await;
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_procivis_temporary_interaction_data("firstName".to_string(), credential_schema),
+        &get_procivis_temporary_interaction_data(
+            "firstName".to_string(),
+            credential_schema.id.to_string(),
+        ),
     )
     .await;
-    let proof_id = fixtures::create_proof(
+    let proof = fixtures::create_proof(
         &db_conn,
-        did_id.clone(),
-        Some(did_id.clone()),
+        &did,
+        Some(&did),
         None,
         ProofStateEnum::Pending,
         "PROCIVIS_TEMPORARY",
-        &claims,
-        Some(interaction.to_string()),
+        Some(&interaction),
     )
     .await;
 
@@ -67,7 +53,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
 
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
-        proof_id
+        proof.id
     );
 
     let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
@@ -85,22 +71,23 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
 
     assert_eq!(
         resp["requestGroups"][0]["id"].as_str().unwrap(),
-        proof_id.to_string()
+        proof.id.to_string()
     );
     assert_eq!(
         resp["credentials"][0]["id"].as_str().unwrap(),
-        credential_id
+        credential.id.to_string()
     );
     assert_eq!(
         resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"][0]
             .as_str()
             .unwrap(),
-        credential_id.to_string()
+        credential.id.to_string()
     );
     assert_eq!(
-        resp["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["keyMap"][credential_id]
-            .as_str()
-            .unwrap(),
+        resp["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["keyMap"]
+            [credential.id.to_string()]
+        .as_str()
+        .unwrap(),
         "firstName".to_string()
     );
 }
@@ -111,38 +98,29 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
-    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    let credential_schema = fixtures::create_credential_schema(
-        &db_conn,
-        "test",
-        &organisation_id,
-        &new_claim_schemas,
-        "NONE",
-    )
-    .await;
-    let claims: Vec<(Uuid, Uuid, String)> = vec![(
-        Uuid::new_v4(),
-        new_claim_schemas.first().unwrap().0,
-        "some value".to_string(),
-    )];
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+
+    let credential_schema =
+        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_procivis_temporary_interaction_data("test".to_string(), credential_schema),
+        &get_procivis_temporary_interaction_data(
+            "test".to_string(),
+            credential_schema.id.to_string(),
+        ),
     )
     .await;
-    let proof_id = fixtures::create_proof(
+    let proof = fixtures::create_proof(
         &db_conn,
-        did_id.clone(),
-        Some(did_id.clone()),
+        &did,
+        Some(&did),
         None,
         ProofStateEnum::Pending,
         "PROCIVIS_TEMPORARY",
-        &claims,
-        Some(interaction.to_string()),
+        Some(&interaction),
     )
     .await;
 
@@ -152,7 +130,7 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
 
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
-        proof_id
+        proof.id
     );
 
     let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
@@ -170,7 +148,7 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
 
     assert_eq!(
         resp["requestGroups"][0]["id"].as_str().unwrap(),
-        proof_id.to_string()
+        proof.id.to_string()
     );
     assert_eq!(resp["credentials"].as_array().unwrap().len(), 0);
     assert_eq!(
@@ -282,34 +260,18 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
-    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    let credential_schema = fixtures::create_credential_schema(
-        &db_conn,
-        "test",
-        &organisation_id,
-        &new_claim_schemas,
-        "NONE",
-    )
-    .await;
-    let claims: Vec<(Uuid, Uuid, String)> = vec![(
-        Uuid::new_v4(),
-        new_claim_schemas.first().unwrap().0,
-        "some value".to_string(),
-    )];
-    let credential_id = fixtures::create_credentials_with_claims(
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+
+    let credential_schema =
+        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+
+    let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
         CredentialStateEnum::Created,
-        did_id.clone(),
+        &did,
         "OPENID4VC",
-        &vec![(
-            new_claim_schemas.first().unwrap().0,
-            Uuid::new_v4(),
-            "test".to_string(),
-        )],
     )
     .await;
     let interaction = fixtures::create_interaction(
@@ -318,15 +280,14 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         &get_open_id_interaction_data(),
     )
     .await;
-    let proof_id = fixtures::create_proof(
+    let proof = fixtures::create_proof(
         &db_conn,
-        did_id.clone(),
-        Some(did_id.clone()),
+        &did,
+        Some(&did),
         None,
         ProofStateEnum::Pending,
         "OPENID4VC",
-        &claims,
-        Some(interaction.to_string()),
+        Some(&interaction),
     )
     .await;
 
@@ -336,7 +297,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
 
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
-        proof_id
+        proof.id
     );
 
     let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
@@ -355,22 +316,23 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
 
     assert_eq!(
         resp["requestGroups"][0]["id"].as_str().unwrap(),
-        proof_id.to_string()
+        proof.id.to_string()
     );
     assert_eq!(
         resp["credentials"][0]["id"].as_str().unwrap(),
-        credential_id
+        credential.id.to_string()
     );
     assert_eq!(
         resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"][0]
             .as_str()
             .unwrap(),
-        credential_id.to_string()
+        credential.id.to_string()
     );
     assert_eq!(
-        resp["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["keyMap"][credential_id]
-            .as_str()
-            .unwrap(),
+        resp["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["keyMap"]
+            [credential.id.to_string()]
+        .as_str()
+        .unwrap(),
         "firstName".to_string()
     );
 }
@@ -381,38 +343,23 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
-    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    fixtures::create_credential_schema(
-        &db_conn,
-        "test",
-        &organisation_id,
-        &new_claim_schemas,
-        "NONE",
-    )
-    .await;
-    let claims: Vec<(Uuid, Uuid, String)> = vec![(
-        Uuid::new_v4(),
-        new_claim_schemas.first().unwrap().0,
-        "some value".to_string(),
-    )];
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
         &get_open_id_interaction_data(),
     )
     .await;
-    let proof_id = fixtures::create_proof(
+    let proof = fixtures::create_proof(
         &db_conn,
-        did_id.clone(),
-        Some(did_id.clone()),
+        &did,
+        Some(&did),
         None,
         ProofStateEnum::Pending,
         "OPENID4VC",
-        &claims,
-        Some(interaction.to_string()),
+        Some(&interaction),
     )
     .await;
 
@@ -422,7 +369,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
 
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
-        proof_id
+        proof.id
     );
 
     let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
@@ -440,7 +387,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
 
     assert_eq!(
         resp["requestGroups"][0]["id"].as_str().unwrap(),
-        proof_id.to_string()
+        proof.id.to_string()
     );
     assert_eq!(resp["credentials"].as_array().unwrap().len(), 0);
     assert_eq!(

@@ -1,14 +1,25 @@
 use std::str::FromStr;
 
 use core_server::Config;
-use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::DidType;
-use one_core::model::{
-    claim::Claim,
-    proof::{Proof, ProofStateEnum},
+use one_core::model::claim::{Claim, ClaimRelations};
+use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::credential::{Credential, CredentialState, CredentialStateEnum};
+use one_core::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
 };
+use one_core::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
+use one_core::model::interaction::{Interaction, InteractionRelations};
+use one_core::model::key::Key;
+use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::model::proof::{Proof, ProofState, ProofStateEnum};
+use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
+use one_core::model::proof_schema::{
+    ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
+};
+use one_core::repository::DataRepository;
 use shared_types::{DidId, DidValue};
-use sql_data_provider::{self, test_utilities::*, DbConn};
+use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
+use url::Url;
 use uuid::Uuid;
 
 pub fn create_config(core_base_url: impl Into<String>) -> Config {
@@ -29,165 +40,378 @@ pub async fn create_db(config: &Config) -> DbConn {
     sql_data_provider::db_conn(&config.database_url).await
 }
 
-pub async fn create_organisation(db_conn: &DbConn) -> String {
-    insert_organisation_to_database(db_conn, None)
-        .await
-        .unwrap()
-}
+pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
+    let data_layer = DataLayer::build(db_conn.to_owned());
 
-pub async fn create_did_key(db_conn: &DbConn, organisation_id: &str) -> DidId {
-    let did_id = Uuid::new_v4().to_string();
+    let organisation = Organisation {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+    };
 
-    let _key_id = insert_key_to_database(db_conn, None, organisation_id)
+    data_layer
+        .get_organisation_repository()
+        .create_organisation(organisation.to_owned())
         .await
         .unwrap();
 
-    insert_did_key(
-        db_conn,
-        "test-did-key",
-        Uuid::new_v4(),
-        DidValue::from_str(&did_id).unwrap(),
-        organisation_id,
-    )
-    .await
-    .unwrap()
+    organisation
+}
+
+pub async fn create_key(db_conn: &DbConn, organisation: &Organisation) -> Key {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    let key = Key {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        public_key: b"public".into(),
+        name: "key".to_string(),
+        key_reference: b"private".into(),
+        storage_type: "INTERNAL".to_string(),
+        key_type: "ES256".to_string(),
+        organisation: Some(organisation.to_owned()),
+    };
+
+    data_layer
+        .get_key_repository()
+        .create_key(key.to_owned())
+        .await
+        .unwrap();
+
+    key
+}
+
+pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Did {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    let key = create_key(db_conn, organisation).await;
+
+    let did = Did {
+        id: DidId::from(Uuid::new_v4()),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test-did-key".to_string(),
+        did: DidValue::from_str("did:key:123").unwrap(),
+        organisation: Some(organisation.to_owned()),
+        did_type: DidType::Local,
+        did_method: "KEY".to_string(),
+        deactivated: false,
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::AssertionMethod,
+            key,
+        }]),
+    };
+
+    data_layer
+        .get_did_repository()
+        .create_did(did.to_owned())
+        .await
+        .unwrap();
+
+    did
 }
 
 pub async fn create_did_web(
     db_conn: &DbConn,
-    organisation_id: &str,
+    organisation: &Organisation,
     deactivated: bool,
     did_type: DidType,
-) -> DidId {
-    let did_id: DidId = Uuid::new_v4().into();
-    let did = format!("did:web:{did_id}").parse().unwrap();
-    let _key_id = insert_key_to_database(db_conn, Some(did_id.clone()), organisation_id)
+) -> Did {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    let key = create_key(db_conn, organisation).await;
+
+    let did_id = DidId::from(Uuid::new_v4());
+    let did = Did {
+        id: did_id.to_owned(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "test-did-web".to_string(),
+        did: DidValue::from_str(&format!("did:web:{did_id}")).unwrap(),
+        organisation: Some(organisation.to_owned()),
+        did_type,
+        did_method: "WEB".to_string(),
+        deactivated,
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::AssertionMethod,
+            key,
+        }]),
+    };
+
+    data_layer
+        .get_did_repository()
+        .create_did(did.to_owned())
         .await
         .unwrap();
 
-    insert_did(
-        db_conn,
-        "test-did-key",
-        did_id,
-        did,
-        organisation_id,
-        "WEB",
-        did_type.into(),
-        deactivated,
-    )
-    .await
-    .unwrap()
-}
-
-pub async fn create_proof_schema(
-    db_conn: &DbConn,
-    name: &str,
-    organisation_id: &str,
-    claims: &[(Uuid, &str, bool, u32, &str)],
-) -> String {
-    insert_proof_schema_with_claims_to_database(
-        db_conn,
-        None,
-        &claims.to_vec(),
-        organisation_id,
-        name,
-    )
-    .await
-    .unwrap()
-}
-
-pub async fn get_claims(db_conn: &DbConn) -> Vec<Claim> {
-    get_all_claims(db_conn).await.unwrap()
-}
-
-pub async fn create_did_details(
-    db_conn: &DbConn,
-    did_name: &str,
-    did_value: &str,
-    organisation_id: &str,
-) -> DidId {
-    insert_did_key(
-        db_conn,
-        did_name,
-        Uuid::new_v4(),
-        DidValue::from_str(did_value).unwrap(),
-        organisation_id,
-    )
-    .await
-    .unwrap()
+    did
 }
 
 pub async fn create_credential_schema(
     db_conn: &DbConn,
     name: &str,
-    organisation_id: &str,
-    claims: &Vec<(Uuid, &str, bool, u32, &str)>,
+    organisation: &Organisation,
     revocation_method: &str,
-) -> String {
-    let credential_schema_id = insert_credential_schema_to_database(
-        db_conn,
-        None,
-        organisation_id,
-        name,
-        "JWT",
-        revocation_method,
-    )
-    .await
-    .unwrap();
+) -> CredentialSchema {
+    let data_layer = DataLayer::build(db_conn.to_owned());
 
-    insert_many_claims_schema_to_database(db_conn, &credential_schema_id, claims)
+    let claim_schema = ClaimSchema {
+        id: Uuid::new_v4(),
+        key: "firstName".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+    };
+    let claim_schemas = vec![CredentialSchemaClaim {
+        schema: claim_schema.to_owned(),
+        required: true,
+    }];
+
+    let credential_schema = CredentialSchema {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: name.to_owned(),
+        organisation: Some(organisation.to_owned()),
+        deleted_at: None,
+        format: "JWT".to_string(),
+        revocation_method: revocation_method.to_owned(),
+        claim_schemas: Some(claim_schemas),
+    };
+
+    data_layer
+        .get_credential_schema_repository()
+        .create_credential_schema(credential_schema.to_owned())
         .await
         .unwrap();
-    credential_schema_id
+
+    credential_schema
+}
+
+pub async fn create_credential_schema_with_claims(
+    db_conn: &DbConn,
+    name: &str,
+    organisation: &Organisation,
+    revocation_method: &str,
+    claims: &[(Uuid, &str, bool, &str)],
+) -> CredentialSchema {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    let claim_schemas = claims
+        .iter()
+        .map(|(id, key, required, data_type)| CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: id.to_owned(),
+                key: key.to_string(),
+                data_type: data_type.to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            },
+            required: required.to_owned(),
+        })
+        .collect();
+
+    let credential_schema = CredentialSchema {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: name.to_owned(),
+        organisation: Some(organisation.to_owned()),
+        deleted_at: None,
+        format: "JWT".to_string(),
+        revocation_method: revocation_method.to_owned(),
+        claim_schemas: Some(claim_schemas),
+    };
+
+    data_layer
+        .get_credential_schema_repository()
+        .create_credential_schema(credential_schema.to_owned())
+        .await
+        .unwrap();
+
+    credential_schema
+}
+
+pub async fn create_proof_schema(
+    db_conn: &DbConn,
+    name: &str,
+    organisation: &Organisation,
+    claims: &[(Uuid, &str, bool, &str)],
+) -> ProofSchema {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    let claim_schemas = claims
+        .iter()
+        .map(|(id, key, required, data_type)| ProofSchemaClaim {
+            schema: ClaimSchema {
+                id: id.to_owned(),
+                key: key.to_string(),
+                data_type: data_type.to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            },
+            required: required.to_owned(),
+            credential_schema: None,
+        })
+        .collect();
+
+    let proof_schema = ProofSchema {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: name.to_owned(),
+        organisation: Some(organisation.to_owned()),
+        deleted_at: None,
+        claim_schemas: Some(claim_schemas),
+        expire_duration: 0,
+    };
+
+    data_layer
+        .get_proof_schema_repository()
+        .create_proof_schema(proof_schema.to_owned())
+        .await
+        .unwrap();
+
+    proof_schema
+}
+
+pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> Interaction {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    let interaction = Interaction {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        host: Some(Url::parse(host).unwrap()),
+        data: Some(data.into()),
+    };
+
+    data_layer
+        .get_interaction_repository()
+        .create_interaction(interaction.to_owned())
+        .await
+        .unwrap();
+
+    interaction
+}
+
+pub async fn create_credential(
+    db_conn: &DbConn,
+    credential_schema: &CredentialSchema,
+    state: CredentialStateEnum,
+    issuer_did: &Did,
+    transport: &str,
+) -> Credential {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    let claims: Vec<Claim> = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .iter()
+        .map(|claim_schema| Claim {
+            id: Uuid::new_v4(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            value: "test".to_string(),
+            schema: Some(claim_schema.schema.to_owned()),
+        })
+        .collect();
+
+    let credential = Credential {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        issuance_date: get_dummy_date(),
+        credential: vec![],
+        transport: transport.to_owned(),
+        state: Some(vec![CredentialState {
+            created_date: get_dummy_date(),
+            state,
+        }]),
+        claims: Some(claims),
+        issuer_did: Some(issuer_did.to_owned()),
+        holder_did: None,
+        schema: Some(credential_schema.to_owned()),
+        interaction: None,
+        revocation_list: None,
+        key: None,
+    };
+
+    data_layer
+        .get_credential_repository()
+        .create_credential(credential.to_owned())
+        .await
+        .unwrap();
+
+    credential
 }
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_proof(
     db_conn: &DbConn,
-    verifier_did_id: DidId,
-    holder_did_id: Option<DidId>,
-    proof_schema_id: Option<String>,
+    verifier_did: &Did,
+    holder_did: Option<&Did>,
+    proof_schema: Option<&ProofSchema>,
     state: ProofStateEnum,
     transport: &str,
-    claims: &Vec<(Uuid, Uuid, String)>,
-    interaction_id: Option<String>,
-) -> String {
-    insert_proof_request_to_database_with_claims(
-        db_conn,
-        verifier_did_id,
-        holder_did_id,
-        proof_schema_id,
-        state,
-        transport,
-        claims,
-        interaction_id,
-    )
-    .await
-    .unwrap()
-}
+    interaction: Option<&Interaction>,
+) -> Proof {
+    let data_layer = DataLayer::build(db_conn.to_owned());
 
-pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> String {
-    insert_interaction(db_conn, host, data).await.unwrap()
-}
+    let proof = Proof {
+        id: Uuid::new_v4(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        issuance_date: get_dummy_date(),
+        transport: transport.to_owned(),
+        state: Some(vec![ProofState {
+            state,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        }]),
+        claims: None,
+        schema: proof_schema.cloned(),
+        verifier_did: Some(verifier_did.to_owned()),
+        holder_did: holder_did.cloned(),
+        interaction: interaction.cloned(),
+    };
 
-pub async fn create_credentials_with_claims(
-    db_conn: &DbConn,
-    credential_schema_id: &str,
-    state: CredentialStateEnum,
-    did_id: DidId,
-    transport: &str,
-    claims: &Vec<(Uuid, Uuid, String)>,
-) -> String {
-    let credential_id = insert_credential(db_conn, credential_schema_id, state, transport, did_id)
-        .await
-        .unwrap();
-    insert_many_credential_claims_to_database(db_conn, &credential_id, claims)
+    data_layer
+        .get_proof_repository()
+        .create_proof(proof.to_owned())
         .await
         .unwrap();
 
-    credential_id
+    proof
 }
 
-pub async fn get_proof(db_conn: &DbConn, proof_id: &str) -> Proof {
-    get_proof_object_by_id(db_conn, proof_id).await.unwrap()
+pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    data_layer
+        .get_proof_repository()
+        .get_proof(
+            proof_id,
+            &ProofRelations {
+                state: Some(ProofStateRelations {}),
+                claims: Some(ClaimRelations {
+                    schema: Some(ClaimSchemaRelations {}),
+                }),
+                schema: Some(ProofSchemaRelations {
+                    claim_schemas: Some(ProofSchemaClaimRelations {
+                        credential_schema: Some(CredentialSchemaRelations {
+                            claim_schemas: Some(ClaimSchemaRelations {}),
+                            ..Default::default()
+                        }),
+                    }),
+                    organisation: Some(OrganisationRelations {}),
+                }),
+                verifier_did: Some(DidRelations::default()),
+                holder_did: Some(DidRelations::default()),
+                interaction: Some(InteractionRelations {}),
+            },
+        )
+        .await
+        .unwrap()
 }

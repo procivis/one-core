@@ -9,7 +9,7 @@ async fn test_create_credential_schema_success() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
 
     // WHEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -32,7 +32,7 @@ async fn test_create_credential_schema_success() {
           ],
           "format": "JWT",
           "name": "some credential schema",
-          "organisationId": organisation_id,
+          "organisationId": organisation.id,
           "revocationMethod": "STATUSLIST2021"
         }))
         .send()

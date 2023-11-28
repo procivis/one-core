@@ -2,7 +2,6 @@ use core_server::router::start_server;
 use httpmock::MockServer;
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::Value;
-use uuid::Uuid;
 
 use crate::{fixtures, utils};
 
@@ -12,29 +11,16 @@ async fn test_share_credential_success() {
     let mock_server = MockServer::start_async().await;
     let config = fixtures::create_config(mock_server.base_url());
     let db_conn = fixtures::create_db(&config).await;
-    let organisation_id = fixtures::create_organisation(&db_conn).await;
-    let did_id = fixtures::create_did_key(&db_conn, &organisation_id).await;
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(Uuid::new_v4(), "firstName", true, 1, "STRING")];
-    let credential_schema = fixtures::create_credential_schema(
-        &db_conn,
-        "test",
-        &organisation_id,
-        &new_claim_schemas,
-        "NONE",
-    )
-    .await;
-    let credential_id = fixtures::create_credentials_with_claims(
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let credential_schema =
+        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
         CredentialStateEnum::Created,
-        did_id.clone(),
+        &did,
         "PROCIVIS_TEMPORARY",
-        &vec![(
-            new_claim_schemas.first().unwrap().0,
-            Uuid::new_v4(),
-            "test".to_string(),
-        )],
     )
     .await;
 
@@ -42,7 +28,7 @@ async fn test_share_credential_success() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
 
-    let url = format!("{base_url}/api/credential/v1/{}/share", credential_id);
+    let url = format!("{base_url}/api/credential/v1/{}/share", credential.id);
 
     let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
@@ -61,7 +47,7 @@ async fn test_share_credential_success() {
     assert!(url.ends_with(
         format!(
             "/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
-            "PROCIVIS_TEMPORARY", credential_id
+            "PROCIVIS_TEMPORARY", credential.id
         )
         .as_str()
     ));
