@@ -21,6 +21,7 @@ async fn test_share_credential_success() {
         &credential_schema,
         CredentialStateEnum::Created,
         &did,
+        None,
         "PROCIVIS_TEMPORARY",
     )
     .await;
@@ -28,7 +29,8 @@ async fn test_share_credential_success() {
     // WHEN
     let url = format!("{base_url}/api/credential/v1/{}/share", credential.id);
 
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let db_conn_clone = db_conn.clone();
+    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
 
     let resp = utils::client()
         .post(url)
@@ -51,4 +53,9 @@ async fn test_share_credential_success() {
         )
         .as_str()
     ));
+    let credential = fixtures::get_credential(&db_conn, &credential.id).await;
+    assert_eq!(
+        CredentialStateEnum::Pending,
+        credential.state.unwrap().first().unwrap().state
+    );
 }

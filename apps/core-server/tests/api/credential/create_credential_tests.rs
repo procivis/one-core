@@ -1,5 +1,8 @@
 use core_server::router::start_server;
+use one_core::model::credential::CredentialStateEnum;
 use serde_json::{json, Value};
+use std::str::FromStr;
+use uuid::Uuid;
 
 use crate::{fixtures, utils};
 
@@ -20,7 +23,8 @@ async fn test_create_credential_success() {
     // WHEN
     let url = format!("{base_url}/api/credential/v1");
 
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let db_conn_clone = db_conn.clone();
+    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
 
     let resp = utils::client()
         .post(url)
@@ -45,5 +49,16 @@ async fn test_create_credential_success() {
     let resp: Value = resp.json().await.unwrap();
 
     assert!(resp.get("id").is_some());
-    // TODO: Add additional checks when https://procivis.atlassian.net/browse/ONE-1133 is implemented
+
+    let credential = fixtures::get_credential(
+        &db_conn,
+        &Uuid::from_str(resp.get("id").unwrap().as_str().unwrap()).unwrap(),
+    )
+    .await;
+    assert_eq!(
+        CredentialStateEnum::Created,
+        credential.state.unwrap().first().unwrap().state
+    );
+    assert_eq!(1, credential.claims.unwrap().len());
+    assert_eq!("OPENID4VC", credential.transport);
 }

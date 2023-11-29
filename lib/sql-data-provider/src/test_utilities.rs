@@ -232,6 +232,7 @@ pub async fn insert_key_to_database(
     database: &DatabaseConnection,
     key_type: String,
     public_key: Vec<u8>,
+    key_reference: Vec<u8>,
     did_id: Option<DidId>,
     organisation_id: &str,
 ) -> Result<String, DbErr> {
@@ -246,7 +247,7 @@ pub async fn insert_key_to_database(
         last_modified: Set(get_dummy_date()),
         name: Set("test_key".to_string()),
         public_key: Set(public_key),
-        key_reference: Set("private".to_string().bytes().collect()),
+        key_reference: Set(key_reference),
         storage_type: Set("INTERNAL".to_string()),
         key_type: Set(key_type),
         organisation_id: Set(organisation_id.to_string()),

@@ -178,6 +178,7 @@ impl CredentialService {
                 ))?
                 .revocation_method,
         )?;
+
         revocation_method
             .mark_credential_revoked(&credential)
             .await?;
@@ -207,7 +208,6 @@ impl CredentialService {
         credential_ids: Vec<CredentialId>,
     ) -> Result<Vec<CredentialRevocationCheckResponseDTO>, ServiceError> {
         let mut result: Vec<CredentialRevocationCheckResponseDTO> = vec![];
-
         for credential_id in credential_ids {
             let credential = self
                 .credential_repository
@@ -232,7 +232,6 @@ impl CredentialService {
                 ))?
                 .to_owned()
                 .state;
-
             let credential_schema = credential
                 .schema
                 .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
@@ -316,7 +315,6 @@ impl CredentialService {
                 success: true,
                 reason: None,
             });
-
             // update local credential state if revoked on the list
             if revoked {
                 self.credential_repository
@@ -324,7 +322,7 @@ impl CredentialService {
                         id: credential_id.to_owned(),
                         state: Some(CredentialState {
                             created_date: OffsetDateTime::now_utc(),
-                            state: credential::CredentialStateEnum::Revoked,
+                            state: CredentialStateEnum::Revoked,
                         }),
                         ..Default::default()
                     })
