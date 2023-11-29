@@ -1,5 +1,4 @@
 use core_server::router::start_server;
-use httpmock::MockServer;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use uuid::Uuid;
@@ -48,8 +47,9 @@ vOFJHUHJrN3A0Y0diNFdOQlEiXX19.uD-PTubYXem7PtYT0R7KsSNvMDLQgHMRHGPUqZdZExg2c3-yge
 #[tokio::test]
 async fn test_direct_post_one_credential_correct() {
     // GIVEN
-    let mock_server = MockServer::start_async().await;
-    let config = fixtures::create_config(mock_server.base_url());
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let nonce = "nonce123";
@@ -73,8 +73,6 @@ async fn test_direct_post_one_credential_correct() {
 
     let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
 
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
     let interaction_data = json!({
         "nonce": nonce,
         "presentation_definition": {
@@ -168,8 +166,9 @@ async fn test_direct_post_one_credential_correct() {
 #[tokio::test]
 async fn test_direct_post_one_credential_missing_required_claim() {
     // GIVEN
-    let mock_server = MockServer::start_async().await;
-    let config = fixtures::create_config(mock_server.base_url());
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let nonce = "nonce123";
@@ -282,8 +281,9 @@ async fn test_direct_post_one_credential_missing_required_claim() {
 #[tokio::test]
 async fn test_direct_post_multiple_presentations() {
     // GIVEN
-    let mock_server = MockServer::start_async().await;
-    let config = fixtures::create_config(mock_server.base_url());
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let nonce = "nonce123";
@@ -342,8 +342,6 @@ async fn test_direct_post_multiple_presentations() {
 
     let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
 
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
     let interaction_data = json!({
         "nonce": nonce,
         "presentation_definition": {
