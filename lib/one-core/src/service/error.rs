@@ -56,6 +56,8 @@ pub enum ServiceError {
     CryptoError(#[from] CryptoProviderError),
     #[error("Other Repository error: `{0}`")]
     Other(String),
+    #[error("DID has been deactivated")]
+    DidDeactivated,
     #[error(transparent)]
     DidDeactivation(#[from] DidDeactivationError),
 }

@@ -442,6 +442,46 @@ async fn test_create_credential_success() {
 }
 
 #[tokio::test]
+async fn test_create_credential_fails_if_did_is_deactivated() {
+    let mut did_repository = MockDidRepository::default();
+    let did_id = Uuid::new_v4();
+
+    did_repository
+        .expect_get_did()
+        .once()
+        .returning(move |_, _| {
+            Ok(Did {
+                id: did_id.into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did1".to_string(),
+                organisation: None,
+                did: "did1".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                keys: None,
+                deactivated: true,
+            })
+        });
+
+    let service = setup_service(Repositories {
+        did_repository,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: Uuid::new_v4(),
+            issuer_did: did_id.into(),
+            transport: "PROCIVIS_TEMPORARY".to_string(),
+            claim_values: vec![],
+        })
+        .await;
+
+    assert2::assert!(let ServiceError::DidDeactivated = result.err().unwrap());
+}
+
+#[tokio::test]
 async fn test_create_credential_one_required_claim_missing() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();

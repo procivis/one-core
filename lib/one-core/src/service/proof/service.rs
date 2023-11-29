@@ -152,6 +152,10 @@ impl ProofService {
             .get_did(&request.verifier_did_id, &DidRelations::default())
             .await?;
 
+        if verifier_did.deactivated {
+            return Err(ServiceError::DidDeactivated);
+        }
+
         throw_if_did_type_is_eq(&verifier_did, DidType::Remote)?;
 
         self.proof_repository

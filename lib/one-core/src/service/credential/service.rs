@@ -51,6 +51,10 @@ impl CredentialService {
 
         throw_if_did_type_is_eq(&issuer_did, DidType::Remote)?;
 
+        if issuer_did.deactivated {
+            return Err(ServiceError::DidDeactivated);
+        }
+
         let schema = self
             .credential_schema_repository
             .get_credential_schema(

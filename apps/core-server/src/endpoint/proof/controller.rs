@@ -156,6 +156,10 @@ pub(crate) async fn post_proof(
             tracing::error!("Missing Proof schema or Verifier DID");
             StatusCode::NOT_FOUND.into_response()
         }
+        Err(ServiceError::DidDeactivated) => {
+            tracing::error!("DID has been deactivated");
+            StatusCode::BAD_REQUEST.into_response()
+        }
         Err(e) => {
             tracing::error!("Error while creating proof {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
