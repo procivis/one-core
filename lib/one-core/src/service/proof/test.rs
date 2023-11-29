@@ -479,6 +479,64 @@ async fn test_create_proof() {
 }
 
 #[tokio::test]
+async fn test_create_proof_did_deactivated_error() {
+    let transport = "transport".to_string();
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4(),
+        verifier_did_id: Uuid::new_v4().into(),
+        transport: transport.to_owned(),
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .once()
+        .withf(move |id, _| &request.proof_schema_id == id)
+        .returning(|id, _| {
+            Ok(ProofSchema {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                claim_schemas: None,
+                organisation: None,
+            })
+        });
+
+    let request_clone = request.clone();
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .once()
+        .withf(move |id, _| &request_clone.verifier_did_id == id)
+        .returning(|id, _| {
+            Ok(Did {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: None,
+                deactivated: true,
+            })
+        });
+
+    let service = setup_service(Repositories {
+        did_repository,
+        proof_schema_repository,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request).await;
+    assert2::assert!(let ServiceError::DidDeactivated = result.err().unwrap());
+}
+
+#[tokio::test]
 async fn test_create_proof_schema_deleted() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository

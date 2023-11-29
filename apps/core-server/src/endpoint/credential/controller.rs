@@ -128,6 +128,10 @@ pub(crate) async fn post_credential(
         Err(error) => match error {
             ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
             ServiceError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
+            ServiceError::DidDeactivated => {
+                tracing::error!("DID has been deactivated");
+                StatusCode::BAD_REQUEST.into_response()
+            }
             ServiceError::ConfigValidationError(error) => {
                 tracing::error!("Config validation error: {:?}", error);
                 (
