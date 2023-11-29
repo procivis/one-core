@@ -5,7 +5,7 @@ use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{Credential, CredentialState, CredentialStateEnum};
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
 };
 use one_core::model::did::{Did, DidRelations, DidType, KeyRole};
 use one_core::model::interaction::{Interaction, InteractionRelations};
@@ -410,6 +410,24 @@ pub async fn get_proof_schema(db_conn: &DbConn, proof_schema_id: &ProofSchemaId)
                     }),
                 }),
                 organisation: Some(OrganisationRelations {}),
+            },
+        )
+        .await
+        .unwrap()
+}
+
+pub async fn get_credential_schema(
+    db_conn: &DbConn,
+    credential_schema_id: &CredentialSchemaId,
+) -> CredentialSchema {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    data_layer
+        .get_credential_schema_repository()
+        .get_credential_schema(
+            credential_schema_id,
+            &CredentialSchemaRelations {
+                claim_schemas: Some(ClaimSchemaRelations::default()),
+                organisation: Some(OrganisationRelations::default()),
             },
         )
         .await

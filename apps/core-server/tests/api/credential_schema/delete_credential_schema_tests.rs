@@ -24,8 +24,8 @@ async fn test_delete_credential_schema_success() {
         "{base_url}/api/credential-schema/v1/{}",
         credential_schema.id
     );
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let db_conn_clone = db_conn.clone();
+    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
 
     let resp = utils::client()
         .delete(url)
@@ -36,6 +36,6 @@ async fn test_delete_credential_schema_success() {
 
     // THEN
     assert_eq!(resp.status(), 204);
-
-    // TODO: Add additional checks when https://procivis.atlassian.net/browse/ONE-1133 is implemented
+    let credential_schema = fixtures::get_credential_schema(&db_conn, &credential_schema.id).await;
+    assert!(credential_schema.deleted_at.is_some());
 }
