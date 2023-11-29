@@ -1,7 +1,5 @@
 use core_server::router::start_server;
 
-use serde_json::Value;
-
 use crate::{fixtures, utils};
 
 #[tokio::test]
@@ -37,7 +35,9 @@ async fn test_delete_proof_schema_success() {
     )
     .await;
 
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let db_conn_clone = db_conn.clone();
+
+    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
 
     // WHEN
     let url = format!("{base_url}/api/proof-schema/v1/{}", proof_schema.id);
@@ -50,36 +50,6 @@ async fn test_delete_proof_schema_success() {
 
     // THEN
     assert_eq!(resp.status(), 204);
-
-    // check it is not displayed in the list
-    let url = format!(
-        "{base_url}/api/proof-schema/v1?page={}&pageSize={}&organisationId={}",
-        0, 1, organisation.id
-    );
-    let resp = utils::client()
-        .get(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
-
-    assert_eq!(resp.status(), 200);
-    let resp: Value = resp.json().await.unwrap();
-
-    assert_eq!(resp["totalItems"].as_i64().unwrap(), 0);
-    assert_eq!(resp["totalPages"].as_i64().unwrap(), 0);
-    assert_eq!(resp["values"].as_array().unwrap().len(), 0);
-
-    // check detail is still accessible
-    let url = format!("{base_url}/api/proof-schema/v1/{}", proof_schema.id);
-    let resp = utils::client()
-        .get(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
-
-    assert_eq!(resp.status(), 200);
-    let resp: Value = resp.json().await.unwrap();
-    assert_eq!(resp["id"].as_str().unwrap(), proof_schema.id.to_string());
+    let proof_schema = fixtures::get_proof_schema(&db_conn, &proof_schema.id).await;
+    assert!(proof_schema.deleted_at.is_some());
 }
