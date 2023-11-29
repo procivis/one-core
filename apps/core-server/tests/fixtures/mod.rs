@@ -3,7 +3,10 @@ use std::str::FromStr;
 use core_server::Config;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
-use one_core::model::credential::{Credential, CredentialState, CredentialStateEnum};
+use one_core::model::credential::{
+    Credential, CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
+    CredentialStateRelations,
+};
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
 };
@@ -15,6 +18,7 @@ use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
     ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaId, ProofSchemaRelations,
 };
+use one_core::model::revocation_list::RevocationList;
 use one_core::repository::DataRepository;
 use shared_types::{DidId, DidValue};
 use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
@@ -83,6 +87,7 @@ pub async fn create_es256_key(
             2, 212, 74, 108, 171, 101, 55, 25, 228, 113, 137, 107, 244, 59, 53, 18, 151, 14, 117,
             14, 156, 106, 178, 135, 104, 150, 113, 122, 229, 191, 40, 5, 96,
         ],
+        vec![],
         Some(did_id.to_owned()),
         organisation_id,
     )
@@ -102,6 +107,20 @@ pub async fn create_eddsa_key(
         vec![
             155, 176, 4, 229, 68, 29, 140, 187, 130, 58, 118, 71, 7, 88, 2, 21, 250, 54, 186, 248,
             76, 233, 111, 248, 196, 89, 169, 36, 173, 54, 175, 187,
+        ],
+        vec![
+            97, 103, 101, 45, 101, 110, 99, 114, 121, 112, 116, 105, 111, 110, 46, 111, 114, 103,
+            47, 118, 49, 10, 45, 62, 32, 115, 99, 114, 121, 112, 116, 32, 57, 122, 51, 113, 117,
+            106, 98, 112, 122, 102, 47, 87, 116, 78, 103, 52, 49, 119, 90, 110, 88, 119, 32, 49,
+            52, 10, 52, 114, 49, 68, 55, 74, 88, 56, 97, 81, 72, 53, 50, 47, 71, 118, 87, 116, 83,
+            66, 112, 49, 53, 102, 114, 110, 113, 107, 112, 115, 87, 84, 75, 115, 100, 119, 75, 51,
+            74, 67, 84, 72, 56, 10, 45, 45, 45, 32, 52, 110, 51, 52, 66, 84, 52, 56, 84, 90, 76,
+            71, 108, 113, 107, 51, 73, 70, 103, 43, 71, 79, 81, 75, 110, 113, 120, 86, 81, 49, 47,
+            53, 56, 111, 68, 100, 112, 86, 114, 73, 56, 79, 119, 10, 210, 236, 31, 77, 196, 210,
+            183, 127, 129, 71, 103, 174, 124, 181, 33, 210, 202, 106, 163, 146, 12, 153, 209, 236,
+            124, 44, 187, 146, 21, 195, 157, 244, 227, 194, 201, 92, 94, 45, 210, 88, 103, 149,
+            235, 4, 117, 8, 42, 95, 42, 100, 34, 133, 119, 196, 219, 147, 40, 248, 237, 48, 77,
+            245, 7, 20,
         ],
         Some(did_id.to_owned()),
         organisation_id,
@@ -314,11 +333,32 @@ pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> In
     interaction
 }
 
+pub async fn create_revocation_list(db_conn: &DbConn, issuer_did: &Did) -> RevocationList {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    let revocation_list = RevocationList {
+        id: Default::default(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        credentials: vec![],
+        issuer_did: Some(issuer_did.to_owned()),
+    };
+
+    data_layer
+        .get_revocation_list_repository()
+        .create_revocation_list(revocation_list.to_owned())
+        .await
+        .unwrap();
+
+    revocation_list
+}
+
 pub async fn create_credential(
     db_conn: &DbConn,
     credential_schema: &CredentialSchema,
     state: CredentialStateEnum,
     issuer_did: &Did,
+    credential: Option<&str>,
     transport: &str,
 ) -> Credential {
     let data_layer = DataLayer::build(db_conn.to_owned());
@@ -342,7 +382,7 @@ pub async fn create_credential(
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),
-        credential: vec![],
+        credential: credential.unwrap_or("").as_bytes().to_owned(),
         transport: transport.to_owned(),
         state: Some(vec![CredentialState {
             created_date: get_dummy_date(),
@@ -437,6 +477,32 @@ pub async fn get_credential_schema(
             &CredentialSchemaRelations {
                 claim_schemas: Some(ClaimSchemaRelations::default()),
                 organisation: Some(OrganisationRelations::default()),
+            },
+        )
+        .await
+        .unwrap()
+}
+
+pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> Credential {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    data_layer
+        .get_credential_repository()
+        .get_credential(
+            credential_id,
+            &CredentialRelations {
+                state: Some(CredentialStateRelations {}),
+                claims: Some(ClaimRelations {
+                    schema: Some(ClaimSchemaRelations {}),
+                }),
+                schema: Some(CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
+                    organisation: Some(OrganisationRelations::default()),
+                }),
+                holder_did: Some(DidRelations::default()),
+                interaction: Some(InteractionRelations {}),
+                revocation_list: None,
+                issuer_did: None,
+                key: None,
             },
         )
         .await

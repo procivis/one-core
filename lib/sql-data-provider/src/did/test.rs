@@ -38,9 +38,16 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
     let db = data_layer.db;
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
-    let key_id = insert_key_to_database(&db, "ED25519".to_string(), vec![], None, &organisation_id)
-        .await
-        .unwrap();
+    let key_id = insert_key_to_database(
+        &db,
+        "ED25519".to_string(),
+        vec![],
+        vec![],
+        None,
+        &organisation_id,
+    )
+    .await
+    .unwrap();
 
     TestSetup {
         provider: DidProvider {
