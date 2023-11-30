@@ -28,10 +28,10 @@ async fn test_internal_generate() {
         .times(1)
         .returning(move |_| Ok(arc.clone()));
 
-    let provider = InternalKeyProvider {
-        key_algorithm_provider: Arc::new(mock_key_algorithm_provider),
-        params: Params { encryption: None },
-    };
+    let provider = InternalKeyProvider::new(
+        Arc::new(mock_key_algorithm_provider),
+        Params { encryption: None },
+    );
 
     let result = provider.generate(&KeyId::new_v4(), "").await.unwrap();
     assert_eq!(3, result.key_reference.len());
@@ -56,15 +56,15 @@ async fn test_internal_generate_with_encryption() {
         .times(1)
         .returning(move |_| Ok(arc.clone()));
 
-    let provider = InternalKeyProvider {
-        key_algorithm_provider: Arc::new(mock_key_algorithm_provider),
-        params: Params {
+    let provider = InternalKeyProvider::new(
+        Arc::new(mock_key_algorithm_provider),
+        Params {
             encryption: Some("password".to_string()),
         },
-    };
+    );
 
     let result = provider.generate(&KeyId::new_v4(), "").await.unwrap();
-    assert!(result.key_reference.starts_with("age".as_bytes()));
+    assert_eq!(result.key_reference.len(), 39);
 }
 
 #[tokio::test]
@@ -98,12 +98,12 @@ async fn test_internal_sign_with_encryption() {
         .times(1)
         .returning(move |_| Ok(arc_signer.clone()));
 
-    let provider = InternalKeyProvider {
-        key_algorithm_provider: Arc::new(mock_key_algorithm_provider),
-        params: Params {
+    let provider = InternalKeyProvider::new(
+        Arc::new(mock_key_algorithm_provider),
+        Params {
             encryption: Some("password".to_string()),
         },
-    };
+    );
 
     let generated_key = provider.generate(&KeyId::new_v4(), "").await.unwrap();
 

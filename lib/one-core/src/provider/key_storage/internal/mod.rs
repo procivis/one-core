@@ -1,10 +1,10 @@
-use age::secrecy::Secret;
+use cocoon::MiniCocoon;
+use rand::RngCore;
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
-use tokio_util::compat::FuturesAsyncReadCompatExt;
-use tokio_util::compat::FuturesAsyncWriteCompatExt;
 
 use crate::crypto::signer::error::SignerError;
 use crate::model::key::Key;
@@ -19,7 +19,7 @@ use crate::{
 
 pub struct InternalKeyProvider {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-    params: Params,
+    encryption_key: Option<[u8; 32]>,
 }
 
 #[derive(Deserialize)]
@@ -35,7 +35,9 @@ impl InternalKeyProvider {
     ) -> Self {
         Self {
             key_algorithm_provider,
-            params,
+            encryption_key: params
+                .encryption
+                .map(|passphrase| convert_passphrase_to_encryption_key(&passphrase)),
         }
     }
 }
@@ -48,9 +50,7 @@ impl KeyStorage for InternalKeyProvider {
             .get_signer(&key.key_type)
             .map_err(|e| SignerError::MissingAlgorithm(e.to_string()))?;
 
-        let passphrase = self.params.encryption.as_ref();
-        let private_key = decrypt_if_password_is_provided(&key.key_reference, passphrase)
-            .await
+        let private_key = decrypt_if_password_is_provided(&key.key_reference, &self.encryption_key)
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 
         signer.sign(message, &key.public_key, &private_key)
@@ -66,79 +66,59 @@ impl KeyStorage for InternalKeyProvider {
             .get_key_algorithm(key_type)
             .map_err(|_| ServiceError::IncorrectParameters)?
             .generate_key_pair();
-        let passphrase = self.params.encryption.as_ref();
 
         Ok(GeneratedKey {
             public_key: key_pair.public,
-            key_reference: encrypt_if_password_is_provided(&key_pair.private, passphrase).await?,
+            key_reference: encrypt_if_password_is_provided(
+                &key_pair.private,
+                &self.encryption_key,
+            )?,
         })
     }
 }
 
-async fn decrypt_if_password_is_provided(
+fn decrypt_if_password_is_provided(
     data: &[u8],
-    passphrase: Option<&String>,
+    encryption_key: &Option<[u8; 32]>,
 ) -> Result<Vec<u8>, ServiceError> {
-    match passphrase {
+    match encryption_key {
         None => Ok(data.to_vec()),
-        Some(passphrase) => {
-            let decryptor =
-            //TODO: use the async version of new
-                match age::Decryptor::new(data).map_err(|e| ServiceError::Other(e.to_string()))? {
-                    age::Decryptor::Passphrase(d) => Ok(d),
-                    _ => Err(ServiceError::Other(
-                        "Failed to create decryptor".to_string(),
-                    )),
-                }?;
-
-            let mut decrypted = vec![];
-            let reader = decryptor
-                .decrypt_async(&Secret::new(passphrase.to_owned()), None)
-                .map_err(|e| ServiceError::Other(e.to_string()))?;
-
-            let mut reader = reader.compat();
-
-            reader
-                .read_to_end(&mut decrypted)
-                .await
-                .map_err(|e| ServiceError::Other(e.to_string()))?;
-
-            Ok(decrypted)
+        Some(encryption_key) => {
+            // seed is not used for decryption, so passing dummy value
+            let cocoon = MiniCocoon::from_key(encryption_key, &[0u8; 32]);
+            cocoon
+                .unwrap(data)
+                .map_err(|_| ServiceError::Other("Decryption failure".to_string()))
         }
     }
 }
 
-async fn encrypt_if_password_is_provided(
+fn encrypt_if_password_is_provided(
     buffer: &[u8],
-    passphrase: Option<&String>,
+    encryption_key: &Option<[u8; 32]>,
 ) -> Result<Vec<u8>, ServiceError> {
-    match passphrase {
+    match encryption_key {
         None => Ok(buffer.to_vec()),
-        Some(passphrase) => {
-            let encryptor =
-                age::Encryptor::with_user_passphrase(Secret::new(passphrase.to_string()));
-
-            let mut encrypted = vec![];
-            let writer = encryptor
-                .wrap_async_output(&mut encrypted)
-                .await
-                .map_err(|e| ServiceError::Other(e.to_string()))?;
-
-            let mut writer = writer.compat_write();
-
-            writer
-                .write_all(buffer.as_ref())
-                .await
-                .map_err(|e| ServiceError::Other(e.to_string()))?;
-
-            writer
-                .shutdown()
-                .await
-                .map_err(|e| ServiceError::Other(e.to_string()))?;
-
-            Ok(encrypted)
+        Some(encryption_key) => {
+            let mut cocoon = MiniCocoon::from_key(encryption_key, &generate_random_seed());
+            cocoon
+                .wrap(buffer)
+                .map_err(|_| ServiceError::Other("Encryption failure".to_string()))
         }
     }
+}
+
+fn generate_random_seed() -> [u8; 32] {
+    let mut rng = ChaCha20Rng::from_entropy();
+    let mut seed = [0u8; 32];
+    rng.fill_bytes(&mut seed);
+    seed
+}
+
+/// Simplified KDF
+/// * TODO: use pbkdf2 or similar algorithm to prevent dictionary brute-force password attack
+fn convert_passphrase_to_encryption_key(passphrase: &str) -> [u8; 32] {
+    Sha256::digest(passphrase).into()
 }
 
 #[cfg(test)]
