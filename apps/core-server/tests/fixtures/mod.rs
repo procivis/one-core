@@ -79,7 +79,7 @@ pub async fn create_es256_key(
     db_conn: &DbConn,
     algorithm: String,
     organisation_id: &str,
-    did_id: &DidId,
+    did_id: Option<DidId>,
 ) -> String {
     insert_key_to_database(
         db_conn,
@@ -89,7 +89,7 @@ pub async fn create_es256_key(
             14, 156, 106, 178, 135, 104, 150, 113, 122, 229, 191, 40, 5, 96,
         ],
         vec![],
-        Some(did_id.to_owned()),
+        did_id,
         organisation_id,
     )
     .await
@@ -160,6 +160,21 @@ pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Di
         .unwrap();
 
     did
+}
+
+pub async fn get_did_by_id(db_conn: &DbConn, did_id: &DidId) -> Did {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    data_layer
+        .get_did_repository()
+        .get_did(
+            did_id,
+            &DidRelations {
+                keys: Some(KeyRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
 }
 
 pub async fn create_did_web(

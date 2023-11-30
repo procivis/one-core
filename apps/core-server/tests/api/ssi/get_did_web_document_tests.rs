@@ -17,7 +17,7 @@ async fn test_get_did_web_document_es256_success() {
         &db_conn,
         "ES256".to_string(),
         &organisation.id.to_string(),
-        &did.id,
+        Some(did.id.clone()),
     )
     .await;
     fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::Authentication).await;
