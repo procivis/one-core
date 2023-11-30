@@ -12,6 +12,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::did::{Did, DidRelations, DidType, KeyRole};
 use one_core::model::interaction::{Interaction, InteractionRelations};
+use one_core::model::key::{Key, KeyId, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationId, OrganisationRelations};
 use one_core::model::proof::{Proof, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
@@ -105,28 +106,35 @@ pub async fn create_eddsa_key(
         db_conn,
         algorithm,
         vec![
-            155, 176, 4, 229, 68, 29, 140, 187, 130, 58, 118, 71, 7, 88, 2, 21, 250, 54, 186, 248,
-            76, 233, 111, 248, 196, 89, 169, 36, 173, 54, 175, 187,
+            59, 147, 149, 138, 47, 163, 27, 121, 194, 202, 219, 189, 55, 120, 146, 135, 204, 49,
+            120, 110, 206, 132, 78, 224, 94, 221, 61, 161, 171, 61, 238, 124,
         ],
         vec![
-            97, 103, 101, 45, 101, 110, 99, 114, 121, 112, 116, 105, 111, 110, 46, 111, 114, 103,
-            47, 118, 49, 10, 45, 62, 32, 115, 99, 114, 121, 112, 116, 32, 57, 122, 51, 113, 117,
-            106, 98, 112, 122, 102, 47, 87, 116, 78, 103, 52, 49, 119, 90, 110, 88, 119, 32, 49,
-            52, 10, 52, 114, 49, 68, 55, 74, 88, 56, 97, 81, 72, 53, 50, 47, 71, 118, 87, 116, 83,
-            66, 112, 49, 53, 102, 114, 110, 113, 107, 112, 115, 87, 84, 75, 115, 100, 119, 75, 51,
-            74, 67, 84, 72, 56, 10, 45, 45, 45, 32, 52, 110, 51, 52, 66, 84, 52, 56, 84, 90, 76,
-            71, 108, 113, 107, 51, 73, 70, 103, 43, 71, 79, 81, 75, 110, 113, 120, 86, 81, 49, 47,
-            53, 56, 111, 68, 100, 112, 86, 114, 73, 56, 79, 119, 10, 210, 236, 31, 77, 196, 210,
-            183, 127, 129, 71, 103, 174, 124, 181, 33, 210, 202, 106, 163, 146, 12, 153, 209, 236,
-            124, 44, 187, 146, 21, 195, 157, 244, 227, 194, 201, 92, 94, 45, 210, 88, 103, 149,
-            235, 4, 117, 8, 42, 95, 42, 100, 34, 133, 119, 196, 219, 147, 40, 248, 237, 48, 77,
-            245, 7, 20,
+            62, 32, 184, 150, 100, 131, 44, 102, 69, 60, 205, 5, 0, 0, 0, 0, 0, 0, 0, 32, 165, 39,
+            201, 216, 231, 240, 137, 12, 128, 49, 56, 255, 170, 204, 126, 54, 82, 73, 7, 68, 21,
+            252, 40, 65, 56, 169, 144, 236, 15, 50, 143, 27, 221, 239, 195, 169, 242, 159, 95, 87,
+            87, 124, 188, 24, 103, 205, 137, 162,
         ],
         Some(did_id.to_owned()),
         organisation_id,
     )
     .await
     .unwrap()
+}
+
+#[allow(dead_code)]
+pub async fn get_key(db_conn: &DbConn, key_id: &KeyId) -> Key {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    data_layer
+        .get_key_repository()
+        .get_key(
+            key_id,
+            &KeyRelations {
+                organisation: Some(OrganisationRelations {}),
+            },
+        )
+        .await
+        .unwrap()
 }
 
 pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Did {

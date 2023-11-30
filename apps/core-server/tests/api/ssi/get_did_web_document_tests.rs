@@ -131,7 +131,7 @@ async fn test_get_did_web_document_eddsa_success() {
         resp["verificationMethod"][0]["publicKeyJwk"]["x"]
             .as_str()
             .unwrap(),
-        "m7AE5UQdjLuCOnZHB1gCFfo2uvhM6W_4xFmpJK02r7s"
+        "O5OVii-jG3nCytu9N3iSh8wxeG7OhE7gXt09oas97nw"
     );
     assert!(resp["verificationMethod"][0]["publicKeyJwk"]["y"]
         .as_str()

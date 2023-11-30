@@ -37,7 +37,7 @@ url = { workspace = true }
 
 strum_macros = "0.25.2"
 
-age = { version = "0.9.2", features = ["async"] }
+cocoon = { version = "0.4.1" }
 tokio-util = { version = "0.7", features = ["compat"] }
 
 shared-types = { version = "0.1.0", path = "../shared-types" }
