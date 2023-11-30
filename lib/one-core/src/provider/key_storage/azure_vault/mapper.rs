@@ -1,7 +1,10 @@
+use crate::crypto::{signer::error::SignerError, CryptoProvider};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use std::sync::Arc;
 
 use super::dto::{
     AzureHsmGenerateKeyRequest, AzureHsmGenerateKeyResponseKey, AzureHsmGetTokenRequest,
+    AzureHsmSignRequest,
 };
 
 use crate::service::error::ServiceError;
@@ -24,6 +27,23 @@ pub(super) fn create_generate_key_request() -> AzureHsmGenerateKeyRequest {
         curve_name: "P-256".to_string(),
         key_operations: vec!["sign".to_string(), "verify".to_string()],
     }
+}
+
+pub(super) fn create_sign_request(
+    value: &str,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+) -> Result<AzureHsmSignRequest, SignerError> {
+    let hasher = crypto
+        .get_hasher("sha-256")
+        .map_err(SignerError::CryptoError)?;
+    let value = hasher
+        .hash_base64(value.as_bytes())
+        .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+
+    Ok(AzureHsmSignRequest {
+        algorithm: "ES256".to_string(),
+        value,
+    })
 }
 
 pub(super) fn public_key_from_components(

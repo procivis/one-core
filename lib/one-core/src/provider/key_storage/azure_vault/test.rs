@@ -1,11 +1,22 @@
 use super::{dto::AzureHsmGetTokenResponse, AzureVaultKeyProvider, Params};
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use httpmock::Method::POST;
 use httpmock::{Mock, MockServer, Regex};
 use serde_json::json;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::provider::key_storage::KeyStorage;
+use crate::{
+    crypto::{
+        hasher::{Hasher, MockHasher},
+        CryptoProvider, CryptoProviderImpl,
+    },
+    model::key::Key,
+    provider::key_storage::KeyStorage,
+};
 
 fn get_params(mock_base_url: String) -> Params {
     Params {
@@ -72,6 +83,32 @@ async fn generate_key_mock(mock_server: &MockServer) -> Mock {
         .await
 }
 
+async fn sign_mock(mock_server: &MockServer) -> Mock {
+    mock_server
+        .mock_async(|when, then| {
+            when.method(POST)
+                .path("/keys/uuid/keyid/sign")
+                .query_param("api-version", "7.4")
+                .header("content-type", "application/json");
+            then.status(200).json_body(json!(
+                {
+                  "kid": "/keys/uuid/keyid",
+                  "value": "c2lnbmVkX21lc3NhZ2U"
+                }
+            ));
+        })
+        .await
+}
+
+fn get_crypto(
+    hashers: Vec<(String, Arc<dyn Hasher + Send + Sync>)>,
+) -> Arc<dyn CryptoProvider + Send + Sync> {
+    Arc::new(CryptoProviderImpl::new(
+        HashMap::from_iter(hashers),
+        HashMap::new(),
+    ))
+}
+
 #[tokio::test]
 async fn test_azure_vault_generate() {
     let mock_server = MockServer::start_async().await;
@@ -79,7 +116,7 @@ async fn test_azure_vault_generate() {
     let token_mock = get_token_mock(&mock_server, 3600).await;
     let key_mock = generate_key_mock(&mock_server).await;
 
-    let vault = AzureVaultKeyProvider::new(get_params(mock_server.base_url()));
+    let vault = AzureVaultKeyProvider::new(get_params(mock_server.base_url()), get_crypto(vec![]));
     vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
     vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
 
@@ -94,10 +131,52 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
     let token_mock = get_token_mock(&mock_server, -5).await;
     let key_mock = generate_key_mock(&mock_server).await;
 
-    let vault = AzureVaultKeyProvider::new(get_params(mock_server.base_url()));
+    let vault = AzureVaultKeyProvider::new(get_params(mock_server.base_url()), get_crypto(vec![]));
     vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
     vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
 
     token_mock.assert_hits_async(2).await;
     key_mock.assert_hits_async(2).await;
+}
+
+#[tokio::test]
+async fn test_azure_vault_sign() {
+    let mock_server = MockServer::start_async().await;
+
+    let token_mock = get_token_mock(&mock_server, 3600).await;
+    let sign_mock = sign_mock(&mock_server).await;
+    let mut hasher_mock = MockHasher::default();
+    hasher_mock
+        .expect_hash_base64()
+        .times(1)
+        .returning(|_| Ok("123".to_string()));
+
+    let key_reference = format!("{}/keys/uuid/keyid", mock_server.base_url());
+
+    let vault = AzureVaultKeyProvider::new(
+        get_params(mock_server.base_url()),
+        get_crypto(vec![("sha-256".to_string(), Arc::new(hasher_mock))]),
+    );
+    let result = vault
+        .sign(
+            &Key {
+                id: Default::default(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                public_key: vec![],
+                name: "".to_string(),
+                key_reference: key_reference.as_bytes().to_vec(),
+                storage_type: "".to_string(),
+                key_type: "".to_string(),
+                organisation: None,
+            },
+            "message_to_sign",
+        )
+        .await
+        .unwrap();
+
+    assert_eq!("signed_message".as_bytes(), result);
+
+    token_mock.assert_async().await;
+    sign_mock.assert_async().await;
 }
