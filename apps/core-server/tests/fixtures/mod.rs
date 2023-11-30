@@ -23,6 +23,7 @@ use one_core::model::revocation_list::RevocationList;
 use one_core::repository::DataRepository;
 use shared_types::{DidId, DidValue};
 use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -120,21 +121,6 @@ pub async fn create_eddsa_key(
     )
     .await
     .unwrap()
-}
-
-#[allow(dead_code)]
-pub async fn get_key(db_conn: &DbConn, key_id: &KeyId) -> Key {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-    data_layer
-        .get_key_repository()
-        .get_key(
-            key_id,
-            &KeyRelations {
-                organisation: Some(OrganisationRelations {}),
-            },
-        )
-        .await
-        .unwrap()
 }
 
 pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Did {
@@ -555,6 +541,50 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
                 interaction: Some(InteractionRelations {}),
+            },
+        )
+        .await
+        .unwrap()
+}
+
+pub async fn create_key(
+    db_conn: &DbConn,
+    name: &str,
+    public_key: &[u8],
+    organisation: &Organisation,
+) -> Key {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    let now = OffsetDateTime::now_utc();
+
+    let key = Key {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+        public_key: public_key.to_owned(),
+        name: name.to_owned(),
+        key_reference: vec![],
+        storage_type: "INTERNAL".to_owned(),
+        key_type: "ES256".to_owned(),
+        organisation: Some(organisation.to_owned()),
+    };
+
+    data_layer
+        .get_key_repository()
+        .create_key(key.clone())
+        .await
+        .unwrap();
+
+    key
+}
+
+pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> Key {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    data_layer
+        .get_key_repository()
+        .get_key(
+            id,
+            &KeyRelations {
+                organisation: Some(OrganisationRelations::default()),
             },
         )
         .await
