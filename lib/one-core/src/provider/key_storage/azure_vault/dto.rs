@@ -61,3 +61,18 @@ pub(super) struct AzureHsmGetTokenResponse {
     pub expires_in: i64,
     pub access_token: String,
 }
+
+#[derive(Debug, Serialize)]
+pub(super) struct AzureHsmSignRequest {
+    #[serde(rename = "alg")]
+    pub algorithm: String,
+    pub value: String,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize)]
+pub(super) struct AzureHsmSignResponse {
+    #[serde(rename = "kid")]
+    pub key_id: String,
+    pub value: String,
+}

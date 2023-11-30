@@ -1,6 +1,7 @@
 mod dto;
 mod mapper;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use std::ops::{Add, Sub};
 use std::sync::{Arc, Mutex};
 
@@ -20,8 +21,12 @@ use crate::{
     service::error::ServiceError,
 };
 
-use dto::AzureHsmGenerateKeyResponse;
-use mapper::{create_generate_key_request, create_get_token_request, public_key_from_components};
+use crate::crypto::CryptoProvider;
+use dto::{AzureHsmGenerateKeyResponse, AzureHsmSignResponse};
+use mapper::{
+    create_generate_key_request, create_get_token_request, create_sign_request,
+    public_key_from_components,
+};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,6 +46,7 @@ struct AzureAccessToken {
 pub struct AzureVaultKeyProvider {
     access_token: Arc<Mutex<Option<AzureAccessToken>>>,
     client: reqwest::Client,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
     params: Params,
 }
 
@@ -58,7 +64,7 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         let access_token = self.get_access_token().await?;
 
-        let response = self
+        let response: AzureHsmGenerateKeyResponse = self
             .client
             .post(url)
             .json(&create_generate_key_request())
@@ -69,33 +75,60 @@ impl KeyStorage for AzureVaultKeyProvider {
             .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
             .error_for_status()
             .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
-            .text()
+            .json()
             .await
             .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?;
 
-        let parsed: AzureHsmGenerateKeyResponse = serde_json::from_str(&response)
-            .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
-
-        let public_key_bytes = public_key_from_components(&parsed.key)?;
+        let public_key_bytes = public_key_from_components(&response.key)?;
 
         let key = P256KeyPair::from_public_key(&public_key_bytes);
 
         Ok(GeneratedKey {
             public_key: key.public_key_bytes(),
-            key_reference: parsed.key.key_id.as_bytes().to_vec(),
+            key_reference: response.key.key_id.as_bytes().to_vec(),
         })
     }
 
-    async fn sign(&self, _key: &Key, _message: &str) -> Result<Vec<u8>, SignerError> {
-        todo!()
+    async fn sign(&self, key: &Key, message: &str) -> Result<Vec<u8>, SignerError> {
+        let key_reference = String::from_utf8(key.key_reference.to_owned())
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+        let url = Url::parse(&format!("{key_reference}/sign?api-version=7.4"))
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+        let sign_request = create_sign_request(message, self.crypto.clone())?;
+
+        let access_token = self
+            .get_access_token()
+            .await
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+
+        let parsed: AzureHsmSignResponse = self
+            .client
+            .post(url)
+            .json(&sign_request)
+            .bearer_auth(access_token)
+            .header("Content-Type", "application/json")
+            .send()
+            .await
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
+            .error_for_status()
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
+            .json()
+            .await
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+
+        let decoded = Base64UrlSafeNoPadding::decode_to_vec(parsed.value, None)
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
+
+        Ok(decoded)
     }
 }
 
 impl AzureVaultKeyProvider {
-    pub fn new(params: Params) -> Self {
+    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider + Send + Sync>) -> Self {
         Self {
             access_token: Arc::new(Mutex::new(None)),
             client: reqwest::Client::new(),
+            crypto,
             params,
         }
     }

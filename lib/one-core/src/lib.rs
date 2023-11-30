@@ -112,6 +112,7 @@ impl OneCore {
         ));
         let key_providers = key_providers_from_config(
             &core_config.key_storage,
+            crypto.clone(),
             key_algorithm_provider.clone(),
             secure_element_key_storage,
         )?;

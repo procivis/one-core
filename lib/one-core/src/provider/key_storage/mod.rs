@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::config::core_config::{KeyStorageConfig, KeyStorageType};
 use crate::config::ConfigValidationError;
-use crate::crypto::signer::error::SignerError;
+use crate::crypto::{signer::error::SignerError, CryptoProvider};
 use crate::model::key::{Key, KeyId};
 use crate::provider::key_storage::azure_vault::AzureVaultKeyProvider;
 use crate::provider::key_storage::pkcs11::PKCS11KeyProvider;
@@ -32,6 +32,7 @@ pub trait KeyStorage {
 
 pub fn key_providers_from_config(
     config: &KeyStorageConfig,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
 ) -> Result<HashMap<String, Arc<dyn KeyStorage + Send + Sync>>, ConfigValidationError> {
@@ -55,7 +56,7 @@ pub fn key_providers_from_config(
             }
             KeyStorageType::AzureVault => {
                 let params = config.get(key_storage_type)?;
-                let key_storage = Arc::new(AzureVaultKeyProvider::new(params));
+                let key_storage = Arc::new(AzureVaultKeyProvider::new(params, crypto.clone()));
                 providers.insert(key_storage_type.to_string(), key_storage);
             }
             KeyStorageType::SecureElement => {
