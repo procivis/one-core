@@ -22,6 +22,7 @@ async fn test_get_credential_success() {
         CredentialStateEnum::Created,
         &did,
         None,
+        None,
         "PROCIVIS_TEMPORARY",
     )
     .await;

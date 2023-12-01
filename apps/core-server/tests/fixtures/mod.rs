@@ -379,6 +379,7 @@ pub async fn create_credential(
     credential_schema: &CredentialSchema,
     state: CredentialStateEnum,
     issuer_did: &Did,
+    holder_did: Option<Did>,
     credential: Option<&str>,
     transport: &str,
 ) -> Credential {
@@ -411,7 +412,7 @@ pub async fn create_credential(
         }]),
         claims: Some(claims),
         issuer_did: Some(issuer_did.to_owned()),
-        holder_did: None,
+        holder_did,
         schema: Some(credential_schema.to_owned()),
         interaction: None,
         revocation_list: None,

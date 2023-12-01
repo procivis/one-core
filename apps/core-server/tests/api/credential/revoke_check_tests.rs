@@ -57,6 +57,7 @@ async fn test_revoke_check_success() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &did,
+        None,
         Some(credential_jwt),
         "PROCIVIS_TEMPORARY",
     )

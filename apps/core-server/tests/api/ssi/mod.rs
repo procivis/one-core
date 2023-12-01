@@ -1,2 +1,8 @@
 mod get_did_web_document_tests;
 mod get_revocation_list_tests;
+mod temporary_issuer_connect_tests;
+mod temporary_issuer_reject_tests;
+mod temporary_issuer_submit_tests;
+mod temporary_verifier_connect_tests;
+mod temporary_verifier_reject_tests;
+mod temporary_verifier_submit_tests;

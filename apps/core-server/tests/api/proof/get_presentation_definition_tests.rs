@@ -25,6 +25,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
         CredentialStateEnum::Created,
         &did,
         None,
+        None,
         "PROCIVIS_TEMPORARY",
     )
     .await;
@@ -268,6 +269,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         &credential_schema,
         CredentialStateEnum::Created,
         &did,
+        None,
         None,
         "OPENID4VC",
     )
