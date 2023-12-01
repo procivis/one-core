@@ -123,7 +123,11 @@ pub async fn create_eddsa_key(
     .unwrap()
 }
 
-pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Did {
+pub async fn create_did_key_with_value(
+    value: DidValue,
+    db_conn: &DbConn,
+    organisation: &Organisation,
+) -> Did {
     let data_layer = DataLayer::build(db_conn.to_owned());
 
     let did = Did {
@@ -131,7 +135,7 @@ pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Di
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "test-did-key".to_string(),
-        did: DidValue::from_str("did:key:123").unwrap(),
+        did: value,
         organisation: Some(organisation.to_owned()),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
@@ -161,6 +165,10 @@ pub async fn get_did_by_id(db_conn: &DbConn, did_id: &DidId) -> Did {
         )
         .await
         .unwrap()
+}
+
+pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Did {
+    create_did_key_with_value("did:key:123".parse().unwrap(), db_conn, organisation).await
 }
 
 pub async fn create_did_web(
