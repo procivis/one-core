@@ -4,6 +4,7 @@ use std::net::TcpListener;
 use std::sync::Arc;
 use std::time::Duration;
 
+use axum::body::Body;
 use axum::http::{Request, Response, StatusCode};
 use axum::middleware::{self, Next};
 use axum::routing::{delete, get, patch, post};
@@ -44,6 +45,8 @@ tokio::task_local! {
 }
 
 pub async fn start_server(listener: TcpListener, config: Config, db_conn: DbConn) {
+    listener.set_nonblocking(true).unwrap();
+
     let core_config = core_config::CoreConfig::from_file(&config.config_file).unwrap();
 
     let core = OneCore::new(
@@ -61,11 +64,13 @@ pub async fn start_server(listener: TcpListener, config: Config, db_conn: DbConn
 
     let router = router(state, config);
 
-    axum::Server::from_tcp(listener)
-        .expect("Failed to create axum server for lister")
-        .serve(router.into_make_service())
-        .await
-        .expect("Failed to start axum server");
+    axum::serve(
+        tokio::net::TcpListener::from_std(listener)
+            .expect("failed to convert to tokio TcpListener"),
+        router.into_make_service(),
+    )
+    .await
+    .expect("Failed to start axum server");
 }
 
 fn router(state: AppState, config: Config) -> Router {
@@ -269,10 +274,10 @@ fn router(state: AppState, config: Config) -> Router {
 #[derive(Debug, Clone)]
 pub struct Authorized {}
 
-async fn bearer_check<B>(
+async fn bearer_check(
     Extension(config): Extension<Config>,
-    mut request: Request<B>,
-    next: Next<B>,
+    mut request: Request<Body>,
+    next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
     let auth_header = request
         .headers()
@@ -318,9 +323,9 @@ fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext {
     }
 }
 
-async fn sentry_context<T>(
-    request: Request<T>,
-    next: Next<T>,
+async fn sentry_context(
+    request: Request<Body>,
+    next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
     SENTRY_HTTP_REQUEST
         .scope(get_http_request_context(&request), async move {

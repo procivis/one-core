@@ -15,11 +15,12 @@ use crate::endpoint::{
 use crate::router::AppState;
 use axum::{
     extract::{Path, Query, State},
-    headers::{self, authorization::Bearer},
     http::StatusCode,
     response::{IntoResponse, Response},
-    Form, Json, TypedHeader,
+    Form, Json,
 };
+use axum_extra::typed_header::TypedHeader;
+use headers::authorization::Bearer;
 use one_core::service::error::ServiceError;
 use shared_types::DidId;
 use uuid::Uuid;

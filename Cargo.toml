@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.dependencies]
-axum = { version = "0.6", features = ["macros", "headers"] }
+axum = { version = "0.7", features = ["macros"] }
 ct-codecs = { version = "1.1" }
 dto_mapper = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.3" }
 wiremock = { version = "0.5" }

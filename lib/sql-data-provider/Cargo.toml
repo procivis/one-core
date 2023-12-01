@@ -12,7 +12,7 @@ test_utils = []
 
 [dependencies]
 one-core = { version = "0.1.0", path = "../../lib/one-core" }
-async-trait = "0.1.68"
+async-trait = { version = "0.1" }
 migration = { version = "0.1.0", path = "../../apps/migration", default-features = false }
 sea-orm = { workspace = true, features = [
     "sqlx-sqlite",
@@ -21,7 +21,7 @@ sea-orm = { workspace = true, features = [
     "with-time",
     "with-json",
 ] }
-serde_yaml = "0.9.25"
+serde_yaml = { version = "0.9" }
 dto_mapper.workspace = true
 time.workspace = true
 tracing.workspace = true
