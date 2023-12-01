@@ -1,5 +1,4 @@
-use super::DidMethodError;
-use crate::model::did::Did;
+use super::{dto::DidDocumentDTO, DidMethodError};
 use crate::model::key::Key;
 
 use async_trait::async_trait;
@@ -33,7 +32,7 @@ impl super::DidMethod for X509Method {
         todo!()
     }
 
-    async fn resolve(&self, _did: &DidValue) -> Result<Did, DidMethodError> {
+    async fn resolve(&self, _did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
         todo!()
     }
 

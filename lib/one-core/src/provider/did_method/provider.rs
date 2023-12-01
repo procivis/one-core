@@ -2,10 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use shared_types::DidValue;
 
-use super::DidMethod;
-use crate::{
-    model::did::Did, provider::did_method::mapper::get_did_method_id, service::error::ServiceError,
-};
+use super::{dto::DidDocumentDTO, DidMethod};
+use crate::{common_mapper::did_method_id_from_value, service::error::ServiceError};
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
@@ -15,7 +13,7 @@ pub trait DidMethodProvider {
         did_method_id: &str,
     ) -> Result<Arc<dyn DidMethod + Send + Sync>, ServiceError>;
 
-    async fn resolve(&self, did: &DidValue) -> Result<Did, ServiceError>;
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, ServiceError>;
 }
 
 pub struct DidMethodProviderImpl {
@@ -41,13 +39,9 @@ impl DidMethodProvider for DidMethodProviderImpl {
             .clone())
     }
 
-    async fn resolve(&self, did: &DidValue) -> Result<Did, ServiceError> {
-        let parts = did.as_str().splitn(3, ':').collect::<Vec<_>>();
-        let did_method = parts.get(1).ok_or(ServiceError::ValidationError(
-            "Did method not found".to_string(),
-        ))?;
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, ServiceError> {
+        let did_method_id = did_method_id_from_value(did)?;
 
-        let did_method_id = get_did_method_id(did_method)?;
         let method = self.get_did_method(&did_method_id)?;
 
         Ok(method.resolve(did).await?)

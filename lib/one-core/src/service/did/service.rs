@@ -5,13 +5,15 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    dto::{CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, GetDidListResponseDTO},
+    dto::{
+        CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, DidWebResponseDTO,
+        GetDidListResponseDTO,
+    },
     mapper::did_from_did_request,
     validator::did_already_exists,
     DidDeactivationError, DidService,
 };
 use crate::model::key::Key;
-use crate::service::did::dto::DidWebResponseDTO;
 use crate::service::did::mapper::map_did_model_to_did_web_response;
 use crate::service::did::mapper::map_key_to_verification_method;
 use crate::service::did::validator::throw_if_did_method_not_eq;
@@ -71,7 +73,7 @@ impl DidService {
                         map_key_to_verification_method(
                             index,
                             &result.did,
-                            key_algorithm.bytes_to_jwk(&value.public_key)?,
+                            key_algorithm.bytes_to_jwk(&value.public_key)?.try_into()?,
                         )?,
                     ))
                 })

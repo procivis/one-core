@@ -9,6 +9,7 @@ use crate::{
         claim_schema::ClaimSchema,
         credential_schema::CredentialSchema,
         did::{Did, DidType},
+        organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
@@ -16,7 +17,11 @@ use crate::{
         credential_formatter::{
             model::Presentation, provider::MockCredentialFormatterProvider, MockCredentialFormatter,
         },
-        did_method::{provider::DidMethodProviderImpl, DidMethod, MockDidMethod},
+        did_method::{
+            dto::{DidDocumentDTO, DidVerificationMethodDTO},
+            provider::{DidMethodProviderImpl, MockDidMethodProvider},
+            DidMethod, MockDidMethod,
+        },
         key_algorithm::provider::MockKeyAlgorithmProvider,
         revocation::provider::MockRevocationMethodProvider,
     },
@@ -27,6 +32,8 @@ use crate::{
     },
     service::ssi_verifier::SSIVerifierService,
 };
+
+use mockall::predicate::eq;
 
 #[tokio::test]
 async fn test_connect_to_holder_succeeds() {
@@ -140,6 +147,163 @@ async fn test_connect_to_holder_succeeds() {
     let service = SSIVerifierService {
         proof_repository: Arc::new(proof_repository),
         did_repository: Arc::new(did_repository),
+        ..mock_ssi_verifier_service()
+    };
+
+    let res = service
+        .connect_to_holder(&proof_id, &holder_did_value)
+        .await
+        .unwrap();
+
+    assert_eq!(verifier_did, res.verifier_did);
+}
+
+#[tokio::test]
+async fn test_connect_to_holder_succeeds_new_did() {
+    let proof_id = Uuid::new_v4();
+    let holder_did_value: DidValue = "did:internal:key".parse().unwrap();
+
+    let verifier_did: DidValue = "verifier did".parse().unwrap();
+
+    let verifier_did_clone = verifier_did.clone();
+    let mut proof_repository = MockProofRepository::new();
+    proof_repository
+        .expect_get_proof()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .return_once(move |_, _| {
+            Ok(Proof {
+                verifier_did: Some(Did {
+                    did: verifier_did_clone,
+                    ..dummy_did()
+                }),
+                schema: Some(ProofSchema {
+                    claim_schemas: Some(vec![ProofSchemaClaim {
+                        schema: ClaimSchema {
+                            id: Uuid::new_v4(),
+                            key: "key".to_string(),
+                            data_type: "data type".to_string(),
+                            created_date: OffsetDateTime::now_utc(),
+                            last_modified: OffsetDateTime::now_utc(),
+                        },
+                        required: false,
+                        credential_schema: Some(CredentialSchema {
+                            id: Uuid::new_v4(),
+                            deleted_at: None,
+                            created_date: OffsetDateTime::now_utc(),
+                            last_modified: OffsetDateTime::now_utc(),
+                            name: "name".to_string(),
+                            format: "format".to_string(),
+                            revocation_method: "format".to_string(),
+                            claim_schemas: None,
+                            organisation: None,
+                        }),
+                    }]),
+                    ..dummy_proof_schema()
+                }),
+                ..dummy_proof()
+            })
+        });
+
+    proof_repository
+        .expect_get_proof()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .return_once(move |_, _| {
+            Ok(Proof {
+                holder_did: Some(dummy_did()),
+                verifier_did: Some(dummy_did()),
+                state: Some(vec![ProofState {
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    state: ProofStateEnum::Pending,
+                }]),
+
+                ..dummy_proof()
+            })
+        });
+
+    proof_repository
+        .expect_set_proof_state()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let holder_did_value_clone = holder_did_value.clone();
+    let mut did_method_provider = MockDidMethodProvider::default();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .with(eq(holder_did_value.clone()))
+        .return_once(move |_| {
+            Ok(DidDocumentDTO {
+                context: vec![],
+                id: holder_did_value_clone,
+                verification_method: vec![DidVerificationMethodDTO {
+                    id: "id".to_string(),
+                    r#type: "type".to_string(),
+                    controller: "controller".to_string(),
+                    public_key_jwk: crate::provider::did_method::dto::PublicKeyJwkDTO::Ec(
+                        crate::provider::did_method::dto::PublicKeyJwkEllipticDataDTO {
+                            crv: "P-256".to_string(),
+                            x: "123".to_string(),
+                            y: Some("123".to_string()),
+                        },
+                    ),
+                }],
+                authentication: None,
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+            })
+        });
+
+    let holder_did_value_clone = holder_did_value.clone();
+
+    let mut did_repository = MockDidRepository::new();
+    did_repository
+        .expect_get_did_by_value()
+        .withf(move |_holder_did_value, _| {
+            assert_eq!(_holder_did_value, &holder_did_value_clone.clone());
+            true
+        })
+        .once()
+        .return_once(move |_, _| Err(crate::repository::error::DataLayerError::RecordNotFound));
+
+    let did_id: DidId = Uuid::new_v4().into();
+
+    let holder_did_value_clone = holder_did_value.clone();
+    did_repository
+        .expect_create_did()
+        .withf(move |holder_did_value| {
+            assert_eq!(&holder_did_value.did, &holder_did_value_clone.clone());
+            true
+        })
+        .returning(move |_| Ok(did_id.clone()));
+
+    proof_repository
+        .expect_set_proof_holder_did()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let service = SSIVerifierService {
+        proof_repository: Arc::new(proof_repository),
+        did_repository: Arc::new(did_repository),
+        did_method_provider: Arc::new(did_method_provider),
         ..mock_ssi_verifier_service()
     };
 
@@ -379,9 +543,17 @@ fn dummy_did() -> Did {
         name: "John".to_string(),
         did: "did".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "John".to_string(),
+        did_method: "INTERNAL".to_string(),
         keys: None,
-        organisation: None,
+        organisation: Some(dummy_organisation()),
         deactivated: false,
+    }
+}
+
+fn dummy_organisation() -> Organisation {
+    Organisation {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
     }
 }

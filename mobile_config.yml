@@ -78,7 +78,6 @@ did:
     type: "WEB"
     display: "did.web"
     order: 1
-    disabled: true
     params: null
   X509:
     type: "X509"
