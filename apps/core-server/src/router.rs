@@ -379,6 +379,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::ssi_verifier_connect,
             endpoint::ssi::controller::ssi_verifier_submit_proof,
             endpoint::ssi::controller::ssi_verifier_reject_proof,
+            endpoint::ssi::controller::ssi_issuer_reject,
             endpoint::ssi::controller::ssi_issuer_connect,
             endpoint::ssi::controller::ssi_issuer_submit,
             endpoint::ssi::controller::get_revocation_list_by_id,

@@ -36,6 +36,7 @@ async fn test_revoke_credential_success() {
         CredentialStateEnum::Accepted,
         &did,
         None,
+        None,
         "PROCIVIS_TEMPORARY",
     )
     .await;

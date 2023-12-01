@@ -1,0 +1,1 @@
+// NOTE: The success case of this endpoint cannot be tested with integration tests. However, some of the error cases should be possible so after ONE-1085 is implemented, then we can check what can be tested
