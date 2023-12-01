@@ -6,11 +6,11 @@ build = "build.rs"
 publish = false
 
 [dependencies]
-async-trait = "0.1.68"
+async-trait = { version = "0.1" }
 ct-codecs.workspace = true
 dto_mapper.workspace = true
 reqwest.workspace = true
-serde_yaml = "0.9.25"
+serde_yaml = { version = "0.9" }
 serde.workspace = true
 serde_json.workspace = true
 serde_qs.workspace = true
@@ -23,19 +23,19 @@ shadow-rs.workspace = true
 strum.workspace = true
 mockall = { workspace = true, optional = true }
 
-did-key = "0.2.1"
-rand = "0.8.5"
-rand_chacha = "0.3"
-sha2 = "0.10"
-ed25519-compact = { version = "2.0.4" }
-bit-vec = "0.6.3"
-flate2 = "1.0.27"
-regex = "1.8.4"
+did-key = { version = "0.2" }
+rand = { version = "0.8" }
+rand_chacha = { version = "0.3" }
+sha2 = { version = "0.10" }
+ed25519-compact = { version = "2.0" }
+bit-vec = { version = "0.6" }
+flate2 = { version = "1.0" }
+regex = { version = "1.10" }
 url = { workspace = true }
 
-strum_macros = "0.25.2"
+strum_macros = { version = "0.25" }
 
-cocoon = { version = "0.4.1" }
+cocoon = { version = "0.4" }
 tokio-util = { version = "0.7", features = ["compat"] }
 
 shared-types = { version = "0.1.0", path = "../shared-types" }
@@ -44,12 +44,12 @@ p256.workspace = true
 fmap.workspace = true
 
 [dev-dependencies]
-bs58 = "0.5"
+bs58 = { version = "0.5" }
 httpmock = { version = "0.6" }
 mockall.workspace = true
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-assert2 = { version = "0.3.11" }
-indoc = "2.0.0"
+tokio = { version = "1.34", features = ["rt-multi-thread", "macros"] }
+assert2 = { version = "0.3" }
+indoc = { version = "2.0" }
 
 [build-dependencies]
 shadow-rs.workspace = true

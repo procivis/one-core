@@ -40,11 +40,13 @@ uuid.workspace = true
 validator.workspace = true
 figment.workspace = true
 
-tower-http = { version = "0.4", features = ["trace"] }
+tower-http = { version = "0.5", features = ["trace"] }
+headers = { version = "0.4" }
+axum-extra = { version = "0.9", features = ["typed-header"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 utoipa = { workspace = true, features = ["uuid", "axum_extras", "url"] }
-utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
-serde_with = { version = "3.4.0", features = ["json"] }
+utoipa-swagger-ui = { version = "5.0", features = ["axum"] }
+serde_with = { version = "3.4", features = ["json"] }
 sentry = { version = "0.32", default-features = false, features = [
     "backtrace",
     "panic",
