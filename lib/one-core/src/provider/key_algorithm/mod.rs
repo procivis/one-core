@@ -13,8 +13,9 @@ use crate::config::{
     ConfigValidationError,
 };
 
-use crate::service::did::dto::PublicKeyJwkResponseDTO;
 use crate::service::error::ServiceError;
+
+use super::did_method::dto::PublicKeyJwkDTO;
 
 pub struct GeneratedKey {
     pub public: Vec<u8>,
@@ -32,7 +33,9 @@ pub trait KeyAlgorithm {
     /// generate a new in-memory key-pair
     fn generate_key_pair(&self) -> GeneratedKey;
 
-    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkResponseDTO, ServiceError>;
+    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError>;
+
+    fn jwk_to_bytes(&self, jwk: &PublicKeyJwkDTO) -> Result<Vec<u8>, ServiceError>;
 }
 
 pub fn key_algorithms_from_config(

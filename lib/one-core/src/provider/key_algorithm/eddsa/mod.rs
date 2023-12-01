@@ -1,14 +1,17 @@
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use did_key::{Fingerprint, Generate, KeyMaterial};
 use serde::Deserialize;
 
+use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::key_algorithm::GeneratedKey;
-use crate::service::did::dto::PublicKeyJwkResponseDTO;
 use crate::service::error::ServiceError;
 
 use super::KeyAlgorithm;
 
 pub struct Eddsa;
+
+#[cfg(test)]
+mod test;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -47,13 +50,23 @@ impl KeyAlgorithm for Eddsa {
         }
     }
 
-    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkResponseDTO, ServiceError> {
-        Ok(PublicKeyJwkResponseDTO {
-            kty: "OKP".to_string(),
+    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError> {
+        Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
             crv: "Ed25519".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(bytes)
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?,
             y: None,
-        })
+        }))
+    }
+
+    fn jwk_to_bytes(&self, jwk: &PublicKeyJwkDTO) -> Result<Vec<u8>, ServiceError> {
+        if let PublicKeyJwkDTO::Okp(data) = jwk {
+            let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
+                .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
+
+            Ok(x)
+        } else {
+            Err(ServiceError::IncorrectParameters)
+        }
     }
 }

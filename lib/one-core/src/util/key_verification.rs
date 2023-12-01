@@ -1,6 +1,5 @@
 use crate::{
     crypto::signer::error::SignerError,
-    model::did::KeyRole,
     provider::{
         credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider,
         key_algorithm::provider::KeyAlgorithmProvider,
@@ -25,12 +24,7 @@ impl TokenVerifier for KeyVerification {
         token: &'a str,
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
-        let signer = self
-            .key_algorithm_provider
-            .get_signer(algorithm)
-            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
-
-        let did = self
+        let did_document = self
             .did_method_provider
             .resolve(
                 &issuer_did_value
@@ -39,15 +33,24 @@ impl TokenVerifier for KeyVerification {
             .await
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
-        let public_key = did
-            .keys
-            .ok_or(SignerError::MissingKey)?
-            .iter()
-            .find(|key| key.role == KeyRole::AssertionMethod)
-            .ok_or(SignerError::MissingKey)?
-            .key
-            .public_key
-            .to_owned();
+        let method = did_document
+            .verification_method
+            .first()
+            .ok_or(SignerError::MissingKey)?;
+
+        let alg = self
+            .key_algorithm_provider
+            .get_key_algorithm(algorithm)
+            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+
+        let public_key = alg
+            .jwk_to_bytes(&method.public_key_jwk)
+            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+
+        let signer = self
+            .key_algorithm_provider
+            .get_signer(algorithm)
+            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
         signer.verify(token, signature, &public_key)
     }
@@ -55,13 +58,15 @@ impl TokenVerifier for KeyVerification {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use super::*;
+    use crate::provider::did_method::dto::{
+        DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
+    };
+    use crate::provider::key_algorithm::MockKeyAlgorithm;
     use crate::{
         crypto::signer::MockSigner,
-        model::{
-            did::{Did, DidType, RelatedKey},
-            key::Key,
-        },
         provider::{
             did_method::provider::MockDidMethodProvider,
             key_algorithm::provider::MockKeyAlgorithmProvider,
@@ -69,34 +74,30 @@ mod test {
         service::error::ServiceError,
     };
     use mockall::predicate::*;
-    use time::OffsetDateTime;
-    use uuid::Uuid;
 
-    fn get_dummy_did() -> Did {
-        Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "issuer_did".to_string(),
-            did: "issuer_did_value".parse().unwrap(),
-            did_type: DidType::Remote,
-            did_method: "KEY".to_string(),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key: Key {
-                    id: Uuid::new_v4(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    public_key: b"public_key".to_vec(),
-                    name: "issuer_key".to_string(),
-                    key_reference: vec![],
-                    storage_type: "EPHEMERAL".to_string(),
-                    key_type: "EDDSA".to_string(),
-                    organisation: None,
+    fn get_dummy_did_document() -> DidDocumentDTO {
+        DidDocumentDTO {
+            context: vec!["https://www.w3.org/ns/did/v1".to_owned()],
+            id: DidValue::from_str("did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb").unwrap(),
+            verification_method: vec![
+                DidVerificationMethodDTO {
+                    id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
+                    r#type: "JsonWebKey2020".to_owned(),
+                    controller: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
+                    public_key_jwk: PublicKeyJwkDTO::Ec(
+                        PublicKeyJwkEllipticDataDTO {
+                            crv: "P-256".to_owned(),
+                            x: "AjDk2GBBiI_M6HvEmgfzXiVhJCWiVFqvoItknJgc-oEE".to_owned(),
+                            y: None,
+                        },
+                    ),
                 },
-            }]),
-            organisation: None,
-            deactivated: false,
+            ],
+            authentication: Some(vec!["did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned()]),
+            assertion_method: Some(vec!["did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned()]),
+            key_agreement: Some(vec!["did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned()]),
+            capability_invocation: Some(vec!["did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned()]),
+            capability_delegation: Some(vec!["did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned()]),
         }
     }
 
@@ -105,8 +106,8 @@ mod test {
         let mut did_method_provider = MockDidMethodProvider::default();
         did_method_provider
             .expect_resolve()
-            .times(1)
-            .returning(|_| Ok(get_dummy_did()));
+            .once()
+            .returning(|_| Ok(get_dummy_did_document()));
 
         let mut signer = MockSigner::default();
         signer
@@ -121,15 +122,32 @@ mod test {
 
         let signer = Arc::new(signer);
 
+        let mut key_alg = MockKeyAlgorithm::default();
+        key_alg
+            .expect_jwk_to_bytes()
+            .once()
+            .returning(|_| Ok(b"public_key".to_vec()));
+
+        let key_alg = Arc::new(key_alg);
+
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
         key_algorithm_provider
             .expect_get_signer()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "EDDSA");
+                assert_eq!(alg, "ES256");
                 true
             })
             .returning(move |_| Ok(signer.clone()));
+
+        key_algorithm_provider
+            .expect_get_key_algorithm()
+            .once()
+            .withf(move |alg| {
+                assert_eq!(alg, "ES256");
+                true
+            })
+            .returning(move |_| Ok(key_alg.clone()));
 
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -139,7 +157,7 @@ mod test {
         let result = verification
             .verify(
                 Some("issuer_did_value".parse().unwrap()),
-                "EDDSA",
+                "ES256",
                 "token",
                 b"signature",
             )
@@ -152,18 +170,10 @@ mod test {
         let mut did_method_provider = MockDidMethodProvider::default();
         did_method_provider
             .expect_resolve()
-            .times(1)
+            .once()
             .returning(|_| Err(ServiceError::Other("test-error".to_string())));
 
-        let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-        key_algorithm_provider
-            .expect_get_signer()
-            .once()
-            .withf(move |alg| {
-                assert_eq!(alg, "EDDSA");
-                true
-            })
-            .returning(move |_| Ok(Arc::new(MockSigner::default())));
+        let key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -186,8 +196,8 @@ mod test {
         let mut did_method_provider = MockDidMethodProvider::default();
         did_method_provider
             .expect_resolve()
-            .times(1)
-            .returning(|_| Ok(get_dummy_did()));
+            .once()
+            .returning(|_| Ok(get_dummy_did_document()));
 
         let mut signer = MockSigner::default();
         signer
@@ -196,15 +206,32 @@ mod test {
 
         let signer = Arc::new(signer);
 
+        let mut key_alg = MockKeyAlgorithm::default();
+        key_alg
+            .expect_jwk_to_bytes()
+            .once()
+            .returning(|_| Ok(b"public_key".to_vec()));
+
+        let key_alg = Arc::new(key_alg);
+
         let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
         key_algorithm_provider
             .expect_get_signer()
             .once()
             .withf(move |alg| {
-                assert_eq!(alg, "EDDSA");
+                assert_eq!(alg, "ES256");
                 true
             })
             .returning(move |_| Ok(signer.clone()));
+
+        key_algorithm_provider
+            .expect_get_key_algorithm()
+            .once()
+            .withf(move |alg| {
+                assert_eq!(alg, "ES256");
+                true
+            })
+            .returning(move |_| Ok(key_alg.clone()));
 
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -214,7 +241,7 @@ mod test {
         let result = verification
             .verify(
                 Some("issuer_did_value".parse().unwrap()),
-                "EDDSA",
+                "ES256",
                 "token",
                 b"signature",
             )

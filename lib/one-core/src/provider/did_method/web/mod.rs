@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
+use super::dto::DidDocumentDTO;
 use super::DidMethodError;
-use crate::model::did::Did;
 use crate::model::key::Key;
 
 use async_trait::async_trait;
@@ -9,11 +9,16 @@ use shared_types::{DidId, DidValue};
 use url::Url;
 
 pub struct WebDidMethod {
-    did_base_string: Option<String>,
+    //pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    pub did_base_string: Option<String>,
+    pub client: reqwest::Client,
 }
 
 impl WebDidMethod {
-    pub fn new(base_url: &Option<String>) -> Result<Self, DidMethodError> {
+    pub fn new(
+        base_url: &Option<String>,
+        //key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    ) -> Result<Self, DidMethodError> {
         let did_base_string = if let Some(base_url) = base_url {
             let url =
                 Url::parse(base_url).map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
@@ -34,7 +39,11 @@ impl WebDidMethod {
             None
         };
 
-        Ok(Self { did_base_string })
+        Ok(Self {
+            //key_algorithm_provider,
+            did_base_string,
+            client: reqwest::Client::new(),
+        })
     }
 }
 
@@ -65,8 +74,10 @@ impl super::DidMethod for WebDidMethod {
         todo!()
     }
 
-    async fn resolve(&self, _did: &DidValue) -> Result<Did, DidMethodError> {
-        todo!()
+    async fn resolve(&self, did_value: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
+        let url = did_value_to_url(did_value)?;
+
+        Ok(fetch_did_web_document(url, &self.client).await?)
     }
 
     fn update(&self) -> Result<(), DidMethodError> {
@@ -78,5 +89,64 @@ impl super::DidMethod for WebDidMethod {
     }
 }
 
+async fn fetch_did_web_document(
+    url: Url,
+    client: &reqwest::Client,
+) -> Result<DidDocumentDTO, DidMethodError> {
+    let response = client.get(url).send().await.map_err(|e| {
+        DidMethodError::ResolutionError(format!("Could not fetch did document: {e}"))
+    })?;
+
+    let response = response.error_for_status().map_err(|e| {
+        DidMethodError::ResolutionError(format!("Could not fetch did document: {e}"))
+    })?;
+
+    let response_value = response.text().await.map_err(|e| {
+        DidMethodError::ResolutionError(format!("Could not fetch did document: {e}"))
+    })?;
+
+    serde_json::from_str(&response_value)
+        .map_err(|e| DidMethodError::ResolutionError(format!("Could not fetch did document: {e}")))
+}
+
+fn did_value_to_url(did_value: &DidValue) -> Result<Url, DidMethodError> {
+    let core_value =
+        did_value
+            .as_str()
+            .strip_prefix("did:web:")
+            .ok_or(DidMethodError::ResolutionError(
+                "Incorrect did value".to_owned(),
+            ))?;
+
+    let mut path_parts = core_value.split(':');
+    let host = path_parts.next().ok_or(DidMethodError::ResolutionError(
+        "Missing host part in a did value".to_string(),
+    ))?;
+
+    // That's the only percent encoded character we expect here
+    let host = format!("https://{}", host.replace("%3A", ":"));
+
+    let mut url = Url::parse(&host).map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
+    url.set_scheme("https")
+        .map_err(|_| DidMethodError::ResolutionError("Could not set url scheme".to_string()))?;
+
+    let remaining_parts: Vec<&str> = path_parts.collect();
+
+    {
+        let mut segments = url
+            .path_segments_mut()
+            .map_err(|_| DidMethodError::ResolutionError("Error".to_string()))?;
+
+        if remaining_parts.is_empty() {
+            segments.push(".well-known");
+        } else {
+            segments.extend(remaining_parts);
+        }
+
+        segments.push("did.json");
+    }
+
+    Ok(url)
+}
 #[cfg(test)]
 mod test;

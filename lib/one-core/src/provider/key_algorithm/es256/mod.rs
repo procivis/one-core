@@ -1,13 +1,17 @@
 use did_key::{Fingerprint, Generate, KeyMaterial};
+use elliptic_curve::{generic_array::GenericArray, sec1::EncodedPoint};
 use serde::Deserialize;
 
 use super::KeyAlgorithm;
-use crate::provider::key_algorithm::GeneratedKey;
-use crate::service::did::dto::PublicKeyJwkResponseDTO;
+use crate::provider::did_method::dto::PublicKeyJwkEllipticDataDTO;
+use crate::provider::{did_method::dto::PublicKeyJwkDTO, key_algorithm::GeneratedKey};
 use crate::service::error::ServiceError;
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 pub struct Es256;
+
+#[cfg(test)]
+mod test;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,7 +49,7 @@ impl KeyAlgorithm for Es256 {
             private: key_pair.private_key_bytes(),
         }
     }
-    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkResponseDTO, ServiceError> {
+    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError> {
         let pk = p256::PublicKey::from_sec1_bytes(bytes)
             .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
         let encoded_point = pk.to_encoded_point(false);
@@ -55,8 +59,7 @@ impl KeyAlgorithm for Es256 {
         let y = encoded_point
             .y()
             .ok_or(ServiceError::KeyAlgorithmError("Y is missing".to_string()))?;
-        Ok(PublicKeyJwkResponseDTO {
-            kty: "EC".to_string(),
+        Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
             crv: "P-256".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(x)
                 .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?,
@@ -64,6 +67,30 @@ impl KeyAlgorithm for Es256 {
                 Base64UrlSafeNoPadding::encode_to_string(y)
                     .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?,
             ),
-        })
+        }))
+    }
+
+    fn jwk_to_bytes(&self, jwk: &PublicKeyJwkDTO) -> Result<Vec<u8>, ServiceError> {
+        if let PublicKeyJwkDTO::Ec(data) = jwk {
+            let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
+                .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
+            let y = Base64UrlSafeNoPadding::decode_to_vec(
+                data.y
+                    .as_ref()
+                    .ok_or(ServiceError::KeyAlgorithmError("Y is missing".to_string()))?,
+                None,
+            )
+            .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
+
+            let encoded_point = EncodedPoint::<p256::NistP256>::from_affine_coordinates(
+                GenericArray::from_slice(&x),
+                GenericArray::from_slice(&y),
+                true,
+            );
+
+            Ok(encoded_point.as_bytes().to_owned())
+        } else {
+            Err(ServiceError::IncorrectParameters)
+        }
     }
 }

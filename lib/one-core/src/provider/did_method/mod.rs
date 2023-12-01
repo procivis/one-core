@@ -7,7 +7,6 @@ use thiserror::Error;
 
 use crate::config::core_config::{self, DidConfig, KeyAlgorithmConfig};
 use crate::config::{ConfigError, ConfigValidationError};
-use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::web::WebDidMethod;
@@ -16,10 +15,11 @@ use crate::repository::error::DataLayerError;
 
 use super::key_algorithm::provider::KeyAlgorithmProvider;
 
+use self::dto::DidDocumentDTO;
 use self::key::DidKeyParams;
 
+pub mod dto;
 pub mod key;
-mod mapper;
 pub mod provider;
 pub mod web;
 pub mod x509;
@@ -53,7 +53,7 @@ pub trait DidMethod {
     ) -> Result<DidValue, DidMethodError>;
 
     fn check_authorization(&self) -> bool;
-    async fn resolve(&self, did: &DidValue) -> Result<Did, DidMethodError>;
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, DidMethodError>;
     fn update(&self) -> Result<(), DidMethodError>;
     fn can_be_deactivated(&self) -> bool;
 }

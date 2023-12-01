@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
+use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
@@ -84,6 +85,7 @@ pub(crate) async fn get_or_create_did(
         {
             Ok(did) => did,
             Err(DataLayerError::RecordNotFound) => {
+                let did_method = did_method_id_from_value(holder_did_value)?;
                 let organisation = organisation.as_ref().ok_or(ServiceError::MappingError(
                     "organisation is None".to_string(),
                 ))?;
@@ -94,7 +96,7 @@ pub(crate) async fn get_or_create_did(
                     name: "holder".to_string(),
                     organisation: Some(organisation.to_owned()),
                     did: holder_did_value.to_owned(),
-                    did_method: "KEY".to_string(),
+                    did_method,
                     did_type: DidType::Remote,
                     keys: None,
                     deactivated: false,
@@ -119,4 +121,34 @@ where
         None => serde_json::from_value(value).map_err(serde::de::Error::custom),
         Some(buffer) => serde_json::from_str(buffer).map_err(serde::de::Error::custom),
     }
+}
+
+pub(super) fn did_method_id_from_value(did_value: &DidValue) -> Result<String, ServiceError> {
+    let mut parts = did_value.as_str().splitn(3, ':');
+
+    let did_method = parts.nth(1).ok_or(ServiceError::ValidationError(
+        "Did method not found".to_string(),
+    ))?;
+    Ok(did_method.to_uppercase())
+}
+
+pub(super) fn did_from_did_document(
+    did_document: &DidDocumentDTO,
+    organisation: &Organisation,
+) -> Result<Did, ServiceError> {
+    let now = OffsetDateTime::now_utc();
+    let did_method = did_method_id_from_value(&did_document.id)?;
+
+    Ok(Did {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        name: did_document.id.to_string(),
+        did: did_document.id.clone(),
+        did_type: DidType::Remote,
+        did_method,
+        keys: None,
+        organisation: Some(organisation.to_owned()),
+        deactivated: false,
+    })
 }

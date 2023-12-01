@@ -2,6 +2,7 @@ use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
 use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
+use crate::provider::did_method::dto::PublicKeyJwkDTO;
 use crate::service::did::dto::{
     DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO,
 };
@@ -164,4 +165,28 @@ pub(super) fn map_key_to_verification_method(
         controller: did.clone(),
         public_key_jwk,
     })
+}
+
+impl TryFrom<PublicKeyJwkDTO> for PublicKeyJwkResponseDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: PublicKeyJwkDTO) -> Result<Self, Self::Error> {
+        match value {
+            PublicKeyJwkDTO::Ec(data) => Ok(PublicKeyJwkResponseDTO {
+                kty: "EC".to_string(),
+                crv: data.crv,
+                x: data.x,
+                y: data.y,
+            }),
+            PublicKeyJwkDTO::Okp(data) => Ok(PublicKeyJwkResponseDTO {
+                kty: "OKP".to_string(),
+                crv: data.crv,
+                x: data.x,
+                y: data.y,
+            }),
+            _ => Err(ServiceError::GeneralRuntimeError(
+                "Only EC and OKP did algorithms are supported.".to_string(),
+            )),
+        }
+    }
 }

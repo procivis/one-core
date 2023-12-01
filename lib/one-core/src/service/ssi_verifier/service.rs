@@ -5,11 +5,12 @@ use super::{
     SSIVerifierService,
 };
 use crate::{
+    common_mapper::did_from_did_document,
     model::{
         claim::Claim,
         claim_schema::{ClaimSchemaId, ClaimSchemaRelations},
         credential_schema::CredentialSchemaRelations,
-        did::{Did, DidRelations},
+        did::DidRelations,
         organisation::OrganisationRelations,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
@@ -188,8 +189,6 @@ impl SSIVerifierService {
             return Err(ServiceError::AlreadyExists);
         }
 
-        let now = OffsetDateTime::now_utc();
-
         let holder_did = match self
             .did_repository
             .get_did_by_value(holder_did_value, &DidRelations::default())
@@ -207,15 +206,11 @@ impl SSIVerifierService {
                         "organisation is None".to_string(),
                     ))?;
 
-                let resolved_did = did_method_provider.resolve(holder_did_value).await?;
+                let did_document = did_method_provider.resolve(holder_did_value).await?;
 
-                self.did_repository
-                    .create_did(Did {
-                        keys: None, // do not store (remote) keys
-                        organisation: Some(organisation),
-                        ..resolved_did.to_owned()
-                    })
-                    .await?;
+                let resolved_did = did_from_did_document(&did_document, &organisation)?;
+
+                self.did_repository.create_did(resolved_did.clone()).await?;
 
                 resolved_did
             }
@@ -227,6 +222,8 @@ impl SSIVerifierService {
         self.proof_repository
             .set_proof_holder_did(id, holder_did)
             .await?;
+
+        let now = OffsetDateTime::now_utc();
 
         self.proof_repository
             .set_proof_state(
