@@ -26,10 +26,10 @@ mod api_interaction_tests;
 #[path = "api/did/mod.rs"]
 mod api_did_tests;
 
-// SSI
-#[path = "api/ssi/get_did_web_document_tests.rs"]
-mod get_did_web_document_tests;
-
 //KEY
 #[path = "api/key/mod.rs"]
 mod api_key_tests;
+
+// SSI
+#[path = "api/ssi/mod.rs"]
+mod ssi_tests;

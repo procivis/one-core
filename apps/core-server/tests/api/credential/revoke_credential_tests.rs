@@ -40,7 +40,7 @@ async fn test_revoke_credential_success() {
     )
     .await;
 
-    fixtures::create_revocation_list(&db_conn, &did).await;
+    fixtures::create_revocation_list(&db_conn, &did, None).await;
     // WHEN
     let url = format!("{base_url}/api/credential/v1/{}/revoke", credential.id);
 
