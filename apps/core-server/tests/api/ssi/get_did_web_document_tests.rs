@@ -1,5 +1,4 @@
 use core_server::router::start_server;
-use httpmock::MockServer;
 use one_core::model::did::{DidType, KeyRole};
 use serde_json::Value;
 
@@ -8,8 +7,10 @@ use crate::{fixtures, utils};
 #[tokio::test]
 async fn test_get_did_web_document_es256_success() {
     // GIVEN
-    let mock_server = MockServer::start_async().await;
-    let config = fixtures::create_config(mock_server.base_url());
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+
+    let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
@@ -31,9 +32,6 @@ async fn test_get_did_web_document_es256_success() {
     .await;
 
     // WHEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
 
     let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
@@ -76,8 +74,10 @@ async fn test_get_did_web_document_es256_success() {
 #[tokio::test]
 async fn test_get_did_web_document_eddsa_success() {
     // GIVEN
-    let mock_server = MockServer::start_async().await;
-    let config = fixtures::create_config(mock_server.base_url());
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+
+    let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
@@ -99,9 +99,6 @@ async fn test_get_did_web_document_eddsa_success() {
     .await;
 
     // WHEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
 
     let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
@@ -141,16 +138,15 @@ async fn test_get_did_web_document_eddsa_success() {
 #[tokio::test]
 async fn test_get_did_web_document_wrong_did_method() {
     // GIVEN
-    let mock_server = MockServer::start_async().await;
-    let config = fixtures::create_config(mock_server.base_url());
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+
+    let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did_key(&db_conn, &organisation).await;
 
     // WHEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
 
     let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
