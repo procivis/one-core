@@ -342,14 +342,18 @@ pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> In
     interaction
 }
 
-pub async fn create_revocation_list(db_conn: &DbConn, issuer_did: &Did) -> RevocationList {
+pub async fn create_revocation_list(
+    db_conn: &DbConn,
+    issuer_did: &Did,
+    credentials: Option<&[u8]>,
+) -> RevocationList {
     let data_layer = DataLayer::build(db_conn.to_owned());
 
     let revocation_list = RevocationList {
         id: Default::default(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        credentials: vec![],
+        credentials: credentials.unwrap_or_default().to_owned(),
         issuer_did: Some(issuer_did.to_owned()),
     };
 

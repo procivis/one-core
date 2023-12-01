@@ -45,7 +45,7 @@ async fn test_revoke_check_success() {
     )
     .await;
 
-    fixtures::create_revocation_list(&db_conn, &did).await;
+    fixtures::create_revocation_list(&db_conn, &did, None).await;
 
     // Currently localhost:3000 in JWT
     let _revocation_list_mock = mock_server
