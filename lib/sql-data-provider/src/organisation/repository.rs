@@ -1,7 +1,7 @@
 use super::OrganisationProvider;
 use crate::{entity::organisation, mapper::to_data_layer_error};
 use one_core::{
-    common_mapper::vector_try_into,
+    common_mapper::iterable_try_into,
     model::organisation::{Organisation, OrganisationId, OrganisationRelations},
     repository::{error::DataLayerError, organisation_repository::OrganisationRepository},
 };
@@ -21,7 +21,7 @@ impl OrganisationRepository for OrganisationProvider {
                 .await
                 .map_err(to_data_layer_error)?;
 
-        Uuid::from_str(&organisation.last_insert_id).map_err(|_| DataLayerError::MappingError)
+        Ok(Uuid::from_str(&organisation.last_insert_id)?)
     }
 
     async fn get_organisation(
@@ -43,6 +43,6 @@ impl OrganisationRepository for OrganisationProvider {
             .await
             .map_err(to_data_layer_error)?;
 
-        vector_try_into(organisations)
+        iterable_try_into(organisations)
     }
 }

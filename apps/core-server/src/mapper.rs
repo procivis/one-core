@@ -1,4 +1,8 @@
 use crate::dto::common::{GetListQueryParams, GetListResponseRestDTO};
+use one_core::{
+    common_mapper::{convert_inner, iterable_try_into},
+    model::common::GetListResponse,
+};
 use serde::Serialize;
 use std::fmt;
 use thiserror::Error;
@@ -10,13 +14,13 @@ pub enum MapperError {
     CtCodecsError(#[from] ct_codecs::Error),
 }
 
-impl<T, K> From<one_core::model::common::GetListResponse<K>> for GetListResponseRestDTO<T>
+impl<T, K> From<GetListResponse<K>> for GetListResponseRestDTO<T>
 where
     T: From<K> + Clone + fmt::Debug + Serialize,
 {
-    fn from(value: one_core::model::common::GetListResponse<K>) -> Self {
+    fn from(value: GetListResponse<K>) -> Self {
         Self {
-            values: value.values.into_iter().map(|item| item.into()).collect(),
+            values: convert_inner(value.values),
             total_pages: value.total_pages,
             total_items: value.total_items,
         }
@@ -24,19 +28,14 @@ where
 }
 
 pub fn list_try_from<T, K>(
-    value: one_core::model::common::GetListResponse<K>,
+    value: GetListResponse<K>,
 ) -> Result<GetListResponseRestDTO<T>, MapperError>
 where
     T: TryFrom<K> + Clone + fmt::Debug + Serialize,
-    MapperError: From<<T as TryFrom<K>>::Error>,
+    MapperError: From<T::Error>,
 {
     Ok(GetListResponseRestDTO {
-        values: value
-            .values
-            .into_iter()
-            .map(|item| item.try_into())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(MapperError::from)?,
+        values: iterable_try_into(value.values)?,
         total_pages: value.total_pages,
         total_items: value.total_items,
     })
@@ -51,17 +50,10 @@ where
         Self {
             page: value.page,
             page_size: value.page_size,
-            sort: value.sort.map(|sort| sort.into()),
-            sort_direction: value.sort_direction.map(|dir| dir.into()),
+            sort: convert_inner(value.sort),
+            sort_direction: convert_inner(value.sort_direction),
             name: value.name,
-            exact: Some(
-                value
-                    .exact
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(Into::into)
-                    .collect(),
-            ),
+            exact: Some(convert_inner(value.exact.unwrap_or_default())),
             organisation_id: value.organisation_id,
         }
     }

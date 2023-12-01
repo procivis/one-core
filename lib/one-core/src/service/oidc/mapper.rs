@@ -77,8 +77,7 @@ pub(super) fn parse_access_token(access_token: &str) -> Result<InteractionId, Se
         splitted_token
             .next()
             .ok_or(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken))?,
-    )
-    .map_err(|_| ServiceError::MappingError("Not a uuid".to_string()))?;
+    )?;
     Ok(interaction_id)
 }
 

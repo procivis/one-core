@@ -9,7 +9,7 @@ use crate::{
 };
 use one_core::model::proof::UpdateProofRequest;
 use one_core::{
-    common_mapper::vector_into,
+    common_mapper::convert_inner,
     model::{
         claim::{Claim, ClaimId},
         did::Did,
@@ -130,8 +130,7 @@ impl ProofRepository for ProofProvider {
 
         let mut proof_states_map: HashMap<ProofId, Vec<ProofState>> = HashMap::new();
         for proof_state in proof_states {
-            let proof_id =
-                Uuid::from_str(&proof_state.proof_id).map_err(|_| DataLayerError::MappingError)?;
+            let proof_id = Uuid::from_str(&proof_state.proof_id)?;
             proof_states_map
                 .entry(proof_id)
                 .or_default()
@@ -332,8 +331,7 @@ impl ProofProvider {
 
         if let Some(proof_schema_relations) = &relations.schema {
             if let Some(proof_schema_id) = proof_model.proof_schema_id {
-                let proof_schema_id =
-                    Uuid::from_str(&proof_schema_id).map_err(|_| DataLayerError::MappingError)?;
+                let proof_schema_id = Uuid::from_str(&proof_schema_id)?;
                 proof.schema = Some(
                     self.proof_schema_repository
                         .get_proof_schema(&proof_schema_id, proof_schema_relations)
@@ -352,8 +350,7 @@ impl ProofProvider {
             let claim_ids = proof_claims
                 .iter()
                 .map(|item| Uuid::from_str(&item.claim_id))
-                .collect::<Result<Vec<ClaimId>, _>>()
-                .map_err(|_| DataLayerError::MappingError)?;
+                .collect::<Result<Vec<ClaimId>, _>>()?;
 
             proof.claims = if claim_ids.is_empty() {
                 Some(vec![])
@@ -401,14 +398,13 @@ impl ProofProvider {
                     DataLayerError::GeneralRuntimeError(e.to_string())
                 })?;
 
-            proof.state = Some(vector_into(proof_states));
+            proof.state = Some(convert_inner(proof_states));
         }
 
         if let (Some(interaction_relations), Some(interaction_id)) =
             (&relations.interaction, proof_model.interaction_id)
         {
-            let interaction_id =
-                Uuid::from_str(&interaction_id).map_err(|_| DataLayerError::MappingError)?;
+            let interaction_id = Uuid::from_str(&interaction_id)?;
             let interaction = self
                 .interaction_repository
                 .get_interaction(&interaction_id, interaction_relations)

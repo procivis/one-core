@@ -7,10 +7,11 @@ use crate::{
     },
 };
 use dto_mapper::From;
-use one_core::common_mapper::vector_into;
+use one_core::common_mapper::convert_inner;
 use one_core::service::credential::dto::CreateCredentialRequestDTO;
 use one_core::service::credential::dto::CredentialDetailResponseDTO;
 use one_core::service::credential::dto::CredentialListItemResponseDTO;
+use one_core::service::credential::dto::CredentialRequestClaimDTO;
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
 use one_core::service::credential::dto::CredentialStateEnum;
 use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
@@ -63,7 +64,7 @@ pub struct GetCredentialResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub schema: CredentialDetailSchemaResponseRestDTO,
     pub issuer_did: Option<DidValue>,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
 }
 
@@ -125,13 +126,15 @@ pub struct CreateCredentialRequestRestDTO {
     pub credential_schema_id: Uuid,
     pub issuer_did: Uuid,
     pub transport: String,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
+#[convert(into = CredentialRequestClaimDTO)]
 pub struct CredentialRequestClaimRestDTO {
+    #[convert(rename = "claim_schema_id")]
     pub claim_id: Uuid,
     pub value: String,
 }

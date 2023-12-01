@@ -28,5 +28,5 @@ impl TimestampFormat for OffsetDateTime {
 }
 
 pub fn into_uuid(input: &str) -> Result<Uuid, ServiceError> {
-    Uuid::parse_str(input).map_err(|e| ServiceError::MappingError(e.to_string()))
+    Uuid::parse_str(input).map_err(Into::into)
 }

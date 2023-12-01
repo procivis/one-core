@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use one_core::{
-    common_mapper::vector_try_into,
+    common_mapper::iterable_try_into,
     model::{
         claim_schema::ClaimSchemaId,
         credential_schema::{
@@ -84,7 +84,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
         }
 
-        Uuid::from_str(&credential_schema.id).map_err(|_| DataLayerError::MappingError)
+        Ok(Uuid::from_str(&credential_schema.id)?)
     }
 
     async fn delete_credential_schema(
@@ -127,7 +127,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .await
                 .map_err(to_data_layer_error)?;
 
-            let claim_schema_ids: Vec<ClaimSchemaId> = vector_try_into(models.clone())?;
+            let claim_schema_ids: Vec<ClaimSchemaId> = iterable_try_into(models.clone())?;
             let claim_schemas = self
                 .claim_schema_repository
                 .get_claim_schema_list(claim_schema_ids, claim_schema_relations)

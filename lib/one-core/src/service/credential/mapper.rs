@@ -33,7 +33,7 @@ impl TryFrom<Credential> for CredentialDetailResponseDTO {
             .state
             .ok_or(ServiceError::MappingError("state is None".to_string()))?;
         let latest_state = states
-            .get(0)
+            .first()
             .ok_or(ServiceError::MappingError(
                 "latest state not found".to_string(),
             ))?
@@ -125,7 +125,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             .state
             .ok_or(ServiceError::MappingError("state is None".to_string()))?;
         let latest_state = states
-            .get(0)
+            .first()
             .ok_or(ServiceError::MappingError(
                 "latest state not found".to_string(),
             ))?

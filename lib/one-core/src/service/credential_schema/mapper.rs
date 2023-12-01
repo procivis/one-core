@@ -1,3 +1,4 @@
+use crate::common_mapper::convert_inner;
 use crate::model::organisation::OrganisationId;
 use crate::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
 use crate::{
@@ -22,10 +23,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let claim_schemas: Vec<CredentialClaimSchemaDTO> = match value.claim_schemas {
-            None => vec![],
-            Some(claim_schemas) => claim_schemas.into_iter().map(|c| c.into()).collect(),
-        };
+        let claim_schemas = convert_inner(value.claim_schemas.unwrap_or_default());
 
         let organisation_id = match value.organisation {
             None => Err(ServiceError::MappingError(

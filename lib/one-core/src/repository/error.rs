@@ -21,3 +21,9 @@ pub enum DataLayerError {
     #[error("Other Data Layer error")]
     Other,
 }
+
+impl From<uuid::Error> for DataLayerError {
+    fn from(_: uuid::Error) -> Self {
+        Self::MappingError
+    }
+}

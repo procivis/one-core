@@ -1,5 +1,5 @@
 use crate::{
-    common_mapper::vector_try_into,
+    common_mapper::iterable_try_into,
     model::{
         did::Did,
         proof_schema::{ProofSchema, ProofSchemaClaim},
@@ -14,13 +14,9 @@ pub fn proof_verifier_to_connect_verifier_response(
     verifier_did: Did,
 ) -> Result<ConnectVerifierResponseDTO, ServiceError> {
     Ok(ConnectVerifierResponseDTO {
-        claims: vector_try_into(
-            proof_schema
-                .claim_schemas
-                .ok_or(ServiceError::MappingError(
-                    "claim_schemas is None".to_string(),
-                ))?,
-        )?,
+        claims: iterable_try_into(proof_schema.claim_schemas.ok_or(
+            ServiceError::MappingError("claim_schemas is None".to_string()),
+        )?)?,
         verifier_did: verifier_did.did,
     })
 }

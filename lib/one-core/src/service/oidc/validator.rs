@@ -224,7 +224,7 @@ pub(super) fn validate_claims(
         descriptor
             .constraints
             .fields
-            .get(0)
+            .first()
             .ok_or(ServiceError::OpenID4VCError(
                 OpenID4VCIError::InvalidRequest,
             ))?;

@@ -3,7 +3,7 @@ use one_core::service::oidc::dto::{DurationSeconds, OpenID4VCIError};
 
 impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
     fn from(value: OpenID4VCIError) -> Self {
-        OpenID4VCIErrorResponseRestDTO {
+        Self {
             error: value.into(),
         }
     }
@@ -11,6 +11,6 @@ impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
 
 impl From<DurationSeconds> for DurationSecondsRest {
     fn from(value: DurationSeconds) -> Self {
-        DurationSecondsRest(value.0)
+        Self(value.0)
     }
 }

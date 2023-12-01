@@ -18,7 +18,7 @@ pub(crate) fn throw_if_latest_credential_state_not_eq(
         .state
         .as_ref()
         .ok_or(ServiceError::MappingError("state is None".to_string()))?
-        .get(0)
+        .first()
         .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
 
     if latest_state.state != state {
@@ -35,7 +35,7 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
         .state
         .as_ref()
         .ok_or(ServiceError::MappingError("state is None".to_string()))?
-        .get(0)
+        .first()
         .ok_or(ServiceError::MappingError("state is missing".to_string()))?
         .to_owned();
 

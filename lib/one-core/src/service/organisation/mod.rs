@@ -6,8 +6,6 @@ pub mod dto;
 pub mod service;
 pub mod validator;
 
-pub(crate) mod mapper;
-
 #[derive(Clone)]
 pub struct OrganisationService {
     organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,

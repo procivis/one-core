@@ -25,7 +25,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             .state
             .ok_or(ServiceError::MappingError("state is None".to_string()))?;
         let latest_state = states
-            .get(0)
+            .first()
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
         let requested_date = states
             .iter()
@@ -184,11 +184,8 @@ impl TryFrom<ProofClaimSchema> for ProofSchemaClaim {
     type Error = ServiceError;
 
     fn try_from(value: ProofClaimSchema) -> Result<Self, Self::Error> {
-        let id =
-            Uuid::from_str(&value.id).map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
-        let credential_schema_id = Uuid::from_str(&value.credential_schema.id)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let id = Uuid::from_str(&value.id)?;
+        let credential_schema_id = Uuid::from_str(&value.credential_schema.id)?;
 
         Ok(Self {
             schema: ClaimSchema {

@@ -24,7 +24,7 @@ impl RevocationListProvider {
         .await?;
 
         Ok(RevocationList {
-            id: Uuid::from_str(&revocation_list.id).map_err(|_| DataLayerError::MappingError)?,
+            id: Uuid::from_str(&revocation_list.id)?,
             created_date: revocation_list.created_date,
             last_modified: revocation_list.last_modified,
             credentials: revocation_list.credentials,

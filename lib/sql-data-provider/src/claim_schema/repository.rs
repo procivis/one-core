@@ -1,4 +1,5 @@
 use one_core::{
+    common_mapper::convert_inner,
     model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
     repository::{claim_schema_repository::ClaimSchemaRepository, error::DataLayerError},
 };
@@ -13,8 +14,7 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
         &self,
         claim_schemas: Vec<ClaimSchema>,
     ) -> Result<(), DataLayerError> {
-        let models: Vec<claim_schema::ActiveModel> =
-            claim_schemas.into_iter().map(Into::into).collect();
+        let models: Vec<claim_schema::ActiveModel> = convert_inner(claim_schemas);
 
         claim_schema::Entity::insert_many(models)
             .exec(&self.db)

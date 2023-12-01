@@ -27,16 +27,11 @@ impl TryFrom<ProofListItemModel> for Proof {
     type Error = DataLayerError;
 
     fn try_from(value: ProofListItemModel) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
-        let schema_id =
-            Uuid::from_str(&value.schema_id).map_err(|_| DataLayerError::MappingError)?;
+        let id = Uuid::from_str(&value.id)?;
+        let schema_id = Uuid::from_str(&value.schema_id)?;
         let verifier_did_id = value
             .verifier_did_id
-            .map(|did_id| {
-                Uuid::from_str(&did_id)
-                    .map(DidId::from)
-                    .map_err(|_| DataLayerError::MappingError)
-            })
+            .map(|did_id| Uuid::from_str(&did_id).map(DidId::from))
             .transpose()?;
         let verifier_did = match verifier_did_id {
             None => None,
@@ -94,7 +89,7 @@ impl TryFrom<proof::Model> for Proof {
     type Error = DataLayerError;
 
     fn try_from(value: proof::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
+        let id = Uuid::from_str(&value.id)?;
 
         Ok(Self {
             id,

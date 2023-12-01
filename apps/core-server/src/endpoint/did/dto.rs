@@ -1,6 +1,10 @@
-use dto_mapper::From;
-use one_core::service::did::dto::{
-    CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO,
+use dto_mapper::{From, TryFrom};
+use one_core::{
+    common_mapper::iterable_try_into,
+    service::did::dto::{
+        CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO, DidResponseDTO,
+        DidResponseKeysDTO,
+    },
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue};
@@ -10,7 +14,7 @@ use uuid::Uuid;
 
 use crate::{
     dto::common::ListQueryParamsRest, endpoint::key::dto::KeyListItemResponseRestDTO,
-    serialize::front_time,
+    mapper::MapperError, serialize::front_time,
 };
 
 pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
@@ -47,34 +51,50 @@ pub struct DidListItemResponseRestDTO {
     pub deactivated: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryFrom)]
+#[try_from(T = DidResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
 pub struct DidResponseRestDTO {
+    #[try_from(infallible)]
     pub id: DidId,
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
+    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
+    #[try_from(infallible)]
     pub name: String,
+    #[try_from(infallible)]
     pub organisation_id: Uuid,
+    #[try_from(infallible)]
     pub did: DidValue,
+    #[try_from(infallible)]
     #[serde(rename = "type")]
     pub did_type: DidType,
+    #[try_from(infallible)]
     #[serde(rename = "method")]
     pub did_method: String,
     pub keys: DidResponseKeysRestDTO,
+    #[try_from(infallible)]
     pub deactivated: bool,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, TryFrom)]
+#[try_from(T = DidResponseKeysDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
 pub struct DidResponseKeysRestDTO {
+    #[try_from(with_fn = iterable_try_into)]
     pub authentication: Vec<KeyListItemResponseRestDTO>,
+    #[try_from(with_fn = iterable_try_into)]
     pub assertion: Vec<KeyListItemResponseRestDTO>,
+    #[try_from(with_fn = iterable_try_into)]
     pub key_agreement: Vec<KeyListItemResponseRestDTO>,
+    #[try_from(with_fn = iterable_try_into)]
     pub capability_invocation: Vec<KeyListItemResponseRestDTO>,
+    #[try_from(with_fn = iterable_try_into)]
     pub capability_delegation: Vec<KeyListItemResponseRestDTO>,
 }
 

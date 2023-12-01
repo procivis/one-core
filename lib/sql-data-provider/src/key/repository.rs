@@ -21,8 +21,7 @@ impl KeyProvider {
         match &organisation_relations {
             None => Ok(None),
             Some(organisation_relations) => {
-                let organisation_id = Uuid::from_str(&key.organisation_id)
-                    .map_err(|_| DataLayerError::MappingError)?;
+                let organisation_id = Uuid::from_str(&key.organisation_id)?;
                 Ok(Some(
                     self.organisation_repository
                         .get_organisation(&organisation_id, organisation_relations)

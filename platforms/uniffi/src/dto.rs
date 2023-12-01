@@ -1,22 +1,33 @@
-use crate::error::NativeKeyStorageError;
-use dto_mapper::From;
+use crate::mapper::map_to_string;
+use crate::utils::TimestampFormat;
+use crate::{error::NativeKeyStorageError, mapper::map_to_timestamp};
+use dto_mapper::{From, TryInto};
+use one_core::service::credential::dto::CredentialDetailResponseDTO;
+use one_core::service::error::ServiceError;
+use one_core::service::proof::dto::ProofDetailResponseDTO;
+use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
-    common_mapper::vector_into,
+    common_mapper::convert_inner,
     model::did::DidType,
     provider::{
         key_storage::GeneratedKey,
         transport_protocol::dto::{
-            PresentationDefinitionRequestGroupResponseDTO,
+            PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
             PresentationDefinitionRequestedCredentialResponseDTO,
             PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
             PresentationDefinitionRuleTypeEnum,
         },
     },
-    service::credential::dto::{
-        CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
+    service::{
+        credential::dto::{
+            CredentialListItemResponseDTO, CredentialRevocationCheckResponseDTO,
+            CredentialStateEnum, GetCredentialListResponseDTO,
+        },
+        credential_schema::dto::CredentialSchemaListItemResponseDTO,
     },
 };
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(From)]
 #[convert(from = "CredentialStateEnum")]
@@ -41,38 +52,60 @@ pub struct ListQueryBindingDTO {
 #[derive(From)]
 #[convert(from = "GetCredentialListResponseDTO")]
 pub struct CredentialListBindingDTO {
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub values: Vec<CredentialListItemBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
 }
 
+#[derive(From)]
+#[convert(from = CredentialDetailResponseDTO)]
 pub struct CredentialDetailBindingDTO {
+    #[convert(with_fn_ref = "ToString::to_string")]
     pub id: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub issuance_date: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
+    #[convert(with_fn = map_to_timestamp)]
     pub revocation_date: Option<String>,
+    #[convert(with_fn = map_to_string)]
     pub issuer_did: Option<String>,
     pub state: CredentialStateBindingEnum,
+    pub schema: CredentialSchemaBindingDTO,
+    #[convert(with_fn = convert_inner)]
     pub claims: Vec<ClaimBindingDTO>,
-    pub schema: CredentialSchemaBindingDTO,
 }
 
+#[derive(From)]
+#[convert(from = CredentialListItemResponseDTO)]
 pub struct CredentialListItemBindingDTO {
+    #[convert(with_fn_ref = "ToString::to_string")]
     pub id: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub issuance_date: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
+    #[convert(with_fn = map_to_timestamp)]
     pub revocation_date: Option<String>,
+    #[convert(with_fn = map_to_string)]
     pub issuer_did: Option<String>,
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
 }
 
+#[derive(From)]
+#[convert(from = CredentialSchemaListItemResponseDTO)]
 pub struct CredentialSchemaBindingDTO {
+    #[convert(with_fn_ref = "ToString::to_string")]
     pub id: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
     pub name: String,
     pub format: String,
@@ -97,11 +130,18 @@ pub enum HandleInvitationResponseBindingEnum {
     },
 }
 
+#[derive(From)]
+#[convert(from = ProofDetailResponseDTO)]
 pub struct ProofRequestBindingDTO {
+    #[convert(with_fn_ref = "ToString::to_string")]
     pub id: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
+    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
+    #[convert(with_fn = convert_inner)]
     pub claims: Vec<ProofRequestClaimBindingDTO>,
+    #[convert(with_fn = map_to_string)]
     pub verifier_did: Option<String>,
     pub transport: String,
 }
@@ -114,15 +154,19 @@ pub struct ProofRequestClaimBindingDTO {
     pub credential_schema: CredentialSchemaBindingDTO,
 }
 
+#[derive(TryInto)]
+#[try_into(T = PresentationSubmitCredentialRequestDTO, Error = ServiceError)]
 pub struct PresentationSubmitCredentialRequestBindingDTO {
+    #[try_into(with_fn_ref = "uuid::Uuid::from_str")]
     pub credential_id: String,
+    #[try_into(infallible)]
     pub submit_claims: Vec<String>,
 }
 
 #[derive(From)]
 #[convert(from = "PresentationDefinitionResponseDTO")]
 pub struct PresentationDefinitionBindingDTO {
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupBindingDTO>,
 }
 
@@ -133,7 +177,7 @@ pub struct PresentationDefinitionRequestGroupBindingDTO {
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub rule: PresentationDefinitionRuleBindingDTO,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialBindingDTO>,
 }
 
@@ -143,16 +187,19 @@ pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub fields: Vec<PresentationDefinitionFieldBindingDTO>,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
 }
 
+#[derive(From)]
+#[convert(from = PresentationDefinitionFieldDTO)]
 pub struct PresentationDefinitionFieldBindingDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
+    #[convert(unwrap_or = true)]
     pub required: bool,
     pub key_map: HashMap<String, String>,
 }

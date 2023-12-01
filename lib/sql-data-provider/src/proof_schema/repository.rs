@@ -91,8 +91,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         }
 
         if let Some(organisation_relations) = &relations.organisation {
-            let organisation_id =
-                Uuid::from_str(&organisation_id).map_err(|_| DataLayerError::MappingError)?;
+            let organisation_id = Uuid::from_str(&organisation_id)?;
 
             proof_schema.organisation = Some(
                 self.organisation_repository
@@ -161,8 +160,7 @@ impl ProofSchemaProvider {
         credential_schema_id: String,
         credential_schema_relations: &CredentialSchemaRelations,
     ) -> Result<CredentialSchema, DataLayerError> {
-        let credential_schema_id =
-            Uuid::from_str(&credential_schema_id).map_err(|_| DataLayerError::MappingError)?;
+        let credential_schema_id = Uuid::from_str(&credential_schema_id)?;
 
         self.credential_schema_repository
             .get_credential_schema(&credential_schema_id, credential_schema_relations)
@@ -206,8 +204,7 @@ impl ProofSchemaProvider {
         let claim_schema_ids = proof_schema_claims
             .iter()
             .map(|item| Uuid::from_str(&item.id))
-            .collect::<Result<Vec<ClaimSchemaId>, _>>()
-            .map_err(|_| DataLayerError::MappingError)?;
+            .collect::<Result<Vec<ClaimSchemaId>, _>>()?;
 
         let claim_schemas = self
             .claim_schema_repository

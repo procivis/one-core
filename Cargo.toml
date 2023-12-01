@@ -17,40 +17,41 @@ members = [
 ]
 
 [workspace.dependencies]
-axum = { version = "0.6.19", features = ["macros", "headers"] }
-ct-codecs = "1.1.1"
-dto_mapper = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.2" }
+axum = { version = "0.6", features = ["macros", "headers"] }
+ct-codecs = { version = "1.1" }
+dto_mapper = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.3" }
 httpmock = { version = "0.6" }
-mockall = "0.11"
-reqwest = { version = "0.11.18", default-features = false, features = [
-    "rustls-tls",
-    "rustls-tls-native-roots",
-    "json",
+mockall = { version = "0.11" }
+reqwest = { version = "0.11", default-features = false, features = [
+  "rustls-tls",
+  "rustls-tls-native-roots",
+  "json",
 ] }
-serde = "1.0"
-serde_json = "1"
-serde_qs = "0.12.0"
-serde_urlencoded = "0.7"
+serde = { version = "1.0" }
+serde_json = { version = "1.0" }
+serde_qs = { version = "0.12" }
+serde_urlencoded = { version = "0.7" }
 strum = { version = "0.25", features = ["derive"] }
-shadow-rs = "0.24.0"
+shadow-rs = { version = "0.24" }
 time = { version = "0.3", features = ["macros", "serde"] }
-tracing = "0.1"
+tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
   "fmt",
   "json",
 ] }
-uuid = { version = "1", features = ["v4", "serde"] }
-validator = { version = "0.16.0", features = ["derive"] }
-uniffi = { version = "0.25.2", features = ["cli"] }
-thiserror = "1.0"
-tokio = "1.26"
-figment = { version = "0.10.10", features = ["env"] }
-url = { version = "2.4", features = ["serde"] }
-utoipa = { version = "4.0", default-features = false }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+validator = { version = "0.16", features = ["derive"] }
+uniffi = { version = "0.25", features = ["cli"] }
+thiserror = { version = "1.0" }
+tokio = { version = "1.34" }
+figment = { version = "0.10", features = ["env"] }
+url = { version = "2.5", features = ["serde"] }
+utoipa = { version = "4.1", default-features = false }
 sea-orm = { version = "0.12", default-features = false }
 elliptic-curve = { version = "0.13.8" }
 p256 = { version = "0.13.2", features = ["arithmetic"] }
+fmap = { version = "0.8" }
 
 [workspace.lints.clippy]
 redundant_clone = "warn"

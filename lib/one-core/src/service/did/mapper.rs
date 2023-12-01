@@ -7,7 +7,7 @@ use crate::service::did::dto::{
     DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO,
 };
 use crate::{
-    common_mapper::vector_into,
+    common_mapper::convert_inner,
     model::{
         did::{Did, GetDidList, KeyRole, RelatedKey},
         key::{Key, KeyId},
@@ -58,7 +58,7 @@ impl TryFrom<Did> for DidResponseDTO {
 impl From<GetDidList> for GetDidListResponseDTO {
     fn from(value: GetDidList) -> Self {
         Self {
-            values: vector_into(value.values),
+            values: convert_inner(value.values),
             total_pages: value.total_pages,
             total_items: value.total_items,
         }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use one_core::{model::claim_schema::ClaimSchema, repository::error::DataLayerError};
 use sea_orm::Set;
@@ -15,21 +15,6 @@ impl From<ClaimSchema> for claim_schema::ActiveModel {
             key: Set(value.key),
             datatype: Set(value.data_type),
         }
-    }
-}
-
-impl TryFrom<claim_schema::Model> for ClaimSchema {
-    type Error = DataLayerError;
-
-    fn try_from(value: claim_schema::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
-        Ok(Self {
-            id,
-            key: value.key,
-            data_type: value.datatype,
-            created_date: value.created_date,
-            last_modified: value.last_modified,
-        })
     }
 }
 
