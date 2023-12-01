@@ -1,4 +1,4 @@
-image: rust:1.74.0-slim-buster
+image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.74.0
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -125,8 +125,6 @@ build:
 tests:
   stage: test
   script:
-    - apt-get update && apt-get install pkg-config libssl-dev -y
-    - cargo install cargo-tarpaulin
     - cargo tarpaulin --ignore-tests --all-features --release --out xml
   coverage: '/^\d+.\d+% coverage/'
   artifacts:
@@ -141,8 +139,6 @@ tests:
 linter:clippy:
   stage: test
   script:
-    - apt-get update && apt-get install pkg-config libssl-dev -y
-    - rustup component add clippy
     - cargo clippy --all-targets -- -D warnings
     - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
     - cargo clippy --message-format=json &> report.json
@@ -154,13 +150,11 @@ linter:clippy:
 linter:rustfmt:
   stage: test
   script:
-    - rustup component add rustfmt
     - cargo fmt --all -- --check
 
 linter:dependencies:
   stage: test
   script:
-    - cargo install --locked cargo-deny
     - cargo deny check
   allow_failure: true
 
@@ -193,7 +187,6 @@ publish:
 
 bitrise_ios_sdk:
   stage: sdk_build
-  image: registry.gitlab.procivis.ch/procivis/one/one-operations/bitrise-builder:0.1.0
   needs:
     - build
     - tests
@@ -218,12 +211,9 @@ bitrise_ios_sdk:
     expire_in: 10 days
 
 build_android_sdk:
-  image: registry.gitlab.procivis.ch/procivis/one/one-operations/rust-android-builder:0.3.0
   services:
     - docker:dind
   stage: sdk_build
-  variables:
-    CROSS_DOCKER_IN_DOCKER: "true"
   needs:
     - build
     - tests
