@@ -88,3 +88,9 @@ impl From<FormatError> for ServiceError {
         }
     }
 }
+
+impl From<uuid::Error> for ServiceError {
+    fn from(value: uuid::Error) -> Self {
+        ServiceError::MappingError(value.to_string())
+    }
+}

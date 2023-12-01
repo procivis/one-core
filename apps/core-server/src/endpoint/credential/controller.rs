@@ -2,8 +2,6 @@ use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 
-use one_core::common_mapper::vector_into;
-use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
 use uuid::Uuid;
 
 use one_core::service::error::ServiceError;
@@ -250,10 +248,12 @@ pub(crate) async fn revocation_check(
     match result {
         Ok(values) => (
             StatusCode::OK,
-            Json(vector_into::<
-                CredentialRevocationCheckResponseRestDTO,
-                CredentialRevocationCheckResponseDTO,
-            >(values)),
+            Json(
+                values
+                    .into_iter()
+                    .map(Into::<CredentialRevocationCheckResponseRestDTO>::into)
+                    .collect::<Vec<_>>(),
+            ),
         )
             .into_response(),
         Err(error) => match error {

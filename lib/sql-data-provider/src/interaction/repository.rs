@@ -20,7 +20,7 @@ impl InteractionRepository for InteractionProvider {
             .await
             .map_err(to_data_layer_error)?;
 
-        Uuid::from_str(&interaction.id).map_err(|_| DataLayerError::MappingError)
+        Ok(Uuid::from_str(&interaction.id)?)
     }
 
     async fn update_interaction(&self, request: Interaction) -> Result<(), DataLayerError> {

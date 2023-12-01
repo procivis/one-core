@@ -25,11 +25,10 @@ impl DidProvider {
         model: did::Model,
         relations: &DidRelations,
     ) -> Result<Did, DataLayerError> {
-        let mut result: Did = model.clone().try_into()?;
+        let mut result: Did = model.clone().into();
 
         if let Some(organisation_relations) = &relations.organisation {
-            let organisation_id =
-                Uuid::from_str(&model.organisation_id).map_err(|_| DataLayerError::MappingError)?;
+            let organisation_id = Uuid::from_str(&model.organisation_id)?;
 
             result.organisation = Some(
                 self.organisation_repository
@@ -48,8 +47,7 @@ impl DidProvider {
             let mut related_keys: Vec<RelatedKey> = vec![];
             let mut key_map: HashMap<KeyId, Key> = HashMap::default();
             for key_did_model in key_dids {
-                let key_id = Uuid::from_str(&key_did_model.key_id)
-                    .map_err(|_| DataLayerError::MappingError)?;
+                let key_id = Uuid::from_str(&key_did_model.key_id)?;
                 let key = if let Some(key) = key_map.get(&key_id) {
                     key.to_owned()
                 } else {
@@ -118,7 +116,7 @@ impl DidRepository for DidProvider {
             .await
             .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
 
-        create_list_response(dids, limit, items_count)
+        Ok(create_list_response(dids, limit, items_count))
     }
 
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError> {

@@ -4,7 +4,7 @@ use super::dto::{
 use crate::model::common::ExactColumn;
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 use crate::{
-    common_mapper::vector_try_into,
+    common_mapper::iterable_try_into,
     model::{
         organisation::Organisation,
         organisation::OrganisationId,
@@ -31,7 +31,7 @@ impl TryFrom<ProofSchema> for GetProofSchemaResponseDTO {
                 ))?
                 .id,
             expire_duration: value.expire_duration,
-            claim_schemas: vector_try_into(value.claim_schemas.ok_or(
+            claim_schemas: iterable_try_into(value.claim_schemas.ok_or(
                 ServiceError::MappingError("claim_schemas is None".to_string()),
             )?)?,
         })

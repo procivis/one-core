@@ -226,7 +226,7 @@ impl CredentialService {
                 .state
                 .as_ref()
                 .ok_or(ServiceError::MappingError("state is None".to_string()))?
-                .get(0)
+                .first()
                 .ok_or(ServiceError::MappingError(
                     "latest state not found".to_string(),
                 ))?
@@ -405,7 +405,7 @@ impl CredentialService {
             .as_ref()
             .ok_or(ServiceError::MappingError("state is None".to_string()))?;
         let latest_state = credential_states
-            .get(0)
+            .first()
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?
             .state
             .clone();

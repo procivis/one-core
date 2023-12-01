@@ -2,10 +2,11 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    dto::GetOrganisationDetailsResponseDTO, mapper::organisations_to_response,
-    validator::organisation_already_exists, OrganisationService,
+    dto::GetOrganisationDetailsResponseDTO, validator::organisation_already_exists,
+    OrganisationService,
 };
 use crate::{
+    common_mapper::convert_inner,
     model::organisation::{Organisation, OrganisationId, OrganisationRelations},
     service::error::ServiceError,
 };
@@ -15,13 +16,8 @@ impl OrganisationService {
     pub async fn get_organisation_list(
         &self,
     ) -> Result<Vec<GetOrganisationDetailsResponseDTO>, ServiceError> {
-        let organisations = self
-            .organisation_repository
-            .get_organisation_list()
-            .await
-            .map_err(ServiceError::from)?;
-
-        Ok(organisations_to_response(organisations))
+        let organisations = self.organisation_repository.get_organisation_list().await?;
+        Ok(convert_inner(organisations))
     }
 
     /// Returns details of an organisation
@@ -36,8 +32,7 @@ impl OrganisationService {
         let result = self
             .organisation_repository
             .get_organisation(id, &OrganisationRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         Ok(result.into())
     }
@@ -71,8 +66,7 @@ impl OrganisationService {
         let uuid = self
             .organisation_repository
             .create_organisation(request)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         Ok(uuid)
     }

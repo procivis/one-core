@@ -11,7 +11,7 @@ use crate::{
     list_query::SelectWithListQuery,
 };
 use one_core::{
-    common_mapper::vector_into,
+    common_mapper::convert_inner,
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
@@ -87,7 +87,7 @@ async fn get_claims(
         .await
         .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
         .into_iter()
-        .map(|claim| Uuid::from_str(&claim.claim_id).map_err(|_| DataLayerError::MappingError))
+        .map(|claim| Uuid::from_str(&claim.claim_id))
         .collect::<Result<Vec<_>, _>>()?;
 
     claim_repository.get_claim_list(ids, relations).await
@@ -140,12 +140,11 @@ impl CredentialProvider {
                         DataLayerError::GeneralRuntimeError(e.to_string())
                     })?;
 
-                Some(vector_into(credential_states))
+                Some(convert_inner(credential_states))
             }
         };
 
-        let schema_id = Uuid::from_str(&credential.credential_schema_id)
-            .map_err(|_| DataLayerError::MappingError)?;
+        let schema_id = Uuid::from_str(&credential.credential_schema_id)?;
         let schema = get_credential_schema(
             &schema_id,
             &relations.schema.to_owned(),
@@ -171,8 +170,7 @@ impl CredentialProvider {
             match &credential.interaction_id {
                 None => None,
                 Some(interaction_id) => {
-                    let interaction_id =
-                        Uuid::from_str(interaction_id).map_err(|_| DataLayerError::MappingError)?;
+                    let interaction_id = Uuid::from_str(interaction_id)?;
                     Some(
                         self.interaction_repository
                             .get_interaction(&interaction_id, interaction_relations)
@@ -188,8 +186,7 @@ impl CredentialProvider {
             match &credential.revocation_list_id {
                 None => None,
                 Some(revocation_list_id) => {
-                    let revocation_list_id = Uuid::from_str(revocation_list_id)
-                        .map_err(|_| DataLayerError::MappingError)?;
+                    let revocation_list_id = Uuid::from_str(revocation_list_id)?;
                     Some(
                         self.revocation_list_repository
                             .get_revocation_list(&revocation_list_id, revocation_list_relations)
@@ -205,8 +202,7 @@ impl CredentialProvider {
             match &credential.key_id {
                 None => None,
                 Some(key_id) => {
-                    let key_id =
-                        Uuid::from_str(key_id).map_err(|_| DataLayerError::MappingError)?;
+                    let key_id = Uuid::from_str(key_id)?;
                     Some(self.key_repository.get_key(&key_id, key_relations).await?)
                 }
             }

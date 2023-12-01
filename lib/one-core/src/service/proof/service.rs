@@ -238,7 +238,7 @@ impl ProofService {
             .as_ref()
             .ok_or(ServiceError::MappingError("state is None".to_string()))?;
         let latest_state = proof_states
-            .get(0)
+            .first()
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?
             .state
             .to_owned();

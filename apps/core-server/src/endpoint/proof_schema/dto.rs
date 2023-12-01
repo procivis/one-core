@@ -1,5 +1,5 @@
 use dto_mapper::From;
-use one_core::common_mapper::vector_into;
+use one_core::common_mapper::convert_inner;
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
     GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
@@ -25,7 +25,7 @@ pub struct CreateProofSchemaRequestRestDTO {
     pub name: String,
     pub organisation_id: Uuid,
     pub expire_duration: u32,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     #[validate(length(min = 1))]
     pub claim_schemas: Vec<ClaimProofSchemaRequestRestDTO>,
 }
@@ -79,7 +79,7 @@ pub struct GetProofSchemaResponseRestDTO {
     pub name: String,
     pub expire_duration: u32,
     pub organisation_id: Uuid,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
 }
 

@@ -23,7 +23,7 @@ impl TryFrom<interaction::Model> for Interaction {
     type Error = DataLayerError;
 
     fn try_from(value: interaction::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
+        let id = Uuid::from_str(&value.id)?;
         let host = value
             .host
             .map(|host| Url::parse(&host).map_err(|_| DataLayerError::MappingError))

@@ -23,7 +23,6 @@ use crate::model::proof_schema::{
     ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 
-use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
@@ -146,7 +145,10 @@ impl OIDCService {
             return Err(ServiceError::NotFound);
         }
 
-        let credential = credentials.get(0).ok_or(ServiceError::NotFound)?.to_owned();
+        let credential = credentials
+            .first()
+            .ok_or(ServiceError::NotFound)?
+            .to_owned();
 
         let holder_did = if request.proof.proof_type == "jwt" {
             let jwt = OpenID4VCIProofJWTFormatter::verify_proof(&request.proof.jwt).await?;
@@ -204,8 +206,7 @@ impl OIDCService {
             .await
             .map_err(ServiceError::from)?;
 
-        let interaction_id = Uuid::from_str(&request.pre_authorized_code)
-            .map_err(|_| DataLayerError::MappingError)?;
+        let interaction_id = Uuid::from_str(&request.pre_authorized_code)?;
 
         let credentials = self
             .credential_repository
@@ -226,7 +227,7 @@ impl OIDCService {
         let now = OffsetDateTime::now_utc();
 
         let mut interaction = credentials
-            .get(0)
+            .first()
             .ok_or(ServiceError::MappingError("credentials none".to_string()))?
             .interaction
             .clone()

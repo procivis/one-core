@@ -29,7 +29,7 @@ impl TryFrom<claim::Model> for Claim {
     type Error = DataLayerError;
 
     fn try_from(value: claim::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
+        let id = Uuid::from_str(&value.id)?;
         Ok(Self {
             id,
             value: value.value,

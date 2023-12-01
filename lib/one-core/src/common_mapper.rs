@@ -1,5 +1,7 @@
+use std::iter::IntoIterator;
 use std::sync::Arc;
 
+use fmap::Functor;
 use serde::{Deserialize, Deserializer};
 use shared_types::{DidId, DidValue};
 use time::{Duration, OffsetDateTime};
@@ -14,32 +16,36 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::error::DataLayerError;
 use crate::{model::common::GetListResponse, service::error::ServiceError};
 
-pub fn vector_into<T, F: Into<T>>(input: Vec<F>) -> Vec<T> {
-    input.into_iter().map(|item| item.into()).collect()
+pub fn convert_inner<'a, T, A>(outer: T) -> T::Mapped
+where
+    T: Functor<'a, A>,
+    T::Inner: Into<A>,
+{
+    outer.fmap(Into::into)
 }
 
-pub fn opt_vector_into<T, F: Into<T>>(input: Option<Vec<F>>) -> Option<Vec<T>> {
-    input.map(vector_into)
+pub fn convert_inner_of_inner<'a, T, K, A>(outer: T) -> T::Mapped
+where
+    T: Functor<'a, K>,
+    T::Inner: Functor<'a, A, Mapped = K>,
+    <T::Inner as Functor<'a, A>>::Inner: Into<A>,
+    A: 'a,
+{
+    outer.fmap(|val| val.fmap(Into::into))
 }
 
-pub fn vector_try_into<T, F: TryInto<T>>(
-    input: Vec<F>,
-) -> Result<Vec<T>, <F as TryInto<T>>::Error> {
+pub fn iterable_try_into<T, C, R>(input: C) -> Result<R, <C::Item as TryInto<T>>::Error>
+where
+    C: IntoIterator,
+    C::Item: TryInto<T>,
+    R: FromIterator<T>,
+{
     input.into_iter().map(|item| item.try_into()).collect()
-}
-
-// not needed for now, uncomment if necessary
-// pub fn vector_ref_into<T, F: Into<T> + Clone>(input: &[F]) -> Vec<T> {
-//     input.iter().map(|item| item.clone().into()).collect()
-// }
-
-pub fn option_into<U, T: Into<U>>(o: Option<T>) -> Option<U> {
-    o.map(Into::into)
 }
 
 pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListResponse<T> {
     GetListResponse::<T> {
-        values: vector_into(input.values),
+        values: convert_inner(input.values),
         total_pages: input.total_pages,
         total_items: input.total_items,
     }
@@ -47,9 +53,9 @@ pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListRe
 
 pub fn list_response_try_into<T, F: TryInto<T>>(
     input: GetListResponse<F>,
-) -> Result<GetListResponse<T>, <F as TryInto<T>>::Error> {
+) -> Result<GetListResponse<T>, F::Error> {
     Ok(GetListResponse::<T> {
-        values: vector_try_into(input.values)?,
+        values: iterable_try_into(input.values)?,
         total_pages: input.total_pages,
         total_items: input.total_items,
     })

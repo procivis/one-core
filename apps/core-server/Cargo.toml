@@ -45,13 +45,13 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 utoipa = { workspace = true, features = ["uuid", "axum_extras", "url"] }
 utoipa-swagger-ui = { version = "4.0.0", features = ["axum"] }
 serde_with = { version = "3.4.0", features = ["json"] }
-sentry = { version = "0.31.7", default-features = false, features = [
+sentry = { version = "0.32", default-features = false, features = [
     "backtrace",
     "panic",
     "rustls",
     "reqwest",
 ] }
-sentry-tracing = "0.31.7"
+sentry-tracing = { version = "0.32" }
 prometheus = { version = "0.13", features = ["process"] }
 
 

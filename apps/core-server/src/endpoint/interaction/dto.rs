@@ -1,4 +1,8 @@
-use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
+use dto_mapper::From;
+use one_core::common_mapper::convert_inner;
+use one_core::service::ssi_holder::dto::{
+    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
+};
 use serde::{Deserialize, Serialize};
 use shared_types::DidId;
 use std::collections::HashMap;
@@ -40,10 +44,12 @@ pub struct PresentationRejectRequestRestDTO {
     pub interaction_id: Uuid,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = PresentationSubmitRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationSubmitRequestRestDTO {
     pub interaction_id: Uuid,
+    #[convert(with_fn = convert_inner)]
     pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestRestDTO>,
 }
 

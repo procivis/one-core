@@ -232,7 +232,7 @@ impl StatusList2021 {
                     .ok_or(ServiceError::MappingError("state is None".to_string()))?;
 
                 match states
-                    .get(0)
+                    .first()
                     .ok_or(ServiceError::MappingError(
                         "latest state not found".to_string(),
                     ))?

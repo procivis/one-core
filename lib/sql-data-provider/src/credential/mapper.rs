@@ -44,9 +44,9 @@ pub(super) fn get_credential_state_active_model(
 
 impl TryFrom<entity::credential::Model> for Credential {
     type Error = DataLayerError;
+
     fn try_from(credential: entity::credential::Model) -> Result<Self, Self::Error> {
-        let credential_id =
-            Uuid::from_str(&credential.id).map_err(|_| DataLayerError::MappingError)?;
+        let credential_id = Uuid::from_str(&credential.id)?;
 
         Ok(Self {
             id: credential_id,

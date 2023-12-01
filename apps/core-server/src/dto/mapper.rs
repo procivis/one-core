@@ -1,7 +1,10 @@
 use crate::dto::common::ListQueryParamsRest;
-use one_core::model::{
-    list_filter::{ListFilterCondition, ListFilterValue},
-    list_query::{ListPagination, ListQuery, ListSorting},
+use one_core::{
+    common_mapper::convert_inner,
+    model::{
+        list_filter::{ListFilterCondition, ListFilterValue},
+        list_query::{ListPagination, ListQuery, ListSorting},
+    },
 };
 use serde::Deserialize;
 use utoipa::{openapi::path::ParameterIn, IntoParams, ToSchema};
@@ -22,7 +25,7 @@ where
             }),
             sorting: value.sort.map(|column| ListSorting {
                 column: column.into(),
-                direction: value.sort_direction.map(|direction| direction.into()),
+                direction: convert_inner(value.sort_direction),
             }),
             filtering: Some(value.filter.into()),
         }

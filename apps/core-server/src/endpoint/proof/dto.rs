@@ -7,14 +7,16 @@ use crate::{
     serialize::{front_time, front_time_option},
 };
 use dto_mapper::From;
-use one_core::common_mapper::vector_into;
+use one_core::common_mapper::convert_inner;
 use one_core::model::proof::ProofStateEnum;
 use one_core::provider::transport_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
-use one_core::service::proof::dto::ProofClaimDTO;
+use one_core::service::proof::dto::{
+    CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
+};
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue};
 use std::collections::HashMap;
@@ -35,10 +37,12 @@ pub enum ProofStateRestEnum {
 }
 
 // create endpoint
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(into = CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofRequestRestDTO {
     pub proof_schema_id: Uuid,
+    #[convert(rename = "verifier_did_id")]
     #[schema(example = "<uuid; did identifier>")]
     pub verifier_did: DidId,
     pub transport: String,
@@ -57,7 +61,8 @@ pub enum SortableProofColumnRestEnum {
 
 pub type GetProofQuery = GetListQueryParams<SortableProofColumnRestEnum>;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = ProofListItemResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofListItemResponseRestDTO {
     pub id: Uuid,
@@ -87,6 +92,7 @@ pub struct ProofListItemResponseRestDTO {
     pub verifier_did: Option<DidValue>,
     pub transport: String,
     pub state: ProofStateRestEnum,
+    #[convert(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
 }
 
@@ -94,9 +100,9 @@ pub struct ProofListItemResponseRestDTO {
 #[convert(from = "PresentationDefinitionResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationDefinitionResponseRestDTO {
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupResponseRestDTO>,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub credentials: Vec<GetCredentialResponseRestDTO>,
 }
 
@@ -108,7 +114,7 @@ pub struct PresentationDefinitionRequestGroupResponseRestDTO {
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub rule: PresentationDefinitionRuleRestDTO,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialResponseRestDTO>,
 }
 
@@ -119,9 +125,9 @@ pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub fields: Vec<PresentationDefinitionFieldRestDTO>,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
 }
 
@@ -157,7 +163,8 @@ pub struct PresentationDefinitionRuleRestDTO {
 }
 
 // detail endpoint
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[convert(from = ProofDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofDetailResponseRestDTO {
     pub id: Uuid,
@@ -188,7 +195,9 @@ pub struct ProofDetailResponseRestDTO {
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub organisation_id: Uuid,
+    #[convert(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
+    #[convert(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimRestDTO>,
 }
 

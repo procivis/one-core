@@ -5,7 +5,7 @@ use crate::{
 };
 use migration::SimpleExpr;
 use one_core::{
-    common_mapper::vector_try_into,
+    common_mapper::iterable_try_into,
     model::proof_schema::{
         GetProofSchemaList, ProofSchema, ProofSchemaClaim, ProofSchemaId, SortableProofSchemaColumn,
     },
@@ -19,7 +19,7 @@ impl TryFrom<proof_schema::Model> for ProofSchema {
     type Error = DataLayerError;
 
     fn try_from(value: proof_schema::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
+        let id = Uuid::from_str(&value.id)?;
 
         Ok(Self {
             id,
@@ -51,7 +51,7 @@ pub(crate) fn create_list_response(
     items_count: u64,
 ) -> Result<GetProofSchemaList, DataLayerError> {
     Ok(GetProofSchemaList {
-        values: vector_try_into(schemas)?,
+        values: iterable_try_into(schemas)?,
         total_pages: calculate_pages_count(items_count, limit),
         total_items: items_count,
     })
@@ -59,6 +59,7 @@ pub(crate) fn create_list_response(
 
 impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
     type Error = DataLayerError;
+
     fn try_from(value: &ProofSchema) -> Result<Self, Self::Error> {
         Ok(Self {
             id: Set(value.id.to_string()),

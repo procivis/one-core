@@ -3,7 +3,7 @@ use crate::{
     serialize::front_time,
 };
 use dto_mapper::From;
-use one_core::common_mapper::{opt_vector_into, option_into, vector_into};
+use one_core::common_mapper::{convert_inner, convert_inner_of_inner};
 use one_core::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
     OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
@@ -57,7 +57,7 @@ pub struct PostSsiVerifierConnectQueryParams {
 #[convert(from = "ConnectVerifierResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectVerifierResponseRestDTO {
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub claims: Vec<ProofRequestClaimRestDTO>,
     pub verifier_did: DidValue,
 }
@@ -67,7 +67,7 @@ pub struct ConnectVerifierResponseRestDTO {
 pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
 }
 
@@ -77,7 +77,7 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[convert(with_fn = "opt_vector_into")]
+    #[convert(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
 }
 
@@ -142,7 +142,7 @@ pub struct DidWebResponseRestDTO {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
     pub id: DidValue,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub verification_method: Vec<DidWebVerificationMethodResponseRestDTO>,
     pub authentication: Vec<String>,
     pub assertion_method: Vec<String>,
@@ -221,7 +221,7 @@ pub struct OpenID4VPDirectPostRequestRestDTO {
 pub struct PresentationSubmissionMappingRestDTO {
     pub id: String,
     pub definition_id: String,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub descriptor_map: Vec<PresentationSubmissionDescriptorRestDTO>,
 }
 
@@ -232,7 +232,7 @@ pub struct PresentationSubmissionDescriptorRestDTO {
     #[schema(example = "SDJWT")]
     pub format: String,
     pub path: String,
-    #[convert(with_fn = "option_into")]
+    #[convert(with_fn = convert_inner)]
     pub path_nested: Option<NestedPresentationSubmissionDescriptorRestDTO>,
 }
 

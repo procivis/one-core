@@ -1,7 +1,7 @@
 use super::{mapper::sort_claim_models, ClaimProvider};
 use crate::{entity::claim, mapper::to_data_layer_error};
 use one_core::{
-    common_mapper::vector_try_into,
+    common_mapper::iterable_try_into,
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::ClaimSchemaId,
@@ -18,7 +18,7 @@ impl ClaimRepository for ClaimProvider {
         let models = claims
             .into_iter()
             .map(|item| item.try_into())
-            .collect::<Result<Vec<claim::ActiveModel>, DataLayerError>>()?;
+            .collect::<Result<Vec<claim::ActiveModel>, _>>()?;
 
         claim::Entity::insert_many(models)
             .exec(&self.db)
@@ -44,17 +44,15 @@ impl ClaimRepository for ClaimProvider {
         if let Some(claim_schema_relations) = &relations.schema {
             let claim_schema_ids = models
                 .iter()
-                .map(|model| {
-                    Uuid::from_str(&model.claim_schema_id).map_err(|_| DataLayerError::MappingError)
-                })
-                .collect::<Result<Vec<ClaimSchemaId>, DataLayerError>>()?;
+                .map(|model| Uuid::from_str(&model.claim_schema_id))
+                .collect::<Result<Vec<ClaimSchemaId>, _>>()?;
 
             let claim_schemas = self
                 .claim_schema_repository
                 .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
                 .await?;
 
-            let claims: Vec<Claim> = vector_try_into(models)?;
+            let claims: Vec<Claim> = iterable_try_into(models)?;
 
             Ok(claims
                 .into_iter()
@@ -65,7 +63,7 @@ impl ClaimRepository for ClaimProvider {
                 })
                 .collect())
         } else {
-            vector_try_into(models)
+            iterable_try_into(models)
         }
     }
 }

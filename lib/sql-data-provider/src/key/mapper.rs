@@ -16,7 +16,7 @@ pub(super) fn from_model_and_relations(
     value: entity::key::Model,
     organisation: Option<Organisation>,
 ) -> Result<Key, DataLayerError> {
-    let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
+    let id = Uuid::from_str(&value.id)?;
 
     Ok(Key {
         id,
@@ -62,7 +62,7 @@ impl TryFrom<entity::key::Model> for Key {
     type Error = DataLayerError;
 
     fn try_from(value: entity::key::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
+        let id = Uuid::from_str(&value.id)?;
 
         Ok(Self {
             id,

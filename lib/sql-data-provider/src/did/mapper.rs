@@ -1,4 +1,5 @@
 use one_core::{
+    common_mapper::convert_inner,
     model::did::{Did, DidFilterValue, GetDidList, SortableDidColumn},
     repository::error::DataLayerError,
 };
@@ -12,11 +13,9 @@ use crate::{
     },
 };
 
-impl TryFrom<entity::did::Model> for Did {
-    type Error = DataLayerError;
-
-    fn try_from(value: entity::did::Model) -> Result<Self, Self::Error> {
-        Ok(Self {
+impl From<entity::did::Model> for Did {
+    fn from(value: entity::did::Model) -> Self {
+        Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
@@ -27,7 +26,7 @@ impl TryFrom<entity::did::Model> for Did {
             organisation: None,
             keys: None,
             deactivated: value.deactivated,
-        })
+        }
     }
 }
 
@@ -71,15 +70,12 @@ pub(crate) fn create_list_response(
     dids: Vec<did::Model>,
     limit: Option<u64>,
     items_count: u64,
-) -> Result<GetDidList, DataLayerError> {
-    Ok(GetDidList {
-        values: dids
-            .into_iter()
-            .map(|item| item.try_into())
-            .collect::<Result<_, DataLayerError>>()?,
+) -> GetDidList {
+    GetDidList {
+        values: convert_inner(dids),
         total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
         total_items: items_count,
-    })
+    }
 }
 
 impl TryFrom<Did> for did::ActiveModel {

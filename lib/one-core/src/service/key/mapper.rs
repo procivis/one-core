@@ -1,6 +1,7 @@
 use time::OffsetDateTime;
 
 use crate::{
+    common_mapper::convert_inner,
     model::{
         key::{GetKeyList, Key, KeyId},
         organisation::Organisation,
@@ -62,7 +63,7 @@ impl TryFrom<Key> for KeyResponseDTO {
 impl From<GetKeyList> for GetKeyListResponseDTO {
     fn from(value: GetKeyList) -> Self {
         Self {
-            values: value.values.into_iter().map(|item| item.into()).collect(),
+            values: convert_inner(value.values),
             total_pages: value.total_pages,
             total_items: value.total_items,
         }

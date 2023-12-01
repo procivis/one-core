@@ -43,7 +43,7 @@ impl TryFrom<credential_schema_claim_schema::Model> for ClaimSchemaId {
     type Error = DataLayerError;
 
     fn try_from(value: credential_schema_claim_schema::Model) -> Result<Self, Self::Error> {
-        Uuid::from_str(&value.claim_schema_id).map_err(|_| DataLayerError::MappingError)
+        Ok(Uuid::from_str(&value.claim_schema_id)?)
     }
 }
 
@@ -51,9 +51,8 @@ fn entity_model_to_credential_schema(
     value: credential_schema::Model,
     organisation: Option<Organisation>,
 ) -> Result<CredentialSchema, DataLayerError> {
-    let id = Uuid::from_str(&value.id).map_err(|_| DataLayerError::MappingError)?;
-    let _organisation_id =
-        Uuid::from_str(&value.organisation_id).map_err(|_| DataLayerError::MappingError)?;
+    let id = Uuid::from_str(&value.id)?;
+    let _organisation_id = Uuid::from_str(&value.organisation_id)?;
 
     Ok(CredentialSchema {
         id,

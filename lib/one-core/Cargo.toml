@@ -41,6 +41,7 @@ tokio-util = { version = "0.7", features = ["compat"] }
 shared-types = { version = "0.1.0", path = "../shared-types" }
 elliptic-curve.workspace = true
 p256.workspace = true
+fmap.workspace = true
 
 [dev-dependencies]
 bs58 = "0.5"

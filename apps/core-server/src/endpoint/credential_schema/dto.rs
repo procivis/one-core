@@ -1,5 +1,5 @@
 use dto_mapper::From;
-use one_core::common_mapper::vector_into;
+use one_core::common_mapper::convert_inner;
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, CredentialSchemaListItemResponseDTO,
@@ -45,7 +45,7 @@ pub struct CredentialSchemaResponseRestDTO {
     pub format: String,
     pub revocation_method: String,
     pub organisation_id: Uuid,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
 }
 
@@ -85,7 +85,7 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub format: String,
     pub revocation_method: String,
     pub organisation_id: Uuid,
-    #[convert(with_fn = "vector_into")]
+    #[convert(with_fn = convert_inner)]
     #[validate(length(min = 1))]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
 }

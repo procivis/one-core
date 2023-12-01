@@ -1,78 +1,37 @@
-use super::dto::{
-    ClaimBindingDTO, CredentialListItemBindingDTO, CredentialSchemaBindingDTO,
-    ProofRequestBindingDTO, ProofRequestClaimBindingDTO,
-};
+use super::dto::{ClaimBindingDTO, CredentialSchemaBindingDTO, ProofRequestClaimBindingDTO};
 use crate::{
     dto::{
         DidRequestBindingDTO, DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum,
-        KeyRequestBindingDTO, PresentationDefinitionFieldBindingDTO,
-        PresentationSubmitCredentialRequestBindingDTO,
+        KeyRequestBindingDTO,
     },
     utils::{into_uuid, TimestampFormat},
-    CredentialDetailBindingDTO,
 };
-use one_core::{
-    common_mapper::vector_into,
-    provider::transport_protocol::dto::PresentationDefinitionFieldDTO,
-    service::{
-        credential::dto::{
-            CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
-        },
-        credential_schema::dto::CredentialSchemaListItemResponseDTO,
-        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
-        error::ServiceError,
-        key::dto::KeyRequestDTO,
-        proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
-        ssi_holder::dto::{InvitationResponseDTO, PresentationSubmitCredentialRequestDTO},
-    },
+use fmap::Functor;
+use one_core::service::{
+    credential::dto::{DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO},
+    did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
+    error::ServiceError,
+    key::dto::KeyRequestDTO,
+    proof::dto::ProofClaimDTO,
+    ssi_holder::dto::InvitationResponseDTO,
 };
 use serde_json::json;
-use std::str::FromStr;
 use uuid::Uuid;
 
-impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
-    fn from(value: CredentialListItemResponseDTO) -> Self {
-        Self {
-            id: value.id.to_string(),
-            created_date: value.created_date.format_timestamp(),
-            last_modified: value.last_modified.format_timestamp(),
-            issuance_date: value.issuance_date.format_timestamp(),
-            revocation_date: value.revocation_date.map(|date| date.format_timestamp()),
-            issuer_did: value.issuer_did.map(|v| v.to_string()),
-            state: value.state.into(),
-            schema: value.schema.into(),
-        }
-    }
+pub fn map_to_timestamp<'a, T>(outer: T) -> T::Mapped
+where
+    T: Functor<'a, String>,
+    T::Inner: TimestampFormat,
+{
+    outer.fmap(|inner| inner.format_timestamp())
 }
 
-impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
-    fn from(value: CredentialDetailResponseDTO) -> Self {
-        Self {
-            id: value.id.to_string(),
-            created_date: value.created_date.format_timestamp(),
-            last_modified: value.last_modified.format_timestamp(),
-            issuance_date: value.issuance_date.format_timestamp(),
-            revocation_date: value.revocation_date.map(|date| date.format_timestamp()),
-            issuer_did: value.issuer_did.map(|v| v.to_string()),
-            state: value.state.into(),
-            schema: value.schema.into(),
-            claims: vector_into(value.claims),
-        }
-    }
-}
-
-impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
-    fn from(value: CredentialSchemaListItemResponseDTO) -> Self {
-        Self {
-            id: value.id.to_string(),
-            created_date: value.created_date.format_timestamp(),
-            last_modified: value.last_modified.format_timestamp(),
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-        }
-    }
+pub fn map_to_string<'a, T>(outer: T) -> T::Mapped
+where
+    T: Functor<'a, String>,
+    T::Inner: ToString,
+{
+    outer.fmap(|inner| inner.to_string())
 }
 
 impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
@@ -95,19 +54,6 @@ impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
             key: value.schema.key,
             data_type: value.schema.datatype,
             value: value.value,
-        }
-    }
-}
-
-impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
-    fn from(value: ProofDetailResponseDTO) -> Self {
-        Self {
-            id: value.id.to_string(),
-            created_date: value.created_date.format_timestamp(),
-            last_modified: value.last_modified.format_timestamp(),
-            claims: value.claims.into_iter().map(|claim| claim.into()).collect(),
-            verifier_did: value.verifier_did.map(|did| did.to_string()),
-            transport: value.transport,
         }
     }
 }
@@ -145,36 +91,11 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseBindingEnum {
     }
 }
 
-impl TryFrom<PresentationSubmitCredentialRequestBindingDTO>
-    for PresentationSubmitCredentialRequestDTO
-{
-    type Error = ServiceError;
-    fn try_from(value: PresentationSubmitCredentialRequestBindingDTO) -> Result<Self, Self::Error> {
-        Ok(Self {
-            credential_id: Uuid::from_str(&value.credential_id)
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?,
-            submit_claims: value.submit_claims,
-        })
-    }
-}
-
-impl From<PresentationDefinitionFieldDTO> for PresentationDefinitionFieldBindingDTO {
-    fn from(value: PresentationDefinitionFieldDTO) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            purpose: value.purpose,
-            required: value.required.unwrap_or(true),
-            key_map: value.key_map,
-        }
-    }
-}
-
 impl TryFrom<KeyRequestBindingDTO> for KeyRequestDTO {
     type Error = ServiceError;
     fn try_from(request: KeyRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
-            organisation_id: into_uuid(&request.organisation_id)?,
+            organisation_id: Uuid::parse_str(&request.organisation_id)?,
             key_type: request.key_type.to_owned(),
             key_params: json!(request.key_params),
             name: request.name.to_owned(),
@@ -188,7 +109,7 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
     type Error = ServiceError;
     fn try_from(request: DidRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
-            organisation_id: into_uuid(&request.organisation_id)?,
+            organisation_id: Uuid::parse_str(&request.organisation_id)?,
             name: request.name,
             did_method: request.did_method,
             did_type: request.did_type.into(),

@@ -1,12 +1,20 @@
+use std::str::FromStr;
+
+use dto_mapper::TryInto;
+use one_core::{model::organisation::Organisation, repository::error::DataLayerError};
 use sea_orm::entity::prelude::*;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, TryInto)]
+#[try_into(T = Organisation, Error = DataLayerError)]
 #[sea_orm(table_name = "organisation")]
 pub struct Model {
+    #[try_into(with_fn_ref = "uuid::Uuid::from_str")]
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
+    #[try_into(infallible)]
     pub created_date: OffsetDateTime,
+    #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
 }
 
