@@ -1,15 +1,19 @@
-mod dto;
-mod mapper;
+use std::ops::{Add, Sub};
+use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use std::ops::{Add, Sub};
-use std::sync::{Arc, Mutex};
-
 use did_key::{Generate, KeyMaterial, P256KeyPair};
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
+use tokio::sync::Mutex;
 use url::Url;
 use uuid::Uuid;
+
+use dto::{AzureHsmGenerateKeyResponse, AzureHsmSignResponse};
+use mapper::{
+    create_generate_key_request, create_get_token_request, create_sign_request,
+    public_key_from_components,
+};
 
 use crate::{
     crypto::signer::error::SignerError,
@@ -22,11 +26,9 @@ use crate::{
 };
 
 use crate::crypto::CryptoProvider;
-use dto::{AzureHsmGenerateKeyResponse, AzureHsmSignResponse};
-use mapper::{
-    create_generate_key_request, create_get_token_request, create_sign_request,
-    public_key_from_components,
-};
+
+mod dto;
+mod mapper;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,19 +59,16 @@ impl KeyStorage for AzureVaultKeyProvider {
             return Err(ServiceError::IncorrectParameters);
         }
 
-        let url = format!(
-            "{}/keys/{}/create?api-version=7.4",
-            self.params.vault_url, key_id
-        );
-
         let access_token = self.get_access_token().await?;
+
+        let mut url = self.params.vault_url.clone();
+        url.set_path(&format!("keys/{}/create?api-version=7.4", key_id));
 
         let response: AzureHsmGenerateKeyResponse = self
             .client
             .post(url)
             .json(&create_generate_key_request())
             .bearer_auth(access_token)
-            .header("Content-Type", "application/json")
             .send()
             .await
             .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
@@ -106,7 +105,6 @@ impl KeyStorage for AzureVaultKeyProvider {
             .post(url)
             .json(&sign_request)
             .bearer_auth(access_token)
-            .header("Content-Type", "application/json")
             .send()
             .await
             .map_err(|e| SignerError::CouldNotSign(e.to_string()))?
@@ -141,12 +139,10 @@ impl AzureVaultKeyProvider {
         let body = serde_qs::to_string(&request)
             .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
 
-        let url = format!(
-            "{}/{}/oauth2/v2.0/token",
-            self.params.oauth_service_url, self.params.ad_tenant_id
-        );
+        let mut url = self.params.oauth_service_url.clone();
+        url.set_path(&format!("{}/oauth2/v2.0/token", self.params.ad_tenant_id));
 
-        let result = self
+        let response: AzureHsmGetTokenResponse = self
             .client
             .post(url)
             .header("content-type", "application/x-www-form-urlencoded")
@@ -156,12 +152,9 @@ impl AzureVaultKeyProvider {
             .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
             .error_for_status()
             .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
-            .text()
+            .json()
             .await
-            .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?;
-
-        let response: AzureHsmGetTokenResponse = serde_json::from_str(&result)
-            .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| ServiceError::from(TransportProtocolError::HttpResponse(e)))?;
 
         if response.token_type != "Bearer" {
             return Err(ServiceError::Other(format!(
@@ -174,22 +167,20 @@ impl AzureVaultKeyProvider {
     }
 
     async fn get_access_token(&self) -> Result<String, ServiceError> {
-        if self.is_token_valid()? {
+        if self.is_token_valid().await {
             Ok(self
                 .access_token
                 .lock()
-                .map_err(|e| ServiceError::Other(e.to_string()))?
+                .await
                 .as_ref()
                 .ok_or(ServiceError::MappingError("token is None".to_string()))?
                 .token
                 .to_owned())
         } else {
+            // todo: should this be atomic? (here multiple requests are all going to acquire a new token and set the new token)
             let response = self.acquire_new_token().await?;
             let valid_until = OffsetDateTime::now_utc().add(Duration::seconds(response.expires_in));
-            let mut storage = self
-                .access_token
-                .lock()
-                .map_err(|e| ServiceError::Other(e.to_string()))?;
+            let mut storage = self.access_token.lock().await;
             *storage = Some(AzureAccessToken {
                 token: response.access_token.to_owned(),
                 valid_until,
@@ -198,17 +189,14 @@ impl AzureVaultKeyProvider {
         }
     }
 
-    fn is_token_valid(&self) -> Result<bool, ServiceError> {
-        let azure_access_token = self
-            .access_token
-            .lock()
-            .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
+    async fn is_token_valid(&self) -> bool {
+        let azure_access_token = self.access_token.lock().await;
 
         match azure_access_token.as_ref() {
-            None => Ok(false),
+            None => false,
             Some(token) => {
                 // Adding 5 seconds tolerance for network requests delay
-                Ok(token.valid_until > OffsetDateTime::now_utc().sub(Duration::seconds(5)))
+                token.valid_until > OffsetDateTime::now_utc().sub(Duration::seconds(5))
             }
         }
     }

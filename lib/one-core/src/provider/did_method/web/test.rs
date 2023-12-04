@@ -1,8 +1,12 @@
 use std::str::FromStr;
 
-use httpmock::{Method::GET, MockServer};
 use shared_types::{DidId, DidValue};
 use uuid::Uuid;
+use wiremock::{
+    http::Method,
+    matchers::{method, path},
+    Mock, MockServer, ResponseTemplate,
+};
 
 use crate::provider::did_method::{
     dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkRsaDataDTO},
@@ -156,27 +160,26 @@ async fn test_did_web_value_extract() {
 
 #[tokio::test]
 async fn test_did_web_fetch() {
-    let mock_server = MockServer::start_async().await;
-    let get_did_endpoiont = mock_server
-        .mock_async(|when, then| {
-            when.method(GET)
-                .path("/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json");
-            then.status(200)
-                .header("content-type", "text/html")
-                .body(JSON_DATA);
-        })
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method(Method::Get))
+        .and(path(
+            "/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(JSON_DATA, "text/html"))
+        .expect(1)
+        .mount(&mock_server)
         .await;
 
     let client = reqwest::Client::new();
 
-    let result = fetch_did_web_document(
-        mock_server
-            .url("/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json")
-            .parse()
-            .unwrap(),
-        &client,
+    let url = format!(
+        "{}/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json",
+        mock_server.uri()
     )
-    .await;
+    .parse()
+    .unwrap();
+    let result = fetch_did_web_document(url, &client).await;
 
     assert!(result.is_ok());
     let data = result.unwrap();
@@ -231,6 +234,4 @@ async fn test_did_web_fetch() {
                 .to_string(),
         },),
     );
-
-    get_did_endpoiont.assert_async().await;
 }
