@@ -28,8 +28,10 @@ use url::Url;
 use uuid::Uuid;
 
 pub fn create_config(core_base_url: impl Into<String>) -> Config {
+    let root = std::env!("CARGO_MANIFEST_DIR");
+
     Config {
-        config_file: "../../config.yml".to_string(),
+        config_file: format!("{}/../../config.yml", root),
         database_url: "sqlite::memory:".to_string(),
         auth_token: "test".to_string(),
         core_base_url: core_base_url.into(),
