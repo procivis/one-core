@@ -45,7 +45,7 @@ fmap.workspace = true
 
 [dev-dependencies]
 bs58 = { version = "0.5" }
-httpmock = { version = "0.6" }
+wiremock.workspace = true
 mockall.workspace = true
 tokio = { version = "1.34", features = ["rt-multi-thread", "macros"] }
 assert2 = { version = "0.3" }
