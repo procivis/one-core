@@ -59,6 +59,7 @@ async fn test_revoke_check_success() {
         &did,
         None,
         Some(credential_jwt),
+        None,
         "PROCIVIS_TEMPORARY",
     )
     .await;

@@ -37,6 +37,7 @@ async fn test_revoke_credential_success() {
         &did,
         None,
         None,
+        None,
         "PROCIVIS_TEMPORARY",
     )
     .await;
