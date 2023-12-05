@@ -433,7 +433,8 @@ async fn handle_credential_invitation(
         .issuer_did
         .ok_or(TransportProtocolError::Failed(
             "Issuer did not found in response".to_string(),
-        ))?;
+        ))?
+        .did;
     let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
     let did_insert_result = deps.did_repository.create_did(issuer_did.clone()).await;
     let issuer_did = match did_insert_result {

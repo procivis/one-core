@@ -44,7 +44,16 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
                 "createdDate": "2023-11-09T08:39:16.459Z",
                 "id": credential_id,
                 "issuanceDate": "2023-11-09T08:39:16.459Z",
-                "issuerDid": "did:key:z6Mkm1qx9JYefnqDVyyUBovf4Jo97jDxVzPejTeStyrNzyqU",
+                "issuerDid": {
+                    "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                    "created_date": "2023-11-09T08:39:16.460Z",
+                    "last_modified": "2023-11-09T08:39:16.459Z",
+                    "name": "foo",
+                    "did": "did:key:z6Mkm1qx9JYefnqDVyyUBovf4Jo97jDxVzPejTeStyrNzyqU",
+                    "did_type": "Remote",
+                    "did_method": "KEY",
+                    "deactivated": false,
+                },
                 "lastModified": "2023-11-09T08:39:16.548Z",
                 "revocationDate": null,
                 "schema": {

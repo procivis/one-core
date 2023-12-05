@@ -74,7 +74,7 @@ impl CredentialFormatter for SDJWTFormatter {
             expires_at: now.checked_add(valid_for),
             invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
             subject: Some(holder_did.to_string()),
-            issuer: credential.issuer_did.clone().map(|x| x.to_string()),
+            issuer: credential.issuer_did.as_ref().map(|x| x.did.to_string()),
             jwt_id: Some(credential.id.to_string()),
             custom: vc,
             nonce: None,

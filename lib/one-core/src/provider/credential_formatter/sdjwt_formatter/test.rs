@@ -11,6 +11,7 @@ use super::SDJWTFormatter;
 
 use crate::{
     crypto::{hasher::MockHasher, signer::error::SignerError, MockCryptoProvider},
+    model::did::DidType,
     provider::credential_formatter::{
         jwt::model::JWTPayload,
         model::CredentialStatus,
@@ -23,6 +24,7 @@ use crate::{
             DetailCredentialSchemaResponseDTO,
         },
         credential_schema::dto::CredentialClaimSchemaDTO,
+        did::dto::DidListItemResponseDTO,
     },
 };
 
@@ -77,7 +79,16 @@ fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
             revocation_method: "Credential schema revocation method".to_string(),
             organisation_id: id,
         },
-        issuer_did: Some("Issuer DID".parse().unwrap()),
+        issuer_did: Some(DidListItemResponseDTO {
+            id: id.into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: "foo".into(),
+            did: DidValue::from_str("Issuer DID").unwrap(),
+            did_type: DidType::Remote,
+            did_method: "KEY".into(),
+            deactivated: false,
+        }),
         claims: vec![
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {

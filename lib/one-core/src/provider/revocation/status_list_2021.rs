@@ -218,7 +218,7 @@ impl StatusList2021 {
             .await
             .map_err(ServiceError::from)?;
 
-        let states: Vec<bool> = credentials
+        let states = credentials
             .into_iter()
             .map(|credential| {
                 if additionally_revoked_credential_id
@@ -242,7 +242,7 @@ impl StatusList2021 {
                     _ => Ok(false),
                 }
             })
-            .collect::<Result<Vec<bool>, ServiceError>>()?;
+            .collect::<Result<Vec<_>, ServiceError>>()?;
 
         generate_bitstring(states).map_err(ServiceError::from)
     }

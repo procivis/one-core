@@ -1,3 +1,4 @@
+use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::serialize::front_time;
 use crate::serialize::front_time_option;
 use crate::{
@@ -63,7 +64,8 @@ pub struct GetCredentialResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub schema: CredentialDetailSchemaResponseRestDTO,
-    pub issuer_did: Option<DidValue>,
+    #[convert(with_fn = convert_inner)]
+    pub issuer_did: Option<DidListItemResponseRestDTO>,
     #[convert(with_fn = convert_inner)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
 }
