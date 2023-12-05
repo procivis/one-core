@@ -4,8 +4,11 @@ use crate::{
         organisation::OrganisationId,
         proof::{ProofStateEnum, SortableProofColumn},
     },
-    service::proof_schema::dto::{
-        GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO, ProofSchemaId,
+    service::{
+        did::dto::DidListItemResponseDTO,
+        proof_schema::dto::{
+            GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO, ProofSchemaId,
+        },
     },
 };
 use shared_types::{DidId, DidValue};
@@ -51,7 +54,7 @@ pub struct ProofListItemResponseDTO {
     pub issuance_date: OffsetDateTime,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
-    pub verifier_did: Option<DidValue>,
+    pub verifier_did: Option<DidListItemResponseDTO>,
     pub transport: String,
     pub state: ProofStateEnum,
     pub schema: Option<GetProofSchemaListItemDTO>,
