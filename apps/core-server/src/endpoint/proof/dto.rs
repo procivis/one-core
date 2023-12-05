@@ -1,4 +1,5 @@
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
+use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::{
     dto::common::GetListQueryParams,
     endpoint::proof_schema::dto::{
@@ -89,7 +90,8 @@ pub struct ProofListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
-    pub verifier_did: Option<DidValue>,
+    #[convert(with_fn = convert_inner)]
+    pub verifier_did: Option<DidListItemResponseRestDTO>,
     pub transport: String,
     pub state: ProofStateRestEnum,
     #[convert(with_fn = convert_inner)]
