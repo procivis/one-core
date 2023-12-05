@@ -17,6 +17,13 @@ pub(crate) fn throw_if_did_method_not_eq(did: &Did, method_type: &str) -> Result
     Ok(())
 }
 
+pub(crate) fn throw_if_did_method_deactivated(did: &Did) -> Result<(), ServiceError> {
+    if did.deactivated {
+        return Err(ServiceError::AlreadyExists);
+    }
+    Ok(())
+}
+
 pub(crate) fn validate_request_only_one_key_of_each_type(
     keys: CreateDidRequestKeysDTO,
 ) -> Result<(), ServiceError> {

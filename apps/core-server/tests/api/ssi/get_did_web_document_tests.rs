@@ -156,3 +156,24 @@ async fn test_get_did_web_document_wrong_did_method() {
     // THEN
     assert_eq!(resp.status(), 400)
 }
+
+#[tokio::test]
+async fn test_get_did_web_document_deactivated() {
+    // GIVEN
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+
+    let config = fixtures::create_config(&base_url);
+    let db_conn = fixtures::create_db(&config).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did_web(&db_conn, &organisation, true, DidType::Local).await;
+    // WHEN
+    let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
+
+    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+
+    let resp = utils::client().get(url).send().await.unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 400)
+}

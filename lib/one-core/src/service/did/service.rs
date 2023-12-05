@@ -16,7 +16,7 @@ use super::{
 use crate::model::key::Key;
 use crate::service::did::mapper::map_did_model_to_did_web_response;
 use crate::service::did::mapper::map_key_to_verification_method;
-use crate::service::did::validator::throw_if_did_method_not_eq;
+use crate::service::did::validator::{throw_if_did_method_deactivated, throw_if_did_method_not_eq};
 use crate::{
     config::validator::did::validate_did_method,
     model::{
@@ -48,7 +48,10 @@ impl DidService {
             )
             .await
             .map_err(ServiceError::from)?;
+
         throw_if_did_method_not_eq(&result, "WEB")?;
+        throw_if_did_method_deactivated(&result)?;
+
         let mut grouped_key: HashMap<KeyId, Key> = HashMap::new();
         let keys = result
             .keys
