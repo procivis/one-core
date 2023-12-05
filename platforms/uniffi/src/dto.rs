@@ -2,7 +2,6 @@ use crate::mapper::map_to_string;
 use crate::utils::TimestampFormat;
 use crate::{error::NativeKeyStorageError, mapper::map_to_timestamp};
 use dto_mapper::{From, TryInto};
-use one_core::service::credential::dto::CredentialDetailResponseDTO;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::ProofDetailResponseDTO;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
@@ -58,24 +57,15 @@ pub struct CredentialListBindingDTO {
     pub total_items: u64,
 }
 
-#[derive(From)]
-#[convert(from = CredentialDetailResponseDTO)]
 pub struct CredentialDetailBindingDTO {
-    #[convert(with_fn_ref = "ToString::to_string")]
     pub id: String,
-    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
-    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub issuance_date: String,
-    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
-    #[convert(with_fn = map_to_timestamp)]
     pub revocation_date: Option<String>,
-    #[convert(with_fn = map_to_string)]
     pub issuer_did: Option<String>,
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
-    #[convert(with_fn = convert_inner)]
     pub claims: Vec<ClaimBindingDTO>,
 }
 

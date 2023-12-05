@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
@@ -9,7 +10,7 @@ use super::{
     organisation::{Organisation, OrganisationId, OrganisationRelations},
 };
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
 pub enum DidType {
     Remote,
     Local,

@@ -1,9 +1,3 @@
-use crate::model::{
-    claim::Claim,
-    credential::{Credential, CredentialState, CredentialStateEnum},
-    credential_schema::{CredentialSchema, CredentialSchemaClaim},
-    did::Did,
-};
 use crate::service::{
     credential::dto::{
         CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
@@ -11,6 +5,15 @@ use crate::service::{
         DetailCredentialSchemaResponseDTO,
     },
     error::ServiceError,
+};
+use crate::{
+    common_mapper::convert_inner,
+    model::{
+        claim::Claim,
+        credential::{Credential, CredentialState, CredentialStateEnum},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim},
+        did::Did,
+    },
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -25,10 +28,6 @@ impl TryFrom<Credential> for CredentialDetailResponseDTO {
         let claims = value
             .claims
             .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
-        let issuer_did_value = match value.issuer_did {
-            None => None,
-            Some(issuer_did) => Some(issuer_did.did),
-        };
         let states = value
             .state
             .ok_or(ServiceError::MappingError("state is None".to_string()))?;
@@ -48,7 +47,7 @@ impl TryFrom<Credential> for CredentialDetailResponseDTO {
             last_modified: value.last_modified,
             claims: from_vec_claim(claims, &schema)?,
             schema: schema.try_into()?,
-            issuer_did: issuer_did_value,
+            issuer_did: convert_inner(value.issuer_did),
         })
     }
 }
@@ -112,10 +111,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: Credential) -> Result<Self, ServiceError> {
-        let issuer_did_value = match value.issuer_did {
-            None => None,
-            Some(issuer_did) => Some(issuer_did.did),
-        };
+        let issuer_did_value = value.issuer_did.map(|inner| inner.did);
 
         let schema = value.schema.ok_or(ServiceError::MappingError(
             "credential_schema is None".to_string(),

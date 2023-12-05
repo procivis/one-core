@@ -1,19 +1,25 @@
 use super::dto::{ClaimBindingDTO, CredentialSchemaBindingDTO, ProofRequestClaimBindingDTO};
 use crate::{
     dto::{
-        DidRequestBindingDTO, DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum,
-        KeyRequestBindingDTO,
+        CredentialDetailBindingDTO, DidRequestBindingDTO, DidRequestKeysBindingDTO,
+        HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
     },
     utils::{into_uuid, TimestampFormat},
 };
 use fmap::Functor;
-use one_core::service::{
-    credential::dto::{DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO},
-    did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
-    error::ServiceError,
-    key::dto::KeyRequestDTO,
-    proof::dto::ProofClaimDTO,
-    ssi_holder::dto::InvitationResponseDTO,
+use one_core::{
+    common_mapper::convert_inner,
+    service::{
+        credential::dto::{
+            CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+            DetailCredentialSchemaResponseDTO,
+        },
+        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
+        error::ServiceError,
+        key::dto::KeyRequestDTO,
+        proof::dto::ProofClaimDTO,
+        ssi_holder::dto::InvitationResponseDTO,
+    },
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -32,6 +38,22 @@ where
     T::Inner: ToString,
 {
     outer.fmap(|inner| inner.to_string())
+}
+
+impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
+    fn from(value: CredentialDetailResponseDTO) -> Self {
+        Self {
+            id: value.id.to_string(),
+            created_date: value.created_date.format_timestamp(),
+            issuance_date: value.issuance_date.format_timestamp(),
+            last_modified: value.last_modified.format_timestamp(),
+            revocation_date: map_to_timestamp(value.revocation_date),
+            issuer_did: value.issuer_did.map(|inner| inner.did.to_string()),
+            state: value.state.into(),
+            schema: value.schema.into(),
+            claims: convert_inner(value.claims),
+        }
+    }
 }
 
 impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {

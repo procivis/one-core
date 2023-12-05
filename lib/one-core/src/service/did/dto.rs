@@ -1,4 +1,5 @@
 use dto_mapper::From;
+use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
@@ -35,11 +36,13 @@ pub struct DidResponseKeysDTO {
     pub capability_delegation: Vec<KeyListItemResponseDTO>,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, Deserialize, From)]
 #[convert(from = "Did")]
 pub struct DidListItemResponseDTO {
     pub id: DidId,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub did: DidValue,

@@ -12,8 +12,9 @@ use crate::{
         credential_schema::{CredentialFormat, CredentialSchemaId, RevocationMethod},
         organisation::OrganisationId,
     },
-    service::credential_schema::dto::{
-        CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO,
+    service::{
+        credential_schema::dto::{CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO},
+        did::dto::DidListItemResponseDTO,
     },
 };
 
@@ -44,7 +45,7 @@ pub struct CredentialDetailResponseDTO {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub schema: DetailCredentialSchemaResponseDTO,
-    pub issuer_did: Option<DidValue>,
+    pub issuer_did: Option<DidListItemResponseDTO>,
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
 }
 

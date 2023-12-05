@@ -24,12 +24,11 @@ where
     outer.fmap(Into::into)
 }
 
-pub fn convert_inner_of_inner<'a, T, K, A>(outer: T) -> T::Mapped
+pub fn convert_inner_of_inner<'a, T, K, A: 'a>(outer: T) -> T::Mapped
 where
     T: Functor<'a, K>,
     T::Inner: Functor<'a, A, Mapped = K>,
     <T::Inner as Functor<'a, A>>::Inner: Into<A>,
-    A: 'a,
 {
     outer.fmap(|val| val.fmap(Into::into))
 }
