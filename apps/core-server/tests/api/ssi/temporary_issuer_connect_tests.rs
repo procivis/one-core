@@ -23,6 +23,7 @@ async fn test_temporary_issuer_connect_success() {
         &did,
         None,
         None,
+        None,
         "PROCIVIS_TEMPORARY",
     )
     .await;

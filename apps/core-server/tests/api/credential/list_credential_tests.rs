@@ -24,6 +24,7 @@ async fn test_get_list_credential_success() {
             &did,
             None,
             None,
+            None,
             "PROCIVIS_TEMPORARY",
         )
         .await;

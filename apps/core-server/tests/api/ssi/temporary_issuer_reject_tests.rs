@@ -38,6 +38,7 @@ async fn test_temporary_issuer_reject_success() {
         &did,
         Some(holder_did),
         None,
+        None,
         "PROCIVIS_TEMPORARY",
     )
     .await;

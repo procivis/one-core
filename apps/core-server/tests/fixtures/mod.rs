@@ -332,13 +332,18 @@ pub async fn create_proof_schema(
     proof_schema
 }
 
-pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> Interaction {
+pub async fn create_interaction_with_id(
+    id: Uuid,
+    db_conn: &DbConn,
+    host: &str,
+    data: &[u8],
+) -> Interaction {
     let data_layer = DataLayer::build(db_conn.to_owned());
 
     let interaction = Interaction {
-        id: Uuid::new_v4(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
+        id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
         host: Some(Url::parse(host).unwrap()),
         data: Some(data.into()),
     };
@@ -350,6 +355,10 @@ pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> In
         .unwrap();
 
     interaction
+}
+
+pub async fn create_interaction(db_conn: &DbConn, host: &str, data: &[u8]) -> Interaction {
+    create_interaction_with_id(Uuid::new_v4(), db_conn, host, data).await
 }
 
 pub async fn create_revocation_list(
@@ -376,6 +385,7 @@ pub async fn create_revocation_list(
     revocation_list
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_credential(
     db_conn: &DbConn,
     credential_schema: &CredentialSchema,
@@ -383,6 +393,7 @@ pub async fn create_credential(
     issuer_did: &Did,
     holder_did: Option<Did>,
     credential: Option<&str>,
+    interaction: Option<Interaction>,
     transport: &str,
 ) -> Credential {
     let data_layer = DataLayer::build(db_conn.to_owned());
@@ -416,7 +427,7 @@ pub async fn create_credential(
         issuer_did: Some(issuer_did.to_owned()),
         holder_did,
         schema: Some(credential_schema.to_owned()),
-        interaction: None,
+        interaction,
         revocation_list: None,
         key: None,
     };
