@@ -1,11 +1,11 @@
 mod mapper;
 
 use async_trait::async_trait;
-use did_key::{Config, DIDCore};
+use did_key::{Config, DIDCore, KeyMaterial};
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
 
-use self::mapper::convert_document;
+use self::mapper::{categorize_did, convert_document};
 
 use super::{dto::DidDocumentDTO, DidMethodError};
 use crate::{
@@ -71,15 +71,28 @@ impl super::DidMethod for KeyDidMethod {
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
+        let key_type = categorize_did(did_value)?;
+
         let resolved = did_key::resolve(did_value.as_str())
             .map_err(|_| DidMethodError::ResolutionError("Failed to resolve".to_string()))?;
+
+        let public_key_bytes = resolved.public_key_bytes();
+
+        let algorithm = self
+            .key_algorithm_provider
+            .get_key_algorithm(&key_type)
+            .map_err(|_| DidMethodError::ResolutionError("Unsupported algorithm".to_string()))?;
+
+        let public_key_jwk = algorithm.bytes_to_jwk(&public_key_bytes).map_err(|_| {
+            DidMethodError::ResolutionError("Could not create jwk representation".to_string())
+        })?;
 
         let document = resolved.get_did_document(Config {
             use_jose_format: true,
             serialize_secrets: false,
         });
 
-        convert_document(document)
+        convert_document(document, public_key_jwk)
     }
 
     fn update(&self) -> Result<(), DidMethodError> {

@@ -1,4 +1,4 @@
-use crate::config::core_config::{Fields, KeyAlgorithmConfig, KeyAlgorithmType, Params};
+use crate::config::core_config::{Fields, KeyAlgorithmConfig, KeyAlgorithmType};
 use crate::crypto::MockCryptoProvider;
 use crate::model::key::Key;
 use crate::provider::did_method::dto::{
@@ -8,7 +8,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::{provider::DidMethodProviderImpl, DidMethod};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
-use serde_json::json;
+use mockall::predicate;
 use shared_types::{DidId, DidValue};
 use std::str::FromStr;
 use std::{collections::HashMap, sync::Arc};
@@ -17,27 +17,26 @@ use uuid::Uuid;
 
 use super::{DidKeyParams, KeyDidMethod};
 
-fn setup_provider(key_algorithm: MockKeyAlgorithm) -> Arc<dyn DidMethodProvider + Send + Sync> {
+fn setup_provider(
+    key_algorithm: MockKeyAlgorithm,
+    algorithm_id: &str,
+    algorithm_type: KeyAlgorithmType,
+) -> Arc<dyn DidMethodProvider + Send + Sync> {
     let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>> = HashMap::new();
-    key_algorithms.insert("EDDSA".to_string(), Arc::new(key_algorithm));
+    key_algorithms.insert(algorithm_id.to_string(), Arc::new(key_algorithm));
 
     let key_algorithm_provider =
         KeyAlgorithmProviderImpl::new(key_algorithms, Arc::new(MockCryptoProvider::new()));
 
     let mut key_algorithm_config = KeyAlgorithmConfig::default();
     key_algorithm_config.insert(
-        KeyAlgorithmType::Eddsa,
+        algorithm_type,
         Fields {
-            r#type: "EDDSA".to_string(),
-            display: "EDDSA".to_string(),
+            r#type: algorithm_id.to_string(),
+            display: algorithm_id.to_string(),
             order: None,
             disabled: None,
-            params: Some(Params {
-                public: Some(json!({
-                    "algorithm": "Ed25519"
-                })),
-                private: None,
-            }),
+            params: None,
         },
     );
 
@@ -55,33 +54,31 @@ fn setup_provider(key_algorithm: MockKeyAlgorithm) -> Arc<dyn DidMethodProvider 
     Arc::new(DidMethodProviderImpl::new(did_methods))
 }
 
-// test vectors taken from:
-// - https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/ed25519-x25519.json
-// - https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/nist-curves.json
-const TEST_VECTORS: [&str; 4] = [
-    ("did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp"),
-    ("did:key:z6MkjchhfUsD6mmvni8mCdXHw216Xrm9bQe2mBH1P5RDjVJG"),
-    ("did:key:z6MknGc3ocHs3zdPiJbnaaqDi58NGb4pk1Sp9WxWufuXSdxf"),
-    ("did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb"),
-];
-
+// https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/ed25519-x25519.json
 #[tokio::test]
-async fn test_did_key_resolve_wide() {
-    let provider = setup_provider(MockKeyAlgorithm::default());
+async fn test_did_key_resolve_details_eddsa() {
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_bytes_to_jwk()
+        .with(predicate::eq(vec![
+            59, 106, 39, 188, 206, 182, 164, 45, 98, 163, 168, 208, 42, 111, 13, 115, 101, 50, 21,
+            119, 29, 226, 67, 166, 58, 192, 72, 161, 139, 89, 218, 41,
+        ]))
+        .once()
+        .returning(|_| {
+            Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+                crv: "Ed25519".to_owned(),
+                x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
+                y: None,
+            }))
+        });
 
-    for did in TEST_VECTORS {
-        let result = provider.resolve(&did.parse().unwrap()).await.unwrap();
-        assert!(!result.verification_method.is_empty());
-        assert!(!result.assertion_method.unwrap().is_empty());
-    }
-}
+    let provider: Arc<dyn DidMethodProvider + Send + Sync> =
+        setup_provider(key_algorithm, "EDDSA", KeyAlgorithmType::Eddsa);
 
-#[tokio::test]
-async fn test_did_key_resolve_details() {
-    let provider = setup_provider(MockKeyAlgorithm::default());
     let result = provider
         .resolve(
-            &"did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb"
+            &"did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp"
                 .parse()
                 .unwrap(),
         )
@@ -93,16 +90,16 @@ async fn test_did_key_resolve_details() {
         context: vec![
             "https://www.w3.org/ns/did/v1".to_string(),
         ],
-        id: DidValue::from_str("did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb").unwrap(),
+        id: DidValue::from_str("did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp").unwrap(),
         verification_method: vec![
             DidVerificationMethodDTO {
-                id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
+                id: "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
                 r#type: "JsonWebKey2020".to_owned(),
-                controller: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
-                public_key_jwk: PublicKeyJwkDTO::Ec(
+                controller: "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
+                public_key_jwk: PublicKeyJwkDTO::Okp(
                     PublicKeyJwkEllipticDataDTO {
-                        crv: "P-256".to_owned(),
-                        x: "AjDk2GBBiI_M6HvEmgfzXiVhJCWiVFqvoItknJgc-oEE".to_owned(),
+                        crv: "Ed25519".to_owned(),
+                        x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
                         y: None,
                     },
                 ),
@@ -110,27 +107,106 @@ async fn test_did_key_resolve_details() {
         ],
         authentication: Some(
             vec![
-                "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
+                "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
             ],
         ),
         assertion_method: Some(
             vec![
-                "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
+                "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
             ],
         ),
         key_agreement: Some(
             vec![
-                "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
+                "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6LShs9GGnqk85isEBzzshkuVWrVKsRp24GnDuHk8QWkARMW".to_owned(),
             ],
         ),
         capability_invocation: Some(
             vec![
-                "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
+                "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
             ],
         ),
         capability_delegation: Some(
             vec![
-                "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
+                "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
+            ],
+        ),
+    });
+}
+
+// https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/nist-curves.json
+#[tokio::test]
+async fn test_did_key_resolve_details_es256() {
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_bytes_to_jwk()
+        .with(predicate::eq(vec![
+            3, 138, 10, 197, 154, 45, 48, 134, 232, 161, 42, 120, 253, 71, 115, 166, 213, 42, 12,
+            166, 30, 246, 193, 65, 158, 21, 160, 91, 204, 109, 175, 206, 123,
+        ]))
+        .once()
+        .returning(|_| {
+            Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                crv: "P-256".to_string(),
+                x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+            }))
+        });
+
+    let provider: Arc<dyn DidMethodProvider + Send + Sync> =
+        setup_provider(key_algorithm, "ES256", KeyAlgorithmType::Es256);
+
+    let result = provider
+        .resolve(
+            &"did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv"
+                .parse()
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result,
+    DidDocumentDTO {
+        context: vec![
+            "https://www.w3.org/ns/did/v1".to_string(),
+        ],
+        id: DidValue::from_str("did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv").unwrap(),
+        verification_method: vec![
+            DidVerificationMethodDTO {
+                id: "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
+                r#type: "JsonWebKey2020".to_owned(),
+                controller: "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
+                public_key_jwk: PublicKeyJwkDTO::Ec(
+                    PublicKeyJwkEllipticDataDTO {
+                        crv: "P-256".to_owned(),
+                        x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                        y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                    },
+                ),
+            },
+        ],
+        authentication: Some(
+            vec![
+                "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
+            ],
+        ),
+        assertion_method: Some(
+            vec![
+                "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
+            ],
+        ),
+        key_agreement: Some(
+            vec![
+                "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
+            ],
+        ),
+        capability_invocation: Some(
+            vec![
+                "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
+            ],
+        ),
+        capability_delegation: Some(
+            vec![
+                "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
             ],
         ),
     });
@@ -158,7 +234,7 @@ async fn test_create_did_success() {
         .times(1)
         .returning(|_| "MULTIBASE".to_string());
 
-    let provider = setup_provider(key_algorithm);
+    let provider = setup_provider(key_algorithm, "EDDSA", KeyAlgorithmType::Eddsa);
     let did_method = provider.get_did_method("KEY").unwrap();
     let result = did_method
         .create(&DidId::from(Uuid::new_v4()), &None, &Some(key))

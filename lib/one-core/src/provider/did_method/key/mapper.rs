@@ -4,50 +4,46 @@ use did_key::Document;
 use shared_types::DidValue;
 
 use crate::provider::did_method::{
-    dto::{DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO},
+    dto::{DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO},
     DidMethodError,
 };
 
-pub(super) fn convert_document(doc: Document) -> Result<DidDocumentDTO, DidMethodError> {
-    let methods = doc
+pub(super) fn categorize_did(did_value: &DidValue) -> Result<String, DidMethodError> {
+    if did_value.as_str().starts_with("did:key:z6Mk") {
+        return Ok("EDDSA".to_owned());
+    }
+    if did_value.as_str().starts_with("did:key:zDn") {
+        return Ok("ES256".to_owned());
+    }
+
+    Err(DidMethodError::ResolutionError(
+        "Unsupported key algorithm".to_string(),
+    ))
+}
+
+pub(super) fn convert_document(
+    doc: Document,
+    public_key_jwk: PublicKeyJwkDTO,
+) -> Result<DidDocumentDTO, DidMethodError> {
+    let method = doc
         .verification_method
-        .into_iter()
-        .filter_map(|method| {
-            let pub_key = method.public_key?;
-
-            let public_key_jwk: PublicKeyJwkDTO = if let did_key::KeyFormat::JWK(data) = pub_key {
-                match data.key_type.as_str() {
-                    "EC" => PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
-                        crv: data.curve,
-                        x: data.x?,
-                        y: data.y,
-                    }),
-                    "OKP" => PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
-                        crv: data.curve,
-                        x: data.x?,
-                        y: data.y,
-                    }),
-                    _ => return None,
-                }
-            } else {
-                return None;
-            };
-
-            Some(DidVerificationMethodDTO {
-                id: method.id,
-                r#type: method.key_type,
-                controller: method.controller,
-                public_key_jwk,
-            })
+        .first() // Get and convert first only
+        .map(move |method| DidVerificationMethodDTO {
+            id: method.id.clone(),
+            r#type: method.key_type.clone(),
+            controller: method.controller.clone(),
+            public_key_jwk,
         })
-        .collect();
+        .ok_or(DidMethodError::ResolutionError(
+            "Missing verification method".to_string(),
+        ))?;
 
     let id = DidValue::from_str(&doc.id).map_err(|_| DidMethodError::NotSupported)?;
 
     Ok(DidDocumentDTO {
         context: vec![doc.context],
         id,
-        verification_method: methods,
+        verification_method: vec![method],
         authentication: doc.authentication,
         assertion_method: doc.assertion_method,
         key_agreement: doc.key_agreement,
