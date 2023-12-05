@@ -70,6 +70,10 @@ helm upgrade --install one-core . --values values/dev/main.yaml -f secrets://val
 helm upgrade --install one-core . --values values/test/main.yaml -f secrets://values/test/secrets.yaml --namespace one-test
 ```
 
+* Demo (Namespace: default) [https://core.demo.procivis-one.com](https://core.demo.procivis-one.com)
+```shell
+helm upgrade --install one-core . --values values/demo/main.yaml -f secrets://values/demo/secrets.yaml --namespace default
+```
 
 * Uninstall chart:
 ```shell

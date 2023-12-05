@@ -1,0 +1,17 @@
+image:
+  tag: "v0.3.1"
+
+baseUrl: "https://core.demo.procivis-one.com"
+
+sentry:
+  env: "demo"
+
+ingress:
+  hosts:
+  - host: core.demo.procivis-one.com
+    paths:
+      - path: /
+        pathType: ImplementationSpecific
+
+imagePullSecrets:
+  - name: gitlab-credentials-demo-cluster
