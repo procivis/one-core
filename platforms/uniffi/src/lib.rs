@@ -6,18 +6,16 @@ use sql_data_provider::{self, DataLayer};
 use std::sync::Arc;
 use utils::{native_key_storage::NativeKeyStorageWrapper, run_sync};
 
+mod binding;
 mod dto;
 mod error;
 mod functions;
 mod mapper;
 mod utils;
 
+use binding::OneCoreBinding;
 use dto::*;
 uniffi::include_scaffolding!("one_core");
-
-pub struct OneCoreBinding {
-    inner: one_core::OneCore,
-}
 
 fn initialize_core(
     data_dir_path: String,
@@ -26,8 +24,9 @@ fn initialize_core(
     let placeholder_config =
         core_config::CoreConfig::from_yaml_str(include_str!("../../../mobile_config.yml"))?;
 
+    let db_path = format!("{data_dir_path}/one_core_db.sqlite");
     let core = run_sync(async {
-        let db_url = format!("sqlite:{data_dir_path}/one_core_db.sqlite?mode=rwc");
+        let db_url = format!("sqlite:{db_path}?mode=rwc");
         let db_conn = sql_data_provider::db_conn(db_url).await;
 
         one_core::OneCore::new(
@@ -40,5 +39,5 @@ fn initialize_core(
             }),
         )
     })?;
-    Ok(Arc::new(OneCoreBinding { inner: core }))
+    Ok(Arc::new(OneCoreBinding::new(core, db_path)))
 }

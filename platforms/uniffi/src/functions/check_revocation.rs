@@ -12,9 +12,9 @@ impl OneCoreBinding {
         credential_ids: Vec<String>,
     ) -> Result<Vec<CredentialRevocationCheckResponseBindingDTO>, BindingError> {
         run_sync(async {
+            let core = self.use_core().await?;
             Ok(convert_inner(
-                self.inner
-                    .credential_service
+                core.credential_service
                     .check_revocation(
                         credential_ids
                             .iter()

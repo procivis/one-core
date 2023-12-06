@@ -17,6 +17,8 @@ pub enum BindingError {
     ValidationError(String),
     #[error("Config validation error `{0}`")]
     ConfigValidationError(String),
+    #[error("Core uninitialized")]
+    Uninitialized,
     #[error("Unknown error: `{0}`")]
     Unknown(String),
 }

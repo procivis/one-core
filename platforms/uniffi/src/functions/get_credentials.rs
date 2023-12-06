@@ -10,8 +10,8 @@ impl OneCoreBinding {
         query: &ListQueryBindingDTO,
     ) -> Result<CredentialListBindingDTO, BindingError> {
         run_sync(async {
-            Ok(self
-                .inner
+            let core = self.use_core().await?;
+            Ok(core
                 .credential_service
                 .get_credential_list(GetCredentialQueryDTO {
                     page: query.page,

@@ -12,8 +12,8 @@ impl OneCoreBinding {
         };
 
         run_sync(async {
-            Ok(self
-                .inner
+            let core = self.use_core().await?;
+            Ok(core
                 .organisation_service
                 .create_organisation(id)
                 .await?
