@@ -85,6 +85,11 @@ async fn test_direct_post_one_credential_correct() {
                             "id": new_claim_schemas[0].0,
                             "path": ["$.credentialSubject.cat1"],
                             "optional": false
+                        },
+                        {
+                            "id": new_claim_schemas[1].0,
+                            "path": ["$.credentialSubject.cat2"],
+                            "optional": true
                         }
                     ]
                 }
@@ -206,6 +211,11 @@ async fn test_direct_post_one_credential_missing_required_claim() {
                             "id": new_claim_schemas[0].0,
                             "path": ["$.credentialSubject.cat1"],
                             "optional": false
+                        },
+                        {
+                            "id": new_claim_schemas[1].0,
+                            "path": ["$.credentialSubject.cat2"],
+                            "optional": false
                         }
                     ]
                 }
@@ -304,10 +314,10 @@ async fn test_direct_post_multiple_presentations() {
     ];
 
     let proof_claim_claims = [
-        credential1_claims[0],
-        credential2_claims[0],
-        credential3_claims[0],
-        credential3_claims[1],
+        credential1_claims[0], // name1
+        credential2_claims[0], // pet1
+        credential3_claims[0], // cat1
+        credential3_claims[1], // cat2 - optional
     ];
 
     create_credential_schema_with_claims(
@@ -379,6 +389,11 @@ async fn test_direct_post_multiple_presentations() {
                             "id": credential3_claims[0].0,
                             "path": ["$.credentialSubject.cat1"],
                             "optional": false
+                        },
+                        {
+                            "id": credential3_claims[1].0,
+                            "path": ["$.credentialSubject.cat2"],
+                            "optional": true
                         },
                     ]
                 }

@@ -406,7 +406,7 @@ impl OIDCService {
                     credential,
                     credential_definition,
                     &claim_to_credential_schema_mapping,
-                    &mut expected_credential_claims,
+                    &expected_credential_claims,
                 )?;
 
                 total_proved_claims.extend(proved_claims);
