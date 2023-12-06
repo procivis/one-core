@@ -215,10 +215,10 @@ pub(super) async fn validate_credential(
 }
 
 pub(super) fn validate_claims(
-    credential: DetailCredential,
+    received_credential: DetailCredential,
     descriptor: &OpenID4VPPresentationDefinitionInputDescriptors,
     claim_to_credential_schema_mapping: &HashMap<ClaimSchemaId, CredentialSchemaId>,
-    expected_credential_claims: &mut HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>>,
+    expected_credential_claims: &HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>>,
 ) -> Result<Vec<(ProofSchemaClaim, String)>, ServiceError> {
     let first_claim_schema =
         descriptor
@@ -235,45 +235,30 @@ pub(super) fn validate_claims(
             OpenID4VCIError::InvalidRequest,
         ))?;
 
-    let mut expected_credential_claims = expected_credential_claims
-        .remove(expected_credential_schema_id)
+    let expected_credential_claims = expected_credential_claims
+        .get(expected_credential_schema_id)
         .ok_or(ServiceError::OpenID4VCError(
             OpenID4VCIError::InvalidRequest,
         ))?;
 
     let mut proved_claims: Vec<(ProofSchemaClaim, String)> = Vec::new();
-    for field in &descriptor.constraints.fields {
-        if let Some(expected_claim_index) = expected_credential_claims
-            .iter()
-            .position(|item| item.schema.id == field.id)
+    for &expected_credential_claim in expected_credential_claims {
+        if let Some(value) = received_credential
+            .claims
+            .values
+            .get(&expected_credential_claim.schema.key)
         {
-            // Remove the item at the found index
-            let matched_claim = expected_credential_claims.remove(expected_claim_index);
-
-            let value = credential
-                .claims
-                .values
-                .get(&matched_claim.schema.key)
-                .ok_or(ServiceError::OpenID4VCError(
-                    OpenID4VCIError::InvalidRequest,
-                ))?;
-
-            proved_claims.push((matched_claim.clone(), value.to_owned()))
-        } else {
+            // Expected claim present in the presentation
+            proved_claims.push((expected_credential_claim.clone(), value.to_owned()))
+        } else if expected_credential_claim.required {
+            // Fail as required claim was not sent
             return Err(ServiceError::OpenID4VCError(
                 OpenID4VCIError::InvalidRequest,
             ));
+        } else {
+            // Not present but also not required
+            continue;
         }
-    }
-
-    if expected_credential_claims
-        .iter()
-        .any(|claim| claim.required)
-    {
-        // Required proof claim not provided
-        return Err(ServiceError::OpenID4VCError(
-            OpenID4VCIError::InvalidRequest,
-        ));
     }
 
     Ok(proved_claims)
