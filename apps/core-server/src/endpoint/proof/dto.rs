@@ -19,7 +19,7 @@ use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue};
+use shared_types::DidId;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -193,7 +193,8 @@ pub struct ProofDetailResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub completed_date: Option<OffsetDateTime>,
 
-    pub verifier_did: Option<DidValue>,
+    #[convert(with_fn = convert_inner)]
+    pub verifier_did: Option<DidListItemResponseRestDTO>,
     pub transport: String,
     pub state: ProofStateRestEnum,
     pub organisation_id: Uuid,

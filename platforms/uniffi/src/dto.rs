@@ -1,9 +1,7 @@
-use crate::mapper::map_to_string;
+use crate::error::NativeKeyStorageError;
 use crate::utils::TimestampFormat;
-use crate::{error::NativeKeyStorageError, mapper::map_to_timestamp};
 use dto_mapper::{From, TryInto};
 use one_core::service::error::ServiceError;
-use one_core::service::proof::dto::ProofDetailResponseDTO;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
     common_mapper::convert_inner,
@@ -19,8 +17,7 @@ use one_core::{
     },
     service::{
         credential::dto::{
-            CredentialListItemResponseDTO, CredentialRevocationCheckResponseDTO,
-            CredentialStateEnum, GetCredentialListResponseDTO,
+            CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
     },
@@ -69,20 +66,12 @@ pub struct CredentialDetailBindingDTO {
     pub claims: Vec<ClaimBindingDTO>,
 }
 
-#[derive(From)]
-#[convert(from = CredentialListItemResponseDTO)]
 pub struct CredentialListItemBindingDTO {
-    #[convert(with_fn_ref = "ToString::to_string")]
     pub id: String,
-    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
-    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub issuance_date: String,
-    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
-    #[convert(with_fn = map_to_timestamp)]
     pub revocation_date: Option<String>,
-    #[convert(with_fn = map_to_string)]
     pub issuer_did: Option<String>,
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
@@ -120,18 +109,11 @@ pub enum HandleInvitationResponseBindingEnum {
     },
 }
 
-#[derive(From)]
-#[convert(from = ProofDetailResponseDTO)]
 pub struct ProofRequestBindingDTO {
-    #[convert(with_fn_ref = "ToString::to_string")]
     pub id: String,
-    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub created_date: String,
-    #[convert(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
-    #[convert(with_fn = convert_inner)]
     pub claims: Vec<ProofRequestClaimBindingDTO>,
-    #[convert(with_fn = map_to_string)]
     pub verifier_did: Option<String>,
     pub transport: String,
 }
