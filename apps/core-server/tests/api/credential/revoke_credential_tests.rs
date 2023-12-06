@@ -14,13 +14,7 @@ async fn test_revoke_credential_success() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did_key(&db_conn, &organisation).await;
-    let key = fixtures::create_eddsa_key(
-        &db_conn,
-        "EDDSA".to_string(),
-        &organisation.id.to_string(),
-        &did.id,
-    )
-    .await;
+    let key = fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &did.id).await;
     fixtures::create_key_did(
         &db_conn,
         &did.id.to_string(),

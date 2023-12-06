@@ -36,13 +36,7 @@ async fn test_revoke_check_success() {
         &organisation,
     )
     .await;
-    let key = fixtures::create_eddsa_key(
-        &db_conn,
-        "EDDSA".to_string(),
-        &organisation.id.to_string(),
-        &did.id,
-    )
-    .await;
+    let key = fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &did.id).await;
     fixtures::create_key_did(
         &db_conn,
         &did.id.to_string(),

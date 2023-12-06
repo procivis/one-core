@@ -52,6 +52,8 @@ sea-orm = { version = "0.12", default-features = false }
 elliptic-curve = { version = "0.13.8" }
 p256 = { version = "0.13.2", features = ["arithmetic"] }
 fmap = { version = "0.8" }
+rand = "0.8"
+rand_chacha = "0.3"
 
 [workspace.lints.clippy]
 redundant_clone = "warn"

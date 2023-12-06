@@ -24,8 +24,8 @@ strum.workspace = true
 mockall = { workspace = true, optional = true }
 
 did-key = { version = "0.2" }
-rand = { version = "0.8" }
-rand_chacha = { version = "0.3" }
+rand.workspace = true
+rand_chacha.workspace = true
 sha2 = { version = "0.10" }
 ed25519-compact = { version = "2.0" }
 bit-vec = { version = "0.6" }
