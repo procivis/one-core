@@ -2765,7 +2765,6 @@ name = "one-core-uniffi"
 version = "0.1.0"
 dependencies = [
  "dto_mapper",
- "fmap",
  "one-core",
  "serde_json",
  "sql-data-provider",

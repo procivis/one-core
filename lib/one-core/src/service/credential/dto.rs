@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use shared_types::{DidId, DidValue};
+use shared_types::DidId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -27,7 +27,7 @@ pub struct CredentialListItemResponseDTO {
     pub state: CredentialStateEnum,
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseDTO,
-    pub issuer_did: Option<DidValue>,
+    pub issuer_did: Option<DidListItemResponseDTO>,
     pub credential: Vec<u8>,
 }
 

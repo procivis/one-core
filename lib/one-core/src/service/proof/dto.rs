@@ -11,7 +11,7 @@ use crate::{
         },
     },
 };
-use shared_types::{DidId, DidValue};
+use shared_types::DidId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -37,7 +37,7 @@ pub struct ProofDetailResponseDTO {
     pub issuance_date: OffsetDateTime,
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
-    pub verifier_did: Option<DidValue>,
+    pub verifier_did: Option<DidListItemResponseDTO>,
     pub holder_did_id: Option<DidId>,
     pub transport: String,
     pub state: ProofStateEnum,

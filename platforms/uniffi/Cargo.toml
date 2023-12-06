@@ -22,7 +22,6 @@ tokio.workspace = true
 uuid.workspace = true
 url.workspace = true
 thiserror.workspace = true
-fmap.workspace = true
 
 [build-dependencies]
 uniffi = { workspace = true, features = ["build"] }

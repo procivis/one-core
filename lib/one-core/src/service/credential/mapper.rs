@@ -111,8 +111,6 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: Credential) -> Result<Self, ServiceError> {
-        let issuer_did_value = value.issuer_did.map(|inner| inner.did);
-
         let schema = value.schema.ok_or(ServiceError::MappingError(
             "credential_schema is None".to_string(),
         ))?;
@@ -135,7 +133,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             state: latest_state.state.into(),
             last_modified: value.last_modified,
             schema: schema.into(),
-            issuer_did: issuer_did_value,
+            issuer_did: convert_inner(value.issuer_did),
             credential: value.credential,
         })
     }
