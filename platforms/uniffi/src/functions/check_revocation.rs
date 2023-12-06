@@ -1,7 +1,5 @@
 use crate::{
-    dto::CredentialRevocationCheckResponseBindingDTO,
-    error::BindingError,
-    utils::{into_uuid, run_sync},
+    dto::CredentialRevocationCheckResponseBindingDTO, error::BindingError, utils::into_uuid,
     OneCoreBinding,
 };
 use one_core::common_mapper::convert_inner;
@@ -11,7 +9,7 @@ impl OneCoreBinding {
         &self,
         credential_ids: Vec<String>,
     ) -> Result<Vec<CredentialRevocationCheckResponseBindingDTO>, BindingError> {
-        run_sync(async {
+        self.block_on(async {
             let core = self.use_core().await?;
             Ok(convert_inner(
                 core.credential_service

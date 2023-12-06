@@ -1,7 +1,5 @@
 use crate::{
-    dto::PresentationSubmitCredentialRequestBindingDTO,
-    error::BindingError,
-    utils::{into_uuid, run_sync},
+    dto::PresentationSubmitCredentialRequestBindingDTO, error::BindingError, utils::into_uuid,
     OneCoreBinding,
 };
 use one_core::service::ssi_holder::dto::PresentationSubmitRequestDTO;
@@ -13,7 +11,7 @@ impl OneCoreBinding {
         interaction_id: String,
         submit_credentials: HashMap<String, PresentationSubmitCredentialRequestBindingDTO>,
     ) -> Result<(), BindingError> {
-        run_sync(async {
+        self.block_on(async {
             let core = self.use_core().await?;
             core.ssi_holder_service
                 .submit_proof(PresentationSubmitRequestDTO {

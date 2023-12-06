@@ -1,8 +1,8 @@
-use crate::{dto::KeyRequestBindingDTO, error::BindingError, utils::run_sync, OneCoreBinding};
+use crate::{dto::KeyRequestBindingDTO, error::BindingError, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn generate_key(&self, request: KeyRequestBindingDTO) -> Result<String, BindingError> {
-        run_sync(async {
+        self.block_on(async {
             let core = self.use_core().await?;
             Ok(core
                 .key_service
