@@ -1,18 +1,8 @@
 use one_core::service::error::ServiceError;
-use std::future::Future;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub(crate) mod native_key_storage;
-
-/// Run synchronously
-pub fn run_sync<F: Future>(future: F) -> F::Output {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(future)
-}
 
 /// Date-time formatting
 pub trait TimestampFormat {
