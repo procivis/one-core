@@ -14,6 +14,7 @@ use crate::{fixtures, utils};
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
+    // GIVEN
     let mock_server = MockServer::start().await;
     let config = fixtures::create_config(mock_server.uri());
     let db_conn = fixtures::create_db(&config).await;
@@ -72,6 +73,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
         .mount(&mock_server)
         .await;
 
+    // WHEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
 
@@ -90,6 +92,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
         .await
         .unwrap();
 
+    // THEN
     assert_eq!(resp.status(), 200);
 
     let resp: Value = resp.json().await.unwrap();
@@ -195,6 +198,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance() {
     .expect(1)
     .mount(&mock_server).await;
 
+    // WHEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url: String = format!("http://{}", listener.local_addr().unwrap());
 
@@ -219,6 +223,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance() {
         .await
         .unwrap();
 
+    // THEN
     assert_eq!(resp.status(), 200);
 
     let resp: Value = resp.json().await.unwrap();

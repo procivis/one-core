@@ -20,13 +20,8 @@ async fn test_post_issuer_credential() {
 
     let organisation = fixtures::create_organisation(&db_conn).await;
     let issuer_did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    let key = fixtures::create_eddsa_key(
-        &db_conn,
-        "EDDSA".to_string(),
-        &organisation.id.to_string(),
-        &issuer_did.id,
-    )
-    .await;
+    let key =
+        fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &issuer_did.id).await;
     fixtures::create_key_did(
         &db_conn,
         &issuer_did.id.to_string(),

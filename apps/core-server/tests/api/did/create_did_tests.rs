@@ -14,13 +14,7 @@ async fn test_create_did_key_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let key = fixtures::create_es256_key(
-        &db_conn,
-        "ES256".to_string(),
-        &organisation.id.to_string(),
-        None,
-    )
-    .await;
+    let key = fixtures::create_es256_key(&db_conn, &organisation.id.to_string(), None).await;
     // WHEN
     let url = format!("{base_url}/api/did/v1");
 
@@ -85,13 +79,7 @@ async fn test_create_did_web_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let key = fixtures::create_es256_key(
-        &db_conn,
-        "ES256".to_string(),
-        &organisation.id.to_string(),
-        None,
-    )
-    .await;
+    let key = fixtures::create_es256_key(&db_conn, &organisation.id.to_string(), None).await;
     // WHEN
     let url = format!("{base_url}/api/did/v1");
 

@@ -806,6 +806,8 @@ dependencies = [
  "headers",
  "one-core",
  "prometheus",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
  "reqwest",
  "sentry",
  "sentry-tracing",

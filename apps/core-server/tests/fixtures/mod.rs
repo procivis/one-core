@@ -27,6 +27,11 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
+use rand::distributions::{Alphanumeric, DistString};
+fn generate_alphanumeric(length: usize) -> String {
+    Alphanumeric.sample_string(&mut rand::thread_rng(), length)
+}
+
 pub fn create_config(core_base_url: impl Into<String>) -> Config {
     let root = std::env!("CARGO_MANIFEST_DIR");
 
@@ -80,13 +85,12 @@ pub async fn create_key_did(db_conn: &DbConn, did_id: &str, key_id: &str, key_ro
 }
 pub async fn create_es256_key(
     db_conn: &DbConn,
-    algorithm: String,
     organisation_id: &str,
     did_id: Option<DidId>,
 ) -> String {
     insert_key_to_database(
         db_conn,
-        algorithm,
+        "ES256".to_string(),
         vec![
             2, 212, 74, 108, 171, 101, 55, 25, 228, 113, 137, 107, 244, 59, 53, 18, 151, 14, 117,
             14, 156, 106, 178, 135, 104, 150, 113, 122, 229, 191, 40, 5, 96,
@@ -99,15 +103,29 @@ pub async fn create_es256_key(
     .unwrap()
 }
 
-pub async fn create_eddsa_key(
+pub async fn create_es256_key_details(
     db_conn: &DbConn,
-    algorithm: String,
     organisation_id: &str,
-    did_id: &DidId,
+    did_id: Option<DidId>,
+    public_key: Vec<u8>,
+    key_reference: Vec<u8>,
 ) -> String {
     insert_key_to_database(
         db_conn,
-        algorithm,
+        "ES256".to_string(),
+        public_key,
+        key_reference,
+        did_id,
+        organisation_id,
+    )
+    .await
+    .unwrap()
+}
+
+pub async fn create_eddsa_key(db_conn: &DbConn, organisation_id: &str, did_id: &DidId) -> String {
+    insert_key_to_database(
+        db_conn,
+        "EDDSA".to_string(),
         vec![
             59, 147, 149, 138, 47, 163, 27, 121, 194, 202, 219, 189, 55, 120, 146, 135, 204, 49,
             120, 110, 206, 132, 78, 224, 94, 221, 61, 161, 171, 61, 238, 124,
@@ -136,7 +154,7 @@ pub async fn create_did_key_with_value(
         id: DidId::from(Uuid::new_v4()),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        name: "test-did-key".to_string(),
+        name: format!("test-did-key-{}", generate_alphanumeric(5)),
         did: value,
         organisation: Some(organisation.to_owned()),
         did_type: DidType::Local,
@@ -170,7 +188,12 @@ pub async fn get_did_by_id(db_conn: &DbConn, did_id: &DidId) -> Did {
 }
 
 pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Did {
-    create_did_key_with_value("did:key:123".parse().unwrap(), db_conn, organisation).await
+    create_did_key_with_value(
+        DidValue::from_str(&format!("did:key:{}", generate_alphanumeric(5))).unwrap(),
+        db_conn,
+        organisation,
+    )
+    .await
 }
 
 pub async fn create_did_web(

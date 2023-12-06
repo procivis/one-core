@@ -14,13 +14,9 @@ async fn test_get_did_web_document_es256_success() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    let key = fixtures::create_es256_key(
-        &db_conn,
-        "ES256".to_string(),
-        &organisation.id.to_string(),
-        Some(did.id.clone()),
-    )
-    .await;
+    let key =
+        fixtures::create_es256_key(&db_conn, &organisation.id.to_string(), Some(did.id.clone()))
+            .await;
     fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::Authentication).await;
     fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::KeyAgreement).await;
     fixtures::create_key_did(
@@ -81,13 +77,7 @@ async fn test_get_did_web_document_eddsa_success() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    let key = fixtures::create_eddsa_key(
-        &db_conn,
-        "EDDSA".to_string(),
-        &organisation.id.to_string(),
-        &did.id,
-    )
-    .await;
+    let key = fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &did.id).await;
     fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::Authentication).await;
     fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::KeyAgreement).await;
     fixtures::create_key_did(
