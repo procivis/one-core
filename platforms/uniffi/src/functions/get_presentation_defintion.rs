@@ -11,8 +11,8 @@ impl OneCoreBinding {
         proof_id: String,
     ) -> Result<PresentationDefinitionBindingDTO, BindingError> {
         run_sync(async {
-            Ok(self
-                .inner
+            let core = self.use_core().await?;
+            Ok(core
                 .proof_service
                 .get_proof_presentation_definition(&into_uuid(&proof_id)?)
                 .await?

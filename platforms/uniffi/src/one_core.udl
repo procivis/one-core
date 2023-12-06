@@ -5,7 +5,7 @@ namespace one_core {
 
 [Error]
 enum BindingError {
-  "AlreadyExists", "NotFound", "NotSupported", "ValidationError", "ConfigValidationError", "Unknown"
+  "AlreadyExists", "NotFound", "NotSupported", "ValidationError", "ConfigValidationError", "Uninitialized", "Unknown"
 };
 
 [Error]
@@ -238,4 +238,7 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   sequence<CredentialRevocationCheckResponseBindingDTO> check_revocation(sequence<string> credential_ids);
+
+  [Throws=BindingError]
+  void uninitialize(boolean delete_data);
 };

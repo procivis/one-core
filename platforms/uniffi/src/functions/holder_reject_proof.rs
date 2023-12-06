@@ -7,8 +7,8 @@ use crate::{
 impl OneCoreBinding {
     pub fn holder_reject_proof(&self, interaction_id: String) -> Result<(), BindingError> {
         run_sync(async {
-            Ok(self
-                .inner
+            let core = self.use_core().await?;
+            Ok(core
                 .ssi_holder_service
                 .reject_proof_request(&into_uuid(&interaction_id)?)
                 .await?)
