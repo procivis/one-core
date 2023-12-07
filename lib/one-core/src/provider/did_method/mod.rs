@@ -8,6 +8,7 @@ use thiserror::Error;
 use crate::config::core_config::{self, DidConfig, KeyAlgorithmConfig};
 use crate::config::{ConfigError, ConfigValidationError};
 use crate::model::key::Key;
+use crate::provider::did_method::jwk::JWKMethod;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::web::WebDidMethod;
 use crate::provider::did_method::x509::X509Method;
@@ -19,6 +20,7 @@ use self::dto::DidDocumentDTO;
 use self::key::DidKeyParams;
 
 pub mod dto;
+pub mod jwk;
 pub mod key;
 pub mod provider;
 pub mod web;
@@ -85,6 +87,10 @@ pub fn did_method_providers_from_config(
                     ))
                 })?;
                 let method = Arc::new(did_web);
+                providers.insert(did_type.to_string(), method as _);
+            }
+            core_config::DidType::Jwk => {
+                let method = Arc::new(JWKMethod::new());
                 providers.insert(did_type.to_string(), method as _);
             }
             core_config::DidType::X509 => {

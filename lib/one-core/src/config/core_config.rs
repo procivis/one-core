@@ -119,6 +119,9 @@ pub enum DidType {
     #[serde(rename = "WEB")]
     #[strum(serialize = "WEB")]
     Web,
+    #[serde(rename = "JWK")]
+    #[strum(serialize = "JWK")]
+    Jwk,
     #[serde(rename = "X509")]
     #[strum(serialize = "X509")]
     X509,
