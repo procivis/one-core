@@ -89,7 +89,7 @@ async fn test_get_credential_schema_success() {
             .returning(move |_, _| Ok(clone.clone()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config());
+    let service = setup_service(repository, organisation_repository, generic_config().core);
 
     let result = service.get_credential_schema(&schema.id).await;
 
@@ -118,7 +118,7 @@ async fn test_get_credential_schema_fail() {
             .returning(move |_, _| Ok(clone.clone()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config());
+    let service = setup_service(repository, organisation_repository, generic_config().core);
 
     let organisation_is_none = service.get_credential_schema(&schema.id).await;
     assert!(organisation_is_none.is_err_and(|e| matches!(e, ServiceError::MappingError(_))));
@@ -147,7 +147,7 @@ async fn test_get_credential_schema_list_success() {
             .returning(move |_| Ok(clone.clone()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config());
+    let service = setup_service(repository, organisation_repository, generic_config().core);
 
     let result = service
         .get_credential_schema_list(GetCredentialSchemaQueryDTO {
@@ -194,7 +194,7 @@ async fn test_delete_credential_schema() {
             .returning(move |_| Ok(()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config());
+    let service = setup_service(repository, organisation_repository, generic_config().core);
 
     let result = service.delete_credential_schema(&schema_id).await;
     assert!(result.is_ok());
@@ -244,7 +244,7 @@ async fn test_create_credential_schema_success() {
             .returning(move |_| Ok(clone.clone()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config());
+    let service = setup_service(repository, organisation_repository, generic_config().core);
 
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
@@ -294,7 +294,7 @@ async fn test_create_credential_schema_unique_name_error() {
     let service = setup_service(
         repository,
         MockOrganisationRepository::default(),
-        generic_config(),
+        generic_config().core,
     );
 
     let result = service
@@ -318,7 +318,7 @@ async fn test_create_credential_schema_fail_validation() {
     let repository = MockCredentialSchemaRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
-    let service = setup_service(repository, organisation_repository, generic_config());
+    let service = setup_service(repository, organisation_repository, generic_config().core);
 
     let non_existing_format = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
@@ -405,7 +405,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             .returning(move |_| Ok(clone.clone()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config());
+    let service = setup_service(repository, organisation_repository, generic_config().core);
 
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {

@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
 use error::{BindingError, NativeKeyStorageError};
-use one_core::config::core_config;
+use one_core::config::core_config::{self, AppConfig, NoCustomConfig};
 use sql_data_provider::{self, DataLayer};
 use std::sync::Arc;
 use utils::native_key_storage::NativeKeyStorageWrapper;
@@ -21,8 +21,11 @@ fn initialize_core(
     data_dir_path: String,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
-    let placeholder_config =
-        core_config::CoreConfig::from_yaml_str(include_str!("../../../mobile_config.yml"))?;
+    let placeholder_config: AppConfig<NoCustomConfig> =
+        core_config::AppConfig::from_yaml_str_configs(vec![
+            include_str!("../../../config/config.yml"),
+            include_str!("../../../config/config-procivis-mobile.yml"),
+        ])?;
 
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -36,7 +39,7 @@ fn initialize_core(
 
         one_core::OneCore::new(
             Arc::new(DataLayer::build(db_conn)),
-            placeholder_config,
+            placeholder_config.core,
             None,
             native_key_storage.map(|storage| {
                 Arc::new(NativeKeyStorageWrapper(storage))

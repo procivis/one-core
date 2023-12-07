@@ -800,9 +800,9 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-extra",
+ "clap",
  "ct-codecs",
  "dto_mapper",
- "figment",
  "headers",
  "one-core",
  "prometheus",
@@ -1380,6 +1380,8 @@ dependencies = [
  "atomic",
  "pear",
  "serde",
+ "serde_json",
+ "serde_yaml",
  "uncased",
  "version_check",
 ]
@@ -2676,6 +2678,7 @@ dependencies = [
  "dto_mapper",
  "ed25519-compact",
  "elliptic-curve 0.13.8",
+ "figment",
  "flate2",
  "fmap",
  "indoc",
@@ -2685,6 +2688,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "regex",
  "reqwest",
+ "rusty-fork",
  "serde",
  "serde_json",
  "serde_qs 0.12.0",
@@ -3166,6 +3170,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
 
 [[package]]
+name = "quick-error"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
+
+[[package]]
 name = "quote"
 version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3545,6 +3555,18 @@ name = "rustversion"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
+
+[[package]]
+name = "rusty-fork"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb3dcc6e454c328bb824492db107ab7c0ae8fcffe4ad210136ef014458c1bc4f"
+dependencies = [
+ "fnv",
+ "quick-error",
+ "tempfile",
+ "wait-timeout",
+]
 
 [[package]]
 name = "ryu"
@@ -5240,6 +5262,15 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "wait-timeout"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f200f5b12eb75f8c1ed65abd4b2db8a6e1b138a20de009dacee265a2498f3f6"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "waker-fn"

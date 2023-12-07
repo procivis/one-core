@@ -161,7 +161,7 @@ async fn test_get_credential_list_success() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -216,7 +216,7 @@ async fn test_get_credential_success() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -256,7 +256,7 @@ async fn test_get_revoked_credential_success() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -291,7 +291,7 @@ async fn test_get_credential_fail_credential_schema_is_none() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -341,12 +341,13 @@ async fn test_share_credential_success() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         protocol_provider,
         ..Default::default()
     });
 
-    let result = service.share_credential(&credential.id).await;
+    let result: Result<crate::model::common::EntityShareResponseDTO, ServiceError> =
+        service.share_credential(&credential.id).await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -376,7 +377,7 @@ async fn test_share_credential_failed_invalid_state() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -418,7 +419,7 @@ async fn test_create_credential_success() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -541,7 +542,7 @@ async fn test_create_credential_one_required_claim_missing() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -614,7 +615,7 @@ async fn test_create_credential_schema_deleted() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -658,7 +659,7 @@ async fn test_check_revocation_invalid_state() {
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -729,7 +730,7 @@ async fn test_check_revocation_non_revocable() {
         did_repository,
         revocation_method_provider,
         formatter_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -782,7 +783,7 @@ async fn test_check_revocation_already_revoked() {
         did_repository,
         revocation_method_provider,
         formatter_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -889,7 +890,7 @@ async fn test_check_revocation_being_revoked() {
         did_repository,
         revocation_method_provider,
         formatter_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 

@@ -143,7 +143,7 @@ async fn test_get_issuer_metadata_jwt() {
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
@@ -176,7 +176,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
@@ -210,7 +210,7 @@ async fn test_service_discovery() {
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
     let result = service.oidc_service_discovery(&schema.id).await;
@@ -256,7 +256,7 @@ async fn test_oidc_create_token() {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
     let result = service
@@ -331,7 +331,7 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
     let result = service
@@ -380,7 +380,7 @@ async fn test_oidc_create_token_wrong_credential_state() {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
     let result = service
@@ -471,7 +471,7 @@ async fn test_oidc_create_credential_success() {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        config: generic_config(),
+        config: generic_config().core,
         transport_provider,
         did_repository,
         ..Default::default()
@@ -603,7 +603,7 @@ async fn test_oidc_create_credential_format_invalid_credential_definition() {
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -648,7 +648,7 @@ async fn test_oidc_create_credential_format_invalid_bearer_token() {
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -701,7 +701,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        config: generic_config(),
+        config: generic_config().core,
         transport_provider,
         ..Default::default()
     });
@@ -755,7 +755,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        config: generic_config(),
+        config: generic_config().core,
         transport_provider,
         ..Default::default()
     });
@@ -814,7 +814,7 @@ async fn test_oidc_create_credential_access_token_expired() {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
-        config: generic_config(),
+        config: generic_config().core,
         transport_provider,
         ..Default::default()
     });

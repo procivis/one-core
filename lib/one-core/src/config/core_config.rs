@@ -1,9 +1,19 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    io::Cursor,
     str::FromStr,
 };
+
+use figment::{providers::Format, Figment};
+
+#[cfg(feature = "config_env")]
+use figment::providers::Env;
+
+#[cfg(feature = "config_yaml")]
+use figment::providers::Yaml;
+
+#[cfg(feature = "config_json")]
+use figment::providers::Json;
 
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
@@ -12,6 +22,18 @@ use strum_macros::{Display, EnumString};
 use super::{ConfigParsingError, ConfigValidationError};
 
 type Dict<K, V> = BTreeMap<K, V>;
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NoCustomConfig;
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppConfig<Custom> {
+    #[serde(flatten)]
+    pub core: CoreConfig,
+    #[serde(default)]
+    pub app: Custom,
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,20 +48,89 @@ pub struct CoreConfig {
     pub(crate) key_storage: KeyStorageConfig,
 }
 
-impl CoreConfig {
-    pub fn from_file(path: impl AsRef<std::path::Path>) -> Result<Self, ConfigParsingError> {
-        let file = std::fs::File::open(&path)?;
+#[derive(Debug)]
+pub(super) enum InputFormat {
+    #[cfg(feature = "config_yaml")]
+    Yaml { content: String },
+    #[cfg(feature = "config_json")]
+    Json { content: String },
+}
 
-        let config = match path.as_ref().extension() {
-            Some(v) if v == "json" => serde_json::from_reader(file)?,
-            _ => serde_yaml::from_reader(file)?,
-        };
+impl<Custom> AppConfig<Custom>
+where
+    Custom: Serialize + DeserializeOwned + Default,
+{
+    pub fn from_files(files: &[impl AsRef<std::path::Path>]) -> Result<Self, ConfigParsingError> {
+        let mut inputs: Vec<InputFormat> = Vec::with_capacity(files.len());
 
-        Ok(config)
+        for path in files {
+            let file_content =
+                std::fs::read_to_string(path.as_ref()).map_err(ConfigParsingError::File)?;
+
+            #[cfg(feature = "config_yaml")]
+            if path
+                .as_ref()
+                .extension()
+                .is_some_and(|ext| ext == "yml" || ext == "yaml")
+            {
+                inputs.push(InputFormat::Yaml {
+                    content: file_content,
+                });
+                continue;
+            }
+
+            #[cfg(feature = "config_json")]
+            if path.as_ref().extension() == Some("json".as_ref()) {
+                inputs.push(InputFormat::Json {
+                    content: file_content,
+                });
+                continue;
+            }
+
+            return Err(ConfigParsingError::GeneralParsingError(format!(
+                "Unsupported file or missing file extension: {:?}",
+                path.as_ref().to_str()
+            )));
+        }
+
+        AppConfig::parse(inputs)
     }
 
-    pub fn from_yaml_str(config: impl AsRef<str>) -> Result<Self, ConfigParsingError> {
-        Ok(serde_yaml::from_reader(Cursor::new(config.as_ref()))?)
+    pub fn from_yaml_str_configs(
+        configs: Vec<impl AsRef<str>>,
+    ) -> Result<Self, ConfigParsingError> {
+        let inputs = configs
+            .into_iter()
+            .map(|input| InputFormat::Yaml {
+                content: input.as_ref().to_owned(),
+            })
+            .collect();
+
+        AppConfig::parse(inputs)
+    }
+
+    #[allow(unreachable_patterns)]
+    pub(super) fn parse(inputs: Vec<InputFormat>) -> Result<Self, ConfigParsingError> {
+        let mut figment = Figment::new();
+
+        for data in inputs {
+            figment = match data {
+                #[cfg(feature = "config_yaml")]
+                InputFormat::Yaml { content } => figment.merge(Yaml::string(&content)),
+                #[cfg(feature = "config_json")]
+                InputFormat::Json { content } => figment.merge(Json::string(&content)),
+                _ => figment,
+            };
+        }
+
+        #[cfg(feature = "config_env")]
+        {
+            figment = figment.merge(Env::prefixed("ONE_").split("__").lowercase(false));
+        }
+
+        figment
+            .extract()
+            .map_err(|e| ConfigParsingError::GeneralParsingError(e.to_string()))
     }
 }
 
@@ -367,12 +458,9 @@ fn check_overlapping_params(object: &serde_json::Map<String, Value>) -> Result<(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use serde_json::json;
 
-    #[test]
-    fn test_parses_current_configuration() {
-        CoreConfig::from_file("../../config.yml").unwrap();
-    }
+    use super::*;
 
     #[test]
     fn test_merge_fields_with_public_and_private_params() {
@@ -437,7 +525,7 @@ mod tests {
                     order: 200
                     params:
                         public:
-                            min: 10.0 
+                            min: 10.0
                         private:
                             min: 2.0
         "};

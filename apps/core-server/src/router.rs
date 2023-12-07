@@ -9,7 +9,7 @@ use axum::http::{Request, Response, StatusCode};
 use axum::middleware::{self, Next};
 use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Router};
-use one_core::config::core_config;
+use one_core::config::core_config::AppConfig;
 use one_core::OneCore;
 use sql_data_provider::{DataLayer, DbConn};
 use tower_http::trace::TraceLayer;
@@ -18,14 +18,14 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::build_info;
+use crate::{build_info, ServerConfig};
 use crate::{
     dto,
     endpoint::{
         self, config, credential, credential_schema, did, interaction, key, misc, organisation,
         proof, proof_schema, ssi,
     },
-    metrics, Config,
+    metrics,
 };
 
 #[derive(Clone)]
@@ -44,15 +44,13 @@ tokio::task_local! {
     pub static SENTRY_HTTP_REQUEST: HttpRequestContext;
 }
 
-pub async fn start_server(listener: TcpListener, config: Config, db_conn: DbConn) {
+pub async fn start_server(listener: TcpListener, config: AppConfig<ServerConfig>, db_conn: DbConn) {
     listener.set_nonblocking(true).unwrap();
-
-    let core_config = core_config::CoreConfig::from_file(&config.config_file).unwrap();
 
     let core = OneCore::new(
         Arc::new(DataLayer::build(db_conn)),
-        core_config,
-        Some(config.core_base_url.to_owned()),
+        config.core,
+        Some(config.app.core_base_url.to_owned()),
         None,
     )
     .expect("Failed to parse config");
@@ -62,7 +60,7 @@ pub async fn start_server(listener: TcpListener, config: Config, db_conn: DbConn
     let addr = listener.local_addr().expect("Invalid TCP listener");
     info!("Starting server at http://{addr}");
 
-    let router = router(state, config);
+    let router = router(state, config.app);
 
     axum::serve(
         tokio::net::TcpListener::from_std(listener)
@@ -73,7 +71,7 @@ pub async fn start_server(listener: TcpListener, config: Config, db_conn: DbConn
     .expect("Failed to start axum server");
 }
 
-fn router(state: AppState, config: Config) -> Router {
+fn router(state: AppState, config: ServerConfig) -> Router {
     let openapi_documentation = gen_openapi_documentation();
 
     let protected = Router::new()
@@ -275,7 +273,7 @@ fn router(state: AppState, config: Config) -> Router {
 pub struct Authorized {}
 
 async fn bearer_check(
-    Extension(config): Extension<Config>,
+    Extension(config): Extension<ServerConfig>,
     mut request: Request<Body>,
     next: Next,
 ) -> Result<axum::response::Response, StatusCode> {

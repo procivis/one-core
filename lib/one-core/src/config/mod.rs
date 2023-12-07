@@ -4,6 +4,9 @@ pub mod validator;
 
 pub mod core_config;
 
+#[cfg(test)]
+mod test;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
     #[error(transparent)]
@@ -20,6 +23,8 @@ pub enum ConfigParsingError {
     Json(#[from] serde_json::Error),
     #[error("yaml error: {0}")]
     Yaml(#[from] serde_yaml::Error),
+    #[error("Parsing error: {0}")]
+    GeneralParsingError(String),
 }
 
 #[derive(thiserror::Error, Debug)]

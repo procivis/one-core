@@ -32,6 +32,7 @@ bit-vec = { version = "0.6" }
 flate2 = { version = "1.0" }
 regex = { version = "1.10" }
 url = { workspace = true }
+figment = { version = "0.10", default-features = false}
 
 strum_macros = { version = "0.25" }
 
@@ -50,13 +51,18 @@ mockall.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 assert2 = { version = "0.3" }
 indoc = { version = "2.0" }
+rusty-fork = "0.3.0"
 
 [build-dependencies]
 shadow-rs.workspace = true
 
 [features]
-default = []
+default = ["config_yaml"]
 mock = ["mockall"]
+config_yaml = ["figment/yaml"]
+config_json = ["figment/json"]
+config_env = ["figment/env"]
+
 
 [lints]
 workspace = true

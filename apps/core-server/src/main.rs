@@ -1,36 +1,48 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
 use std::panic;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use figment::{providers::Env, Figment};
+use clap::Parser;
+use one_core::config::core_config::{self, AppConfig};
 use sentry_tracing::EventFilter;
 use tracing::info;
 use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::prelude::*;
 
 use core_server::router::{start_server, HttpRequestContext, SENTRY_HTTP_REQUEST};
-use core_server::{build_info, metrics, Config};
+use core_server::{build_info, metrics, ServerConfig};
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    #[arg(short, long, value_name = "FILE")]
+    config: Option<Vec<PathBuf>>,
+}
 
 fn main() {
-    let config: Config = Figment::new()
-        .merge(Env::raw())
-        .extract()
-        .unwrap_or_else(|e| {
-            panic!("Failed to parse config: {}", e);
-        });
+    let cli = Cli::parse();
 
-    let _sentry_init_guard = initialize_sentry(&config);
+    let mut config_files = cli.config.unwrap_or_default();
+    config_files.insert(0, "config/config.yml".into());
 
-    initialize_tracing(&config);
+    let app_config: AppConfig<ServerConfig> =
+        core_config::AppConfig::from_files(&config_files).unwrap();
+
+    let _sentry_init_guard = initialize_sentry(&app_config.app);
+
+    initialize_tracing(&app_config.app);
     log_build_info();
     metrics::setup();
 
     let addr = SocketAddr::new(
-        config
+        app_config
+            .app
             .server_ip
             .unwrap_or(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))),
-        config.server_port.unwrap_or(3000),
+        app_config.app.server_port.unwrap_or(3000),
     );
+
     let listener = TcpListener::bind(addr).expect("Failed to bind to address");
 
     tokio::runtime::Builder::new_multi_thread()
@@ -38,9 +50,9 @@ fn main() {
         .build()
         .unwrap()
         .block_on(async {
-            let db_conn = sql_data_provider::db_conn(&config.database_url).await;
+            let db_conn = sql_data_provider::db_conn(&app_config.app.database_url).await;
 
-            start_server(listener, config, db_conn).await
+            start_server(listener, app_config, db_conn).await
         })
 }
 
@@ -54,8 +66,8 @@ fn log_build_info() {
     info!("Pipeline ID: {}", build_info::CI_PIPELINE_ID);
 }
 
-fn initialize_sentry(config: &Config) -> Option<sentry::ClientInitGuard> {
-    let Config {
+fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuard> {
+    let ServerConfig {
         sentry_dsn,
         sentry_environment,
         ..
@@ -131,10 +143,14 @@ fn get_sentry_tracing_layer<
     })
 }
 
-fn initialize_tracing(config: &Config) {
+fn initialize_tracing(config: &ServerConfig) {
     // Create a filter based on the log level
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .or_else(|_| tracing_subscriber::EnvFilter::try_new("debug"))
+        .or_else(|_| {
+            tracing_subscriber::EnvFilter::try_new(
+                config.trace_level.as_ref().unwrap_or(&"debug".to_string()),
+            )
+        })
         .expect("Failed to create env filter");
 
     if config.trace_json.unwrap_or_default() {

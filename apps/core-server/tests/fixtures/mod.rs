@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use core_server::Config;
+use core_server::ServerConfig;
+use one_core::config::core_config::{self, AppConfig};
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
@@ -27,11 +28,16 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-pub fn create_config(core_base_url: impl Into<String>) -> Config {
+pub fn create_config(core_base_url: impl Into<String>) -> AppConfig<ServerConfig> {
     let root = std::env!("CARGO_MANIFEST_DIR");
 
-    Config {
-        config_file: format!("{}/../../config.yml", root),
+    let mut app_config: AppConfig<ServerConfig> = core_config::AppConfig::from_files(&[
+        format!("{}/../../config/config.yml", root),
+        format!("{}/../../config/config-local.yml", root),
+    ])
+    .unwrap();
+
+    app_config.app = ServerConfig {
         database_url: "sqlite::memory:".to_string(),
         auth_token: "test".to_string(),
         core_base_url: core_base_url.into(),
@@ -40,11 +46,14 @@ pub fn create_config(core_base_url: impl Into<String>) -> Config {
         trace_json: None,
         sentry_dsn: None,
         sentry_environment: None,
-    }
+        trace_level: Some("debug".into()),
+    };
+
+    app_config
 }
 
-pub async fn create_db(config: &Config) -> DbConn {
-    sql_data_provider::db_conn(&config.database_url).await
+pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
+    sql_data_provider::db_conn(&config.app.database_url).await
 }
 
 pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
