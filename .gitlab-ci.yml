@@ -3,6 +3,7 @@ image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.74.0
 variables:
   DOCKER_DRIVER: overlay2
   DEPENDENCY_TRACK_PROJECT_NAME: "ONE-Core"
+  CI_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -46,29 +47,27 @@ before_script:
 
 .only_main_or_tag:
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "release"
 
 .only_main_or_tag_manual:
+  when: manual
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
+    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: manual
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "release"
       when: manual
 
 .only_main_or_tag_or_manual:
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
-      when: always
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: always
+    - !reference [.only_main_or_tag, rules]
     - when: manual
 
 .manual_except_main_branch:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       when: never
-    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/'
+    - if: $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
       when: never
     - when: on_success
 
