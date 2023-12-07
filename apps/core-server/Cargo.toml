@@ -14,7 +14,7 @@ doctest = false
 strict = []
 
 [dependencies]
-one-core = { version = "0.1.0", path = "../../lib/one-core" }
+one-core = { version = "0.1.0", path = "../../lib/one-core", features=["config_json", "config_yaml", "config_env"]}
 sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = [
     "mysql",
 ] }
@@ -38,7 +38,6 @@ tracing-subscriber.workspace = true
 url.workspace = true
 uuid.workspace = true
 validator.workspace = true
-figment.workspace = true
 
 tower-http = { version = "0.5", features = ["trace"] }
 headers = { version = "0.4" }
@@ -55,6 +54,7 @@ sentry = { version = "0.32", default-features = false, features = [
 ] }
 sentry-tracing = { version = "0.32" }
 prometheus = { version = "0.13", features = ["process"] }
+clap = { version = "4.4.11", features = ["derive"] }
 
 
 [build-dependencies]

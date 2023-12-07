@@ -1,0 +1,9 @@
+format: {}
+exchange: {}
+transport: {}
+envelope: {}
+revocation: {}
+did: {}
+keyAlgorithm: {}
+keyStorage: {}
+datatype: {}

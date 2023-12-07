@@ -93,7 +93,7 @@ async fn test_create_key_success() {
         repository,
         organisation_repository,
         key_storage,
-        generic_config(),
+        generic_config().core,
     );
 
     let result = service
@@ -131,7 +131,7 @@ async fn test_get_key_success() {
         repository,
         organisation_repository,
         key_storage,
-        generic_config(),
+        generic_config().core,
     );
 
     let result = service.get_key(&key.id).await;
@@ -161,7 +161,7 @@ async fn test_get_key_list() {
         repository,
         organisation_repository,
         key_storage,
-        generic_config(),
+        generic_config().core,
     );
 
     let query = GetKeyQueryDTO {

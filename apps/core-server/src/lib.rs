@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub mod dto;
 pub mod endpoint;
@@ -18,9 +18,9 @@ pub mod build_info {
     pub use build::*;
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct Config {
-    pub config_file: String,
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerConfig {
     pub database_url: String,
     pub server_ip: Option<IpAddr>,
     pub server_port: Option<u16>,
@@ -29,4 +29,5 @@ pub struct Config {
     pub core_base_url: String,
     pub sentry_dsn: Option<String>,
     pub sentry_environment: Option<String>,
+    pub trace_level: Option<String>,
 }

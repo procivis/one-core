@@ -1,8 +1,13 @@
 use indoc::indoc;
+use serde::{Deserialize, Serialize};
 
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::AppConfig;
 
-pub fn generic_config() -> CoreConfig {
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomConfig {}
+
+pub fn generic_config() -> AppConfig<CustomConfig> {
     let config = indoc! {"
         format:
             JWT:
@@ -77,5 +82,5 @@ pub fn generic_config() -> CoreConfig {
 
     "};
 
-    CoreConfig::from_yaml_str(config).unwrap()
+    AppConfig::from_yaml_str_configs(vec![config]).unwrap()
 }

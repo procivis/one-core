@@ -475,7 +475,7 @@ async fn test_create_proof() {
         did_repository,
         proof_schema_repository,
         interaction_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -535,7 +535,7 @@ async fn test_create_proof_did_deactivated_error() {
     let service = setup_service(Repositories {
         did_repository,
         proof_schema_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -564,7 +564,7 @@ async fn test_create_proof_schema_deleted() {
 
     let service = setup_service(Repositories {
         proof_schema_repository,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -628,7 +628,7 @@ async fn test_share_proof_created_success() {
     let service = setup_service(Repositories {
         proof_repository,
         protocol_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -679,7 +679,7 @@ async fn test_share_proof_pending_success() {
     let service = setup_service(Repositories {
         proof_repository,
         protocol_provider,
-        config: generic_config(),
+        config: generic_config().core,
         ..Default::default()
     });
 

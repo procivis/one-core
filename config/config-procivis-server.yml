@@ -1,3 +1,11 @@
+app:
+  databaseUrl: "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core"
+  coreBaseUrl: "http://0.0.0.0:3000"
+  serverIp: "0.0.0.0"
+  serverPort: 3000
+  traceJson: true
+  sentryEnvironment: "https://2deca538f2c80d91bf6fd718fde96db6@o153694.ingest.sentry.io/4505940972142592"
+  traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error"
 format:
   JWT:
     type: "JWT"
@@ -79,15 +87,10 @@ did:
     display: "did.web"
     order: 1
     params: null
-  JWK:
-    type: "JWK"
-    display: "did.jwk"
-    order: 2
-    params: null
   X509:
     type: "X509"
     display: "did.x509"
-    order: 3
+    order: 2
     disabled: true
     params: null
 datatype:
