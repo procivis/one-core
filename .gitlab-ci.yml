@@ -140,6 +140,13 @@ tests:
   script:
     - cargo tarpaulin --ignore-tests --all-features --out xml
   coverage: '/^\d+.\d+% coverage/'
+  cache:
+    key:
+      files:
+        - Cargo.lock
+    paths:
+      - target/
+    policy: pull-push
   artifacts:
     expire_in: 1 hour
     paths:
