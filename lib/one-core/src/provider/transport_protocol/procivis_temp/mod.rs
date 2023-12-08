@@ -231,7 +231,7 @@ impl TransportProtocol for ProcivisTemp {
 
         let key = keys
             .iter()
-            .find(|k| k.role == KeyRole::AssertionMethod)
+            .find(|k| k.role == KeyRole::Authentication)
             .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
 
         let auth_fn = self
@@ -243,6 +243,7 @@ impl TransportProtocol for ProcivisTemp {
             .into_iter()
             .map(|presented_credential| presented_credential.presentation)
             .collect();
+
         let presentation = presentation_formatter
             .format_presentation(&tokens, &holder_did.did, &key.key.key_type, auth_fn, None)
             .await

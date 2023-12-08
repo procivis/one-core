@@ -33,7 +33,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
         &db_conn,
         &holder_did.id.to_string(),
         &key_id,
-        KeyRole::AssertionMethod,
+        KeyRole::Authentication,
     )
     .await;
 
@@ -182,7 +182,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         &db_conn,
         &holder_did.id.to_string(),
         &key_id,
-        KeyRole::AssertionMethod,
+        KeyRole::Authentication,
     )
     .await;
 

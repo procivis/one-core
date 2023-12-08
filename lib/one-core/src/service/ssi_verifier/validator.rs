@@ -3,7 +3,7 @@ use crate::{
     common_validator::{validate_expiration_time, validate_issuance_time},
     model::{
         credential_schema::{CredentialSchema, CredentialSchemaId},
-        did::Did,
+        did::{Did, KeyRole},
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
     provider::{
@@ -32,13 +32,20 @@ pub(super) async fn validate_proof(
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
-    let key_verification = Box::new(KeyVerification {
+    let key_verification_presentation = Box::new(KeyVerification {
+        key_algorithm_provider: key_algorithm_provider.clone(),
+        did_method_provider: did_method_provider.clone(),
+        key_role: KeyRole::Authentication,
+    });
+
+    let key_verification_credentials = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
+        key_role: KeyRole::AssertionMethod,
     });
 
     let presentation = formatter
-        .extract_presentation(presentation, key_verification.clone())
+        .extract_presentation(presentation, key_verification_presentation.clone())
         .await?;
 
     // Check if presentation is expired
@@ -96,7 +103,7 @@ pub(super) async fn validate_proof(
     for credential in presentation.credentials {
         // Credential tokens are being verified here
         let credential = formatter
-            .extract_credentials(&credential, key_verification.clone())
+            .extract_credentials(&credential, key_verification_credentials.clone())
             .await?;
 
         let credential_schema_id = find_matching_schema(&credential, &remaining_requested_claims)?;
