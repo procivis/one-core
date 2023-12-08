@@ -214,7 +214,7 @@ impl TransportProtocol for OpenID4VC {
                 "Holder has no keys".to_string(),
             ))?
             .iter()
-            .find(|k| k.role == KeyRole::AssertionMethod)
+            .find(|k| k.role == KeyRole::Authentication)
             .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
 
         let auth_fn = self
@@ -293,7 +293,7 @@ impl TransportProtocol for OpenID4VC {
                 "Holder has no keys".to_string(),
             ))?
             .iter()
-            .find(|k| k.role == KeyRole::AssertionMethod)
+            .find(|k| k.role == KeyRole::Authentication)
             .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
 
         let auth_fn = self

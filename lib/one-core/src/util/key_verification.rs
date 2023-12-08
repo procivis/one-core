@@ -1,5 +1,6 @@
 use crate::{
     crypto::signer::error::SignerError,
+    model::did::KeyRole,
     provider::{
         credential_formatter::TokenVerifier, did_method::provider::DidMethodProvider,
         key_algorithm::provider::KeyAlgorithmProvider,
@@ -13,6 +14,7 @@ use std::sync::Arc;
 pub(crate) struct KeyVerification {
     pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    pub key_role: KeyRole,
 }
 
 #[async_trait]
@@ -33,9 +35,21 @@ impl TokenVerifier for KeyVerification {
             .await
             .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
+        let key_id_list = match &self.key_role {
+            KeyRole::Authentication => did_document.authentication,
+            KeyRole::AssertionMethod => did_document.assertion_method,
+            KeyRole::KeyAgreement => did_document.key_agreement,
+            KeyRole::CapabilityInvocation => did_document.capability_invocation,
+            KeyRole::CapabilityDelegation => did_document.capability_delegation,
+        }
+        .ok_or(SignerError::MissingKey)?;
+
+        let method_id = key_id_list.first().ok_or(SignerError::MissingKey)?;
+
         let method = did_document
             .verification_method
-            .first()
+            .iter()
+            .find(|method| &method.id == method_id)
             .ok_or(SignerError::MissingKey)?;
 
         let alg = self
@@ -152,6 +166,7 @@ mod test {
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
+            key_role: KeyRole::Authentication,
         };
 
         let result = verification
@@ -178,6 +193,7 @@ mod test {
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
+            key_role: KeyRole::Authentication,
         };
 
         let result = verification
@@ -236,6 +252,7 @@ mod test {
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
             did_method_provider: Arc::new(did_method_provider),
+            key_role: KeyRole::Authentication,
         };
 
         let result = verification

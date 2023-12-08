@@ -14,6 +14,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaId, CredentialSchemaRelations,
 };
+use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
@@ -350,11 +351,6 @@ impl OIDCService {
             }
         }
 
-        let key_verification = KeyVerification {
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-            did_method_provider: self.did_method_provider.clone(),
-        };
-
         let mut total_proved_claims: Vec<(ProofSchemaClaim, String)> = Vec::new();
         //Unpack presentations and credentials
         for presentation_submitted in &presentation_submission.descriptor_map {
@@ -376,7 +372,7 @@ impl OIDCService {
                 &interaction_data.nonce,
                 &presentation_submitted.format,
                 &self.formatter_provider,
-                Box::new(key_verification.clone()),
+                self.build_key_verification(KeyRole::Authentication),
             )
             .await?;
 
@@ -397,7 +393,7 @@ impl OIDCService {
                         ))?,
                     &path_nested.format,
                     &self.formatter_provider,
-                    Box::new(key_verification.clone()),
+                    self.build_key_verification(KeyRole::AssertionMethod),
                     &self.revocation_method_provider,
                 )
                 .await?;
@@ -417,6 +413,14 @@ impl OIDCService {
             .await?;
 
         Ok(OpenID4VPDirectPostResponseDTO { redirect_uri: None })
+    }
+
+    fn build_key_verification(&self, key_role: KeyRole) -> Box<KeyVerification> {
+        Box::new(KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role,
+        })
     }
 
     async fn accept_proof(

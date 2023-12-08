@@ -171,6 +171,7 @@ impl RevocationMethod for StatusList2021 {
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
         });
 
         let encoded_list = StatusList2021JWTFormatter::parse_status_list(
