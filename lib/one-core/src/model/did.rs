@@ -11,6 +11,7 @@ use super::{
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DidType {
     Remote,
     Local,
