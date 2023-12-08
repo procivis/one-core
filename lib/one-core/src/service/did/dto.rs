@@ -37,6 +37,7 @@ pub struct DidResponseKeysDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, From)]
+#[serde(rename_all = "camelCase")]
 #[convert(from = "Did")]
 pub struct DidListItemResponseDTO {
     pub id: DidId,
@@ -46,7 +47,9 @@ pub struct DidListItemResponseDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub did: DidValue,
+    #[serde(rename = "type")]
     pub did_type: DidType,
+    #[serde(rename = "method")]
     pub did_method: String,
     pub deactivated: bool,
 }
