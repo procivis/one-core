@@ -456,6 +456,7 @@ pub async fn create_credential(
         issuance_date: get_dummy_date(),
         credential: credential.unwrap_or("").as_bytes().to_owned(),
         transport: transport.to_owned(),
+        redirect_uri: None,
         state: Some(vec![CredentialState {
             created_date: get_dummy_date(),
             state,
@@ -496,6 +497,7 @@ pub async fn create_proof(
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),
         transport: transport.to_owned(),
+        redirect_uri: None,
         state: Some(vec![ProofState {
             state,
             created_date: get_dummy_date(),

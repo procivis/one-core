@@ -47,6 +47,7 @@ pub struct CreateProofRequestRestDTO {
     #[schema(example = "<uuid; did identifier>")]
     pub verifier_did: DidId,
     pub transport: String,
+    pub redirect_uri: Option<String>,
 }
 
 // list endpoint
@@ -202,6 +203,7 @@ pub struct ProofDetailResponseRestDTO {
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
     #[convert(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimRestDTO>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

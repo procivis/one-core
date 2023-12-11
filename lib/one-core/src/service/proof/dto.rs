@@ -22,6 +22,7 @@ pub struct CreateProofRequestDTO {
     pub proof_schema_id: ProofSchemaId,
     pub verifier_did_id: DidId,
     pub transport: String,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -44,6 +45,7 @@ pub struct ProofDetailResponseDTO {
     pub organisation_id: OrganisationId,
     pub schema: Option<GetProofSchemaListItemDTO>,
     pub claims: Vec<ProofClaimDTO>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug)]

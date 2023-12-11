@@ -510,6 +510,7 @@ async fn handle_credential_invitation(
             last_modified: now,
             credential: vec![],
             transport: "PROCIVIS_TEMPORARY".to_string(),
+            redirect_uri: None,
             state: Some(vec![CredentialState {
                 created_date: now,
                 state: CredentialStateEnum::Pending,

@@ -66,6 +66,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
             transport: value.transport,
+            redirect_uri: value.redirect_uri,
             state: None,
             schema: Some(ProofSchema {
                 id: schema_id,
@@ -97,6 +98,7 @@ impl TryFrom<proof::Model> for Proof {
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
             transport: value.transport,
+            redirect_uri: value.redirect_uri,
             state: None,
             schema: None,
             claims: None,
@@ -116,6 +118,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             issuance_date: Set(value.issuance_date),
+            redirect_uri: Set(value.redirect_uri),
             transport: Set(value.transport),
             verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
             holder_did_id: Set(value.holder_did.map(|did| did.id)),

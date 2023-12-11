@@ -12,6 +12,7 @@ pub(super) struct ProofListItemModel {
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
     pub transport: String,
+    pub redirect_uri: Option<String>,
 
     // verifier_did
     pub verifier_did_id: Option<String>,

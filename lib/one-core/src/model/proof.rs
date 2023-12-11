@@ -22,6 +22,7 @@ pub struct Proof {
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
     pub transport: String,
+    pub redirect_uri: Option<String>,
 
     // Relations
     pub state: Option<Vec<ProofState>>,

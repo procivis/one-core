@@ -849,6 +849,7 @@ async fn create_and_store_credential(
             last_modified: now,
             credential: vec![],
             transport: "OPENID4VC".to_string(),
+            redirect_uri: None,
             state: Some(vec![CredentialState {
                 created_date: now,
                 state: CredentialStateEnum::Pending,

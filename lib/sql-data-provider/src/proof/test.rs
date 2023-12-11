@@ -238,6 +238,7 @@ async fn test_create_proof_success() {
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),
         transport: "test".to_string(),
+        redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),

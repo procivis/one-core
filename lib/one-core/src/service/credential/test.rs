@@ -85,6 +85,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         credential: vec![],
         transport: "PROCIVIS_TEMPORARY".to_string(),
+        redirect_uri: None,
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Created,
@@ -435,6 +436,7 @@ async fn test_create_credential_success() {
                     .to_owned(),
                 value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
             }],
+            redirect_uri: None,
         })
         .await;
 
@@ -475,6 +477,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             issuer_did: did_id.into(),
             transport: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![],
+            redirect_uri: None,
         })
         .await;
 
@@ -555,6 +558,7 @@ async fn test_create_credential_one_required_claim_missing() {
         issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
         transport: "PROCIVIS_TEMPORARY".to_string(),
         claim_values: vec![],
+        redirect_uri: None,
     };
 
     // create a credential with only an optional claim fails
@@ -628,6 +632,7 @@ async fn test_create_credential_schema_deleted() {
                 claim_schema_id,
                 value: "value".to_string(),
             }],
+            redirect_uri: None,
         })
         .await;
     assert!(matches!(result, Err(ServiceError::NotFound)));

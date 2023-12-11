@@ -69,6 +69,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         transport: "PROCIVIS_TEMPORARY".to_string(),
+        redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -112,6 +113,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             last_modified: OffsetDateTime::now_utc(),
             state: ProofStateEnum::Pending,
         }]),
+        redirect_uri: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
             deleted_at: None,
@@ -216,6 +218,7 @@ async fn test_get_proof_exists() {
             last_modified: OffsetDateTime::now_utc(),
             state: ProofStateEnum::Created,
         }]),
+        redirect_uri: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
@@ -335,6 +338,7 @@ async fn test_get_proof_list_success() {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         transport: "transport".to_string(),
+        redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -412,6 +416,7 @@ async fn test_create_proof() {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
         transport: transport.to_owned(),
+        redirect_uri: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -485,6 +490,7 @@ async fn test_create_proof_did_deactivated_error() {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
         transport: transport.to_owned(),
+        redirect_uri: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -565,6 +571,7 @@ async fn test_create_proof_schema_deleted() {
             proof_schema_id: Uuid::new_v4(),
             verifier_did_id: Uuid::new_v4().into(),
             transport: "transport".to_string(),
+            redirect_uri: None,
         })
         .await;
     assert!(matches!(result, Err(ServiceError::NotFound)));

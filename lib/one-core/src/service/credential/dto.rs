@@ -47,6 +47,7 @@ pub struct CredentialDetailResponseDTO {
     pub schema: DetailCredentialSchemaResponseDTO,
     pub issuer_did: Option<DidListItemResponseDTO>,
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -92,6 +93,7 @@ pub struct CreateCredentialRequestDTO {
     pub issuer_did: DidId,
     pub transport: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug)]
