@@ -265,6 +265,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::P
             proof::Column::LastModified,
             proof::Column::IssuanceDate,
             proof::Column::Transport,
+            proof::Column::RedirectUri,
         ])
         // add related verifierDid
         .join(

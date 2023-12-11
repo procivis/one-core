@@ -23,6 +23,7 @@ pub struct Credential {
     pub last_modified: OffsetDateTime,
     pub credential: Vec<u8>,
     pub transport: String,
+    pub redirect_uri: Option<String>,
 
     // Relations:
     pub state: Option<Vec<CredentialState>>,

@@ -531,6 +531,7 @@ impl MigrationTrait for Migration {
                             .null(),
                     )
                     .col(ColumnDef::new(Credential::Transport).string().not_null())
+                    .col(ColumnDef::new(Credential::RedirectUri).string())
                     .col(ColumnDef::new(Credential::Credential).binary().not_null())
                     .col(
                         ColumnDef::new(Credential::CredentialSchemaId)
@@ -678,6 +679,7 @@ impl MigrationTrait for Migration {
                             ))
                             .not_null(),
                     )
+                    .col(ColumnDef::new(Proof::RedirectUri).string())
                     .col(ColumnDef::new(Proof::VerifierDidId).char_len(36))
                     .col(ColumnDef::new(Proof::HolderDidId).char_len(36))
                     .col(ColumnDef::new(Proof::ProofSchemaId).char_len(36))
@@ -1102,6 +1104,7 @@ pub enum Credential {
     IssuanceDate,
     DeletedAt,
     Transport,
+    RedirectUri,
     Credential,
     CredentialSchemaId,
     IssuerDidId,
@@ -1168,10 +1171,11 @@ pub enum Proof {
     CreatedDate,
     LastModified,
     IssuanceDate,
+    Transport,
+    RedirectUri,
     VerifierDidId,
     HolderDidId,
     ProofSchemaId,
-    Transport,
     InteractionId,
 }
 

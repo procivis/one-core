@@ -48,6 +48,7 @@ impl TryFrom<Credential> for CredentialDetailResponseDTO {
             claims: from_vec_claim(claims, &schema)?,
             schema: schema.try_into()?,
             issuer_did: convert_inner(value.issuer_did),
+            redirect_uri: value.redirect_uri,
         })
     }
 }
@@ -173,6 +174,7 @@ pub(super) fn from_create_request(
         interaction: None,
         revocation_list: None,
         key: None,
+        redirect_uri: request.redirect_uri,
     }
 }
 

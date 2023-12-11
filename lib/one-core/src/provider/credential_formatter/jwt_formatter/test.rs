@@ -115,6 +115,7 @@ fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
                 value: "42".to_string(),
             },
         ],
+        redirect_uri: None,
     }
 }
 

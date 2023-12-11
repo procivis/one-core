@@ -460,6 +460,7 @@ fn dummy_proof() -> Proof {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         transport: "protocol".to_string(),
+        redirect_uri: None,
         state: None,
         schema: None,
         claims: None,
@@ -477,6 +478,7 @@ fn dummy_credential() -> Credential {
         last_modified: OffsetDateTime::now_utc(),
         credential: b"credential".to_vec(),
         transport: "protocol".to_string(),
+        redirect_uri: None,
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Pending,

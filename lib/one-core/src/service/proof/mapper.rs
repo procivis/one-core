@@ -93,6 +93,7 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         })
         .collect::<Result<Vec<ProofClaimDTO>, ServiceError>>()?;
 
+    let redirect_uri = value.redirect_uri.to_owned();
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
     Ok(ProofDetailResponseDTO {
         claims,
@@ -108,6 +109,7 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         state: list_item_response.state,
         organisation_id,
         schema: list_item_response.schema,
+        redirect_uri,
     })
 }
 
@@ -127,6 +129,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
 
     let holder_did_id = holder_did.id.to_owned();
 
+    let redirect_uri = value.redirect_uri.to_owned();
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
     Ok(ProofDetailResponseDTO {
         // TODO: properly reconstruct claims when proof submitted
@@ -143,6 +146,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         state: list_item_response.state,
         organisation_id,
         schema: list_item_response.schema,
+        redirect_uri,
     })
 }
 
@@ -168,6 +172,7 @@ pub fn proof_from_create_request(
         last_modified: now,
         issuance_date: now,
         transport: request.transport,
+        redirect_uri: request.redirect_uri,
         state: Some(vec![proof::ProofState {
             created_date: now,
             last_modified: now,

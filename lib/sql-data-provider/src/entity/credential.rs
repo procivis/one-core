@@ -17,6 +17,7 @@ pub struct Model {
     pub deleted_at: Option<OffsetDateTime>,
 
     pub transport: String,
+    pub redirect_uri: Option<String>,
 
     #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
     pub credential: Vec<u8>,

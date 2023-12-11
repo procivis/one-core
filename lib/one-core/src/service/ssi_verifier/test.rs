@@ -513,6 +513,7 @@ fn dummy_proof() -> Proof {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         transport: "protocol".to_string(),
+        redirect_uri: None,
         state: None,
         schema: None,
         claims: None,

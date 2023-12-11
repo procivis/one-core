@@ -83,6 +83,7 @@ fn construct_proof_with_state() -> Proof {
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         transport: "OPENID4VC".to_string(),
+        redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -148,6 +149,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         credential: vec![],
         transport: "PROCIVIS_TEMPORARY".to_string(),
+        redirect_uri: None,
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Created,

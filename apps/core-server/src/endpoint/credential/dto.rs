@@ -68,6 +68,7 @@ pub struct GetCredentialResponseRestDTO {
     pub issuer_did: Option<DidListItemResponseRestDTO>,
     #[convert(with_fn = convert_inner)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -130,6 +131,7 @@ pub struct CreateCredentialRequestRestDTO {
     pub transport: String,
     #[convert(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
