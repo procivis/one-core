@@ -1,8 +1,12 @@
+use self::helpers::{extract_jwk, generate_document};
+
 use super::{dto::DidDocumentDTO, DidMethodError};
 use crate::model::key::Key;
 
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
+
+mod helpers;
 
 pub struct JWKMethod {}
 
@@ -32,8 +36,9 @@ impl super::DidMethod for JWKMethod {
         todo!()
     }
 
-    async fn resolve(&self, _did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
-        todo!()
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
+        let jwk = extract_jwk(did)?;
+        Ok(generate_document(did, jwk))
     }
 
     fn update(&self) -> Result<(), DidMethodError> {
@@ -44,3 +49,6 @@ impl super::DidMethod for JWKMethod {
         false
     }
 }
+
+#[cfg(test)]
+mod test;

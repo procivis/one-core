@@ -100,6 +100,7 @@ mod test {
                     controller: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
                     public_key_jwk: PublicKeyJwkDTO::Ec(
                         PublicKeyJwkEllipticDataDTO {
+                            r#use: None,
                             crv: "P-256".to_owned(),
                             x: "AjDk2GBBiI_M6HvEmgfzXiVhJCWiVFqvoItknJgc-oEE".to_owned(),
                             y: None,
