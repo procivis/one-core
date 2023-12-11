@@ -284,7 +284,9 @@ impl TransportProtocol for OpenID4VC {
         let holder_did = credential
             .holder_did
             .as_ref()
-            .ok_or(TransportProtocolError::Failed("schema is None".to_string()))?;
+            .ok_or(TransportProtocolError::Failed(
+                "holder_did is None".to_string(),
+            ))?;
 
         let key = holder_did
             .keys
