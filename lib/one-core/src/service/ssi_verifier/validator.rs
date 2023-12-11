@@ -7,7 +7,7 @@ use crate::{
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
     provider::{
-        credential_formatter::{model::DetailCredential, CredentialFormatter},
+        credential_formatter::{model::DetailCredential, provider::CredentialFormatterProvider},
         did_method::provider::DidMethodProvider,
         key_algorithm::provider::KeyAlgorithmProvider,
         revocation::provider::RevocationMethodProvider,
@@ -27,7 +27,7 @@ pub(super) async fn validate_proof(
     proof_schema: ProofSchema,
     holder_did: Did,
     presentation: &str,
-    formatter: &(dyn CredentialFormatter + Send + Sync),
+    formatter_provider: &(dyn CredentialFormatterProvider + Send + Sync),
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
@@ -44,13 +44,15 @@ pub(super) async fn validate_proof(
         key_role: KeyRole::AssertionMethod,
     });
 
-    let presentation = formatter
+    // presentation envelope only JWT for now
+    let presentation_formatter = formatter_provider.get_formatter("JWT")?;
+    let presentation = presentation_formatter
         .extract_presentation(presentation, key_verification_presentation.clone())
         .await?;
 
     // Check if presentation is expired
-    validate_issuance_time(presentation.issued_at, formatter.get_leeway())?;
-    validate_expiration_time(presentation.expires_at, formatter.get_leeway())?;
+    validate_issuance_time(presentation.issued_at, presentation_formatter.get_leeway())?;
+    validate_expiration_time(presentation.expires_at, presentation_formatter.get_leeway())?;
 
     let proof_schema_claims = proof_schema
         .claim_schemas
@@ -101,16 +103,23 @@ pub(super) async fn validate_proof(
         HashMap::new();
 
     for credential in presentation.credentials {
-        // Credential tokens are being verified here
-        let credential = formatter
+        // Workaround credential format detection
+        let format = if credential.contains('~') {
+            "SDJWT"
+        } else {
+            "JWT"
+        };
+        let credential_formatter = formatter_provider.get_formatter(format)?;
+
+        let credential = credential_formatter
             .extract_credentials(&credential, key_verification_credentials.clone())
             .await?;
 
         let credential_schema_id = find_matching_schema(&credential, &remaining_requested_claims)?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
-        validate_issuance_time(credential.invalid_before, formatter.get_leeway())?;
-        validate_expiration_time(credential.expires_at, formatter.get_leeway())?;
+        validate_issuance_time(credential.invalid_before, credential_formatter.get_leeway())?;
+        validate_expiration_time(credential.expires_at, credential_formatter.get_leeway())?;
 
         if let Some(credential_status) = credential.status {
             let (revocation_method, _) = revocation_method_provider
