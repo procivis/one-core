@@ -10,7 +10,7 @@ use one_core::model::credential::{
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
 };
-use one_core::model::did::{Did, DidRelations, DidType, KeyRole};
+use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyId, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationId, OrganisationRelations};
@@ -26,11 +26,6 @@ use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-
-use rand::distributions::{Alphanumeric, DistString};
-fn generate_alphanumeric(length: usize) -> String {
-    Alphanumeric.sample_string(&mut rand::thread_rng(), length)
-}
 
 pub fn create_config(core_base_url: impl Into<String>) -> Config {
     let root = std::env!("CARGO_MANIFEST_DIR");
@@ -78,94 +73,148 @@ pub async fn get_organisation(db_conn: &DbConn, organisation_id: &OrganisationId
         .unwrap()
 }
 
-pub async fn create_key_did(db_conn: &DbConn, did_id: &str, key_id: &str, key_role: KeyRole) {
-    insert_key_did(db_conn, did_id, key_id, key_role.into())
+#[derive(Debug, Default)]
+pub struct TestingKeyParams {
+    pub id: Option<KeyId>,
+    pub created_date: Option<OffsetDateTime>,
+    pub last_modified: Option<OffsetDateTime>,
+    pub name: Option<String>,
+    pub key_type: Option<String>,
+    pub storage_type: Option<String>,
+    pub public_key: Option<Vec<u8>>,
+    pub key_reference: Option<Vec<u8>>,
+}
+
+pub async fn create_key(
+    db_conn: &DbConn,
+    organisation: &Organisation,
+    params: Option<TestingKeyParams>,
+) -> Key {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    let now = OffsetDateTime::now_utc();
+    let params = params.unwrap_or_default();
+
+    let key = Key {
+        id: params.id.unwrap_or(Uuid::new_v4()),
+        created_date: params.created_date.unwrap_or(now),
+        last_modified: params.last_modified.unwrap_or(now),
+        public_key: params.public_key.unwrap_or_default(),
+        name: params.name.unwrap_or_default(),
+        key_reference: params.key_reference.unwrap_or_default(),
+        storage_type: params.storage_type.unwrap_or_default(),
+        key_type: params.key_type.unwrap_or_default(),
+        organisation: Some(organisation.to_owned()),
+    };
+
+    data_layer
+        .get_key_repository()
+        .create_key(key.clone())
+        .await
+        .unwrap();
+
+    key
+}
+
+pub async fn create_es256_key(db_conn: &DbConn, organisation: &Organisation) -> Key {
+    create_key(
+        db_conn,
+        organisation,
+        Some(TestingKeyParams {
+            key_type: Some("ES256".to_string()),
+            storage_type: Some("INTERNAL".to_string()),
+
+            // multibase: zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ
+            public_key: Some(vec![
+                2, 113, 223, 203, 78, 208, 144, 157, 171, 118, 94, 112, 196, 150, 233, 175, 129, 0,
+                12, 229, 151, 39, 80, 197, 83, 144, 248, 160, 227, 159, 2, 215, 39,
+            ]),
+            key_reference: Some(vec![
+                191, 117, 227, 19, 61, 61, 70, 152, 133, 158, 83, 244, 0, 0, 0, 0, 0, 0, 0, 32, 1,
+                0, 223, 243, 57, 200, 101, 206, 133, 43, 169, 194, 153, 38, 105, 35, 100, 79, 106,
+                61, 68, 62, 9, 96, 48, 202, 28, 74, 43, 89, 96, 100, 154, 148, 140, 180, 17, 135,
+                78, 216, 169, 229, 27, 196, 181, 163, 95, 116,
+            ]),
+            ..Default::default()
+        }),
+    )
+    .await
+}
+
+pub async fn create_eddsa_key(db_conn: &DbConn, organisation: &Organisation) -> Key {
+    create_key(
+        db_conn,
+        organisation,
+        Some(TestingKeyParams {
+            key_type: Some("EDDSA".to_string()),
+            storage_type: Some("INTERNAL".to_string()),
+
+            // multibase: z6MkiTpd8kEpGx2yshsgVgtdNWYykfLBTc3GVA26tew3n2y1
+            public_key: Some(vec![
+                59, 147, 149, 138, 47, 163, 27, 121, 194, 202, 219, 189, 55, 120, 146, 135, 204,
+                49, 120, 110, 206, 132, 78, 224, 94, 221, 61, 161, 171, 61, 238, 124,
+            ]),
+            key_reference: Some(vec![
+                62, 32, 184, 150, 100, 131, 44, 102, 69, 60, 205, 5, 0, 0, 0, 0, 0, 0, 0, 32, 165,
+                39, 201, 216, 231, 240, 137, 12, 128, 49, 56, 255, 170, 204, 126, 54, 82, 73, 7,
+                68, 21, 252, 40, 65, 56, 169, 144, 236, 15, 50, 143, 27, 221, 239, 195, 169, 242,
+                159, 95, 87, 87, 124, 188, 24, 103, 205, 137, 162,
+            ]),
+            ..Default::default()
+        }),
+    )
+    .await
+}
+
+pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> Key {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+    data_layer
+        .get_key_repository()
+        .get_key(
+            id,
+            &KeyRelations {
+                organisation: Some(OrganisationRelations::default()),
+            },
+        )
         .await
         .unwrap()
 }
-pub async fn create_es256_key(
-    db_conn: &DbConn,
-    organisation_id: &str,
-    did_id: Option<DidId>,
-) -> String {
-    insert_key_to_database(
-        db_conn,
-        "ES256".to_string(),
-        vec![
-            2, 113, 223, 203, 78, 208, 144, 157, 171, 118, 94, 112, 196, 150, 233, 175, 129, 0, 12,
-            229, 151, 39, 80, 197, 83, 144, 248, 160, 227, 159, 2, 215, 39,
-        ],
-        vec![
-            191, 117, 227, 19, 61, 61, 70, 152, 133, 158, 83, 244, 0, 0, 0, 0, 0, 0, 0, 32, 1, 0,
-            223, 243, 57, 200, 101, 206, 133, 43, 169, 194, 153, 38, 105, 35, 100, 79, 106, 61, 68,
-            62, 9, 96, 48, 202, 28, 74, 43, 89, 96, 100, 154, 148, 140, 180, 17, 135, 78, 216, 169,
-            229, 27, 196, 181, 163, 95, 116,
-        ],
-        did_id,
-        organisation_id,
-    )
-    .await
-    .unwrap()
+
+#[derive(Debug, Default)]
+pub struct TestingDidParams {
+    pub id: Option<DidId>,
+    pub created_date: Option<OffsetDateTime>,
+    pub last_modified: Option<OffsetDateTime>,
+    pub name: Option<String>,
+    pub did: Option<DidValue>,
+    pub did_type: Option<DidType>,
+    pub did_method: Option<String>,
+    pub deactivated: Option<bool>,
+    pub keys: Option<Vec<RelatedKey>>,
 }
 
-pub async fn create_es256_key_details(
-    db_conn: &DbConn,
-    organisation_id: &str,
-    did_id: Option<DidId>,
-    public_key: Vec<u8>,
-    key_reference: Vec<u8>,
-) -> String {
-    insert_key_to_database(
-        db_conn,
-        "ES256".to_string(),
-        public_key,
-        key_reference,
-        did_id,
-        organisation_id,
-    )
-    .await
-    .unwrap()
-}
-
-pub async fn create_eddsa_key(db_conn: &DbConn, organisation_id: &str, did_id: &DidId) -> String {
-    insert_key_to_database(
-        db_conn,
-        "EDDSA".to_string(),
-        vec![
-            59, 147, 149, 138, 47, 163, 27, 121, 194, 202, 219, 189, 55, 120, 146, 135, 204, 49,
-            120, 110, 206, 132, 78, 224, 94, 221, 61, 161, 171, 61, 238, 124,
-        ],
-        vec![
-            62, 32, 184, 150, 100, 131, 44, 102, 69, 60, 205, 5, 0, 0, 0, 0, 0, 0, 0, 32, 165, 39,
-            201, 216, 231, 240, 137, 12, 128, 49, 56, 255, 170, 204, 126, 54, 82, 73, 7, 68, 21,
-            252, 40, 65, 56, 169, 144, 236, 15, 50, 143, 27, 221, 239, 195, 169, 242, 159, 95, 87,
-            87, 124, 188, 24, 103, 205, 137, 162,
-        ],
-        Some(did_id.to_owned()),
-        organisation_id,
-    )
-    .await
-    .unwrap()
-}
-
-pub async fn create_did_key_with_value(
-    value: DidValue,
+pub async fn create_did(
     db_conn: &DbConn,
     organisation: &Organisation,
+    params: Option<TestingDidParams>,
 ) -> Did {
     let data_layer = DataLayer::build(db_conn.to_owned());
+    let now = OffsetDateTime::now_utc();
+    let params = params.unwrap_or_default();
 
+    let did_id = params.id.unwrap_or(DidId::from(Uuid::new_v4()));
     let did = Did {
-        id: DidId::from(Uuid::new_v4()),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        name: format!("test-did-key-{}", generate_alphanumeric(5)),
-        did: value,
+        id: did_id.to_owned(),
+        created_date: params.created_date.unwrap_or(now),
+        last_modified: params.last_modified.unwrap_or(now),
+        name: params.name.unwrap_or_default(),
         organisation: Some(organisation.to_owned()),
-        did_type: DidType::Local,
-        did_method: "KEY".to_string(),
-        deactivated: false,
-        keys: None,
+        did: params
+            .did
+            .unwrap_or(DidValue::from_str(&format!("did:test:{did_id}")).unwrap()),
+        did_type: params.did_type.unwrap_or(DidType::Local),
+        did_method: params.did_method.unwrap_or("TEST".to_string()),
+        deactivated: params.deactivated.unwrap_or(false),
+        keys: params.keys,
     };
 
     data_layer
@@ -190,46 +239,6 @@ pub async fn get_did_by_id(db_conn: &DbConn, did_id: &DidId) -> Did {
         )
         .await
         .unwrap()
-}
-
-pub async fn create_did_key(db_conn: &DbConn, organisation: &Organisation) -> Did {
-    create_did_key_with_value(
-        DidValue::from_str(&format!("did:key:{}", generate_alphanumeric(5))).unwrap(),
-        db_conn,
-        organisation,
-    )
-    .await
-}
-
-pub async fn create_did_web(
-    db_conn: &DbConn,
-    organisation: &Organisation,
-    deactivated: bool,
-    did_type: DidType,
-) -> Did {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-
-    let did_id = DidId::from(Uuid::new_v4());
-    let did = Did {
-        id: did_id.to_owned(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        name: "test-did-web".to_string(),
-        did: DidValue::from_str(&format!("did:web:{did_id}")).unwrap(),
-        organisation: Some(organisation.to_owned()),
-        did_type,
-        did_method: "WEB".to_string(),
-        deactivated,
-        keys: None,
-    };
-
-    data_layer
-        .get_did_repository()
-        .create_did(did.to_owned())
-        .await
-        .unwrap();
-
-    did
 }
 
 pub async fn create_credential_schema(
@@ -595,50 +604,6 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
                 interaction: Some(InteractionRelations {}),
-            },
-        )
-        .await
-        .unwrap()
-}
-
-pub async fn create_key(
-    db_conn: &DbConn,
-    name: &str,
-    public_key: &[u8],
-    organisation: &Organisation,
-) -> Key {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-    let now = OffsetDateTime::now_utc();
-
-    let key = Key {
-        id: Uuid::new_v4(),
-        created_date: now,
-        last_modified: now,
-        public_key: public_key.to_owned(),
-        name: name.to_owned(),
-        key_reference: vec![],
-        storage_type: "INTERNAL".to_owned(),
-        key_type: "ES256".to_owned(),
-        organisation: Some(organisation.to_owned()),
-    };
-
-    data_layer
-        .get_key_repository()
-        .create_key(key.clone())
-        .await
-        .unwrap();
-
-    key
-}
-
-pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> Key {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-    data_layer
-        .get_key_repository()
-        .get_key(
-            id,
-            &KeyRelations {
-                organisation: Some(OrganisationRelations::default()),
             },
         )
         .await

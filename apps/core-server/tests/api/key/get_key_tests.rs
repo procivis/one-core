@@ -12,7 +12,7 @@ async fn test_get_key_ok() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let key = fixtures::create_key(&db_conn, "name", b"public_key".as_slice(), &organisation).await;
+    let key = fixtures::create_key(&db_conn, &organisation, None).await;
 
     // WHEN
     let url = format!("{base_url}/api/key/v1/{}", key.id);

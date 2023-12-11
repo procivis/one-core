@@ -1,8 +1,10 @@
 use core_server::router::start_server;
-use one_core::model::did::DidType;
 use serde_json::Value;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingDidParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_get_did_list_filters_deactivated_dids() {
@@ -12,9 +14,24 @@ async fn test_get_did_list_filters_deactivated_dids() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let expected_did =
-        fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    _ = fixtures::create_did_web(&db_conn, &organisation, true, DidType::Local).await;
+    let expected_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            deactivated: Some(false),
+            ..Default::default()
+        }),
+    )
+    .await;
+    _ = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            deactivated: Some(true),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     // WHEN
     let url = format!(

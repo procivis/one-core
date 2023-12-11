@@ -6,7 +6,7 @@ use wiremock::{
 };
 
 use core_server::router::start_server;
-use one_core::model::{credential::CredentialStateEnum, did::KeyRole};
+use one_core::model::credential::CredentialStateEnum;
 
 use crate::{fixtures, utils};
 
@@ -18,7 +18,7 @@ async fn test_issuance_reject_procivis_temp() {
     let config = fixtures::create_config(mock_server.uri());
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
     let interaction =
@@ -73,22 +73,12 @@ async fn test_issuance_reject_procivis_temp() {
 
 #[tokio::test]
 async fn test_issuance_reject_openid4vc() {
-    // for debugging only
-    // _ = tracing_subscriber::fmt().init();
     let mock_server = MockServer::start().await;
     let config = fixtures::create_config(mock_server.uri());
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
-    let holder_did = fixtures::create_did_key(&db_conn, &organisation).await;
-    let key = fixtures::create_es256_key(&db_conn, &organisation.id.to_string(), None).await;
-    let _key_did = fixtures::create_key_did(
-        &db_conn,
-        &holder_did.id.to_string(),
-        &key,
-        KeyRole::AssertionMethod,
-    )
-    .await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let holder_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;

@@ -2,7 +2,10 @@ use core_server::router::start_server;
 use reqwest::StatusCode;
 use serde_json::Value;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingKeyParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_get_keys_ok() {
@@ -12,11 +15,34 @@ async fn test_get_keys_ok() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let key1 =
-        fixtures::create_key(&db_conn, "name123", b"public_key".as_slice(), &organisation).await;
-    let key2 =
-        fixtures::create_key(&db_conn, "name321", b"public_key".as_slice(), &organisation).await;
-    _ = fixtures::create_key(&db_conn, "test123", b"public_key".as_slice(), &organisation).await;
+    let key1 = fixtures::create_key(
+        &db_conn,
+        &organisation,
+        Some(TestingKeyParams {
+            name: Some("name123".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
+    let key2 = fixtures::create_key(
+        &db_conn,
+        &organisation,
+        Some(TestingKeyParams {
+            name: Some("name321".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
+
+    _ = fixtures::create_key(
+        &db_conn,
+        &organisation,
+        Some(TestingKeyParams {
+            name: Some("test123".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     // WHEN
     let url = format!(

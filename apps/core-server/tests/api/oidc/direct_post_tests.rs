@@ -71,7 +71,7 @@ async fn test_direct_post_one_credential_correct() {
     let proof_schema =
         create_proof_schema(&db_conn, "Schema1", &organisation, &new_claim_schemas).await;
 
-    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let interaction_data = json!({
         "nonce": nonce,
@@ -195,7 +195,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     let proof_schema =
         create_proof_schema(&db_conn, "Schema1", &organisation, &new_claim_schemas).await;
 
-    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -350,7 +350,7 @@ async fn test_direct_post_multiple_presentations() {
     let proof_schema =
         create_proof_schema(&db_conn, "Schema1", &organisation, &proof_claim_claims).await;
 
-    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let interaction_data = json!({
         "nonce": nonce,

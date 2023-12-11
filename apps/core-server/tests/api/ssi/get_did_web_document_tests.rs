@@ -1,8 +1,11 @@
 use core_server::router::start_server;
-use one_core::model::did::{DidType, KeyRole};
+use one_core::model::did::{KeyRole, RelatedKey};
 use serde_json::Value;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingDidParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_get_did_web_document_es256_success() {
@@ -13,17 +16,28 @@ async fn test_get_did_web_document_es256_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    let key =
-        fixtures::create_es256_key(&db_conn, &organisation.id.to_string(), Some(did.id.clone()))
-            .await;
-    fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::Authentication).await;
-    fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::KeyAgreement).await;
-    fixtures::create_key_did(
+    let key = fixtures::create_es256_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(
         &db_conn,
-        &did.id.to_string(),
-        &key,
-        KeyRole::AssertionMethod,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("WEB".to_string()),
+            keys: Some(vec![
+                RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: key.clone(),
+                },
+                RelatedKey {
+                    role: KeyRole::KeyAgreement,
+                    key: key.clone(),
+                },
+                RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key,
+                },
+            ]),
+            ..Default::default()
+        }),
     )
     .await;
 
@@ -76,15 +90,28 @@ async fn test_get_did_web_document_eddsa_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    let key = fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &did.id).await;
-    fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::Authentication).await;
-    fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::KeyAgreement).await;
-    fixtures::create_key_did(
+    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(
         &db_conn,
-        &did.id.to_string(),
-        &key,
-        KeyRole::AssertionMethod,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("WEB".to_string()),
+            keys: Some(vec![
+                RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: key.clone(),
+                },
+                RelatedKey {
+                    role: KeyRole::KeyAgreement,
+                    key: key.clone(),
+                },
+                RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key,
+                },
+            ]),
+            ..Default::default()
+        }),
     )
     .await;
 
@@ -134,7 +161,7 @@ async fn test_get_did_web_document_wrong_did_method() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     // WHEN
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
@@ -156,7 +183,16 @@ async fn test_get_did_web_document_deactivated() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, true, DidType::Local).await;
+    let did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("WEB".to_string()),
+            deactivated: Some(true),
+            ..Default::default()
+        }),
+    )
+    .await;
     // WHEN
     let url = format!("{base_url}/ssi/did-web/v1/{}/did.json", did.id);
 

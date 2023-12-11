@@ -3,7 +3,10 @@ use one_core::model::did::DidType;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingDidParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_update_did_cannot_deactivate_did_key() {
@@ -13,7 +16,15 @@ async fn test_update_did_cannot_deactivate_did_key() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("KEY".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     // WHEN
     let url = format!("{base_url}/api/did/v1/{}", did.id);
@@ -42,7 +53,15 @@ async fn test_update_did_deactivates_local_did_web() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
+    let did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("WEB".to_string()),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     // WHEN
     let url = format!("{base_url}/api/did/v1/{}", did.id);
@@ -71,7 +90,16 @@ async fn test_update_did_cannot_deactivate_remote_did_web() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Remote).await;
+    let did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("WEB".to_string()),
+            did_type: Some(DidType::Remote),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     // WHEN
     let url = format!("{base_url}/api/did/v1/{}", did.id);
@@ -100,7 +128,16 @@ async fn test_update_did_same_deactivated_status_as_requested() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, true, DidType::Local).await;
+    let did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("WEB".to_string()),
+            deactivated: Some(true),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     // WHEN
     let url = format!("{base_url}/api/did/v1/{}", did.id);

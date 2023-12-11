@@ -1,9 +1,10 @@
-use std::str::FromStr;
-
 use core_server::router::start_server;
-use one_core::model::{credential::CredentialStateEnum, did::KeyRole, proof::ProofStateEnum};
+use one_core::model::{
+    credential::CredentialStateEnum,
+    did::{KeyRole, RelatedKey},
+    proof::ProofStateEnum,
+};
 use serde_json::json;
-use shared_types::DidValue;
 use wiremock::{
     http::Method::Post,
     matchers::{body_string_contains, method, path, query_param},
@@ -11,7 +12,7 @@ use wiremock::{
 };
 
 use crate::{
-    fixtures::{self, create_did_key_with_value},
+    fixtures::{self, TestingDidParams, TestingKeyParams},
     utils,
 };
 
@@ -22,18 +23,20 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
     let config = fixtures::create_config(mock_server.uri());
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let issuer_did = fixtures::create_did_key(&db_conn, &organisation).await;
-    let holder_did = fixtures::create_did_key(&db_conn, &organisation).await;
-    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let issuer_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
-    let key_id =
-        fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &holder_did.id).await;
-
-    fixtures::create_key_did(
+    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
+    let holder_did = fixtures::create_did(
         &db_conn,
-        &holder_did.id.to_string(),
-        &key_id,
-        KeyRole::Authentication,
+        &organisation,
+        Some(TestingDidParams {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key,
+            }]),
+            ..Default::default()
+        }),
     )
     .await;
 
@@ -152,37 +155,45 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
     let config = fixtures::create_config(mock_server.uri());
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let issuer_did = fixtures::create_did_key(&db_conn, &organisation).await;
-    let holder_did = create_did_key_with_value(
-        DidValue::from_str("did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6").unwrap(),
+    let issuer_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
+
+    let holder_key = fixtures::create_key(
         &db_conn,
         &organisation,
+        Some(TestingKeyParams {
+            key_type: Some("ES256".to_string()),
+            storage_type: Some("INTERNAL".to_string()),
+            public_key: Some(vec![
+                2, 41, 83, 61, 165, 86, 37, 125, 46, 237, 61, 7, 255, 169, 76, 11, 51, 20, 151,
+                189, 221, 246, 169, 103, 136, 2, 114, 144, 254, 4, 26, 202, 33,
+            ]),
+            key_reference: Some(vec![
+                214, 40, 173, 242, 210, 229, 35, 49, 245, 164, 136, 170, 0, 0, 0, 0, 0, 0, 0, 32,
+                168, 61, 62, 181, 162, 142, 116, 226, 190, 20, 146, 183, 17, 166, 110, 17, 207, 54,
+                243, 166, 143, 172, 23, 72, 196, 139, 42, 147, 222, 122, 234, 133, 236, 18, 64,
+                113, 85, 218, 233, 136, 236, 48, 86, 184, 249, 54, 210, 76,
+            ]),
+            ..Default::default()
+        }),
     )
     .await;
-    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
-
-    let key_id = fixtures::create_es256_key_details(
+    let holder_did = fixtures::create_did(
         &db_conn,
-        &organisation.id.to_string(),
-        Some(holder_did.id.clone()),
-        vec![
-            2, 41, 83, 61, 165, 86, 37, 125, 46, 237, 61, 7, 255, 169, 76, 11, 51, 20, 151, 189,
-            221, 246, 169, 103, 136, 2, 114, 144, 254, 4, 26, 202, 33,
-        ],
-        vec![
-            214, 40, 173, 242, 210, 229, 35, 49, 245, 164, 136, 170, 0, 0, 0, 0, 0, 0, 0, 32, 168,
-            61, 62, 181, 162, 142, 116, 226, 190, 20, 146, 183, 17, 166, 110, 17, 207, 54, 243,
-            166, 143, 172, 23, 72, 196, 139, 42, 147, 222, 122, 234, 133, 236, 18, 64, 113, 85,
-            218, 233, 136, 236, 48, 86, 184, 249, 54, 210, 76,
-        ],
-    )
-    .await;
-
-    fixtures::create_key_did(
-        &db_conn,
-        &holder_did.id.to_string(),
-        &key_id,
-        KeyRole::Authentication,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("KEY".to_string()),
+            did: Some(
+                "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6"
+                    .parse()
+                    .unwrap(),
+            ),
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: holder_key,
+            }]),
+            ..Default::default()
+        }),
     )
     .await;
 

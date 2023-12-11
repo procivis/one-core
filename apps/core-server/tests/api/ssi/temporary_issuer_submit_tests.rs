@@ -1,8 +1,9 @@
 use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{DidType, KeyRole};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use serde_json::Value;
 
+use crate::fixtures::TestingDidParams;
 use crate::{fixtures, utils};
 
 #[tokio::test]
@@ -13,24 +14,36 @@ async fn test_temporary_issuer_submit_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    let key = fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &did.id).await;
-    fixtures::create_key_did(
+    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
+    let issuer_did = fixtures::create_did(
         &db_conn,
-        &did.id.to_string(),
-        &key,
-        KeyRole::AssertionMethod,
+        &organisation,
+        Some(TestingDidParams {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key,
+            }]),
+            ..Default::default()
+        }),
     )
     .await;
-    let holder_did =
-        fixtures::create_did_web(&db_conn, &organisation, false, DidType::Remote).await;
+
+    let holder_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            did_type: Some(DidType::Remote),
+            ..Default::default()
+        }),
+    )
+    .await;
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
     let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
         CredentialStateEnum::Offered,
-        &did,
+        &issuer_did,
         Some(holder_did),
         None,
         None,

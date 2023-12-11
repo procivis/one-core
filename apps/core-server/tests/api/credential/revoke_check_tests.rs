@@ -1,6 +1,5 @@
 use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::KeyRole;
 use serde_json::{json, Value};
 use wiremock::{
     http::Method::Get,
@@ -8,7 +7,10 @@ use wiremock::{
     Mock, MockServer, ResponseTemplate,
 };
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingDidParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_revoke_check_success() {
@@ -28,20 +30,18 @@ async fn test_revoke_check_success() {
     let config = fixtures::create_config(base_url.clone());
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key_with_value(
-        "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-            .parse()
-            .unwrap(),
+    let issuer_did = fixtures::create_did(
         &db_conn,
         &organisation,
-    )
-    .await;
-    let key = fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &did.id).await;
-    fixtures::create_key_did(
-        &db_conn,
-        &did.id.to_string(),
-        &key,
-        KeyRole::AssertionMethod,
+        Some(TestingDidParams {
+            did_method: Some("KEY".to_string()),
+            did: Some(
+                "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                    .parse()
+                    .unwrap(),
+            ),
+            ..Default::default()
+        }),
     )
     .await;
     let credential_schema =
@@ -50,7 +50,7 @@ async fn test_revoke_check_success() {
         &db_conn,
         &credential_schema,
         CredentialStateEnum::Accepted,
-        &did,
+        &issuer_did,
         None,
         Some(credential_jwt),
         None,
@@ -58,7 +58,7 @@ async fn test_revoke_check_success() {
     )
     .await;
 
-    fixtures::create_revocation_list(&db_conn, &did, None).await;
+    fixtures::create_revocation_list(&db_conn, &issuer_did, None).await;
 
     Mock::given(method(Get))
         .and(path(
