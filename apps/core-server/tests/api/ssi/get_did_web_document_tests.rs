@@ -57,13 +57,13 @@ async fn test_get_did_web_document_es256_success() {
         resp["verificationMethod"][0]["publicKeyJwk"]["x"]
             .as_str()
             .unwrap(),
-        "1Epsq2U3GeRxiWv0OzUSlw51DpxqsodolnF65b8oBWA"
+        "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc"
     );
     assert_eq!(
         resp["verificationMethod"][0]["publicKeyJwk"]["y"]
             .as_str()
             .unwrap(),
-        "po4io_aLclVOpKyEz1J7EEKJFfZOxfUqSQdXzWvaeo4"
+        "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA"
     );
 }
 
