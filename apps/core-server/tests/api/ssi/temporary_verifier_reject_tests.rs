@@ -1,5 +1,4 @@
 use core_server::router::start_server;
-use one_core::model::did::DidType;
 use one_core::model::proof::ProofStateEnum;
 
 use crate::{fixtures, utils};
@@ -12,7 +11,7 @@ async fn test_temporary_verifier_reject_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;

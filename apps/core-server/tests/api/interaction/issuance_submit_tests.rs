@@ -6,9 +6,15 @@ use wiremock::{
 };
 
 use core_server::router::start_server;
-use one_core::model::{credential::CredentialStateEnum, did::KeyRole};
+use one_core::model::{
+    credential::CredentialStateEnum,
+    did::{DidType, KeyRole, RelatedKey},
+};
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingDidParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_issuance_submit_procivis_temp() {
@@ -18,7 +24,7 @@ async fn test_issuance_submit_procivis_temp() {
     let config = fixtures::create_config(mock_server.uri());
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
     let interaction =
@@ -83,11 +89,28 @@ async fn test_issuance_submit_openid4vc() {
     let config = fixtures::create_config(mock_server.uri());
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
-    let key = fixtures::create_es256_key(&db_conn, &organisation.id.to_string(), None).await;
-    let _key_did =
-        fixtures::create_key_did(&db_conn, &did.id.to_string(), &key, KeyRole::Authentication)
-            .await;
+    let issuer_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            did_type: Some(DidType::Remote),
+            ..Default::default()
+        }),
+    )
+    .await;
+    let key = fixtures::create_es256_key(&db_conn, &organisation).await;
+    let holder_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key,
+            }]),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
@@ -106,8 +129,8 @@ async fn test_issuance_submit_openid4vc() {
         &db_conn,
         &credential_schema,
         CredentialStateEnum::Pending,
-        &did,
-        Some(did.to_owned()),
+        &issuer_did,
+        Some(holder_did.to_owned()),
         None,
         Some(interaction.to_owned()),
         "OPENID4VC",

@@ -2,13 +2,16 @@ use core_server::router::start_server;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::{
     credential::CredentialStateEnum,
-    did::{DidType, KeyRole},
+    did::{KeyRole, RelatedKey},
 };
 use serde_json::json;
 use time::{macros::format_description, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingDidParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_post_issuer_credential() {
@@ -19,16 +22,22 @@ async fn test_post_issuer_credential() {
     let db_conn = fixtures::create_db(&config).await;
 
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let issuer_did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    let key =
-        fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &issuer_did.id).await;
-    fixtures::create_key_did(
+
+    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
+    let issuer_did = fixtures::create_did(
         &db_conn,
-        &issuer_did.id.to_string(),
-        &key,
-        KeyRole::AssertionMethod,
+        &organisation,
+        Some(TestingDidParams {
+            did_method: Some("WEB".to_string()),
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key,
+            }]),
+            ..Default::default()
+        }),
     )
     .await;
+
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
 

@@ -1,5 +1,5 @@
 use core_server::router::start_server;
-use one_core::model::{did::KeyRole, proof::ProofStateEnum};
+use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use wiremock::{
     http::Method::Post,
@@ -19,19 +19,8 @@ async fn test_presentation_reject_endpoint_for_procivis_temp() {
     let config = fixtures::create_config(mock_server.uri());
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let holder_did = fixtures::create_did_key(&db_conn, &organisation).await;
-    let verifier_did = fixtures::create_did_key(&db_conn, &organisation).await;
-
-    let key_id =
-        fixtures::create_eddsa_key(&db_conn, &organisation.id.to_string(), &holder_did.id).await;
-
-    fixtures::create_key_did(
-        &db_conn,
-        &holder_did.id.to_string(),
-        &key_id,
-        KeyRole::AssertionMethod,
-    )
-    .await;
+    let holder_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let verifier_url = mock_server.uri();
 

@@ -4,7 +4,10 @@ use one_core::model::proof::ProofStateEnum;
 use serde_json::{json, Value};
 use validator::HasLen;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingDidParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_temporary_verifier_connect_success() {
@@ -14,9 +17,16 @@ async fn test_temporary_verifier_connect_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, false, DidType::Local).await;
-    let holder_did =
-        fixtures::create_did_web(&db_conn, &organisation, false, DidType::Remote).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let holder_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            did_type: Some(DidType::Remote),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;

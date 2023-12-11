@@ -15,7 +15,7 @@ async fn test_create_credential_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let credential_schema: one_core::model::credential_schema::CredentialSchema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;

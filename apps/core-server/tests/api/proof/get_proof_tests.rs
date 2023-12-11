@@ -38,7 +38,7 @@ async fn test_get_proof_success() {
     )
     .await;
 
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let proof = fixtures::create_proof(
         &db_conn,

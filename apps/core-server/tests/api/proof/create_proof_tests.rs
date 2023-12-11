@@ -1,9 +1,8 @@
 use core_server::router::start_server;
-use one_core::model::did::DidType;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::fixtures::get_proof;
+use crate::fixtures::{get_proof, TestingDidParams};
 use crate::{fixtures, utils};
 
 #[tokio::test]
@@ -14,7 +13,7 @@ async fn test_create_proof_success() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_key(&db_conn, &organisation).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
@@ -79,7 +78,15 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
     let config = fixtures::create_config(&base_url);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did_web(&db_conn, &organisation, true, DidType::Local).await;
+    let did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            deactivated: Some(true),
+            ..Default::default()
+        }),
+    )
+    .await;
 
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
