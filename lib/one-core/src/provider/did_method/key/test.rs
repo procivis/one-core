@@ -67,6 +67,7 @@ async fn test_did_key_resolve_details_eddsa() {
         .once()
         .returning(|_| {
             Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+                r#use: None,
                 crv: "Ed25519".to_owned(),
                 x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
                 y: None,
@@ -98,6 +99,7 @@ async fn test_did_key_resolve_details_eddsa() {
                 controller: "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
                 public_key_jwk: PublicKeyJwkDTO::Okp(
                     PublicKeyJwkEllipticDataDTO {
+                        r#use: None,
                         crv: "Ed25519".to_owned(),
                         x: "4zvwRjXUKGfvwnParsHAS3HuSVzV5cA4McphgmoCtajS".to_owned(),
                         y: None,
@@ -146,6 +148,7 @@ async fn test_did_key_resolve_details_es256() {
         .once()
         .returning(|_| {
             Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                r#use: None,
                 crv: "P-256".to_string(),
                 x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
                 y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
@@ -177,6 +180,7 @@ async fn test_did_key_resolve_details_es256() {
                 controller: "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
                 public_key_jwk: PublicKeyJwkDTO::Ec(
                     PublicKeyJwkEllipticDataDTO {
+                        r#use: None,
                         crv: "P-256".to_owned(),
                         x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
                         y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),

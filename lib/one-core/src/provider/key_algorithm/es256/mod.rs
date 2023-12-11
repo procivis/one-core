@@ -60,6 +60,7 @@ impl KeyAlgorithm for Es256 {
             .y()
             .ok_or(ServiceError::KeyAlgorithmError("Y is missing".to_string()))?;
         Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+            r#use: None,
             crv: "P-256".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(x)
                 .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?,

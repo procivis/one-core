@@ -254,6 +254,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                     controller: "controller".to_string(),
                     public_key_jwk: crate::provider::did_method::dto::PublicKeyJwkDTO::Ec(
                         crate::provider::did_method::dto::PublicKeyJwkEllipticDataDTO {
+                            r#use: None,
                             crv: "P-256".to_string(),
                             x: "123".to_string(),
                             y: Some("123".to_string()),

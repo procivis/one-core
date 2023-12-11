@@ -201,6 +201,7 @@ async fn test_did_web_fetch() {
     assert_eq!(
         methods[0].public_key_jwk,
         PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            r#use: None,
             crv: "Ed25519".to_string(),
             x: "0-e2i2_Ua1S5HbTYnVB0lj2Z2ytXu2-tYmDFf8f5NjU".to_string(),
             y: None,
@@ -209,6 +210,7 @@ async fn test_did_web_fetch() {
     assert_eq!(
         methods[1].public_key_jwk,
         PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            r#use: None,
             crv: "X25519".to_string(),
             x: "9GXjPGGvmRq9F6Ng5dQQ_s31mfhxrcNZxRGONrmH30k".to_string(),
             y: None,
@@ -217,6 +219,7 @@ async fn test_did_web_fetch() {
     assert_eq!(
         methods[2].public_key_jwk,
         PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+            r#use: None,
             crv: "P-256".to_string(),
             x: "38M1FDts7Oea7urmseiugGW7tWc3mLpJh6rKe7xINZ8".to_string(),
             y: Some("nDQW6XZ7b_u2Sy9slofYLlG03sOEoug3I0aAPQ0exs4".to_string(),),
@@ -225,6 +228,7 @@ async fn test_did_web_fetch() {
     assert_eq!(
         methods[3].public_key_jwk,
         PublicKeyJwkDTO::Rsa(PublicKeyJwkRsaDataDTO {
+            r#use: None,
             e: "AQAB".to_string(),
             n: "omwsC1AqEk6whvxyOltCFWheSQvv1MExu5RLCMT4jVk9khJKv8JeMXWe3bWHatjPskdf2dlaGkW5Qj\
             tOnUKL742mvr4tCldKS3ULIaT1hJInMHHxj2gcubO6eEegACQ4QSu9LO0H-LM_L3DsRABB7Qja8Hecpyus\
