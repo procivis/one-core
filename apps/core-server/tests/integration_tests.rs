@@ -1,4 +1,6 @@
+#[cfg(test)]
 mod fixtures;
+#[cfg(test)]
 mod utils;
 
 #[path = "api/organisation/mod.rs"]

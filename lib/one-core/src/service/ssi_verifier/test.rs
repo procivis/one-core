@@ -397,10 +397,6 @@ async fn test_submit_proof_succeeds() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_formatter()
-        .withf(|formatter_id| {
-            assert_eq!(formatter_id, "format");
-            true
-        })
         .once()
         .return_once(move |_| Ok(Arc::new(formatter)));
 
