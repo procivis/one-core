@@ -58,6 +58,7 @@ pub fn interaction_from_handle_invitation(
 pub fn proof_from_handle_invitation(
     proof_id: &ProofId,
     protocol: &str,
+    redirect_uri: Option<String>,
     verifier_did: Option<Did>,
     holder_did: Did,
     interaction: Interaction,
@@ -69,7 +70,7 @@ pub fn proof_from_handle_invitation(
         last_modified: now,
         issuance_date: now,
         transport: protocol.to_owned(),
-        redirect_uri: None,
+        redirect_uri,
         state: Some(vec![proof::ProofState {
             created_date: now,
             last_modified: now,

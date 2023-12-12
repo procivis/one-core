@@ -49,7 +49,7 @@ pub(crate) async fn ssi_verifier_connect(
     let result = state
         .core
         .ssi_verifier_service
-        .connect_to_holder(&query.proof, &request.did)
+        .connect_to_holder(&query.proof, &request.did, &query.redirect_uri)
         .await;
 
     match result {

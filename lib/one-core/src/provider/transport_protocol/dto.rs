@@ -31,6 +31,7 @@ pub enum InvitationResponse {
 /// deserializes matching `ConnectVerifierResponseRestDTO`
 pub struct ConnectVerifierResponse {
     pub claims: Vec<ProofClaimSchema>,
+    pub redirect_uri: Option<String>,
     pub verifier_did: DidValue,
 }
 

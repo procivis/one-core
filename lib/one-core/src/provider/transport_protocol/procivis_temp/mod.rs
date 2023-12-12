@@ -317,29 +317,47 @@ impl TransportProtocol for ProcivisTemp {
         &self,
         credential: &Credential,
     ) -> Result<String, TransportProtocolError> {
-        Ok(self
+        let base_url = self
             .base_url
             .as_ref()
-            .map(|base_url| {
-                format!(
-                    "{}/ssi/temporary-issuer/v1/connect?protocol={}&credential={}",
-                    base_url, credential.transport, credential.id
-                )
-            })
-            .ok_or(TransportProtocolError::MissingBaseUrl)?)
+            .ok_or(TransportProtocolError::MissingBaseUrl)?;
+        let connect_url = format!("{}/ssi/temporary-issuer/v1/connect", base_url);
+        let mut url =
+            Url::parse(&connect_url).map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let mut pairs = url.query_pairs_mut();
+        pairs.append_pair("protocol", &credential.transport);
+        pairs.append_pair("credential", &credential.id.to_string());
+
+        if let Some(redirect_uri) = credential.redirect_uri.as_ref() {
+            pairs.append_pair("redirect_uri", redirect_uri);
+        }
+
+        let url = pairs.finish();
+
+        Ok(url.to_string())
     }
 
     async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError> {
-        Ok(self
+        let base_url = self
             .base_url
             .as_ref()
-            .map(|base_url| {
-                format!(
-                    "{}/ssi/temporary-verifier/v1/connect?protocol={}&proof={}",
-                    base_url, proof.transport, proof.id
-                )
-            })
-            .ok_or(TransportProtocolError::MissingBaseUrl)?)
+            .ok_or(TransportProtocolError::MissingBaseUrl)?;
+        let connect_url = format!("{}/ssi/temporary-verifier/v1/connect", base_url);
+        let mut url =
+            Url::parse(&connect_url).map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let mut pairs = url.query_pairs_mut();
+        pairs.append_pair("protocol", &proof.transport);
+        pairs.append_pair("proof", &proof.id.to_string());
+
+        if let Some(redirect_uri) = proof.redirect_uri.as_ref() {
+            pairs.append_pair("redirect_uri", redirect_uri);
+        }
+
+        let url = pairs.finish();
+
+        Ok(url.to_string())
     }
 
     async fn get_presentation_definition(
@@ -510,7 +528,7 @@ async fn handle_credential_invitation(
             last_modified: now,
             credential: vec![],
             transport: "PROCIVIS_TEMPORARY".to_string(),
-            redirect_uri: None,
+            redirect_uri: issuer_response.redirect_uri,
             state: Some(vec![CredentialState {
                 created_date: now,
                 state: CredentialStateEnum::Pending,
@@ -594,6 +612,7 @@ async fn handle_proof_invitation(
     let proof = proof_from_handle_invitation(
         &proof_id,
         protocol,
+        proof_request.redirect_uri,
         Some(verifier_did),
         holder_did.to_owned(),
         interaction,
@@ -610,3 +629,6 @@ async fn handle_proof_invitation(
         proof_id,
     })
 }
+
+#[cfg(test)]
+mod test;

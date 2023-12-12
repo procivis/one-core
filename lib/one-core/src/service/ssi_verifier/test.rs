@@ -151,7 +151,7 @@ async fn test_connect_to_holder_succeeds() {
     };
 
     let res = service
-        .connect_to_holder(&proof_id, &holder_did_value)
+        .connect_to_holder(&proof_id, &holder_did_value, &None)
         .await
         .unwrap();
 
@@ -309,7 +309,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
     };
 
     let res = service
-        .connect_to_holder(&proof_id, &holder_did_value)
+        .connect_to_holder(&proof_id, &holder_did_value, &None)
         .await
         .unwrap();
 

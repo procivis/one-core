@@ -34,6 +34,7 @@ impl SSIVerifierService {
         &self,
         proof_id: &ProofId,
         holder_did_value: &DidValue,
+        redirect_uri: &Option<String>,
     ) -> Result<ConnectVerifierResponseDTO, ServiceError> {
         let proof = self
             .proof_repository
@@ -60,7 +61,11 @@ impl SSIVerifierService {
             .schema
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
-        let result = proof_verifier_to_connect_verifier_response(proof_schema, did)?;
+        let result = proof_verifier_to_connect_verifier_response(
+            proof_schema,
+            redirect_uri.to_owned(),
+            did,
+        )?;
 
         self.set_holder_connected(proof_id, holder_did_value, &(*self.did_method_provider))
             .await?;

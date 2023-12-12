@@ -51,6 +51,7 @@ pub struct ConnectRequestRestDTO {
 pub struct PostSsiVerifierConnectQueryParams {
     pub protocol: String,
     pub proof: Uuid,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -273,6 +274,7 @@ pub struct ProofRequestClaimRestDTO {
 pub struct PostSsiIssuerConnectQueryParams {
     pub protocol: String,
     pub credential: Uuid,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
