@@ -45,9 +45,7 @@ fn setup_provider(
         "KEY".to_string(),
         Arc::new(KeyDidMethod::new(
             Arc::new(key_algorithm_provider),
-            key_algorithm_config,
             DidKeyParams,
-            "KEY".to_string(),
         )),
     );
 

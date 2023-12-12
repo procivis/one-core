@@ -2,7 +2,7 @@ use std::{convert::Infallible, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
-use crate::macros::{impl_display, impls_for_seaorm_newtype};
+use crate::macros::{impl_display, impl_from, impls_for_seaorm_newtype};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
@@ -24,6 +24,7 @@ impl FromStr for DidValue {
     }
 }
 
+impl_from!(DidValue; String);
 impl_display!(DidValue);
 
 #[cfg(feature = "sea-orm")]

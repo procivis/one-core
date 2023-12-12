@@ -1,8 +1,23 @@
-use crate::provider::did_method::{jwk::JWKMethod, DidMethod, DidMethodError};
+use mockall::predicate::eq;
+use std::sync::Arc;
+use time::OffsetDateTime;
+use uuid::Uuid;
+
+use crate::{
+    model::key::Key,
+    provider::{
+        did_method::{
+            dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO},
+            jwk::JWKDidMethod,
+            DidMethod, DidMethodError,
+        },
+        key_algorithm::{provider::MockKeyAlgorithmProvider, MockKeyAlgorithm},
+    },
+};
 
 #[tokio::test]
 async fn test_resolve_jwk_did_without_use_field() {
-    let provider = JWKMethod {};
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -45,7 +60,7 @@ async fn test_resolve_jwk_did_without_use_field() {
 
 #[tokio::test]
 async fn test_resolve_jwk_did_with_use_enc_field() {
-    let provider = JWKMethod {};
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -84,7 +99,7 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
 
 #[tokio::test]
 async fn test_resolve_jwk_did_with_use_sig_field() {
-    let provider = JWKMethod {};
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -126,7 +141,7 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
-    let provider = JWKMethod {};
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -141,7 +156,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_encoding() {
-    let provider = JWKMethod {};
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -156,7 +171,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_encoding() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_jwk_format() {
-    let provider = JWKMethod {};
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -167,4 +182,50 @@ async fn test_fail_to_resolve_jwk_did_invalid_jwk_format() {
         .await;
 
     assert!(matches!(result, Err(DidMethodError::ResolutionError(_))));
+}
+
+#[tokio::test]
+async fn test_create_did_jwk_success() {
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm.expect_bytes_to_jwk().once().returning(|_| {
+        Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+            r#use: None,
+            crv: "crv".to_string(),
+            x: "x".to_string(),
+            y: None,
+        }))
+    });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .with(eq("key_type"))
+        .once()
+        .return_once(move |_| Ok(Arc::new(key_algorithm)));
+
+    let provider = JWKDidMethod::new(Arc::new(key_algorithm_provider));
+
+    let result = provider
+        .create(
+            &Uuid::new_v4().into(),
+            &None,
+            &Some(Key {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                public_key: b"public".into(),
+                name: "name".to_owned(),
+                key_reference: vec![],
+                storage_type: "test".to_owned(),
+                key_type: "key_type".to_owned(),
+                organisation: None,
+            }),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(
+        result.as_str(),
+        "did:jwk:eyJrdHkiOiJFQyIsImNydiI6ImNydiIsIngiOiJ4In0"
+    )
 }

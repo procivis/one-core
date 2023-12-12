@@ -1,35 +1,51 @@
-use self::helpers::{extract_jwk, generate_document};
+use self::helpers::{encode_to_did, extract_jwk, generate_document};
 
 use super::{dto::DidDocumentDTO, DidMethodError};
-use crate::model::key::Key;
+use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
+use std::sync::Arc;
 
 mod helpers;
 
-pub struct JWKMethod {}
+pub struct JWKDidMethod {
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+}
 
-impl JWKMethod {
+impl JWKDidMethod {
     #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>) -> Self {
+        Self {
+            key_algorithm_provider,
+        }
     }
 }
 
 #[async_trait]
-impl super::DidMethod for JWKMethod {
+impl super::DidMethod for JWKDidMethod {
     fn get_method(&self) -> String {
-        "JWK".to_string()
+        "jwk".to_string()
     }
 
     async fn create(
         &self,
         _id: &DidId,
         _params: &Option<serde_json::Value>,
-        _key: &Option<Key>,
+        key: &Option<Key>,
     ) -> Result<DidValue, DidMethodError> {
-        todo!()
+        let key = key
+            .as_ref()
+            .ok_or(DidMethodError::CouldNotCreate("Missing key".to_string()))?;
+        let key_algorithm = self
+            .key_algorithm_provider
+            .get_key_algorithm(&key.key_type)
+            .map_err(|_| DidMethodError::KeyAlgorithmNotFound)?;
+        let jwk = key_algorithm
+            .bytes_to_jwk(&key.public_key)
+            .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
+
+        encode_to_did(&jwk)
     }
 
     fn check_authorization(&self) -> bool {
