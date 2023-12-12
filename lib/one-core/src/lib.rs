@@ -121,7 +121,6 @@ impl OneCore {
         let did_methods = did_method_providers_from_config(
             &core_config.did,
             key_algorithm_provider.clone(),
-            &core_config.key_algorithm,
             core_base_url.clone(),
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));

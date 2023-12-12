@@ -8,16 +8,11 @@ use std::sync::Arc;
 use self::mapper::{categorize_did, convert_document};
 
 use super::{dto::DidDocumentDTO, DidMethodError};
-use crate::{
-    config::core_config::KeyAlgorithmConfig, model::key::Key,
-    provider::key_algorithm::provider::KeyAlgorithmProvider,
-};
+use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 pub struct KeyDidMethod {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-    pub method_key: String,
     pub params: DidKeyParams,
-    pub key_algorithm_config: KeyAlgorithmConfig,
 }
 
 pub struct DidKeyParams;
@@ -25,15 +20,11 @@ pub struct DidKeyParams;
 impl KeyDidMethod {
     pub fn new(
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-        key_algorithm_config: KeyAlgorithmConfig,
         params: DidKeyParams,
-        method_key: impl Into<String>,
     ) -> Self {
         Self {
             key_algorithm_provider,
-            method_key: method_key.into(),
             params,
-            key_algorithm_config,
         }
     }
 }

@@ -5,10 +5,10 @@ use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
-use crate::config::core_config::{self, DidConfig, KeyAlgorithmConfig};
+use crate::config::core_config::{self, DidConfig};
 use crate::config::{ConfigError, ConfigValidationError};
 use crate::model::key::Key;
-use crate::provider::did_method::jwk::JWKMethod;
+use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::web::WebDidMethod;
 use crate::provider::did_method::x509::X509Method;
@@ -63,7 +63,6 @@ pub trait DidMethod {
 pub fn did_method_providers_from_config(
     did_config: &DidConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-    key_algorithm_config: &KeyAlgorithmConfig,
     base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn DidMethod + Send + Sync>>, ConfigError> {
     let mut providers = HashMap::new();
@@ -73,9 +72,7 @@ pub fn did_method_providers_from_config(
             core_config::DidType::Key => {
                 let method = Arc::new(KeyDidMethod::new(
                     key_algorithm_provider.clone(),
-                    key_algorithm_config.clone(),
                     DidKeyParams,
-                    "KEY",
                 ));
 
                 providers.insert(did_type.to_string(), method as _);
@@ -90,7 +87,7 @@ pub fn did_method_providers_from_config(
                 providers.insert(did_type.to_string(), method as _);
             }
             core_config::DidType::Jwk => {
-                let method = Arc::new(JWKMethod::new());
+                let method = Arc::new(JWKDidMethod::new(key_algorithm_provider.clone()));
                 providers.insert(did_type.to_string(), method as _);
             }
             core_config::DidType::X509 => {

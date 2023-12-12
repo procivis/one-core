@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use super::dto::DidDocumentDTO;
 use super::DidMethodError;
 use crate::model::key::Key;
@@ -67,7 +65,7 @@ impl super::DidMethod for WebDidMethod {
                 ))?;
 
         let did_value = format!("{did_base_string}:{id}");
-        Ok(DidValue::from_str(&did_value).unwrap())
+        Ok(DidValue::from(did_value))
     }
 
     fn check_authorization(&self) -> bool {
