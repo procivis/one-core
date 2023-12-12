@@ -11,12 +11,14 @@ use super::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
 
 pub fn proof_verifier_to_connect_verifier_response(
     proof_schema: ProofSchema,
+    redirect_uri: Option<String>,
     verifier_did: Did,
 ) -> Result<ConnectVerifierResponseDTO, ServiceError> {
     Ok(ConnectVerifierResponseDTO {
         claims: iterable_try_into(proof_schema.claim_schemas.ok_or(
             ServiceError::MappingError("claim_schemas is None".to_string()),
         )?)?,
+        redirect_uri,
         verifier_did: verifier_did.did,
     })
 }

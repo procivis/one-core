@@ -931,8 +931,15 @@ async fn handle_proof_invitation(
     let interaction_id = interaction.id.to_owned();
 
     let proof_id = Uuid::new_v4();
-    let proof =
-        proof_from_handle_invitation(&proof_id, "OPENID4VC", None, holder_did, interaction, now);
+    let proof = proof_from_handle_invitation(
+        &proof_id,
+        "OPENID4VC",
+        None,
+        None,
+        holder_did,
+        interaction,
+        now,
+    );
 
     deps.proof_repository
         .create_proof(proof)
