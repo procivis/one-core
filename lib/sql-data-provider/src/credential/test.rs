@@ -738,7 +738,8 @@ async fn test_update_credential_success() {
             issuer_did_id: None,
             state: None,
             interaction: Some(interaction_id),
-            key: None
+            key: None,
+            redirect_uri: None,
         })
         .await
         .is_ok());

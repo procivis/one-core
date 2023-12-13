@@ -107,7 +107,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "transport".to_string(),
+        transport: "PROCIVIS_TEMPORARY".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -212,7 +212,7 @@ async fn test_get_proof_exists() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "transport".to_string(),
+        transport: "PROCIVIS_TEMPORARY".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -337,7 +337,7 @@ async fn test_get_proof_list_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "transport".to_string(),
+        transport: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -411,7 +411,7 @@ async fn test_get_proof_list_success() {
 
 #[tokio::test]
 async fn test_create_proof() {
-    let transport = "transport".to_string();
+    let transport = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -475,17 +475,17 @@ async fn test_create_proof() {
         did_repository,
         proof_schema_repository,
         interaction_repository,
+        config: generic_config(),
         ..Default::default()
     });
 
     let result = service.create_proof(request).await;
-    assert!(result.is_ok());
     assert_eq!(result.unwrap(), proof_id);
 }
 
 #[tokio::test]
 async fn test_create_proof_did_deactivated_error() {
-    let transport = "transport".to_string();
+    let transport = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -535,6 +535,7 @@ async fn test_create_proof_did_deactivated_error() {
     let service = setup_service(Repositories {
         did_repository,
         proof_schema_repository,
+        config: generic_config(),
         ..Default::default()
     });
 
@@ -563,6 +564,7 @@ async fn test_create_proof_schema_deleted() {
 
     let service = setup_service(Repositories {
         proof_schema_repository,
+        config: generic_config(),
         ..Default::default()
     });
 
@@ -570,7 +572,7 @@ async fn test_create_proof_schema_deleted() {
         .create_proof(CreateProofRequestDTO {
             proof_schema_id: Uuid::new_v4(),
             verifier_did_id: Uuid::new_v4().into(),
-            transport: "transport".to_string(),
+            transport: "PROCIVIS_TEMPORARY".to_string(),
             redirect_uri: None,
         })
         .await;

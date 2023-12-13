@@ -435,6 +435,7 @@ async fn test_oidc_create_credential_success() {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     format: "jwt_vc_json".to_string(),
+                    redirect_uri: None,
                 })
             });
 

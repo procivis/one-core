@@ -375,6 +375,7 @@ async fn test_accept_credential() {
             Ok(SubmitIssuerResponse {
                 credential: "credential".to_string(),
                 format: "credential format".to_string(),
+                redirect_uri: None,
             })
         });
 

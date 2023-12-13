@@ -72,8 +72,9 @@ use crate::{
     },
     service::{
         oidc::dto::{
-            OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
-            OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+            OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO,
+            OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
+            OpenID4VCITokenResponseDTO, OpenID4VPDirectPostResponseDTO,
         },
         ssi_holder::dto::InvitationResponseDTO,
     },
@@ -258,10 +259,22 @@ impl TransportProtocol for OpenID4VC {
             .form(&params)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
-        response
+            .map_err(TransportProtocolError::HttpRequestError)?
             .error_for_status()
             .map_err(TransportProtocolError::HttpRequestError)?;
+
+        let response: Result<OpenID4VPDirectPostResponseDTO, _> = response.json().await;
+
+        if let Ok(value) = response {
+            self.proof_repository
+                .update_proof(UpdateProofRequest {
+                    id: proof.id,
+                    redirect_uri: Some(value.redirect_uri),
+                    ..Default::default()
+                })
+                .await
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        }
 
         Ok(())
     }
@@ -341,7 +354,7 @@ impl TransportProtocol for OpenID4VC {
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;
 
-        let result: SubmitIssuerResponse =
+        let result: OpenID4VCICredentialResponseDTO =
             serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?;
 
         // revocation method must be updated based on the issued credential (unknown in credential offer)
@@ -408,12 +421,13 @@ impl TransportProtocol for OpenID4VC {
             .update_credential(UpdateCredentialRequest {
                 id: credential.id,
                 issuer_did_id: Some(issuer_did_id),
+                redirect_uri: Some(result.redirect_uri.to_owned()),
                 ..Default::default()
             })
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
-        Ok(result)
+        Ok(result.into())
     }
 
     async fn reject_credential(
@@ -767,6 +781,7 @@ async fn handle_credential_invitation(
         credential_schema,
         claims,
         interaction,
+        None, // todo: fixme
     )
     .await
     .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
@@ -836,6 +851,7 @@ async fn create_and_store_credential(
     credential_schema: CredentialSchema,
     claims: Vec<Claim>,
     interaction: Interaction,
+    redirect_uri: Option<String>,
 ) -> Result<CredentialId, DataLayerError> {
     let now = OffsetDateTime::now_utc();
 
@@ -847,7 +863,7 @@ async fn create_and_store_credential(
             last_modified: now,
             credential: vec![],
             transport: "OPENID4VC".to_string(),
-            redirect_uri: None,
+            redirect_uri,
             state: Some(vec![CredentialState {
                 created_date: now,
                 state: CredentialStateEnum::Pending,
@@ -932,7 +948,7 @@ async fn handle_proof_invitation(
     let proof = proof_from_handle_invitation(
         &proof_id,
         "OPENID4VC",
-        None,
+        interaction_data.redirect_uri,
         None,
         holder_did,
         interaction,

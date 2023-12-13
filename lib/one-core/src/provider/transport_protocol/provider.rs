@@ -187,6 +187,8 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
 
         let auth_fn = self.key_provider.get_signature_provider(&key.key)?;
 
+        let redirect_uri = credential.redirect_uri.to_owned();
+
         let token: String = self
             .formatter_provider
             .get_formatter(&format)?
@@ -212,6 +214,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
         Ok(SubmitIssuerResponse {
             credential: token,
             format,
+            redirect_uri,
         })
     }
 }
