@@ -15,6 +15,7 @@ pub enum InvitationType {
 pub struct SubmitIssuerResponse {
     pub credential: String,
     pub format: String,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone)]
@@ -31,7 +32,6 @@ pub enum InvitationResponse {
 /// deserializes matching `ConnectVerifierResponseRestDTO`
 pub struct ConnectVerifierResponse {
     pub claims: Vec<ProofClaimSchema>,
-    pub redirect_uri: Option<String>,
     pub verifier_did: DidValue,
 }
 

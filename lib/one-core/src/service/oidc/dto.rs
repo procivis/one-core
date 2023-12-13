@@ -1,8 +1,10 @@
+use dto_mapper::From;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
+
+use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataResponseDTO {
@@ -91,10 +93,13 @@ pub struct OpenID4VCIInteractionDataDTO {
     pub access_token_expires_at: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, From)]
+#[convert(into = "SubmitIssuerResponse")]
+#[serde(rename_all = "camelCase")]
 pub struct OpenID4VCICredentialResponseDTO {
     pub credential: String,
     pub format: String,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -145,7 +150,7 @@ pub struct NestedPresentationSubmissionDescriptorDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VPDirectPostResponseDTO {
-    pub redirect_uri: Option<Url>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

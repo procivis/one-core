@@ -27,7 +27,6 @@ use serde::{Deserialize, Serialize};
 use serde_with::{self, json::JsonString};
 use shared_types::DidValue;
 use time::OffsetDateTime;
-use url::Url;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
@@ -247,7 +246,7 @@ pub struct NestedPresentationSubmissionDescriptorRestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[convert(from = "OpenID4VPDirectPostResponseDTO")]
 pub struct OpenID4VPDirectPostResponseRestDTO {
-    pub redirect_uri: Option<Url>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
@@ -291,6 +290,7 @@ pub struct ConnectIssuerResponseRestDTO {
 pub struct OpenID4VCICredentialResponseRestDTO {
     pub credential: String,
     pub format: String,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, IntoParams, Serialize)]

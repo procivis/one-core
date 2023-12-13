@@ -88,4 +88,5 @@ pub struct UpdateCredentialRequest {
     pub state: Option<CredentialState>,
     pub interaction: Option<InteractionId>,
     pub key: Option<KeyId>,
+    pub redirect_uri: Option<Option<String>>,
 }

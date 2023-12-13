@@ -224,6 +224,10 @@ impl ProofRepository for ProofProvider {
             None => Unchanged(Default::default()),
             Some(interaction_id) => Set(Some(interaction_id.to_string())),
         };
+        let redirect_uri = match proof.redirect_uri {
+            None => Unchanged(Default::default()),
+            Some(redirect_uri) => Set(redirect_uri),
+        };
 
         let update_model = proof::ActiveModel {
             id: Unchanged(id.to_string()),
@@ -231,6 +235,7 @@ impl ProofRepository for ProofProvider {
             holder_did_id,
             verifier_did_id,
             interaction_id,
+            redirect_uri,
             ..Default::default()
         };
 

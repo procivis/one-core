@@ -493,6 +493,11 @@ impl CredentialRepository for CredentialProvider {
             Some(key_id) => Set(Some(key_id.to_string())),
         };
 
+        let redirect_uri = match request.redirect_uri {
+            None => Unchanged(Default::default()),
+            Some(redirect_uri) => Set(redirect_uri),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(id.to_string()),
             last_modified: Set(OffsetDateTime::now_utc()),
@@ -501,6 +506,7 @@ impl CredentialRepository for CredentialProvider {
             credential,
             interaction_id,
             key_id,
+            redirect_uri,
             ..Default::default()
         };
 

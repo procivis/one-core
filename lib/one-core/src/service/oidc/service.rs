@@ -184,14 +184,15 @@ impl OIDCService {
             })
             .await?;
 
-        let credential = self
+        let issued_credential = self
             .protocol_provider
             .issue_credential(&credential.id)
             .await?;
 
         Ok(OpenID4VCICredentialResponseDTO {
-            credential: credential.credential,
+            credential: issued_credential.credential,
             format: request.format,
+            redirect_uri: credential.redirect_uri,
         })
     }
 
@@ -412,7 +413,9 @@ impl OIDCService {
         self.accept_proof(&proof_request.id, total_proved_claims)
             .await?;
 
-        Ok(OpenID4VPDirectPostResponseDTO { redirect_uri: None })
+        Ok(OpenID4VPDirectPostResponseDTO {
+            redirect_uri: proof_request.redirect_uri,
+        })
     }
 
     fn build_key_verification(&self, key_role: KeyRole) -> Box<KeyVerification> {
