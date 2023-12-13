@@ -138,17 +138,17 @@ build:
 tests:
   stage: test
   script:
+    - echo "HOME= ${CARGO_HOME}"
     - cargo tarpaulin --skip-clean --ignore-tests --all-features --out xml
   coverage: '/^\d+.\d+% coverage/'
   cache:
-    key:
-      files:
-        - Cargo.lock
+    key: $CI_COMMIT_REF_SLUG
     paths:
       - target/
+      - ${CARGO_HOME}
     policy: pull-push
   artifacts:
-    expire_in: 1 hour
+    expire_in: 5 hour
     paths:
       - cobertura.xml
     reports:
