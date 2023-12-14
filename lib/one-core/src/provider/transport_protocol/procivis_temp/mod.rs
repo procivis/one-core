@@ -49,6 +49,8 @@ use crate::{
     },
 };
 
+const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
+
 pub(crate) struct ProcivisTemp {
     client: reqwest::Client,
     base_url: Option<String>,
@@ -142,6 +144,10 @@ impl TransportProtocol for ProcivisTemp {
 
         let base_url = get_base_url(&url)?;
 
+        let redirect_uri: Option<String> = url
+            .query_pairs()
+            .find_map(|(k, v)| (k == REDIRECT_URI_QUERY_PARAM_KEY).then_some(v.to_string()));
+
         let request_body = HandleInvitationConnectRequest {
             did: own_did.did.to_owned(),
         };
@@ -179,6 +185,7 @@ impl TransportProtocol for ProcivisTemp {
                     proof_request,
                     &protocol,
                     &own_did,
+                    redirect_uri,
                 )
                 .await?
             }
@@ -558,6 +565,7 @@ async fn handle_proof_invitation(
     proof_request: ConnectVerifierResponse,
     protocol: &str,
     holder_did: &Did,
+    redirect_uri: Option<String>,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
     let verifier_did_result = deps
         .did_repository
@@ -611,7 +619,7 @@ async fn handle_proof_invitation(
     let proof = proof_from_handle_invitation(
         &proof_id,
         protocol,
-        proof_request.redirect_uri,
+        redirect_uri,
         Some(verifier_did),
         holder_did.to_owned(),
         interaction,
