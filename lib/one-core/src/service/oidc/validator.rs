@@ -20,7 +20,7 @@ use crate::util::oidc::{map_from_oidc_format_to_core, map_from_oidc_vp_format_to
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
-use super::model::OpenID4VPPresentationDefinitionInputDescriptors;
+use super::model::OpenID4VPPresentationDefinitionInputDescriptor;
 
 pub(crate) fn throw_if_token_request_invalid(
     request: &OpenID4VCITokenRequestDTO,
@@ -216,18 +216,19 @@ pub(super) async fn validate_credential(
 
 pub(super) fn validate_claims(
     received_credential: DetailCredential,
-    descriptor: &OpenID4VPPresentationDefinitionInputDescriptors,
+    descriptor: &OpenID4VPPresentationDefinitionInputDescriptor,
     claim_to_credential_schema_mapping: &HashMap<ClaimSchemaId, CredentialSchemaId>,
     expected_credential_claims: &HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>>,
 ) -> Result<Vec<(ProofSchemaClaim, String)>, ServiceError> {
-    let first_claim_schema =
-        descriptor
-            .constraints
-            .fields
-            .first()
-            .ok_or(ServiceError::OpenID4VCError(
-                OpenID4VCIError::InvalidRequest,
-            ))?;
+    // each descriptor contains only fields from a single credential_schema...
+    let first_claim_schema = descriptor
+        .constraints
+        .fields
+        // ... so one field is enough to find the proper credential_schema (and requested claims from that schema)
+        .first()
+        .ok_or(ServiceError::OpenID4VCError(
+            OpenID4VCIError::InvalidRequest,
+        ))?;
 
     let expected_credential_schema_id = claim_to_credential_schema_mapping
         .get(&first_claim_schema.id)
