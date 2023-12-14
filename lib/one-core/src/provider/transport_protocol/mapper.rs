@@ -96,9 +96,9 @@ pub fn credential_model_to_credential_dto(
 
 pub async fn get_relevant_credentials(
     credential_repository: &Arc<dyn CredentialRepository + Send + Sync>,
-    mut credential_groups: HashMap<String, CredentialGroup>,
+    mut credential_groups: Vec<CredentialGroup>,
     requested_claims: Vec<String>,
-) -> Result<(Vec<Credential>, HashMap<String, CredentialGroup>), TransportProtocolError> {
+) -> Result<(Vec<Credential>, Vec<CredentialGroup>), TransportProtocolError> {
     let relevant_credentials = credential_repository
         .get_credentials_by_claim_names(
             requested_claims.clone(),
@@ -119,8 +119,22 @@ pub async fn get_relevant_credentials(
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
     let mut mentioned_credential_ids: HashSet<CredentialId> = HashSet::new();
-    for group in credential_groups.values_mut() {
+    for group in &mut credential_groups {
         for credential in &relevant_credentials {
+            let credential_state = credential
+                .state
+                .as_ref()
+                .ok_or(TransportProtocolError::Failed("state missing".to_string()))?
+                .first()
+                .ok_or(TransportProtocolError::Failed("state missing".to_string()))?;
+
+            // only consider credentials that have finished the issuance flow
+            if credential_state.state != CredentialStateEnum::Accepted
+                && credential_state.state != CredentialStateEnum::Revoked
+            {
+                continue;
+            }
+
             let claim_schemas = credential
                 .claims
                 .as_ref()
@@ -154,11 +168,11 @@ pub async fn get_relevant_credentials(
 }
 
 pub fn create_presentation_definition_field(
-    field: &CredentialGroupItem,
+    field: CredentialGroupItem,
     credentials: &[Credential],
 ) -> Result<PresentationDefinitionFieldDTO, TransportProtocolError> {
     let mut key_map: HashMap<String, String> = HashMap::new();
-    let key = field.key.clone();
+    let key = field.key;
     for credential in credentials {
         for claim in credential
             .claims
@@ -181,7 +195,7 @@ pub fn create_presentation_definition_field(
         }
     }
     Ok(PresentationDefinitionFieldDTO {
-        id: field.id.clone(),
+        id: field.id,
         name: Some(key),
         purpose: None,
         required: Some(field.required),

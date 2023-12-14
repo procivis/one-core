@@ -71,7 +71,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
 pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
     credentials: Vec<Credential>,
-    credential_groups: HashMap<String, CredentialGroup>,
+    credential_groups: Vec<CredentialGroup>,
 ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -85,19 +85,25 @@ pub(super) fn presentation_definition_from_interaction_data(
                 count: None,
             },
             requested_credentials: credential_groups
-                .iter()
-                .map(|(k, v)| {
+                .into_iter()
+                .map(|group| {
                     Ok(PresentationDefinitionRequestedCredentialResponseDTO {
-                        id: k.to_string(),
+                        id: group.id,
                         name: None,
                         purpose: None,
-                        fields: v
+                        fields: group
                             .claims
-                            .iter()
-                            .map(|field| create_presentation_definition_field(field, &credentials))
+                            .into_iter()
+                            .map(|field| {
+                                create_presentation_definition_field(
+                                    field,
+                                    &group.applicable_credentials,
+                                )
+                            })
                             .collect::<Result<Vec<_>, _>>()?,
-                        applicable_credentials: credentials
-                            .iter()
+                        applicable_credentials: group
+                            .applicable_credentials
+                            .into_iter()
                             .map(|credential| credential.id.to_string())
                             .collect(),
                     })
