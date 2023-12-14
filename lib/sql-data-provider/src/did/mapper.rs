@@ -38,6 +38,7 @@ impl IntoSortingColumn for SortableDidColumn {
             SortableDidColumn::Method => did::Column::Method,
             SortableDidColumn::Type => did::Column::TypeField,
             SortableDidColumn::Did => did::Column::Did,
+            SortableDidColumn::Deactivated => did::Column::Deactivated,
         }
         .into_simple_expr()
     }
