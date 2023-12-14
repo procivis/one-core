@@ -1,10 +1,34 @@
 use core_server::router::start_server;
-use one_core::model::credential::CredentialStateEnum;
 use one_core::model::proof::ProofStateEnum;
+use one_core::model::{credential::CredentialStateEnum, credential_schema::CredentialSchemaId};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::{fixtures, utils};
+
+fn get_procivis_temporary_interaction_data(
+    key: String,
+    credential_schema_id: CredentialSchemaId,
+) -> Vec<u8> {
+    json!([{
+        "id": Uuid::new_v4().to_string(),
+        "createdDate": "2023-06-09T14:19:57.000Z",
+        "lastModified": "2023-06-09T14:19:57.000Z",
+        "key": key,
+        "datatype": "STRING",
+        "required": true,
+        "credentialSchema": {
+             "id": credential_schema_id,
+             "createdDate": "2023-06-09T14:19:57.000Z",
+             "lastModified": "2023-06-09T14:19:57.000Z",
+             "name": "test",
+             "format": "JWT",
+             "revocationMethod": "NONE",
+        }
+    }])
+    .to_string()
+    .into_bytes()
+}
 
 #[tokio::test]
 async fn test_get_presentation_definition_procivis_temporary_with_match() {
@@ -22,7 +46,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
-        CredentialStateEnum::Created,
+        CredentialStateEnum::Accepted,
         &did,
         None,
         None,
@@ -33,10 +57,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_procivis_temporary_interaction_data(
-            "firstName".to_string(),
-            credential_schema.id.to_string(),
-        ),
+        &get_procivis_temporary_interaction_data("firstName".to_string(), credential_schema.id),
     )
     .await;
     let proof = fixtures::create_proof(
@@ -108,10 +129,7 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_procivis_temporary_interaction_data(
-            "test".to_string(),
-            credential_schema.id.to_string(),
-        ),
+        &get_procivis_temporary_interaction_data("test".to_string(), credential_schema.id),
     )
     .await;
     let proof = fixtures::create_proof(
@@ -178,25 +196,186 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
     );
 }
 
-fn get_procivis_temporary_interaction_data(key: String, credential_schema: String) -> Vec<u8> {
-    json!([{
-        "id": Uuid::new_v4().to_string(),
-        "createdDate": "2023-06-09T14:19:57.000Z",
-        "lastModified": "2023-06-09T14:19:57.000Z",
-        "key": key,
-        "datatype": "STRING",
-        "required": true,
-        "credentialSchema": {
-             "id": credential_schema,
-             "createdDate": "2023-06-09T14:19:57.000Z",
-             "lastModified": "2023-06-09T14:19:57.000Z",
-             "name": "test",
-             "format": "JWT",
-             "revocationMethod": "NONE",
-        }
-    }])
-    .to_string()
-    .into_bytes()
+#[tokio::test]
+async fn test_get_presentation_definition_procivis_temporary_multiple_credentials() {
+    // GIVEN
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url);
+    let db_conn = fixtures::create_db(&config).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
+
+    let claim_schemas_1: Vec<(Uuid, &str, bool, &str)> = vec![
+        (Uuid::new_v4(), "first_f0", true, "STRING"),
+        (Uuid::new_v4(), "first_f1", false, "STRING"),
+    ];
+    let credential_schema_1 = fixtures::create_credential_schema_with_claims(
+        &db_conn,
+        "test1",
+        &organisation,
+        "NONE",
+        &claim_schemas_1,
+    )
+    .await;
+    let credential_1 = fixtures::create_credential(
+        &db_conn,
+        &credential_schema_1,
+        CredentialStateEnum::Accepted,
+        &did,
+        None,
+        None,
+        None,
+        "PROCIVIS_TEMPORARY",
+    )
+    .await;
+
+    let claim_schemas_2: Vec<(Uuid, &str, bool, &str)> = vec![
+        (Uuid::new_v4(), "second_f0", true, "STRING"),
+        (Uuid::new_v4(), "second_f1", false, "STRING"),
+    ];
+    let credential_schema_2 = fixtures::create_credential_schema_with_claims(
+        &db_conn,
+        "test2",
+        &organisation,
+        "NONE",
+        &claim_schemas_2,
+    )
+    .await;
+    let credential_2 = fixtures::create_credential(
+        &db_conn,
+        &credential_schema_2,
+        CredentialStateEnum::Accepted,
+        &did,
+        None,
+        None,
+        None,
+        "PROCIVIS_TEMPORARY",
+    )
+    .await;
+
+    let interaction = fixtures::create_interaction(
+        &db_conn,
+        "http://localhost",
+        &json!([{
+            "id": "839915f5-e4e2-4591-9d80-fd6178aa84f5",
+            "createdDate": "2023-06-09T14:19:57.000Z",
+            "lastModified": "2023-06-09T14:19:57.000Z",
+            "key": "first_f0",
+            "datatype": "STRING",
+            "required": true,
+            "credentialSchema": {
+                 "id": credential_schema_1.id,
+                 "createdDate": "2023-06-09T14:19:57.000Z",
+                 "lastModified": "2023-06-09T14:19:57.000Z",
+                 "name": "test",
+                 "format": "JWT",
+                 "revocationMethod": "NONE",
+            }
+        },
+        {
+            "id": "ba2c4567-7c5b-4ee5-b3d6-6eac9161892e",
+            "createdDate": "2023-06-09T14:19:57.000Z",
+            "lastModified": "2023-06-09T14:19:57.000Z",
+            "key": "second_f0",
+            "datatype": "STRING",
+            "required": true,
+            "credentialSchema": {
+                 "id": credential_schema_2.id,
+                 "createdDate": "2023-06-09T14:19:57.000Z",
+                 "lastModified": "2023-06-09T14:19:57.000Z",
+                 "name": "test",
+                 "format": "JWT",
+                 "revocationMethod": "NONE",
+            }
+        }])
+        .to_string()
+        .into_bytes(),
+    )
+    .await;
+    let proof = fixtures::create_proof(
+        &db_conn,
+        &did,
+        Some(&did),
+        None,
+        ProofStateEnum::Pending,
+        "PROCIVIS_TEMPORARY",
+        Some(&interaction),
+    )
+    .await;
+
+    // WHEN
+    let url = format!(
+        "{base_url}/api/proof-request/v1/{}/presentation-definition",
+        proof.id
+    );
+
+    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+
+    let resp = utils::client()
+        .get(url)
+        .bearer_auth("test")
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp: Value = resp.json().await.unwrap();
+
+    assert_eq!(resp["credentials"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        resp["requestGroups"],
+        json!([
+            {
+                "id": proof.id,
+                "name": null,
+                "purpose": null,
+                "rule": {
+                    "type": "all",
+                    "count": null,
+                    "max": null,
+                    "min": null
+                },
+                "requestedCredentials": [
+                    {
+                        "id": "input_0",
+                        "name": null,
+                        "purpose": null,
+                        "fields": [
+                            {
+                                "id": "839915f5-e4e2-4591-9d80-fd6178aa84f5",
+                                "name": "first_f0",
+                                "purpose": null,
+                                "required": true,
+                                "keyMap": {
+                                    credential_1.id: "first_f0"
+                                }
+                            }
+                        ],
+                        "applicableCredentials": [credential_1.id]
+                    },
+                    {
+                        "id": "input_1",
+                        "name": null,
+                        "purpose": null,
+                        "fields": [
+                            {
+                                "id": "ba2c4567-7c5b-4ee5-b3d6-6eac9161892e",
+                                "name": "second_f0",
+                                "purpose": null,
+                                "required": true,
+                                "keyMap": {
+                                    credential_2.id: "second_f0"
+                                }
+                            }
+                        ],
+                        "applicableCredentials": [credential_2.id]
+                    }
+                ]
+            }
+        ])
+    );
 }
 
 fn get_open_id_interaction_data() -> Vec<u8> {
@@ -268,7 +447,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,
-        CredentialStateEnum::Created,
+        CredentialStateEnum::Accepted,
         &did,
         None,
         None,
@@ -412,5 +591,250 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
             .unwrap()
             .len(),
         1
+    );
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
+    // GIVEN
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url);
+    let db_conn = fixtures::create_db(&config).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
+
+    let claim_schemas_1: Vec<(Uuid, &str, bool, &str)> = vec![
+        (Uuid::new_v4(), "first_f0", true, "STRING"),
+        (Uuid::new_v4(), "first_f1", false, "STRING"),
+    ];
+    let credential_schema_1 = fixtures::create_credential_schema_with_claims(
+        &db_conn,
+        "test1",
+        &organisation,
+        "NONE",
+        &claim_schemas_1,
+    )
+    .await;
+    let credential_1 = fixtures::create_credential(
+        &db_conn,
+        &credential_schema_1,
+        CredentialStateEnum::Accepted,
+        &did,
+        None,
+        None,
+        None,
+        "OPENID4VC",
+    )
+    .await;
+
+    let claim_schemas_2: Vec<(Uuid, &str, bool, &str)> = vec![
+        (Uuid::new_v4(), "second_f0", true, "STRING"),
+        (Uuid::new_v4(), "second_f1", false, "STRING"),
+    ];
+    let credential_schema_2 = fixtures::create_credential_schema_with_claims(
+        &db_conn,
+        "test2",
+        &organisation,
+        "NONE",
+        &claim_schemas_2,
+    )
+    .await;
+    let credential_2 = fixtures::create_credential(
+        &db_conn,
+        &credential_schema_2,
+        CredentialStateEnum::Accepted,
+        &did,
+        None,
+        None,
+        None,
+        "OPENID4VC",
+    )
+    .await;
+
+    let interaction = fixtures::create_interaction(
+        &db_conn,
+        "https://core.test.one-trust-solution.com/ssi/oidc-verifier/v1/response",
+        &json!({
+            "response_type": "vp_token",
+            "state": "30622803-c01a-4b24-9843-1aa4306510cb",
+            "nonce": "5D910DcsvtdZV0VllYUjGpcpdkNtakHU",
+            "client_id_scheme": "redirect_uri",
+            "client_id": "https://core.test.one-trust-solution.com/ssi/oidc-verifier/v1/response",
+            "client_metadata": {
+                "vp_formats": {
+                    "vc+sd-jwt": {
+                        "alg": [
+                            "EdDSA"
+                        ]
+                    },
+                    "jwt_vp_json": {
+                        "alg": [
+                            "EdDSA"
+                        ]
+                    },
+                    "jwt_vc_json": {
+                        "alg": [
+                            "EdDSA"
+                        ]
+                    }
+                },
+                "client_id_scheme": "redirect_uri"
+            },
+            "response_mode": "direct_post",
+            "response_uri": "https://core.test.one-trust-solution.com/ssi/oidc-verifier/v1/response",
+            "presentation_definition": {
+                "id": "30622803-c01a-4b24-9843-1aa4306510cb",
+                "input_descriptors": [
+                    {
+                        "id": "input_0",
+                        "constraints": {
+                            "fields": [
+                                {
+                                    "id": "109562f7-2374-4b84-ab84-67709ad25f92",
+                                    "path": [
+                                        "$.vc.credentialSubject.first_f0"
+                                    ],
+                                    "optional": false
+                                },
+                                {
+                                    "id": "a85dd383-91c0-4999-9953-e857c238a4bf",
+                                    "path": [
+                                        "$.vc.credentialSubject.first_f1"
+                                    ],
+                                    "optional": true
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "id": "input_1",
+                        "constraints": {
+                            "fields": [
+                                {
+                                    "id": "a50ff87a-fedc-4650-8b69-044bd8411f8c",
+                                    "path": [
+                                        "$.vc.credentialSubject.second_f0"
+                                    ],
+                                    "optional": false
+                                },
+                                {
+                                    "id": "3fad2e18-ebb9-457a-9ed9-f818de957fdc",
+                                    "path": [
+                                        "$.vc.credentialSubject.second_f1"
+                                    ],
+                                    "optional": false
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        })
+        .to_string()
+        .into_bytes(),
+    )
+    .await;
+    let proof = fixtures::create_proof(
+        &db_conn,
+        &did,
+        Some(&did),
+        None,
+        ProofStateEnum::Pending,
+        "OPENID4VC",
+        Some(&interaction),
+    )
+    .await;
+
+    // WHEN
+    let url = format!(
+        "{base_url}/api/proof-request/v1/{}/presentation-definition",
+        proof.id
+    );
+
+    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+
+    let resp = utils::client()
+        .get(url)
+        .bearer_auth("test")
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+
+    assert_eq!(resp.status(), 200);
+    let resp: Value = resp.json().await.unwrap();
+
+    assert_eq!(resp["credentials"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        resp["requestGroups"],
+        json!([
+            {
+                "id": proof.id,
+                "name": null,
+                "purpose": null,
+                "rule": {
+                    "type": "all",
+                    "count": null,
+                    "max": null,
+                    "min": null
+                },
+                "requestedCredentials": [
+                    {
+                        "id": "input_0",
+                        "name": null,
+                        "purpose": null,
+                        "fields": [
+                            {
+                                "id": "109562f7-2374-4b84-ab84-67709ad25f92",
+                                "name": "first_f0",
+                                "purpose": null,
+                                "required": true,
+                                "keyMap": {
+                                    credential_1.id: "first_f0"
+                                }
+                            },
+                            {
+                                "id": "a85dd383-91c0-4999-9953-e857c238a4bf",
+                                "name": "first_f1",
+                                "purpose": null,
+                                "required": false,
+                                "keyMap": {
+                                    credential_1.id: "first_f1"
+                                }
+                            }
+                        ],
+                        "applicableCredentials": [credential_1.id]
+                    },
+                    {
+                        "id": "input_1",
+                        "name": null,
+                        "purpose": null,
+                        "fields": [
+                            {
+                                "id": "a50ff87a-fedc-4650-8b69-044bd8411f8c",
+                                "name": "second_f0",
+                                "purpose": null,
+                                "required": true,
+                                "keyMap": {
+                                    credential_2.id: "second_f0"
+                                }
+                            },
+                            {
+                                "id": "3fad2e18-ebb9-457a-9ed9-f818de957fdc",
+                                "name": "second_f1",
+                                "purpose": null,
+                                "required": true,
+                                "keyMap": {
+                                    credential_2.id: "second_f1"
+                                }
+                            }
+                        ],
+                        "applicableCredentials": [credential_2.id]
+                    }
+                ]
+            }
+        ])
     );
 }

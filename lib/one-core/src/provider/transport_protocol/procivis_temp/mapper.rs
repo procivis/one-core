@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
@@ -57,18 +55,18 @@ pub fn get_base_url(url: &Url) -> Result<Url, TransportProtocolError> {
 }
 pub fn create_requested_credential(
     index: usize,
-    claim_schemas: &[CredentialGroupItem],
-    credentials: &[Credential],
+    fields: Vec<CredentialGroupItem>,
+    applicable_credentials: Vec<Credential>,
 ) -> Result<PresentationDefinitionRequestedCredentialResponseDTO, TransportProtocolError> {
     Ok(PresentationDefinitionRequestedCredentialResponseDTO {
         id: format!("input_{}", index),
         name: None,
         purpose: None,
-        fields: claim_schemas
-            .iter()
-            .map(|claim_schema| create_presentation_definition_field(claim_schema, credentials))
+        fields: fields
+            .into_iter()
+            .map(|field| create_presentation_definition_field(field, &applicable_credentials))
             .collect::<Result<Vec<_>, TransportProtocolError>>()?,
-        applicable_credentials: credentials
+        applicable_credentials: applicable_credentials
             .iter()
             .map(|credential| credential.id.to_string())
             .collect(),
@@ -78,7 +76,7 @@ pub fn create_requested_credential(
 pub(super) fn presentation_definition_from_proof(
     proof: &Proof,
     credentials: Vec<Credential>,
-    credential_groups: HashMap<String, CredentialGroup>,
+    credential_groups: Vec<CredentialGroup>,
 ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -94,8 +92,8 @@ pub(super) fn presentation_definition_from_proof(
             requested_credentials: credential_groups
                 .into_iter()
                 .enumerate()
-                .map(|(index, (_, group))| {
-                    create_requested_credential(index, &group.claims, &group.applicable_credentials)
+                .map(|(index, group)| {
+                    create_requested_credential(index, group.claims, group.applicable_credentials)
                 })
                 .collect::<Result<Vec<_>, TransportProtocolError>>()?,
         }],

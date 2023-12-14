@@ -1,10 +1,8 @@
 mod dto;
 mod mapper;
 
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use async_trait::async_trait;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -369,24 +367,25 @@ impl TransportProtocol for ProcivisTemp {
             .iter()
             .map(|claim_schema| claim_schema.key.to_owned())
             .collect();
-        let mut credential_groups: HashMap<String, CredentialGroup> = HashMap::new();
+        let mut credential_groups: Vec<CredentialGroup> = vec![];
         for requested_claim in requested_claims {
-            let group_id = &requested_claim.credential_schema.id;
+            let group_id = requested_claim.credential_schema.id;
             let credential_group_item = CredentialGroupItem {
                 id: requested_claim.id,
                 key: requested_claim.key,
                 required: requested_claim.required,
             };
-            if let Some(group) = credential_groups.get_mut(group_id) {
+            if let Some(group) = credential_groups
+                .iter_mut()
+                .find(|group| group.id == group_id)
+            {
                 group.claims.push(credential_group_item);
             } else {
-                credential_groups.insert(
-                    group_id.to_string(),
-                    CredentialGroup {
-                        claims: vec![credential_group_item],
-                        ..Default::default()
-                    },
-                );
+                credential_groups.push(CredentialGroup {
+                    id: group_id,
+                    claims: vec![credential_group_item],
+                    applicable_credentials: vec![],
+                });
             }
         }
         let result = get_relevant_credentials(

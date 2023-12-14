@@ -111,8 +111,9 @@ pub struct PresentationDefinitionRuleDTO {
     pub count: Option<u32>,
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct CredentialGroup {
+    pub id: String,
     pub claims: Vec<CredentialGroupItem>,
     pub applicable_credentials: Vec<Credential>,
 }

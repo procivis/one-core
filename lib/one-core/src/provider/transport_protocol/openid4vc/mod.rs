@@ -541,30 +541,28 @@ impl TransportProtocol for OpenID4VC {
             deserialize_interaction_data(proof.interaction.as_ref())?;
         let mut requested_claims = vec![];
 
-        let mut credential_groups: HashMap<String, CredentialGroup> = HashMap::new();
-        for input_descriptor in &interaction_data.presentation_definition.input_descriptors {
+        let mut credential_groups: Vec<CredentialGroup> = vec![];
+        for input_descriptor in interaction_data.presentation_definition.input_descriptors {
             let mut requested_claims_for_input = vec![];
-            for field in &input_descriptor.constraints.fields {
+            for field in input_descriptor.constraints.fields {
                 let field_name = get_claim_name_by_json_path(&field.path)?;
                 requested_claims.push(field_name);
-                requested_claims_for_input.push(field.clone());
+                requested_claims_for_input.push(field);
             }
-            credential_groups.insert(
-                input_descriptor.id.clone(),
-                CredentialGroup {
-                    claims: requested_claims_for_input
-                        .iter()
-                        .map(|requested_claim| {
-                            Ok(CredentialGroupItem {
-                                id: requested_claim.id.to_string(),
-                                key: get_claim_name_by_json_path(&requested_claim.path)?,
-                                required: !requested_claim.optional,
-                            })
+            credential_groups.push(CredentialGroup {
+                id: input_descriptor.id,
+                claims: requested_claims_for_input
+                    .iter()
+                    .map(|requested_claim| {
+                        Ok(CredentialGroupItem {
+                            id: requested_claim.id.to_string(),
+                            key: get_claim_name_by_json_path(&requested_claim.path)?,
+                            required: !requested_claim.optional,
                         })
-                        .collect::<Result<Vec<_>, _>>()?,
-                    applicable_credentials: vec![],
-                },
-            );
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+                applicable_credentials: vec![],
+            });
         }
         let result = get_relevant_credentials(
             &self.credential_repository,
