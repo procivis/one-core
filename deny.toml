@@ -44,10 +44,9 @@ default = "deny"
 confidence-threshold = 0.8
 
 exceptions = [
-    # Allow MPL-2.0 for webpli-roots, as we do not modify the library
+    # Allow MPL-2.0 for libraries we do not modify
     { allow = ["MPL-2.0"], name = "webpki-roots", version = "*" },
-
-    # Allow MPL-2.0 for uniffi, as we do not modify the library
+    { allow = ["MPL-2.0"], name = "option-ext", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_bindgen", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_build", version = "*" },
