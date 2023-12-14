@@ -11,6 +11,7 @@ use crate::model::did::DidType;
 use crate::provider::transport_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::{
     common_mapper::list_response_try_into,
+    config::validator::exchange::validate_exchange_type,
     model::{
         claim::ClaimRelations,
         claim_schema::ClaimSchemaRelations,
@@ -129,6 +130,9 @@ impl ProofService {
         &self,
         request: CreateProofRequestDTO,
     ) -> Result<ProofId, ServiceError> {
+        validate_exchange_type(&request.transport, &self.config.exchange)
+            .map_err(ServiceError::from)?;
+
         let now = OffsetDateTime::now_utc();
         let proof_schema = self
             .proof_schema_repository
