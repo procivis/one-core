@@ -326,6 +326,16 @@ impl OIDCService {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
+        if presentation_submission.descriptor_map.len()
+            != interaction_data
+                .presentation_definition
+                .input_descriptors
+                .len()
+        {
+            // different count of requested and submitted credentials
+            return Err(OpenID4VCIError::InvalidRequest.into());
+        }
+
         let presentation_strings: Vec<String> = if request.vp_token.starts_with('[') {
             serde_json::from_str(&request.vp_token).map_err(|_| OpenID4VCIError::InvalidRequest)?
         } else {
@@ -333,29 +343,41 @@ impl OIDCService {
         };
 
         // collect expected credentials
+        let proof_schema_claims = proof_request
+            .schema
+            .ok_or(ServiceError::MappingError(
+                "missing proof schema".to_string(),
+            ))?
+            .claim_schemas
+            .ok_or(ServiceError::MappingError(
+                "missing proof schema claims".to_string(),
+            ))?;
+
         let mut claim_to_credential_schema_mapping: HashMap<ClaimSchemaId, CredentialSchemaId> =
             HashMap::new();
         let mut expected_credential_claims: HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>> =
             HashMap::new();
-        if let Some(proof_schema) = &proof_request.schema {
-            if let Some(claim_schemas) = &proof_schema.claim_schemas {
-                for proof_claim_schema in claim_schemas {
-                    if let Some(credential_schema) = &proof_claim_schema.credential_schema {
-                        let entry = expected_credential_claims
-                            .entry(credential_schema.id)
-                            .or_default();
-                        entry.push(proof_claim_schema);
-                        claim_to_credential_schema_mapping
-                            .insert(proof_claim_schema.schema.id, credential_schema.id);
-                    }
-                }
-            }
+        for proof_schema_claim in &proof_schema_claims {
+            let credential_schema =
+                proof_schema_claim
+                    .credential_schema
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "missing proof schema claim credential_schema".to_string(),
+                    ))?;
+
+            let entry = expected_credential_claims
+                .entry(credential_schema.id)
+                .or_default();
+            entry.push(proof_schema_claim);
+            claim_to_credential_schema_mapping
+                .insert(proof_schema_claim.schema.id, credential_schema.id);
         }
 
         let mut total_proved_claims: Vec<(ProofSchemaClaim, String)> = Vec::new();
-        //Unpack presentations and credentials
+        // Unpack presentations and credentials
         for presentation_submitted in &presentation_submission.descriptor_map {
-            let credential_definition = interaction_data
+            let input_descriptor = interaction_data
                 .presentation_definition
                 .input_descriptors
                 .iter()
@@ -377,37 +399,42 @@ impl OIDCService {
             )
             .await?;
 
-            if let Some(path_nested) = &presentation_submitted.path_nested {
-                let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
-                let credential_string = presentation
-                    .credentials
-                    .get(credential_index)
-                    .ok_or(OpenID4VCIError::InvalidRequest)?;
+            let holder_did =
+                presentation
+                    .issuer_did
+                    .as_ref()
+                    .ok_or(ServiceError::ValidationError(
+                        "Missing holder id".to_string(),
+                    ))?;
 
-                let credential = validate_credential(
-                    credential_string,
-                    presentation
-                        .issuer_did
-                        .as_ref()
-                        .ok_or(ServiceError::ValidationError(
-                            "Missing holder id".to_string(),
-                        ))?,
-                    &path_nested.format,
-                    &self.formatter_provider,
-                    self.build_key_verification(KeyRole::AssertionMethod),
-                    &self.revocation_method_provider,
-                )
-                .await?;
+            let path_nested = presentation_submitted
+                .path_nested
+                .as_ref()
+                .ok_or(OpenID4VCIError::InvalidRequest)?;
+            let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
+            let credential = presentation
+                .credentials
+                .get(credential_index)
+                .ok_or(OpenID4VCIError::InvalidRequest)?;
 
-                let proved_claims: Vec<(ProofSchemaClaim, String)> = validate_claims(
-                    credential,
-                    credential_definition,
-                    &claim_to_credential_schema_mapping,
-                    &expected_credential_claims,
-                )?;
+            let credential = validate_credential(
+                credential,
+                holder_did,
+                &path_nested.format,
+                &self.formatter_provider,
+                self.build_key_verification(KeyRole::AssertionMethod),
+                &self.revocation_method_provider,
+            )
+            .await?;
 
-                total_proved_claims.extend(proved_claims);
-            }
+            let proved_claims: Vec<(ProofSchemaClaim, String)> = validate_claims(
+                credential,
+                input_descriptor,
+                &claim_to_credential_schema_mapping,
+                &expected_credential_claims,
+            )?;
+
+            total_proved_claims.extend(proved_claims);
         }
 
         self.accept_proof(&proof_request.id, total_proved_claims)

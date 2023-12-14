@@ -13,11 +13,11 @@ pub(super) struct OpenID4VPInteractionContent {
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct OpenID4VPPresentationDefinition {
-    pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptors>,
+    pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptor>,
 }
 
 #[derive(Clone, Deserialize, Debug)]
-pub struct OpenID4VPPresentationDefinitionInputDescriptors {
+pub struct OpenID4VPPresentationDefinitionInputDescriptor {
     pub id: String,
     pub constraints: OpenID4VPPresentationDefinitionConstraint,
 }
