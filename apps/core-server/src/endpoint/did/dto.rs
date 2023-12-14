@@ -129,6 +129,7 @@ pub enum SortableDidColumnRestDTO {
     Method,
     Type,
     Did,
+    Deactivated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]

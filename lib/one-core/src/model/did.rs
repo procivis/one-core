@@ -61,6 +61,7 @@ pub enum SortableDidColumn {
     Method,
     Type,
     Did,
+    Deactivated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
