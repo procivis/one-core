@@ -107,20 +107,20 @@ datatype:
     order: 110
     params:
       public:
-        autocomplete: true # optional
-        placeholder: "abc@abc.com" # optional
-        error: # optional
+        autocomplete: true
+        placeholder: "abc@abc.com"
+        error:
           de: "Please provide email like abc@abc.com"
           en: "Please provide email like abc@abc.com"
-        pattern: '^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$' # optional
+        pattern: '^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$'
   COUNT:
     display: "datatype.count"
     type: "NUMBER"
     order: 210
     params:
       public:
-        min: 0 # optional
-        max: 9999 # optional
+        min: 0
+        max: 9999
         error: "datatype.count_error"
   BIRTH_DATE:
     display: "datatype.birth_date"
@@ -128,21 +128,9 @@ datatype:
     order: 310
     params:
       public:
-        min: 1900-01-01 # optional
-        max: "NOW" # optional
+        min: 1900-01-01
+        max: "NOW"
         error: "datatype.birth_date_error"
-  # COUNTRY:
-  #   display: "datatype.country"
-  #   type: "ENUM" # not supported yet
-  #   order: 2
-  #   params:
-  #     public:
-  #       values: # optional
-  #         - key: "CH" # mandatory
-  #           value: "CH" # optional, defaults to key
-  #           display: # optional
-  #             en: "Switzerland"
-  #             de: "Schweiz"
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"

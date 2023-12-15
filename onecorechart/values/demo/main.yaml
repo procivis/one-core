@@ -13,5 +13,9 @@ ingress:
       - path: /
         pathType: ImplementationSpecific
 
+configs:
+  - "config-procivis-server.yml"
+  - "config-procivis-server-demo.yml"
+
 imagePullSecrets:
   - name: gitlab-credentials-demo-cluster

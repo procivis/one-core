@@ -1,7 +1,6 @@
 # Default values for onecorechart.
 
 sentry:
-  dsn: "https://2deca538f2c80d91bf6fd718fde96db6@o153694.ingest.sentry.io/4505940972142592"
   env: ""
 
 replicaCount: 1
@@ -18,12 +17,8 @@ nameOverride: ""
 fullnameOverride: ""
 
 serviceAccount:
-  # Specifies whether a service account should be created
   create: false
-  # Annotations to add to the service account
   annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
   name: ""
 
 podAnnotations:
@@ -34,6 +29,7 @@ podSecurityContext: {}
 securityContext:
   runAsUser: 1000
   runAsGroup: 1000
+  runAsNonRoot: true
   allowPrivilegeEscalation: false
 
 service:
@@ -71,6 +67,18 @@ tolerations: []
 affinity: {}
 
 baseUrl: ""
+
+configs:
+  - "config.yml"
+
+
+config:
+  azureKeyVault:
+    adTenantId: ""
+    clientId: ""
+    clientSecret: ""
+    vaultUrl: ""
+
 
 mariadb:
   enabled: true

@@ -1,11 +1,12 @@
 app:
-  databaseUrl: "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core"
+  databaseUrl: ""
   coreBaseUrl: "http://0.0.0.0:3000"
   serverIp: "0.0.0.0"
   serverPort: 3000
   traceJson: true
-  sentryEnvironment: "https://2deca538f2c80d91bf6fd718fde96db6@o153694.ingest.sentry.io/4505940972142592"
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error"
+  sentryDsn: "https://2deca538f2c80d91bf6fd718fde96db6@o153694.ingest.sentry.io/4505940972142592"
+  sentryEnvironment: ""
 format:
   JWT:
     type: "JWT"
@@ -115,20 +116,20 @@ datatype:
     order: 110
     params:
       public:
-        autocomplete: true # optional
-        placeholder: "abc@abc.com" # optional
-        error: # optional
+        autocomplete: true
+        placeholder: "abc@abc.com"
+        error:
           de: "Please provide email like abc@abc.com"
           en: "Please provide email like abc@abc.com"
-        pattern: '^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$' # optional
+        pattern: '^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$'
   COUNT:
     display: "datatype.count"
     type: "NUMBER"
     order: 210
     params:
       public:
-        min: 0 # optional
-        max: 9999 # optional
+        min: 0
+        max: 9999
         error: "datatype.count_error"
   BIRTH_DATE:
     display: "datatype.birth_date"
@@ -136,21 +137,9 @@ datatype:
     order: 310
     params:
       public:
-        min: 1900-01-01 # optional
-        max: "NOW" # optional
+        min: 1900-01-01
+        max: "NOW"
         error: "datatype.birth_date_error"
-  # COUNTRY:
-  #   display: "datatype.country"
-  #   type: "ENUM" # not supported yet
-  #   order: 2
-  #   params:
-  #     public:
-  #       values: # optional
-  #         - key: "CH" # mandatory
-  #           value: "CH" # optional, defaults to key
-  #           display: # optional
-  #             en: "Switzerland"
-  #             de: "Schweiz"
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"
@@ -195,9 +184,8 @@ keyStorage:
     order: 2
     params:
       private:
-        tenant: procivisag.onmicrosoft.com
-        adTenantId: "0e235e47-054b-41b2-9c63-6aa0c115ce5b"
-        clientId: "de515d45-53da-4b82-a34a-0e6b513db700"
-        clientSecret: "kHE8Q~K7oaqcwaxSmahj8tc5spoIp2ISlbZEUcPO"
         oauthServiceUrl: "https://login.microsoftonline.com"
         vaultUrl: "https://one-dev.vault.azure.net"
+        adTenantId: "0e235e47-054b-41b2-9c63-6aa0c115ce5b"
+        clientId: "de515d45-53da-4b82-a34a-0e6b513db700"
+        clientSecret: ""

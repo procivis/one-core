@@ -12,3 +12,7 @@ ingress:
     paths:
       - path: /
         pathType: ImplementationSpecific
+
+configs:
+  - "config-procivis-server.yml"
+  - "config-procivis-server-test.yml"

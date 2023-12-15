@@ -56,16 +56,21 @@ Using `cargo-watch`, the code can be automatically recompiled when changes are m
 
 Setup
 
-```
+```shell
 cargo install cargo-watch
 ```
 
 Run the REST server
 
-```
+```shell
 makers runw
 ```
 
+
+Run compiled application (Local env)
+```shell
+./target/debug/core-server --config config/config-local.yml
+```
 
 ## Docker
 
@@ -105,7 +110,7 @@ docker run --init  -p 3000:3000 -it --rm one-core
 
 * Run shell in the container
 ```shell
-docker run -it --rm --entrypoint="" one-core sh
+docker run -it --rm --entrypoint="" one-core bash
 ```
 
 
@@ -117,10 +122,10 @@ Source:
 
 * Install cyclonedx-cli
 ```shell
-
 sudo curl -L https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.25.0/cyclonedx-linux-x64 -o /usr/local/bin/cyclonedx-cli
 sudo chmod +x /usr/local/bin/cyclonedx-cli
 ```
+
 * Install cyclonedx
 ```shell
 cargo install cargo-cyclonedx

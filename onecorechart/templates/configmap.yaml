@@ -3,11 +3,8 @@ kind: ConfigMap
 metadata:
   name: {{ include "onecorechart.fullname" . }}
 data:
-  RUST_LOG: "debug,hyper=error,sea_orm=info,sqlx::query=error"
-  TRACE_JSON: "true"
-  DATABASE_URL: {{ default (printf "mysql://%s:%s@%s-mariadb:3306/%s" .Values.mariadb.auth.username .Values.mariadb.auth.password .Release.Name .Values.mariadb.auth.database) | quote }}
-  AUTH_TOKEN: {{ required "Auth token is required" .Values.authToken | quote }}
-  CORE_BASE_URL: {{ required "Base url is required" .Values.baseUrl | quote }}
-  CONFIG_FILE: "/app/config.yml"
-  SENTRY_DSN: {{ .Values.sentry.dsn | quote }}
-  SENTRY_ENVIRONMENT: {{ required "Sentry env is required" .Values.sentry.env | quote }}
+  ONE_app__databaseUrl: {{ default (printf "mysql://%s:%s@%s-mariadb:3306/%s" .Values.mariadb.auth.username .Values.mariadb.auth.password .Release.Name .Values.mariadb.auth.database) | quote }}
+  ONE_app__authToken: {{ required "Auth token is required" .Values.authToken | quote }}
+  ONE_app__coreBaseUrl: {{ required "Base url is required" .Values.baseUrl | quote }}
+  ONE_app__sentryEnvironment: {{ required "Sentry env is required" .Values.sentry.env | quote }}
+  ONE_keyStorage__AZURE_VAULT__params__private__clientSecret: {{ .Values.config.azureKeyVault.clientSecret}}
