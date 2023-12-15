@@ -781,7 +781,7 @@ async fn handle_credential_invitation(
         credential_schema,
         claims,
         interaction,
-        None, // todo: fixme
+        None,
     )
     .await
     .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
