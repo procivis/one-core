@@ -64,6 +64,7 @@ pub struct CredentialDetailBindingDTO {
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
     pub claims: Vec<ClaimBindingDTO>,
+    pub redirect_uri: Option<String>,
 }
 
 pub struct CredentialListItemBindingDTO {
@@ -116,6 +117,7 @@ pub struct ProofRequestBindingDTO {
     pub claims: Vec<ProofRequestClaimBindingDTO>,
     pub verifier_did: Option<String>,
     pub transport: String,
+    pub redirect_uri: Option<String>,
 }
 
 pub struct ProofRequestClaimBindingDTO {

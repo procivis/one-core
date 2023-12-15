@@ -79,6 +79,7 @@ dictionary CredentialDetailBindingDTO {
   CredentialStateBindingEnum state;
   sequence<ClaimBindingDTO> claims;
   CredentialSchemaBindingDTO schema;
+  string? redirect_uri;
 };
 
 dictionary ProofRequestClaimBindingDTO {
@@ -96,6 +97,7 @@ dictionary ProofRequestBindingDTO {
     sequence<ProofRequestClaimBindingDTO> claims;
     string? verifier_did;
     string transport;
+    string? redirect_uri;
 };
 
 dictionary PresentationSubmitCredentialRequestBindingDTO {
