@@ -36,6 +36,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             state: value.state.into(),
             schema: value.schema.into(),
             claims: convert_inner(value.claims),
+            redirect_uri: value.redirect_uri,
         }
     }
 }
@@ -64,6 +65,7 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             claims: convert_inner(value.claims),
             verifier_did: value.verifier_did.map(|inner| inner.did.to_string()),
             transport: value.transport,
+            redirect_uri: value.redirect_uri,
         }
     }
 }
