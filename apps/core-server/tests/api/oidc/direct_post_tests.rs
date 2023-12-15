@@ -155,8 +155,12 @@ async fn test_direct_post_one_credential_correct() {
     assert_eq!(resp.status(), 200);
 
     let proof = get_proof(&db_conn, &proof.id).await;
-    let claims = proof.claims.unwrap();
+    assert_eq!(
+        proof.state.unwrap().first().unwrap().state,
+        ProofStateEnum::Accepted
+    );
 
+    let claims = proof.claims.unwrap();
     assert!(new_claim_schemas
         .iter()
         .filter(|required_claim| required_claim.2) //required
@@ -164,8 +168,6 @@ async fn test_direct_post_one_credential_correct() {
             .iter()
             // Values are just keys uppercase
             .any(|db_claim| db_claim.value == required_claim.1.to_ascii_uppercase())));
-
-    // TODO: Add additional checks when https://procivis.atlassian.net/browse/ONE-1133 is implemented
 }
 
 #[tokio::test]
@@ -281,11 +283,12 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     assert_eq!(resp.status(), 400);
 
     let proof = get_proof(&db_conn, &proof.id).await;
+    assert_eq!(
+        proof.state.unwrap().first().unwrap().state,
+        ProofStateEnum::Error
+    );
     let claims = proof.claims.unwrap();
-
     assert!(claims.is_empty());
-
-    // TODO: Add additional checks when https://procivis.atlassian.net/browse/ONE-1133 is implemented
 }
 
 #[tokio::test]
@@ -477,8 +480,12 @@ async fn test_direct_post_multiple_presentations() {
     assert_eq!(resp.status(), 200);
 
     let proof = get_proof(&db_conn, &proof.id).await;
-    let claims = proof.claims.unwrap();
+    assert_eq!(
+        proof.state.unwrap().first().unwrap().state,
+        ProofStateEnum::Accepted
+    );
 
+    let claims = proof.claims.unwrap();
     assert!(proof_claim_claims
         .iter()
         .filter(|required_claim| required_claim.2) //required
