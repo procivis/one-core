@@ -88,10 +88,15 @@ did:
     display: "did.web"
     order: 1
     params: null
+  JWK:
+    type: "JWK"
+    display: "did.jwk"
+    order: 2
+    params: null
   X509:
     type: "X509"
     display: "did.x509"
-    order: 2
+    order: 3
     disabled: true
     params: null
 datatype:
