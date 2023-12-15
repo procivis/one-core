@@ -18,7 +18,7 @@ use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
-    ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
+    Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
 };
 use crate::model::proof_schema::{
     ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -282,7 +282,7 @@ impl OIDCService {
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
         let interaction_id = request.state;
 
-        let proof_request = self
+        let proof = self
             .proof_repository
             .get_proof_by_interaction_id(
                 &interaction_id,
@@ -300,13 +300,33 @@ impl OIDCService {
             )
             .await?;
 
-        let interaction =
-            proof_request
-                .interaction
-                .as_ref()
-                .ok_or(ServiceError::OpenID4VCError(
-                    OpenID4VCIError::InvalidRequest,
-                ))?;
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+
+        match self.process_proof_submission(request, &proof).await {
+            Ok(proved_claims) => {
+                self.accept_proof(&proof.id, proved_claims).await?;
+                Ok(OpenID4VPDirectPostResponseDTO {
+                    redirect_uri: proof.redirect_uri,
+                })
+            }
+            Err(err) => {
+                self.mark_proof_as_failed(&proof.id).await?;
+                Err(err)
+            }
+        }
+    }
+
+    async fn process_proof_submission(
+        &self,
+        submission: OpenID4VPDirectPostRequestDTO,
+        proof: &Proof,
+    ) -> Result<Vec<(ProofSchemaClaim, String)>, ServiceError> {
+        let interaction = proof
+            .interaction
+            .as_ref()
+            .ok_or(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            ))?;
 
         let interaction_data: OpenID4VPInteractionContent =
             if let Some(interaction_data) = interaction.data.as_ref() {
@@ -318,11 +338,9 @@ impl OIDCService {
                 ))
             }?;
 
-        throw_if_latest_proof_state_not_eq(&proof_request, ProofStateEnum::Pending)?;
+        let presentation_submission = &submission.presentation_submission;
 
-        let presentation_submission = &request.presentation_submission;
-
-        if presentation_submission.definition_id != interaction_id.to_string() {
+        if presentation_submission.definition_id != submission.state.to_string() {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
@@ -336,19 +354,22 @@ impl OIDCService {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
-        let presentation_strings: Vec<String> = if request.vp_token.starts_with('[') {
-            serde_json::from_str(&request.vp_token).map_err(|_| OpenID4VCIError::InvalidRequest)?
+        let presentation_strings: Vec<String> = if submission.vp_token.starts_with('[') {
+            serde_json::from_str(&submission.vp_token)
+                .map_err(|_| OpenID4VCIError::InvalidRequest)?
         } else {
-            vec![request.vp_token]
+            vec![submission.vp_token]
         };
 
         // collect expected credentials
-        let proof_schema_claims = proof_request
+        let proof_schema_claims = proof
             .schema
+            .as_ref()
             .ok_or(ServiceError::MappingError(
                 "missing proof schema".to_string(),
             ))?
             .claim_schemas
+            .as_ref()
             .ok_or(ServiceError::MappingError(
                 "missing proof schema claims".to_string(),
             ))?;
@@ -357,7 +378,7 @@ impl OIDCService {
             HashMap::new();
         let mut expected_credential_claims: HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>> =
             HashMap::new();
-        for proof_schema_claim in &proof_schema_claims {
+        for proof_schema_claim in proof_schema_claims {
             let credential_schema =
                 proof_schema_claim
                     .credential_schema
@@ -437,12 +458,7 @@ impl OIDCService {
             total_proved_claims.extend(proved_claims);
         }
 
-        self.accept_proof(&proof_request.id, total_proved_claims)
-            .await?;
-
-        Ok(OpenID4VPDirectPostResponseDTO {
-            redirect_uri: proof_request.redirect_uri,
-        })
+        Ok(total_proved_claims)
     }
 
     fn build_key_verification(&self, key_role: KeyRole) -> Box<KeyVerification> {
@@ -482,6 +498,21 @@ impl OIDCService {
                     created_date: now,
                     last_modified: now,
                     state: ProofStateEnum::Accepted,
+                },
+            )
+            .await
+            .map_err(ServiceError::from)
+    }
+
+    async fn mark_proof_as_failed(&self, id: &ProofId) -> Result<(), ServiceError> {
+        let now = OffsetDateTime::now_utc();
+        self.proof_repository
+            .set_proof_state(
+                id,
+                ProofState {
+                    created_date: now,
+                    last_modified: now,
+                    state: ProofStateEnum::Error,
                 },
             )
             .await
