@@ -120,10 +120,14 @@ before_script:
       fi
     - docker push $IMAGE_TAG
     - docker logout
+    - echo "APP_VERSION=${APP_VERSION}" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
 
 .run_e2e_tests:
   variables:
-    CORE_IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    CORE_IMAGE_TAG: ${APP_VERSION}
   trigger:
     project: procivis/one/one-e2e-tests
     branch: main
@@ -287,7 +291,9 @@ upload_sdk_artifacts:
 
 test_e2e:
   stage: e2e_tests
-  needs: [publish]
+  needs:
+    - job: publish
+      artifacts: true
   extends:
     - .run_e2e_tests
     - .only_main_or_tag
@@ -347,6 +353,7 @@ e2e:trigger_tests:
   stage: manual_e2e_tests
   needs:
     - job: e2e:publish
+      artifacts: true
   extends:
     - .run_e2e_tests
     - .manual_except_main_branch
