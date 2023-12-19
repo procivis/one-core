@@ -30,7 +30,7 @@ use crate::{
         claim_repository::MockClaimRepository, claim_schema_repository::MockClaimSchemaRepository,
         proof_repository::MockProofRepository,
     },
-    service::ssi_verifier::SSIVerifierService,
+    service::{ssi_verifier::SSIVerifierService, test_utilities::dummy_proof},
 };
 
 use mockall::predicate::eq;
@@ -500,23 +500,6 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
         did_method_provider: Arc::new(did_method_provider),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
-    }
-}
-
-fn dummy_proof() -> Proof {
-    Proof {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
-        transport: "protocol".to_string(),
-        redirect_uri: None,
-        state: None,
-        schema: None,
-        claims: None,
-        verifier_did: None,
-        holder_did: None,
-        interaction: None,
     }
 }
 

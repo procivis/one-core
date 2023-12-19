@@ -4,16 +4,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
+use crate::service::test_utilities::{dummy_credential, dummy_did};
 use crate::{
-    model::{
-        claim::Claim,
-        claim_schema::ClaimSchema,
-        credential::{Credential, CredentialId, CredentialState, CredentialStateEnum},
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        did::{Did, DidType},
-        interaction::Interaction,
-        organisation::Organisation,
-    },
+    model::credential::{Credential, CredentialId, CredentialState, CredentialStateEnum},
     repository::did_repository::MockDidRepository,
     repository::mock::credential_repository::MockCredentialRepository,
     service::ssi_issuer::SSIIssuerService,
@@ -98,86 +91,5 @@ fn mock_ssi_issuer_service() -> SSIIssuerService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
-    }
-}
-
-fn dummy_credential() -> Credential {
-    let claim_schema_id = Uuid::new_v4();
-
-    Credential {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        credential: b"credential".to_vec(),
-        transport: "protocol".to_string(),
-        redirect_uri: None,
-        state: Some(vec![CredentialState {
-            created_date: OffsetDateTime::now_utc(),
-            state: CredentialStateEnum::Pending,
-        }]),
-        claims: Some(vec![Claim {
-            id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            value: "claim value".to_string(),
-            schema: Some(ClaimSchema {
-                id: claim_schema_id,
-                key: "key".to_string(),
-                data_type: "data type".to_string(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
-        }]),
-        issuer_did: None,
-        holder_did: None,
-        schema: Some(CredentialSchema {
-            id: Uuid::new_v4(),
-            deleted_at: None,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "schema".to_string(),
-            format: "format".to_string(),
-            revocation_method: "revocation method".to_string(),
-            claim_schemas: Some(vec![CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: claim_schema_id,
-                    key: "key".to_string(),
-                    data_type: "data type".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                },
-                required: true,
-            }]),
-            organisation: Some(Organisation {
-                id: Uuid::new_v4(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
-        }),
-        interaction: Some(Interaction {
-            id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            host: Some("http://www.host.co".parse().unwrap()),
-            data: Some(b"interaction data".to_vec()),
-        }),
-        revocation_list: None,
-        key: None,
-    }
-}
-
-fn dummy_did() -> Did {
-    Did {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        name: "John".to_string(),
-        did: "did".parse().unwrap(),
-        did_type: DidType::Local,
-        did_method: "John".to_string(),
-        keys: None,
-        organisation: None,
-        deactivated: false,
     }
 }

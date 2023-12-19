@@ -13,6 +13,9 @@ pub mod status_list_2021_jwt_formatter;
 
 pub(crate) mod provider;
 
+#[cfg(test)]
+pub(crate) mod test_utilities;
+
 use async_trait::async_trait;
 use shared_types::DidValue;
 
@@ -28,6 +31,7 @@ use self::{
 pub type AuthenticationFn = Box<dyn SignatureProvider + Send + Sync>;
 pub type VerificationFn = Box<dyn TokenVerifier + Send + Sync>;
 
+#[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait TokenVerifier {
     async fn verify<'a>(
