@@ -1,123 +1,20 @@
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
-use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use shared_types::DidValue;
-use time::{macros::datetime, Duration, OffsetDateTime};
-use uuid::Uuid;
+use time::Duration;
 
 use super::JWTFormatter;
 
-use crate::{
-    crypto::signer::error::SignerError,
-    model::did::DidType,
-    provider::credential_formatter::{
-        jwt::model::JWTPayload,
-        jwt_formatter::{
-            model::{VC, VP},
-            Params,
-        },
-        model::{CredentialPresentation, CredentialStatus},
-        CredentialFormatter, MockAuth, TokenVerifier,
+use crate::provider::credential_formatter::{
+    jwt::model::JWTPayload,
+    jwt_formatter::{
+        model::{VC, VP},
+        Params,
     },
-    service::{
-        credential::dto::{
-            CredentialDetailResponseDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
-            DetailCredentialSchemaResponseDTO,
-        },
-        credential_schema::dto::CredentialClaimSchemaDTO,
-        did::dto::DidListItemResponseDTO,
-    },
+    model::{CredentialPresentation, CredentialStatus},
+    test_utilities::test_credential_detail_response_dto,
+    CredentialFormatter, MockAuth, MockTokenVerifier,
 };
-
-pub fn get_dummy_date() -> OffsetDateTime {
-    datetime!(2005-04-02 21:37 +1)
-}
-
-struct VerifyVerification {
-    issuer_did_value: Option<String>,
-    algorithm: String,
-    token: String,
-    signature: Vec<u8>,
-}
-
-#[async_trait]
-impl TokenVerifier for VerifyVerification {
-    async fn verify<'a>(
-        &self,
-        issuer_did_value: Option<DidValue>,
-        algorithm: &'a str,
-        token: &'a str,
-        signature: &'a [u8],
-    ) -> Result<(), SignerError> {
-        assert_eq!(
-            self.issuer_did_value,
-            issuer_did_value.map(|v| v.to_string())
-        );
-        assert_eq!(self.algorithm.as_str(), algorithm);
-        assert_eq!(self.token.as_str(), token);
-        assert_eq!(self.signature, signature);
-
-        Ok(())
-    }
-}
-
-fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
-    let id = Uuid::from_str("9a414a60-9e6b-4757-8011-9aa870ef4788").unwrap();
-
-    CredentialDetailResponseDTO {
-        id,
-        created_date: get_dummy_date(),
-        issuance_date: get_dummy_date(),
-        revocation_date: None,
-        state: CredentialStateEnum::Created,
-        last_modified: get_dummy_date(),
-        schema: DetailCredentialSchemaResponseDTO {
-            id,
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            name: "Credential schema name".to_string(),
-            format: "Credential schema format".to_string(),
-            revocation_method: "Credential schema revocation method".to_string(),
-            organisation_id: id,
-        },
-        issuer_did: Some(DidListItemResponseDTO {
-            id: id.into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            name: "foo".into(),
-            did: DidValue::from_str("Issuer DID").unwrap(),
-            did_type: DidType::Remote,
-            did_method: "KEY".into(),
-            deactivated: false,
-        }),
-        claims: vec![
-            DetailCredentialClaimResponseDTO {
-                schema: CredentialClaimSchemaDTO {
-                    id,
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    key: "name".to_string(),
-                    datatype: "STRING".to_string(),
-                    required: true,
-                },
-                value: "John".to_string(),
-            },
-            DetailCredentialClaimResponseDTO {
-                schema: CredentialClaimSchemaDTO {
-                    id,
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    key: "age".to_string(),
-                    datatype: "NUMBER".to_string(),
-                    required: true,
-                },
-                value: "42".to_string(),
-            },
-        ],
-        redirect_uri: None,
-    }
-}
 
 #[tokio::test]
 async fn test_format_credential() {
@@ -226,14 +123,22 @@ async fn test_extract_credentials() {
         params: Params { leeway },
     };
 
-    let verify_fn: Box<dyn TokenVerifier + Send + Sync> = Box::new(VerifyVerification {
-        issuer_did_value: Some("Issuer DID".to_string()),
-        algorithm: "algorithm".to_string(),
-        token: jwt_token.to_owned(),
-        signature: vec![65u8, 66, 67],
-    });
+    let mut verify_mock = MockTokenVerifier::new();
 
-    let result = jwt_formatter.extract_credentials(&token, verify_fn).await;
+    verify_mock
+        .expect_verify()
+        .withf(move |issuer_did_value, algorithm, token, signature| {
+            assert_eq!("Issuer DID", issuer_did_value.as_ref().unwrap().as_str());
+            assert_eq!("algorithm", algorithm);
+            assert_eq!(jwt_token, token);
+            assert_eq!(vec![65u8, 66, 67], signature);
+            true
+        })
+        .return_once(|_, _, _, _| Ok(()));
+
+    let result = jwt_formatter
+        .extract_credentials(&token, Box::new(verify_mock))
+        .await;
 
     let credentials = result.unwrap();
 
@@ -392,15 +297,21 @@ async fn test_extract_presentation() {
         params: Params { leeway },
     };
 
-    let verify_fn: Box<dyn TokenVerifier + Send + Sync> = Box::new(VerifyVerification {
-        issuer_did_value: Some("holder_did".to_string()), // Presentation is issued by holder
-        algorithm: "algorithm".to_string(),
-        token: jwt_token.to_owned(),
-        signature: vec![65u8, 66, 67],
-    });
+    let mut verify_mock = MockTokenVerifier::new();
+
+    verify_mock
+        .expect_verify()
+        .withf(move |issuer_did_value, algorithm, token, signature| {
+            assert_eq!("holder_did", issuer_did_value.as_ref().unwrap().as_str());
+            assert_eq!("algorithm", algorithm);
+            assert_eq!(jwt_token, token);
+            assert_eq!(vec![65u8, 66, 67], signature);
+            true
+        })
+        .return_once(|_, _, _, _| Ok(()));
 
     let result = jwt_formatter
-        .extract_presentation(&presentation_token, verify_fn)
+        .extract_presentation(&presentation_token, Box::new(verify_mock))
         .await;
 
     assert!(result.is_ok());

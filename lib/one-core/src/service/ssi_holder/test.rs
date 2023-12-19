@@ -38,6 +38,7 @@ use crate::{
             dto::{PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO},
             SSIHolderService,
         },
+        test_utilities::{dummy_did, dummy_proof},
     },
 };
 
@@ -261,7 +262,6 @@ async fn test_submit_proof_succeeds() {
             Ok(Credential {
                 id: credential_id,
                 credential: b"credential data".to_vec(),
-                transport: "protocol".to_string(),
                 claims: Some(vec![]),
                 ..dummy_credential()
             })
@@ -436,38 +436,6 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         did_repository: Arc::new(MockDidRepository::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
-    }
-}
-
-fn dummy_did() -> Did {
-    Did {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        name: "John".to_string(),
-        did: "did".parse().unwrap(),
-        did_type: DidType::Local,
-        did_method: "John".to_string(),
-        keys: None,
-        organisation: None,
-        deactivated: false,
-    }
-}
-
-fn dummy_proof() -> Proof {
-    Proof {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        issuance_date: OffsetDateTime::now_utc(),
-        transport: "protocol".to_string(),
-        redirect_uri: None,
-        state: None,
-        schema: None,
-        claims: None,
-        verifier_did: None,
-        holder_did: None,
-        interaction: None,
     }
 }
 
