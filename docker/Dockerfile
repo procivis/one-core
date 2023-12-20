@@ -1,4 +1,4 @@
-FROM debian:11-slim
+FROM debian:12-slim
 
 ARG GID=1000
 ARG UID=1000
@@ -9,8 +9,8 @@ WORKDIR /app/
 RUN groupadd -g $GID $USER && \
     useradd -r -u $UID -g $USER $USER
 
-COPY --chown=$USER:$USER target/release/core-server /app/
-COPY --chown=$USER:$USER config /app/config
+COPY --chmod=555 target/release/core-server /app/
+COPY --chmod=444 config /app/config
 
 EXPOSE 3000
 
