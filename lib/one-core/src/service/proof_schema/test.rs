@@ -483,3 +483,26 @@ async fn test_create_proof_schema_no_required_claims() {
         .await;
     assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
 }
+
+#[tokio::test]
+async fn test_create_proof_schema_duplicit_claims() {
+    let service = setup_service(
+        MockProofSchemaRepository::default(),
+        MockClaimSchemaRepository::default(),
+        MockOrganisationRepository::default(),
+    );
+
+    let claim_schema = CreateProofSchemaClaimRequestDTO {
+        id: Uuid::new_v4(),
+        required: true,
+    };
+    let result = service
+        .create_proof_schema(CreateProofSchemaRequestDTO {
+            name: "name".to_string(),
+            expire_duration: 0,
+            organisation_id: Uuid::new_v4(),
+            claim_schemas: vec![claim_schema.clone(), claim_schema],
+        })
+        .await;
+    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+}
