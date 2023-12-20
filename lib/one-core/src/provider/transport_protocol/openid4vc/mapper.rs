@@ -20,7 +20,7 @@ use crate::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential::Credential,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaId},
+        credential_schema::{CredentialSchemaClaim, CredentialSchemaId},
         interaction::InteractionId,
         proof::Proof,
     },
@@ -301,7 +301,6 @@ pub(super) fn create_credential_offer_encoded(
 
 pub(super) fn create_claims_from_credential_definition(
     credential_definition: &OpenID4VCICredentialDefinition,
-    credential_schema: &Option<CredentialSchema>,
 ) -> Result<Vec<(CredentialSchemaClaim, Claim)>, TransportProtocolError> {
     let credential_subject =
         credential_definition
@@ -311,32 +310,18 @@ pub(super) fn create_claims_from_credential_definition(
                 "Missing credential_subject".to_string(),
             ))?;
 
-    let schema_claims = credential_schema
-        .as_ref()
-        .and_then(|schema| schema.claim_schemas.to_owned());
-
     let now = OffsetDateTime::now_utc();
     let mut result: Vec<(CredentialSchemaClaim, Claim)> = vec![];
     for (key, value_details) in credential_subject.keys.iter() {
-        let schema_claim = if let Some(current_claims) = &schema_claims {
-            current_claims
-                .iter()
-                .find(|claim| &claim.schema.key == key)
-                .ok_or(TransportProtocolError::Failed(format!(
-                    "Missing key `{key}` in current credential schema"
-                )))?
-                .to_owned()
-        } else {
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4(),
-                    key: key.to_string(),
-                    data_type: value_details.value_type.to_string(),
-                    created_date: now,
-                    last_modified: now,
-                },
-                required: false,
-            }
+        let new_schema_claim = CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::new_v4(),
+                key: key.to_string(),
+                data_type: value_details.value_type.to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: false,
         };
 
         let claim = Claim {
@@ -344,10 +329,10 @@ pub(super) fn create_claims_from_credential_definition(
             created_date: now,
             last_modified: now,
             value: value_details.value.to_string(),
-            schema: Some(schema_claim.schema.to_owned()),
+            schema: Some(new_schema_claim.schema.to_owned()),
         };
 
-        result.push((schema_claim, claim));
+        result.push((new_schema_claim, claim));
     }
 
     Ok(result)

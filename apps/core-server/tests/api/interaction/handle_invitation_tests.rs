@@ -1,3 +1,4 @@
+use one_core::model::proof::ProofStateEnum;
 use serde_json::{json, Value};
 use time::OffsetDateTime;
 use url::Url;
@@ -97,6 +98,96 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
 
     let resp: Value = resp.json().await.unwrap();
     assert!(resp.get("interactionId").is_some());
+}
+
+#[tokio::test]
+async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
+    // GIVEN
+    let mock_server = MockServer::start().await;
+    let config = fixtures::create_config(mock_server.uri());
+    let db_conn = fixtures::create_db(&config).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let organisation2 = fixtures::create_organisation(&db_conn).await;
+    let holder_did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let verifier_id = fixtures::create_did(&db_conn, &organisation2, None).await;
+
+    let proof_id = Uuid::new_v4();
+
+    Mock::given(method(Post))
+        .and(path("/ssi/temporary-verifier/v1/connect"))
+        .and(query_param("protocol", "PROCIVIS_TEMPORARY"))
+        .and(query_param("proof", proof_id.to_string()))
+        .and(query_param("redirect_uri", ""))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "claims": [
+                    {
+                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                        "createdDate": "2023-11-08T15:46:14.997Z",
+                        "lastModified": "2023-11-08T15:46:14.997Z",
+                        "key": "Name",
+                        "datatype": "STRING",
+                        "required": true,
+                        "credentialSchema": {
+                            "createdDate": "2023-11-08T15:46:14.997Z",
+                            "format": "SDJWT",
+                            "id": "293d1376-62ea-4b0e-8c16-2dfe4f7ac0bd",
+                            "lastModified": "2023-11-08T15:46:14.997Z",
+                            "name": "detox-e2e-revocable-12a4212d-9b28-4bb0-9640-23c938f8a8b1",
+                            "organisationId": "2476ebaa-0108-413d-aa72-c2a6babd423f",
+                            "revocationMethod": "STATUSLIST2021"
+                        },
+                    }
+                ],
+                "verifierDid" : verifier_id.did.to_string(),
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+
+    let url = format!("{base_url}/api/interaction/v1/handle-invitation");
+
+    let db_con_cloned = db_conn.clone();
+    let _handle = tokio::spawn(async move { start_server(listener, config, db_con_cloned).await });
+
+    let resp = utils::client()
+        .post(url)
+        .bearer_auth("test")
+        .json(&json!({
+          "didId": holder_did.id,
+          "url": format!("{}/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={proof_id}&redirect_uri=", mock_server.uri())
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp: Value = resp.json().await.unwrap();
+    assert!(resp.get("interactionId").is_some());
+    assert_eq!(
+        resp.get("proofId").unwrap().as_str(),
+        Some(proof_id.to_string().as_str())
+    );
+
+    let proof = fixtures::get_proof(&db_conn, &proof_id).await;
+    assert_eq!(proof.holder_did.unwrap().id, holder_did.id);
+    assert!(proof
+        .state
+        .unwrap()
+        .iter()
+        .any(|state| state.state == ProofStateEnum::Pending));
+
+    assert_eq!(
+        &proof.interaction.unwrap().id.to_string(),
+        resp.get("interactionId").unwrap().as_str().unwrap()
+    );
 }
 
 #[tokio::test]

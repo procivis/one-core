@@ -334,3 +334,57 @@ impl SSIVerifierService {
         Ok((proof, latest_state))
     }
 }
+
+// Private interface tests
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::*;
+    use crate::{
+        provider::{
+            credential_formatter::provider::MockCredentialFormatterProvider,
+            did_method::provider::MockDidMethodProvider,
+            key_algorithm::provider::MockKeyAlgorithmProvider,
+            revocation::provider::MockRevocationMethodProvider,
+        },
+        repository::{
+            did_repository::MockDidRepository,
+            mock::{
+                claim_repository::MockClaimRepository,
+                claim_schema_repository::MockClaimSchemaRepository,
+                proof_repository::MockProofRepository,
+            },
+        },
+    };
+
+    #[tokio::test]
+    async fn test_fail_proof() {
+        let proof_id = Uuid::new_v4();
+
+        let mut proof_repository = MockProofRepository::new();
+        proof_repository
+            .expect_set_proof_state()
+            .withf(move |_proof_id, _state| {
+                assert_eq!(_proof_id, &proof_id);
+                assert_eq!(_state.state, ProofStateEnum::Error);
+                true
+            })
+            .once()
+            .return_once(move |_, _| Ok(()));
+
+        let service = SSIVerifierService {
+            did_repository: Arc::new(MockDidRepository::new()),
+            formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
+            claim_schema_repository: Arc::new(MockClaimSchemaRepository::new()),
+            proof_repository: Arc::new(proof_repository),
+            claim_repository: Arc::new(MockClaimRepository::new()),
+            did_method_provider: Arc::new(MockDidMethodProvider::new()),
+            revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
+            key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        };
+
+        let response = service.fail_proof(&proof_id).await;
+        assert!(response.is_ok())
+    }
+}
