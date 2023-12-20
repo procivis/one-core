@@ -12,6 +12,9 @@ pub mod error;
 pub mod hasher;
 pub mod signer;
 
+#[cfg(test)]
+mod test;
+
 #[cfg_attr(test, mockall::automock)]
 pub trait CryptoProvider {
     fn get_hasher(

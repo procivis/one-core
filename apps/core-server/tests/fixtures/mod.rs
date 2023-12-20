@@ -20,7 +20,8 @@ use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
     ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaId, ProofSchemaRelations,
 };
-use one_core::model::revocation_list::RevocationList;
+use one_core::model::revocation_list::{RevocationList, RevocationListRelations};
+use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
 use shared_types::{DidId, DidValue};
 use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
@@ -429,6 +430,18 @@ pub async fn create_revocation_list(
         .unwrap();
 
     revocation_list
+}
+
+pub async fn get_revocation_list(
+    db_conn: &DbConn,
+    issuer_did: &Did,
+) -> Result<RevocationList, DataLayerError> {
+    let data_layer = DataLayer::build(db_conn.to_owned());
+
+    data_layer
+        .get_revocation_list_repository()
+        .get_revocation_by_issuer_did_id(&issuer_did.id, &RevocationListRelations::default())
+        .await
 }
 
 #[allow(clippy::too_many_arguments)]

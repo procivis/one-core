@@ -4,13 +4,13 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use mockall::predicate::eq;
 use time::Duration;
 
-use super::SDJWTFormatter;
+use super::{prepare_sd_presentation, SDJWTFormatter};
 
 use crate::{
     crypto::{hasher::MockHasher, MockCryptoProvider},
     provider::credential_formatter::{
         jwt::model::JWTPayload,
-        model::CredentialStatus,
+        model::{CredentialPresentation, CredentialStatus},
         sdjwt_formatter::{model::Sdvc, Params},
         test_utilities::test_credential_detail_response_dto,
         CredentialFormatter, MockAuth, MockTokenVerifier,
@@ -275,4 +275,59 @@ async fn test_extract_presentation() {
 
     assert_eq!(presentation.credentials.len(), 1);
     assert_eq!(presentation.issuer_did, Some("holder_did".parse().unwrap()));
+}
+
+#[test]
+fn test_prepare_sd_presentation() {
+    let jwt_token = "eyJhbGciOiJhbGdvcml0aG0iLCJ0eXAiOiJTREpXVCJ9.\
+    eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5Mjcw\
+    MjIxLCJpc3MiOiJJc3N1ZXIgRElEIiwic3ViIjoiaG9sZGVyX2RpZCIsImp0aSI6\
+    IjlhNDE0YTYwLTllNmItNDc1Ny04MDExLTlhYTg3MGVmNDc4OCIsInZjIjp7IkBj\
+    b250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3Yx\
+    IiwiQ29udGV4dDEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsIlR5\
+    cGUxIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7Il9zZCI6WyJZV0pqTVRJeiIsIllX\
+    SmpNVEl6Il19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiU1RBVFVTX0lEIiwi\
+    dHlwZSI6IlRZUEUiLCJzdGF0dXNQdXJwb3NlIjoiUFVSUE9TRSIsIkZpZWxkMSI6\
+    IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0";
+
+    let key_name = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
+    let key_age = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
+
+    let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}");
+
+    // Take name and age
+    let presentation = CredentialPresentation {
+        token: token.clone(),
+        disclosed_keys: vec!["name".to_string(), "age".to_string()],
+    };
+
+    let result = prepare_sd_presentation(presentation);
+    assert!(result.is_ok_and(|token| token.contains(key_name) && token.contains(key_age)));
+
+    // Take name
+    let presentation = CredentialPresentation {
+        token: token.clone(),
+        disclosed_keys: vec!["name".to_string()],
+    };
+
+    let result = prepare_sd_presentation(presentation);
+    assert!(result.is_ok_and(|token| token.contains(key_name) && !token.contains(key_age)));
+
+    // Take age
+    let presentation = CredentialPresentation {
+        token: token.clone(),
+        disclosed_keys: vec!["age".to_string()],
+    };
+
+    let result = prepare_sd_presentation(presentation);
+    assert!(result.is_ok_and(|token| !token.contains(key_name) && token.contains(key_age)));
+
+    // Take none
+    let presentation = CredentialPresentation {
+        token,
+        disclosed_keys: vec![],
+    };
+
+    let result = prepare_sd_presentation(presentation);
+    assert!(result.is_ok_and(|token| !token.contains(key_name) && !token.contains(key_age)));
 }

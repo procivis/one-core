@@ -741,8 +741,7 @@ async fn handle_credential_invitation(
     // for now generate a new credential_schema for each issued OpenID4VCI credential
     let credential_schema_id = CredentialSchemaId::new_v4();
 
-    let claims =
-        create_claims_from_credential_definition(&credential.credential_definition, &None)?;
+    let claims = create_claims_from_credential_definition(&credential.credential_definition)?;
     let (claim_schemas, claims): (Vec<_>, Vec<_>) = claims.into_iter().unzip();
 
     let display_name = issuer_metadata

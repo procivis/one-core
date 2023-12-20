@@ -1,3 +1,4 @@
+mod create_revocation_list_entry_tests;
 mod get_did_web_document_tests;
 mod get_revocation_list_tests;
 mod temporary_issuer_connect_tests;
