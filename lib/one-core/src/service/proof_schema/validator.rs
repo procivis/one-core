@@ -4,6 +4,7 @@ use crate::{
     model::organisation::OrganisationId,
     repository::proof_schema_repository::ProofSchemaRepository, service::error::ServiceError,
 };
+use std::collections::HashSet;
 use std::sync::Arc;
 
 pub async fn proof_schema_name_already_exists(
@@ -28,6 +29,16 @@ pub fn validate_create_request(request: &CreateProofSchemaRequestDTO) -> Result<
 
     // at least one claim must be required
     if !request.claim_schemas.iter().any(|claim| claim.required) {
+        return Err(ServiceError::IncorrectParameters);
+    }
+
+    // no claim duplicates allowed
+    let mut uniq = HashSet::new();
+    if !request
+        .claim_schemas
+        .iter()
+        .all(move |claim| uniq.insert(claim.id))
+    {
         return Err(ServiceError::IncorrectParameters);
     }
 
