@@ -14,7 +14,7 @@ use one_core::model::credential_schema::{
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyId, KeyRelations};
-use one_core::model::organisation::{Organisation, OrganisationId, OrganisationRelations};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{Proof, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
@@ -72,15 +72,6 @@ pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
         .await
         .unwrap();
     organisation
-}
-
-pub async fn get_organisation(db_conn: &DbConn, organisation_id: &OrganisationId) -> Organisation {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-    data_layer
-        .get_organisation_repository()
-        .get_organisation(organisation_id, &OrganisationRelations {})
-        .await
-        .unwrap()
 }
 
 #[derive(Debug, Default)]
