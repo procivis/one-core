@@ -13,16 +13,6 @@ pub(crate) struct JWTHeader {
     pub(crate) signature_type: Option<String>,
 }
 
-impl Default for JWTHeader {
-    fn default() -> Self {
-        JWTHeader {
-            algorithm: "".to_string(),
-            key_id: None,
-            signature_type: Some("SDJWT".to_string()),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct JWTPayload<CustomPayload> {
     /// Time the claims were created at
