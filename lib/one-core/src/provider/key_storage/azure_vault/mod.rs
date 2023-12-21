@@ -62,7 +62,8 @@ impl KeyStorage for AzureVaultKeyProvider {
         let access_token = self.get_access_token().await?;
 
         let mut url = self.params.vault_url.clone();
-        url.set_path(&format!("keys/{}/create?api-version=7.4", key_id));
+        url.set_path(&format!("keys/{}/create", key_id));
+        url.set_query(Some("api-version=7.4"));
 
         let response: AzureHsmGenerateKeyResponse = self
             .client
