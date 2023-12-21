@@ -20,6 +20,39 @@ use super::dto::{
 };
 
 #[utoipa::path(
+    delete,
+    path = "/api/credential/v1/{id}",
+    responses(
+        (status = 204, description = "No content"),
+        (status = 400, description = "Credential in invalid state"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Credential not found"),
+    ),
+    params(
+        ("id" = Uuid, Path, description = "Credential id")
+    ),
+    tag = "credential_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn delete_credential(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
+    let result = state.core.credential_service.delete_credential(&id).await;
+
+    match result {
+        Ok(_) => StatusCode::NO_CONTENT.into_response(),
+        Err(error) => match error {
+            ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
+            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
+            _ => {
+                tracing::error!("Error while getting credential: {:?}", error);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        },
+    }
+}
+
+#[utoipa::path(
     get,
     path = "/api/credential/v1/{id}",
     responses(

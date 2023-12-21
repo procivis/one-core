@@ -3,7 +3,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 
 use crate::{
-    fixtures::{self, TestingDidParams},
+    fixtures::{self, TestingCredentialParams, TestingDidParams},
     utils,
 };
 
@@ -32,10 +32,11 @@ async fn test_temporary_issuer_reject_success() {
         &credential_schema,
         CredentialStateEnum::Offered,
         &issuer_did,
-        Some(holder_did),
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams {
+            holder_did: Some(holder_did),
+            ..Default::default()
+        },
     )
     .await;
 

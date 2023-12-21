@@ -2,7 +2,10 @@ use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::Value;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingCredentialParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_share_credential_success() {
@@ -21,10 +24,8 @@ async fn test_share_credential_success() {
         &credential_schema,
         CredentialStateEnum::Created,
         &did,
-        None,
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
 

@@ -12,7 +12,7 @@ use wiremock::{
 };
 
 use crate::{
-    fixtures::{self, TestingDidParams, TestingKeyParams},
+    fixtures::{self, TestingCredentialParams, TestingDidParams, TestingKeyParams},
     utils,
 };
 
@@ -48,10 +48,12 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &issuer_did,
-        Some(holder_did.clone()),
-        Some("TOKEN"),
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams {
+            holder_did: Some(holder_did.clone()),
+            credential: Some("TOKEN"),
+            ..Default::default()
+        },
     )
     .await;
 
@@ -205,10 +207,12 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &issuer_did,
-        Some(holder_did.clone()),
-        Some("TOKEN"),
-        None,
         "OPENID4VC",
+        TestingCredentialParams {
+            holder_did: Some(holder_did.clone()),
+            credential: Some("TOKEN"),
+            ..Default::default()
+        },
     )
     .await;
 

@@ -5,6 +5,7 @@ use one_core::model::{
 };
 use serde_json::Value;
 
+use crate::fixtures::TestingCredentialParams;
 use crate::{
     fixtures::{self, TestingDidParams},
     utils,
@@ -48,10 +49,11 @@ async fn test_add_credential_to_list() {
         &credential_schema,
         CredentialStateEnum::Offered,
         &issuer_did,
-        Some(holder_did),
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams {
+            holder_did: Some(holder_did),
+            ..Default::default()
+        },
     )
     .await;
 

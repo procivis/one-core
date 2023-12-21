@@ -2,7 +2,10 @@ use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::{json, Value};
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingCredentialParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_temporary_issuer_connect_success() {
@@ -20,10 +23,8 @@ async fn test_temporary_issuer_connect_success() {
         &credential_schema,
         CredentialStateEnum::Pending,
         &did,
-        None,
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
 

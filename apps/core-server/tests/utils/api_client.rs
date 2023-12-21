@@ -41,6 +41,37 @@ impl Client {
         }
     }
 
+    pub async fn delete_credential(&self, id: impl std::fmt::Display) -> Response {
+        let url = format!("{}/api/credential/v1/{id}", self.base_url);
+
+        let resp = client()
+            .delete(url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await
+            .unwrap();
+
+        Response { resp }
+    }
+
+    pub async fn list_credentials(
+        &self,
+        page: usize,
+        page_size: usize,
+        organisation_id: impl std::fmt::Display,
+    ) -> Response {
+        let url = format!("{}/api/credential/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}", self.base_url);
+
+        let resp = client()
+            .get(url)
+            .bearer_auth(&self.auth_token)
+            .send()
+            .await
+            .unwrap();
+
+        Response { resp }
+    }
+
     pub async fn create_organisation(&self, id: impl Into<Option<Uuid>>) -> Response {
         let url = format!("{}/api/organisation/v1", self.base_url);
         let body = match id.into() {

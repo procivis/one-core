@@ -12,7 +12,7 @@ use one_core::model::{
 };
 
 use crate::{
-    fixtures::{self, TestingDidParams},
+    fixtures::{self, TestingCredentialParams, TestingDidParams},
     utils,
 };
 
@@ -34,10 +34,11 @@ async fn test_issuance_submit_procivis_temp() {
         &credential_schema,
         CredentialStateEnum::Pending,
         &did,
-        None,
-        None,
-        Some(interaction.to_owned()),
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams {
+            interaction: Some(interaction.to_owned()),
+            ..Default::default()
+        },
     )
     .await;
 
@@ -130,10 +131,12 @@ async fn test_issuance_submit_openid4vc() {
         &credential_schema,
         CredentialStateEnum::Pending,
         &issuer_did,
-        Some(holder_did.to_owned()),
-        None,
-        Some(interaction.to_owned()),
         "OPENID4VC",
+        TestingCredentialParams {
+            holder_did: Some(holder_did),
+            interaction: Some(interaction.to_owned()),
+            ..Default::default()
+        },
     )
     .await;
 

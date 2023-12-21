@@ -3,25 +3,28 @@ use std::time::Duration;
 
 use time::OffsetDateTime;
 
-use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
 
 use crate::model::did::{Did, DidType};
 use crate::model::proof::{Proof, ProofStateEnum};
 
 use crate::service::error::ServiceError;
 
+pub(crate) fn throw_if_latest_credential_state_eq(
+    credential: &Credential,
+    state: CredentialStateEnum,
+) -> Result<(), ServiceError> {
+    if get_latest_state(credential)?.state == state {
+        return Err(ServiceError::AlreadyExists);
+    }
+    Ok(())
+}
+
 pub(crate) fn throw_if_latest_credential_state_not_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), ServiceError> {
-    let latest_state = credential
-        .state
-        .as_ref()
-        .ok_or(ServiceError::MappingError("state is None".to_string()))?
-        .first()
-        .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
-
-    if latest_state.state != state {
+    if get_latest_state(credential)?.state != state {
         return Err(ServiceError::AlreadyExists);
     }
     Ok(())
@@ -81,4 +84,13 @@ pub(crate) fn validate_expiration_time(
     }
 
     Ok(())
+}
+
+fn get_latest_state(credential: &Credential) -> Result<&CredentialState, ServiceError> {
+    credential
+        .state
+        .as_ref()
+        .ok_or(ServiceError::MappingError("state is None".to_string()))?
+        .first()
+        .ok_or(ServiceError::MappingError("state is missing".to_string()))
 }

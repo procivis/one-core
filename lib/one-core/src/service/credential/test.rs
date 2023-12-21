@@ -1,4 +1,5 @@
 use super::CredentialService;
+use crate::repository::error::DataLayerError;
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -83,6 +84,7 @@ fn generic_credential() -> Credential {
         created_date: now,
         issuance_date: now,
         last_modified: now,
+        deleted_at: None,
         credential: vec![],
         transport: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
@@ -128,6 +130,91 @@ fn generic_credential() -> Credential {
         revocation_list: None,
         key: None,
     }
+}
+
+#[tokio::test]
+async fn test_delete_credential_success() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    credential_repository
+        .expect_get_credential()
+        .returning(|_, _| Ok(generic_credential()));
+    credential_repository
+        .expect_delete_credential()
+        .returning(|_| Ok(()));
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    service
+        .delete_credential(&generic_credential().id)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_delete_credential_failed_credential_missing() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    credential_repository
+        .expect_get_credential()
+        .returning(|_, _| Err(DataLayerError::RecordNotFound));
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.delete_credential(&generic_credential().id).await;
+    assert!(matches!(result, Err(ServiceError::NotFound)));
+}
+
+#[tokio::test]
+async fn test_delete_credential_incorrect_state() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let mut credential = generic_credential();
+    credential.schema.as_mut().unwrap().revocation_method = "STATUSLIST2021".to_string();
+    credential.state = Some(vec![CredentialState {
+        created_date: OffsetDateTime::now_utc(),
+        state: CredentialStateEnum::Accepted,
+    }]);
+
+    let copy = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .returning(move |_, _| Ok(copy.clone()));
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.delete_credential(&credential.id).await;
+    assert!(matches!(result, Err(ServiceError::AlreadyExists)));
 }
 
 #[tokio::test]

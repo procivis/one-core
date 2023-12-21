@@ -18,6 +18,8 @@ mock! {
     pub CredentialRepository {
         pub fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
 
+        pub fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError>;
+
         pub fn get_credential(
             &self,
             id: &CredentialId,
@@ -58,6 +60,10 @@ mock! {
 impl crate::repository::credential_repository::CredentialRepository for MockCredentialRepository {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
         self.create_credential(request)
+    }
+
+    async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError> {
+        self.delete_credential(id)
     }
 
     async fn get_credential(

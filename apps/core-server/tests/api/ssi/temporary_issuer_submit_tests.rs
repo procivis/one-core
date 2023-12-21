@@ -3,8 +3,10 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use serde_json::Value;
 
-use crate::fixtures::TestingDidParams;
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingCredentialParams, TestingDidParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_temporary_issuer_submit_success() {
@@ -44,10 +46,11 @@ async fn test_temporary_issuer_submit_success() {
         &credential_schema,
         CredentialStateEnum::Offered,
         &issuer_did,
-        Some(holder_did),
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams {
+            holder_did: Some(holder_did),
+            ..Default::default()
+        },
     )
     .await;
 

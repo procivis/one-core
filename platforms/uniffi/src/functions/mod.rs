@@ -1,6 +1,7 @@
 mod check_revocation;
 mod create_did;
 mod create_organisation;
+mod delete_credential;
 mod generate_key;
 mod get_credential;
 mod get_credentials;

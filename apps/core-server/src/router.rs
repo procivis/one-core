@@ -83,7 +83,8 @@ fn router(state: AppState, config: ServerConfig) -> Router {
         )
         .route(
             "/api/credential/v1/:id",
-            get(credential::controller::get_credential),
+            delete(credential::controller::delete_credential)
+                .get(credential::controller::get_credential),
         )
         .route(
             "/api/credential/v1/:id/revoke",
@@ -342,6 +343,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::organisation::controller::get_organisation,
             endpoint::organisation::controller::get_organisations,
 
+            endpoint::credential::controller::delete_credential,
             endpoint::credential::controller::get_credential,
             endpoint::credential::controller::get_credential_list,
             endpoint::credential::controller::post_credential,
