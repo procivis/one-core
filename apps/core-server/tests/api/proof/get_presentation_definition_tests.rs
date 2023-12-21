@@ -4,7 +4,10 @@ use one_core::model::{credential::CredentialStateEnum, credential_schema::Creden
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingCredentialParams},
+    utils,
+};
 
 fn get_procivis_temporary_interaction_data(
     key: String,
@@ -48,10 +51,8 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &did,
-        None,
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
     let interaction = fixtures::create_interaction(
@@ -223,10 +224,8 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
         &credential_schema_1,
         CredentialStateEnum::Accepted,
         &did,
-        None,
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
 
@@ -247,10 +246,8 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
         &credential_schema_2,
         CredentialStateEnum::Accepted,
         &did,
-        None,
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
 
@@ -449,10 +446,8 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &did,
-        None,
-        None,
-        None,
-        "OPENID4VC",
+        "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
     let interaction = fixtures::create_interaction(
@@ -621,10 +616,8 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &credential_schema_1,
         CredentialStateEnum::Accepted,
         &did,
-        None,
-        None,
-        None,
-        "OPENID4VC",
+        "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
 
@@ -645,10 +638,8 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &credential_schema_2,
         CredentialStateEnum::Accepted,
         &did,
-        None,
-        None,
-        None,
-        "OPENID4VC",
+        "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
 

@@ -28,6 +28,7 @@ pub async fn insert_credential(
     state: CredentialStateEnum,
     protocol: &str,
     did_id: DidId,
+    deleted_at: Option<OffsetDateTime>,
 ) -> Result<String, DbErr> {
     let now = OffsetDateTime::now_utc();
 
@@ -38,7 +39,7 @@ pub async fn insert_credential(
         last_modified: Set(now),
         issuance_date: Set(now),
         redirect_uri: Set(None),
-        deleted_at: Set(None),
+        deleted_at: Set(deleted_at),
         transport: Set(protocol.to_owned()),
         credential: Set(vec![0, 0, 0, 0]),
         issuer_did_id: Set(Some(did_id)),

@@ -8,7 +8,7 @@ use wiremock::{
 };
 
 use crate::{
-    fixtures::{self, TestingDidParams},
+    fixtures::{self, TestingCredentialParams, TestingDidParams},
     utils,
 };
 
@@ -51,10 +51,11 @@ async fn test_revoke_check_success() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &issuer_did,
-        None,
-        Some(credential_jwt),
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams {
+            credential: Some(credential_jwt),
+            ..Default::default()
+        },
     )
     .await;
 

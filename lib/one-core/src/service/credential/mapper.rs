@@ -165,6 +165,7 @@ pub(super) fn from_create_request(
             state: CredentialStateEnum::Created,
         }]),
         last_modified: now,
+        deleted_at: None,
         credential: vec![],
         transport: request.transport,
         claims: Some(claims),

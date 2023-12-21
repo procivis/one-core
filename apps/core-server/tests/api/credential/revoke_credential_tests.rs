@@ -4,7 +4,7 @@ use one_core::model::{credential::CredentialStateEnum, did::RelatedKey};
 use uuid::Uuid;
 
 use crate::{
-    fixtures::{self, TestingDidParams},
+    fixtures::{self, TestingCredentialParams, TestingDidParams},
     utils,
 };
 
@@ -37,10 +37,8 @@ async fn test_revoke_credential_success() {
         &credential_schema,
         CredentialStateEnum::Accepted,
         &issuer_did,
-        None,
-        None,
-        None,
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
     )
     .await;
 

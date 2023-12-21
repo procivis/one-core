@@ -532,6 +532,7 @@ async fn handle_credential_invitation(
             created_date: now,
             issuance_date: now,
             last_modified: now,
+            deleted_at: None,
             credential: vec![],
             transport: "PROCIVIS_TEMPORARY".to_string(),
             redirect_uri: issuer_response.redirect_uri,

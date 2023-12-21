@@ -9,7 +9,7 @@ use time::{macros::format_description, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
-    fixtures::{self, TestingDidParams},
+    fixtures::{self, TestingCredentialParams, TestingDidParams},
     utils,
 };
 
@@ -57,10 +57,11 @@ async fn test_post_issuer_credential() {
         &credential_schema,
         CredentialStateEnum::Offered,
         &issuer_did,
-        None,
-        None,
-        Some(interaction),
         "OPENID4VC",
+        TestingCredentialParams {
+            interaction: Some(interaction),
+            ..Default::default()
+        },
     )
     .await;
 

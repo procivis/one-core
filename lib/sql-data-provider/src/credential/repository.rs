@@ -32,7 +32,7 @@ use one_core::{
 };
 use sea_orm::{
     sea_query::{Alias, Expr, IntoCondition, Query},
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, JoinType,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, JoinType,
     PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
     Unchanged,
 };
@@ -40,6 +40,17 @@ use shared_types::DidId;
 use std::{str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+async fn delete_credential_from_database(
+    db: &DatabaseConnection,
+    credential: credential::Model,
+    now: OffsetDateTime,
+) -> Result<(), DbErr> {
+    let mut value: credential::ActiveModel = credential.into();
+    value.deleted_at = sea_orm::ActiveValue::Set(Some(now));
+
+    value.update(db).await.map(|_| ())
+}
 
 async fn get_credential_schema(
     schema_id: &Uuid,
@@ -271,30 +282,34 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Relation::CredentialState.def(),
         )
         .filter(
-            credential_state::Column::CreatedDate
-                .in_subquery(
-                    Query::select()
-                        .expr(
-                            Expr::col((
-                                Alias::new("inner_state"),
-                                credential_state::Column::CreatedDate,
-                            ))
-                            .max(),
+            Condition::all()
+                .add(
+                    credential_state::Column::CreatedDate
+                        .in_subquery(
+                            Query::select()
+                                .expr(
+                                    Expr::col((
+                                        Alias::new("inner_state"),
+                                        credential_state::Column::CreatedDate,
+                                    ))
+                                    .max(),
+                                )
+                                .from_as(credential_state::Entity, Alias::new("inner_state"))
+                                .cond_where(
+                                    Expr::col((
+                                        Alias::new("inner_state"),
+                                        credential_state::Column::CredentialId,
+                                    ))
+                                    .equals((
+                                        credential_state::Entity,
+                                        credential_state::Column::CredentialId,
+                                    )),
+                                )
+                                .to_owned(),
                         )
-                        .from_as(credential_state::Entity, Alias::new("inner_state"))
-                        .cond_where(
-                            Expr::col((
-                                Alias::new("inner_state"),
-                                credential_state::Column::CredentialId,
-                            ))
-                            .equals((
-                                credential_state::Entity,
-                                credential_state::Column::CredentialId,
-                            )),
-                        )
-                        .to_owned(),
+                        .into_condition(),
                 )
-                .into_condition(),
+                .add(credential::Column::DeletedAt.is_null()),
         )
         // list query
         .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
@@ -373,6 +388,21 @@ impl CredentialRepository for CredentialProvider {
         }
 
         Ok(request.id)
+    }
+
+    async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError> {
+        let credential = credential::Entity::find_by_id(id.to_string())
+            .filter(credential::Column::DeletedAt.is_null())
+            .one(&self.db)
+            .await
+            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .ok_or(DataLayerError::RecordNotFound)?;
+
+        let now = OffsetDateTime::now_utc();
+
+        delete_credential_from_database(&self.db, credential, now)
+            .await
+            .map_err(|error| DataLayerError::GeneralRuntimeError(error.to_string()))
     }
 
     async fn get_credential(

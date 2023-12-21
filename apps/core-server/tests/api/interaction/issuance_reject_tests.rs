@@ -8,7 +8,10 @@ use wiremock::{
 use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingCredentialParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_issuance_reject_procivis_temp() {
@@ -28,10 +31,11 @@ async fn test_issuance_reject_procivis_temp() {
         &credential_schema,
         CredentialStateEnum::Pending,
         &did,
-        None,
-        None,
-        Some(interaction.to_owned()),
         "PROCIVIS_TEMPORARY",
+        TestingCredentialParams {
+            interaction: Some(interaction.to_owned()),
+            ..Default::default()
+        },
     )
     .await;
 
@@ -98,10 +102,12 @@ async fn test_issuance_reject_openid4vc() {
         &credential_schema,
         CredentialStateEnum::Pending,
         &did,
-        Some(holder_did),
-        None,
-        Some(interaction.to_owned()),
         "OPENID4VC",
+        TestingCredentialParams {
+            holder_did: Some(holder_did),
+            interaction: Some(interaction.to_owned()),
+            ..Default::default()
+        },
     )
     .await;
 

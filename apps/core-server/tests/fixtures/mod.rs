@@ -435,16 +435,22 @@ pub async fn get_revocation_list(
         .await
 }
 
+#[derive(Debug, Default)]
+pub struct TestingCredentialParams<'a> {
+    pub holder_did: Option<Did>,
+    pub credential: Option<&'a str>,
+    pub interaction: Option<Interaction>,
+    pub deleted_at: Option<OffsetDateTime>,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn create_credential(
     db_conn: &DbConn,
     credential_schema: &CredentialSchema,
     state: CredentialStateEnum,
     issuer_did: &Did,
-    holder_did: Option<Did>,
-    credential: Option<&str>,
-    interaction: Option<Interaction>,
     transport: &str,
+    params: TestingCredentialParams<'_>,
 ) -> Credential {
     let data_layer = DataLayer::build(db_conn.to_owned());
 
@@ -467,7 +473,8 @@ pub async fn create_credential(
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),
-        credential: credential.unwrap_or("").as_bytes().to_owned(),
+        deleted_at: params.deleted_at,
+        credential: params.credential.unwrap_or("").as_bytes().to_owned(),
         transport: transport.to_owned(),
         redirect_uri: None,
         state: Some(vec![CredentialState {
@@ -476,9 +483,9 @@ pub async fn create_credential(
         }]),
         claims: Some(claims),
         issuer_did: Some(issuer_did.to_owned()),
-        holder_did,
+        holder_did: params.holder_did,
         schema: Some(credential_schema.to_owned()),
-        interaction,
+        interaction: params.interaction,
         revocation_list: None,
         key: None,
     };

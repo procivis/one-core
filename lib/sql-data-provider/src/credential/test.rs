@@ -30,6 +30,7 @@ use one_core::{
     },
 };
 use sea_orm::{DatabaseConnection, EntityTrait, Set};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::CredentialProvider;
@@ -163,6 +164,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
             CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
             did.id.clone(),
+            None,
         )
         .await
         .unwrap(),
@@ -252,6 +254,7 @@ async fn test_create_credential_success() {
             created_date: get_dummy_date(),
             issuance_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deleted_at: None,
             credential: vec![],
             transport: "transport".to_string(),
             redirect_uri: None,
@@ -313,6 +316,7 @@ async fn test_create_credential_empty_claims() {
             created_date: get_dummy_date(),
             issuance_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deleted_at: None,
             credential: vec![],
             transport: "transport".to_string(),
             redirect_uri: None,
@@ -385,6 +389,7 @@ async fn test_create_credential_already_exists() {
             created_date: get_dummy_date(),
             issuance_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            deleted_at: None,
             credential: vec![],
             transport: "transport".to_string(),
             redirect_uri: None,
@@ -400,6 +405,68 @@ async fn test_create_credential_already_exists() {
         .await;
 
     assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
+}
+
+#[tokio::test]
+async fn test_delete_credential_success() {
+    let TestSetup {
+        credential_schema,
+        did,
+        db,
+        ..
+    } = setup_empty().await;
+
+    let credential_id = Uuid::parse_str(
+        &insert_credential(
+            &db,
+            &credential_schema.id.to_string(),
+            CredentialStateEnum::Created,
+            "PROCIVIS_TEMPORARY",
+            did.id.clone(),
+            None,
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
+    let provider = CredentialProvider {
+        db: db.clone(),
+        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
+        claim_repository: Arc::from(MockClaimRepository::default()),
+        did_repository: Arc::from(MockDidRepository::default()),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
+    };
+
+    provider.delete_credential(&credential_id).await.unwrap();
+
+    let credential = provider
+        .get_credential(&credential_id, &CredentialRelations::default())
+        .await
+        .unwrap();
+    assert!(credential.deleted_at.is_some());
+}
+
+#[tokio::test]
+async fn test_delete_credential_failed_not_found() {
+    let TestSetup { db, .. } = setup_empty().await;
+
+    let credential_id = Uuid::new_v4();
+
+    let provider = CredentialProvider {
+        db: db.clone(),
+        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
+        claim_repository: Arc::from(MockClaimRepository::default()),
+        did_repository: Arc::from(MockDidRepository::default()),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
+    };
+
+    let result = provider.delete_credential(&credential_id).await;
+    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
 }
 
 #[tokio::test]
@@ -428,6 +495,7 @@ async fn test_get_credential_list_success() {
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id.clone(),
+        None,
     )
     .await
     .unwrap();
@@ -437,6 +505,18 @@ async fn test_get_credential_list_success() {
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
         did.id.clone(),
+        None,
+    )
+    .await
+    .unwrap();
+
+    let credential_three_id_should_not_be_returned = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id.clone(),
+        Some(OffsetDateTime::now_utc()),
     )
     .await
     .unwrap();
@@ -478,6 +558,13 @@ async fn test_get_credential_list_success() {
     assert_eq!(1, credentials.total_pages);
     assert_eq!(2, credentials.total_items);
     assert_eq!(2, credentials.values.len());
+
+    let forbidden_uuid = Uuid::parse_str(&credential_three_id_should_not_be_returned).unwrap();
+    let forbidden_credential = credentials
+        .values
+        .iter()
+        .find(|credential| credential.id == forbidden_uuid);
+    assert!(forbidden_credential.is_none());
 }
 
 #[tokio::test]
@@ -500,6 +587,7 @@ async fn test_get_credential_success() {
             CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
             did.id.clone(),
+            None,
         )
         .await
         .unwrap(),
@@ -687,6 +775,7 @@ async fn test_update_credential_success() {
             CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
             did.id,
+            None,
         )
         .await
         .unwrap(),

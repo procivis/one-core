@@ -21,6 +21,7 @@ pub struct Credential {
     pub created_date: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub deleted_at: Option<OffsetDateTime>,
     pub credential: Vec<u8>,
     pub transport: String,
     pub redirect_uri: Option<String>,

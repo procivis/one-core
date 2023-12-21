@@ -37,12 +37,11 @@ async fn delete_credential_schema_from_database(
     db: &DatabaseConnection,
     credential_schema: credential_schema::Model,
     now: OffsetDateTime,
-) -> Option<DbErr> {
+) -> Result<(), DbErr> {
     let mut value: credential_schema::ActiveModel = credential_schema.into();
     value.deleted_at = Set(Some(now));
-    value.reset(credential_schema::Column::DeletedAt);
 
-    value.update(db).await.err()
+    value.update(db).await.map(|_| ())
 }
 
 #[async_trait::async_trait]
@@ -100,10 +99,9 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         let now = OffsetDateTime::now_utc();
 
-        match delete_credential_schema_from_database(&self.db, credential_schema, now).await {
-            None => Ok(()),
-            Some(error) => Err(DataLayerError::GeneralRuntimeError(error.to_string())),
-        }
+        delete_credential_schema_from_database(&self.db, credential_schema, now)
+            .await
+            .map_err(|error| DataLayerError::GeneralRuntimeError(error.to_string()))
     }
 
     async fn get_credential_schema(

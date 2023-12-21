@@ -109,6 +109,7 @@ fn dummy_credential(state: CredentialStateEnum, pre_authroized_code: bool) -> Cr
         created_date: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+        deleted_at: None,
         credential: b"credential".to_vec(),
         transport: "protocol".to_string(),
         redirect_uri: None,

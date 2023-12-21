@@ -3,7 +3,10 @@ use one_core::model::credential::CredentialStateEnum;
 use serde_json::json;
 use time::{macros::format_description, OffsetDateTime};
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures::{self, TestingCredentialParams},
+    utils,
+};
 
 #[tokio::test]
 async fn test_post_issuer_token() {
@@ -32,10 +35,11 @@ async fn test_post_issuer_token() {
         &credential_schema,
         CredentialStateEnum::Pending,
         &did,
-        None,
-        None,
-        Some(interaction),
         "OPENID4VC",
+        TestingCredentialParams {
+            interaction: Some(interaction),
+            ..Default::default()
+        },
     )
     .await;
 

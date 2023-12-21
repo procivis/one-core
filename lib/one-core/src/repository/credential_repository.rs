@@ -12,6 +12,8 @@ use shared_types::DidId;
 pub trait CredentialRepository {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
 
+    async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError>;
+
     async fn get_credential(
         &self,
         id: &CredentialId,

@@ -1,20 +1,21 @@
 use time::OffsetDateTime;
 
-use crate::common_validator::{throw_if_did_type_is_eq, throw_if_latest_credential_state_not_eq};
-use crate::model::credential::CredentialStateEnum;
-use crate::model::did::DidType;
 use crate::{
     common_mapper::list_response_try_into,
+    common_validator::{
+        throw_if_did_type_is_eq, throw_if_latest_credential_state_eq,
+        throw_if_latest_credential_state_not_eq,
+    },
     model::{
         claim::ClaimRelations,
         claim_schema::ClaimSchemaRelations,
         common::EntityShareResponseDTO,
         credential::{
             self, Credential, CredentialId, CredentialRelations, CredentialState,
-            CredentialStateRelations, UpdateCredentialRequest,
+            CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
-        did::DidRelations,
+        did::{DidRelations, DidType},
         key::KeyRelations,
         organisation::OrganisationRelations,
     },
@@ -90,6 +91,62 @@ impl CredentialService {
             .await
             .map_err(ServiceError::from)?;
         Ok(result)
+    }
+
+    /// Deletes a credential
+    ///
+    /// # Arguments
+    ///
+    /// * `CredentialId` - Id of an existing credential
+    pub async fn delete_credential(
+        &self,
+        credential_id: &CredentialId,
+    ) -> Result<(), ServiceError> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    schema: Some(CredentialSchemaRelations::default()),
+                    issuer_did: Some(DidRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(ServiceError::from)?;
+
+        let schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "credential_schema is None".to_string(),
+            ))?;
+
+        let revocation_type = &self
+            .config
+            .revocation
+            .get_fields(&schema.revocation_method)
+            .map_err(|err| {
+                ServiceError::MappingError(format!(
+                    "Unknown revocation method: {}: {err}",
+                    schema.revocation_method
+                ))
+            })?
+            .r#type();
+
+        let is_issuer = credential
+            .issuer_did
+            .as_ref()
+            .is_some_and(|did| did.did_type == DidType::Local);
+        if is_issuer && *revocation_type != "NONE" {
+            throw_if_latest_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
+        }
+
+        self.credential_repository
+            .delete_credential(credential_id)
+            .await
+            .map_err(ServiceError::from)
     }
 
     /// Returns details of a credential

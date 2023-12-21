@@ -860,6 +860,7 @@ async fn create_and_store_credential(
             created_date: now,
             issuance_date: now,
             last_modified: now,
+            deleted_at: None,
             credential: vec![],
             transport: "OPENID4VC".to_string(),
             redirect_uri,
