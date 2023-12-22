@@ -45,13 +45,13 @@ impl ErrorResponseRestDTO {
 
 #[derive(Serialize, ToSchema)]
 pub struct Cause {
-    pub source: String,
+    pub message: String,
 }
 
 impl Cause {
-    pub fn with_source(error: &impl std::error::Error) -> Cause {
+    pub fn with_message_from_error(error: &impl std::error::Error) -> Cause {
         Cause {
-            source: error.to_string(),
+            message: error.to_string(),
         }
     }
 }
