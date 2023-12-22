@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
 use one_core::model::credential::CredentialStateEnum;
+use one_core::repository::error::DataLayerError;
 use one_core::{
     model::interaction::Interaction,
     repository::mock::{
@@ -24,8 +25,7 @@ use one_core::{
     repository::{
         credential_repository::CredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository, error::DataLayerError,
-        interaction_repository::MockInteractionRepository,
+        did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
         mock::claim_repository::MockClaimRepository,
     },
 };
@@ -445,6 +445,7 @@ async fn test_delete_credential_success() {
     let credential = provider
         .get_credential(&credential_id, &CredentialRelations::default())
         .await
+        .unwrap()
         .unwrap();
     assert!(credential.deleted_at.is_some());
 }
@@ -487,7 +488,7 @@ async fn test_get_credential_list_success() {
         .expect_get_did()
         .times(2)
         .with(eq(did_clone.id.to_owned()), always())
-        .returning(move |_, _| Ok(did_clone.clone()));
+        .returning(move |_, _| Ok(Some(did_clone.clone())));
 
     let _credential_one_id = insert_credential(
         &db,
@@ -654,7 +655,7 @@ async fn test_get_credential_success() {
         .expect_get_did()
         .times(1)
         .with(eq(did_clone.id.to_owned()), always())
-        .returning(move |_, _| Ok(did_clone.clone()));
+        .returning(move |_, _| Ok(Some(did_clone.clone())));
 
     let credential_schema_clone = credential_schema.clone();
     credential_schema_repository
@@ -713,7 +714,7 @@ async fn test_get_credential_success() {
         .await;
 
     assert!(credential.is_ok());
-    let credential = credential.unwrap();
+    let credential = credential.unwrap().unwrap();
     assert_eq!(credential_id, credential.id);
     assert_eq!(credential_schema, credential.schema.unwrap());
     assert!(credential.interaction.is_none());
@@ -750,9 +751,10 @@ async fn test_get_credential_fail_not_found() {
 
     let credential = provider
         .get_credential(&Uuid::new_v4(), &CredentialRelations::default())
-        .await;
+        .await
+        .unwrap();
 
-    assert!(credential.is_err_and(|e| matches!(e, DataLayerError::RecordNotFound)));
+    assert!(credential.is_none());
 }
 
 #[tokio::test]
@@ -810,7 +812,7 @@ async fn test_update_credential_success() {
         .get_credential(&credential_id, &CredentialRelations::default())
         .await;
     assert!(credential_before_update.is_ok());
-    let credential_before_update = credential_before_update.unwrap();
+    let credential_before_update = credential_before_update.unwrap().unwrap();
     assert_eq!(credential_id, credential_before_update.id);
 
     let token = vec![1, 2, 3];
@@ -842,7 +844,7 @@ async fn test_update_credential_success() {
         )
         .await;
     assert!(credential_after_update.is_ok());
-    let credential_after_update = credential_after_update.unwrap();
+    let credential_after_update = credential_after_update.unwrap().unwrap();
     assert_eq!(token, credential_after_update.credential);
     assert_eq!(
         interaction_id,

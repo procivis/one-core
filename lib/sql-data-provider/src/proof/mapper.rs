@@ -109,11 +109,9 @@ impl TryFrom<proof::Model> for Proof {
     }
 }
 
-impl TryFrom<Proof> for proof::ActiveModel {
-    type Error = DataLayerError;
-
-    fn try_from(value: Proof) -> Result<Self, Self::Error> {
-        Ok(Self {
+impl From<Proof> for proof::ActiveModel {
+    fn from(value: Proof) -> Self {
+        Self {
             id: Set(value.id.to_string()),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
@@ -126,7 +124,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             interaction_id: Set(value
                 .interaction
                 .map(|interaction| interaction.id.to_string())),
-        })
+        }
     }
 }
 

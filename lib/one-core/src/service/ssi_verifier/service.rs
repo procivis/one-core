@@ -17,7 +17,7 @@ use crate::{
     },
     provider::did_method::provider::DidMethodProvider,
     repository::error::DataLayerError,
-    service::error::ServiceError,
+    service::error::{EntityAlreadyExistsError, ServiceError},
 };
 use shared_types::DidValue;
 use time::OffsetDateTime;
@@ -99,7 +99,7 @@ impl SSIVerifierService {
             )
             .await?;
         if proof_state != ProofStateEnum::Offered {
-            return Err(ServiceError::AlreadyExists);
+            return Err(EntityAlreadyExistsError::Proof(*proof_id).into());
         }
         let proof_schema = proof.schema.ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),

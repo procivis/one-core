@@ -1,15 +1,20 @@
-use crate::dto::common::ListQueryParamsRest;
 use one_core::{
     common_mapper::convert_inner,
     model::{
         list_filter::{ListFilterCondition, ListFilterValue},
         list_query::{ListPagination, ListQuery, ListSorting},
     },
+    service::error::ServiceError,
 };
 use serde::Deserialize;
 use utoipa::{openapi::path::ParameterIn, IntoParams, ToSchema};
 
-use super::common::SortDirection;
+use crate::dto::common::ListQueryParamsRest;
+
+use super::{
+    common::SortDirection,
+    error::{Cause, ErrorCode, ErrorResponseRestDTO},
+};
 
 impl<FilterRest, SortableColumnRest, SortableColumn, Filter: ListFilterValue>
     From<ListQueryParamsRest<FilterRest, SortableColumnRest>> for ListQuery<SortableColumn, Filter>
@@ -59,4 +64,18 @@ struct PartialQueryParamsRest<SortColumn: for<'a> ToSchema<'a>> {
     #[param(inline)]
     pub sort: Option<SortColumn>,
     pub sort_direction: Option<SortDirection>,
+}
+
+impl From<ServiceError> for ErrorResponseRestDTO {
+    fn from(error: ServiceError) -> Self {
+        let code = error.error_code();
+        let cause = Cause::with_source(&error);
+
+        ErrorResponseRestDTO {
+            message: code.msg(),
+            code: ErrorCode::from(code),
+            cause: Some(cause),
+            error,
+        }
+    }
 }

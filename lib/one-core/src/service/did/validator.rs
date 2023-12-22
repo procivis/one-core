@@ -3,23 +3,28 @@ use std::{collections::HashSet, sync::Arc};
 use shared_types::DidValue;
 
 use crate::model::did::Did;
+use crate::repository::error::DataLayerError;
+use crate::service::error::EntityAlreadyExistsError;
 use crate::{
     model::{did::DidRelations, key::KeyId},
     provider::did_method::DidMethodError,
-    repository::{did_repository::DidRepository, error::DataLayerError},
+    repository::did_repository::DidRepository,
     service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError},
 };
 
-pub(crate) fn throw_if_did_method_not_eq(did: &Did, method_type: &str) -> Result<(), ServiceError> {
+pub(crate) fn throw_if_did_method_not_eq(
+    did: &Did,
+    method_type: &str,
+) -> Result<(), EntityAlreadyExistsError> {
     if did.did_method != method_type {
-        return Err(ServiceError::AlreadyExists);
+        return Err(EntityAlreadyExistsError::Did(did.id.clone()));
     }
     Ok(())
 }
 
-pub(crate) fn throw_if_did_method_deactivated(did: &Did) -> Result<(), ServiceError> {
+pub(crate) fn throw_if_did_method_deactivated(did: &Did) -> Result<(), EntityAlreadyExistsError> {
     if did.deactivated {
-        return Err(ServiceError::AlreadyExists);
+        return Err(EntityAlreadyExistsError::Did(did.id.clone()));
     }
     Ok(())
 }

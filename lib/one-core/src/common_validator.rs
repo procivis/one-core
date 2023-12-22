@@ -54,6 +54,7 @@ pub(crate) fn throw_if_did_type_is_eq(did: &Did, did_type: DidType) -> Result<()
     }
     Ok(())
 }
+
 pub(crate) fn validate_issuance_time(
     issued_at: Option<OffsetDateTime>,
     leeway: u64,

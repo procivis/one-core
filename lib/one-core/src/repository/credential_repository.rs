@@ -1,4 +1,5 @@
-use super::error::DataLayerError;
+use shared_types::DidId;
+
 use crate::model::{
     credential::{
         Credential, CredentialId, CredentialRelations, GetCredentialList, GetCredentialQuery,
@@ -6,8 +7,10 @@ use crate::model::{
     },
     interaction::InteractionId,
 };
-use shared_types::DidId;
 
+use super::error::DataLayerError;
+
+#[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait CredentialRepository: Send + Sync {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
@@ -18,7 +21,7 @@ pub trait CredentialRepository: Send + Sync {
         &self,
         id: &CredentialId,
         relations: &CredentialRelations,
-    ) -> Result<Credential, DataLayerError>;
+    ) -> Result<Option<Credential>, DataLayerError>;
 
     async fn get_credentials_by_interaction_id(
         &self,

@@ -6,7 +6,6 @@ use super::{
     mapper::{get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request},
     ProofService,
 };
-use crate::common_validator::{throw_if_did_type_is_eq, throw_if_latest_proof_state_not_eq};
 use crate::model::did::DidType;
 use crate::provider::transport_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::{
@@ -24,6 +23,10 @@ use crate::{
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
     service::error::ServiceError,
+};
+use crate::{
+    common_validator::{throw_if_did_type_is_eq, throw_if_latest_proof_state_not_eq},
+    service::error::BusinessLogicError,
 };
 use time::OffsetDateTime;
 
@@ -149,8 +152,12 @@ impl ProofService {
             .get_did(&request.verifier_did_id, &DidRelations::default())
             .await?;
 
+        let Some(verifier_did) = verifier_did else {
+            return Err(ServiceError::NotFound);
+        };
+
         if verifier_did.deactivated {
-            return Err(ServiceError::DidDeactivated);
+            return Err(BusinessLogicError::DidIsDeactivated(verifier_did.id).into());
         }
 
         throw_if_did_type_is_eq(&verifier_did, DidType::Remote)?;

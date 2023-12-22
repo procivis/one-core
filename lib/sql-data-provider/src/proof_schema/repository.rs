@@ -79,7 +79,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             crate::entity::ProofSchema::find_by_id(id.to_string())
                 .one(&self.db)
                 .await
-                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+                .map_err(|e| DataLayerError::Db(e.into()))?
                 .ok_or(DataLayerError::RecordNotFound)?;
 
         let organisation_id = proof_schema_model.organisation_id.to_owned();
@@ -120,12 +120,12 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             .to_owned()
             .count(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let proof_schemas: Vec<proof_schema::Model> = query
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         create_list_response(proof_schemas, limit, items_count)
     }
@@ -139,7 +139,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             .filter(proof_schema::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let schema = result.ok_or(DataLayerError::RecordNotFound)?;
 
@@ -199,7 +199,7 @@ impl ProofSchemaProvider {
             .into_model::<ProofSchemaClaimCombinedModel>()
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let claim_schema_ids = proof_schema_claims
             .iter()

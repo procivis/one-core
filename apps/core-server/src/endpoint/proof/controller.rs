@@ -12,7 +12,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use one_core::service::error::ServiceError;
+use one_core::service::error::{BusinessLogicError, ServiceError};
 use uuid::Uuid;
 
 #[utoipa::path(
@@ -156,7 +156,7 @@ pub(crate) async fn post_proof(
             tracing::error!("Missing Proof schema or Verifier DID");
             StatusCode::NOT_FOUND.into_response()
         }
-        Err(ServiceError::DidDeactivated) => {
+        Err(ServiceError::BusinessLogic(BusinessLogicError::DidIsDeactivated(_))) => {
             tracing::error!("DID has been deactivated");
             StatusCode::BAD_REQUEST.into_response()
         }

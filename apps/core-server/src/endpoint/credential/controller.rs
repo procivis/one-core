@@ -1,19 +1,24 @@
+use std::sync::Arc;
+
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
+use axum::Extension;
 use axum::{http::StatusCode, Json};
 
 use uuid::Uuid;
 
-use one_core::service::error::ServiceError;
+use one_core::service::error::{EntityNotFoundError, ServiceError};
 
 use crate::dto::common::{
-    EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
+    CreatedOrErrorResponse, EntityResponseRestDTO, EntityShareResponseRestDTO,
+    GetCredentialsResponseDTO, OkOrErrorResponse,
 };
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
+use crate::ServerConfig;
 
 use super::dto::{
     CredentialRevocationCheckRequestRestDTO, CredentialRevocationCheckResponseRestDTO,
@@ -43,7 +48,10 @@ pub(crate) async fn delete_credential(state: State<AppState>, Path(id): Path<Uui
         Ok(_) => StatusCode::NO_CONTENT.into_response(),
         Err(error) => match error {
             ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
+            ServiceError::NotFound
+            | ServiceError::EntityNotFound(EntityNotFoundError::Credential(_)) => {
+                StatusCode::NOT_FOUND.into_response()
+            }
             _ => {
                 tracing::error!("Error while getting credential: {:?}", error);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
@@ -55,11 +63,7 @@ pub(crate) async fn delete_credential(state: State<AppState>, Path(id): Path<Uui
 #[utoipa::path(
     get,
     path = "/api/credential/v1/{id}",
-    responses(
-        (status = 200, description = "OK", body = GetCredentialResponseRestDTO),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Credential not found"),
-    ),
+    responses(OkOrErrorResponse<GetCredentialResponseRestDTO>),
     params(
         ("id" = Uuid, Path, description = "Credential id")
     ),
@@ -68,33 +72,26 @@ pub(crate) async fn delete_credential(state: State<AppState>, Path(id): Path<Uui
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn get_credential(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
+pub(crate) async fn get_credential(
+    config: Extension<Arc<ServerConfig>>,
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
     let result = state.core.credential_service.get_credential(&id).await;
 
     match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(GetCredentialResponseRestDTO::from(value)),
-        )
-            .into_response(),
-        Err(error) => match error {
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            _ => {
-                tracing::error!("Error while getting credential: {:?}", error);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
+        Ok(value) => OkOrErrorResponse::ok(value),
+        Err(error) => {
+            tracing::error!(%error, "Error while getting credential");
+            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
+        }
     }
 }
 
 #[utoipa::path(
     get,
     path = "/api/credential/v1",
-    responses(
-        (status = 200, description = "OK", body = GetCredentialsResponseDTO),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Credential not found"),
-    ),
+    responses(OkOrErrorResponse<GetCredentialsResponseDTO>),
     params(
         GetCredentialQuery
     ),
@@ -104,9 +101,10 @@ pub(crate) async fn get_credential(state: State<AppState>, Path(id): Path<Uuid>)
     ),
 )]
 pub(crate) async fn get_credential_list(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Qs(query): Qs<GetCredentialQuery>,
-) -> Response {
+) -> OkOrErrorResponse<GetCredentialsResponseDTO> {
     let result = state
         .core
         .credential_service
@@ -114,14 +112,11 @@ pub(crate) async fn get_credential_list(
         .await;
 
     match result {
-        Ok(value) => (StatusCode::OK, Json(GetCredentialsResponseDTO::from(value))).into_response(),
-        Err(error) => match error {
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            _ => {
-                tracing::error!("Error while getting credential list: {:?}", error);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
+        Ok(value) => OkOrErrorResponse::ok(value),
+        Err(error) => {
+            tracing::error!(%error, "Error while getting credential list");
+            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
+        }
     }
 }
 
@@ -129,21 +124,17 @@ pub(crate) async fn get_credential_list(
     post,
     path = "/api/credential/v1",
     request_body = CreateCredentialRequestRestDTO,
-    responses(
-        (status = 201, description = "Created", body = EntityResponseRestDTO),
-        (status = 400, description = "Bad request"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Credential schema or DID not found"),
-    ),
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "credential_management",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn post_credential(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<CreateCredentialRequestRestDTO>,
-) -> Response {
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
         .credential_service
@@ -151,31 +142,11 @@ pub(crate) async fn post_credential(
         .await;
 
     match result {
-        Ok(value) => (
-            StatusCode::CREATED,
-            Json(EntityResponseRestDTO { id: value }),
-        )
-            .into_response(),
-        Err(error) => match error {
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            ServiceError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
-            ServiceError::DidDeactivated => {
-                tracing::error!("DID has been deactivated");
-                StatusCode::BAD_REQUEST.into_response()
-            }
-            ServiceError::ConfigValidationError(error) => {
-                tracing::error!("Config validation error: {:?}", error);
-                (
-                    StatusCode::BAD_REQUEST,
-                    format!("Config validation error: {:?}", error),
-                )
-                    .into_response()
-            }
-            _ => {
-                tracing::error!("Error while creating credential: {:?}", error);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
+        Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id }),
+        Err(error) => {
+            tracing::error!(%error, "Error while creating credential");
+            CreatedOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
+        }
     }
 }
 
@@ -202,7 +173,9 @@ pub(crate) async fn revoke_credential(state: State<AppState>, Path(id): Path<Uui
     match result {
         Ok(_) => (StatusCode::NO_CONTENT.into_response()).into_response(),
         Err(error) => match error {
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
+            ServiceError::EntityNotFound(_) | ServiceError::NotFound => {
+                StatusCode::NOT_FOUND.into_response()
+            }
             ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
             ServiceError::ValidationError(message) => {
                 (StatusCode::BAD_REQUEST, message).into_response()

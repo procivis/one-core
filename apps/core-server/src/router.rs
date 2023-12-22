@@ -73,6 +73,7 @@ pub async fn start_server(listener: TcpListener, config: AppConfig<ServerConfig>
 
 fn router(state: AppState, config: ServerConfig) -> Router {
     let openapi_documentation = gen_openapi_documentation();
+    let config = Arc::new(config);
 
     let protected = Router::new()
         .route("/api/config/v1", get(config::controller::get_config))
@@ -274,7 +275,7 @@ fn router(state: AppState, config: ServerConfig) -> Router {
 pub struct Authorized {}
 
 async fn bearer_check(
-    Extension(config): Extension<ServerConfig>,
+    Extension(config): Extension<Arc<ServerConfig>>,
     mut request: Request<Body>,
     next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
@@ -501,6 +502,10 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 dto::common::EntityResponseRestDTO,
                 dto::common::EntityShareResponseRestDTO,
                 dto::common::SortDirection,
+
+                dto::error::ErrorResponseRestDTO,
+                dto::error::ErrorCode,
+                dto::error::Cause,
 
                 shared_types::DidId,
                 shared_types::DidValue,

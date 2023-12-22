@@ -6,6 +6,7 @@ app:
   serverPort: 3000
   traceJson: false
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error"
+  hideErrorResponseCause: false
 format:
   JWT:
     type: "JWT"

@@ -142,6 +142,10 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             )
             .await?;
 
+        let Some(credential) = credential else {
+            return Err(ServiceError::NotFound);
+        };
+
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
 
         let credential_schema = credential

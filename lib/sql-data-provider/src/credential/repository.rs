@@ -96,7 +96,7 @@ async fn get_claims(
         .order_by_asc(credential_schema_claim_schema::Column::Order)
         .all(db)
         .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+        .map_err(|e| DataLayerError::Db(e.into()))?
         .into_iter()
         .map(|claim| Uuid::from_str(&claim.claim_id))
         .collect::<Result<Vec<_>, _>>()?;
@@ -148,7 +148,7 @@ impl CredentialProvider {
                             credential.id,
                             e.to_string()
                         );
-                        DataLayerError::GeneralRuntimeError(e.to_string())
+                        DataLayerError::Db(e.into())
                     })?;
 
                 Some(convert_inner(credential_states))
@@ -324,22 +324,27 @@ impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
         let issuer_did = request.issuer_did.clone();
         let holder_did_id = request.holder_did.as_ref().map(|did| did.id.clone());
+
         let schema = request
             .schema
             .to_owned()
             .ok_or(DataLayerError::MappingError)?;
+
         let claims = request
             .claims
             .to_owned()
             .ok_or(DataLayerError::MappingError)?;
+
         let interaction_id = request
             .interaction
             .as_ref()
             .map(|interaction| interaction.id);
+
         let revocation_list_id = request
             .revocation_list
             .as_ref()
             .map(|revocation_list| revocation_list.id);
+
         let key_id = request.key.as_ref().map(|key| key.id);
 
         let credential = request_to_active_model(
@@ -355,7 +360,7 @@ impl CredentialRepository for CredentialProvider {
         .await
         .map_err(|e| match e.sql_err() {
             Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            _ => DataLayerError::Db(e.into()),
         })?;
 
         if !claims.is_empty() {
@@ -373,7 +378,7 @@ impl CredentialRepository for CredentialProvider {
             credential_claim::Entity::insert_many(credential_claim_models)
                 .exec(&self.db)
                 .await
-                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+                .map_err(|e| DataLayerError::Db(e.into()))?;
         }
 
         if let Some(states) = request.state {
@@ -395,29 +400,36 @@ impl CredentialRepository for CredentialProvider {
             .filter(credential::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .map_err(|e| DataLayerError::Db(e.into()))?
             .ok_or(DataLayerError::RecordNotFound)?;
 
         let now = OffsetDateTime::now_utc();
 
         delete_credential_from_database(&self.db, credential, now)
             .await
-            .map_err(|error| DataLayerError::GeneralRuntimeError(error.to_string()))
+            .map_err(|error| DataLayerError::Db(error.into()))
     }
 
     async fn get_credential(
         &self,
         id: &CredentialId,
         relations: &CredentialRelations,
-    ) -> Result<Credential, DataLayerError> {
-        let credential: credential::Model = credential::Entity::find_by_id(id.to_string())
+    ) -> Result<Option<Credential>, DataLayerError> {
+        let credential = credential::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            .map_err(|err| DataLayerError::Db(err.into()))?;
 
-        self.credential_model_to_repository_model(credential, relations)
-            .await
+        match credential {
+            None => Ok(None),
+            Some(credential) => {
+                let credential = self
+                    .credential_model_to_repository_model(credential, relations)
+                    .await?;
+
+                Ok(Some(credential))
+            }
+        }
     }
 
     async fn get_credentials_by_interaction_id(
@@ -429,7 +441,7 @@ impl CredentialRepository for CredentialProvider {
             .filter(credential::Column::InteractionId.eq(&interaction_id.to_string()))
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         self.credentials_to_repository(credentials, relations).await
     }
@@ -446,7 +458,7 @@ impl CredentialRepository for CredentialProvider {
             .order_by_asc(credential::Column::CreatedDate)
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         self.credentials_to_repository(credentials, relations).await
     }
@@ -463,12 +475,12 @@ impl CredentialRepository for CredentialProvider {
             .to_owned()
             .count(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let credentials = query
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(GetCredentialList {
             values: self
@@ -548,13 +560,13 @@ impl CredentialRepository for CredentialProvider {
                     Some(SqlErr::ForeignKeyConstraintViolation(_)) => {
                         DataLayerError::RecordNotFound
                     }
-                    _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+                    _ => DataLayerError::Db(e.into()),
                 })?;
         }
 
         update_model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            _ => DataLayerError::Db(e.into()),
         })?;
 
         Ok(())
@@ -584,7 +596,7 @@ impl CredentialRepository for CredentialProvider {
             .distinct()
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         self.credentials_to_repository(credentials, relations).await
     }

@@ -42,7 +42,7 @@ impl DidProvider {
                 .filter(key_did::Column::DidId.eq(model.id))
                 .all(&self.db)
                 .await
-                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+                .map_err(|e| DataLayerError::Db(e.into()))?;
 
             let mut related_keys: Vec<RelatedKey> = vec![];
             let mut key_map: HashMap<KeyId, Key> = HashMap::default();
@@ -70,14 +70,20 @@ impl DidProvider {
 
 #[async_trait::async_trait]
 impl DidRepository for DidProvider {
-    async fn get_did(&self, id: &DidId, relations: &DidRelations) -> Result<Did, DataLayerError> {
+    async fn get_did(
+        &self,
+        id: &DidId,
+        relations: &DidRelations,
+    ) -> Result<Option<Did>, DataLayerError> {
         let did = did::Entity::find_by_id(id)
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        self.resolve_relations(did, relations).await
+        match did {
+            None => Ok(None),
+            Some(did) => Ok(Some(self.resolve_relations(did, relations).await?)),
+        }
     }
 
     async fn get_did_by_value(
@@ -89,7 +95,7 @@ impl DidRepository for DidProvider {
             .filter(did::Column::Did.eq(value))
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .map_err(|e| DataLayerError::Db(e.into()))?
             .ok_or(DataLayerError::RecordNotFound)?;
 
         self.resolve_relations(did, relations).await
@@ -109,12 +115,12 @@ impl DidRepository for DidProvider {
             .to_owned()
             .count(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let dids: Vec<did::Model> = query
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(create_list_response(dids, limit, items_count))
     }
@@ -156,7 +162,7 @@ impl DidRepository for DidProvider {
 
         did.update(&self.db).await.map_err(|err| match err {
             sea_orm::DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            other => DataLayerError::GeneralRuntimeError(other.to_string()),
+            err => DataLayerError::Db(err.into()),
         })?;
 
         Ok(())

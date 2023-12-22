@@ -6,6 +6,7 @@ build = "build.rs"
 publish = false
 
 [dependencies]
+anyhow.workspace = true
 async-trait = { version = "0.1" }
 ct-codecs.workspace = true
 dto_mapper.workspace = true
@@ -32,7 +33,7 @@ bit-vec = { version = "0.6" }
 flate2 = { version = "1.0" }
 regex = { version = "1.10" }
 url = { workspace = true }
-figment = { version = "0.10", default-features = false}
+figment = { version = "0.10", default-features = false }
 
 strum_macros = { version = "0.25" }
 

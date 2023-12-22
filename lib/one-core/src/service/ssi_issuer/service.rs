@@ -24,7 +24,7 @@ impl SSIIssuerService {
         credential_id: &CredentialId,
         holder_did_value: &DidValue,
     ) -> Result<CredentialDetailResponseDTO, ServiceError> {
-        let mut credential = self
+        let credential = self
             .credential_repository
             .get_credential(
                 credential_id,
@@ -42,6 +42,10 @@ impl SSIIssuerService {
                 },
             )
             .await?;
+
+        let Some(mut credential) = credential else {
+            return Err(ServiceError::NotFound);
+        };
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
@@ -120,6 +124,10 @@ impl SSIIssuerService {
                 },
             )
             .await?;
+
+        let Some(credential) = credential else {
+            return Err(ServiceError::NotFound);
+        };
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
 

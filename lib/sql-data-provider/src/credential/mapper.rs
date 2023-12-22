@@ -1,20 +1,23 @@
-use crate::{
-    entity::{self, credential, credential_schema, credential_state, did},
-    list_query::GetEntityColumn,
+use one_core::{
+    model::{
+        credential::{Credential, CredentialId, CredentialState, SortableCredentialColumn},
+        credential_schema::CredentialSchema,
+        did::Did,
+        interaction::InteractionId,
+        key::KeyId,
+        revocation_list::RevocationListId,
+    },
+    repository::error::DataLayerError,
 };
-use one_core::model::{
-    credential::{Credential, CredentialId, CredentialState, SortableCredentialColumn},
-    credential_schema::CredentialSchema,
-    did::Did,
-    interaction::InteractionId,
-    key::KeyId,
-    revocation_list::RevocationListId,
-};
-use one_core::repository::error::DataLayerError;
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
 use shared_types::DidId;
 use std::str::FromStr;
 use uuid::Uuid;
+
+use crate::{
+    entity::{self, credential, credential_schema, credential_state, did},
+    list_query::GetEntityColumn,
+};
 
 impl GetEntityColumn for SortableCredentialColumn {
     fn get_simple_expr(&self) -> SimpleExpr {

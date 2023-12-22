@@ -305,7 +305,7 @@ async fn test_get_did_existing() {
 
     assert!(result.is_ok());
 
-    let content = result.unwrap();
+    let content = result.unwrap().unwrap();
     assert_eq!(content.id, did_id);
     assert_eq!(content.did_method, "KEY");
     assert_eq!(content.did_type, DidType::Local);
@@ -324,9 +324,10 @@ async fn test_get_did_not_existing() {
 
     let result = provider
         .get_did(&Uuid::new_v4().into(), &DidRelations::default())
-        .await;
+        .await
+        .unwrap();
 
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(result.is_none());
 }
 
 #[tokio::test]

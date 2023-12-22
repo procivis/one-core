@@ -1,10 +1,10 @@
 use time::OffsetDateTime;
 
+use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::{
     common_mapper::list_response_try_into,
     common_validator::{
-        throw_if_did_type_is_eq, throw_if_latest_credential_state_eq,
-        throw_if_latest_credential_state_not_eq,
+        throw_if_latest_credential_state_eq, throw_if_latest_credential_state_not_eq,
     },
     model::{
         claim::ClaimRelations,
@@ -40,6 +40,7 @@ impl CredentialService {
     /// # Arguments
     ///
     /// * `request` - create credential request
+
     pub async fn create_credential(
         &self,
         request: CreateCredentialRequestDTO,
@@ -47,13 +48,21 @@ impl CredentialService {
         let issuer_did = self
             .did_repository
             .get_did(&request.issuer_did, &DidRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
-        throw_if_did_type_is_eq(&issuer_did, DidType::Remote)?;
+        let Some(issuer_did) = issuer_did else {
+            return Err(EntityNotFoundError::Did(request.issuer_did).into());
+        };
+
+        if issuer_did.is_remote() {
+            return Err(BusinessLogicError::IncompatibleDidType {
+                reason: "Issuer did is remote".to_string(),
+            }
+            .into());
+        }
 
         if issuer_did.deactivated {
-            return Err(ServiceError::DidDeactivated);
+            return Err(BusinessLogicError::DidIsDeactivated(issuer_did.id).into());
         }
 
         let schema = self
@@ -65,15 +74,7 @@ impl CredentialService {
                     organisation: None,
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
-
-        super::validator::validate_create_request(
-            &request.transport,
-            &request.claim_values,
-            &schema,
-            &self.config,
-        )?;
+            .await?;
 
         let claim_schemas = schema
             .claim_schemas
@@ -82,14 +83,21 @@ impl CredentialService {
                 "claim_schemas is None".to_string(),
             ))?;
 
+        super::validator::validate_create_request(
+            &request.transport,
+            &request.claim_values,
+            &schema,
+            &self.config,
+        )?;
+
         let claims = claims_from_create_request(request.claim_values.clone(), &claim_schemas)?;
         let credential = from_create_request(request, claims, issuer_did, schema);
 
         let result = self
             .credential_repository
             .create_credential(credential)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
+
         Ok(result)
     }
 
@@ -115,6 +123,10 @@ impl CredentialService {
             )
             .await
             .map_err(ServiceError::from)?;
+
+        let Some(credential) = credential else {
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
+        };
 
         let schema = credential
             .schema
@@ -176,10 +188,12 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
-        credential.try_into()
+        let credential = credential.ok_or(EntityNotFoundError::Credential(*credential_id))?;
+
+        CredentialDetailResponseDTO::try_from(credential)
+            .map_err(|err| ServiceError::ResponseMapping(err.to_string()))
     }
 
     /// Returns list of credentials according to query
@@ -194,8 +208,8 @@ impl CredentialService {
         let result = self
             .credential_repository
             .get_credential_list(query)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
+
         list_response_try_into(result)
     }
 
@@ -223,6 +237,10 @@ impl CredentialService {
                 },
             )
             .await?;
+
+        let Some(credential) = credential else {
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
+        };
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Accepted)?;
 
@@ -278,6 +296,10 @@ impl CredentialService {
                     },
                 )
                 .await?;
+
+            let Some(credential) = credential else {
+                return Err(ServiceError::NotFound);
+            };
 
             let current_state = credential
                 .state
@@ -456,6 +478,10 @@ impl CredentialService {
                 },
             )
             .await?;
+
+        let Some(credential) = credential else {
+            return Err(ServiceError::NotFound);
+        };
 
         let credential_states = credential
             .state

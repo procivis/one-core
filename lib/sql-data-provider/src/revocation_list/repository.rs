@@ -50,7 +50,7 @@ impl RevocationListRepository for RevocationListProvider {
         }
         .insert(&self.db)
         .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+        .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(request.id)
     }
@@ -63,7 +63,7 @@ impl RevocationListRepository for RevocationListProvider {
         let revocation_list = revocation_list::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .map_err(|e| DataLayerError::Db(e.into()))?
             .ok_or(DataLayerError::RecordNotFound)?;
         self.entity_model_to_repository_model(revocation_list, relations)
             .await
@@ -78,7 +78,7 @@ impl RevocationListRepository for RevocationListProvider {
             .filter(revocation_list::Column::IssuerDidId.eq(issuer_did_id))
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .map_err(|e| DataLayerError::Db(e.into()))?
             .ok_or(DataLayerError::RecordNotFound)?;
 
         self.entity_model_to_repository_model(revocation_list, relations)
@@ -99,7 +99,7 @@ impl RevocationListRepository for RevocationListProvider {
 
         update_model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            _ => DataLayerError::Db(e.into()),
         })?;
 
         Ok(())

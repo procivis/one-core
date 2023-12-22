@@ -29,8 +29,8 @@ use crate::{
         },
         transport_protocol::dto::PresentationDefinitionResponseDTO,
     },
+    repository::credential_repository::MockCredentialRepository,
     repository::did_repository::MockDidRepository,
-    repository::mock::credential_repository::MockCredentialRepository,
     repository::mock::proof_repository::MockProofRepository,
     service::{
         error::ServiceError,
@@ -259,12 +259,12 @@ async fn test_submit_proof_succeeds() {
         .expect_get_credential()
         .once()
         .returning(move |_, _| {
-            Ok(Credential {
+            Ok(Some(Credential {
                 id: credential_id,
                 credential: b"credential data".to_vec(),
                 claims: Some(vec![]),
                 ..dummy_credential()
-            })
+            }))
         });
 
     let mut formatter = MockCredentialFormatter::new();

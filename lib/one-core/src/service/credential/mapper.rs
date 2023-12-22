@@ -1,3 +1,6 @@
+use time::OffsetDateTime;
+use uuid::Uuid;
+
 use crate::service::{
     credential::dto::{
         CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
@@ -15,8 +18,6 @@ use crate::{
         did::Did,
     },
 };
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 impl TryFrom<Credential> for CredentialDetailResponseDTO {
     type Error = ServiceError;

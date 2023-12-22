@@ -63,6 +63,7 @@ pub struct OpenID4VCITokenRequestDTO {
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,
 }
+
 #[derive(Clone, Debug, PartialEq, Error)]
 pub enum OpenID4VCIError {
     #[error("unsupported_grant_type")]

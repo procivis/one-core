@@ -462,6 +462,13 @@ impl TransportProtocol for OpenID4VC {
             )
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        let Some(credential) = credential else {
+            return Err(TransportProtocolError::Failed(
+                "Missing credential".to_string(),
+            ));
+        };
+
         let interaction_id = Uuid::new_v4();
         let interaction_content: OpenID4VCIInteractionContent = OpenID4VCIInteractionContent {
             pre_authorized_code_used: false,

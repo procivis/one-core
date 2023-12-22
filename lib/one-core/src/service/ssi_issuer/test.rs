@@ -7,8 +7,8 @@ use crate::provider::transport_protocol::provider::MockTransportProtocolProvider
 use crate::service::test_utilities::{dummy_credential, dummy_did};
 use crate::{
     model::credential::{Credential, CredentialId, CredentialState, CredentialStateEnum},
+    repository::credential_repository::MockCredentialRepository,
     repository::did_repository::MockDidRepository,
-    repository::mock::credential_repository::MockCredentialRepository,
     service::ssi_issuer::SSIIssuerService,
 };
 
@@ -24,7 +24,7 @@ async fn test_issuer_connect_succeeds() {
             true
         })
         .once()
-        .return_once(move |_, _| Ok(dummy_credential()));
+        .return_once(move |_, _| Ok(Some(dummy_credential())));
 
     credential_repository
         .expect_update_credential()
@@ -64,13 +64,13 @@ async fn test_issuer_reject_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Credential {
+            Ok(Some(Credential {
                 state: Some(vec![CredentialState {
                     created_date: OffsetDateTime::now_utc(),
                     state: CredentialStateEnum::Offered,
                 }]),
                 ..dummy_credential()
-            })
+            }))
         });
 
     credential_repository
