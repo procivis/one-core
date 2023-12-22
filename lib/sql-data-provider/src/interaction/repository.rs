@@ -28,7 +28,7 @@ impl InteractionRepository for InteractionProvider {
 
         model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            _ => DataLayerError::Db(e.into()),
         })?;
         Ok(())
     }
@@ -41,7 +41,7 @@ impl InteractionRepository for InteractionProvider {
         let interaction = interaction::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .map_err(|e| DataLayerError::Db(e.into()))?
             .ok_or(DataLayerError::RecordNotFound)?;
 
         interaction.try_into()
@@ -51,7 +51,7 @@ impl InteractionRepository for InteractionProvider {
         let _ = interaction::Entity::delete_by_id(id.to_string())
             .exec(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())
     }
 }

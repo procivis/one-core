@@ -47,6 +47,7 @@ impl CredentialsDB {
             )
             .await
             .unwrap()
+            .unwrap()
     }
 
     pub async fn create(

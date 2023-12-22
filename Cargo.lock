@@ -732,6 +732,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "codegen"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff61280aed771c3070e7dcc9e050c66f1eb1e3b96431ba66f9f74641d02fc41d"
+dependencies = [
+ "indexmap 1.9.3",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -801,6 +810,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "clap",
+ "codegen",
  "ct-codecs",
  "dto_mapper",
  "headers",
@@ -2666,6 +2676,7 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 name = "one-core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "assert2",
  "async-trait",
  "bit-vec",
@@ -4200,6 +4211,7 @@ dependencies = [
 name = "sql-data-provider"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "dto_mapper",
  "migration",

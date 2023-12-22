@@ -1,7 +1,8 @@
 use dto_mapper::From;
+use one_core::service::error::ServiceError;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use utoipa::{IntoParams, ToSchema};
+use utoipa::{IntoParams, IntoResponses, ToSchema};
 use uuid::Uuid;
 
 use crate::endpoint::{
@@ -11,6 +12,8 @@ use crate::endpoint::{
     proof::dto::ProofListItemResponseRestDTO,
     proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
 };
+
+use super::error::ErrorResponseRestDTO;
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -95,4 +98,112 @@ pub struct EntityResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct EntityShareResponseRestDTO {
     pub url: String,
+}
+
+#[derive(IntoResponses)]
+pub enum OkOrErrorResponse<T: for<'a> ToSchema<'a>> {
+    #[response(status = 200, description = "OK")]
+    Ok(#[to_schema] T),
+    #[response(status = 401, description = "Unauthorized")]
+    Unauthorized,
+    #[response(status = 400, description = "Bad Request")]
+    BadRequest(#[to_schema] ErrorResponseRestDTO),
+    #[response(status = 404, description = "Entity Not Found")]
+    NotFound(#[to_schema] ErrorResponseRestDTO),
+    #[response(status = 500, description = "Internal error")]
+    ServerError(#[to_schema] ErrorResponseRestDTO),
+}
+
+impl<T> OkOrErrorResponse<T>
+where
+    T: for<'a> ToSchema<'a> + Serialize,
+{
+    pub fn ok(value: impl Into<T>) -> Self {
+        Self::Ok(value.into())
+    }
+
+    pub fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
+        let error: ErrorResponseRestDTO = ErrorResponseRestDTO::from(error).hide_cause(hide_cause);
+
+        match &error.error {
+            ServiceError::EntityNotFound(_) | ServiceError::NotFound => Self::NotFound(error),
+            ServiceError::Validation(_) | ServiceError::BusinessLogic(_) => Self::BadRequest(error),
+            _ => Self::ServerError(error),
+        }
+    }
+}
+
+impl<T> axum::response::IntoResponse for OkOrErrorResponse<T>
+where
+    T: for<'a> ToSchema<'a> + Serialize,
+{
+    fn into_response(self) -> axum::response::Response {
+        use axum::http::StatusCode;
+        use axum::Json;
+
+        match self {
+            Self::Ok(body) => (StatusCode::OK, Json(body)).into_response(),
+
+            Self::Unauthorized => StatusCode::UNAUTHORIZED.into_response(),
+            Self::BadRequest(error) => (StatusCode::BAD_REQUEST, Json(error)).into_response(),
+            Self::NotFound(error) => (StatusCode::NOT_FOUND, Json(error)).into_response(),
+            Self::ServerError(error) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response()
+            }
+        }
+    }
+}
+
+#[derive(IntoResponses)]
+pub enum CreatedOrErrorResponse<T: for<'a> ToSchema<'a>> {
+    #[response(status = 201, description = "Created")]
+    Created(#[to_schema] T),
+    #[response(status = 401, description = "Unauthorized")]
+    Unauthorized,
+    #[response(status = 400, description = "Bad Request")]
+    BadRequest(#[to_schema] ErrorResponseRestDTO),
+    #[response(status = 404, description = "Entity Not Found")]
+    NotFound(#[to_schema] ErrorResponseRestDTO),
+    #[response(status = 500, description = "Internal error")]
+    ServerError(#[to_schema] ErrorResponseRestDTO),
+}
+
+impl<T> CreatedOrErrorResponse<T>
+where
+    T: for<'a> ToSchema<'a> + Serialize,
+{
+    pub fn created(value: impl Into<T>) -> Self {
+        Self::Created(value.into())
+    }
+
+    pub fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
+        let error: ErrorResponseRestDTO = ErrorResponseRestDTO::from(error).hide_cause(hide_cause);
+
+        match &error.error {
+            ServiceError::EntityNotFound(_) | ServiceError::NotFound => Self::NotFound(error),
+            ServiceError::Validation(_) | ServiceError::BusinessLogic(_) => Self::BadRequest(error),
+            _ => Self::ServerError(error),
+        }
+    }
+}
+
+impl<T> axum::response::IntoResponse for CreatedOrErrorResponse<T>
+where
+    T: for<'a> ToSchema<'a> + Serialize,
+{
+    fn into_response(self) -> axum::response::Response {
+        use axum::http::StatusCode;
+        use axum::Json;
+
+        match self {
+            Self::Created(body) => (StatusCode::CREATED, Json(body)).into_response(),
+
+            Self::Unauthorized => StatusCode::UNAUTHORIZED.into_response(),
+            Self::BadRequest(error) => (StatusCode::BAD_REQUEST, Json(error)).into_response(),
+            Self::NotFound(error) => (StatusCode::NOT_FOUND, Json(error)).into_response(),
+            Self::ServerError(error) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response()
+            }
+        }
+    }
 }

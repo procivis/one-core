@@ -32,12 +32,10 @@ use crate::{
         },
     },
     repository::{
+        credential_repository::MockCredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository,
-        interaction_repository::MockInteractionRepository,
-        mock::{
-            credential_repository::MockCredentialRepository, proof_repository::MockProofRepository,
-        },
+        did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
+        mock::proof_repository::MockProofRepository,
     },
     service::ssi_holder::dto::InvitationResponseDTO,
 };
@@ -236,7 +234,7 @@ async fn test_generate_share_credentials() {
         .expect_get_credential()
         .once()
         .in_sequence(&mut seq)
-        .returning(move |_, _| Ok(credential_moved.clone()));
+        .returning(move |_, _| Ok(Some(credential_moved.clone())));
 
     interaction_repository
         .expect_create_interaction()

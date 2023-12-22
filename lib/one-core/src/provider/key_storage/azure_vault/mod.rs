@@ -137,8 +137,6 @@ impl AzureVaultKeyProvider {
             &self.params.client_id.to_string(),
             &self.params.client_secret,
         );
-        let body = serde_qs::to_string(&request)
-            .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
 
         let mut url = self.params.oauth_service_url.clone();
         url.set_path(&format!("{}/oauth2/v2.0/token", self.params.ad_tenant_id));
@@ -146,8 +144,7 @@ impl AzureVaultKeyProvider {
         let response: AzureHsmGetTokenResponse = self
             .client
             .post(url)
-            .header("content-type", "application/x-www-form-urlencoded")
-            .body(body)
+            .form(&request)
             .send()
             .await
             .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?

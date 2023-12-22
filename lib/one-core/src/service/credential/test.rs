@@ -23,15 +23,16 @@ use crate::{
         transport_protocol::{provider::MockTransportProtocolProvider, MockTransportProtocol},
     },
     repository::{
+        credential_repository::MockCredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository, mock::credential_repository::MockCredentialRepository,
+        did_repository::MockDidRepository,
     },
     service::{
         credential::{
             self,
             dto::{CreateCredentialRequestDTO, CredentialRequestClaimDTO, GetCredentialQueryDTO},
         },
-        error::ServiceError,
+        error::{BusinessLogicError, ServiceError},
         test_utilities::generic_config,
     },
 };
@@ -141,7 +142,7 @@ async fn test_delete_credential_success() {
 
     credential_repository
         .expect_get_credential()
-        .returning(|_, _| Ok(generic_credential()));
+        .returning(|_, _| Ok(Some(generic_credential())));
     credential_repository
         .expect_delete_credential()
         .returning(|_| Ok(()));
@@ -202,7 +203,7 @@ async fn test_delete_credential_incorrect_state() {
     let copy = credential.clone();
     credential_repository
         .expect_get_credential()
-        .returning(move |_, _| Ok(copy.clone()));
+        .returning(move |_, _| Ok(Some(copy.clone())));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -295,7 +296,7 @@ async fn test_get_credential_success() {
             .expect_get_credential()
             .times(1)
             .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -335,7 +336,7 @@ async fn test_get_revoked_credential_success() {
             .expect_get_credential()
             .times(1)
             .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -370,7 +371,7 @@ async fn test_get_credential_fail_credential_schema_is_none() {
             .expect_get_credential()
             .times(1)
             .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -383,7 +384,7 @@ async fn test_get_credential_fail_credential_schema_is_none() {
     });
 
     let result = service.get_credential(&credential.id).await;
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::MappingError(_))));
+    assert!(result.is_err_and(|e| matches!(e, ServiceError::ResponseMapping(_))));
 }
 
 #[tokio::test]
@@ -416,7 +417,7 @@ async fn test_share_credential_success() {
             .expect_get_credential()
             .times(1)
             .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
         credential_repository
             .expect_update_credential()
             .times(1)
@@ -456,7 +457,7 @@ async fn test_share_credential_failed_invalid_state() {
             .expect_get_credential()
             .times(1)
             .with(eq(clone.id), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -488,7 +489,7 @@ async fn test_create_credential_success() {
         did_repository
             .expect_get_did()
             .times(1)
-            .returning(move |_, _| Ok(issuer_did.clone()));
+            .returning(move |_, _| Ok(Some(issuer_did.clone())));
 
         credential_schema_repository
             .expect_get_credential_schema()
@@ -540,7 +541,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         .expect_get_did()
         .once()
         .returning(move |_, _| {
-            Ok(Did {
+            Ok(Some(Did {
                 id: did_id.into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -551,7 +552,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
                 did_method: "KEY".to_string(),
                 keys: None,
                 deactivated: true,
-            })
+            }))
         });
 
     let service = setup_service(Repositories {
@@ -569,7 +570,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         })
         .await;
 
-    assert2::assert!(let ServiceError::DidDeactivated = result.err().unwrap());
+    assert2::assert!(let ServiceError::BusinessLogic(BusinessLogicError::DidIsDeactivated(_)) = result.err().unwrap());
 }
 
 #[tokio::test]
@@ -612,7 +613,7 @@ async fn test_create_credential_one_required_claim_missing() {
         let credential_schema_clone = credential_schema.clone();
         did_repository
             .expect_get_did()
-            .returning(move |_, _| Ok(issuer_did.clone()));
+            .returning(move |_, _| Ok(Some(issuer_did.clone())));
 
         credential_schema_repository
             .expect_get_credential_schema()
@@ -691,7 +692,7 @@ async fn test_create_credential_schema_deleted() {
         let credential_schema_clone = credential_schema.clone();
         did_repository
             .expect_get_did()
-            .returning(move |_, _| Ok(issuer_did.clone()));
+            .returning(move |_, _| Ok(Some(issuer_did.clone())));
 
         credential_schema_repository
             .expect_get_credential_schema()
@@ -738,7 +739,7 @@ async fn test_check_revocation_invalid_state() {
         let credential_clone = credential.clone();
         credential_repository
             .expect_get_credential()
-            .returning(move |_, _| Ok(credential_clone.clone()));
+            .returning(move |_, _| Ok(Some(credential_clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -808,7 +809,7 @@ async fn test_check_revocation_non_revocable() {
         let credential_clone = credential.clone();
         credential_repository
             .expect_get_credential()
-            .returning(move |_, _| Ok(credential_clone.clone()));
+            .returning(move |_, _| Ok(Some(credential_clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -861,7 +862,7 @@ async fn test_check_revocation_already_revoked() {
         let credential_clone = credential.clone();
         credential_repository
             .expect_get_credential()
-            .returning(move |_, _| Ok(credential_clone.clone()));
+            .returning(move |_, _| Ok(Some(credential_clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -952,7 +953,7 @@ async fn test_check_revocation_being_revoked() {
         let credential_clone = credential.clone();
         credential_repository
             .expect_get_credential()
-            .returning(move |_, _| Ok(credential_clone.clone()));
+            .returning(move |_, _| Ok(Some(credential_clone.clone())));
     }
 
     credential_repository

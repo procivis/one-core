@@ -390,7 +390,7 @@ async fn test_get_proof_with_relations() {
 
     let mut did_repository = MockDidRepository::default();
     did_repository.expect_get_did().times(1).returning(|id, _| {
-        Ok(Did {
+        Ok(Some(Did {
             id: id.to_owned(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -401,7 +401,7 @@ async fn test_get_proof_with_relations() {
             organisation: None,
             keys: None,
             deactivated: false,
-        })
+        }))
     });
 
     let TestSetupWithProof {
@@ -492,7 +492,7 @@ async fn test_get_proof_by_interaction_id_success() {
 
     let mut did_repository = MockDidRepository::default();
     did_repository.expect_get_did().times(1).returning(|id, _| {
-        Ok(Did {
+        Ok(Some(Did {
             id: id.to_owned(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -503,7 +503,7 @@ async fn test_get_proof_by_interaction_id_success() {
             organisation: None,
             keys: None,
             deactivated: false,
-        })
+        }))
     });
 
     let TestSetupWithProof {

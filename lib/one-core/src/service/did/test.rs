@@ -115,7 +115,7 @@ async fn test_get_did_exists() {
                     keys: Some(KeyRelations::default()),
                 }),
             )
-            .returning(move |_, _| Ok(did_clone.clone()));
+            .returning(move |_, _| Ok(Some(did_clone.clone())));
     }
 
     let service = setup_service(
@@ -142,7 +142,7 @@ async fn test_get_did_missing() {
     repository
         .expect_get_did()
         .times(1)
-        .returning(|_, _| Err(crate::repository::error::DataLayerError::RecordNotFound));
+        .returning(|_, _| Ok(None));
 
     let service = setup_service(
         repository,

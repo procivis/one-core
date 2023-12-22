@@ -50,6 +50,10 @@ impl SSIHolderService {
             )
             .await?;
 
+        let Some(holder_did) = holder_did else {
+            return Err(ServiceError::NotFound);
+        };
+
         let DetectedProtocol { protocol, .. } = self
             .protocol_provider
             .detect_protocol(&url)
@@ -171,6 +175,10 @@ impl SSIHolderService {
                     },
                 )
                 .await?;
+
+            let Some(credential) = credential else {
+                return Err(ServiceError::NotFound);
+            };
 
             let credential_data = credential.credential;
             if credential_data.is_empty() {

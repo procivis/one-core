@@ -8,6 +8,7 @@ use super::ProofService;
 use crate::config::core_config::CoreConfig;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
+use crate::service::error::BusinessLogicError;
 use crate::service::test_utilities::generic_config;
 use crate::{
     model::{
@@ -25,11 +26,12 @@ use crate::{
         },
     },
     repository::{
+        credential_repository::MockCredentialRepository,
         did_repository::MockDidRepository,
         error::DataLayerError,
         interaction_repository::MockInteractionRepository,
         mock::{
-            credential_repository::MockCredentialRepository, proof_repository::MockProofRepository,
+            proof_repository::MockProofRepository,
             proof_schema_repository::MockProofSchemaRepository,
         },
     },
@@ -444,7 +446,7 @@ async fn test_create_proof() {
         .times(1)
         .withf(move |id, _| &request_clone.verifier_did_id == id)
         .returning(|id, _| {
-            Ok(Did {
+            Ok(Some(Did {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -455,7 +457,7 @@ async fn test_create_proof() {
                 organisation: None,
                 keys: None,
                 deactivated: false,
-            })
+            }))
         });
 
     let proof_id = ProofId::new_v4();
@@ -518,7 +520,7 @@ async fn test_create_proof_did_deactivated_error() {
         .once()
         .withf(move |id, _| &request_clone.verifier_did_id == id)
         .returning(|id, _| {
-            Ok(Did {
+            Ok(Some(Did {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -529,7 +531,7 @@ async fn test_create_proof_did_deactivated_error() {
                 organisation: None,
                 keys: None,
                 deactivated: true,
-            })
+            }))
         });
 
     let service = setup_service(Repositories {
@@ -540,7 +542,13 @@ async fn test_create_proof_did_deactivated_error() {
     });
 
     let result = service.create_proof(request).await;
-    assert2::assert!(let ServiceError::DidDeactivated = result.err().unwrap());
+    assert2::assert!(
+        let Err(
+            ServiceError::BusinessLogic(
+                BusinessLogicError::DidIsDeactivated(_)
+            )
+        ) = result
+    );
 }
 
 #[tokio::test]

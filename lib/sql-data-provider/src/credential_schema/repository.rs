@@ -62,7 +62,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .await
                 .map_err(|e| match e.sql_err() {
                     Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
-                    Some(_) | None => DataLayerError::GeneralRuntimeError(e.to_string()),
+                    Some(_) | None => DataLayerError::Db(e.into()),
                 })?;
 
         if !claim_schemas.is_empty() {
@@ -73,14 +73,14 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             claim_schema::Entity::insert_many(claim_schema_models)
                 .exec(&self.db)
                 .await
-                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+                .map_err(|e| DataLayerError::Db(e.into()))?;
 
             credential_schema_claim_schema::Entity::insert_many(
                 credential_schema_claim_schema_relations,
             )
             .exec(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
         }
 
         Ok(Uuid::from_str(&credential_schema.id)?)
@@ -94,14 +94,14 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .filter(credential_schema::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?
+            .map_err(|e| DataLayerError::Db(e.into()))?
             .ok_or(DataLayerError::RecordNotFound)?;
 
         let now = OffsetDateTime::now_utc();
 
         delete_credential_schema_from_database(&self.db, credential_schema, now)
             .await
-            .map_err(|error| DataLayerError::GeneralRuntimeError(error.to_string()))
+            .map_err(|error| DataLayerError::Db(error.into()))
     }
 
     async fn get_credential_schema(
@@ -188,12 +188,12 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .to_owned()
             .count(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let credential_schemas: Vec<credential_schema::Model> = query
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(create_list_response(credential_schemas, limit, items_count))
     }
@@ -218,7 +218,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         update_model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            _ => DataLayerError::Db(e.into()),
         })?;
 
         Ok(())

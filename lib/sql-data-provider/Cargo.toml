@@ -12,6 +12,7 @@ test_utils = []
 
 [dependencies]
 one-core = { version = "0.1.0", path = "../../lib/one-core" }
+anyhow.workspace = true
 async-trait = { version = "0.1" }
 migration = { version = "0.1.0", path = "../../apps/migration", default-features = false }
 sea-orm = { workspace = true, features = [

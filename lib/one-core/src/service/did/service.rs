@@ -13,7 +13,6 @@ use super::{
     validator::did_already_exists,
     DidDeactivationError, DidService,
 };
-use crate::model::key::Key;
 use crate::service::did::mapper::map_did_model_to_did_web_response;
 use crate::service::did::mapper::map_key_to_verification_method;
 use crate::service::did::validator::{throw_if_did_method_deactivated, throw_if_did_method_not_eq};
@@ -26,6 +25,7 @@ use crate::{
     },
     service::{did::validator::validate_request_only_one_key_of_each_type, error::ServiceError},
 };
+use crate::{model::key::Key, service::error::EntityNotFoundError};
 
 impl DidService {
     /// Returns did document for did:web
@@ -37,7 +37,7 @@ impl DidService {
         &self,
         id: &DidId,
     ) -> Result<DidWebResponseDTO, ServiceError> {
-        let result = self
+        let did = self
             .did_repository
             .get_did(
                 id,
@@ -49,11 +49,15 @@ impl DidService {
             .await
             .map_err(ServiceError::from)?;
 
-        throw_if_did_method_not_eq(&result, "WEB")?;
-        throw_if_did_method_deactivated(&result)?;
+        let Some(did) = did else {
+            return Err(EntityNotFoundError::Did(id.clone()).into());
+        };
+
+        throw_if_did_method_not_eq(&did, "WEB")?;
+        throw_if_did_method_deactivated(&did)?;
 
         let mut grouped_key: HashMap<KeyId, Key> = HashMap::new();
-        let keys = result
+        let keys = did
             .keys
             .as_ref()
             .ok_or(ServiceError::MappingError("No keys found".to_string()))?;
@@ -61,7 +65,7 @@ impl DidService {
             grouped_key.insert(key.key.id, key.key.clone());
         }
         map_did_model_to_did_web_response(
-            &result,
+            &did,
             keys,
             &grouped_key
                 .iter()
@@ -75,7 +79,7 @@ impl DidService {
                         key.to_owned(),
                         map_key_to_verification_method(
                             index,
-                            &result.did,
+                            &did.did,
                             key_algorithm.bytes_to_jwk(&value.public_key)?.try_into()?,
                         )?,
                     ))
@@ -90,7 +94,7 @@ impl DidService {
     ///
     /// * `id` - Did uuid
     pub async fn get_did(&self, id: &DidId) -> Result<DidResponseDTO, ServiceError> {
-        let result = self
+        let did = self
             .did_repository
             .get_did(
                 id,
@@ -99,9 +103,13 @@ impl DidService {
                     keys: Some(KeyRelations::default()),
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
-        result.try_into()
+            .await?;
+
+        let Some(did) = did else {
+            return Err(ServiceError::NotFound);
+        };
+
+        did.try_into()
     }
 
     /// Returns list of dids according to query
@@ -196,6 +204,10 @@ impl DidService {
             .get_did(id, &DidRelations::default())
             .await
             .map_err(ServiceError::from)?;
+
+        let Some(did) = did else {
+            return Err(ServiceError::NotFound);
+        };
 
         let did_method = self.did_method_provider.get_did_method(&did.did_method)?;
 

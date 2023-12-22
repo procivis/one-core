@@ -21,7 +21,7 @@ use axum::{
 };
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
-use one_core::service::error::ServiceError;
+use one_core::service::error::{EntityAlreadyExistsError, EntityNotFoundError, ServiceError};
 use shared_types::DidId;
 use uuid::Uuid;
 
@@ -58,7 +58,7 @@ pub(crate) async fn ssi_verifier_connect(
             Json(ConnectVerifierResponseRestDTO::from(result)),
         )
             .into_response(),
-        Err(ServiceError::AlreadyExists) => {
+        Err(ServiceError::AlreadyExists | ServiceError::EntityAlreadyExists(_)) => {
             tracing::warn!("Already finished");
             (StatusCode::CONFLICT, "Already finished").into_response()
         }
@@ -99,11 +99,14 @@ pub(crate) async fn get_did_web_document(
 
     match result {
         Ok(result) => (StatusCode::OK, Json(DidWebResponseRestDTO::from(result))).into_response(),
-        Err(ServiceError::AlreadyExists) => {
+        Err(
+            ServiceError::AlreadyExists
+            | ServiceError::EntityAlreadyExists(EntityAlreadyExistsError::Did(_)),
+        ) => {
             tracing::error!("Did method wrong");
             (StatusCode::BAD_REQUEST, "Did method wrong").into_response()
         }
-        Err(ServiceError::NotFound) => {
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::Did(_)) | ServiceError::NotFound) => {
             tracing::error!("Did not found");
             (StatusCode::NOT_FOUND, "Did not found").into_response()
         }

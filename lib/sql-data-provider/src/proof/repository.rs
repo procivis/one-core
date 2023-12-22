@@ -7,6 +7,7 @@ use crate::{
     entity::{did, proof, proof_claim, proof_schema, proof_state},
     list_query::SelectWithListQuery,
 };
+use anyhow::anyhow;
 use one_core::model::proof::UpdateProofRequest;
 use one_core::{
     common_mapper::convert_inner,
@@ -30,14 +31,14 @@ use uuid::Uuid;
 #[async_trait::async_trait]
 impl ProofRepository for ProofProvider {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {
-        let proof: proof::ActiveModel = request.clone().try_into()?;
+        let proof: proof::ActiveModel = request.clone().into();
         proof
             .insert(&self.db)
             .await
             .map_err(|e| match e.sql_err() {
                 Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
                 Some(SqlErr::ForeignKeyConstraintViolation(_)) => DataLayerError::RecordNotFound,
-                Some(_) | None => DataLayerError::GeneralRuntimeError(e.to_string()),
+                Some(_) | None => DataLayerError::Db(e.into()),
             })?;
 
         if let Some(states) = request.state {
@@ -63,7 +64,7 @@ impl ProofRepository for ProofProvider {
                     proof_id,
                     e.to_string()
                 );
-                DataLayerError::GeneralRuntimeError(e.to_string())
+                DataLayerError::Db(e.into())
             })?
             .ok_or(DataLayerError::RecordNotFound)?;
 
@@ -85,7 +86,7 @@ impl ProofRepository for ProofProvider {
                     interaction_id,
                     e.to_string()
                 );
-                DataLayerError::GeneralRuntimeError(e.to_string())
+                DataLayerError::Db(e.into())
             })?
             .ok_or(DataLayerError::RecordNotFound)?;
 
@@ -104,13 +105,13 @@ impl ProofRepository for ProofProvider {
             .to_owned()
             .count(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let proofs = query
             .into_model::<ProofListItemModel>()
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         // collect all states
         let proof_ids: Vec<String> = proofs.iter().map(|p| p.id.to_string()).collect();
@@ -125,7 +126,7 @@ impl ProofRepository for ProofProvider {
                     "Error while fetching proof states. Error: {}",
                     e.to_string()
                 );
-                DataLayerError::GeneralRuntimeError(e.to_string())
+                DataLayerError::Db(e.into())
             })?;
 
         let mut proof_states_map: HashMap<ProofId, Vec<ProofState>> = HashMap::new();
@@ -156,12 +157,12 @@ impl ProofRepository for ProofProvider {
             .await
             .map_err(|e| match e.sql_err() {
                 Some(SqlErr::ForeignKeyConstraintViolation(_)) => DataLayerError::RecordNotFound,
-                _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+                _ => DataLayerError::Db(e.into()),
             })?;
 
         update_model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            _ => DataLayerError::Db(e.into()),
         })?;
 
         Ok(())
@@ -183,7 +184,7 @@ impl ProofRepository for ProofProvider {
 
         model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            _ => DataLayerError::Db(e.into()),
         })?;
 
         Ok(())
@@ -202,7 +203,7 @@ impl ProofRepository for ProofProvider {
         proof_claim::Entity::insert_many(proof_claim_models)
             .exec(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(())
     }
@@ -247,13 +248,13 @@ impl ProofRepository for ProofProvider {
                     Some(SqlErr::ForeignKeyConstraintViolation(_)) => {
                         DataLayerError::RecordNotFound
                     }
-                    _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+                    _ => DataLayerError::Db(e.into()),
                 })?;
         }
 
         update_model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
-            _ => DataLayerError::GeneralRuntimeError(e.to_string()),
+            _ => DataLayerError::Db(e.into()),
         })?;
 
         Ok(())
@@ -351,7 +352,7 @@ impl ProofProvider {
                 .filter(proof_claim::Column::ProofId.eq(&proof_model.id))
                 .all(&self.db)
                 .await
-                .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+                .map_err(|e| DataLayerError::Db(e.into()))?;
 
             let claim_ids = proof_claims
                 .iter()
@@ -371,21 +372,25 @@ impl ProofProvider {
 
         if let Some(did_relations) = &relations.verifier_did {
             if let Some(verifier_did_id) = &proof_model.verifier_did_id {
-                proof.verifier_did = Some(
-                    self.did_repository
-                        .get_did(verifier_did_id, did_relations)
-                        .await?,
-                );
+                let verifier_did = self
+                    .did_repository
+                    .get_did(verifier_did_id, did_relations)
+                    .await?
+                    .ok_or(DataLayerError::Db(anyhow!("Verifier DID not found")))?;
+                proof.verifier_did = Some(verifier_did);
             }
         }
 
         if let Some(did_relations) = &relations.holder_did {
             if let Some(holder_did_id) = &proof_model.holder_did_id {
-                proof.holder_did = Some(
-                    self.did_repository
-                        .get_did(holder_did_id, did_relations)
-                        .await?,
-                );
+                let holder_did_id = self
+                    .did_repository
+                    .get_did(holder_did_id, did_relations)
+                    .await?
+                    .ok_or(DataLayerError::Db(anyhow!(
+                        "Holder DID not found".to_string()
+                    )))?;
+                proof.holder_did = Some(holder_did_id);
             }
         }
 
@@ -401,7 +406,7 @@ impl ProofProvider {
                         proof_model.id,
                         e.to_string()
                     );
-                    DataLayerError::GeneralRuntimeError(e.to_string())
+                    DataLayerError::Db(e.into())
                 })?;
 
             proof.state = Some(convert_inner(proof_states));

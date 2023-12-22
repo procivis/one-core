@@ -21,7 +21,14 @@ pub(crate) async fn get_did(
 ) -> Result<Option<Did>, DataLayerError> {
     match relations {
         None => Ok(None),
-        Some(did_relations) => Ok(Some(repository.get_did(did_id, did_relations).await?)),
+        Some(did_relations) => {
+            let did = repository
+                .get_did(did_id, did_relations)
+                .await?
+                .ok_or(DataLayerError::RecordNotFound)?;
+
+            Ok(Some(did))
+        }
     }
 }
 

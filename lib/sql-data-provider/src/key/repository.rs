@@ -54,7 +54,7 @@ impl KeyRepository for KeyProvider {
         }
         .insert(&self.db)
         .await
-        .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+        .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(request.id)
     }
@@ -65,7 +65,7 @@ impl KeyRepository for KeyProvider {
             .await
             .map_err(|e| {
                 tracing::error!("Error while fetching key {}. Error: {}", id, e.to_string());
-                DataLayerError::GeneralRuntimeError(e.to_string())
+                DataLayerError::Db(e.into())
             })?
             .ok_or(DataLayerError::RecordNotFound)?;
 
@@ -86,12 +86,12 @@ impl KeyRepository for KeyProvider {
             .to_owned()
             .count(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let keys: Vec<key::Model> = query
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::GeneralRuntimeError(e.to_string()))?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(create_list_response(keys, limit, items_count))
     }

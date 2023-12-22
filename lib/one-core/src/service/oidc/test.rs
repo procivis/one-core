@@ -17,11 +17,11 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
+use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::mock::claim_repository::MockClaimRepository;
-use crate::repository::mock::credential_repository::MockCredentialRepository;
 use crate::repository::mock::proof_repository::MockProofRepository;
 use crate::service::error::ServiceError;
 use crate::service::oidc::dto::{

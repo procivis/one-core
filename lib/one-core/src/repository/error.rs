@@ -1,15 +1,11 @@
 use thiserror::Error;
 
-use crate::config::ConfigValidationError;
+use crate::service::error::ErrorCode;
 
 #[derive(Debug, Error)]
 pub enum DataLayerError {
-    #[error("General Data Layer error `{0}`")]
-    GeneralRuntimeError(String),
     #[error("Already exists")]
     AlreadyExists,
-    #[error("Config validation error `{0}`")]
-    ConfigValidationError(#[from] ConfigValidationError),
     #[error("Wrong parameters")]
     IncorrectParameters,
     #[error("Record not found")]
@@ -18,8 +14,21 @@ pub enum DataLayerError {
     RecordNotUpdated,
     #[error("Response could not be mapped")]
     MappingError,
-    #[error("Other Data Layer error")]
-    Other,
+    #[error("Database error: {0}")]
+    Db(anyhow::Error),
+}
+
+impl DataLayerError {
+    pub fn error_code(&self) -> ErrorCode {
+        match self {
+            DataLayerError::AlreadyExists
+            | DataLayerError::IncorrectParameters
+            | DataLayerError::RecordNotFound
+            | DataLayerError::RecordNotUpdated
+            | DataLayerError::MappingError => ErrorCode::Unmapped,
+            DataLayerError::Db(_) => ErrorCode::Database,
+        }
+    }
 }
 
 impl From<uuid::Error> for DataLayerError {

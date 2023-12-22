@@ -30,4 +30,6 @@ pub struct ServerConfig {
     pub sentry_dsn: Option<String>,
     pub sentry_environment: Option<String>,
     pub trace_level: Option<String>,
+    // when set to true hides the `cause` field in the error response
+    pub hide_error_response_cause: bool,
 }

@@ -1,19 +1,18 @@
-pub mod dto;
-pub mod mapper;
-pub mod service;
-
-pub(crate) mod validator;
-
 use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
+
+pub mod dto;
+pub mod mapper;
+pub mod service;
+
+pub(crate) mod validator;
 
 #[derive(Clone)]
 pub struct CredentialService {

@@ -63,6 +63,9 @@ clap = { version = "4.4.11", features = ["derive"] }
 
 [build-dependencies]
 shadow-rs.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+codegen = { version = "0.2" }
 
 [dev-dependencies]
 reqwest = { version = "0.11", features = ["json"] }

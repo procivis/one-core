@@ -108,7 +108,7 @@ async fn test_get_proof_schema_missing() {
     );
 
     let result = service.get_proof_schema(&Uuid::new_v4()).await;
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+    assert!(result.is_err_and(|e| matches!(e, ServiceError::NotFound)));
 }
 
 #[tokio::test]
@@ -172,7 +172,7 @@ async fn test_get_proof_schema_list_failure() {
     proof_schema_repository
         .expect_get_proof_schema_list()
         .times(1)
-        .returning(|_| Err(DataLayerError::GeneralRuntimeError("test".to_string())));
+        .returning(|_| Err(DataLayerError::Db(anyhow::anyhow!("test"))));
 
     let service = setup_service(
         proof_schema_repository,
@@ -190,7 +190,11 @@ async fn test_get_proof_schema_list_failure() {
         organisation_id: Uuid::new_v4().to_string(),
     };
     let result = service.get_proof_schema_list(query).await;
-    assert!(matches!(result, Err(ServiceError::GeneralRuntimeError(_))));
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::Repository(DataLayerError::Db(_)))
+    ));
 }
 
 #[tokio::test]
@@ -440,6 +444,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
             }],
         })
         .await;
+
     assert!(matches!(result, Err(ServiceError::NotFound)));
 }
 

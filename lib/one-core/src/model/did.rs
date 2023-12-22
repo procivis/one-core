@@ -54,6 +54,12 @@ pub struct Did {
     pub organisation: Option<Organisation>,
 }
 
+impl Did {
+    pub fn is_remote(&self) -> bool {
+        self.did_type.is_remote()
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableDidColumn {
     Name,

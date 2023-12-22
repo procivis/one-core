@@ -30,7 +30,7 @@ use crate::{
             provider::MockRevocationMethodProvider, CredentialRevocationInfo, MockRevocationMethod,
         },
     },
-    repository::mock::credential_repository::MockCredentialRepository,
+    repository::credential_repository::MockCredentialRepository,
 };
 
 #[tokio::test]
@@ -50,7 +50,7 @@ async fn test_issuer_submit_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Credential {
+            Ok(Some(Credential {
                 state: Some(vec![CredentialState {
                     created_date: OffsetDateTime::now_utc(),
                     state: CredentialStateEnum::Offered,
@@ -78,7 +78,7 @@ async fn test_issuer_submit_succeeds() {
                     ..dummy_did()
                 }),
                 ..dummy_credential()
-            })
+            }))
         });
 
     credential_repository

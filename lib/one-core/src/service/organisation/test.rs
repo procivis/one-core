@@ -146,10 +146,13 @@ async fn test_get_organisation_list_failure() {
     organisation_repository
         .expect_get_organisation_list()
         .times(1)
-        .returning(|| Err(DataLayerError::GeneralRuntimeError("TEST".to_string())));
+        .returning(|| Err(DataLayerError::Db(anyhow::anyhow!("TEST"))));
 
     let service = setup_service(organisation_repository);
     let result = service.get_organisation_list().await;
 
-    assert!(matches!(result, Err(ServiceError::GeneralRuntimeError(_))));
+    assert!(matches!(
+        result,
+        Err(ServiceError::Repository(DataLayerError::Db(_)))
+    ));
 }

@@ -48,6 +48,7 @@ pub fn create_config(core_base_url: impl Into<String>) -> AppConfig<ServerConfig
         sentry_dsn: None,
         sentry_environment: None,
         trace_level: Some("debug".into()),
+        hide_error_response_cause: true,
     };
 
     app_config
@@ -239,6 +240,7 @@ pub async fn get_did_by_id(db_conn: &DbConn, did_id: &DidId) -> Did {
             },
         )
         .await
+        .unwrap()
         .unwrap()
 }
 
@@ -600,6 +602,7 @@ pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> C
             },
         )
         .await
+        .unwrap()
         .unwrap()
 }
 
