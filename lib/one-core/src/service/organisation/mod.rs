@@ -8,11 +8,11 @@ pub mod validator;
 
 #[derive(Clone)]
 pub struct OrganisationService {
-    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 impl OrganisationService {
-    pub fn new(repository: Arc<dyn OrganisationRepository + Send + Sync>) -> Self {
+    pub fn new(repository: Arc<dyn OrganisationRepository>) -> Self {
         Self {
             organisation_repository: repository,
         }

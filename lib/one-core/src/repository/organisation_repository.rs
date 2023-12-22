@@ -3,7 +3,7 @@ use crate::model::organisation::{Organisation, OrganisationId, OrganisationRelat
 use super::error::DataLayerError;
 
 #[async_trait::async_trait]
-pub trait OrganisationRepository {
+pub trait OrganisationRepository: Send + Sync {
     async fn create_organisation(
         &self,
         request: Organisation,

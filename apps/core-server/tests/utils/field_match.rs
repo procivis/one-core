@@ -1,6 +1,7 @@
+use std::fmt::Debug;
+
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use std::fmt::Debug;
 
 pub trait FieldHelpers {
     fn parse<T>(&self) -> T

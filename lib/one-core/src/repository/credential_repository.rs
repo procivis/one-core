@@ -9,7 +9,7 @@ use crate::model::{
 use shared_types::DidId;
 
 #[async_trait::async_trait]
-pub trait CredentialRepository {
+pub trait CredentialRepository: Send + Sync {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError>;
 
     async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError>;

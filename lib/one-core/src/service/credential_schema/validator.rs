@@ -11,7 +11,7 @@ use crate::{
 use std::sync::Arc;
 
 pub(crate) async fn credential_schema_already_exists(
-    repository: &Arc<dyn CredentialSchemaRepository + Send + Sync>,
+    repository: &Arc<dyn CredentialSchemaRepository>,
     name: &str,
     organisation_id: &OrganisationId,
 ) -> Result<(), ServiceError> {

@@ -19,9 +19,9 @@ pub(crate) mod validator;
 
 #[derive(Clone)]
 pub struct DidService {
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
-    key_repository: Arc<dyn KeyRepository + Send + Sync>,
-    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    did_repository: Arc<dyn DidRepository>,
+    key_repository: Arc<dyn KeyRepository>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     config: Arc<core_config::CoreConfig>,
@@ -29,9 +29,9 @@ pub struct DidService {
 
 impl DidService {
     pub fn new(
-        did_repository: Arc<dyn DidRepository + Send + Sync>,
-        key_repository: Arc<dyn KeyRepository + Send + Sync>,
-        organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+        did_repository: Arc<dyn DidRepository>,
+        key_repository: Arc<dyn KeyRepository>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
         did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
         config: Arc<core_config::CoreConfig>,

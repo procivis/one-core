@@ -1,6 +1,7 @@
-pub mod api_client;
+pub mod api_clients;
 pub mod context;
-pub mod db_client;
+pub mod db_clients;
 pub mod field_match;
+pub mod mock_server;
 
-pub use api_client::client;
+pub use api_clients::http_client as client;

@@ -5,7 +5,7 @@ use crate::model::did::{Did, DidListQuery, DidRelations, GetDidList, UpdateDidRe
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-pub trait DidRepository {
+pub trait DidRepository: Send + Sync {
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError>;
 
     async fn get_did(&self, id: &DidId, relations: &DidRelations) -> Result<Did, DataLayerError>;

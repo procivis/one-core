@@ -1,21 +1,21 @@
 use one_core::model::credential::CredentialStateEnum;
 
-use crate::{fixtures::TestingCredentialParams, utils::context::TestContext};
+use crate::fixtures::TestingCredentialParams;
+use crate::utils::context::TestContext;
 
 #[tokio::test]
 async fn test_delete_credential_success() {
     // GIVEN
-    let context = TestContext::new().await;
-
-    let organisation = context.db.create_organisation().await;
-    let did = context.db.create_did(&organisation, None).await;
+    let (context, organisation, did) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
-        .create_credential_schema("test", &organisation, "NONE")
+        .credential_schemas
+        .create("test", &organisation, "NONE")
         .await;
     let credential = context
         .db
-        .create_credential(
+        .credentials
+        .create(
             &credential_schema,
             CredentialStateEnum::Created,
             &did,
@@ -24,14 +24,14 @@ async fn test_delete_credential_success() {
         )
         .await;
 
-    let deleted_at = context.db.get_credential(&credential.id).await.deleted_at;
+    let deleted_at = context.db.credentials.get(&credential.id).await.deleted_at;
     assert_eq!(None, deleted_at);
 
     // WHEN
-    let resp = context.api_client.delete_credential(credential.id).await;
+    let resp = context.api.credentials.delete(credential.id).await;
 
     // THEN
     assert_eq!(204, resp.status());
-    let deleted_at = context.db.get_credential(&credential.id).await.deleted_at;
+    let deleted_at = context.db.credentials.get(&credential.id).await.deleted_at;
     assert!(deleted_at.is_some());
 }

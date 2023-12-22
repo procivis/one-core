@@ -7,5 +7,5 @@ pub mod repository;
 
 pub(crate) struct RevocationListProvider {
     pub db: DatabaseConnection,
-    pub did_repository: Arc<dyn DidRepository + Send + Sync>,
+    pub did_repository: Arc<dyn DidRepository>,
 }

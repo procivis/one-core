@@ -52,17 +52,17 @@ pub struct DataLayer {
     // Used for tests for now
     #[allow(unused)]
     db: DatabaseConnection,
-    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
+    did_repository: Arc<dyn DidRepository>,
     claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
     claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-    key_repository: Arc<dyn KeyRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    key_repository: Arc<dyn KeyRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
-    revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
+    interaction_repository: Arc<dyn InteractionRepository>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
 }
 
 impl DataLayer {
@@ -134,10 +134,10 @@ impl DataLayer {
 
 #[async_trait::async_trait]
 impl DataRepository for DataLayer {
-    fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository + Send + Sync> {
+    fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository> {
         self.organisation_repository.clone()
     }
-    fn get_did_repository(&self) -> Arc<dyn DidRepository + Send + Sync> {
+    fn get_did_repository(&self) -> Arc<dyn DidRepository> {
         self.did_repository.clone()
     }
     fn get_claim_repository(&self) -> Arc<dyn ClaimRepository + Send + Sync> {
@@ -146,15 +146,13 @@ impl DataRepository for DataLayer {
     fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository + Send + Sync> {
         self.claim_schema_repository.clone()
     }
-    fn get_credential_repository(&self) -> Arc<dyn CredentialRepository + Send + Sync> {
+    fn get_credential_repository(&self) -> Arc<dyn CredentialRepository> {
         self.credential_repository.clone()
     }
-    fn get_credential_schema_repository(
-        &self,
-    ) -> Arc<dyn CredentialSchemaRepository + Send + Sync> {
+    fn get_credential_schema_repository(&self) -> Arc<dyn CredentialSchemaRepository> {
         self.credential_schema_repository.clone()
     }
-    fn get_key_repository(&self) -> Arc<dyn KeyRepository + Send + Sync> {
+    fn get_key_repository(&self) -> Arc<dyn KeyRepository> {
         self.key_repository.clone()
     }
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository + Send + Sync> {
@@ -163,10 +161,10 @@ impl DataRepository for DataLayer {
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync> {
         self.proof_repository.clone()
     }
-    fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository + Send + Sync> {
+    fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository> {
         self.interaction_repository.clone()
     }
-    fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository + Send + Sync> {
+    fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository> {
         self.revocation_list_repository.clone()
     }
 }

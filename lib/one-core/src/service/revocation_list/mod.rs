@@ -9,13 +9,11 @@ mod validator;
 
 #[derive(Clone)]
 pub struct RevocationListService {
-    revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
 }
 
 impl RevocationListService {
-    pub fn new(
-        revocation_list_repository: Arc<dyn RevocationListRepository + Send + Sync>,
-    ) -> Self {
+    pub fn new(revocation_list_repository: Arc<dyn RevocationListRepository>) -> Self {
         Self {
             revocation_list_repository,
         }

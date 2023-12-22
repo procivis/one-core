@@ -95,7 +95,7 @@ pub fn credential_model_to_credential_dto(
 }
 
 pub async fn get_relevant_credentials(
-    credential_repository: &Arc<dyn CredentialRepository + Send + Sync>,
+    credential_repository: &Arc<dyn CredentialRepository>,
     mut credential_groups: Vec<CredentialGroup>,
     requested_claims: Vec<String>,
 ) -> Result<(Vec<Credential>, Vec<CredentialGroup>), TransportProtocolError> {

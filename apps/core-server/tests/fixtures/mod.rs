@@ -74,7 +74,7 @@ pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
     organisation
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TestingKeyParams {
     pub id: Option<KeyId>,
     pub created_date: Option<OffsetDateTime>,

@@ -13,8 +13,8 @@ pub(crate) struct ProofProvider {
     pub db: DatabaseConnection,
     pub proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     pub claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
-    pub did_repository: Arc<dyn DidRepository + Send + Sync>,
-    pub interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+    pub did_repository: Arc<dyn DidRepository>,
+    pub interaction_repository: Arc<dyn InteractionRepository>,
 }
 
 #[cfg(test)]

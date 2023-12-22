@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub(crate) async fn organisation_already_exists(
-    repository: &Arc<dyn OrganisationRepository + Send + Sync>,
+    repository: &Arc<dyn OrganisationRepository>,
     id: &Uuid,
 ) -> Result<bool, ServiceError> {
     let result = repository

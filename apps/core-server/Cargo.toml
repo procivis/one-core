@@ -14,7 +14,11 @@ doctest = false
 strict = []
 
 [dependencies]
-one-core = { version = "0.1.0", path = "../../lib/one-core", features=["config_json", "config_yaml", "config_env"]}
+one-core = { version = "0.1.0", path = "../../lib/one-core", features = [
+    "config_json",
+    "config_yaml",
+    "config_env",
+] }
 sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = [
     "mysql",
 ] }
@@ -68,7 +72,6 @@ sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", f
 ] }
 rand.workspace = true
 rand_chacha.workspace = true
-
 
 [lints]
 workspace = true

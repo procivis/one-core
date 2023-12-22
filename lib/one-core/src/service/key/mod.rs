@@ -13,16 +13,16 @@ pub(crate) mod validator;
 
 #[derive(Clone)]
 pub struct KeyService {
-    key_repository: Arc<dyn KeyRepository + Send + Sync>,
-    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    key_repository: Arc<dyn KeyRepository>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
     config: Arc<core_config::CoreConfig>,
 }
 
 impl KeyService {
     pub fn new(
-        key_repository: Arc<dyn KeyRepository + Send + Sync>,
-        organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+        key_repository: Arc<dyn KeyRepository>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {

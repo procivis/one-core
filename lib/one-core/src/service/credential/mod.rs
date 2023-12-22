@@ -17,9 +17,9 @@ use crate::repository::did_repository::DidRepository;
 
 #[derive(Clone)]
 pub struct CredentialService {
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    did_repository: Arc<dyn DidRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
@@ -28,9 +28,9 @@ pub struct CredentialService {
 
 impl CredentialService {
     pub(crate) fn new(
-        repository: Arc<dyn CredentialRepository + Send + Sync>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-        did_repository: Arc<dyn DidRepository + Send + Sync>,
+        repository: Arc<dyn CredentialRepository>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+        did_repository: Arc<dyn DidRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,

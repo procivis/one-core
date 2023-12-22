@@ -1,91 +1,72 @@
-use core_server::router::start_server;
-use one_core::model::did::KeyRole;
-use one_core::model::{credential::CredentialStateEnum, did::RelatedKey};
+use one_core::model::credential::CredentialStateEnum;
+use one_core::model::did::{KeyRole, RelatedKey};
 use uuid::Uuid;
 
-use crate::{
-    fixtures::{self, TestingCredentialParams, TestingDidParams},
-    utils,
-};
+use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::eddsa_testing_params;
 
 #[tokio::test]
 async fn test_revoke_credential_success() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
-    let issuer_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key,
-            }]),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "STATUSLIST2021")
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "PROCIVIS_TEMPORARY",
+            TestingCredentialParams::default(),
+        )
+        .await;
+    context.db.revocation_lists.create(&issuer_did, None).await;
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "STATUSLIST2021").await;
-    let credential = fixtures::create_credential(
-        &db_conn,
-        &credential_schema,
-        CredentialStateEnum::Accepted,
-        &issuer_did,
-        "PROCIVIS_TEMPORARY",
-        TestingCredentialParams::default(),
-    )
-    .await;
-
-    fixtures::create_revocation_list(&db_conn, &issuer_did, None).await;
     // WHEN
-    let url = format!("{base_url}/api/credential/v1/{}/revoke", credential.id);
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context.api.credentials.revoke(credential.id).await;
 
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let credential = fixtures::get_credential(&db_conn, &credential.id).await;
+    let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(
         CredentialStateEnum::Revoked,
-        credential.state.unwrap().first().unwrap().state
+        credential.state.unwrap()[0].state
     );
 }
 
 #[tokio::test]
 async fn test_revoke_credential_not_found() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-
-    let config = fixtures::create_config(&base_url);
-    let db_conn = fixtures::create_db(&config).await;
+    let context = TestContext::new().await;
 
     // WHEN
-    let url = format!("{base_url}/api/credential/v1/{}/revoke", Uuid::new_v4());
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context.api.credentials.revoke(Uuid::new_v4()).await;
 
     // THEN
     assert_eq!(resp.status(), 404);

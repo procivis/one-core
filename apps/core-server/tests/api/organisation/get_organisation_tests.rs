@@ -1,13 +1,13 @@
-use crate::utils::{context::TestContext, field_match::FieldHelpers};
+use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_organisation_success() {
     // GIVEN
-    let context = TestContext::new().await;
-    let organisation = context.db.create_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
 
     // WHEN
-    let resp = context.api_client.get_organisation(organisation.id).await;
+    let resp = context.api.organisations.get(organisation.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);

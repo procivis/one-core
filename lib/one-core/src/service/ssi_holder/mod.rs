@@ -18,9 +18,9 @@ mod test;
 
 #[derive(Clone)]
 pub struct SSIHolderService {
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
+    did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
 }
@@ -28,9 +28,9 @@ pub struct SSIHolderService {
 #[allow(clippy::too_many_arguments)]
 impl SSIHolderService {
     pub(crate) fn new(
-        credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+        credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-        did_repository: Arc<dyn DidRepository + Send + Sync>,
+        did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     ) -> Self {

@@ -52,8 +52,8 @@ struct TestSetup {
 async fn setup(
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
-    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+    did_repository: Arc<dyn DidRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
 ) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
@@ -146,8 +146,8 @@ struct TestSetupWithProof {
 async fn setup_with_proof(
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
     claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
-    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+    did_repository: Arc<dyn DidRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
 ) -> TestSetupWithProof {
     let TestSetup {
         repository,
@@ -207,11 +207,11 @@ fn get_claim_repository_mock() -> Arc<dyn ClaimRepository + Send + Sync> {
     Arc::from(MockClaimRepository::default())
 }
 
-fn get_did_repository_mock() -> Arc<dyn DidRepository + Send + Sync> {
+fn get_did_repository_mock() -> Arc<dyn DidRepository> {
     Arc::from(MockDidRepository::default())
 }
 
-fn get_interaction_repository_mock() -> Arc<dyn InteractionRepository + Send + Sync> {
+fn get_interaction_repository_mock() -> Arc<dyn InteractionRepository> {
     Arc::from(MockInteractionRepository::default())
 }
 
