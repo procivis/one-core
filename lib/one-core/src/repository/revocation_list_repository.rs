@@ -5,7 +5,7 @@ use crate::model::revocation_list::{RevocationList, RevocationListId, Revocation
 use super::error::DataLayerError;
 
 #[async_trait::async_trait]
-pub trait RevocationListRepository {
+pub trait RevocationListRepository: Send + Sync {
     async fn create_revocation_list(
         &self,
         request: RevocationList,

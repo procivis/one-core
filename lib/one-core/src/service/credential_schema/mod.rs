@@ -12,15 +12,15 @@ use crate::repository::organisation_repository::OrganisationRepository;
 
 #[derive(Clone)]
 pub struct CredentialSchemaService {
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-    organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
     config: Arc<core_config::CoreConfig>,
 }
 
 impl CredentialSchemaService {
     pub fn new(
-        repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-        organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+        repository: Arc<dyn CredentialSchemaRepository>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

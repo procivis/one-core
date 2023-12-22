@@ -36,10 +36,8 @@ struct TestSetup {
 
 async fn setup_empty(
     claim_schema_repository: Arc<dyn claim_schema_repository::ClaimSchemaRepository + Send + Sync>,
-    organisation_repository: Arc<dyn organisation_repository::OrganisationRepository + Send + Sync>,
-    credential_schema_repository: Arc<
-        dyn credential_schema_repository::CredentialSchemaRepository + Send + Sync,
-    >,
+    organisation_repository: Arc<dyn organisation_repository::OrganisationRepository>,
+    credential_schema_repository: Arc<dyn credential_schema_repository::CredentialSchemaRepository>,
 ) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
@@ -68,10 +66,8 @@ struct TestSetupWithProofSchema {
 
 async fn setup_with_proof_schema(
     claim_schema_repository: Arc<dyn claim_schema_repository::ClaimSchemaRepository + Send + Sync>,
-    organisation_repository: Arc<dyn organisation_repository::OrganisationRepository + Send + Sync>,
-    credential_schema_repository: Arc<
-        dyn credential_schema_repository::CredentialSchemaRepository + Send + Sync,
-    >,
+    organisation_repository: Arc<dyn organisation_repository::OrganisationRepository>,
+    credential_schema_repository: Arc<dyn credential_schema_repository::CredentialSchemaRepository>,
 ) -> TestSetupWithProofSchema {
     let TestSetup {
         repository,
@@ -112,11 +108,11 @@ fn get_claim_schema_repository_mock() -> Arc<dyn ClaimSchemaRepository + Send + 
     Arc::from(MockClaimSchemaRepository::default())
 }
 
-fn get_organisation_repository_mock() -> Arc<dyn OrganisationRepository + Send + Sync> {
+fn get_organisation_repository_mock() -> Arc<dyn OrganisationRepository> {
     Arc::from(MockOrganisationRepository::default())
 }
 
-fn get_credential_schema_repository_mock() -> Arc<dyn CredentialSchemaRepository + Send + Sync> {
+fn get_credential_schema_repository_mock() -> Arc<dyn CredentialSchemaRepository> {
     Arc::from(MockCredentialSchemaRepository::default())
 }
 

@@ -9,7 +9,7 @@ mod repository;
 
 pub(crate) struct KeyProvider {
     pub db: DatabaseConnection,
-    pub organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    pub organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 #[cfg(test)]

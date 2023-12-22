@@ -9,8 +9,8 @@ pub mod repository;
 
 pub(crate) struct DidProvider {
     pub db: DatabaseConnection,
-    pub organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
-    pub key_repository: Arc<dyn KeyRepository + Send + Sync>,
+    pub organisation_repository: Arc<dyn OrganisationRepository>,
+    pub key_repository: Arc<dyn KeyRepository>,
 }
 
 #[cfg(test)]

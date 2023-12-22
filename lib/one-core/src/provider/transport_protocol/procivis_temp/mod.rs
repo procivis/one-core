@@ -54,11 +54,11 @@ const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
 pub(crate) struct ProcivisTemp {
     client: reqwest::Client,
     base_url: Option<String>,
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
+    interaction_repository: Arc<dyn InteractionRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
 }
@@ -67,11 +67,11 @@ impl ProcivisTemp {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<String>,
-        credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+        credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-        interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-        did_repository: Arc<dyn DidRepository + Send + Sync>,
+        interaction_repository: Arc<dyn InteractionRepository>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+        did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
     ) -> Self {

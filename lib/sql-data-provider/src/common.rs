@@ -17,7 +17,7 @@ pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u
 pub(crate) async fn get_did(
     did_id: &DidId,
     relations: &Option<DidRelations>,
-    repository: Arc<dyn DidRepository + Send + Sync>,
+    repository: Arc<dyn DidRepository>,
 ) -> Result<Option<Did>, DataLayerError> {
     match relations {
         None => Ok(None),

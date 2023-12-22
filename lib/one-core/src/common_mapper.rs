@@ -79,7 +79,7 @@ pub(crate) fn get_exchange_param_token_expires_in(
 }
 
 pub(crate) async fn get_or_create_did(
-    did_repository: &Arc<dyn DidRepository + Send + Sync>,
+    did_repository: &Arc<dyn DidRepository>,
     organisation: &Option<Organisation>,
     holder_did_value: &DidValue,
 ) -> Result<Did, ServiceError> {

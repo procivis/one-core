@@ -55,7 +55,7 @@ async fn delete_credential_from_database(
 async fn get_credential_schema(
     schema_id: &Uuid,
     relations: &Option<CredentialSchemaRelations>,
-    repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
+    repository: Arc<dyn CredentialSchemaRepository>,
 ) -> Result<Option<CredentialSchema>, DataLayerError> {
     match relations {
         None => Ok(None),

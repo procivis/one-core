@@ -13,15 +13,15 @@ mod test;
 
 #[derive(Clone)]
 pub struct SSIIssuerService {
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    did_repository: Arc<dyn DidRepository>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
 }
 
 impl SSIIssuerService {
     pub(crate) fn new(
-        credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-        did_repository: Arc<dyn DidRepository + Send + Sync>,
+        credential_repository: Arc<dyn CredentialRepository>,
+        did_repository: Arc<dyn DidRepository>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     ) -> Self {
         Self {

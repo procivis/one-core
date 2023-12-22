@@ -50,7 +50,7 @@ pub(crate) trait TransportProtocolProvider {
 pub(crate) struct TransportProtocolProviderImpl {
     protocols: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
     config: Arc<core_config::CoreConfig>,
@@ -60,7 +60,7 @@ impl TransportProtocolProviderImpl {
     pub fn new(
         protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-        credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+        credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
         config: Arc<core_config::CoreConfig>,

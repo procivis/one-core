@@ -1,16 +1,12 @@
 use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::{json, Value};
-use wiremock::{
-    http::Method::Get,
-    matchers::{method, path},
-    Mock, MockServer, ResponseTemplate,
-};
+use wiremock::http::Method::Get;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::{
-    fixtures::{self, TestingCredentialParams, TestingDidParams},
-    utils,
-};
+use crate::fixtures::{self, TestingCredentialParams, TestingDidParams};
+use crate::utils;
 
 #[tokio::test]
 async fn test_revoke_check_success() {

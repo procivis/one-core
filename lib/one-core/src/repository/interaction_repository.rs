@@ -4,7 +4,7 @@ use super::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-pub trait InteractionRepository {
+pub trait InteractionRepository: Send + Sync {
     async fn create_interaction(
         &self,
         request: Interaction,

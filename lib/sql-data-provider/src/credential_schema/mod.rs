@@ -10,7 +10,7 @@ pub mod repository;
 pub(crate) struct CredentialSchemaProvider {
     pub db: DatabaseConnection,
     pub claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
-    pub organisation_repository: Arc<dyn OrganisationRepository + Send + Sync>,
+    pub organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 #[cfg(test)]

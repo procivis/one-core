@@ -97,11 +97,11 @@ const PRESENTATION_DEFINITION_QUERY_PARAM_KEY: &str = "presentation_definition";
 
 pub(crate) struct OpenID4VC {
     client: reqwest::Client,
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    did_repository: Arc<dyn DidRepository>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
@@ -121,11 +121,11 @@ impl OpenID4VC {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         base_url: Option<String>,
-        credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
-        credential_schema_repository: Arc<dyn CredentialSchemaRepository + Send + Sync>,
-        did_repository: Arc<dyn DidRepository + Send + Sync>,
+        credential_repository: Arc<dyn CredentialRepository>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+        did_repository: Arc<dyn DidRepository>,
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-        interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+        interaction_repository: Arc<dyn InteractionRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
@@ -588,7 +588,7 @@ impl TransportProtocol for OpenID4VC {
     }
 }
 async fn clear_previous_interaction(
-    interaction_repository: &Arc<dyn InteractionRepository + Send + Sync>,
+    interaction_repository: &Arc<dyn InteractionRepository>,
     interaction: &Option<Interaction>,
 ) -> Result<(), TransportProtocolError> {
     if let Some(interaction) = interaction.as_ref() {
@@ -603,7 +603,7 @@ async fn clear_previous_interaction(
 async fn update_credentials_interaction(
     credential_id: &CredentialId,
     interaction_id: &InteractionId,
-    credential_repository: &Arc<dyn CredentialRepository + Send + Sync>,
+    credential_repository: &Arc<dyn CredentialRepository>,
 ) -> Result<(), TransportProtocolError> {
     let update = UpdateCredentialRequest {
         id: credential_id.to_owned(),
@@ -639,7 +639,7 @@ async fn update_proof_interaction(
 async fn add_new_interaction(
     interaction_id: InteractionId,
     base_url: &Option<String>,
-    interaction_repository: &Arc<dyn InteractionRepository + Send + Sync>,
+    interaction_repository: &Arc<dyn InteractionRepository>,
     data: Option<Vec<u8>>,
 ) -> Result<(), TransportProtocolError> {
     let now = OffsetDateTime::now_utc();
@@ -792,7 +792,7 @@ async fn handle_credential_invitation(
 }
 
 async fn create_and_store_credential_schema(
-    repository: &Arc<dyn CredentialSchemaRepository + Send + Sync>,
+    repository: &Arc<dyn CredentialSchemaRepository>,
     id: CredentialSchemaId,
     name: String,
     format: String,
@@ -831,7 +831,7 @@ async fn create_and_store_credential_schema(
 }
 
 async fn create_and_store_interaction(
-    repository: &Arc<dyn InteractionRepository + Send + Sync>,
+    repository: &Arc<dyn InteractionRepository>,
     base_url: Url,
     data: Vec<u8>,
 ) -> Result<Interaction, DataLayerError> {
@@ -845,7 +845,7 @@ async fn create_and_store_interaction(
 }
 
 async fn create_and_store_credential(
-    repository: &Arc<dyn CredentialRepository + Send + Sync>,
+    repository: &Arc<dyn CredentialRepository>,
     holder_did: Did,
     credential_schema: CredentialSchema,
     claims: Vec<Claim>,

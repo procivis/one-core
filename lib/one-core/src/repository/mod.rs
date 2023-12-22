@@ -30,18 +30,17 @@ use revocation_list_repository::RevocationListRepository;
 use self::interaction_repository::InteractionRepository;
 
 pub trait DataRepository {
-    fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository + Send + Sync>;
-    fn get_did_repository(&self) -> Arc<dyn DidRepository + Send + Sync>;
+    fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository>;
+    fn get_did_repository(&self) -> Arc<dyn DidRepository>;
     fn get_claim_repository(&self) -> Arc<dyn ClaimRepository + Send + Sync>;
     fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository + Send + Sync>;
-    fn get_credential_repository(&self) -> Arc<dyn CredentialRepository + Send + Sync>;
-    fn get_credential_schema_repository(&self)
-        -> Arc<dyn CredentialSchemaRepository + Send + Sync>;
-    fn get_key_repository(&self) -> Arc<dyn KeyRepository + Send + Sync>;
+    fn get_credential_repository(&self) -> Arc<dyn CredentialRepository>;
+    fn get_credential_schema_repository(&self) -> Arc<dyn CredentialSchemaRepository>;
+    fn get_key_repository(&self) -> Arc<dyn KeyRepository>;
     fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository + Send + Sync>;
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync>;
-    fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository + Send + Sync>;
-    fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository + Send + Sync>;
+    fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository>;
+    fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository>;
 }
 
 #[cfg(any(test, feature = "mock"))]

@@ -14,22 +14,22 @@ pub mod service;
 #[allow(dead_code)] // FIXME: Remove when interaction is used
 #[derive(Clone)]
 pub struct ProofService {
-    credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+    credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
-    did_repository: Arc<dyn DidRepository + Send + Sync>,
-    interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+    did_repository: Arc<dyn DidRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     config: Arc<core_config::CoreConfig>,
 }
 
 impl ProofService {
     pub(crate) fn new(
-        credential_repository: Arc<dyn CredentialRepository + Send + Sync>,
+        credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
         proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
-        did_repository: Arc<dyn DidRepository + Send + Sync>,
-        interaction_repository: Arc<dyn InteractionRepository + Send + Sync>,
+        did_repository: Arc<dyn DidRepository>,
+        interaction_repository: Arc<dyn InteractionRepository>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {

@@ -6,11 +6,11 @@ async fn test_list_organisation_success() {
     let context = TestContext::new().await;
 
     for _ in 1..15 {
-        context.db.create_organisation().await;
+        context.db.organisations.create().await;
     }
 
     // WHEN
-    let resp = context.api_client.list_organisations().await;
+    let resp = context.api.organisations.list().await;
 
     // THEN
     assert_eq!(resp.status(), 200);

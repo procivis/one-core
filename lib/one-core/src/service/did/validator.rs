@@ -59,7 +59,7 @@ pub(crate) fn validate_request_only_one_key_of_each_type(
 }
 
 pub(super) async fn did_already_exists(
-    repository: &Arc<dyn DidRepository + Send + Sync>,
+    repository: &Arc<dyn DidRepository>,
     did_value: &DidValue,
 ) -> Result<bool, DidMethodError> {
     let result = repository
