@@ -23,7 +23,7 @@ use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::mock::claim_repository::MockClaimRepository;
 use crate::repository::mock::proof_repository::MockProofRepository;
-use crate::service::error::ServiceError;
+use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIError,
     OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO,
@@ -395,7 +395,12 @@ async fn test_oidc_create_token_wrong_credential_state() {
         .await;
 
     assert!(result.is_err());
-    assert!(matches!(result, Err(ServiceError::AlreadyExists)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::InvalidCredentialState { .. }
+        ))
+    ));
 }
 
 #[tokio::test]

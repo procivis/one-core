@@ -1,5 +1,6 @@
 use super::DidService;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::service::error::BusinessLogicError;
 use crate::service::test_utilities::dummy_did;
 use crate::{
     config::core_config::{self, CoreConfig, DidConfig, Fields},
@@ -356,7 +357,12 @@ async fn test_create_did_value_already_exists() {
     );
 
     let result = service.create_did(create_request).await;
-    assert!(matches!(result, Err(ServiceError::AlreadyExists)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::DidValueAlreadyExists(_)
+        ))
+    ));
 }
 
 #[tokio::test]

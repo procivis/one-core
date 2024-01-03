@@ -1,15 +1,18 @@
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum::{http::StatusCode, Json};
+use axum::{http::StatusCode, Extension, Json};
+use std::sync::Arc;
 use uuid::Uuid;
-use validator::Validate;
 
 use one_core::service::error::ServiceError;
 
-use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemaResponseDTO};
+use crate::dto::common::{
+    CreatedOrErrorResponse, EntityResponseRestDTO, GetCredentialSchemaResponseDTO,
+};
 use crate::endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO;
 use crate::extractor::Qs;
 use crate::router::AppState;
+use crate::ServerConfig;
 
 use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
 
@@ -139,26 +142,17 @@ pub(crate) async fn get_credential_schema_list(
     post,
     path = "/api/credential-schema/v1",
     request_body = CreateCredentialSchemaRequestRestDTO,
-    responses(
-        (status = 201, description = "Created", body = EntityResponseRestDTO),
-        (status = 400, description = "Bad request"),
-        (status = 401, description = "Unauthorized"),
-        (status = 409, description = "Duplicated name"),
-    ),
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "credential_schema_management",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn post_credential_schema(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<CreateCredentialSchemaRequestRestDTO>,
-) -> Response {
-    if let Err(e) = request.validate() {
-        tracing::error!("Request validation failure: {}", e.to_string());
-        return StatusCode::BAD_REQUEST.into_response();
-    }
-
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
         .credential_schema_service
@@ -166,25 +160,10 @@ pub(crate) async fn post_credential_schema(
         .await;
 
     match result {
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Credential schema already exists");
-            StatusCode::CONFLICT.into_response()
-        }
-        Err(ServiceError::IncorrectParameters) | Err(ServiceError::NotFound) => {
-            StatusCode::BAD_REQUEST.into_response()
-        }
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {:?}", error);
-            StatusCode::BAD_REQUEST.into_response()
-        }
+        Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id }),
         Err(error) => {
-            tracing::error!("Error while inserting credential schema: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            tracing::error!(%error, "Error while creating credential schema");
+            CreatedOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
-        Ok(value) => (
-            StatusCode::CREATED,
-            Json(EntityResponseRestDTO { id: value }),
-        )
-            .into_response(),
     }
 }

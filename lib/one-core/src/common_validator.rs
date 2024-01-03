@@ -8,14 +8,18 @@ use crate::model::credential::{Credential, CredentialState, CredentialStateEnum}
 use crate::model::did::{Did, DidType};
 use crate::model::proof::{Proof, ProofStateEnum};
 
-use crate::service::error::ServiceError;
+use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(crate) fn throw_if_latest_credential_state_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), ServiceError> {
-    if get_latest_state(credential)?.state == state {
-        return Err(ServiceError::AlreadyExists);
+    let latest_state = &get_latest_state(credential)?.state;
+    if latest_state == &state {
+        return Err(BusinessLogicError::InvalidCredentialState {
+            state: latest_state.to_owned(),
+        }
+        .into());
     }
     Ok(())
 }
@@ -24,8 +28,12 @@ pub(crate) fn throw_if_latest_credential_state_not_eq(
     credential: &Credential,
     state: CredentialStateEnum,
 ) -> Result<(), ServiceError> {
-    if get_latest_state(credential)?.state != state {
-        return Err(ServiceError::AlreadyExists);
+    let latest_state = &get_latest_state(credential)?.state;
+    if latest_state != &state {
+        return Err(BusinessLogicError::InvalidCredentialState {
+            state: latest_state.to_owned(),
+        }
+        .into());
     }
     Ok(())
 }
@@ -43,7 +51,10 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
         .to_owned();
 
     if latest_state.state != state {
-        return Err(ServiceError::AlreadyExists);
+        return Err(BusinessLogicError::InvalidProofState {
+            state: latest_state.state,
+        }
+        .into());
     }
     Ok(())
 }

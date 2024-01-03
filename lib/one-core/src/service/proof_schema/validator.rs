@@ -1,4 +1,5 @@
 use super::dto::CreateProofSchemaRequestDTO;
+use crate::service::error::BusinessLogicError;
 use crate::service::proof_schema::mapper::create_unique_name_check_request;
 use crate::{
     model::organisation::OrganisationId,
@@ -17,7 +18,7 @@ pub async fn proof_schema_name_already_exists(
         .await
         .map_err(ServiceError::from)?;
     if proof_schemas.total_items > 0 {
-        return Err(ServiceError::AlreadyExists);
+        return Err(BusinessLogicError::ProofSchemaAlreadyExists.into());
     }
     Ok(())
 }

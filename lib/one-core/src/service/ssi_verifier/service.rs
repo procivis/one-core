@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     common_mapper::did_from_did_document,
+    common_validator::throw_if_latest_proof_state_not_eq,
     model::{
         claim::Claim,
         claim_schema::{ClaimSchemaId, ClaimSchemaRelations},
@@ -17,7 +18,7 @@ use crate::{
     },
     provider::did_method::provider::DidMethodProvider,
     repository::error::DataLayerError,
-    service::error::{EntityAlreadyExistsError, ServiceError},
+    service::error::ServiceError,
 };
 use shared_types::DidValue;
 use time::OffsetDateTime;
@@ -83,7 +84,7 @@ impl SSIVerifierService {
         proof_id: &ProofId,
         presentation_content: &str,
     ) -> Result<(), ServiceError> {
-        let (proof, proof_state) = self
+        let proof = self
             .get_proof_with_state(
                 proof_id,
                 ProofRelations {
@@ -98,9 +99,9 @@ impl SSIVerifierService {
                 },
             )
             .await?;
-        if proof_state != ProofStateEnum::Offered {
-            return Err(EntityAlreadyExistsError::Proof(*proof_id).into());
-        }
+
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Offered)?;
+
         let proof_schema = proof.schema.ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),
         ))?;
@@ -135,12 +136,11 @@ impl SSIVerifierService {
     ///
     /// * `proof_id` - proof identifier
     pub async fn reject_proof(&self, proof_id: &ProofId) -> Result<(), ServiceError> {
-        let (_, proof_state) = self
+        let proof = self
             .get_proof_with_state(proof_id, ProofRelations::default())
             .await?;
-        if proof_state != ProofStateEnum::Offered {
-            return Err(ServiceError::AlreadyExists);
-        }
+
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Offered)?;
 
         let now = OffsetDateTime::now_utc();
         self.proof_repository
@@ -169,7 +169,7 @@ impl SSIVerifierService {
         holder_did_value: &DidValue,
         did_method_provider: &(dyn DidMethodProvider + Send + Sync),
     ) -> Result<(), ServiceError> {
-        let (proof, proof_state) = self
+        let proof = self
             .get_proof_with_state(
                 id,
                 ProofRelations {
@@ -181,9 +181,8 @@ impl SSIVerifierService {
                 },
             )
             .await?;
-        if proof_state != ProofStateEnum::Pending {
-            return Err(ServiceError::AlreadyExists);
-        }
+
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         let holder_did = match self
             .did_repository
@@ -310,7 +309,7 @@ impl SSIVerifierService {
         &self,
         id: &ProofId,
         relations: ProofRelations,
-    ) -> Result<(Proof, ProofStateEnum), ServiceError> {
+    ) -> Result<Proof, ServiceError> {
         let proof = self
             .proof_repository
             .get_proof(
@@ -322,16 +321,7 @@ impl SSIVerifierService {
             )
             .await?;
 
-        let proof_states = proof
-            .state
-            .as_ref()
-            .ok_or(ServiceError::MappingError("state is None".to_string()))?;
-        let latest_state = proof_states
-            .first()
-            .ok_or(ServiceError::MappingError("state is missing".to_string()))?
-            .state
-            .to_owned();
-        Ok((proof, latest_state))
+        Ok(proof)
     }
 }
 

@@ -1,8 +1,13 @@
+use std::sync::Arc;
+
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
+use axum::Extension;
 use axum::{http::StatusCode, Json};
 
+use crate::dto::common::CreatedOrErrorResponse;
 use crate::router::AppState;
+use crate::ServerConfig;
 use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
@@ -89,21 +94,17 @@ pub(crate) async fn get_organisations(state: State<AppState>) -> Response {
     post,
     path = "/api/organisation/v1",
     request_body = Option<CreateOrganisationRequestRestDTO>,
-    responses(
-        (status = 201, description = "Created", body = CreateOrganisationResponseRestDTO),
-        (status = 409, description = "Organisation already exists"),
-        (status = 401, description = "Unauthorized"),
-        (status = 500, description = "Internal server error")
-    ),
+    responses(CreatedOrErrorResponse<CreateOrganisationResponseRestDTO>),
     tag = "organisation_management",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn post_organisation(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     request: Option<Json<CreateOrganisationRequestRestDTO>>,
-) -> Response {
+) -> CreatedOrErrorResponse<CreateOrganisationResponseRestDTO> {
     let Json(request): Json<CreateOrganisationRequestRestDTO> =
         request.unwrap_or(Json(CreateOrganisationRequestRestDTO {
             id: Some(Uuid::new_v4()),
@@ -116,18 +117,12 @@ pub(crate) async fn post_organisation(
         .await;
 
     match result {
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Organisation already exists");
-            StatusCode::CONFLICT.into_response()
+        Ok(value) => {
+            CreatedOrErrorResponse::created(CreateOrganisationResponseRestDTO::from(value))
         }
-        Err(e) => {
-            tracing::error!("Error while creating organisation: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        Err(error) => {
+            tracing::error!(%error, "Error while creating organisation");
+            CreatedOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
-        Ok(value) => (
-            StatusCode::CREATED,
-            Json(CreateOrganisationResponseRestDTO::from(value)),
-        )
-            .into_response(),
     }
 }

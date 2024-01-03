@@ -1,14 +1,16 @@
+use std::sync::Arc;
+
 use super::dto::{
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceRejectRequestRestDTO,
     IssuanceSubmitRequestRestDTO, PresentationRejectRequestRestDTO,
     PresentationSubmitRequestRestDTO,
 };
-use crate::router::AppState;
+use crate::{dto::common::EmptyOrErrorResponse, router::AppState, ServerConfig};
 use axum::{
     extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
+    Extension, Json,
 };
 
 use one_core::{
@@ -69,20 +71,17 @@ pub(crate) async fn handle_invitation(
     post,
     path = "/api/interaction/v1/issuance-submit",
     request_body = IssuanceSubmitRequestRestDTO,
-    responses(
-        (status = 204, description = "No content"),
-        (status = 404, description = "Not found"),
-        (status = 409, description = "Invalid state"),
-    ),
+    responses(EmptyOrErrorResponse),
     tag = "interaction",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn issuance_submit(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<IssuanceSubmitRequestRestDTO>,
-) -> Response {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .ssi_holder_service
@@ -90,24 +89,10 @@ pub(crate) async fn issuance_submit(
         .await;
 
     match result {
-        Ok(_) => StatusCode::NO_CONTENT.into_response(),
-        Err(ServiceError::TransportProtocolError(TransportProtocolError::HttpRequestError(
-            error,
-        ))) => {
-            tracing::error!("HTTP request error: {:?}", error);
-            StatusCode::BAD_GATEWAY.into_response()
-        }
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Credential offer not found: {:?}", result);
-            StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Wrong state: {:?}", result);
-            StatusCode::CONFLICT.into_response()
-        }
+        Ok(_) => EmptyOrErrorResponse::NoContent,
         Err(error) => {
-            tracing::error!("Unknown error: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            tracing::error!(%error, "Error while accepting credential");
+            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }
@@ -116,20 +101,17 @@ pub(crate) async fn issuance_submit(
     post,
     path = "/api/interaction/v1/issuance-reject",
     request_body = IssuanceRejectRequestRestDTO,
-    responses(
-        (status = 204, description = "No content"),
-        (status = 404, description = "Not found"),
-        (status = 409, description = "Invalid state"),
-    ),
+    responses(EmptyOrErrorResponse),
     tag = "interaction",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn issuance_reject(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<IssuanceRejectRequestRestDTO>,
-) -> Response {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .ssi_holder_service
@@ -137,24 +119,10 @@ pub(crate) async fn issuance_reject(
         .await;
 
     match result {
-        Ok(_) => StatusCode::NO_CONTENT.into_response(),
-        Err(ServiceError::TransportProtocolError(TransportProtocolError::HttpRequestError(
-            error,
-        ))) => {
-            tracing::error!("HTTP request error: {:?}", error);
-            StatusCode::BAD_GATEWAY.into_response()
-        }
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Credential offer not found: {:?}", result);
-            StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Wrong state: {:?}", result);
-            StatusCode::CONFLICT.into_response()
-        }
+        Ok(_) => EmptyOrErrorResponse::NoContent,
         Err(error) => {
-            tracing::error!("Unknown error: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            tracing::error!(%error, "Error while rejecting credential");
+            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }
@@ -163,20 +131,17 @@ pub(crate) async fn issuance_reject(
     post,
     path = "/api/interaction/v1/presentation-reject",
     request_body = PresentationRejectRequestRestDTO,
-    responses(
-        (status = 204, description = "No content"),
-        (status = 404, description = "Not found"),
-        (status = 409, description = "Interaction is not a proof request in pending state"),
-    ),
+    responses(EmptyOrErrorResponse),
     tag = "interaction",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn presentation_reject(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<PresentationRejectRequestRestDTO>,
-) -> Response {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .ssi_holder_service
@@ -184,24 +149,10 @@ pub(crate) async fn presentation_reject(
         .await;
 
     match result {
-        Ok(_) => StatusCode::NO_CONTENT.into_response(),
-        Err(ServiceError::TransportProtocolError(TransportProtocolError::HttpRequestError(
-            error,
-        ))) => {
-            tracing::error!("HTTP request error: {:?}", error);
-            StatusCode::BAD_GATEWAY.into_response()
-        }
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Proof request not found: {:?}", result);
-            StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Wrong state: {:?}", result);
-            StatusCode::CONFLICT.into_response()
-        }
+        Ok(_) => EmptyOrErrorResponse::NoContent,
         Err(error) => {
-            tracing::error!("Unknown error: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            tracing::error!(%error, "Error while rejecting proof request");
+            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }
@@ -210,20 +161,17 @@ pub(crate) async fn presentation_reject(
     post,
     path = "/api/interaction/v1/presentation-submit",
     request_body = PresentationSubmitRequestRestDTO,
-    responses(
-        (status = 204, description = "No content"),
-        (status = 404, description = "Not found"),
-        (status = 409, description = "Invalid state"),
-    ),
+    responses(EmptyOrErrorResponse),
     tag = "interaction",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn presentation_submit(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<PresentationSubmitRequestRestDTO>,
-) -> Response {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .ssi_holder_service
@@ -231,24 +179,10 @@ pub(crate) async fn presentation_submit(
         .await;
 
     match result {
-        Ok(_) => StatusCode::NO_CONTENT.into_response(),
-        Err(ServiceError::TransportProtocolError(TransportProtocolError::HttpRequestError(
-            error,
-        ))) => {
-            tracing::error!("HTTP request error: {:?}", error);
-            StatusCode::BAD_GATEWAY.into_response()
-        }
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Proof request not found: {:?}", result);
-            StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Wrong state: {:?}", result);
-            StatusCode::CONFLICT.into_response()
-        }
+        Ok(_) => EmptyOrErrorResponse::NoContent,
         Err(error) => {
-            tracing::error!("Unknown error: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            tracing::error!(%error, "Error while submitting proof");
+            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }

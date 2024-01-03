@@ -8,7 +8,7 @@ use super::{
 use crate::{
     common_mapper::convert_inner,
     model::organisation::{Organisation, OrganisationId, OrganisationRelations},
-    service::error::ServiceError,
+    service::error::{BusinessLogicError, ServiceError},
 };
 
 impl OrganisationService {
@@ -53,7 +53,7 @@ impl OrganisationService {
         // Check if it already exists
         if let Some(id) = id {
             if organisation_already_exists(&self.organisation_repository, &id).await? {
-                return Err(ServiceError::AlreadyExists);
+                return Err(BusinessLogicError::OrganisationAlreadyExists.into());
             }
         }
 

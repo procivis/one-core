@@ -25,7 +25,7 @@ use crate::{
             },
             CredentialSchemaService,
         },
-        error::ServiceError,
+        error::{BusinessLogicError, ServiceError},
         test_utilities::generic_config,
     },
 };
@@ -310,7 +310,10 @@ async fn test_create_credential_schema_unique_name_error() {
             }],
         })
         .await;
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::AlreadyExists)));
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::BusinessLogic(BusinessLogicError::CredentialSchemaAlreadyExists)
+    )));
 }
 
 #[tokio::test]

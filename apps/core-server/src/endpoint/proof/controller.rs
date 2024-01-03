@@ -1,11 +1,15 @@
+use std::sync::Arc;
+
 use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
     ProofDetailResponseRestDTO,
 };
-use crate::dto::common::GetProofsResponseRestDTO;
 use crate::dto::common::{EntityResponseRestDTO, EntityShareResponseRestDTO};
+use crate::dto::common::{GetProofsResponseRestDTO, OkOrErrorResponse};
 use crate::extractor::Qs;
 use crate::router::AppState;
+use crate::ServerConfig;
+use axum::Extension;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -18,13 +22,7 @@ use uuid::Uuid;
 #[utoipa::path(
     get,
     path = "/api/proof-request/v1/{id}/presentation-definition",
-    responses(
-        (status = 200, description = "OK", body = PresentationDefinitionResponseRestDTO),
-        (status = 400, description = "Referenced proof request is sent in verifier role (i.e. not as holder)"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Proof request not found"),
-        (status = 409, description = "Proof not in pending state"),
-    ),
+    responses(OkOrErrorResponse<PresentationDefinitionResponseRestDTO>),
     params(
         ("id" = Uuid, Path, description = "Proof id")
     ),
@@ -34,9 +32,10 @@ use uuid::Uuid;
     ),
 )]
 pub(crate) async fn get_proof_presentation_definition(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Path(id): Path<Uuid>,
-) -> Response {
+) -> OkOrErrorResponse<PresentationDefinitionResponseRestDTO> {
     let result = state
         .core
         .proof_service
@@ -44,20 +43,11 @@ pub(crate) async fn get_proof_presentation_definition(
         .await;
 
     match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(PresentationDefinitionResponseRestDTO::from(value)),
-        )
-            .into_response(),
-        Err(error) => match error {
-            ServiceError::AlreadyExists => StatusCode::CONFLICT.into_response(),
-            ServiceError::IncorrectParameters => StatusCode::BAD_REQUEST.into_response(),
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            _ => {
-                tracing::error!("Error while getting proof {error}");
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
+        Ok(value) => OkOrErrorResponse::ok(value),
+        Err(error) => {
+            tracing::error!(%error, "Error while getting presentation definition");
+            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
+        }
     }
 }
 
@@ -171,12 +161,7 @@ pub(crate) async fn post_proof(
 #[utoipa::path(
     post,
     path = "/api/proof-request/v1/{id}/share",
-    responses(
-        (status = 200, description = "OK", body = EntityShareResponseRestDTO),
-        (status = 400, description = "Proof has been shared already"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "proof schema or DID not found"),
-    ),
+    responses(OkOrErrorResponse<EntityShareResponseRestDTO>),
     params(
         ("id" = Uuid, Path, description = "Proof id")
     ),
@@ -185,22 +170,18 @@ pub(crate) async fn post_proof(
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn share_proof(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
+pub(crate) async fn share_proof(
+    config: Extension<Arc<ServerConfig>>,
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
     let result = state.core.proof_service.share_proof(&id).await;
 
     match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(EntityShareResponseRestDTO::from(value)),
-        )
-            .into_response(),
-        Err(error) => match error {
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
-            other => {
-                tracing::error!("Error while sharing proof: {other:?}");
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
+        Ok(value) => OkOrErrorResponse::ok(value),
+        Err(error) => {
+            tracing::error!(%error, "Error while sharing proof");
+            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
+        }
     }
 }

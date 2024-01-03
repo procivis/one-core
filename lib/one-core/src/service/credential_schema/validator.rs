@@ -2,6 +2,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::organisation::OrganisationId;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::mapper::create_unique_name_check_request;
+use crate::service::error::BusinessLogicError;
 use crate::{
     config::validator::{
         datatype::validate_datatypes, format::validate_format, revocation::validate_revocation,
@@ -20,7 +21,7 @@ pub(crate) async fn credential_schema_already_exists(
         .await
         .map_err(ServiceError::from)?;
     if credential_schemas.total_items > 0 {
-        return Err(ServiceError::AlreadyExists);
+        return Err(BusinessLogicError::CredentialSchemaAlreadyExists.into());
     }
     Ok(())
 }

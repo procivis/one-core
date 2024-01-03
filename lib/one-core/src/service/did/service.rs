@@ -13,9 +13,8 @@ use super::{
     validator::did_already_exists,
     DidDeactivationError, DidService,
 };
-use crate::service::did::mapper::map_did_model_to_did_web_response;
 use crate::service::did::mapper::map_key_to_verification_method;
-use crate::service::did::validator::{throw_if_did_method_deactivated, throw_if_did_method_not_eq};
+use crate::service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError};
 use crate::{
     config::validator::did::validate_did_method,
     model::{
@@ -53,8 +52,16 @@ impl DidService {
             return Err(EntityNotFoundError::Did(*id).into());
         };
 
-        throw_if_did_method_not_eq(&did, "WEB")?;
-        throw_if_did_method_deactivated(&did)?;
+        if did.did_method != "WEB" {
+            return Err(BusinessLogicError::InvalidDidMethod {
+                method: did.did_method,
+            }
+            .into());
+        }
+
+        if did.deactivated {
+            return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
+        }
 
         let mut grouped_key: HashMap<KeyId, Key> = HashMap::new();
         let keys = did
@@ -175,7 +182,7 @@ impl DidService {
             .map_err(ServiceError::from)?;
 
         if did_already_exists(&self.did_repository, &did_value).await? {
-            return Err(ServiceError::AlreadyExists);
+            return Err(BusinessLogicError::DidValueAlreadyExists(did_value).into());
         }
 
         let now = OffsetDateTime::now_utc();

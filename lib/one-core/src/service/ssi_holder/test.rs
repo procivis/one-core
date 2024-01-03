@@ -33,7 +33,7 @@ use crate::{
     repository::did_repository::MockDidRepository,
     repository::mock::proof_repository::MockProofRepository,
     service::{
-        error::ServiceError,
+        error::{BusinessLogicError, ServiceError},
         ssi_holder::{
             dto::{PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO},
             SSIHolderService,
@@ -172,7 +172,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
         ProofStateEnum::Error,
     ] {
         assert2::assert!(
-            let Err(ServiceError::AlreadyExists) = reject_proof_for_state(state).await
+            let Err(ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { .. })) = reject_proof_for_state(state).await
         );
     }
 }

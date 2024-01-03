@@ -1,3 +1,4 @@
+use strum_macros::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -33,7 +34,7 @@ pub struct Proof {
     pub interaction: Option<Interaction>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub enum ProofStateEnum {
     Created,
     Pending,

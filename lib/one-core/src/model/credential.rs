@@ -1,5 +1,6 @@
 use crate::model::revocation_list::RevocationListRelations;
 use shared_types::DidId;
+use strum_macros::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -55,7 +56,7 @@ pub struct CredentialState {
     pub state: CredentialStateEnum,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub enum CredentialStateEnum {
     Created,
     Pending,
