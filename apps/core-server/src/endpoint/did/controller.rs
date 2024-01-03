@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
+use axum::Extension;
 use axum::{http::StatusCode, Json};
 use one_core::service::did::DidDeactivationError;
 use one_core::service::error::ServiceError;
@@ -8,9 +11,10 @@ use shared_types::DidId;
 use super::dto::{
     CreateDidRequestRestDTO, DidPatchRequestRestDTO, DidResponseRestDTO, GetDidQuery,
 };
-use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
+use crate::dto::common::{CreatedOrErrorResponse, EntityResponseRestDTO, GetDidsResponseRestDTO};
 use crate::extractor::Qs;
 use crate::router::AppState;
+use crate::ServerConfig;
 
 #[utoipa::path(
     get,
@@ -81,51 +85,26 @@ pub(crate) async fn get_did_list(state: State<AppState>, Qs(query): Qs<GetDidQue
 #[utoipa::path(
     post,
     path = "/api/did/v1",
-    request_body = Option<CreateDidRequestRestDTO>,
-    responses(
-        (status = 201, description = "Created", body = EntityResponseRestDTO),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Organisation not found"),
-        (status = 409, description = "Did already exists"),
-        (status = 500, description = "Internal server error")
-    ),
+    request_body = CreateDidRequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "did_management",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn post_did(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<CreateDidRequestRestDTO>,
-) -> Response {
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state.core.did_service.create_did(request.into()).await;
 
     match result {
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Did already exists");
-            StatusCode::CONFLICT.into_response()
+        Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id: id.into() }),
+        Err(error) => {
+            tracing::error!(%error, "Error while creating did");
+            CreatedOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
-        Err(ServiceError::IncorrectParameters | ServiceError::NotFound) => {
-            tracing::error!("Organisation or key not found");
-            StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::ConfigValidationError(message)) => {
-            tracing::error!("Config validation error: {}", message);
-            StatusCode::BAD_REQUEST.into_response()
-        }
-        Err(ServiceError::ValidationError(message)) => {
-            tracing::error!("Validation error: {}", message);
-            StatusCode::BAD_REQUEST.into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error while creating did: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-        Ok(id) => (
-            StatusCode::CREATED,
-            Json(EntityResponseRestDTO { id: id.into() }),
-        )
-            .into_response(),
     }
 }
 

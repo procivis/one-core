@@ -1,41 +1,36 @@
+use std::sync::Arc;
+
 use super::dto::{
     CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
 };
-use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
+use crate::dto::common::{
+    CreatedOrErrorResponse, EntityResponseRestDTO, GetProofSchemaListResponseRestDTO,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
+use crate::ServerConfig;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
+use axum::Extension;
 use axum::{http::StatusCode, Json};
 use one_core::service::error::ServiceError;
 use uuid::Uuid;
-use validator::Validate;
 
 #[utoipa::path(
     post,
     path = "/api/proof-schema/v1",
     request_body = CreateProofSchemaRequestRestDTO,
-    responses(
-        (status = 201, description = "Created", body = EntityResponseRestDTO),
-        (status = 400, description = "Bad request"),
-        (status = 401, description = "Unauthorized"),
-        (status = 409, description = "Already exists"),
-        (status = 500, description = "Internal server error")
-    ),
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "proof_schema_management",
     security(
         ("bearer" = [])
     ),
 )]
 pub(crate) async fn post_proof_schema(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<CreateProofSchemaRequestRestDTO>,
-) -> Response {
-    if let Err(e) = request.validate() {
-        tracing::error!("Request validation failure: {}", e.to_string());
-        return StatusCode::BAD_REQUEST.into_response();
-    }
-
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
         .proof_schema_service
@@ -43,23 +38,11 @@ pub(crate) async fn post_proof_schema(
         .await;
 
     match result {
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Name duplicated in the organisation");
-            StatusCode::CONFLICT.into_response()
+        Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id }),
+        Err(error) => {
+            tracing::error!(%error, "Error while creating proof schema");
+            CreatedOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
-        Err(ServiceError::IncorrectParameters) | Err(ServiceError::NotFound) => {
-            tracing::error!("Invalid request");
-            StatusCode::BAD_REQUEST.into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error while creating proof schema: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-        Ok(value) => (
-            StatusCode::CREATED,
-            Json(EntityResponseRestDTO { id: value }),
-        )
-            .into_response(),
     }
 }
 

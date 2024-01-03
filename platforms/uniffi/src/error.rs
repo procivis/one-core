@@ -1,7 +1,7 @@
 use one_core::{
     config::{ConfigError, ConfigParsingError},
     provider::transport_protocol::TransportProtocolError,
-    service::error::ServiceError,
+    service::error::{BusinessLogicError, ServiceError},
 };
 use thiserror::Error;
 
@@ -26,7 +26,6 @@ pub enum BindingError {
 impl From<ServiceError> for BindingError {
     fn from(error: ServiceError) -> Self {
         match &error {
-            ServiceError::AlreadyExists => Self::AlreadyExists(error.to_string()),
             ServiceError::NotFound => Self::NotFound(error.to_string()),
             ServiceError::ValidationError(_) => Self::ValidationError(error.to_string()),
             ServiceError::ConfigValidationError(_) => {
@@ -35,6 +34,12 @@ impl From<ServiceError> for BindingError {
             ServiceError::TransportProtocolError(e) => match e {
                 TransportProtocolError::OperationNotSupported => {
                     Self::NotSupported(error.to_string())
+                }
+                error => Self::Unknown(error.to_string()),
+            },
+            ServiceError::BusinessLogic(e) => match e {
+                BusinessLogicError::OrganisationAlreadyExists => {
+                    Self::AlreadyExists(error.to_string())
                 }
                 error => Self::Unknown(error.to_string()),
             },

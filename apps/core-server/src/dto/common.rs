@@ -207,3 +207,47 @@ where
         }
     }
 }
+
+#[derive(IntoResponses)]
+pub enum EmptyOrErrorResponse {
+    #[response(status = 204, description = "No Content")]
+    NoContent,
+    #[response(status = 401, description = "Unauthorized")]
+    Unauthorized,
+    #[response(status = 400, description = "Bad Request")]
+    BadRequest(#[to_schema] ErrorResponseRestDTO),
+    #[response(status = 404, description = "Entity Not Found")]
+    NotFound(#[to_schema] ErrorResponseRestDTO),
+    #[response(status = 500, description = "Internal error")]
+    ServerError(#[to_schema] ErrorResponseRestDTO),
+}
+
+impl EmptyOrErrorResponse {
+    pub fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
+        let error: ErrorResponseRestDTO = ErrorResponseRestDTO::from(error).hide_cause(hide_cause);
+
+        match &error.error {
+            ServiceError::EntityNotFound(_) | ServiceError::NotFound => Self::NotFound(error),
+            ServiceError::Validation(_) | ServiceError::BusinessLogic(_) => Self::BadRequest(error),
+            _ => Self::ServerError(error),
+        }
+    }
+}
+
+impl axum::response::IntoResponse for EmptyOrErrorResponse {
+    fn into_response(self) -> axum::response::Response {
+        use axum::http::StatusCode;
+        use axum::Json;
+
+        match self {
+            Self::NoContent => StatusCode::NO_CONTENT.into_response(),
+
+            Self::Unauthorized => StatusCode::UNAUTHORIZED.into_response(),
+            Self::BadRequest(error) => (StatusCode::BAD_REQUEST, Json(error)).into_response(),
+            Self::NotFound(error) => (StatusCode::NOT_FOUND, Json(error)).into_response(),
+            Self::ServerError(error) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response()
+            }
+        }
+    }
+}

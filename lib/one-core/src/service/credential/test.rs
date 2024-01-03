@@ -215,7 +215,12 @@ async fn test_delete_credential_incorrect_state() {
     });
 
     let result = service.delete_credential(&credential.id).await;
-    assert!(matches!(result, Err(ServiceError::AlreadyExists)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::InvalidCredentialState { .. }
+        ))
+    ));
 }
 
 #[tokio::test]

@@ -1,10 +1,10 @@
-use shared_types::DidId;
+use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
-use crate::model::credential::CredentialId;
-use crate::model::proof::ProofId;
+use crate::model::credential::{CredentialId, CredentialStateEnum};
+use crate::model::proof::ProofStateEnum;
 use crate::service::oidc::dto::OpenID4VCIError;
 use crate::{
     provider::credential_formatter::error::FormatterError,
@@ -65,11 +65,6 @@ pub enum ServiceError {
     NotFound,
 
     #[error(transparent)]
-    EntityAlreadyExists(#[from] EntityAlreadyExistsError),
-    #[error("Already exists")]
-    AlreadyExists,
-
-    #[error(transparent)]
     BusinessLogic(#[from] BusinessLogicError),
     #[error(transparent)]
     Validation(#[from] ValidationError),
@@ -89,22 +84,33 @@ pub enum EntityNotFoundError {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum EntityAlreadyExistsError {
-    #[error("Proof `{0}` already exists")]
-    Proof(ProofId),
-    #[error("Credential `{0}` already exists")]
-    Credential(CredentialId),
-    #[error("DID `{0}` already exists")]
-    Did(DidId),
-}
-
-#[derive(Debug, thiserror::Error)]
 pub enum BusinessLogicError {
+    #[error("Organisation already exists")]
+    OrganisationAlreadyExists,
+
     #[error("Incompatible DID type, reason: {reason}")]
     IncompatibleDidType { reason: String },
 
     #[error("DID {0} is deactivated")]
     DidIsDeactivated(DidId),
+
+    #[error("Invalid DID method: {method}")]
+    InvalidDidMethod { method: String },
+
+    #[error("Did value already exists: {0}")]
+    DidValueAlreadyExists(DidValue),
+
+    #[error("Credential schema already exists")]
+    CredentialSchemaAlreadyExists,
+
+    #[error("Invalid Credential state: {state}")]
+    InvalidCredentialState { state: CredentialStateEnum },
+
+    #[error("Proof schema already exists")]
+    ProofSchemaAlreadyExists,
+
+    #[error("Invalid Proof state: {state}")]
+    InvalidProofState { state: ProofStateEnum },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -118,14 +124,22 @@ pub enum ValidationError {
 
 #[derive(Debug)]
 pub enum ErrorCode {
+    OrganisationAlreadyExists,
+
+    DidNotFound,
+    DidInvalidType,
+    DidInvalidMethod,
+    DidDeactivated,
+    DidValueAlreadyExists,
+
+    CredentialSchemaAlreadyExists,
+
     Credential001,
-    Credential002,
+    CredentialInvalidState,
 
-    Did001,
-    Did002,
-    Did003,
+    ProofSchemaAlreadyExists,
 
-    Proof001,
+    ProofInvalidState,
 
     Database,
     ResponseMapping,
@@ -150,14 +164,22 @@ impl From<uuid::Error> for ServiceError {
 impl ErrorCode {
     pub const fn msg(&self) -> &'static str {
         match self {
+            ErrorCode::OrganisationAlreadyExists => "Organisation already exists",
+
+            ErrorCode::DidNotFound => "DID not found",
+            ErrorCode::DidInvalidType => "Invalid DID type",
+            ErrorCode::DidInvalidMethod => "Invalid DID method",
+            ErrorCode::DidDeactivated => "DID deactivated",
+            ErrorCode::DidValueAlreadyExists => "DID value already exists",
+
+            ErrorCode::CredentialSchemaAlreadyExists => "Credential schema already exists",
+
             ErrorCode::Credential001 => "Credential not found",
-            ErrorCode::Credential002 => "Credential already exits",
+            ErrorCode::CredentialInvalidState => "Credential state invalid",
 
-            ErrorCode::Did001 => "DID not found",
-            ErrorCode::Did002 => "Invalid DID type",
-            ErrorCode::Did003 => "DID already exits",
+            ErrorCode::ProofSchemaAlreadyExists => "Proof schema already exists",
 
-            ErrorCode::Proof001 => "Proof already exits",
+            ErrorCode::ProofInvalidState => "Proof state invalid",
 
             ErrorCode::Database => "Database error",
 
@@ -176,11 +198,9 @@ impl ServiceError {
             ServiceError::Validation(error) => error.error_code(),
             ServiceError::ResponseMapping(_) => ErrorCode::ResponseMapping,
             ServiceError::Repository(error) => error.error_code(),
-            ServiceError::EntityAlreadyExists(error) => error.error_code(),
 
             ServiceError::GeneralRuntimeError(_)
             | ServiceError::MappingError(_)
-            | ServiceError::AlreadyExists
             | ServiceError::OpenID4VCError(_)
             | ServiceError::AlreadyShared
             | ServiceError::IncorrectParameters
@@ -208,7 +228,7 @@ impl EntityNotFoundError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
             EntityNotFoundError::Credential(_) => ErrorCode::Credential001,
-            EntityNotFoundError::Did(_) => ErrorCode::Did001,
+            EntityNotFoundError::Did(_) => ErrorCode::DidNotFound,
         }
     }
 }
@@ -216,8 +236,17 @@ impl EntityNotFoundError {
 impl BusinessLogicError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            BusinessLogicError::IncompatibleDidType { .. } => ErrorCode::Did002,
-            BusinessLogicError::DidIsDeactivated(_) => ErrorCode::Did001,
+            BusinessLogicError::OrganisationAlreadyExists => ErrorCode::OrganisationAlreadyExists,
+            BusinessLogicError::IncompatibleDidType { .. } => ErrorCode::DidInvalidType,
+            BusinessLogicError::InvalidDidMethod { .. } => ErrorCode::DidInvalidMethod,
+            BusinessLogicError::DidIsDeactivated(_) => ErrorCode::DidDeactivated,
+            BusinessLogicError::DidValueAlreadyExists(_) => ErrorCode::DidValueAlreadyExists,
+            BusinessLogicError::CredentialSchemaAlreadyExists => {
+                ErrorCode::CredentialSchemaAlreadyExists
+            }
+            BusinessLogicError::InvalidCredentialState { .. } => ErrorCode::CredentialInvalidState,
+            BusinessLogicError::ProofSchemaAlreadyExists => ErrorCode::ProofSchemaAlreadyExists,
+            BusinessLogicError::InvalidProofState { .. } => ErrorCode::ProofInvalidState,
         }
     }
 }
@@ -230,25 +259,16 @@ impl ValidationError {
     }
 }
 
-impl EntityAlreadyExistsError {
-    pub fn error_code(&self) -> ErrorCode {
-        match self {
-            EntityAlreadyExistsError::Credential(_) => ErrorCode::Credential002,
-            EntityAlreadyExistsError::Did(_) => ErrorCode::Did003,
-            EntityAlreadyExistsError::Proof(_) => ErrorCode::Proof001,
-        }
-    }
-}
-
 // Remove this once we map all NotFound and NotUpdated errors
 impl From<DataLayerError> for ServiceError {
     fn from(value: DataLayerError) -> Self {
         match value {
-            DataLayerError::AlreadyExists => ServiceError::AlreadyExists,
             DataLayerError::IncorrectParameters => ServiceError::IncorrectParameters,
             DataLayerError::RecordNotFound => ServiceError::NotFound,
             DataLayerError::RecordNotUpdated => ServiceError::NotUpdated,
-            DataLayerError::Db(_) | DataLayerError::MappingError => Self::Repository(value),
+            DataLayerError::Db(_)
+            | DataLayerError::AlreadyExists
+            | DataLayerError::MappingError => Self::Repository(value),
         }
     }
 }

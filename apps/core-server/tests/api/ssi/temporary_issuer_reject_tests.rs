@@ -51,7 +51,7 @@ async fn test_temporary_issuer_reject_success() {
     let resp = utils::client().post(url).send().await.unwrap();
 
     // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 204);
 
     let credential = fixtures::get_credential(&db_conn, &credential.id).await;
     assert_eq!(

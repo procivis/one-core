@@ -4,7 +4,7 @@ use crate::{
     repository::{
         error::DataLayerError, mock::organisation_repository::MockOrganisationRepository,
     },
-    service::error::ServiceError,
+    service::error::{BusinessLogicError, ServiceError},
 };
 use mockall::{predicate::eq, Sequence};
 use std::sync::Arc;
@@ -72,7 +72,12 @@ async fn test_create_organisation_already_exists() {
     let id = Uuid::new_v4();
     let result = service.create_organisation(Some(id)).await;
 
-    assert!(matches!(result, Err(ServiceError::AlreadyExists)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::OrganisationAlreadyExists
+        ))
+    ));
 }
 
 #[tokio::test]

@@ -17,7 +17,7 @@ use crate::{
         },
     },
     service::{
-        error::ServiceError,
+        error::{BusinessLogicError, ServiceError},
         proof_schema::dto::{
             CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
         },
@@ -387,7 +387,10 @@ async fn test_create_proof_schema_unique_name_error() {
     );
 
     let result = service.create_proof_schema(create_request).await;
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::AlreadyExists)));
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::BusinessLogic(BusinessLogicError::ProofSchemaAlreadyExists)
+    )));
 }
 
 #[tokio::test]

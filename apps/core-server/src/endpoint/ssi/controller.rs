@@ -1,9 +1,10 @@
 use super::dto::{
-    ConnectIssuerResponseRestDTO, ConnectRequestRestDTO, ConnectVerifierResponseRestDTO,
+    ConnectRequestRestDTO, ConnectVerifierResponseRestDTO, IssuerResponseRestDTO,
     OpenID4VCIDiscoveryResponseRestDTO, OpenID4VPDirectPostRequestRestDTO,
     OpenID4VPDirectPostResponseRestDTO, PostSsiIssuerConnectQueryParams,
     PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
+use crate::dto::common::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::ssi::dto::{
     DidWebResponseRestDTO, OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
     OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
@@ -13,39 +14,36 @@ use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
 };
 use crate::router::AppState;
+use crate::ServerConfig;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    Form, Json,
+    Extension, Form, Json,
 };
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
-use one_core::service::error::{EntityAlreadyExistsError, EntityNotFoundError, ServiceError};
+use one_core::service::error::ServiceError;
 use shared_types::DidId;
+use std::sync::Arc;
 use uuid::Uuid;
 
 #[utoipa::path(
     post,
     path = "/ssi/temporary-verifier/v1/connect",
     request_body = ConnectRequestRestDTO,
-    responses(
-        (status = 200, description = "OK", body = ConnectVerifierResponseRestDTO),
-        (status = 400, description = "Invalid request"),
-        (status = 404, description = "Proof not found"),
-        (status = 409, description = "Invalid proof state"),
-        (status = 500, description = "Server error"),
-    ),
+    responses(OkOrErrorResponse<ConnectVerifierResponseRestDTO>),
     params(
         PostSsiVerifierConnectQueryParams
     ),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_verifier_connect(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<PostSsiVerifierConnectQueryParams>,
     Json(request): Json<ConnectRequestRestDTO>,
-) -> Response {
+) -> OkOrErrorResponse<ConnectVerifierResponseRestDTO> {
     let result = state
         .core
         .ssi_verifier_service
@@ -53,26 +51,10 @@ pub(crate) async fn ssi_verifier_connect(
         .await;
 
     match result {
-        Ok(result) => (
-            StatusCode::OK,
-            Json(ConnectVerifierResponseRestDTO::from(result)),
-        )
-            .into_response(),
-        Err(ServiceError::AlreadyExists | ServiceError::EntityAlreadyExists(_)) => {
-            tracing::warn!("Already finished");
-            (StatusCode::CONFLICT, "Already finished").into_response()
-        }
-        Err(ServiceError::IncorrectParameters) => {
-            tracing::warn!("Wrong parameters");
-            (StatusCode::BAD_REQUEST, "Wrong parameters").into_response()
-        }
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Missing proof");
-            (StatusCode::NOT_FOUND, "Missing proof").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        Ok(value) => OkOrErrorResponse::ok(value),
+        Err(error) => {
+            tracing::error!(%error, "Error connecting verifier");
+            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }
@@ -83,36 +65,20 @@ pub(crate) async fn ssi_verifier_connect(
     params(
         ("id" = Uuid, Path, description = "Did id")
     ),
-    responses(
-        (status = 200, description = "OK", body = DidWebResponseRestDTO),
-        (status = 400, description = "Did method wrong"),
-        (status = 404, description = "Did does not exist"),
-        (status = 500, description = "Server error"),
-    ),
+    responses(OkOrErrorResponse<DidWebResponseRestDTO>),
     tag = "ssi",
 )]
 pub(crate) async fn get_did_web_document(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Path(id): Path<DidId>,
-) -> Response {
+) -> OkOrErrorResponse<DidWebResponseRestDTO> {
     let result = state.core.did_service.get_did_web_document(&id).await;
-
     match result {
-        Ok(result) => (StatusCode::OK, Json(DidWebResponseRestDTO::from(result))).into_response(),
-        Err(
-            ServiceError::AlreadyExists
-            | ServiceError::EntityAlreadyExists(EntityAlreadyExistsError::Did(_)),
-        ) => {
-            tracing::error!("Did method wrong");
-            (StatusCode::BAD_REQUEST, "Did method wrong").into_response()
-        }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::Did(_)) | ServiceError::NotFound) => {
-            tracing::error!("Did not found");
-            (StatusCode::NOT_FOUND, "Did not found").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        Ok(value) => OkOrErrorResponse::ok(value),
+        Err(error) => {
+            tracing::error!(%error, "Error while getting did:web document");
+            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }
@@ -270,10 +236,6 @@ pub(crate) async fn oidc_create_token(
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
-        Err(ServiceError::AlreadyExists) => {
-            tracing::warn!("Already finished");
-            (StatusCode::CONFLICT, "Wrong credential state").into_response()
-        }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
@@ -331,10 +293,6 @@ pub(crate) async fn oidc_create_credential(
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
-        Err(ServiceError::AlreadyExists) => {
-            tracing::warn!("Already finished");
-            (StatusCode::CONFLICT, "Wrong credential state").into_response()
-        }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
@@ -382,10 +340,6 @@ pub(crate) async fn oidc_verifier_direct_post(
             tracing::error!("Missing interaction or proof");
             (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()
         }
-        Err(ServiceError::AlreadyExists) => {
-            tracing::warn!("Already finished");
-            (StatusCode::CONFLICT, "Wrong proof state").into_response()
-        }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
@@ -396,21 +350,15 @@ pub(crate) async fn oidc_verifier_direct_post(
 #[utoipa::path(
     post,
     path = "/ssi/temporary-verifier/v1/reject",
-    responses(
-        (status = 204, description = "No content"),
-        (status = 400, description = "Wrong proof request state"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Not found"),
-    ),
-    params(
-        ProofRequestQueryParams
-    ),
-    tag = "ssi",
+    responses(EmptyOrErrorResponse),
+    params(ProofRequestQueryParams),
+    tag = "ssi"
 )]
 pub(crate) async fn ssi_verifier_reject_proof(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<ProofRequestQueryParams>,
-) -> Response {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .ssi_verifier_service
@@ -418,15 +366,11 @@ pub(crate) async fn ssi_verifier_reject_proof(
         .await;
 
     match result {
-        Ok(_) => StatusCode::NO_CONTENT.into_response(),
-        Err(error) => match error {
-            ServiceError::AlreadyExists => StatusCode::BAD_REQUEST.into_response(),
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            _ => {
-                tracing::error!("Error while rejecting proof");
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
+        Ok(_) => EmptyOrErrorResponse::NoContent,
+        Err(error) => {
+            tracing::error!(%error, "Error while rejecting proof");
+            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
+        }
     }
 }
 
@@ -434,23 +378,18 @@ pub(crate) async fn ssi_verifier_reject_proof(
     post,
     path = "/ssi/temporary-verifier/v1/submit",
     request_body = String, // signed JWT
-    responses(
-        (status = 204, description = "OK"),
-        (status = 400, description = "Invalid request"),
-        (status = 404, description = "Proof not found"),
-        (status = 409, description = "Invalid proof state"),
-        (status = 500, description = "Server error"),
-    ),
+    responses(EmptyOrErrorResponse),
     params(
         ProofRequestQueryParams
     ),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_verifier_submit_proof(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<ProofRequestQueryParams>,
     request: String,
-) -> Response {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .ssi_verifier_service
@@ -458,22 +397,10 @@ pub(crate) async fn ssi_verifier_submit_proof(
         .await;
 
     match result {
-        Ok(_) => (StatusCode::NO_CONTENT).into_response(),
-        Err(ServiceError::AlreadyExists) => {
-            tracing::warn!("Already finished");
-            (StatusCode::CONFLICT, "Already finished").into_response()
-        }
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Missing proof");
-            (StatusCode::NOT_FOUND, "Missing proof").into_response()
-        }
-        Err(ServiceError::IncorrectParameters) => {
-            tracing::error!("Wrong arguments");
-            (StatusCode::BAD_REQUEST, "Wrong arguments").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        Ok(_) => EmptyOrErrorResponse::NoContent,
+        Err(error) => {
+            tracing::error!(%error, "Error while submitting proof");
+            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }
@@ -482,24 +409,16 @@ pub(crate) async fn ssi_verifier_submit_proof(
     post,
     path = "/ssi/temporary-issuer/v1/connect",
     request_body = ConnectRequestRestDTO,
-    responses(
-        (status = 200, description = "OK", body = GetCredentialResponseRestDTO),
-        (status = 400, description = "Invalid request"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Credential not found"),
-        (status = 409, description = "Already issued"),
-        (status = 500, description = "Server error"),
-    ),
-    params(
-        PostSsiIssuerConnectQueryParams
-    ),
+    responses(OkOrErrorResponse<GetCredentialResponseRestDTO>),
+    params(PostSsiIssuerConnectQueryParams),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_issuer_connect(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<PostSsiIssuerConnectQueryParams>,
     Json(request): Json<ConnectRequestRestDTO>,
-) -> Response {
+) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
     let result = state
         .core
         .ssi_issuer_service
@@ -507,26 +426,10 @@ pub(crate) async fn ssi_issuer_connect(
         .await;
 
     match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(GetCredentialResponseRestDTO::from(value)),
-        )
-            .into_response(),
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Already issued");
-            (StatusCode::CONFLICT, "Already issued").into_response()
-        }
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Missing credential");
-            (StatusCode::NOT_FOUND, "Missing credential").into_response()
-        }
-        Err(ServiceError::IncorrectParameters) => {
-            tracing::error!("Invalid arguments");
-            (StatusCode::BAD_REQUEST, "Invalid arguments").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        Ok(value) => OkOrErrorResponse::ok(value),
+        Err(error) => {
+            tracing::error!(%error, "Error while connecting to issuer");
+            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }
@@ -534,21 +437,15 @@ pub(crate) async fn ssi_issuer_connect(
 #[utoipa::path(
     post,
     path = "/ssi/temporary-issuer/v1/reject",
-    responses(
-        (status = 200, description = "OK"),
-        (status = 400, description = "Invalid credential state"),
-        (status = 401, description = "Unauthorized"),
-        (status = 500, description = "Server error"),
-    ),
-    params(
-        PostSsiIssuerRejectQueryParams
-    ),
-    tag = "ssi",
+    responses(EmptyOrErrorResponse),
+    params(PostSsiIssuerRejectQueryParams),
+    tag = "ssi"
 )]
 pub(crate) async fn ssi_issuer_reject(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<PostSsiIssuerRejectQueryParams>,
-) -> Response {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .ssi_issuer_service
@@ -556,18 +453,10 @@ pub(crate) async fn ssi_issuer_reject(
         .await;
 
     match result {
-        Ok(_) => (StatusCode::OK.into_response()).into_response(),
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Missing credential");
-            (StatusCode::NOT_FOUND, "Missing credential").into_response()
-        }
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Invalid state");
-            (StatusCode::BAD_REQUEST, "Invalid state").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        Ok(_) => EmptyOrErrorResponse::NoContent,
+        Err(error) => {
+            tracing::error!(%error, "Error while rejecting proof");
+            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }
@@ -575,23 +464,15 @@ pub(crate) async fn ssi_issuer_reject(
 #[utoipa::path(
     post,
     path = "/ssi/temporary-issuer/v1/submit",
-    responses(
-        (status = 200, description = "OK", body = ConnectIssuerResponseRestDTO),
-        (status = 400, description = "Bad request"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Not found"),
-        (status = 409, description = "Already issued"),
-        (status = 500, description = "Server error"),
-    ),
-    params(
-        PostSsiIssuerSubmitQueryParams
-    ),
+    responses(OkOrErrorResponse<IssuerResponseRestDTO>),
+    params(PostSsiIssuerSubmitQueryParams),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_issuer_submit(
+    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<PostSsiIssuerSubmitQueryParams>,
-) -> Response {
+) -> OkOrErrorResponse<IssuerResponseRestDTO> {
     let result = state
         .core
         .ssi_issuer_service
@@ -599,26 +480,10 @@ pub(crate) async fn ssi_issuer_submit(
         .await;
 
     match result {
-        Ok(result) => (
-            StatusCode::OK,
-            Json(ConnectIssuerResponseRestDTO::from(result)),
-        )
-            .into_response(),
-        Err(ServiceError::AlreadyExists) => {
-            tracing::error!("Already issued");
-            (StatusCode::CONFLICT, "Already issued").into_response()
-        }
-        Err(ServiceError::NotFound) => {
-            tracing::error!("Missing credential");
-            (StatusCode::NOT_FOUND, "Missing credential").into_response()
-        }
-        Err(ServiceError::IncorrectParameters) => {
-            tracing::error!("Invalid arguments");
-            (StatusCode::BAD_REQUEST, "Invalid arguments").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        Ok(value) => OkOrErrorResponse::ok(value),
+        Err(error) => {
+            tracing::error!(%error, "Error while accepting credential");
+            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
         }
     }
 }

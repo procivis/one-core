@@ -279,7 +279,7 @@ pub struct PostSsiIssuerConnectQueryParams {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[convert(from = "IssuerResponseDTO")]
-pub struct ConnectIssuerResponseRestDTO {
+pub struct IssuerResponseRestDTO {
     pub credential: String,
     pub format: String,
 }

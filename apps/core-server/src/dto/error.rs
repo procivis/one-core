@@ -7,14 +7,22 @@ use utoipa::ToSchema;
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[convert(from = "one_core::service::error::ErrorCode")]
 pub enum ErrorCode {
+    OrganisationAlreadyExists,
+
+    DidNotFound,
+    DidInvalidType,
+    DidInvalidMethod,
+    DidDeactivated,
+    DidValueAlreadyExists,
+
+    CredentialSchemaAlreadyExists,
+
     Credential001,
-    Credential002,
+    CredentialInvalidState,
 
-    Did001,
-    Did002,
-    Did003,
+    ProofSchemaAlreadyExists,
 
-    Proof001,
+    ProofInvalidState,
 
     Database,
     ResponseMapping,
