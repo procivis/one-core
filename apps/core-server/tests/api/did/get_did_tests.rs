@@ -1,46 +1,30 @@
-use core_server::router::start_server;
-use serde_json::Value;
-
-use crate::{
-    fixtures::{self, TestingDidParams},
-    utils,
-};
+use crate::fixtures::TestingDidParams;
+use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_did_ok() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            deactivated: Some(true),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                deactivated: Some(true),
+                ..Default::default()
+            },
+        )
+        .await;
 
     // WHEN
-    let url = format!("{base_url}/api/did/v1/{}", did.id);
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
-
-    let resp = utils::client()
-        .get(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context.api.dids.get(&did.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let resp: Value = resp.json().await.unwrap();
-
-    assert_eq!(did.id, resp["id"].as_str().unwrap().parse().unwrap());
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&did.id);
     assert!(resp["deactivated"].as_bool().unwrap());
 }

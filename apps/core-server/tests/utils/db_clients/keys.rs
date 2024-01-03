@@ -38,6 +38,26 @@ impl KeysDB {
     }
 }
 
+pub fn es256_testing_params() -> TestingKeyParams {
+    TestingKeyParams {
+        key_type: Some("ES256".to_string()),
+        storage_type: Some("INTERNAL".to_string()),
+
+        // multibase: zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ
+        public_key: Some(vec![
+            2, 113, 223, 203, 78, 208, 144, 157, 171, 118, 94, 112, 196, 150, 233, 175, 129, 0, 12,
+            229, 151, 39, 80, 197, 83, 144, 248, 160, 227, 159, 2, 215, 39,
+        ]),
+        key_reference: Some(vec![
+            191, 117, 227, 19, 61, 61, 70, 152, 133, 158, 83, 244, 0, 0, 0, 0, 0, 0, 0, 32, 1, 0,
+            223, 243, 57, 200, 101, 206, 133, 43, 169, 194, 153, 38, 105, 35, 100, 79, 106, 61, 68,
+            62, 9, 96, 48, 202, 28, 74, 43, 89, 96, 100, 154, 148, 140, 180, 17, 135, 78, 216, 169,
+            229, 27, 196, 181, 163, 95, 116,
+        ]),
+        ..Default::default()
+    }
+}
+
 pub fn eddsa_testing_params() -> TestingKeyParams {
     TestingKeyParams {
         key_type: Some("EDDSA".to_string()),

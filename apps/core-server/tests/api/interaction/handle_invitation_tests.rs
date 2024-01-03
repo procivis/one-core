@@ -1,102 +1,43 @@
+use core_server::router::start_server;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::{json, Value};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-use wiremock::{
-    http::Method::{Get, Post},
-    matchers::{method, path, query_param},
-    Mock, MockServer, ResponseTemplate,
-};
+use wiremock::http::Method::{Get, Post};
+use wiremock::matchers::{method, path, query_param};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use core_server::router::start_server;
-
-use crate::{fixtures, utils};
+use crate::fixtures;
+use crate::utils::context::TestContext;
+use crate::utils::{self};
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
     // GIVEN
-    let mock_server = MockServer::start().await;
-    let config = fixtures::create_config(mock_server.uri());
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did(&db_conn, &organisation, None).await;
-
+    let (context, _, did) = TestContext::new_with_did().await;
     let credential_id = Uuid::new_v4();
 
-    Mock::given(method(Post))
-        .and(path("/ssi/temporary-issuer/v1/connect"))
-        .and(query_param("protocol", "PROCIVIS_TEMPORARY"))
-        .and(query_param("credential", credential_id.to_string()))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "claims": [
-                    {
-                        "schema": {
-                            "createdDate": "2023-11-08T15:46:14.997Z",
-                            "datatype": "STRING",
-                            "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-                            "key": "field",
-                            "lastModified": "2023-11-08T15:46:14.997Z",
-                            "required": true
-                        },
-                        "value": "aae"
-                    }
-                ],
-                "createdDate": "2023-11-09T08:39:16.459Z",
-                "id": credential_id,
-                "issuanceDate": "2023-11-09T08:39:16.459Z",
-                "issuerDid": {
-                    "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-                    "createdDate": "2023-11-09T08:39:16.460Z",
-                    "lastModified": "2023-11-09T08:39:16.459Z",
-                    "name": "foo",
-                    "did": "did:key:z6Mkm1qx9JYefnqDVyyUBovf4Jo97jDxVzPejTeStyrNzyqU",
-                    "type": "REMOTE",
-                    "method": "KEY",
-                    "deactivated": false,
-                },
-                "lastModified": "2023-11-09T08:39:16.548Z",
-                "revocationDate": null,
-                "schema": {
-                    "createdDate": "2023-11-08T15:46:14.997Z",
-                    "format": "SDJWT",
-                    "id": "293d1376-62ea-4b0e-8c16-2dfe4f7ac0bd",
-                    "lastModified": "2023-11-08T15:46:14.997Z",
-                    "name": "detox-e2e-revocable-12a4212d-9b28-4bb0-9640-23c938f8a8b1",
-                    "organisationId": "2476ebaa-0108-413d-aa72-c2a6babd423f",
-                    "revocationMethod": "STATUSLIST2021"
-                },
-                "state": "PENDING"
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
+    context
+        .server_mock
+        .ssi_issuance("PROCIVIS_TEMPORARY", credential_id)
         .await;
 
     // WHEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-
-    let url = format!("{base_url}/api/interaction/v1/handle-invitation");
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "didId": did.id,
-          "url": format!("{}/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential={credential_id}", mock_server.uri())
-        }))
-        .send()
-        .await
-        .unwrap();
+    let url = format!(
+        "{}/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential={credential_id}",
+        context.server_mock.uri()
+    );
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(did.id, &url)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let resp: Value = resp.json().await.unwrap();
+    let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
 }
 

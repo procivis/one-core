@@ -126,7 +126,7 @@ async fn setup(
         db,
         organisation_id,
         proof_schema_id,
-        did_id: did_id.clone(),
+        did_id: *did_id,
         claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.0).collect(),
         interaction_id,
     }
@@ -169,7 +169,7 @@ async fn setup_with_proof(
     let proof_id = Uuid::parse_str(
         &insert_proof_request_to_database(
             &db,
-            did_id.clone(),
+            did_id,
             None,
             &proof_schema_id.to_string(),
             Some(interaction_id.to_string()),
@@ -605,7 +605,7 @@ async fn test_set_proof_holder_did() {
         .set_proof_holder_did(
             &proof_id,
             Did {
-                id: holder_did_id.clone(),
+                id: *holder_did_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "holder".to_string(),

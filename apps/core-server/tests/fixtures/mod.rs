@@ -9,7 +9,7 @@ use one_core::model::credential::{
     CredentialStateRelations,
 };
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
@@ -226,22 +226,6 @@ pub async fn create_did(
         .unwrap();
 
     did
-}
-
-pub async fn get_did_by_id(db_conn: &DbConn, did_id: &DidId) -> Did {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-    data_layer
-        .get_did_repository()
-        .get_did(
-            did_id,
-            &DidRelations {
-                keys: Some(KeyRelations::default()),
-                ..Default::default()
-            },
-        )
-        .await
-        .unwrap()
-        .unwrap()
 }
 
 pub async fn create_credential_schema(
@@ -555,24 +539,6 @@ pub async fn get_proof_schema(db_conn: &DbConn, proof_schema_id: &ProofSchemaId)
                     }),
                 }),
                 organisation: Some(OrganisationRelations {}),
-            },
-        )
-        .await
-        .unwrap()
-}
-
-pub async fn get_credential_schema(
-    db_conn: &DbConn,
-    credential_schema_id: &CredentialSchemaId,
-) -> CredentialSchema {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-    data_layer
-        .get_credential_schema_repository()
-        .get_credential_schema(
-            credential_schema_id,
-            &CredentialSchemaRelations {
-                claim_schemas: Some(ClaimSchemaRelations::default()),
-                organisation: Some(OrganisationRelations::default()),
             },
         )
         .await

@@ -26,7 +26,7 @@ async fn test_get_credential_success() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.get(credential.id).await;
+    let resp = context.api.credentials.get(&credential.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);

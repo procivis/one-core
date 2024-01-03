@@ -118,7 +118,7 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
     TestSetupWithDid {
         provider,
         organisation,
-        did_id: did_id.clone(),
+        did_id: *did_id,
         did_value,
         did_name: did_name.to_string(),
         key,
@@ -135,10 +135,10 @@ async fn test_create_did() {
         ..
     } = setup_empty(Repositories::default()).await;
 
-    let id: DidId = Uuid::new_v4().into();
+    let id = Uuid::new_v4().into();
     let result = provider
         .create_did(Did {
-            id: id.clone(),
+            id,
             name: "Name".to_string(),
             organisation: Some(organisation),
             did: "did:key:123".parse().unwrap(),

@@ -323,8 +323,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
         let issuer_did = request.issuer_did.clone();
-        let holder_did_id = request.holder_did.as_ref().map(|did| did.id.clone());
-
+        let holder_did_id = request.holder_did.as_ref().map(|did| did.id);
         let schema = request
             .schema
             .to_owned()

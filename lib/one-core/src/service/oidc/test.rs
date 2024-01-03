@@ -440,13 +440,12 @@ async fn test_oidc_create_credential_success() {
                 })
             });
 
-        let holder_did_id_clone = holder_did_id.clone();
         did_repository
             .expect_get_did_by_value()
             .times(1)
             .returning(move |did_value, _| {
                 Ok(Did {
-                    id: holder_did_id_clone.clone(),
+                    id: holder_did_id,
                     created_date: now,
                     last_modified: now,
                     name: "verifier".to_string(),
@@ -463,7 +462,7 @@ async fn test_oidc_create_credential_success() {
             .expect_update_credential()
             .once()
             .withf(move |request| {
-                request.id == credential.id && request.holder_did_id == Some(holder_did_id.clone())
+                request.id == credential.id && request.holder_did_id == Some(holder_did_id)
             })
             .returning(move |_| Ok(()));
     }

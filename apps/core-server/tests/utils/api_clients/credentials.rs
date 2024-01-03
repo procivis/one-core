@@ -36,29 +36,39 @@ impl CredentialsApi {
         self.client.post("/api/credential/v1", body).await
     }
 
-    pub async fn list(&self, page: u64, size: u64, organisation_id: impl Display) -> Response {
+    pub async fn list(&self, page: u64, size: u64, organisation_id: &impl Display) -> Response {
         let url = format!(
             "/api/credential/v1?page={page}&pageSize={size}&organisationId={organisation_id}"
         );
         self.client.get(&url).await
     }
 
-    pub async fn get(&self, id: impl Display) -> Response {
+    pub async fn get(&self, id: &impl Display) -> Response {
         let url = format!("/api/credential/v1/{id}");
         self.client.get(&url).await
     }
 
-    pub async fn delete(&self, id: impl Display) -> Response {
+    pub async fn delete(&self, id: &impl Display) -> Response {
         let url = format!("/api/credential/v1/{id}");
         self.client.delete(&url).await
     }
 
-    pub async fn revoke(&self, id: impl Display) -> Response {
+    pub async fn revoke(&self, id: &impl Display) -> Response {
         let url = format!("/api/credential/v1/{id}/revoke");
         self.client.post(&url, None).await
     }
 
-    pub async fn share(&self, id: impl Display) -> Response {
+    pub async fn revocation_check(&self, credential_id: impl Into<Uuid>) -> Response {
+        let body = json!({
+          "credentialIds": vec![credential_id.into()]
+        });
+
+        self.client
+            .post("/api/credential/v1/revocation-check", body)
+            .await
+    }
+
+    pub async fn share(&self, id: &impl Display) -> Response {
         let url = format!("/api/credential/v1/{id}/share");
         self.client.post(&url, None).await
     }

@@ -117,7 +117,6 @@ async fn test_connect_to_holder_succeeds() {
     let did_id: DidId = Uuid::new_v4().into();
 
     let holder_did_value_clone = holder_did_value.clone();
-    let did_id_clone = did_id.clone();
 
     let mut did_repository = MockDidRepository::new();
     did_repository
@@ -129,7 +128,7 @@ async fn test_connect_to_holder_succeeds() {
         .once()
         .return_once(move |_, _| {
             Ok(Did {
-                id: did_id_clone,
+                id: did_id,
                 ..dummy_did()
             })
         });
@@ -290,7 +289,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
             assert_eq!(&holder_did_value.did, &holder_did_value_clone.clone());
             true
         })
-        .returning(move |_| Ok(did_id.clone()));
+        .returning(move |_| Ok(did_id));
 
     proof_repository
         .expect_set_proof_holder_did()

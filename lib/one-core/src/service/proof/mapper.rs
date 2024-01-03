@@ -56,7 +56,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
 }
 
 pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
-    let holder_did_id = value.holder_did.as_ref().map(|did| did.id.clone());
+    let holder_did_id = value.holder_did.as_ref().map(|did| did.id);
     let schema = value
         .schema
         .as_ref()

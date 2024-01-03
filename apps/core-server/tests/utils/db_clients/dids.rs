@@ -1,7 +1,8 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use one_core::model::did::{Did, DidType};
+use one_core::model::did::{Did, DidRelations, DidType};
+use one_core::model::key::KeyRelations;
 use one_core::model::organisation::Organisation;
 use one_core::repository::did_repository::DidRepository;
 use shared_types::{DidId, DidValue};
@@ -38,8 +39,22 @@ impl DidsDB {
             keys: params.keys,
         };
 
-        self.repository.create_did(did.clone()).await.unwrap();
+        let id = self.repository.create_did(did.clone()).await.unwrap();
 
-        did
+        self.get(&id).await
+    }
+
+    pub async fn get(&self, did_id: &DidId) -> Did {
+        self.repository
+            .get_did(
+                did_id,
+                &DidRelations {
+                    keys: Some(KeyRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap()
+            .unwrap()
     }
 }

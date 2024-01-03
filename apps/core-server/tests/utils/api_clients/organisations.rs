@@ -27,7 +27,7 @@ impl OrganisationsApi {
         self.client.get("/api/organisation/v1").await
     }
 
-    pub async fn get(&self, id: impl Display) -> Response {
+    pub async fn get(&self, id: &impl Display) -> Response {
         let url = format!("/api/organisation/v1/{id}");
         self.client.get(&url).await
     }

@@ -50,7 +50,7 @@ impl DidService {
             .map_err(ServiceError::from)?;
 
         let Some(did) = did else {
-            return Err(EntityNotFoundError::Did(id.clone()).into());
+            return Err(EntityNotFoundError::Did(*id).into());
         };
 
         throw_if_did_method_not_eq(&did, "WEB")?;

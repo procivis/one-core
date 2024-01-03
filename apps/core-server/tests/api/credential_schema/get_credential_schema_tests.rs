@@ -1,48 +1,28 @@
-use core_server::router::start_server;
-use serde_json::Value;
-
-use crate::{fixtures, utils};
+use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_credential_schema_success() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-
-    let credential_schema = fixtures::create_credential_schema(
-        &db_conn,
-        "test schema",
-        &organisation,
-        "STATUSLIST2021",
-    )
-    .await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test schema", &organisation, "STATUSLIST2021")
+        .await;
 
     // WHEN
-    let url = format!(
-        "{base_url}/api/credential-schema/v1/{}",
-        credential_schema.id
-    );
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
-
-    let resp = utils::client()
-        .get(url)
-        .bearer_auth("test")
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .credential_schemas
+        .get(&credential_schema.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
-    let resp: Value = resp.json().await.unwrap();
+    let resp = resp.json_value().await;
 
-    assert_eq!(
-        resp["id"].as_str().unwrap(),
-        credential_schema.id.to_string()
-    );
+    resp["id"].assert_eq(&credential_schema.id);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
-    assert_eq!(resp["revocationMethod"].as_str().unwrap(), "STATUSLIST2021");
+    assert_eq!(resp["revocationMethod"], "STATUSLIST2021");
 }
