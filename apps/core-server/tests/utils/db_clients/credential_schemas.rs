@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use one_core::model::claim_schema::ClaimSchema;
-use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use one_core::model::organisation::Organisation;
+use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
+};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -46,11 +48,25 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
         };
 
-        self.repository
+        let id = self
+            .repository
             .create_credential_schema(credential_schema.clone())
             .await
             .unwrap();
 
-        credential_schema
+        self.get(&id).await
+    }
+
+    pub async fn get(&self, credential_schema_id: &CredentialSchemaId) -> CredentialSchema {
+        self.repository
+            .get_credential_schema(
+                credential_schema_id,
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
+            .await
+            .unwrap()
     }
 }

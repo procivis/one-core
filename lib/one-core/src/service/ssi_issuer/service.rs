@@ -71,7 +71,7 @@ impl SSIIssuerService {
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                holder_did_id: Some(holder_did.id.clone()),
+                holder_did_id: Some(holder_did.id),
                 state: Some(CredentialState {
                     created_date: now,
                     state: new_state.clone(),

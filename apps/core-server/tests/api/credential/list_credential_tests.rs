@@ -29,7 +29,7 @@ async fn test_get_list_credential_success() {
     }
 
     // WHEN
-    let resp = context.api.credentials.list(0, 8, organisation.id).await;
+    let resp = context.api.credentials.list(0, 8, &organisation.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -80,7 +80,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
         .await;
 
     // WHEN
-    let resp = context.api.credentials.list(0, 8, organisation.id).await;
+    let resp = context.api.credentials.list(0, 8, &organisation.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);

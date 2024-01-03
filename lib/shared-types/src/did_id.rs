@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::macros::{impls_for_seaorm_newtype, impls_for_uuid_newtype};
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
 #[serde(transparent)]
 #[repr(transparent)]

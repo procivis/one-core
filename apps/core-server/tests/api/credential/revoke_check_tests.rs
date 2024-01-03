@@ -1,12 +1,11 @@
-use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
-use serde_json::{json, Value};
 use wiremock::http::Method::Get;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures::{self, TestingCredentialParams, TestingDidParams};
-use crate::utils;
+use crate::fixtures::{TestingCredentialParams, TestingDidParams};
+use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_revoke_check_success() {
@@ -20,42 +19,44 @@ async fn test_revoke_check_success() {
         .start()
         .await;
 
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "STATUSLIST2021")
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "PROCIVIS_TEMPORARY",
+            TestingCredentialParams {
+                credential: Some(credential_jwt),
+                ..Default::default()
+            },
+        )
+        .await;
 
-    let config = fixtures::create_config(base_url.clone());
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let issuer_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            did_method: Some("KEY".to_string()),
-            did: Some(
-                "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                    .parse()
-                    .unwrap(),
-            ),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "STATUSLIST2021").await;
-    let credential = fixtures::create_credential(
-        &db_conn,
-        &credential_schema,
-        CredentialStateEnum::Accepted,
-        &issuer_did,
-        "PROCIVIS_TEMPORARY",
-        TestingCredentialParams {
-            credential: Some(credential_jwt),
-            ..Default::default()
-        },
-    )
-    .await;
-
-    fixtures::create_revocation_list(&db_conn, &issuer_did, None).await;
+    context.db.revocation_lists.create(&issuer_did, None).await;
 
     Mock::given(method(Get))
         .and(path(
@@ -67,26 +68,17 @@ async fn test_revoke_check_success() {
         .await;
 
     // WHEN
-    let url = format!("{base_url}/api/credential/v1/revocation-check");
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "credentialIds": vec![credential.id]
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
-    let resp: Value = resp.json().await.unwrap();
+    let resp = resp.json_value().await;
 
-    assert_eq!(credential.id.to_string(), resp[0]["credentialId"]);
+    resp[0]["credentialId"].assert_eq(&credential.id);
     assert_eq!("ACCEPTED", resp[0]["status"]);
     assert_eq!(true, resp[0]["success"]);
     assert!(resp[0]["reason"].is_null());

@@ -17,14 +17,14 @@ pub(crate) fn throw_if_did_method_not_eq(
     method_type: &str,
 ) -> Result<(), EntityAlreadyExistsError> {
     if did.did_method != method_type {
-        return Err(EntityAlreadyExistsError::Did(did.id.clone()));
+        return Err(EntityAlreadyExistsError::Did(did.id));
     }
     Ok(())
 }
 
 pub(crate) fn throw_if_did_method_deactivated(did: &Did) -> Result<(), EntityAlreadyExistsError> {
     if did.deactivated {
-        return Err(EntityAlreadyExistsError::Did(did.id.clone()));
+        return Err(EntityAlreadyExistsError::Did(did.id));
     }
     Ok(())
 }

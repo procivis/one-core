@@ -48,7 +48,7 @@ async fn test_revoke_credential_success() {
     context.db.revocation_lists.create(&issuer_did, None).await;
 
     // WHEN
-    let resp = context.api.credentials.revoke(credential.id).await;
+    let resp = context.api.credentials.revoke(&credential.id).await;
 
     // THEN
     assert_eq!(resp.status(), 204);
@@ -66,7 +66,7 @@ async fn test_revoke_credential_not_found() {
     let context = TestContext::new().await;
 
     // WHEN
-    let resp = context.api.credentials.revoke(Uuid::new_v4()).await;
+    let resp = context.api.credentials.revoke(&Uuid::new_v4()).await;
 
     // THEN
     assert_eq!(resp.status(), 404);

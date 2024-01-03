@@ -25,9 +25,7 @@ async fn test_create_credential_success() {
     assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
 
-    assert!(resp.get("id").is_some());
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
-
     assert_eq!(
         CredentialStateEnum::Created,
         credential.state.unwrap()[0].state

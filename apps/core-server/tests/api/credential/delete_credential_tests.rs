@@ -28,7 +28,7 @@ async fn test_delete_credential_success() {
     assert_eq!(None, deleted_at);
 
     // WHEN
-    let resp = context.api.credentials.delete(credential.id).await;
+    let resp = context.api.credentials.delete(&credential.id).await;
 
     // THEN
     assert_eq!(204, resp.status());

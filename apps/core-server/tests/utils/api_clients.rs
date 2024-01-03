@@ -3,11 +3,15 @@ use std::sync::OnceLock;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+use self::credential_schemas::CredentialSchemasApi;
 use self::credentials::CredentialsApi;
+use self::dids::DidsApi;
 use self::interactions::InteractionsApi;
 use self::organisations::OrganisationsApi;
 
+pub mod credential_schemas;
 pub mod credentials;
+pub mod dids;
 pub mod interactions;
 pub mod organisations;
 
@@ -41,6 +45,20 @@ impl HttpClient {
 
         let resp = http_client()
             .post(url)
+            .bearer_auth(&self.token)
+            .json(&body.into())
+            .send()
+            .await
+            .unwrap();
+
+        Response { resp }
+    }
+
+    pub async fn patch(&self, url: &str, body: impl Into<Option<Value>>) -> Response {
+        let url = format!("{}{url}", self.base_url);
+
+        let resp = http_client()
+            .patch(url)
             .bearer_auth(&self.token)
             .json(&body.into())
             .send()
@@ -87,6 +105,8 @@ pub struct Client {
     pub organisations: OrganisationsApi,
     pub credentials: CredentialsApi,
     pub interactions: InteractionsApi,
+    pub credential_schemas: CredentialSchemasApi,
+    pub dids: DidsApi,
 }
 
 impl Client {
@@ -96,7 +116,9 @@ impl Client {
         Self {
             organisations: OrganisationsApi::new(client.clone()),
             credentials: CredentialsApi::new(client.clone()),
-            interactions: InteractionsApi::new(client),
+            interactions: InteractionsApi::new(client.clone()),
+            credential_schemas: CredentialSchemasApi::new(client.clone()),
+            dids: DidsApi::new(client),
         }
     }
 }

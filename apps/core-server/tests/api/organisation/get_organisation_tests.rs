@@ -7,7 +7,7 @@ async fn test_get_organisation_success() {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
     // WHEN
-    let resp = context.api.organisations.get(organisation.id).await;
+    let resp = context.api.organisations.get(&organisation.id).await;
 
     // THEN
     assert_eq!(resp.status(), 200);

@@ -119,7 +119,7 @@ async fn setup_empty() -> TestSetup {
     .unwrap();
 
     let did = Did {
-        id: did_id.clone(),
+        id: *did_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "name".to_string(),
@@ -163,7 +163,7 @@ async fn setup_with_credential() -> TestSetupWithCredential {
             &credential_schema.id.to_string(),
             CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
-            did.id.clone(),
+            did.id,
             None,
         )
         .await
@@ -422,7 +422,7 @@ async fn test_delete_credential_success() {
             &credential_schema.id.to_string(),
             CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
-            did.id.clone(),
+            did.id,
             None,
         )
         .await
@@ -495,7 +495,7 @@ async fn test_get_credential_list_success() {
         &credential_schema.id.to_string(),
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
-        did.id.clone(),
+        did.id,
         None,
     )
     .await
@@ -505,7 +505,7 @@ async fn test_get_credential_list_success() {
         &credential_schema.id.to_string(),
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
-        did.id.clone(),
+        did.id,
         None,
     )
     .await
@@ -516,7 +516,7 @@ async fn test_get_credential_list_success() {
         &credential_schema.id.to_string(),
         CredentialStateEnum::Created,
         "PROCIVIS_TEMPORARY",
-        did.id.clone(),
+        did.id,
         Some(OffsetDateTime::now_utc()),
     )
     .await
@@ -587,7 +587,7 @@ async fn test_get_credential_success() {
             &credential_schema.id.to_string(),
             CredentialStateEnum::Created,
             "PROCIVIS_TEMPORARY",
-            did.id.clone(),
+            did.id,
             None,
         )
         .await
