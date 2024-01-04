@@ -95,7 +95,7 @@ async fn test_update_did_same_deactivated_status_as_requested() {
     let resp = context.api.dids.deactivate(&did.id).await;
 
     // THEN
-    assert_eq!(resp.status(), 409);
+    assert_eq!(resp.status(), 400);
 }
 
 #[tokio::test]

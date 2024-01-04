@@ -4,7 +4,7 @@ use super::dto::{
     OpenID4VPDirectPostResponseRestDTO, PostSsiIssuerConnectQueryParams,
     PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
-use crate::dto::common::{EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::ssi::dto::{
     DidWebResponseRestDTO, OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
     OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
@@ -14,18 +14,16 @@ use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
 };
 use crate::router::AppState;
-use crate::ServerConfig;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    Extension, Form, Json,
+    Form, Json,
 };
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use one_core::service::error::ServiceError;
 use shared_types::DidId;
-use std::sync::Arc;
 use uuid::Uuid;
 
 #[utoipa::path(
@@ -39,7 +37,6 @@ use uuid::Uuid;
     tag = "ssi",
 )]
 pub(crate) async fn ssi_verifier_connect(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<PostSsiVerifierConnectQueryParams>,
     Json(request): Json<ConnectRequestRestDTO>,
@@ -49,14 +46,7 @@ pub(crate) async fn ssi_verifier_connect(
         .ssi_verifier_service
         .connect_to_holder(&query.proof, &request.did, &query.redirect_uri)
         .await;
-
-    match result {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!(%error, "Error connecting verifier");
-            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    OkOrErrorResponse::from_result(result, state, "connecting verifier")
 }
 
 #[utoipa::path(
@@ -69,18 +59,11 @@ pub(crate) async fn ssi_verifier_connect(
     tag = "ssi",
 )]
 pub(crate) async fn get_did_web_document(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Path(id): Path<DidId>,
 ) -> OkOrErrorResponse<DidWebResponseRestDTO> {
     let result = state.core.did_service.get_did_web_document(&id).await;
-    match result {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!(%error, "Error while getting did:web document");
-            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    OkOrErrorResponse::from_result(result, state, "getting did:web document")
 }
 
 #[utoipa::path(
@@ -355,7 +338,6 @@ pub(crate) async fn oidc_verifier_direct_post(
     tag = "ssi"
 )]
 pub(crate) async fn ssi_verifier_reject_proof(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<ProofRequestQueryParams>,
 ) -> EmptyOrErrorResponse {
@@ -364,14 +346,7 @@ pub(crate) async fn ssi_verifier_reject_proof(
         .ssi_verifier_service
         .reject_proof(&query.proof)
         .await;
-
-    match result {
-        Ok(_) => EmptyOrErrorResponse::NoContent,
-        Err(error) => {
-            tracing::error!(%error, "Error while rejecting proof");
-            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    EmptyOrErrorResponse::from_result(result, state, "rejecting proof")
 }
 
 #[utoipa::path(
@@ -379,13 +354,10 @@ pub(crate) async fn ssi_verifier_reject_proof(
     path = "/ssi/temporary-verifier/v1/submit",
     request_body = String, // signed JWT
     responses(EmptyOrErrorResponse),
-    params(
-        ProofRequestQueryParams
-    ),
+    params(ProofRequestQueryParams),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_verifier_submit_proof(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<ProofRequestQueryParams>,
     request: String,
@@ -395,14 +367,7 @@ pub(crate) async fn ssi_verifier_submit_proof(
         .ssi_verifier_service
         .submit_proof(&query.proof, &request)
         .await;
-
-    match result {
-        Ok(_) => EmptyOrErrorResponse::NoContent,
-        Err(error) => {
-            tracing::error!(%error, "Error while submitting proof");
-            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    EmptyOrErrorResponse::from_result(result, state, "submitting proof")
 }
 
 #[utoipa::path(
@@ -414,7 +379,6 @@ pub(crate) async fn ssi_verifier_submit_proof(
     tag = "ssi",
 )]
 pub(crate) async fn ssi_issuer_connect(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<PostSsiIssuerConnectQueryParams>,
     Json(request): Json<ConnectRequestRestDTO>,
@@ -424,14 +388,7 @@ pub(crate) async fn ssi_issuer_connect(
         .ssi_issuer_service
         .issuer_connect(&query.credential, &request.did)
         .await;
-
-    match result {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!(%error, "Error while connecting to issuer");
-            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    OkOrErrorResponse::from_result(result, state, "connecting to issuer")
 }
 
 #[utoipa::path(
@@ -442,7 +399,6 @@ pub(crate) async fn ssi_issuer_connect(
     tag = "ssi"
 )]
 pub(crate) async fn ssi_issuer_reject(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<PostSsiIssuerRejectQueryParams>,
 ) -> EmptyOrErrorResponse {
@@ -451,14 +407,7 @@ pub(crate) async fn ssi_issuer_reject(
         .ssi_issuer_service
         .issuer_reject(&query.credential_id)
         .await;
-
-    match result {
-        Ok(_) => EmptyOrErrorResponse::NoContent,
-        Err(error) => {
-            tracing::error!(%error, "Error while rejecting proof");
-            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    EmptyOrErrorResponse::from_result(result, state, "rejecting proof")
 }
 
 #[utoipa::path(
@@ -469,7 +418,6 @@ pub(crate) async fn ssi_issuer_reject(
     tag = "ssi",
 )]
 pub(crate) async fn ssi_issuer_submit(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Query(query): Query<PostSsiIssuerSubmitQueryParams>,
 ) -> OkOrErrorResponse<IssuerResponseRestDTO> {
@@ -478,12 +426,5 @@ pub(crate) async fn ssi_issuer_submit(
         .ssi_issuer_service
         .issuer_submit(&query.credential_id)
         .await;
-
-    match result {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!(%error, "Error while accepting credential");
-            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    OkOrErrorResponse::from_result(result, state, "accepting credential")
 }

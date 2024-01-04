@@ -1,24 +1,19 @@
-use std::sync::Arc;
-
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum::Extension;
 use axum::{http::StatusCode, Json};
-
 use uuid::Uuid;
 
 use one_core::service::error::ServiceError;
 
 use crate::dto::common::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, EntityResponseRestDTO,
-    EntityShareResponseRestDTO, GetCredentialsResponseDTO, OkOrErrorResponse,
+    EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
 };
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
-use crate::ServerConfig;
 
 use super::dto::{
     CredentialRevocationCheckRequestRestDTO, CredentialRevocationCheckResponseRestDTO,
@@ -37,19 +32,11 @@ use super::dto::{
     ),
 )]
 pub(crate) async fn delete_credential(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> EmptyOrErrorResponse {
     let result = state.core.credential_service.delete_credential(&id).await;
-
-    match result {
-        Ok(_) => EmptyOrErrorResponse::NoContent,
-        Err(error) => {
-            tracing::error!(%error, "Error while deleting credential");
-            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    EmptyOrErrorResponse::from_result(result, state, "deleting credential")
 }
 
 #[utoipa::path(
@@ -65,19 +52,11 @@ pub(crate) async fn delete_credential(
     ),
 )]
 pub(crate) async fn get_credential(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
     let result = state.core.credential_service.get_credential(&id).await;
-
-    match result {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!(%error, "Error while getting credential");
-            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    OkOrErrorResponse::from_result(result, state, "getting credential")
 }
 
 #[utoipa::path(
@@ -93,7 +72,6 @@ pub(crate) async fn get_credential(
     ),
 )]
 pub(crate) async fn get_credential_list(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Qs(query): Qs<GetCredentialQuery>,
 ) -> OkOrErrorResponse<GetCredentialsResponseDTO> {
@@ -103,13 +81,7 @@ pub(crate) async fn get_credential_list(
         .get_credential_list(query.into())
         .await;
 
-    match result {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!(%error, "Error while getting credential list");
-            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    OkOrErrorResponse::from_result(result, state, "getting credential list")
 }
 
 #[utoipa::path(
@@ -123,7 +95,6 @@ pub(crate) async fn get_credential_list(
     ),
 )]
 pub(crate) async fn post_credential(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Json(request): Json<CreateCredentialRequestRestDTO>,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
@@ -133,13 +104,7 @@ pub(crate) async fn post_credential(
         .create_credential(request.into())
         .await;
 
-    match result {
-        Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id }),
-        Err(error) => {
-            tracing::error!(%error, "Error while creating credential");
-            CreatedOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    CreatedOrErrorResponse::from_result(result, state, "creating credential")
 }
 
 #[utoipa::path(
@@ -155,19 +120,11 @@ pub(crate) async fn post_credential(
     ),
 )]
 pub(crate) async fn revoke_credential(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> EmptyOrErrorResponse {
     let result = state.core.credential_service.revoke_credential(&id).await;
-
-    match result {
-        Ok(_) => EmptyOrErrorResponse::NoContent,
-        Err(error) => {
-            tracing::error!(%error, "Error while revoking credential");
-            EmptyOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    EmptyOrErrorResponse::from_result(result, state, "revoking credential")
 }
 
 #[utoipa::path(
@@ -183,19 +140,11 @@ pub(crate) async fn revoke_credential(
     ),
 )]
 pub(crate) async fn share_credential(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     Path(id): Path<Uuid>,
 ) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
     let result = state.core.credential_service.share_credential(&id).await;
-
-    match result {
-        Ok(value) => OkOrErrorResponse::ok(value),
-        Err(error) => {
-            tracing::error!(%error, "Error while sharing credential");
-            OkOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    OkOrErrorResponse::from_result(result, state, "sharing credential")
 }
 
 #[utoipa::path(
