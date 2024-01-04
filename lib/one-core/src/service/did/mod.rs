@@ -10,6 +10,8 @@ use crate::{
     },
 };
 
+use super::error::ErrorCode;
+
 pub mod service;
 
 pub mod dto;
@@ -55,6 +57,16 @@ pub enum DidDeactivationError {
     CannotBeDeactivated { method: String },
     #[error("Remote DID cannot be deactivated")]
     RemoteDid,
+}
+
+impl DidDeactivationError {
+    pub fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::DeactivatedSameValue { .. } => ErrorCode::DidDeactivated,
+            Self::CannotBeDeactivated { .. } => ErrorCode::DidCannotDeactivate,
+            Self::RemoteDid => ErrorCode::DidCannotDeactivate,
+        }
+    }
 }
 
 #[cfg(test)]

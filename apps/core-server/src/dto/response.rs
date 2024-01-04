@@ -26,7 +26,6 @@ impl ErrorResponse {
             ServiceError::EntityNotFound(_) | ServiceError::NotFound => Self::NotFound(error),
             ServiceError::Validation(_)
             | ServiceError::BusinessLogic(_)
-            | ServiceError::DidDeactivation(_)
             | ServiceError::IncorrectParameters => Self::BadRequest(error),
             _ => Self::ServerError(error),
         }

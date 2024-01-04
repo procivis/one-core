@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -13,8 +16,6 @@ use super::{
     validator::did_already_exists,
     DidDeactivationError, DidService,
 };
-use crate::service::did::mapper::map_key_to_verification_method;
-use crate::service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError};
 use crate::{
     config::validator::did::validate_did_method,
     model::{
@@ -24,7 +25,12 @@ use crate::{
     },
     service::{did::validator::validate_request_only_one_key_of_each_type, error::ServiceError},
 };
+use crate::{model::did::Did, service::did::mapper::map_key_to_verification_method};
 use crate::{model::key::Key, service::error::EntityNotFoundError};
+use crate::{
+    provider::did_method::DidMethod,
+    service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError},
+};
 
 impl DidService {
     /// Returns did document for did:web
@@ -219,24 +225,7 @@ impl DidService {
         let did_method = self.did_method_provider.get_did_method(&did.did_method)?;
 
         if let Some(deactivated) = request.deactivated {
-            if did.did_type.is_remote() {
-                return Err(DidDeactivationError::RemoteDid.into());
-            }
-
-            if !did_method.can_be_deactivated() {
-                return Err(DidDeactivationError::CannotBeDeactivated {
-                    method: did.did_method,
-                }
-                .into());
-            }
-
-            if deactivated == did.deactivated {
-                return Err(DidDeactivationError::DeactivatedSameValue {
-                    value: did.deactivated,
-                    method: did.did_method,
-                }
-                .into());
-            }
+            validate_deactivation_request(&did, &did_method, deactivated)?;
         }
 
         let update_did = UpdateDidRequest {
@@ -247,4 +236,31 @@ impl DidService {
 
         Ok(())
     }
+}
+
+fn validate_deactivation_request(
+    did: &Did,
+    did_method: &Arc<dyn DidMethod + Send + Sync>,
+    deactivate: bool,
+) -> Result<(), BusinessLogicError> {
+    if did.did_type.is_remote() {
+        return Err(DidDeactivationError::RemoteDid.into());
+    }
+
+    if !did_method.can_be_deactivated() {
+        return Err(DidDeactivationError::CannotBeDeactivated {
+            method: did.did_method.to_owned(),
+        }
+        .into());
+    }
+
+    if deactivate == did.deactivated {
+        return Err(DidDeactivationError::DeactivatedSameValue {
+            value: did.deactivated,
+            method: did.did_method.to_owned(),
+        }
+        .into());
+    }
+
+    Ok(())
 }
