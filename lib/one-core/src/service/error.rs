@@ -3,6 +3,7 @@ use thiserror::Error;
 
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
+use crate::model::claim_schema::ClaimSchemaId;
 use crate::model::credential::{CredentialId, CredentialStateEnum};
 use crate::model::proof::ProofStateEnum;
 use crate::service::oidc::dto::OpenID4VCIError;
@@ -24,8 +25,6 @@ pub enum ServiceError {
     MappingError(String),
     #[error("Already shared")]
     AlreadyShared,
-    #[error("Wrong parameters")]
-    IncorrectParameters,
     #[error("Not updated")]
     NotUpdated,
     #[error("Validation error: `{0}`")]
@@ -121,6 +120,24 @@ pub enum ValidationError {
         value: String,
         source: anyhow::Error,
     },
+    #[error("Unsupported key type: {key_type}")]
+    UnsupportedKeyType { key_type: String },
+
+    #[error("DID: Missing key")]
+    DidMissingKey,
+
+    #[error("Credential schema: Missing claims")]
+    CredentialSchemaMissingClaims,
+
+    #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
+    CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
+
+    #[error("Proof schema: Missing claims")]
+    ProofSchemaMissingClaims,
+    #[error("Proof schema: No required claim")]
+    ProofSchemaNoRequiredClaim,
+    #[error("Proof schema: Duplicit claim schema")]
+    ProofSchemaDuplicitClaim,
 }
 
 #[derive(Debug)]
@@ -133,15 +150,24 @@ pub enum ErrorCode {
     DidDeactivated,
     DidValueAlreadyExists,
     DidCannotDeactivate,
+    DidMissingKey,
 
     CredentialSchemaAlreadyExists,
+    CredentialSchemaMissingClaims,
 
     Credential001,
     CredentialInvalidState,
+    CredentialMissingClaim,
 
     ProofSchemaAlreadyExists,
+    ProofSchemaMissingClaims,
+    ProofSchemaNoRequiredClaim,
+    ProofSchemaDuplicitClaim,
 
     ProofInvalidState,
+
+    InvalidExchangeType,
+    UnsupportedKeyType,
 
     Database,
     ResponseMapping,
@@ -174,15 +200,24 @@ impl ErrorCode {
             ErrorCode::DidDeactivated => "DID deactivated",
             ErrorCode::DidValueAlreadyExists => "DID value already exists",
             ErrorCode::DidCannotDeactivate => "DID cannot be deactivated",
+            ErrorCode::DidMissingKey => "DID missing key",
 
             ErrorCode::CredentialSchemaAlreadyExists => "Credential schema already exists",
+            ErrorCode::CredentialSchemaMissingClaims => "Credential schema: Missing claims",
 
             ErrorCode::Credential001 => "Credential not found",
             ErrorCode::CredentialInvalidState => "Credential state invalid",
+            ErrorCode::CredentialMissingClaim => "Credential: Missing claim",
 
             ErrorCode::ProofSchemaAlreadyExists => "Proof schema already exists",
+            ErrorCode::ProofSchemaMissingClaims => "Proof schema: Missing claims",
+            ErrorCode::ProofSchemaNoRequiredClaim => "Proof schema: No required claim",
+            ErrorCode::ProofSchemaDuplicitClaim => "Proof schema: Duplicit claim schema",
 
             ErrorCode::ProofInvalidState => "Proof state invalid",
+
+            ErrorCode::InvalidExchangeType => "Invalid exchange type",
+            ErrorCode::UnsupportedKeyType => "Unsupported key type",
 
             ErrorCode::Database => "Database error",
 
@@ -206,7 +241,6 @@ impl ServiceError {
             | ServiceError::MappingError(_)
             | ServiceError::OpenID4VCError(_)
             | ServiceError::AlreadyShared
-            | ServiceError::IncorrectParameters
             | ServiceError::NotFound
             | ServiceError::NotUpdated
             | ServiceError::ValidationError(_)
@@ -257,7 +291,16 @@ impl BusinessLogicError {
 impl ValidationError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            ValidationError::InvalidExchangeType { .. } => ErrorCode::ResponseMapping,
+            ValidationError::InvalidExchangeType { .. } => ErrorCode::InvalidExchangeType,
+            ValidationError::UnsupportedKeyType { .. } => ErrorCode::UnsupportedKeyType,
+            ValidationError::DidMissingKey => ErrorCode::DidMissingKey,
+            ValidationError::CredentialSchemaMissingClaims => {
+                ErrorCode::CredentialSchemaMissingClaims
+            }
+            ValidationError::CredentialMissingClaim { .. } => ErrorCode::CredentialMissingClaim,
+            ValidationError::ProofSchemaMissingClaims => ErrorCode::ProofSchemaMissingClaims,
+            ValidationError::ProofSchemaNoRequiredClaim => ErrorCode::ProofSchemaNoRequiredClaim,
+            ValidationError::ProofSchemaDuplicitClaim => ErrorCode::ProofSchemaDuplicitClaim,
         }
     }
 }
@@ -266,12 +309,9 @@ impl ValidationError {
 impl From<DataLayerError> for ServiceError {
     fn from(value: DataLayerError) -> Self {
         match value {
-            DataLayerError::IncorrectParameters => ServiceError::IncorrectParameters,
             DataLayerError::RecordNotFound => ServiceError::NotFound,
             DataLayerError::RecordNotUpdated => ServiceError::NotUpdated,
-            DataLayerError::Db(_)
-            | DataLayerError::AlreadyExists
-            | DataLayerError::MappingError => Self::Repository(value),
+            _ => Self::Repository(value),
         }
     }
 }

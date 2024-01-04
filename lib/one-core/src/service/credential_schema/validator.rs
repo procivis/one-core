@@ -2,7 +2,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::organisation::OrganisationId;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::mapper::create_unique_name_check_request;
-use crate::service::error::BusinessLogicError;
+use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::{
     config::validator::{
         datatype::validate_datatypes, format::validate_format, revocation::validate_revocation,
@@ -32,7 +32,7 @@ pub(crate) fn validate_create_request(
 ) -> Result<(), ServiceError> {
     // at least one claim must be declared
     if request.claims.is_empty() {
-        return Err(ServiceError::IncorrectParameters);
+        return Err(ValidationError::CredentialSchemaMissingClaims.into());
     }
 
     validate_format(&request.format, &config.format)?;

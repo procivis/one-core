@@ -25,7 +25,7 @@ use crate::{
             },
             CredentialSchemaService,
         },
-        error::{BusinessLogicError, ServiceError},
+        error::{BusinessLogicError, ServiceError, ValidationError},
         test_utilities::generic_config,
     },
 };
@@ -378,7 +378,10 @@ async fn test_create_credential_schema_fail_validation() {
             claims: vec![],
         })
         .await;
-    assert!(no_claims.is_err_and(|e| matches!(e, ServiceError::IncorrectParameters)));
+    assert!(no_claims.is_err_and(|e| matches!(
+        e,
+        ServiceError::Validation(ValidationError::CredentialSchemaMissingClaims)
+    )));
 }
 
 #[tokio::test]

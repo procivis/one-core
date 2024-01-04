@@ -126,7 +126,7 @@ async fn test_create_invalid_type() {
         .unwrap();
 
     // THEN
-    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

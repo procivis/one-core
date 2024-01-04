@@ -1,5 +1,6 @@
 use super::CredentialService;
 use crate::repository::error::DataLayerError;
+use crate::service::error::ValidationError;
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -665,7 +666,12 @@ async fn test_create_credential_one_required_claim_missing() {
             ..create_request_template.clone()
         })
         .await;
-    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::CredentialMissingClaim { .. }
+        ))
+    ));
 
     // create a credential with required claims only succeeds
     let result = service

@@ -15,6 +15,7 @@ use mapper::{
     public_key_from_components,
 };
 
+use crate::service::error::ValidationError;
 use crate::{
     crypto::signer::error::SignerError,
     model::key::{Key, KeyId},
@@ -56,7 +57,10 @@ pub struct AzureVaultKeyProvider {
 impl KeyStorage for AzureVaultKeyProvider {
     async fn generate(&self, key_id: &KeyId, key_type: &str) -> Result<GeneratedKey, ServiceError> {
         if key_type != "ES256" {
-            return Err(ServiceError::IncorrectParameters);
+            return Err(ValidationError::UnsupportedKeyType {
+                key_type: key_type.to_owned(),
+            }
+            .into());
         }
 
         let access_token = self.get_access_token().await?;
