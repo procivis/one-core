@@ -14,6 +14,7 @@ pub enum ErrorCode {
     DidInvalidMethod,
     DidDeactivated,
     DidValueAlreadyExists,
+    DidCannotDeactivate,
 
     CredentialSchemaAlreadyExists,
 

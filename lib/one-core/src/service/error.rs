@@ -56,8 +56,6 @@ pub enum ServiceError {
     CryptoError(#[from] CryptoProviderError),
     #[error("Other Repository error: `{0}`")]
     Other(String),
-    #[error(transparent)]
-    DidDeactivation(#[from] DidDeactivationError),
 
     #[error(transparent)]
     EntityNotFound(#[from] EntityNotFoundError),
@@ -111,6 +109,9 @@ pub enum BusinessLogicError {
 
     #[error("Invalid Proof state: {state}")]
     InvalidProofState { state: ProofStateEnum },
+
+    #[error(transparent)]
+    DidDeactivation(#[from] DidDeactivationError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -131,6 +132,7 @@ pub enum ErrorCode {
     DidInvalidMethod,
     DidDeactivated,
     DidValueAlreadyExists,
+    DidCannotDeactivate,
 
     CredentialSchemaAlreadyExists,
 
@@ -171,6 +173,7 @@ impl ErrorCode {
             ErrorCode::DidInvalidMethod => "Invalid DID method",
             ErrorCode::DidDeactivated => "DID deactivated",
             ErrorCode::DidValueAlreadyExists => "DID value already exists",
+            ErrorCode::DidCannotDeactivate => "DID cannot be deactivated",
 
             ErrorCode::CredentialSchemaAlreadyExists => "Credential schema already exists",
 
@@ -218,8 +221,7 @@ impl ServiceError {
             | ServiceError::KeyAlgorithmError(_)
             | ServiceError::DidMethodError(_)
             | ServiceError::CryptoError(_)
-            | ServiceError::Other(_)
-            | ServiceError::DidDeactivation(_) => ErrorCode::Unmapped,
+            | ServiceError::Other(_) => ErrorCode::Unmapped,
         }
     }
 }
@@ -247,6 +249,7 @@ impl BusinessLogicError {
             BusinessLogicError::InvalidCredentialState { .. } => ErrorCode::CredentialInvalidState,
             BusinessLogicError::ProofSchemaAlreadyExists => ErrorCode::ProofSchemaAlreadyExists,
             BusinessLogicError::InvalidProofState { .. } => ErrorCode::ProofInvalidState,
+            BusinessLogicError::DidDeactivation(error) => error.error_code(),
         }
     }
 }
