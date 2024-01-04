@@ -28,10 +28,12 @@ use crate::{
     metrics,
 };
 
-#[derive(Clone)]
-pub(crate) struct AppState {
+pub(crate) struct InternalAppState {
     pub core: OneCore,
+    pub config: Arc<ServerConfig>,
 }
+
+pub(crate) type AppState = Arc<InternalAppState>;
 
 pub struct HttpRequestContext {
     pub path: String,
@@ -55,12 +57,16 @@ pub async fn start_server(listener: TcpListener, config: AppConfig<ServerConfig>
     )
     .expect("Failed to parse config");
 
-    let state = AppState { core };
+    let config = Arc::new(config.app);
+    let state: AppState = Arc::new(InternalAppState {
+        core,
+        config: config.to_owned(),
+    });
 
     let addr = listener.local_addr().expect("Invalid TCP listener");
     info!("Starting server at http://{addr}");
 
-    let router = router(state, config.app);
+    let router = router(state, config);
 
     axum::serve(
         tokio::net::TcpListener::from_std(listener)
@@ -71,9 +77,8 @@ pub async fn start_server(listener: TcpListener, config: AppConfig<ServerConfig>
     .expect("Failed to start axum server");
 }
 
-fn router(state: AppState, config: ServerConfig) -> Router {
+fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
     let openapi_documentation = gen_openapi_documentation();
-    let config = Arc::new(config);
 
     let protected = Router::new()
         .route("/api/config/v1", get(config::controller::get_config))
@@ -309,10 +314,12 @@ fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext {
     let request_id = headers
         .get("x-request-id")
         .and_then(|header| header.to_str().ok())
+        .and_then(|value| if value.is_empty() { None } else { Some(value) })
         .map(ToOwned::to_owned);
     let session_id = headers
         .get("x-session-id")
         .and_then(|header| header.to_str().ok())
+        .and_then(|value| if value.is_empty() { None } else { Some(value) })
         .map(ToOwned::to_owned);
 
     HttpRequestContext {

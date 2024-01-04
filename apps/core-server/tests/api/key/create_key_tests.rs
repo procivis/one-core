@@ -159,5 +159,5 @@ async fn test_create_invalid_organisation() {
         .unwrap();
 
     // THEN
-    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }

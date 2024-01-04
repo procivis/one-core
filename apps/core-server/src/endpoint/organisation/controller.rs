@@ -1,14 +1,9 @@
-use std::sync::Arc;
-
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum::Extension;
 use axum::{http::StatusCode, Json};
 
-use crate::dto::common::CreatedOrErrorResponse;
+use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
 use crate::router::AppState;
-use crate::ServerConfig;
-use one_core::service::error::ServiceError;
 use uuid::Uuid;
 
 use super::dto::{
@@ -19,12 +14,7 @@ use super::dto::{
 #[utoipa::path(
     get,
     path = "/api/organisation/v1/{id}",
-    responses(
-        (status = 200, description = "OK", body = GetOrganisationDetailsResponseRestDTO),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Organisation not found"),
-        (status = 500, description = "Server error"),
-    ),
+    responses(OkOrErrorResponse<GetOrganisationDetailsResponseRestDTO>),
     params(
         ("id" = Uuid, Path, description = "Organisation id")
     ),
@@ -33,23 +23,12 @@ use super::dto::{
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn get_organisation(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
+pub(crate) async fn get_organisation(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> OkOrErrorResponse<GetOrganisationDetailsResponseRestDTO> {
     let result = state.core.organisation_service.get_organisation(&id).await;
-
-    match result {
-        Err(error) => match error {
-            ServiceError::NotFound => (StatusCode::NOT_FOUND).into_response(),
-            _ => {
-                tracing::error!("Error while getting organisation details: {:?}", error);
-                (StatusCode::INTERNAL_SERVER_ERROR).into_response()
-            }
-        },
-        Ok(value) => (
-            StatusCode::OK,
-            Json(GetOrganisationDetailsResponseRestDTO::from(value)),
-        )
-            .into_response(),
-    }
+    OkOrErrorResponse::from_result(result, state, "getting organisation details")
 }
 
 #[utoipa::path(
@@ -101,7 +80,6 @@ pub(crate) async fn get_organisations(state: State<AppState>) -> Response {
     ),
 )]
 pub(crate) async fn post_organisation(
-    config: Extension<Arc<ServerConfig>>,
     state: State<AppState>,
     request: Option<Json<CreateOrganisationRequestRestDTO>>,
 ) -> CreatedOrErrorResponse<CreateOrganisationResponseRestDTO> {
@@ -115,14 +93,5 @@ pub(crate) async fn post_organisation(
         .organisation_service
         .create_organisation(request.id)
         .await;
-
-    match result {
-        Ok(value) => {
-            CreatedOrErrorResponse::created(CreateOrganisationResponseRestDTO::from(value))
-        }
-        Err(error) => {
-            tracing::error!(%error, "Error while creating organisation");
-            CreatedOrErrorResponse::from_service_error(error, config.hide_error_response_cause)
-        }
-    }
+    CreatedOrErrorResponse::from_result(result, state, "creating organisation")
 }

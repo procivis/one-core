@@ -1,13 +1,12 @@
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use axum::Json;
 use uuid::Uuid;
 
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 
-use crate::dto::common::EntityResponseRestDTO;
+use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
+use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::key::dto::{
     KeyListItemResponseRestDTO, KeyRequestRestDTO, KeyResponseRestDTO,
 };
@@ -18,11 +17,7 @@ use crate::router::AppState;
 #[utoipa::path(
     get,
     path = "/api/key/v1/{id}",
-    responses(
-        (status = 200, description = "OK", body = KeyResponseRestDTO),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Key not found"),
-    ),
+    responses(OkOrErrorResponse<KeyResponseRestDTO>),
     params(
         ("id" = Uuid, Path, description = "Key id")
     ),
@@ -31,24 +26,27 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn get_key(state: State<AppState>, Path(id): Path<Uuid>) -> Response {
+pub(crate) async fn get_key(
+    state: State<AppState>,
+    Path(id): Path<Uuid>,
+) -> OkOrErrorResponse<KeyResponseRestDTO> {
     let result = state.core.key_service.get_key(&id).await;
 
     match result {
         Ok(value) => match KeyResponseRestDTO::try_from(value) {
-            Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+            Ok(value) => OkOrErrorResponse::ok(value),
             Err(error) => {
                 tracing::error!("Error while encoding base64: {:?}", error);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                OkOrErrorResponse::from_service_error(
+                    ServiceError::MappingError(error.to_string()),
+                    state.config.hide_error_response_cause,
+                )
             }
         },
-        Err(error) => match error {
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            _ => {
-                tracing::error!("Error while getting key: {:?}", error);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
+        Err(error) => {
+            tracing::error!("Error while getting key: {:?}", error);
+            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+        }
     }
 }
 
@@ -58,11 +56,7 @@ use super::dto::GetKeyQuery;
     post,
     path = "/api/key/v1",
     request_body = KeyRequestRestDTO,
-    responses(
-        (status = 201, description = "OK", body = EntityResponseRestDTO),
-        (status = 400, description = "Invalid params"),
-        (status = 422, description = "Unsupported key/storage params"),
-    ),
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "key",
     security(
         ("bearer" = [])
@@ -71,60 +65,41 @@ use super::dto::GetKeyQuery;
 pub(crate) async fn post_key(
     state: State<AppState>,
     Json(request): Json<KeyRequestRestDTO>,
-) -> Response {
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state.core.key_service.generate_key(request.into()).await;
-
-    match result {
-        Ok(value) => (
-            StatusCode::CREATED,
-            Json(EntityResponseRestDTO { id: value }),
-        )
-            .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {:?}", error);
-            StatusCode::UNPROCESSABLE_ENTITY.into_response()
-        }
-        Err(ServiceError::IncorrectParameters) | Err(ServiceError::NotFound) => {
-            tracing::error!("Invalid parameters: {:?}", result);
-            StatusCode::BAD_REQUEST.into_response()
-        }
-        Err(error) => {
-            tracing::error!("Unknown error: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-    }
+    CreatedOrErrorResponse::from_result(result, state, "creating key")
 }
 
 #[utoipa::path(
     get,
     path = "/api/key/v1",
-    responses(
-        (status = 200, description = "OK", body = GetKeyListResponseRestDTO),
-        (status = 401, description = "Unauthorized"),
-        (status = 500, description = "Server error"),
-    ),
-    params(
-        GetKeyQuery
-    ),
+    responses(OkOrErrorResponse<GetKeyListResponseRestDTO>),
+    params(GetKeyQuery),
     tag = "key",
     security(
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn get_key_list(state: State<AppState>, Qs(query): Qs<GetKeyQuery>) -> Response {
+pub(crate) async fn get_key_list(
+    state: State<AppState>,
+    Qs(query): Qs<GetKeyQuery>,
+) -> OkOrErrorResponse<GetKeyListResponseRestDTO> {
     let result = state.core.key_service.get_key_list(query.into()).await;
 
     match result {
         Err(error) => {
             tracing::error!("Error while getting keys: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
         }
         Ok(value) => {
             match list_try_from::<KeyListItemResponseRestDTO, KeyListItemResponseDTO>(value) {
-                Ok(value) => (StatusCode::OK, Json(value)).into_response(),
+                Ok(value) => OkOrErrorResponse::ok(value),
                 Err(error) => {
                     tracing::error!("Error while encoding base64: {:?}", error);
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                    OkOrErrorResponse::from_service_error(
+                        ServiceError::MappingError(error.to_string()),
+                        state.config.hide_error_response_cause,
+                    )
                 }
             }
         }
