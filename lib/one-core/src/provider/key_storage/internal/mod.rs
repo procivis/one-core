@@ -63,8 +63,7 @@ impl KeyStorage for InternalKeyProvider {
     ) -> Result<GeneratedKey, ServiceError> {
         let key_pair = self
             .key_algorithm_provider
-            .get_key_algorithm(key_type)
-            .map_err(|_| ServiceError::IncorrectParameters)?
+            .get_key_algorithm(key_type)?
             .generate_key_pair();
 
         Ok(GeneratedKey {

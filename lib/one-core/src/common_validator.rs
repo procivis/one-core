@@ -1,13 +1,9 @@
 use std::ops::{Add, Sub};
 use std::time::Duration;
-
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
-
-use crate::model::did::{Did, DidType};
 use crate::model::proof::{Proof, ProofStateEnum};
-
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(crate) fn throw_if_latest_credential_state_eq(
@@ -55,13 +51,6 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
             state: latest_state.state,
         }
         .into());
-    }
-    Ok(())
-}
-
-pub(crate) fn throw_if_did_type_is_eq(did: &Did, did_type: DidType) -> Result<(), ServiceError> {
-    if did.did_type == did_type {
-        return Err(ServiceError::IncorrectParameters);
     }
     Ok(())
 }

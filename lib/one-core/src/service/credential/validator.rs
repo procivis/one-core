@@ -4,7 +4,10 @@ use crate::{
         validator::{datatype::validate_value, exchange::validate_exchange_type},
     },
     model::credential_schema::CredentialSchema,
-    service::{credential::dto::CredentialRequestClaimDTO, error::ServiceError},
+    service::{
+        credential::dto::CredentialRequestClaimDTO,
+        error::{ServiceError, ValidationError},
+    },
 };
 
 pub(crate) fn validate_create_request(
@@ -55,7 +58,9 @@ pub(crate) fn validate_create_request(
                 claims
                     .iter()
                     .find(|claim| claim.claim_schema_id == claim_schema.schema.id)
-                    .ok_or(ServiceError::IncorrectParameters)?;
+                    .ok_or(ValidationError::CredentialMissingClaim {
+                        claim_schema_id: claim_schema.schema.id,
+                    })?;
             }
             Ok(())
         })

@@ -6,7 +6,6 @@ use super::{
     mapper::{get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request},
     ProofService,
 };
-use crate::model::did::DidType;
 use crate::provider::transport_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::{
     common_mapper::list_response_try_into,
@@ -25,8 +24,7 @@ use crate::{
     service::error::ServiceError,
 };
 use crate::{
-    common_validator::{throw_if_did_type_is_eq, throw_if_latest_proof_state_not_eq},
-    service::error::BusinessLogicError,
+    common_validator::throw_if_latest_proof_state_not_eq, service::error::BusinessLogicError,
 };
 use time::OffsetDateTime;
 
@@ -98,7 +96,12 @@ impl ProofService {
             .as_ref()
             .ok_or(ServiceError::MappingError("holder did is None".to_string()))?;
 
-        throw_if_did_type_is_eq(holder_did, DidType::Remote)?;
+        if holder_did.did_type.is_remote() {
+            return Err(BusinessLogicError::IncompatibleDidType {
+                reason: "holder_did is remote".to_string(),
+            }
+            .into());
+        }
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
@@ -160,7 +163,12 @@ impl ProofService {
             return Err(BusinessLogicError::DidIsDeactivated(verifier_did.id).into());
         }
 
-        throw_if_did_type_is_eq(&verifier_did, DidType::Remote)?;
+        if verifier_did.did_type.is_remote() {
+            return Err(BusinessLogicError::IncompatibleDidType {
+                reason: "verifier_did is remote".to_string(),
+            }
+            .into());
+        }
 
         self.proof_repository
             .create_proof(proof_from_create_request(

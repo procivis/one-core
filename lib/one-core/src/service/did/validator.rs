@@ -2,7 +2,10 @@ use std::{collections::HashSet, sync::Arc};
 
 use shared_types::DidValue;
 
+use crate::model::did::Did;
+use crate::provider::did_method::DidMethod;
 use crate::repository::error::DataLayerError;
+use crate::service::error::BusinessLogicError;
 use crate::{
     model::{did::DidRelations, key::KeyId},
     provider::did_method::DidMethodError,
@@ -10,7 +13,9 @@ use crate::{
     service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError},
 };
 
-pub(crate) fn validate_request_only_one_key_of_each_type(
+use super::DidDeactivationError;
+
+pub(super) fn validate_request_only_one_key_of_each_type(
     keys: CreateDidRequestKeysDTO,
 ) -> Result<(), ServiceError> {
     if keys.authentication.len() > 1
@@ -57,4 +62,31 @@ pub(super) async fn did_already_exists(
         Err(DataLayerError::RecordNotFound) => Ok(false),
         Err(e) => Err(DidMethodError::from(e)),
     }
+}
+
+pub(super) fn validate_deactivation_request(
+    did: &Did,
+    did_method: &Arc<dyn DidMethod + Send + Sync>,
+    deactivate: bool,
+) -> Result<(), BusinessLogicError> {
+    if did.did_type.is_remote() {
+        return Err(DidDeactivationError::RemoteDid.into());
+    }
+
+    if !did_method.can_be_deactivated() {
+        return Err(DidDeactivationError::CannotBeDeactivated {
+            method: did.did_method.to_owned(),
+        }
+        .into());
+    }
+
+    if deactivate == did.deactivated {
+        return Err(DidDeactivationError::DeactivatedSameValue {
+            value: did.deactivated,
+            method: did.did_method.to_owned(),
+        }
+        .into());
+    }
+
+    Ok(())
 }

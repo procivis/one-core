@@ -1,7 +1,7 @@
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
 use crate::model::key::{Key, KeyId};
 use crate::provider::key_storage::{GeneratedKey, KeyStorage};
-use crate::service::error::ServiceError;
+use crate::service::error::{ServiceError, ValidationError};
 use mockall::predicate::eq;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -41,7 +41,12 @@ async fn test_generate_invalid_key_type() {
         SecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()), get_params());
 
     let result = provider.generate(&KeyId::new_v4(), "invalid").await;
-    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::UnsupportedKeyType { .. }
+        ))
+    ));
 }
 
 #[tokio::test]

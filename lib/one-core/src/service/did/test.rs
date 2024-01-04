@@ -1,6 +1,6 @@
 use super::DidService;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::service::error::BusinessLogicError;
+use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::service::test_utilities::dummy_did;
 use crate::{
     config::core_config::{self, CoreConfig, DidConfig, Fields},
@@ -392,5 +392,8 @@ async fn test_create_did_value_invalid_did_method() {
     );
 
     let result = service.create_did(create_request).await;
-    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::DidMissingKey))
+    ));
 }

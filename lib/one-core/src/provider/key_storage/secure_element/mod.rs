@@ -5,7 +5,7 @@ use crate::{
     crypto::signer::error::SignerError,
     model::key::{Key, KeyId},
     provider::key_storage::{GeneratedKey, KeyStorage},
-    service::error::ServiceError,
+    service::error::{ServiceError, ValidationError},
 };
 
 #[cfg_attr(test, mockall::automock)]
@@ -29,7 +29,10 @@ pub struct Params {
 impl KeyStorage for SecureElementKeyProvider {
     async fn generate(&self, key_id: &KeyId, key_type: &str) -> Result<GeneratedKey, ServiceError> {
         if key_type != "ES256" {
-            return Err(ServiceError::IncorrectParameters);
+            return Err(ValidationError::UnsupportedKeyType {
+                key_type: key_type.to_owned(),
+            }
+            .into());
         }
 
         let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);

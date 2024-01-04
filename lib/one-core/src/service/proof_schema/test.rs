@@ -17,7 +17,7 @@ use crate::{
         },
     },
     service::{
-        error::{BusinessLogicError, ServiceError},
+        error::{BusinessLogicError, ServiceError, ValidationError},
         proof_schema::dto::{
             CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
         },
@@ -467,7 +467,12 @@ async fn test_create_proof_schema_no_claims() {
             claim_schemas: vec![],
         })
         .await;
-    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::ProofSchemaMissingClaims
+        ))
+    ));
 }
 
 #[tokio::test]
@@ -489,7 +494,12 @@ async fn test_create_proof_schema_no_required_claims() {
             }],
         })
         .await;
-    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::ProofSchemaNoRequiredClaim
+        ))
+    ));
 }
 
 #[tokio::test]
@@ -512,5 +522,10 @@ async fn test_create_proof_schema_duplicit_claims() {
             claim_schemas: vec![claim_schema.clone(), claim_schema],
         })
         .await;
-    assert!(matches!(result, Err(ServiceError::IncorrectParameters)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::ProofSchemaDuplicitClaim
+        ))
+    ));
 }

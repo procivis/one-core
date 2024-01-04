@@ -202,7 +202,10 @@ async fn test_get_presentation_definition_holder_did_not_local() {
 
     let result = service.get_proof_presentation_definition(&proof.id).await;
 
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::IncorrectParameters)));
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::BusinessLogic(BusinessLogicError::IncompatibleDidType { .. })
+    )));
 }
 
 #[tokio::test]

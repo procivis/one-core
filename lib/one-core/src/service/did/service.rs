@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::collections::{HashMap, HashSet};
 
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -13,9 +10,11 @@ use super::{
         GetDidListResponseDTO,
     },
     mapper::did_from_did_request,
-    validator::did_already_exists,
-    DidDeactivationError, DidService,
+    validator::{did_already_exists, validate_deactivation_request},
+    DidService,
 };
+use crate::service::did::mapper::map_key_to_verification_method;
+use crate::service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError};
 use crate::{
     config::validator::did::validate_did_method,
     model::{
@@ -23,14 +22,12 @@ use crate::{
         key::{KeyId, KeyRelations},
         organisation::OrganisationRelations,
     },
-    service::{did::validator::validate_request_only_one_key_of_each_type, error::ServiceError},
+    service::{
+        did::validator::validate_request_only_one_key_of_each_type,
+        error::{ServiceError, ValidationError},
+    },
 };
-use crate::{model::did::Did, service::did::mapper::map_key_to_verification_method};
 use crate::{model::key::Key, service::error::EntityNotFoundError};
-use crate::{
-    provider::did_method::DidMethod,
-    service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError},
-};
 
 impl DidService {
     /// Returns did document for did:web
@@ -173,7 +170,7 @@ impl DidService {
             .into_iter()
             .collect::<Vec<_>>()
             .first()
-            .ok_or(ServiceError::IncorrectParameters)?
+            .ok_or(ValidationError::DidMissingKey)?
             .to_owned();
         let key = self
             .key_repository
@@ -236,31 +233,4 @@ impl DidService {
 
         Ok(())
     }
-}
-
-fn validate_deactivation_request(
-    did: &Did,
-    did_method: &Arc<dyn DidMethod + Send + Sync>,
-    deactivate: bool,
-) -> Result<(), BusinessLogicError> {
-    if did.did_type.is_remote() {
-        return Err(DidDeactivationError::RemoteDid.into());
-    }
-
-    if !did_method.can_be_deactivated() {
-        return Err(DidDeactivationError::CannotBeDeactivated {
-            method: did.did_method.to_owned(),
-        }
-        .into());
-    }
-
-    if deactivate == did.deactivated {
-        return Err(DidDeactivationError::DeactivatedSameValue {
-            value: did.deactivated,
-            method: did.did_method.to_owned(),
-        }
-        .into());
-    }
-
-    Ok(())
 }

@@ -15,15 +15,24 @@ pub enum ErrorCode {
     DidDeactivated,
     DidValueAlreadyExists,
     DidCannotDeactivate,
+    DidMissingKey,
 
     CredentialSchemaAlreadyExists,
+    CredentialSchemaMissingClaims,
 
     Credential001,
     CredentialInvalidState,
+    CredentialMissingClaim,
 
     ProofSchemaAlreadyExists,
+    ProofSchemaMissingClaims,
+    ProofSchemaNoRequiredClaim,
+    ProofSchemaDuplicitClaim,
 
     ProofInvalidState,
+
+    InvalidExchangeType,
+    UnsupportedKeyType,
 
     Database,
     ResponseMapping,

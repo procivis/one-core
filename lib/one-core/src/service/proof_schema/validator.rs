@@ -1,5 +1,5 @@
 use super::dto::CreateProofSchemaRequestDTO;
-use crate::service::error::BusinessLogicError;
+use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::service::proof_schema::mapper::create_unique_name_check_request;
 use crate::{
     model::organisation::OrganisationId,
@@ -23,14 +23,16 @@ pub async fn proof_schema_name_already_exists(
     Ok(())
 }
 
-pub fn validate_create_request(request: &CreateProofSchemaRequestDTO) -> Result<(), ServiceError> {
+pub fn validate_create_request(
+    request: &CreateProofSchemaRequestDTO,
+) -> Result<(), ValidationError> {
     if request.claim_schemas.is_empty() {
-        return Err(ServiceError::IncorrectParameters);
+        return Err(ValidationError::ProofSchemaMissingClaims);
     }
 
     // at least one claim must be required
     if !request.claim_schemas.iter().any(|claim| claim.required) {
-        return Err(ServiceError::IncorrectParameters);
+        return Err(ValidationError::ProofSchemaNoRequiredClaim);
     }
 
     // no claim duplicates allowed
@@ -40,7 +42,7 @@ pub fn validate_create_request(request: &CreateProofSchemaRequestDTO) -> Result<
         .iter()
         .all(move |claim| uniq.insert(claim.id))
     {
-        return Err(ServiceError::IncorrectParameters);
+        return Err(ValidationError::ProofSchemaDuplicitClaim);
     }
 
     Ok(())

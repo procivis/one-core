@@ -91,7 +91,7 @@ impl KeyAlgorithm for Es256 {
 
             Ok(encoded_point.as_bytes().to_owned())
         } else {
-            Err(ServiceError::IncorrectParameters)
+            Err(ServiceError::KeyAlgorithmError("invalid kty".to_string()))
         }
     }
 }

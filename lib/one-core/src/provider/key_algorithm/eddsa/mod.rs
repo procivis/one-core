@@ -67,7 +67,7 @@ impl KeyAlgorithm for Eddsa {
 
             Ok(x)
         } else {
-            Err(ServiceError::IncorrectParameters)
+            Err(ServiceError::KeyAlgorithmError("invalid kty".to_string()))
         }
     }
 }
