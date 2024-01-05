@@ -30,6 +30,17 @@ impl ErrorResponse {
             _ => Self::ServerError(response),
         }
     }
+
+    #[track_caller]
+    fn from_service_error_with_trace(
+        error: ServiceError,
+        state: State<AppState>,
+        action_description: &str,
+    ) -> Self {
+        let location = std::panic::Location::caller();
+        tracing::error!(%error, %location, "Error while {action_description}");
+        Self::from_service_error(error, state.config.hide_error_response_cause)
+    }
 }
 
 impl IntoResponse for ErrorResponse {
@@ -104,10 +115,11 @@ impl<T> OkOrErrorResponse<T> {
     ) -> Self {
         match result {
             Ok(value) => Self::ok(value),
-            Err(error) => {
-                tracing::error!(%error, "Error while {action_description}");
-                Self::from_service_error(error, state.config.hide_error_response_cause)
-            }
+            Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
+                error,
+                state,
+                action_description,
+            )),
         }
     }
 }
@@ -200,10 +212,11 @@ impl<T> CreatedOrErrorResponse<T> {
     ) -> Self {
         match result {
             Ok(value) => Self::created(value),
-            Err(error) => {
-                tracing::error!(%error, "Error while {action_description}");
-                Self::from_service_error(error, state.config.hide_error_response_cause)
-            }
+            Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
+                error,
+                state,
+                action_description,
+            )),
         }
     }
 }
@@ -245,10 +258,11 @@ impl EmptyOrErrorResponse {
     ) -> Self {
         match result {
             Ok(_) => Self::NoContent,
-            Err(error) => {
-                tracing::error!(%error, "Error while {action_description}");
-                Self::from_service_error(error, state.config.hide_error_response_cause)
-            }
+            Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
+                error,
+                state,
+                action_description,
+            )),
         }
     }
 }
