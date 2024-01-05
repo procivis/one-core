@@ -718,5 +718,10 @@ async fn test_share_proof_invalid_state() {
     });
 
     let result = service.share_proof(&proof_id).await;
-    assert!(matches!(result, Err(ServiceError::AlreadyShared)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::InvalidProofState { .. }
+        ))
+    ));
 }

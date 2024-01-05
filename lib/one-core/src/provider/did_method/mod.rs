@@ -12,7 +12,6 @@ use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::web::WebDidMethod;
 use crate::provider::did_method::x509::X509Method;
-use crate::repository::error::DataLayerError;
 
 use super::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -28,12 +27,8 @@ pub mod x509;
 
 #[derive(Debug, Error)]
 pub enum DidMethodError {
-    #[error("Data layer error: `{0}`")]
-    DataLayerError(#[from] DataLayerError),
     #[error("Key algorithm not found")]
     KeyAlgorithmNotFound,
-    #[error("Could not create: `{0}`")]
-    CreationError(String),
     #[error("Could not resolve: `{0}`")]
     ResolutionError(String),
     #[error("Could not create: `{0}`")]

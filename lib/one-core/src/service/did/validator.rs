@@ -8,7 +8,6 @@ use crate::repository::error::DataLayerError;
 use crate::service::error::BusinessLogicError;
 use crate::{
     model::{did::DidRelations, key::KeyId},
-    provider::did_method::DidMethodError,
     repository::did_repository::DidRepository,
     service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError},
 };
@@ -52,7 +51,7 @@ pub(super) fn validate_request_only_one_key_of_each_type(
 pub(super) async fn did_already_exists(
     repository: &Arc<dyn DidRepository>,
     did_value: &DidValue,
-) -> Result<bool, DidMethodError> {
+) -> Result<bool, ServiceError> {
     let result = repository
         .get_did_by_value(did_value, &DidRelations::default())
         .await;
@@ -60,7 +59,7 @@ pub(super) async fn did_already_exists(
     match result {
         Ok(_) => Ok(true),
         Err(DataLayerError::RecordNotFound) => Ok(false),
-        Err(e) => Err(DidMethodError::from(e)),
+        Err(e) => Err(ServiceError::from(e)),
     }
 }
 

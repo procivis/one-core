@@ -440,7 +440,7 @@ impl CredentialService {
                     .map_err(ServiceError::from)?;
             }
             CredentialStateEnum::Pending => {}
-            _ => return Err(ServiceError::AlreadyShared),
+            state => return Err(BusinessLogicError::InvalidCredentialState { state }.into()),
         }
 
         let credential_transport = &credential.transport;

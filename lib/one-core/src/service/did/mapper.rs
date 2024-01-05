@@ -13,7 +13,6 @@ use crate::{
         key::{Key, KeyId},
         organisation::Organisation,
     },
-    provider::did_method::DidMethodError,
     service::{error::ServiceError, key::dto::KeyListItemResponseDTO},
 };
 use std::collections::HashMap;
@@ -72,7 +71,7 @@ pub(super) fn did_from_did_request(
     did_value: DidValue,
     key: Key,
     now: OffsetDateTime,
-) -> Result<Did, DidMethodError> {
+) -> Did {
     let mut keys: Vec<RelatedKey> = vec![];
     let mut add_keys = |key_ids: Vec<KeyId>, role: KeyRole| {
         for _ in key_ids {
@@ -95,7 +94,7 @@ pub(super) fn did_from_did_request(
         KeyRole::CapabilityDelegation,
     );
 
-    Ok(Did {
+    Did {
         id: did_id,
         created_date: now,
         last_modified: now,
@@ -106,7 +105,7 @@ pub(super) fn did_from_did_request(
         did_method: request.did_method,
         keys: Some(keys),
         deactivated: false,
-    })
+    }
 }
 
 pub(super) fn map_did_model_to_did_web_response(

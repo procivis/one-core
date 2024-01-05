@@ -21,11 +21,13 @@ pub enum ErrorResponse {
 
 impl ErrorResponse {
     fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
-        let error: ErrorResponseRestDTO = ErrorResponseRestDTO::from(error).hide_cause(hide_cause);
-        match &error.error {
-            ServiceError::EntityNotFound(_) | ServiceError::NotFound => Self::NotFound(error),
-            ServiceError::Validation(_) | ServiceError::BusinessLogic(_) => Self::BadRequest(error),
-            _ => Self::ServerError(error),
+        let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
+        match error {
+            ServiceError::EntityNotFound(_) | ServiceError::NotFound => Self::NotFound(response),
+            ServiceError::Validation(_) | ServiceError::BusinessLogic(_) => {
+                Self::BadRequest(response)
+            }
+            _ => Self::ServerError(response),
         }
     }
 }
