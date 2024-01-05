@@ -193,7 +193,7 @@ impl DidService {
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
             .await?;
-        let did = did_from_did_request(new_did_id, request, organisation, did_value, key, now)?;
+        let did = did_from_did_request(new_did_id, request, organisation, did_value, key, now);
 
         let did_id = self
             .did_repository

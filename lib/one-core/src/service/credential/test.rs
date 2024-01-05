@@ -476,7 +476,10 @@ async fn test_share_credential_failed_invalid_state() {
     });
 
     let result = service.share_credential(&credential.id).await;
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::AlreadyShared)));
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::BusinessLogic(BusinessLogicError::InvalidCredentialState { .. })
+    )));
 }
 
 #[tokio::test]

@@ -1,5 +1,4 @@
 use dto_mapper::From;
-use one_core::service::error::ServiceError;
 use serde::Serialize;
 use utoipa::ToSchema;
 
@@ -47,8 +46,6 @@ pub struct ErrorResponseRestDTO {
     pub message: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cause: Option<Cause>,
-    #[serde(skip)]
-    pub error: ServiceError,
 }
 
 impl ErrorResponseRestDTO {

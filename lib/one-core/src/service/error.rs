@@ -23,8 +23,6 @@ pub enum ServiceError {
     GeneralRuntimeError(String),
     #[error("Mapping error: `{0}`")]
     MappingError(String),
-    #[error("Already shared")]
-    AlreadyShared,
     #[error("Not updated")]
     NotUpdated,
     #[error("Validation error: `{0}`")]
@@ -45,8 +43,6 @@ pub enum ServiceError {
     MissingAlgorithm(String),
     #[error("Missing transport protocol `{0}`")]
     MissingTransportProtocol(String),
-    #[error("Missing key")]
-    MissingKey,
     #[error("Key algorithm error `{0}`")]
     KeyAlgorithmError(String),
     #[error("Did method error `{0}`")]
@@ -240,7 +236,6 @@ impl ServiceError {
             ServiceError::GeneralRuntimeError(_)
             | ServiceError::MappingError(_)
             | ServiceError::OpenID4VCError(_)
-            | ServiceError::AlreadyShared
             | ServiceError::NotFound
             | ServiceError::NotUpdated
             | ServiceError::ValidationError(_)
@@ -251,7 +246,6 @@ impl ServiceError {
             | ServiceError::MissingSigner(_)
             | ServiceError::MissingAlgorithm(_)
             | ServiceError::MissingTransportProtocol(_)
-            | ServiceError::MissingKey
             | ServiceError::KeyAlgorithmError(_)
             | ServiceError::DidMethodError(_)
             | ServiceError::CryptoError(_)

@@ -66,16 +66,15 @@ struct PartialQueryParamsRest<SortColumn: for<'a> ToSchema<'a>> {
     pub sort_direction: Option<SortDirection>,
 }
 
-impl From<ServiceError> for ErrorResponseRestDTO {
-    fn from(error: ServiceError) -> Self {
+impl From<&ServiceError> for ErrorResponseRestDTO {
+    fn from(error: &ServiceError) -> Self {
         let code = error.error_code();
-        let cause = Cause::with_message_from_error(&error);
+        let cause = Cause::with_message_from_error(error);
 
         ErrorResponseRestDTO {
             message: code.msg(),
             code: ErrorCode::from(code),
             cause: Some(cause),
-            error,
         }
     }
 }

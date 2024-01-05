@@ -206,8 +206,8 @@ impl ProofService {
                     .await?;
             }
             ProofStateEnum::Pending => {}
-            _ => {
-                return Err(ServiceError::AlreadyShared);
+            state => {
+                return Err(BusinessLogicError::InvalidProofState { state }.into());
             }
         }
 
