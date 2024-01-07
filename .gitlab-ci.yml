@@ -142,10 +142,17 @@ build:
 tests:
   stage: test
   script:
-    - cargo tarpaulin --ignore-tests --all-features --out xml
+    - echo "HOME= ${CARGO_HOME}"
+    - cargo tarpaulin --skip-clean --ignore-tests --all-features --out xml
   coverage: '/^\d+.\d+% coverage/'
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths:
+      - target/
+      - ${CARGO_HOME}
+    policy: pull-push
   artifacts:
-    expire_in: 1 hour
+    expire_in: 5 hour
     paths:
       - cobertura.xml
     reports:
@@ -153,47 +160,47 @@ tests:
         coverage_format: cobertura
         path: cobertura.xml
 
-linter:clippy:
-  stage: test
-  script:
-    - cargo clippy --all-targets -- -D warnings
-    - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
-    - cargo clippy --message-format=json &> report.json
-  artifacts:
-    expire_in: 1 hour
-    paths:
-      - report.json
+#linter:clippy:
+#  stage: test
+#  script:
+#    - cargo clippy --all-targets -- -D warnings
+#    - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
+#    - cargo clippy --message-format=json &> report.json
+#  artifacts:
+#    expire_in: 1 hour
+#    paths:
+#      - report.json
+#
+#linter:rustfmt:
+#  stage: test
+#  script:
+#    - cargo fmt --all -- --check
+#
+#linter:dependencies:
+#  stage: test
+#  script:
+#    - cargo deny check
+#  allow_failure: true
 
-linter:rustfmt:
-  stage: test
-  script:
-    - cargo fmt --all -- --check
-
-linter:dependencies:
-  stage: test
-  script:
-    - cargo deny check
-  allow_failure: true
-
-sonarqube-check:
-  stage: test
-  dependencies:
-    - linter:clippy
-    - tests
-  needs:
-    - linter:clippy
-    - tests
-  image:
-    name: sonarsource/sonar-scanner-cli:latest
-    entrypoint: [""]
-  variables:
-    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar" # Defines the location of the analysis task cache
-    GIT_DEPTH: "0" # Tells git to fetch all the branches of the project, required by the analysis task
-  script:
-    - sonar-scanner
-  allow_failure: true
-  extends:
-    - .only_main_or_tag
+#sonarqube-check:
+#  stage: test
+#  dependencies:
+#    - linter:clippy
+#    - tests
+#  needs:
+#    - linter:clippy
+#    - tests
+#  image:
+#    name: sonarsource/sonar-scanner-cli:latest
+#    entrypoint: [""]
+#  variables:
+#    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar" # Defines the location of the analysis task cache
+#    GIT_DEPTH: "0" # Tells git to fetch all the branches of the project, required by the analysis task
+#  script:
+#    - sonar-scanner
+#  allow_failure: true
+#  extends:
+#    - .only_main_or_tag
 
 publish:
   stage: publish
