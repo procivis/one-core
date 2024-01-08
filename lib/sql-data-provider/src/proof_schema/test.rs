@@ -346,7 +346,7 @@ async fn test_get_proof_schema_missing() {
     let result = repository
         .get_proof_schema(&Uuid::new_v4(), &ProofSchemaRelations::default())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Ok(None)));
 }
 
 #[tokio::test]
@@ -365,9 +365,10 @@ async fn test_get_proof_schema_no_relations() {
 
     let result = repository
         .get_proof_schema(&proof_schema_id, &ProofSchemaRelations::default())
-        .await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
+        .await
+        .unwrap()
+        .unwrap();
+
     assert_eq!(result.id, proof_schema_id);
     assert_eq!(result.name, proof_schema_name);
 }
@@ -398,9 +399,10 @@ async fn test_get_proof_schema_deleted() {
 
     let result = repository
         .get_proof_schema(&proof_schema_id, &ProofSchemaRelations::default())
-        .await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
+        .await
+        .unwrap()
+        .unwrap();
+
     assert_eq!(result.id, proof_schema_id);
     assert_eq!(result.deleted_at.unwrap(), delete_date);
 }
@@ -429,11 +431,11 @@ async fn test_get_proof_schema_with_relations() {
         .expect_get_organisation()
         .times(1)
         .returning(|id, _| {
-            Ok(Organisation {
+            Ok(Some(Organisation {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-            })
+            }))
         });
 
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
@@ -441,7 +443,7 @@ async fn test_get_proof_schema_with_relations() {
         .expect_get_credential_schema()
         .times(2)
         .returning(|id, _| {
-            Ok(CredentialSchema {
+            Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
                 created_date: get_dummy_date(),
@@ -451,7 +453,7 @@ async fn test_get_proof_schema_with_relations() {
                 revocation_method: "NONE".to_string(),
                 claim_schemas: None,
                 organisation: None,
-            })
+            }))
         });
 
     let TestSetup {
@@ -507,10 +509,10 @@ async fn test_get_proof_schema_with_relations() {
                 organisation: Some(OrganisationRelations::default()),
             },
         )
-        .await;
+        .await
+        .unwrap()
+        .unwrap();
 
-    assert!(result.is_ok());
-    let result = result.unwrap();
     assert_eq!(result.id, proof_schema_id);
 
     assert!(result.organisation.is_some());

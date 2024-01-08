@@ -34,7 +34,7 @@ async fn test_get_revocation_list() {
                 eq(revocation_id.to_owned()),
                 eq(RevocationListRelations::default()),
             )
-            .returning(move |_, _| Ok(revocation.clone()));
+            .returning(move |_, _| Ok(Some(revocation.clone())));
     }
 
     let service = setup_service(Repositories {

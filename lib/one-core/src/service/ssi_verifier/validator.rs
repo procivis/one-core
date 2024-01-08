@@ -12,7 +12,7 @@ use crate::{
         key_algorithm::provider::KeyAlgorithmProvider,
         revocation::provider::RevocationMethodProvider,
     },
-    service::error::ServiceError,
+    service::error::{BusinessLogicError, ServiceError},
     util::key_verification::KeyVerification,
 };
 
@@ -45,7 +45,12 @@ pub(super) async fn validate_proof(
     });
 
     // presentation envelope only JWT for now
-    let presentation_formatter = formatter_provider.get_formatter("JWT")?;
+    let formatter = "JWT";
+    let presentation_formatter = formatter_provider.get_formatter(formatter).ok_or(
+        BusinessLogicError::MissingFormatter {
+            formatter: formatter.to_owned(),
+        },
+    )?;
     let presentation = presentation_formatter
         .extract_presentation(presentation, key_verification_presentation.clone())
         .await?;
@@ -109,7 +114,11 @@ pub(super) async fn validate_proof(
         } else {
             "JWT"
         };
-        let credential_formatter = formatter_provider.get_formatter(format)?;
+        let credential_formatter = formatter_provider.get_formatter(format).ok_or(
+            BusinessLogicError::MissingFormatter {
+                formatter: format.to_owned(),
+            },
+        )?;
 
         let credential = credential_formatter
             .extract_credentials(&credential, key_verification_credentials.clone())

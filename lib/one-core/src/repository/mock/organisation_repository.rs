@@ -18,7 +18,7 @@ mock! {
             &self,
             id: &OrganisationId,
             relations: &OrganisationRelations
-        ) -> Result<Organisation, DataLayerError>;
+        ) -> Result<Option<Organisation>, DataLayerError>;
 
         pub fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError>;
     }
@@ -39,7 +39,7 @@ impl crate::repository::organisation_repository::OrganisationRepository
         &self,
         id: &OrganisationId,
         relations: &OrganisationRelations,
-    ) -> Result<Organisation, DataLayerError> {
+    ) -> Result<Option<Organisation>, DataLayerError> {
         self.get_organisation(id, relations)
     }
 

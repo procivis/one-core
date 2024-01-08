@@ -503,7 +503,7 @@ async fn test_create_credential_success() {
         credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
-            .returning(move |_, _| Ok(credential_schema.clone()));
+            .returning(move |_, _| Ok(Some(credential_schema.clone())));
 
         credential_repository
             .expect_create_credential()
@@ -579,7 +579,9 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         })
         .await;
 
-    assert2::assert!(let ServiceError::BusinessLogic(BusinessLogicError::DidIsDeactivated(_)) = result.err().unwrap());
+    assert2::assert!(
+        let ServiceError::BusinessLogic(BusinessLogicError::DidIsDeactivated(_)) = result.err().unwrap()
+    );
 }
 
 #[tokio::test]
@@ -626,7 +628,7 @@ async fn test_create_credential_one_required_claim_missing() {
 
         credential_schema_repository
             .expect_get_credential_schema()
-            .returning(move |_, _| Ok(credential_schema_clone.clone()));
+            .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
 
         credential_repository
             .expect_create_credential()
@@ -710,7 +712,7 @@ async fn test_create_credential_schema_deleted() {
 
         credential_schema_repository
             .expect_get_credential_schema()
-            .returning(move |_, _| Ok(credential_schema_clone.clone()));
+            .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -738,7 +740,12 @@ async fn test_create_credential_schema_deleted() {
             redirect_uri: None,
         })
         .await;
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+
+    assert2::assert!(
+        let Err(ServiceError::BusinessLogic(
+            BusinessLogicError::MissingCredentialSchema
+        )) = result
+    );
 }
 
 #[tokio::test]
@@ -805,7 +812,7 @@ async fn test_check_revocation_non_revocable() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_formatter()
-        .returning(move |_| Ok(formatter.clone()));
+        .returning(move |_| Some(formatter.clone()));
 
     revocation_method_provider
         .expect_get_revocation_method()
@@ -948,7 +955,7 @@ async fn test_check_revocation_being_revoked() {
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_formatter()
-        .returning(move |_| Ok(formatter.clone()));
+        .returning(move |_| Some(formatter.clone()));
 
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider

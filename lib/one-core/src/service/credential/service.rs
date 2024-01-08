@@ -76,6 +76,10 @@ impl CredentialService {
             )
             .await?;
 
+        let Some(schema) = schema else {
+            return Err(EntityNotFoundError::CredentialSchema(request.credential_schema_id).into());
+        };
+
         let claim_schemas = schema
             .claim_schemas
             .to_owned()
@@ -298,7 +302,7 @@ impl CredentialService {
                 .await?;
 
             let Some(credential) = credential else {
-                return Err(ServiceError::NotFound);
+                return Err(EntityNotFoundError::Credential(credential_id).into());
             };
 
             let current_state = credential
@@ -319,7 +323,10 @@ impl CredentialService {
                 CredentialStateEnum::Accepted => {
                     let formatter = self
                         .formatter_provider
-                        .get_formatter(&credential_schema.format)?;
+                        .get_formatter(&credential_schema.format)
+                        .ok_or(BusinessLogicError::MissingFormatter {
+                            formatter: credential_schema.format.clone(),
+                        })?;
 
                     let credential = String::from_utf8(credential.credential)
                         .map_err(|e| ServiceError::MappingError(e.to_string()))?;
@@ -480,7 +487,7 @@ impl CredentialService {
             .await?;
 
         let Some(credential) = credential else {
-            return Err(ServiceError::NotFound);
+            return Err(EntityNotFoundError::Credential(*id).into());
         };
 
         let credential_states = credential

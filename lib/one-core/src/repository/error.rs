@@ -16,17 +16,20 @@ pub enum DataLayerError {
     MappingError,
     #[error("Database error: {0}")]
     Db(anyhow::Error),
+    #[error("Missing required relation {relation} for {id}")]
+    MissingRequiredRelation { relation: &'static str, id: String },
 }
 
 impl DataLayerError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
+            DataLayerError::Db(_) => ErrorCode::Database,
             DataLayerError::AlreadyExists
             | DataLayerError::IncorrectParameters
             | DataLayerError::RecordNotFound
             | DataLayerError::RecordNotUpdated
-            | DataLayerError::MappingError => ErrorCode::Unmapped,
-            DataLayerError::Db(_) => ErrorCode::Database,
+            | DataLayerError::MappingError
+            | DataLayerError::MissingRequiredRelation { .. } => ErrorCode::Unmapped,
         }
     }
 }

@@ -21,13 +21,13 @@ mock! {
             &self,
             id: &ProofId,
             relations: &ProofRelations,
-        ) -> Result<Proof, DataLayerError>;
+        ) -> Result<Option<Proof>, DataLayerError>;
 
         pub fn get_proof_by_interaction_id(
             &self,
             interaction_id: &InteractionId,
             relations: &ProofRelations,
-        ) -> Result<Proof, DataLayerError>;
+        ) -> Result<Option<Proof>, DataLayerError>;
 
         pub fn get_proof_list(
             &self,
@@ -66,7 +66,7 @@ impl crate::repository::proof_repository::ProofRepository for MockProofRepositor
         &self,
         id: &ProofId,
         relations: &ProofRelations,
-    ) -> Result<Proof, DataLayerError> {
+    ) -> Result<Option<Proof>, DataLayerError> {
         self.get_proof(id, relations)
     }
 
@@ -74,7 +74,7 @@ impl crate::repository::proof_repository::ProofRepository for MockProofRepositor
         &self,
         interaction_id: &InteractionId,
         relations: &ProofRelations,
-    ) -> Result<Proof, DataLayerError> {
+    ) -> Result<Option<Proof>, DataLayerError> {
         self.get_proof_by_interaction_id(interaction_id, relations)
     }
 

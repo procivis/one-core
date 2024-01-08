@@ -4,7 +4,6 @@ use shared_types::DidValue;
 
 use crate::model::did::Did;
 use crate::provider::did_method::DidMethod;
-use crate::repository::error::DataLayerError;
 use crate::service::error::BusinessLogicError;
 use crate::{
     model::{did::DidRelations, key::KeyId},
@@ -52,15 +51,11 @@ pub(super) async fn did_already_exists(
     repository: &Arc<dyn DidRepository>,
     did_value: &DidValue,
 ) -> Result<bool, ServiceError> {
-    let result = repository
+    let did = repository
         .get_did_by_value(did_value, &DidRelations::default())
-        .await;
+        .await?;
 
-    match result {
-        Ok(_) => Ok(true),
-        Err(DataLayerError::RecordNotFound) => Ok(false),
-        Err(e) => Err(ServiceError::from(e)),
-    }
+    Ok(did.is_some())
 }
 
 pub(super) fn validate_deactivation_request(

@@ -22,7 +22,7 @@ use axum::{
 };
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
-use one_core::service::error::ServiceError;
+use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::DidId;
 use uuid::Uuid;
 
@@ -91,7 +91,7 @@ pub(crate) async fn get_revocation_list_by_id(
 
     match result {
         Ok(result) => (StatusCode::OK, result).into_response(),
-        Err(ServiceError::NotFound) => {
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::RevocationList(_))) => {
             tracing::error!("Missing revocation list");
             (StatusCode::NOT_FOUND, "Missing revocation list").into_response()
         }
@@ -127,7 +127,7 @@ pub(crate) async fn oidc_get_issuer_metadata(
             Json(OpenID4VCIIssuerMetadataResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::NotFound) => {
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
@@ -163,7 +163,7 @@ pub(crate) async fn oidc_service_discovery(
             Json(OpenID4VCIDiscoveryResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::NotFound) => {
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
@@ -272,7 +272,7 @@ pub(crate) async fn oidc_create_credential(
             )
                 .into_response()
         }
-        Err(ServiceError::NotFound) => {
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
@@ -319,7 +319,7 @@ pub(crate) async fn oidc_verifier_direct_post(
             )
                 .into_response()
         }
-        Err(ServiceError::NotFound) => {
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::ProofForInteraction(_))) => {
             tracing::error!("Missing interaction or proof");
             (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()
         }

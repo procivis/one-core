@@ -88,9 +88,8 @@ async fn test_get_interaction() {
     let result = setup
         .provider
         .get_interaction(&setup.interaction_id, &InteractionRelations::default())
-        .await;
-
-    assert!(result.is_ok());
+        .await
+        .unwrap();
 
     let interaction = result.unwrap();
 

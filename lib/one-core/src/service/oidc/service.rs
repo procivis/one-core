@@ -24,7 +24,7 @@ use crate::model::proof_schema::{
     ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 
-use crate::service::error::ServiceError;
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
 };
@@ -87,6 +87,10 @@ impl OIDCService {
             .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
             .await?;
 
+        let Some(schema) = schema else {
+            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+        };
+
         let core_base_url = self
             .core_base_url
             .as_ref()
@@ -118,14 +122,23 @@ impl OIDCService {
             .await
             .map_err(ServiceError::from)?;
 
+        let Some(schema) = schema else {
+            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+        };
+
         throw_if_credential_request_invalid(&schema, &request)?;
 
         let interaction_id = parse_access_token(access_token)?;
         let interaction = self
             .interaction_repository
             .get_interaction(&interaction_id, &InteractionRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
+
+        let Some(interaction) = interaction else {
+            return Err(
+                BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
+            );
+        };
 
         throw_if_interaction_data_invalid(&interaction_data_to_dto(&interaction)?, access_token)?;
 
@@ -139,17 +152,13 @@ impl OIDCService {
                     ..Default::default()
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
-        if credentials.is_empty() {
-            return Err(ServiceError::NotFound);
-        }
-
-        let credential = credentials
-            .first()
-            .ok_or(ServiceError::NotFound)?
-            .to_owned();
+        let Some(credential) = credentials.into_iter().next() else {
+            return Err(
+                BusinessLogicError::MissingCredentialsForInteraction { interaction_id }.into(),
+            );
+        };
 
         let holder_did = if request.proof.proof_type == "jwt" {
             let jwt = OpenID4VCIProofJWTFormatter::verify_proof(&request.proof.jwt).await?;
@@ -223,14 +232,11 @@ impl OIDCService {
             .await
             .map_err(ServiceError::from)?;
 
-        if credentials.is_empty() {
-            return Err(ServiceError::NotFound);
-        }
         let now = OffsetDateTime::now_utc();
 
         let mut interaction = credentials
             .first()
-            .ok_or(ServiceError::MappingError("credentials none".to_string()))?
+            .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?
             .interaction
             .clone()
             .ok_or(ServiceError::MappingError(
@@ -299,6 +305,10 @@ impl OIDCService {
                 },
             )
             .await?;
+
+        let Some(proof) = proof else {
+            return Err(EntityNotFoundError::ProofForInteraction(interaction_id).into());
+        };
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 

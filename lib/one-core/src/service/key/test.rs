@@ -74,7 +74,7 @@ async fn test_create_key_success() {
         organisation_repository
             .expect_get_organisation()
             .once()
-            .returning(move |_, _| Ok(organisation.clone()));
+            .returning(move |_, _| Ok(Some(organisation.clone())));
 
         key_storage.expect_generate().once().returning(|_, _| {
             Ok(GeneratedKey {
@@ -124,7 +124,7 @@ async fn test_get_key_success() {
         repository
             .expect_get_key()
             .once()
-            .returning(move |_, _| Ok(key.clone()));
+            .returning(move |_, _| Ok(Some(key.clone())));
     }
 
     let service = setup_service(

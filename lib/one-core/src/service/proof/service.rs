@@ -7,6 +7,7 @@ use super::{
     ProofService,
 };
 use crate::provider::transport_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::service::error::EntityNotFoundError;
 use crate::{
     common_mapper::list_response_try_into,
     config::validator::exchange::validate_exchange_type,
@@ -35,7 +36,7 @@ impl ProofService {
     ///
     /// * `id` - Proof uuid
     pub async fn get_proof(&self, id: &ProofId) -> Result<ProofDetailResponseDTO, ServiceError> {
-        let result = self
+        let proof = self
             .proof_repository
             .get_proof(
                 id,
@@ -61,10 +62,14 @@ impl ProofService {
             .await
             .map_err(ServiceError::from)?;
 
-        if result.schema.is_some() {
-            get_verifier_proof_detail(result)
+        let Some(proof) = proof else {
+            return Err(EntityNotFoundError::Proof(*id).into());
+        };
+
+        if proof.schema.is_some() {
+            get_verifier_proof_detail(proof)
         } else {
-            get_holder_proof_detail(result)
+            get_holder_proof_detail(proof)
         }
     }
 
@@ -90,6 +95,10 @@ impl ProofService {
             )
             .await
             .map_err(ServiceError::from)?;
+
+        let Some(proof) = proof else {
+            return Err(EntityNotFoundError::Proof(*id).into());
+        };
 
         let holder_did = proof
             .holder_did
@@ -140,14 +149,16 @@ impl ProofService {
             .map_err(ServiceError::from)?;
 
         let now = OffsetDateTime::now_utc();
+        let proof_schema_id = request.proof_schema_id;
         let proof_schema = self
             .proof_schema_repository
-            .get_proof_schema(&request.proof_schema_id, &ProofSchemaRelations::default())
-            .await?;
+            .get_proof_schema(&proof_schema_id, &ProofSchemaRelations::default())
+            .await?
+            .ok_or(BusinessLogicError::MissingProofSchema { proof_schema_id })?;
 
         // ONE-843: cannot create proof based on deleted schema
         if proof_schema.deleted_at.is_some() {
-            return Err(ServiceError::NotFound);
+            return Err(BusinessLogicError::ProofSchemaDeleted { proof_schema_id }.into());
         }
 
         let verifier_did = self
@@ -156,7 +167,7 @@ impl ProofService {
             .await?;
 
         let Some(verifier_did) = verifier_did else {
-            return Err(ServiceError::NotFound);
+            return Err(EntityNotFoundError::Did(request.verifier_did_id).into());
         };
 
         if verifier_did.deactivated {
@@ -243,7 +254,8 @@ impl ProofService {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await?
+            .ok_or(EntityNotFoundError::Proof(*id))?;
 
         let proof_states = proof
             .state

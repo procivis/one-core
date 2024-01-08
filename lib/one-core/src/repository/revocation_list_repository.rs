@@ -14,12 +14,12 @@ pub trait RevocationListRepository: Send + Sync {
         &self,
         id: &RevocationListId,
         relations: &RevocationListRelations,
-    ) -> Result<RevocationList, DataLayerError>;
+    ) -> Result<Option<RevocationList>, DataLayerError>;
     async fn get_revocation_by_issuer_did_id(
         &self,
         issuer_did_id: &DidId,
         relations: &RevocationListRelations,
-    ) -> Result<RevocationList, DataLayerError>;
+    ) -> Result<Option<RevocationList>, DataLayerError>;
     async fn update_credentials(
         &self,
         revocation_list_id: &RevocationListId,

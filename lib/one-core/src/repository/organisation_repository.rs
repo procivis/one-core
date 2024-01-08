@@ -13,7 +13,7 @@ pub trait OrganisationRepository: Send + Sync {
         &self,
         id: &OrganisationId,
         relations: &OrganisationRelations,
-    ) -> Result<Organisation, DataLayerError>;
+    ) -> Result<Option<Organisation>, DataLayerError>;
 
     async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError>;
 }

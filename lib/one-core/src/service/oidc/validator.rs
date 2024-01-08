@@ -108,13 +108,9 @@ pub(super) async fn validate_presentation(
     key_verification: Box<KeyVerification>,
 ) -> Result<Presentation, ServiceError> {
     let format = map_from_oidc_vp_format_to_core(oidc_format)?;
-    let formatter = formatter_provider.get_formatter(&format).map_err(|e| {
-        if matches!(e, ServiceError::NotFound) {
-            OpenID4VCIError::VCFormatsNotSupported.into()
-        } else {
-            ServiceError::Other(e.to_string())
-        }
-    })?;
+    let formatter = formatter_provider
+        .get_formatter(&format)
+        .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let presentation = formatter
         .extract_presentation(presentation_string, key_verification)
@@ -152,13 +148,9 @@ pub(super) async fn validate_credential(
     revocation_method_provider: &Arc<dyn RevocationMethodProvider + Send + Sync>,
 ) -> Result<DetailCredential, ServiceError> {
     let format = map_from_oidc_format_to_core(oidc_format)?;
-    let formatter = formatter_provider.get_formatter(&format).map_err(|e| {
-        if matches!(e, ServiceError::NotFound) {
-            OpenID4VCIError::VCFormatsNotSupported.into()
-        } else {
-            ServiceError::Other(e.to_string())
-        }
-    })?;
+    let formatter = formatter_provider
+        .get_formatter(&format)
+        .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let credential = formatter
         .extract_credentials(credential_string, key_verification)

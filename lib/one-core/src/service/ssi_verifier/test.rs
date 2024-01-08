@@ -52,7 +52,7 @@ async fn test_connect_to_holder_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Proof {
+            Ok(Some(Proof {
                 verifier_did: Some(Did {
                     did: verifier_did_clone,
                     ..dummy_did()
@@ -82,7 +82,7 @@ async fn test_connect_to_holder_succeeds() {
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()
-            })
+            }))
         });
 
     proof_repository
@@ -93,7 +93,7 @@ async fn test_connect_to_holder_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Proof {
+            Ok(Some(Proof {
                 holder_did: Some(dummy_did()),
                 state: Some(vec![ProofState {
                     created_date: OffsetDateTime::now_utc(),
@@ -102,7 +102,7 @@ async fn test_connect_to_holder_succeeds() {
                 }]),
 
                 ..dummy_proof()
-            })
+            }))
         });
 
     proof_repository
@@ -127,10 +127,10 @@ async fn test_connect_to_holder_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Did {
+            Ok(Some(Did {
                 id: did_id,
                 ..dummy_did()
-            })
+            }))
         });
 
     proof_repository
@@ -174,7 +174,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Proof {
+            Ok(Some(Proof {
                 verifier_did: Some(Did {
                     did: verifier_did_clone,
                     ..dummy_did()
@@ -204,7 +204,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()
-            })
+            }))
         });
 
     proof_repository
@@ -215,7 +215,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Proof {
+            Ok(Some(Proof {
                 holder_did: Some(dummy_did()),
                 verifier_did: Some(dummy_did()),
                 state: Some(vec![ProofState {
@@ -225,7 +225,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                 }]),
 
                 ..dummy_proof()
-            })
+            }))
         });
 
     proof_repository
@@ -278,7 +278,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
             true
         })
         .once()
-        .return_once(move |_, _| Err(crate::repository::error::DataLayerError::RecordNotFound));
+        .returning(|_, _| Ok(None));
 
     let did_id: DidId = Uuid::new_v4().into();
 
@@ -329,7 +329,7 @@ async fn test_submit_proof_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Proof {
+            Ok(Some(Proof {
                 verifier_did: Some(Did {
                     did: verifier_did,
                     ..dummy_did()
@@ -365,7 +365,7 @@ async fn test_submit_proof_succeeds() {
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()
-            })
+            }))
         });
 
     proof_repository
@@ -397,7 +397,7 @@ async fn test_submit_proof_succeeds() {
     formatter_provider
         .expect_get_formatter()
         .once()
-        .return_once(move |_| Ok(Arc::new(formatter)));
+        .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut claim_schema_repository = MockClaimSchemaRepository::new();
     claim_schema_repository
@@ -456,14 +456,14 @@ async fn test_reject_proof_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
-            Ok(Proof {
+            Ok(Some(Proof {
                 state: Some(vec![ProofState {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     state: ProofStateEnum::Offered,
                 }]),
                 ..dummy_proof()
-            })
+            }))
         });
 
     proof_repository

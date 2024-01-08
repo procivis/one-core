@@ -14,7 +14,7 @@ use crate::{
             mapper::from_create_request,
             CredentialSchemaService,
         },
-        error::ServiceError,
+        error::{EntityNotFoundError, ServiceError},
     },
 };
 
@@ -40,8 +40,12 @@ impl CredentialSchemaService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
+
+        let Some(organisation) = organisation else {
+            return Err(EntityNotFoundError::Organisation(request.organisation_id).into());
+        };
+
         let credential_schema = from_create_request(request, organisation)?;
 
         self.credential_schema_repository
@@ -85,6 +89,10 @@ impl CredentialSchemaService {
             )
             .await
             .map_err(ServiceError::from)?;
+
+        let Some(schema) = schema else {
+            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+        };
 
         schema.try_into()
     }

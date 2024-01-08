@@ -288,11 +288,11 @@ async fn test_get_credential_schema_success() {
         .expect_get_organisation()
         .times(1)
         .returning(|id, _| {
-            Ok(Organisation {
+            Ok(Some(Organisation {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-            })
+            }))
         });
 
     let TestSetupWithCredentialSchema {
@@ -317,7 +317,7 @@ async fn test_get_credential_schema_success() {
         .await;
 
     assert!(result.is_ok());
-    let result = result.unwrap();
+    let result = result.unwrap().unwrap();
     assert_eq!(credential_schema.id, result.id);
     let claim_schemas = result.claim_schemas.unwrap();
     assert_eq!(claim_schemas.len(), 2);
@@ -353,11 +353,11 @@ async fn test_get_credential_schema_deleted() {
         .expect_get_organisation()
         .times(1)
         .returning(|id, _| {
-            Ok(Organisation {
+            Ok(Some(Organisation {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-            })
+            }))
         });
 
     let TestSetupWithCredentialSchema {
@@ -392,7 +392,7 @@ async fn test_get_credential_schema_deleted() {
         .await;
 
     assert!(result.is_ok());
-    let result = result.unwrap();
+    let result = result.unwrap().unwrap();
     assert_eq!(result.id, credential_schema.id,);
     assert_eq!(result.deleted_at.unwrap(), delete_date);
 }
@@ -404,7 +404,7 @@ async fn test_get_credential_schema_not_found() {
     let result = repository
         .get_credential_schema(&Uuid::new_v4(), &CredentialSchemaRelations::default())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Ok(None)));
 }
 
 #[tokio::test]

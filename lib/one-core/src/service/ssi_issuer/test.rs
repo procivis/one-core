@@ -35,7 +35,7 @@ async fn test_issuer_connect_succeeds() {
     did_repository
         .expect_get_did_by_value()
         .once()
-        .return_once(move |_, _| Ok(dummy_did()));
+        .return_once(move |_, _| Ok(Some(dummy_did())));
 
     let service = SSIIssuerService {
         credential_repository: Arc::new(credential_repository),

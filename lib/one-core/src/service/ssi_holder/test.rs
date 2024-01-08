@@ -54,7 +54,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .expect_get_proof_by_interaction_id()
         .once()
         .return_once(move |_, _| {
-            Ok(Proof {
+            Ok(Some(Proof {
                 id: proof_id,
                 transport: protocol.to_string(),
                 state: Some(vec![
@@ -77,7 +77,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                     data: None,
                 }),
                 ..dummy_proof()
-            })
+            }))
         });
 
     proof_repository
@@ -130,7 +130,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
             .expect_get_proof_by_interaction_id()
             .once()
             .return_once(move |_, _| {
-                Ok(Proof {
+                Ok(Some(Proof {
                     id: proof_id,
                     transport: protocol.to_string(),
                     state: Some(vec![
@@ -153,7 +153,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
                         data: None,
                     }),
                     ..dummy_proof()
-                })
+                }))
             });
 
         let service = SSIHolderService {
@@ -196,7 +196,7 @@ async fn test_submit_proof_succeeds() {
         })
         .once()
         .returning(move |_, _| {
-            Ok(Proof {
+            Ok(Some(Proof {
                 id: proof_id,
                 transport: protocol.to_string(),
                 state: Some(vec![
@@ -240,7 +240,7 @@ async fn test_submit_proof_succeeds() {
                     data: None,
                 }),
                 ..dummy_proof()
-            })
+            }))
         });
 
     proof_repository
@@ -279,7 +279,7 @@ async fn test_submit_proof_succeeds() {
     formatter_provider
         .expect_get_formatter()
         .times(1)
-        .returning(move |_| Ok(formatter.clone()));
+        .returning(move |_| Some(formatter.clone()));
 
     let mut transport_protocol = MockTransportProtocol::new();
     transport_protocol

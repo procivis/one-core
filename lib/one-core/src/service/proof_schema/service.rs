@@ -15,7 +15,7 @@ use crate::{
         organisation::OrganisationRelations,
         proof_schema::{ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations},
     },
-    service::error::ServiceError,
+    service::error::{EntityNotFoundError, ServiceError},
 };
 use time::OffsetDateTime;
 
@@ -43,8 +43,8 @@ impl ProofSchemaService {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?
+            .ok_or(EntityNotFoundError::ProofSchema(*id))?;
         result.try_into()
     }
 
@@ -103,6 +103,10 @@ impl ProofSchemaService {
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
             .await?;
+
+        let Some(organisation) = organisation else {
+            return Err(EntityNotFoundError::Organisation(request.organisation_id).into());
+        };
 
         let now = OffsetDateTime::now_utc();
         let proof_schema =

@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
@@ -108,12 +109,15 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         &self,
         id: &CredentialSchemaId,
         relations: &CredentialSchemaRelations,
-    ) -> Result<CredentialSchema, DataLayerError> {
+    ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let credential_schema = credential_schema::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
-            .map_err(to_data_layer_error)?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            .map_err(to_data_layer_error)?;
+
+        let Some(credential_schema) = credential_schema else {
+            return Ok(None);
+        };
 
         let claim_schemas = if let Some(claim_schema_relations) = &relations.claim_schemas {
             let models = credential_schema_claim_schema::Entity::find()
@@ -151,18 +155,29 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .one(&self.db)
                 .await
                 .map_err(to_data_layer_error)?
-                .ok_or(DataLayerError::RecordNotFound)?;
+                .ok_or(DataLayerError::Db(anyhow!(
+                    "Missing organisation for credential schema {id}"
+                )))?;
+
             let organisation: Organisation = model.try_into()?;
+
             Some(
                 self.organisation_repository
                     .get_organisation(&organisation.id, organisation_relations)
-                    .await?,
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "credential_schema-organisation",
+                        id: organisation.id.to_string(),
+                    })?,
             )
         } else {
             None
         };
 
-        credential_schema_from_models(credential_schema, claim_schemas, organisation)
+        let credential_schema =
+            credential_schema_from_models(credential_schema, claim_schemas, organisation)?;
+
+        Ok(Some(credential_schema))
     }
 
     async fn get_credential_schema_list(

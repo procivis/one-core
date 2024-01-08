@@ -27,7 +27,7 @@ use crate::{
             provider::DetectedProtocol,
         },
     },
-    service::error::ServiceError,
+    service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
 };
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -51,7 +51,7 @@ impl SSIHolderService {
             .await?;
 
         let Some(holder_did) = holder_did else {
-            return Err(ServiceError::NotFound);
+            return Err(EntityNotFoundError::Did(*holder_did_id).into());
         };
 
         let DetectedProtocol { protocol, .. } = self
@@ -79,6 +79,10 @@ impl SSIHolderService {
                 },
             )
             .await?;
+
+        let Some(proof) = proof else {
+            return Err(EntityNotFoundError::ProofForInteraction(*interaction_id).into());
+        };
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
@@ -120,6 +124,10 @@ impl SSIHolderService {
                 },
             )
             .await?;
+
+        let Some(proof) = proof else {
+            return Err(EntityNotFoundError::ProofForInteraction(request.interaction_id).into());
+        };
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
@@ -177,12 +185,17 @@ impl SSIHolderService {
                 .await?;
 
             let Some(credential) = credential else {
-                return Err(ServiceError::NotFound);
+                return Err(
+                    EntityNotFoundError::Credential(credential_request.credential_id).into(),
+                );
             };
 
             let credential_data = credential.credential;
             if credential_data.is_empty() {
-                return Err(ServiceError::NotFound);
+                return Err(BusinessLogicError::MissingCredentialData {
+                    credential_id: credential_request.credential_id,
+                }
+                .into());
             }
             let credential_content = std::str::from_utf8(&credential_data)
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?;
@@ -203,9 +216,15 @@ impl SSIHolderService {
                 }
             }
 
-            let formatter = self
+            let Some(formatter) = self
                 .formatter_provider
-                .get_formatter(&credential_schema.format)?;
+                .get_formatter(&credential_schema.format)
+            else {
+                return Err(BusinessLogicError::MissingFormatter {
+                    formatter: credential_schema.format,
+                }
+                .into());
+            };
 
             let credential_presentation = CredentialPresentation {
                 token: credential_content.to_owned(),
@@ -277,7 +296,10 @@ impl SSIHolderService {
             .await?;
 
         if credentials.is_empty() {
-            return Err(ServiceError::NotFound);
+            return Err(BusinessLogicError::MissingCredentialsForInteraction {
+                interaction_id: *interaction_id,
+            }
+            .into());
         }
 
         for credential in credentials {
@@ -322,7 +344,10 @@ impl SSIHolderService {
             .await?;
 
         if credentials.is_empty() {
-            return Err(ServiceError::NotFound);
+            return Err(BusinessLogicError::MissingCredentialsForInteraction {
+                interaction_id: *interaction_id,
+            }
+            .into());
         }
 
         for credential in credentials {

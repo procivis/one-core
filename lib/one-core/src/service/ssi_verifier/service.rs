@@ -17,8 +17,7 @@ use crate::{
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
     provider::did_method::provider::DidMethodProvider,
-    repository::error::DataLayerError,
-    service::error::ServiceError,
+    service::error::{EntityNotFoundError, ServiceError},
 };
 use shared_types::DidValue;
 use time::OffsetDateTime;
@@ -53,6 +52,10 @@ impl SSIVerifierService {
                 },
             )
             .await?;
+
+        let Some(proof) = proof else {
+            return Err(EntityNotFoundError::Proof(*proof_id).into());
+        };
 
         let did = proof.verifier_did.ok_or(ServiceError::MappingError(
             "verifier_did is None".to_string(),
@@ -187,10 +190,10 @@ impl SSIVerifierService {
         let holder_did = match self
             .did_repository
             .get_did_by_value(holder_did_value, &DidRelations::default())
-            .await
+            .await?
         {
-            Ok(did) => did,
-            Err(DataLayerError::RecordNotFound) => {
+            Some(did) => did,
+            None => {
                 let organisation = proof
                     .verifier_did
                     .ok_or(ServiceError::MappingError(
@@ -208,9 +211,6 @@ impl SSIVerifierService {
                 self.did_repository.create_did(resolved_did.clone()).await?;
 
                 resolved_did
-            }
-            Err(e) => {
-                return Err(ServiceError::from(e));
             }
         };
 
@@ -320,6 +320,10 @@ impl SSIVerifierService {
                 },
             )
             .await?;
+
+        let Some(proof) = proof else {
+            return Err(EntityNotFoundError::Proof(*id).into());
+        };
 
         Ok(proof)
     }

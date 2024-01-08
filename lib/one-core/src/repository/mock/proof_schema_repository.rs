@@ -21,7 +21,7 @@ mock! {
             &self,
             id: &ProofSchemaId,
             relations: &ProofSchemaRelations,
-        ) -> Result<ProofSchema, DataLayerError>;
+        ) -> Result<Option<ProofSchema>, DataLayerError>;
 
         pub fn get_proof_schema_list(
             &self,
@@ -51,7 +51,7 @@ impl crate::repository::proof_schema_repository::ProofSchemaRepository
         &self,
         id: &ProofSchemaId,
         relations: &ProofSchemaRelations,
-    ) -> Result<ProofSchema, DataLayerError> {
+    ) -> Result<Option<ProofSchema>, DataLayerError> {
         self.get_proof_schema(id, relations)
     }
 

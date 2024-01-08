@@ -74,13 +74,15 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         &self,
         id: &ProofSchemaId,
         relations: &ProofSchemaRelations,
-    ) -> Result<ProofSchema, DataLayerError> {
-        let proof_schema_model: proof_schema::Model =
-            crate::entity::ProofSchema::find_by_id(id.to_string())
-                .one(&self.db)
-                .await
-                .map_err(|e| DataLayerError::Db(e.into()))?
-                .ok_or(DataLayerError::RecordNotFound)?;
+    ) -> Result<Option<ProofSchema>, DataLayerError> {
+        let proof_schema_model = crate::entity::ProofSchema::find_by_id(id.to_string())
+            .one(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        let Some(proof_schema_model) = proof_schema_model else {
+            return Ok(None);
+        };
 
         let organisation_id = proof_schema_model.organisation_id.to_owned();
         let mut proof_schema = ProofSchema::try_from(proof_schema_model)?;
@@ -96,11 +98,15 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             proof_schema.organisation = Some(
                 self.organisation_repository
                     .get_organisation(&organisation_id, organisation_relations)
-                    .await?,
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "proof_schema-organisation",
+                        id: organisation_id.to_string(),
+                    })?,
             );
         }
 
-        Ok(proof_schema)
+        Ok(Some(proof_schema))
     }
 
     async fn get_proof_schema_list(
@@ -164,7 +170,11 @@ impl ProofSchemaProvider {
 
         self.credential_schema_repository
             .get_credential_schema(&credential_schema_id, credential_schema_relations)
-            .await
+            .await?
+            .ok_or(DataLayerError::MissingRequiredRelation {
+                relation: "proof_schema-credential_schema",
+                id: credential_schema_id.to_string(),
+            })
     }
 
     async fn get_related_claim_schemas(

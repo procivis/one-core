@@ -18,12 +18,12 @@ mock! {
             &self,
             id: &RevocationListId,
             relations: &RevocationListRelations
-        ) -> Result<RevocationList, DataLayerError>;
+        ) -> Result<Option<RevocationList>, DataLayerError>;
         pub fn get_revocation_by_issuer_did_id(
             &self,
             issuer_did_id: &DidId,
             relations: &RevocationListRelations,
-        ) -> Result<RevocationList, DataLayerError>;
+        ) -> Result<Option<RevocationList>, DataLayerError>;
         pub fn update_credentials(
             &self,
             revocation_list_id: &RevocationListId,
@@ -47,7 +47,7 @@ impl crate::repository::revocation_list_repository::RevocationListRepository
         &self,
         id: &RevocationListId,
         relations: &RevocationListRelations,
-    ) -> Result<RevocationList, DataLayerError> {
+    ) -> Result<Option<RevocationList>, DataLayerError> {
         self.get_revocation_list(id, relations)
     }
 
@@ -55,7 +55,7 @@ impl crate::repository::revocation_list_repository::RevocationListRepository
         &self,
         issuer_did_id: &DidId,
         relations: &RevocationListRelations,
-    ) -> Result<RevocationList, DataLayerError> {
+    ) -> Result<Option<RevocationList>, DataLayerError> {
         self.get_revocation_by_issuer_did_id(issuer_did_id, relations)
     }
 

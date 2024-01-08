@@ -36,6 +36,23 @@ pub enum ErrorCode {
     Database,
     ResponseMapping,
 
+    MissingFormatter,
+    InvalidFormatter,
+    MissingCredentialsForInteraction,
+    ProofSchemaDeleted,
+    MissingCredentialData,
+    MissingCredentialSchema,
+    MissingClaimSchema,
+    MissingRevocationListForDid,
+    RevocationListNotFound,
+    MissingProofSchema,
+    ProofSchemaNotFound,
+    ProofNotFound,
+    OrganisationNotFound,
+    KeyNotFound,
+    CredentialSchemaNotFound,
+    MissingInteractionForAccessToken,
+
     Unmapped,
 }
 

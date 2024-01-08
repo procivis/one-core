@@ -293,7 +293,7 @@ async fn test_generate_share_proof_open_id_flow_success() {
         .expect_get_proof()
         .once()
         .in_sequence(&mut seq)
-        .returning(move |_, _| Ok(proof_moved.clone()));
+        .returning(move |_, _| Ok(Some(proof_moved.clone())));
 
     interaction_repository
         .expect_create_interaction()

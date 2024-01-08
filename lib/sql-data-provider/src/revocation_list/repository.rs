@@ -59,30 +59,45 @@ impl RevocationListRepository for RevocationListProvider {
         &self,
         id: &RevocationListId,
         relations: &RevocationListRelations,
-    ) -> Result<RevocationList, DataLayerError> {
+    ) -> Result<Option<RevocationList>, DataLayerError> {
         let revocation_list = revocation_list::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?
-            .ok_or(DataLayerError::RecordNotFound)?;
-        self.entity_model_to_repository_model(revocation_list, relations)
-            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        match revocation_list {
+            None => Ok(None),
+            Some(revocation_list) => {
+                let revocation_list = self
+                    .entity_model_to_repository_model(revocation_list, relations)
+                    .await?;
+
+                Ok(Some(revocation_list))
+            }
+        }
     }
 
     async fn get_revocation_by_issuer_did_id(
         &self,
         issuer_did_id: &DidId,
         relations: &RevocationListRelations,
-    ) -> Result<RevocationList, DataLayerError> {
+    ) -> Result<Option<RevocationList>, DataLayerError> {
         let revocation_list = revocation_list::Entity::find()
             .filter(revocation_list::Column::IssuerDidId.eq(issuer_did_id))
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        self.entity_model_to_repository_model(revocation_list, relations)
-            .await
+        match revocation_list {
+            None => Ok(None),
+            Some(revocation_list) => {
+                let revocation_list = self
+                    .entity_model_to_repository_model(revocation_list, relations)
+                    .await?;
+
+                Ok(Some(revocation_list))
+            }
+        }
     }
 
     async fn update_credentials(

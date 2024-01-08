@@ -145,10 +145,11 @@ async fn test_get_key_success() {
 
     let result = provider
         .get_key(&key_id, &KeyRelations { organisation: None })
-        .await;
+        .await
+        .unwrap()
+        .unwrap();
 
-    assert!(result.is_ok());
-    assert_eq!(key_id, result.unwrap().id);
+    assert_eq!(key_id, result.id);
 }
 
 #[tokio::test]

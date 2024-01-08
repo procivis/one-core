@@ -37,14 +37,19 @@ impl InteractionRepository for InteractionProvider {
         &self,
         id: &InteractionId,
         _relations: &InteractionRelations,
-    ) -> Result<Interaction, DataLayerError> {
+    ) -> Result<Option<Interaction>, DataLayerError> {
         let interaction = interaction::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        interaction.try_into()
+        let Some(interaction) = interaction else {
+            return Ok(None);
+        };
+
+        let interaction = interaction.try_into()?;
+
+        Ok(Some(interaction))
     }
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError> {

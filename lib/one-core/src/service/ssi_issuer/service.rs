@@ -1,6 +1,7 @@
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
+use crate::service::error::EntityNotFoundError;
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -44,7 +45,7 @@ impl SSIIssuerService {
             .await?;
 
         let Some(mut credential) = credential else {
-            return Err(ServiceError::NotFound);
+            return Err(EntityNotFoundError::Credential(credential_id.to_owned()).into());
         };
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
@@ -126,7 +127,7 @@ impl SSIIssuerService {
             .await?;
 
         let Some(credential) = credential else {
-            return Err(ServiceError::NotFound);
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
