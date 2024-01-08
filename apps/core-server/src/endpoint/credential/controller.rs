@@ -1,14 +1,14 @@
 use axum::extract::{Path, State};
-use axum::response::{IntoResponse, Response};
-use axum::{http::StatusCode, Json};
+use axum::Json;
 use uuid::Uuid;
-
-use one_core::service::error::ServiceError;
 
 use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
 };
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
+    OkOrErrorResponse, VecResponse,
+};
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
 };
@@ -59,10 +59,12 @@ pub(crate) async fn get_credential(
     OkOrErrorResponse::from_result(result, state, "getting credential")
 }
 
+declare_utoipa_alias!(GetCredentialsResponseDTO);
+
 #[utoipa::path(
     get,
     path = "/api/credential/v1",
-    responses(OkOrErrorResponse<GetCredentialsResponseDTO>),
+    responses(OkOrErrorResponse<AliasResponse<GetCredentialsResponseDTO>>),
     params(
         GetCredentialQuery
     ),
@@ -151,11 +153,7 @@ pub(crate) async fn share_credential(
     post,
     path = "/api/credential/v1/revocation-check",
     request_body = CredentialRevocationCheckRequestRestDTO,
-    responses(
-        (status = 200, description = "OK", body = Vec<CredentialRevocationCheckResponseRestDTO>),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Credential not found"),
-    ),
+    responses(OkOrErrorResponse<VecResponse<CredentialRevocationCheckResponseRestDTO>>),
     tag = "credential_management",
     security(
         ("bearer" = [])
@@ -164,30 +162,12 @@ pub(crate) async fn share_credential(
 pub(crate) async fn revocation_check(
     state: State<AppState>,
     Json(request): Json<CredentialRevocationCheckRequestRestDTO>,
-) -> Response {
+) -> OkOrErrorResponse<VecResponse<CredentialRevocationCheckResponseRestDTO>> {
     let result = state
         .core
         .credential_service
         .check_revocation(request.credential_ids)
         .await;
 
-    match result {
-        Ok(values) => (
-            StatusCode::OK,
-            Json(
-                values
-                    .into_iter()
-                    .map(Into::<CredentialRevocationCheckResponseRestDTO>::into)
-                    .collect::<Vec<_>>(),
-            ),
-        )
-            .into_response(),
-        Err(error) => match error {
-            ServiceError::NotFound => StatusCode::NOT_FOUND.into_response(),
-            other => {
-                tracing::error!("Error while checking credentials: {other:?}");
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        },
-    }
+    OkOrErrorResponse::from_result(result, state, "checking credentials")
 }

@@ -7,7 +7,10 @@ use super::dto::{
     CreateDidRequestRestDTO, DidPatchRequestRestDTO, DidResponseRestDTO, GetDidQuery,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
+    OkOrErrorResponse,
+};
 use crate::extractor::Qs;
 use crate::router::AppState;
 
@@ -47,10 +50,12 @@ pub(crate) async fn get_did(
     }
 }
 
+declare_utoipa_alias!(GetDidsResponseRestDTO);
+
 #[utoipa::path(
     get,
     path = "/api/did/v1",
-    responses(OkOrErrorResponse<GetDidsResponseRestDTO>),
+    responses(OkOrErrorResponse<AliasResponse<GetDidsResponseRestDTO>>),
     params(
         GetDidQuery
     ),
