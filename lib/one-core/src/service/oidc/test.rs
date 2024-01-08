@@ -150,12 +150,9 @@ async fn test_get_issuer_metadata_jwt() {
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    let credential = result.credentials_supported.get(0).unwrap().to_owned();
+    let credential = result.credentials_supported[0].to_owned();
     assert_eq!("jwt_vc_json".to_string(), credential.format);
-    assert_eq!(
-        schema.name,
-        credential.display.unwrap().get(0).unwrap().name
-    );
+    assert_eq!(schema.name, credential.display.unwrap()[0].name);
 }
 
 #[tokio::test]
@@ -183,12 +180,9 @@ async fn test_get_issuer_metadata_sd_jwt() {
     let result = service.oidc_get_issuer_metadata(&schema.id).await;
     assert!(result.is_ok());
     let result = result.unwrap();
-    let credential = result.credentials_supported.get(0).unwrap().to_owned();
+    let credential = result.credentials_supported[0].to_owned();
     assert_eq!("vc+sd-jwt".to_string(), credential.format);
-    assert_eq!(
-        schema.name,
-        credential.display.unwrap().get(0).unwrap().name
-    );
+    assert_eq!(schema.name, credential.display.unwrap()[0].name);
 }
 
 #[tokio::test]
