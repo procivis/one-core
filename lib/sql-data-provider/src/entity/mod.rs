@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 pub mod claim;
 pub mod claim_schema;
 pub mod credential;

@@ -165,18 +165,9 @@ async fn test_get_credential_schema_list_success() {
     let result = result.unwrap();
     assert_eq!(3, result.total_items);
     assert_eq!(1, result.total_pages);
-    assert_eq!(
-        response.values.get(0).unwrap().id,
-        result.values.get(0).unwrap().id
-    );
-    assert_eq!(
-        response.values.get(1).unwrap().id,
-        result.values.get(1).unwrap().id
-    );
-    assert_eq!(
-        response.values.get(2).unwrap().id,
-        result.values.get(2).unwrap().id
-    );
+    assert_eq!(response.values[0].id, result.values[0].id);
+    assert_eq!(response.values[1].id, result.values[1].id);
+    assert_eq!(response.values[2].id, result.values[2].id);
 }
 
 #[tokio::test]
