@@ -1,8 +1,7 @@
 use axum::extract::{Path, State};
-use axum::response::{IntoResponse, Response};
-use axum::{http::StatusCode, Json};
+use axum::Json;
 
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse, VecResponse};
 use crate::router::AppState;
 use uuid::Uuid;
 
@@ -34,39 +33,21 @@ pub(crate) async fn get_organisation(
 #[utoipa::path(
     get,
     path = "/api/organisation/v1",
-    responses(
-        (status = 200, description = "OK", body = Vec<GetOrganisationDetailsResponseRestDTO>),
-        (status = 401, description = "Unauthorized"),
-        (status = 500, description = "Server error"),
-    ),
+    responses(OkOrErrorResponse<VecResponse<GetOrganisationDetailsResponseRestDTO>>),
     tag = "organisation_management",
     security(
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn get_organisations(state: State<AppState>) -> Response {
+pub(crate) async fn get_organisations(
+    state: State<AppState>,
+) -> OkOrErrorResponse<VecResponse<GetOrganisationDetailsResponseRestDTO>> {
     let result = state
         .core
         .organisation_service
         .get_organisation_list()
         .await;
-
-    match result {
-        Err(error) => {
-            tracing::error!("Error while getting organisation details: {:?}", error);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-        Ok(value) => (
-            StatusCode::OK,
-            Json(
-                value
-                    .into_iter()
-                    .map(|org| org.into())
-                    .collect::<Vec<GetOrganisationDetailsResponseRestDTO>>(),
-            ),
-        )
-            .into_response(),
-    }
+    OkOrErrorResponse::from_result(result, state, "getting organisations")
 }
 
 #[utoipa::path(

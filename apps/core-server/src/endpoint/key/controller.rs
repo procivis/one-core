@@ -6,7 +6,9 @@ use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{
+    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, OkOrErrorResponse,
+};
 use crate::endpoint::key::dto::{
     KeyListItemResponseRestDTO, KeyRequestRestDTO, KeyResponseRestDTO,
 };
@@ -70,10 +72,12 @@ pub(crate) async fn post_key(
     CreatedOrErrorResponse::from_result(result, state, "creating key")
 }
 
+declare_utoipa_alias!(GetKeyListResponseRestDTO);
+
 #[utoipa::path(
     get,
     path = "/api/key/v1",
-    responses(OkOrErrorResponse<GetKeyListResponseRestDTO>),
+    responses(OkOrErrorResponse<AliasResponse<GetKeyListResponseRestDTO>>),
     params(GetKeyQuery),
     tag = "key",
     security(
