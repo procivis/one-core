@@ -52,7 +52,7 @@ pub trait SignatureProvider {
 #[allow(clippy::too_many_arguments)]
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
-pub trait CredentialFormatter {
+pub trait CredentialFormatter: Send + Sync {
     async fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,

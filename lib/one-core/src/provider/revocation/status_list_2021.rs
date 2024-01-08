@@ -24,7 +24,7 @@ use crate::repository::{
     credential_repository::CredentialRepository, error::DataLayerError,
     revocation_list_repository::RevocationListRepository,
 };
-use crate::service::error::ServiceError;
+use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::bitstring::{extract_bitstring_index, generate_bitstring};
 use crate::util::key_verification::KeyVerification;
 
@@ -53,28 +53,26 @@ impl RevocationMethod for StatusList2021 {
         let issuer_did = credential
             .issuer_did
             .as_ref()
-            .ok_or(ServiceError::MappingError("issuer did is None".to_string()))?
-            .clone();
+            .ok_or(ServiceError::MappingError("issuer did is None".to_string()))?;
 
         let revocation_list = self
             .revocation_list_repository
             .get_revocation_by_issuer_did_id(&issuer_did.id, &RevocationListRelations::default())
-            .await;
+            .await?;
         let revocation_list_id = match revocation_list {
-            Ok(value) => Ok(value.id),
-            Err(DataLayerError::RecordNotFound) => {
+            Some(value) => value.id,
+            None => {
                 let encoded_list = self
                     .generate_bitstring_from_credentials(&issuer_did.id, None)
                     .await?;
 
                 let revocation_list_id = RevocationListId::new_v4();
                 let list_credential = self
-                    .format_status_list_credential(&revocation_list_id, &issuer_did, encoded_list)
+                    .format_status_list_credential(&revocation_list_id, issuer_did, encoded_list)
                     .await?;
 
                 let now = OffsetDateTime::now_utc();
-                Ok(self
-                    .revocation_list_repository
+                self.revocation_list_repository
                     .create_revocation_list(RevocationList {
                         id: revocation_list_id,
                         created_date: now,
@@ -82,10 +80,9 @@ impl RevocationMethod for StatusList2021 {
                         credentials: list_credential.as_bytes().to_vec(),
                         issuer_did: Some(issuer_did.to_owned()),
                     })
-                    .await?)
+                    .await?
             }
-            Err(error) => Err(error),
-        }?;
+        };
 
         let index_on_status_list = self
             .get_credential_index_on_revocation_list(&credential.id, &issuer_did.id)
@@ -109,6 +106,13 @@ impl RevocationMethod for StatusList2021 {
             .revocation_list_repository
             .get_revocation_by_issuer_did_id(&issuer_did.id, &RevocationListRelations::default())
             .await?;
+
+        let Some(revocation_list) = revocation_list else {
+            return Err(BusinessLogicError::MissingRevocationListForDid {
+                did_id: issuer_did.id,
+            }
+            .into());
+        };
 
         let encoded_list = self
             .generate_bitstring_from_credentials(&issuer_did.id, Some(credential.id))

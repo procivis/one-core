@@ -16,7 +16,7 @@ pub trait InteractionRepository: Send + Sync {
         &self,
         id: &InteractionId,
         relations: &InteractionRelations,
-    ) -> Result<Interaction, DataLayerError>;
+    ) -> Result<Option<Interaction>, DataLayerError>;
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError>;
 }

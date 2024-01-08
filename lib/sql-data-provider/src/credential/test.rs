@@ -526,7 +526,7 @@ async fn test_get_credential_list_success() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(2)
-        .returning(move |_, _| Ok(credential_schema_clone.clone()));
+        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
 
     let provider = CredentialProvider {
         db: db.clone(),
@@ -661,7 +661,7 @@ async fn test_get_credential_success() {
     credential_schema_repository
         .expect_get_credential_schema()
         .times(1)
-        .returning(move |_, _| Ok(credential_schema_clone.clone()));
+        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
 
     let claims_clone = claims.clone();
     claim_repository
@@ -789,13 +789,13 @@ async fn test_update_credential_success() {
         .expect_get_interaction()
         .once()
         .returning(|id, _| {
-            Ok(Interaction {
+            Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 host: Some("https://host.co".parse().unwrap()),
                 data: None,
-            })
+            }))
         });
 
     let provider = CredentialProvider {

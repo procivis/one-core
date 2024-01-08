@@ -7,7 +7,7 @@ use crate::service::{
         CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
         DetailCredentialSchemaResponseDTO,
     },
-    error::ServiceError,
+    error::{BusinessLogicError, ServiceError},
 };
 use crate::{
     common_mapper::convert_inner,
@@ -189,10 +189,11 @@ pub(super) fn claims_from_create_request(
     claims
         .into_iter()
         .map(|claim| {
+            let claim_schema_id = claim.claim_schema_id;
             let schema = claim_schemas
                 .iter()
-                .find(|schema| schema.schema.id == claim.claim_schema_id)
-                .ok_or(ServiceError::NotFound)?;
+                .find(|schema| schema.schema.id == claim_schema_id)
+                .ok_or(BusinessLogicError::MissingClaimSchema { claim_schema_id })?;
             Ok(Claim {
                 id: Uuid::new_v4(),
                 created_date: now,

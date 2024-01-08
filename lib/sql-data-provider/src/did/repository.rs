@@ -33,7 +33,11 @@ impl DidProvider {
             result.organisation = Some(
                 self.organisation_repository
                     .get_organisation(&organisation_id, organisation_relations)
-                    .await?,
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "did-organisation",
+                        id: organisation_id.to_string(),
+                    })?,
             );
         }
 
@@ -51,7 +55,15 @@ impl DidProvider {
                 let key = if let Some(key) = key_map.get(&key_id) {
                     key.to_owned()
                 } else {
-                    let key = self.key_repository.get_key(&key_id, key_relations).await?;
+                    let key = self
+                        .key_repository
+                        .get_key(&key_id, key_relations)
+                        .await?
+                        .ok_or(DataLayerError::MissingRequiredRelation {
+                            relation: "did-key",
+                            id: key_id.to_string(),
+                        })?;
+
                     key_map.insert(key_id, key.to_owned());
                     key
                 };
@@ -90,15 +102,17 @@ impl DidRepository for DidProvider {
         &self,
         value: &DidValue,
         relations: &DidRelations,
-    ) -> Result<Did, DataLayerError> {
-        let did: did::Model = did::Entity::find()
+    ) -> Result<Option<Did>, DataLayerError> {
+        let did = did::Entity::find()
             .filter(did::Column::Did.eq(value))
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        self.resolve_relations(did, relations).await
+        match did {
+            None => Ok(None),
+            Some(did) => Ok(Some(self.resolve_relations(did, relations).await?)),
+        }
     }
 
     async fn get_did_list(&self, query_params: DidListQuery) -> Result<GetDidList, DataLayerError> {

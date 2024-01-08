@@ -62,7 +62,11 @@ async fn get_credential_schema(
         Some(schema_relations) => Ok(Some(
             repository
                 .get_credential_schema(schema_id, schema_relations)
-                .await?,
+                .await?
+                .ok_or(DataLayerError::MissingRequiredRelation {
+                    relation: "credential-credential_schema",
+                    id: schema_id.to_string(),
+                })?,
         )),
     }
 }
@@ -185,7 +189,11 @@ impl CredentialProvider {
                     Some(
                         self.interaction_repository
                             .get_interaction(&interaction_id, interaction_relations)
-                            .await?,
+                            .await?
+                            .ok_or(DataLayerError::MissingRequiredRelation {
+                                relation: "credential-interaction",
+                                id: interaction_id.to_string(),
+                            })?,
                     )
                 }
             }
@@ -201,7 +209,11 @@ impl CredentialProvider {
                     Some(
                         self.revocation_list_repository
                             .get_revocation_list(&revocation_list_id, revocation_list_relations)
-                            .await?,
+                            .await?
+                            .ok_or(DataLayerError::MissingRequiredRelation {
+                                relation: "credential-revocation_list",
+                                id: revocation_list_id.to_string(),
+                            })?,
                     )
                 }
             }
@@ -214,7 +226,16 @@ impl CredentialProvider {
                 None => None,
                 Some(key_id) => {
                     let key_id = Uuid::from_str(key_id)?;
-                    Some(self.key_repository.get_key(&key_id, key_relations).await?)
+                    let key = self
+                        .key_repository
+                        .get_key(&key_id, key_relations)
+                        .await?
+                        .ok_or(DataLayerError::MissingRequiredRelation {
+                            relation: "credential-key",
+                            id: key_id.to_string(),
+                        })?;
+
+                    Some(key)
                 }
             }
         } else {

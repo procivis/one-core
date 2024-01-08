@@ -5,7 +5,7 @@ use crate::{
         organisation::OrganisationRelations,
     },
     service::{
-        error::ServiceError,
+        error::{EntityNotFoundError, ServiceError},
         key::{
             dto::{KeyRequestDTO, KeyResponseDTO},
             mapper::from_create_request,
@@ -36,6 +36,10 @@ impl KeyService {
             .await
             .map_err(ServiceError::from)?;
 
+        let Some(key) = key else {
+            return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
+        };
+
         key.try_into()
     }
 
@@ -50,8 +54,11 @@ impl KeyService {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
+
+        let Some(organisation) = organisation else {
+            return Err(EntityNotFoundError::Organisation(request.organisation_id).into());
+        };
 
         let provider = self.key_provider.get_key_storage(&request.storage_type)?;
 
@@ -61,8 +68,7 @@ impl KeyService {
         let uuid = self
             .key_repository
             .create_key(from_create_request(key_id, request, organisation, key))
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         Ok(uuid)
     }

@@ -37,7 +37,6 @@ impl ProofRepository for ProofProvider {
             .await
             .map_err(|e| match e.sql_err() {
                 Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
-                Some(SqlErr::ForeignKeyConstraintViolation(_)) => DataLayerError::RecordNotFound,
                 Some(_) | None => DataLayerError::Db(e.into()),
             })?;
 
@@ -54,28 +53,29 @@ impl ProofRepository for ProofProvider {
         &self,
         proof_id: &ProofId,
         relations: &ProofRelations,
-    ) -> Result<Proof, DataLayerError> {
+    ) -> Result<Option<Proof>, DataLayerError> {
         let proof_model = crate::entity::Proof::find_by_id(proof_id.to_string())
             .one(&self.db)
             .await
-            .map_err(|e| {
-                tracing::error!(
-                    "Error while fetching proof {}. Error: {}",
-                    proof_id,
-                    e.to_string()
-                );
-                DataLayerError::Db(e.into())
-            })?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            .map_err(|error| {
+                tracing::error!(%error, %proof_id, "Error while fetching proof");
+                DataLayerError::Db(error.into())
+            })?;
 
-        self.resolve_proof_relations(proof_model, relations).await
+        let Some(proof_model) = proof_model else {
+            return Ok(None);
+        };
+
+        let proof = self.resolve_proof_relations(proof_model, relations).await?;
+
+        Ok(Some(proof))
     }
 
     async fn get_proof_by_interaction_id(
         &self,
         interaction_id: &InteractionId,
         relations: &ProofRelations,
-    ) -> Result<Proof, DataLayerError> {
+    ) -> Result<Option<Proof>, DataLayerError> {
         let proof_model = crate::entity::Proof::find()
             .filter(proof::Column::InteractionId.eq(interaction_id.to_string()))
             .one(&self.db)
@@ -87,10 +87,15 @@ impl ProofRepository for ProofProvider {
                     e.to_string()
                 );
                 DataLayerError::Db(e.into())
-            })?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            })?;
 
-        self.resolve_proof_relations(proof_model, relations).await
+        match proof_model {
+            None => Ok(None),
+            Some(proof_model) => {
+                let proof = self.resolve_proof_relations(proof_model, relations).await?;
+                Ok(Some(proof))
+            }
+        }
     }
 
     async fn get_proof_list(
@@ -155,10 +160,7 @@ impl ProofRepository for ProofProvider {
         proof_state::Entity::insert(get_proof_state_active_model(proof_id, state))
             .exec(&self.db)
             .await
-            .map_err(|e| match e.sql_err() {
-                Some(SqlErr::ForeignKeyConstraintViolation(_)) => DataLayerError::RecordNotFound,
-                _ => DataLayerError::Db(e.into()),
-            })?;
+            .map_err(|e| DataLayerError::Db(e.into()))?;
 
         update_model.update(&self.db).await.map_err(|e| match e {
             DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
@@ -244,12 +246,7 @@ impl ProofRepository for ProofProvider {
             proof_state::Entity::insert(get_proof_state_active_model(id, state))
                 .exec(&self.db)
                 .await
-                .map_err(|e| match e.sql_err() {
-                    Some(SqlErr::ForeignKeyConstraintViolation(_)) => {
-                        DataLayerError::RecordNotFound
-                    }
-                    _ => DataLayerError::Db(e.into()),
-                })?;
+                .map_err(|e| DataLayerError::Db(e.into()))?;
         }
 
         update_model.update(&self.db).await.map_err(|e| match e {
@@ -342,7 +339,11 @@ impl ProofProvider {
                 proof.schema = Some(
                     self.proof_schema_repository
                         .get_proof_schema(&proof_schema_id, proof_schema_relations)
-                        .await?,
+                        .await?
+                        .ok_or(DataLayerError::MissingRequiredRelation {
+                            relation: "proof-proof_schema",
+                            id: proof_schema_id.to_string(),
+                        })?,
                 );
             }
         }
@@ -419,7 +420,11 @@ impl ProofProvider {
             let interaction = self
                 .interaction_repository
                 .get_interaction(&interaction_id, interaction_relations)
-                .await?;
+                .await?
+                .ok_or(DataLayerError::MissingRequiredRelation {
+                    relation: "proof-interaction",
+                    id: interaction_id.to_string(),
+                })?;
 
             proof.interaction = Some(interaction);
         }

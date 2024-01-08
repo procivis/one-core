@@ -8,7 +8,7 @@ use super::{
 use crate::{
     common_mapper::convert_inner,
     model::organisation::{Organisation, OrganisationId, OrganisationRelations},
-    service::error::{BusinessLogicError, ServiceError},
+    service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
 };
 
 impl OrganisationService {
@@ -29,12 +29,16 @@ impl OrganisationService {
         &self,
         id: &OrganisationId,
     ) -> Result<GetOrganisationDetailsResponseDTO, ServiceError> {
-        let result = self
+        let organisation = self
             .organisation_repository
             .get_organisation(id, &OrganisationRelations::default())
             .await?;
 
-        Ok(result.into())
+        let Some(organisation) = organisation else {
+            return Err(EntityNotFoundError::Organisation(*id).into());
+        };
+
+        Ok(organisation.into())
     }
 
     /// Accepts optional Uuid of new organisation

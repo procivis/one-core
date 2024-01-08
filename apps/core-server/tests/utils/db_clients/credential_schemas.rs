@@ -68,5 +68,6 @@ impl CredentialSchemasDB {
             )
             .await
             .unwrap()
+            .unwrap()
     }
 }

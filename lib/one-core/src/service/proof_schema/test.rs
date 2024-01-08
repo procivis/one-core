@@ -75,7 +75,7 @@ async fn test_get_proof_schema_exists() {
                     organisation: Some(OrganisationRelations::default()),
                 }),
             )
-            .returning(move |_id, _relations| Ok(res_clone.clone()));
+            .returning(move |_id, _relations| Ok(Some(res_clone.clone())));
     }
 
     let service = setup_service(
@@ -268,11 +268,11 @@ async fn test_create_proof_schema_success() {
         .times(1)
         .with(eq(organisation_id), eq(OrganisationRelations::default()))
         .returning(|id, _| {
-            Ok(Organisation {
+            Ok(Some(Organisation {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-            })
+            }))
         });
 
     let create_request = CreateProofSchemaRequestDTO {

@@ -119,7 +119,7 @@ async fn test_issuer_submit_succeeds() {
     formatter_provider
         .expect_get_formatter()
         .once()
-        .return_once(move |_| Ok(Arc::new(formatter)));
+        .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut key_provider = MockKeyProvider::new();
     key_provider

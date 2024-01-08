@@ -1,4 +1,5 @@
-use super::CredentialFormatter;
+use std::{collections::HashMap, sync::Arc};
+
 use crate::config::core_config::{FormatConfig, FormatType};
 use crate::config::ConfigError;
 use crate::crypto::CryptoProvider;
@@ -6,46 +7,34 @@ use crate::provider::credential_formatter::json_ld_formatter::JsonLdFormatter;
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
-use crate::service::error::ServiceError;
-use std::{collections::HashMap, sync::Arc};
+
+use super::CredentialFormatter;
 
 #[cfg_attr(test, mockall::automock)]
 pub(crate) trait CredentialFormatterProvider {
-    fn get_formatter(
-        &self,
-        formatter_id: &str,
-    ) -> Result<Arc<dyn CredentialFormatter + Send + Sync>, ServiceError>;
+    fn get_formatter(&self, formatter_id: &str) -> Option<Arc<dyn CredentialFormatter>>;
 }
 
 pub(crate) struct CredentialFormatterProviderImpl {
-    formatters: HashMap<String, Arc<dyn CredentialFormatter + Send + Sync>>,
+    formatters: HashMap<String, Arc<dyn CredentialFormatter>>,
 }
 
 impl CredentialFormatterProviderImpl {
-    pub(crate) fn new(
-        formatters: HashMap<String, Arc<dyn CredentialFormatter + Send + Sync>>,
-    ) -> Self {
+    pub(crate) fn new(formatters: HashMap<String, Arc<dyn CredentialFormatter>>) -> Self {
         Self { formatters }
     }
 }
 
 impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
-    fn get_formatter(
-        &self,
-        format: &str,
-    ) -> Result<Arc<dyn CredentialFormatter + Send + Sync>, ServiceError> {
-        Ok(self
-            .formatters
-            .get(format)
-            .ok_or(ServiceError::NotFound)?
-            .clone())
+    fn get_formatter(&self, format: &str) -> Option<Arc<dyn CredentialFormatter>> {
+        self.formatters.get(format).cloned()
     }
 }
 
 pub(crate) fn credential_formatters_from_config(
     config: &FormatConfig,
     crypto: Arc<dyn CryptoProvider + Send + Sync>,
-) -> Result<HashMap<String, Arc<dyn CredentialFormatter + Send + Sync>>, ConfigError> {
+) -> Result<HashMap<String, Arc<dyn CredentialFormatter>>, ConfigError> {
     let mut formatters = HashMap::new();
 
     for format_type in config.as_inner().keys() {

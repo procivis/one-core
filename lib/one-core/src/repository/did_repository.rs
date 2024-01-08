@@ -18,7 +18,7 @@ pub trait DidRepository: Send + Sync {
         &self,
         value: &DidValue,
         relations: &DidRelations,
-    ) -> Result<Did, DataLayerError>;
+    ) -> Result<Option<Did>, DataLayerError>;
 
     async fn get_did_list(&self, query: DidListQuery) -> Result<GetDidList, DataLayerError>;
 

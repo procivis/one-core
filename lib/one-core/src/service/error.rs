@@ -1,11 +1,19 @@
 use shared_types::{DidId, DidValue};
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
 use crate::model::claim_schema::ClaimSchemaId;
 use crate::model::credential::{CredentialId, CredentialStateEnum};
+use crate::model::credential_schema::CredentialSchemaId;
+use crate::model::interaction::InteractionId;
+use crate::model::key::KeyId;
+use crate::model::organisation::OrganisationId;
+use crate::model::proof::ProofId;
 use crate::model::proof::ProofStateEnum;
+use crate::model::proof_schema::ProofSchemaId;
+use crate::model::revocation_list::RevocationListId;
 use crate::service::oidc::dto::OpenID4VCIError;
 use crate::{
     provider::credential_formatter::error::FormatterError,
@@ -74,6 +82,27 @@ pub enum EntityNotFoundError {
 
     #[error("Did `{0}` not found")]
     Did(DidId),
+
+    #[error("Revocation list `{0}` not found")]
+    RevocationList(RevocationListId),
+
+    #[error("Proof schema `{0}` not found")]
+    ProofSchema(ProofSchemaId),
+
+    #[error("Proof `{0}` not found")]
+    Proof(ProofId),
+
+    #[error("Proof for interaction `{0}` not found")]
+    ProofForInteraction(InteractionId),
+
+    #[error("Organisation `{0}` not found")]
+    Organisation(OrganisationId),
+
+    #[error("Key `{0}` not found")]
+    Key(KeyId),
+
+    #[error("Credential schema `{0}` not found")]
+    CredentialSchema(CredentialSchemaId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -107,6 +136,33 @@ pub enum BusinessLogicError {
 
     #[error(transparent)]
     DidDeactivation(#[from] DidDeactivationError),
+
+    #[error("Missing credentials for interaction: {interaction_id}")]
+    MissingCredentialsForInteraction { interaction_id: Uuid },
+
+    #[error("Missing revocation list for did: {did_id}")]
+    MissingRevocationListForDid { did_id: DidId },
+
+    #[error("Proof schema {proof_schema_id} is deleted")]
+    ProofSchemaDeleted { proof_schema_id: Uuid },
+
+    #[error("Missing credentials for credential: {credential_id}")]
+    MissingCredentialData { credential_id: Uuid },
+
+    #[error("Missing credential schema")]
+    MissingCredentialSchema,
+
+    #[error("Missing claim schema: {claim_schema_id}")]
+    MissingClaimSchema { claim_schema_id: Uuid },
+
+    #[error("Missing proof schema: {proof_schema_id}")]
+    MissingProofSchema { proof_schema_id: Uuid },
+
+    #[error("Missing formatter {formatter}")]
+    MissingFormatter { formatter: String },
+
+    #[error("Missing interaction for access token: {interaction_id}")]
+    MissingInteractionForAccessToken { interaction_id: Uuid },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -116,6 +172,10 @@ pub enum ValidationError {
         value: String,
         source: anyhow::Error,
     },
+
+    #[error("Invalid formatter: {formatter}")]
+    InvalidFormatter { formatter: String },
+
     #[error("Unsupported key type: {key_type}")]
     UnsupportedKeyType { key_type: String },
 
@@ -167,6 +227,23 @@ pub enum ErrorCode {
 
     Database,
     ResponseMapping,
+
+    MissingFormatter,
+    InvalidFormatter,
+    MissingCredentialsForInteraction,
+    ProofSchemaDeleted,
+    MissingCredentialData,
+    MissingCredentialSchema,
+    MissingClaimSchema,
+    MissingRevocationListForDid,
+    RevocationListNotFound,
+    MissingProofSchema,
+    ProofSchemaNotFound,
+    ProofNotFound,
+    OrganisationNotFound,
+    KeyNotFound,
+    CredentialSchemaNotFound,
+    MissingInteractionForAccessToken,
 
     Unmapped,
 }
@@ -220,6 +297,25 @@ impl ErrorCode {
             ErrorCode::ResponseMapping => "Response mapping error",
 
             ErrorCode::Unmapped => "Unmapped error code",
+
+            ErrorCode::MissingFormatter => "Missing formatter",
+            ErrorCode::InvalidFormatter => "Invalid formatter",
+            ErrorCode::MissingCredentialsForInteraction => {
+                "Missing credentials for provided interaction"
+            }
+            ErrorCode::ProofSchemaDeleted => "The proof schema is deleted",
+            ErrorCode::MissingCredentialData => "Missing credential data for provided credential",
+            ErrorCode::MissingCredentialSchema => "Missing credential schema",
+            ErrorCode::MissingClaimSchema => "Missing claim schema",
+            ErrorCode::MissingRevocationListForDid => "Missing revocation list for provided DID",
+            ErrorCode::RevocationListNotFound => "Revocation list not found",
+            ErrorCode::MissingProofSchema => "Missing proof schema",
+            ErrorCode::ProofSchemaNotFound => "Proof schema not found",
+            ErrorCode::ProofNotFound => "Proof not found",
+            ErrorCode::OrganisationNotFound => "Organisation not found",
+            ErrorCode::KeyNotFound => "Key not found",
+            ErrorCode::CredentialSchemaNotFound => "Credential schema not found",
+            ErrorCode::MissingInteractionForAccessToken => "Missing interaction for access token",
         }
     }
 }
@@ -259,6 +355,14 @@ impl EntityNotFoundError {
         match self {
             EntityNotFoundError::Credential(_) => ErrorCode::Credential001,
             EntityNotFoundError::Did(_) => ErrorCode::DidNotFound,
+            EntityNotFoundError::RevocationList(_) => ErrorCode::RevocationListNotFound,
+            EntityNotFoundError::ProofSchema(_) => ErrorCode::ProofSchemaNotFound,
+            EntityNotFoundError::Proof(_) | EntityNotFoundError::ProofForInteraction(_) => {
+                ErrorCode::ProofNotFound
+            }
+            EntityNotFoundError::Organisation(_) => ErrorCode::OrganisationNotFound,
+            EntityNotFoundError::Key(_) => ErrorCode::KeyNotFound,
+            EntityNotFoundError::CredentialSchema(_) => ErrorCode::CredentialSchemaNotFound,
         }
     }
 }
@@ -278,6 +382,21 @@ impl BusinessLogicError {
             BusinessLogicError::ProofSchemaAlreadyExists => ErrorCode::ProofSchemaAlreadyExists,
             BusinessLogicError::InvalidProofState { .. } => ErrorCode::ProofInvalidState,
             BusinessLogicError::DidDeactivation(error) => error.error_code(),
+            BusinessLogicError::MissingCredentialsForInteraction { .. } => {
+                ErrorCode::MissingCredentialsForInteraction
+            }
+            BusinessLogicError::ProofSchemaDeleted { .. } => ErrorCode::ProofSchemaDeleted,
+            BusinessLogicError::MissingCredentialData { .. } => ErrorCode::MissingCredentialData,
+            BusinessLogicError::MissingCredentialSchema => ErrorCode::MissingCredentialSchema,
+            BusinessLogicError::MissingClaimSchema { .. } => ErrorCode::MissingClaimSchema,
+            BusinessLogicError::MissingRevocationListForDid { .. } => {
+                ErrorCode::MissingRevocationListForDid
+            }
+            BusinessLogicError::MissingProofSchema { .. } => ErrorCode::MissingProofSchema,
+            BusinessLogicError::MissingFormatter { .. } => ErrorCode::MissingFormatter,
+            BusinessLogicError::MissingInteractionForAccessToken { .. } => {
+                ErrorCode::MissingInteractionForAccessToken
+            }
         }
     }
 }
@@ -295,6 +414,7 @@ impl ValidationError {
             ValidationError::ProofSchemaMissingClaims => ErrorCode::ProofSchemaMissingClaims,
             ValidationError::ProofSchemaNoRequiredClaim => ErrorCode::ProofSchemaNoRequiredClaim,
             ValidationError::ProofSchemaDuplicitClaim => ErrorCode::ProofSchemaDuplicitClaim,
+            ValidationError::InvalidFormatter { .. } => ErrorCode::InvalidFormatter,
         }
     }
 }

@@ -179,6 +179,7 @@ pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> Key {
         )
         .await
         .unwrap()
+        .unwrap()
 }
 
 #[derive(Debug, Default)]
@@ -415,10 +416,12 @@ pub async fn get_revocation_list(
 ) -> Result<RevocationList, DataLayerError> {
     let data_layer = DataLayer::build(db_conn.to_owned());
 
-    data_layer
+    let res = data_layer
         .get_revocation_list_repository()
         .get_revocation_by_issuer_did_id(&issuer_did.id, &RevocationListRelations::default())
-        .await
+        .await?;
+
+    Ok(res.unwrap())
 }
 
 #[derive(Debug, Default)]
@@ -543,6 +546,7 @@ pub async fn get_proof_schema(db_conn: &DbConn, proof_schema_id: &ProofSchemaId)
         )
         .await
         .unwrap()
+        .unwrap()
 }
 
 pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> Credential {
@@ -598,5 +602,6 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
             },
         )
         .await
+        .unwrap()
         .unwrap()
 }

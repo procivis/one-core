@@ -12,7 +12,7 @@ struct KeyRepository;
 mock! {
     pub KeyRepository {
         pub fn create_key(&self, request: Key) -> Result<KeyId, DataLayerError>;
-        pub fn get_key(&self, id: &KeyId, relations: &KeyRelations) -> Result<Key, DataLayerError>;
+        pub fn get_key(&self, id: &KeyId, relations: &KeyRelations) -> Result<Option<Key>, DataLayerError>;
         pub fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError>;
     }
 }
@@ -23,7 +23,11 @@ impl crate::repository::key_repository::KeyRepository for MockKeyRepository {
         self.create_key(request)
     }
 
-    async fn get_key(&self, id: &KeyId, relations: &KeyRelations) -> Result<Key, DataLayerError> {
+    async fn get_key(
+        &self,
+        id: &KeyId,
+        relations: &KeyRelations,
+    ) -> Result<Option<Key>, DataLayerError> {
         self.get_key(id, relations)
     }
 

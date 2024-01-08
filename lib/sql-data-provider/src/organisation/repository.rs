@@ -28,13 +28,16 @@ impl OrganisationRepository for OrganisationProvider {
         &self,
         id: &OrganisationId,
         _relations: &OrganisationRelations,
-    ) -> Result<Organisation, DataLayerError> {
+    ) -> Result<Option<Organisation>, DataLayerError> {
         let organisation = organisation::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
-            .map_err(to_data_layer_error)?
-            .ok_or(DataLayerError::RecordNotFound)?;
-        organisation.try_into()
+            .map_err(to_data_layer_error)?;
+
+        match organisation {
+            None => Ok(None),
+            Some(organisation) => Ok(Some(organisation.try_into()?)),
+        }
     }
 
     async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError> {

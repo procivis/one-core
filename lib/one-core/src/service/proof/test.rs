@@ -192,7 +192,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     ..Default::default()
                 }),
             )
-            .returning(move |_, _| Ok(res_clone.clone()));
+            .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -300,7 +300,7 @@ async fn test_get_proof_exists() {
                     interaction: Some(InteractionRelations::default()),
                 }),
             )
-            .returning(move |_, _| Ok(res_clone.clone()));
+            .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
     let service = setup_service(Repositories {
@@ -430,7 +430,7 @@ async fn test_create_proof() {
         .times(1)
         .withf(move |id, _| &request.proof_schema_id == id)
         .returning(|id, _| {
-            Ok(ProofSchema {
+            Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -439,7 +439,7 @@ async fn test_create_proof() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
-            })
+            }))
         });
 
     let request_clone = request.clone();
@@ -504,7 +504,7 @@ async fn test_create_proof_did_deactivated_error() {
         .once()
         .withf(move |id, _| &request.proof_schema_id == id)
         .returning(|id, _| {
-            Ok(ProofSchema {
+            Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -513,7 +513,7 @@ async fn test_create_proof_did_deactivated_error() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
-            })
+            }))
         });
 
     let request_clone = request.clone();
@@ -561,7 +561,7 @@ async fn test_create_proof_schema_deleted() {
         .expect_get_proof_schema()
         .times(1)
         .returning(|id, _| {
-            Ok(ProofSchema {
+            Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -570,7 +570,7 @@ async fn test_create_proof_schema_deleted() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
-            })
+            }))
         });
 
     let service = setup_service(Repositories {
@@ -587,7 +587,9 @@ async fn test_create_proof_schema_deleted() {
             redirect_uri: None,
         })
         .await;
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+    assert2::assert!(
+        let Err(ServiceError::BusinessLogic(BusinessLogicError::ProofSchemaDeleted {..})) = result
+    );
 }
 
 #[tokio::test]
@@ -626,7 +628,7 @@ async fn test_share_proof_created_success() {
                             ..Default::default()
                         }
             })
-            .returning(move |_, _| Ok(res_clone.to_owned()));
+            .returning(move |_, _| Ok(Some(res_clone.to_owned())));
     }
 
     proof_repository
@@ -684,7 +686,7 @@ async fn test_share_proof_pending_success() {
                             ..Default::default()
                         }
             })
-            .returning(move |_, _| Ok(res_clone.to_owned()));
+            .returning(move |_, _| Ok(Some(res_clone.to_owned())));
     }
 
     let service = setup_service(Repositories {
@@ -706,10 +708,10 @@ async fn test_share_proof_invalid_state() {
         .expect_get_proof()
         .times(1)
         .returning(move |_, _| {
-            Ok(construct_proof_with_state(
+            Ok(Some(construct_proof_with_state(
                 &proof_id,
                 ProofStateEnum::Rejected,
-            ))
+            )))
         });
 
     let service = setup_service(Repositories {

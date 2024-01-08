@@ -13,7 +13,6 @@ use one_core::{
     repository::{
         claim_repository::ClaimRepository,
         did_repository::{DidRepository, MockDidRepository},
-        error::DataLayerError,
         interaction_repository::InteractionRepository,
         interaction_repository::MockInteractionRepository,
         mock::{
@@ -330,7 +329,7 @@ async fn test_get_proof_missing() {
     let result = repository
         .get_proof(&Uuid::new_v4(), &ProofRelations::default())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Ok(None)));
 }
 
 #[tokio::test]
@@ -347,11 +346,12 @@ async fn test_get_proof_no_relations() {
     )
     .await;
 
-    let result = repository
+    let proof = repository
         .get_proof(&proof_id, &ProofRelations::default())
-        .await;
-    assert!(result.is_ok());
-    let proof = result.unwrap();
+        .await
+        .unwrap()
+        .unwrap();
+
     assert_eq!(proof.id, proof_id);
 }
 
@@ -362,7 +362,7 @@ async fn test_get_proof_with_relations() {
         .expect_get_proof_schema()
         .times(1)
         .returning(|id, _| {
-            Ok(ProofSchema {
+            Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -371,7 +371,7 @@ async fn test_get_proof_with_relations() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
-            })
+            }))
         });
 
     let mut interaction_repository = MockInteractionRepository::default();
@@ -379,13 +379,13 @@ async fn test_get_proof_with_relations() {
         .expect_get_interaction()
         .times(1)
         .returning(|id, _| {
-            Ok(Interaction {
+            Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
                 host: Some("http://www.host.co".parse().unwrap()),
-            })
+            }))
         });
 
     let mut did_repository = MockDidRepository::default();
@@ -419,7 +419,7 @@ async fn test_get_proof_with_relations() {
     )
     .await;
 
-    let result = repository
+    let proof = repository
         .get_proof(
             &proof_id,
             &ProofRelations {
@@ -431,9 +431,10 @@ async fn test_get_proof_with_relations() {
                 interaction: Some(InteractionRelations::default()),
             },
         )
-        .await;
-    assert!(result.is_ok());
-    let proof = result.unwrap();
+        .await
+        .unwrap()
+        .unwrap();
+
     assert_eq!(proof.id, proof_id);
     assert_eq!(proof.schema.unwrap().id, proof_schema_id);
     assert_eq!(proof.verifier_did.unwrap().id, did_id);
@@ -454,7 +455,7 @@ async fn test_get_proof_by_interaction_id_missing() {
     let result = repository
         .get_proof_by_interaction_id(&Uuid::new_v4(), &ProofRelations::default())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Ok(None)));
 }
 
 #[tokio::test]
@@ -464,7 +465,7 @@ async fn test_get_proof_by_interaction_id_success() {
         .expect_get_proof_schema()
         .times(1)
         .returning(|id, _| {
-            Ok(ProofSchema {
+            Ok(Some(ProofSchema {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -473,7 +474,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
-            })
+            }))
         });
 
     let mut interaction_repository = MockInteractionRepository::default();
@@ -481,13 +482,13 @@ async fn test_get_proof_by_interaction_id_success() {
         .expect_get_interaction()
         .times(1)
         .returning(|id, _| {
-            Ok(Interaction {
+            Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
                 host: Some("http://www.host.co/".parse().unwrap()),
-            })
+            }))
         });
 
     let mut did_repository = MockDidRepository::default();
@@ -519,7 +520,7 @@ async fn test_get_proof_by_interaction_id_success() {
     )
     .await;
 
-    let result = repository
+    let proof = repository
         .get_proof_by_interaction_id(
             &interaction_id,
             &ProofRelations {
@@ -531,9 +532,10 @@ async fn test_get_proof_by_interaction_id_success() {
                 interaction: Some(InteractionRelations::default()),
             },
         )
-        .await;
-    assert!(result.is_ok());
-    let proof = result.unwrap();
+        .await
+        .unwrap()
+        .unwrap();
+
     assert_eq!(proof.id, proof_id);
     assert_eq!(proof.interaction.unwrap().id, interaction_id);
 }

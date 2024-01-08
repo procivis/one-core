@@ -86,7 +86,7 @@ async fn test_get_credential_schema_success() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(repository, organisation_repository, generic_config().core);
@@ -115,7 +115,7 @@ async fn test_get_credential_schema_fail() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
     let service = setup_service(repository, organisation_repository, generic_config().core);
@@ -223,7 +223,7 @@ async fn test_create_credential_schema_success() {
                 eq(organisation.id.to_owned()),
                 eq(OrganisationRelations::default()),
             )
-            .returning(move |_, _| Ok(organisation.clone()));
+            .returning(move |_, _| Ok(Some(organisation.clone())));
         repository
             .expect_create_credential_schema()
             .times(1)

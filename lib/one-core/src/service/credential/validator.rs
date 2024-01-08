@@ -1,12 +1,12 @@
 use crate::{
     config::{
         core_config::CoreConfig,
-        validator::{datatype::validate_value, exchange::validate_exchange_type},
+        validator::{datatype::validate_datatype_value, exchange::validate_exchange_type},
     },
     model::credential_schema::CredentialSchema,
     service::{
         credential::dto::CredentialRequestClaimDTO,
-        error::{ServiceError, ValidationError},
+        error::{BusinessLogicError, ServiceError, ValidationError},
     },
 };
 
@@ -20,7 +20,7 @@ pub(crate) fn validate_create_request(
 
     // ONE-843: cannot create credential based on deleted schema
     if schema.deleted_at.is_some() {
-        return Err(ServiceError::NotFound);
+        return Err(BusinessLogicError::MissingCredentialSchema.into());
     }
 
     let claim_schemas = &schema
@@ -31,24 +31,20 @@ pub(crate) fn validate_create_request(
         ))?;
 
     // check all claims have valid content
-    claims
-        .iter()
-        .map(|claim| {
-            let schema = claim_schemas
-                .iter()
-                .find(|schema| schema.schema.id == claim.claim_schema_id);
+    for claim in claims {
+        let claim_schema_id = claim.claim_schema_id;
+        let schema = claim_schemas
+            .iter()
+            .find(|schema| schema.schema.id == claim_schema_id);
 
-            match schema {
-                None => Err(ServiceError::NotFound),
-                Some(schema) => {
-                    validate_value(&claim.value, &schema.schema.data_type, &config.datatype)
-                        .map_err(ServiceError::ConfigValidationError)?;
-
-                    Ok(())
-                }
+        match schema {
+            None => return Err(BusinessLogicError::MissingClaimSchema { claim_schema_id }.into()),
+            Some(schema) => {
+                validate_datatype_value(&claim.value, &schema.schema.data_type, &config.datatype)
+                    .map_err(ServiceError::ConfigValidationError)?;
             }
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+        }
+    }
 
     // check all required claims are present
     claim_schemas

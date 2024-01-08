@@ -1,5 +1,6 @@
 use super::DidService;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::service::error::EntityNotFoundError;
 use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::service::test_utilities::dummy_did;
 use crate::{
@@ -155,7 +156,11 @@ async fn test_get_did_missing() {
     );
 
     let result = service.get_did(&Uuid::new_v4().into()).await;
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+    assert2::assert!(
+        let Err(ServiceError::EntityNotFound(
+            EntityNotFoundError::Did(_)
+        )) = result,
+    );
 }
 
 #[tokio::test]
@@ -244,7 +249,7 @@ async fn test_create_did_success() {
         .expect_get_key()
         .times(1)
         .returning(move |_, _| {
-            Ok(Key {
+            Ok(Some(Key {
                 id: key_id,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -254,7 +259,7 @@ async fn test_create_did_success() {
                 storage_type: "INTERNAL".to_string(),
                 key_type: "".to_string(),
                 organisation: None,
-            })
+            }))
         });
 
     let mut did_method = MockDidMethod::default();
@@ -267,7 +272,7 @@ async fn test_create_did_success() {
     did_repository
         .expect_get_did_by_value()
         .once()
-        .returning(|_, _| Err(crate::repository::error::DataLayerError::RecordNotFound));
+        .returning(|_, _| Ok(None));
 
     did_repository
         .expect_create_did()
@@ -279,11 +284,11 @@ async fn test_create_did_success() {
         .expect_get_organisation()
         .once()
         .returning(|id, _| {
-            Ok(Organisation {
+            Ok(Some(Organisation {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-            })
+            }))
         });
 
     let service = setup_service(
@@ -322,7 +327,7 @@ async fn test_create_did_value_already_exists() {
         .expect_get_key()
         .times(1)
         .returning(move |_, _| {
-            Ok(Key {
+            Ok(Some(Key {
                 id: key_id,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -332,7 +337,7 @@ async fn test_create_did_value_already_exists() {
                 storage_type: "INTERNAL".to_string(),
                 key_type: "".to_string(),
                 organisation: None,
-            })
+            }))
         });
 
     let mut did_method = MockDidMethod::default();
@@ -345,7 +350,7 @@ async fn test_create_did_value_already_exists() {
     did_repository
         .expect_get_did_by_value()
         .once()
-        .returning(|_, _| Ok(dummy_did()));
+        .returning(|_, _| Ok(Some(dummy_did())));
 
     let service = setup_service(
         did_repository,

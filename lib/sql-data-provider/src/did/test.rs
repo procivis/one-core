@@ -198,11 +198,11 @@ async fn test_get_did_by_value_existing() {
         .expect_get_organisation()
         .times(1)
         .returning(|id, _| {
-            Ok(Organisation {
+            Ok(Some(Organisation {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-            })
+            }))
         });
 
     let TestSetupWithDid {
@@ -230,7 +230,7 @@ async fn test_get_did_by_value_existing() {
 
     assert!(result.is_ok());
 
-    let content = result.unwrap();
+    let content = result.unwrap().unwrap();
     assert_eq!(content.id, did_id);
     assert_eq!(content.did_method, "KEY");
     assert_eq!(content.did_type, DidType::Local);
@@ -247,7 +247,7 @@ async fn test_get_did_by_value_missing() {
         .get_did_by_value(&"missing".parse().unwrap(), &DidRelations::default())
         .await;
 
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Ok(None)));
 }
 
 #[tokio::test]
@@ -257,16 +257,16 @@ async fn test_get_did_existing() {
         .expect_get_organisation()
         .times(1)
         .returning(|id, _| {
-            Ok(Organisation {
+            Ok(Some(Organisation {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-            })
+            }))
         });
 
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_key().times(1).returning(|id, _| {
-        Ok(Key {
+        Ok(Some(Key {
             id: id.to_owned(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -276,7 +276,7 @@ async fn test_get_did_existing() {
             storage_type: "INTERNAL".to_string(),
             key_type: "ED25519".to_string(),
             organisation: None,
-        })
+        }))
     });
 
     let TestSetupWithDid {

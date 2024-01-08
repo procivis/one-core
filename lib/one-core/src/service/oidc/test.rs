@@ -139,7 +139,7 @@ async fn test_get_issuer_metadata_jwt() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -169,7 +169,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), eq(relations))
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -200,7 +200,7 @@ async fn test_service_discovery() {
                 eq(schema.id.to_owned()),
                 eq(CredentialSchemaRelations::default()),
             )
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -228,7 +228,7 @@ async fn test_oidc_create_token() {
                 eq(schema.id.to_owned()),
                 eq(CredentialSchemaRelations::default()),
             )
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
 
         credential_repository
             .expect_get_credentials_by_interaction_id()
@@ -313,7 +313,7 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
                 eq(schema.id.to_owned()),
                 eq(CredentialSchemaRelations::default()),
             )
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
 
         credential_repository
             .expect_get_credentials_by_interaction_id()
@@ -362,7 +362,7 @@ async fn test_oidc_create_token_wrong_credential_state() {
                 eq(schema.id.to_owned()),
                 eq(CredentialSchemaRelations::default()),
             )
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
 
         credential_repository
             .expect_get_credentials_by_interaction_id()
@@ -415,7 +415,7 @@ async fn test_oidc_create_credential_success() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
 
         let clone = credential.clone();
         credential_repository
@@ -426,7 +426,7 @@ async fn test_oidc_create_credential_success() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(dummy_interaction(true, None)));
+            .return_once(|_, _| Ok(Some(dummy_interaction(true, None))));
 
         transport_provider
             .expect_issue_credential()
@@ -443,7 +443,7 @@ async fn test_oidc_create_credential_success() {
             .expect_get_did_by_value()
             .times(1)
             .returning(move |did_value, _| {
-                Ok(Did {
+                Ok(Some(Did {
                     id: holder_did_id,
                     created_date: now,
                     last_modified: now,
@@ -454,7 +454,7 @@ async fn test_oidc_create_credential_success() {
                     organisation: None,
                     keys: None,
                     deactivated: false,
-                })
+                }))
             });
 
         credential_repository
@@ -510,7 +510,7 @@ async fn test_oidc_create_credential_format_invalid() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -554,7 +554,7 @@ async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -598,7 +598,7 @@ async fn test_oidc_create_credential_format_invalid_credential_definition() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -643,7 +643,7 @@ async fn test_oidc_create_credential_format_invalid_bearer_token() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -689,12 +689,12 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
 
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(dummy_interaction(false, None)));
+            .return_once(|_, _| Ok(Some(dummy_interaction(false, None))));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -743,12 +743,12 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
 
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(dummy_interaction(true, None)));
+            .return_once(|_, _| Ok(Some(dummy_interaction(true, None))));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -797,16 +797,16 @@ async fn test_oidc_create_credential_access_token_expired() {
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(clone.clone()));
+            .returning(move |_, _| Ok(Some(clone.clone())));
 
         interaction_repository
             .expect_get_interaction()
             .once()
             .return_once(|_, _| {
-                Ok(dummy_interaction(
+                Ok(Some(dummy_interaction(
                     true,
                     Some("2022-10-28T07:03:38.4404734Z"),
-                ))
+                )))
             });
     }
     let service = setup_service(Mocks {

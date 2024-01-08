@@ -39,7 +39,7 @@ async fn test_create_organisation_id_set() {
         .expect_get_organisation()
         .times(1)
         .in_sequence(&mut sequence)
-        .returning(|_, _| Err(DataLayerError::RecordNotFound));
+        .returning(|_, _| Ok(None));
     organisation_repository
         .expect_create_organisation()
         .times(1)
@@ -48,10 +48,9 @@ async fn test_create_organisation_id_set() {
 
     let service = setup_service(organisation_repository);
     let id = Uuid::new_v4();
-    let result = service.create_organisation(Some(id)).await;
+    let result = service.create_organisation(Some(id)).await.unwrap();
 
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), id);
+    assert_eq!(result, id);
 }
 
 #[tokio::test]
@@ -61,11 +60,11 @@ async fn test_create_organisation_already_exists() {
         .expect_get_organisation()
         .times(1)
         .returning(|id, _| {
-            Ok(Organisation {
+            Ok(Some(Organisation {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-            })
+            }))
         });
 
     let service = setup_service(organisation_repository);
@@ -97,7 +96,7 @@ async fn test_get_organisation_success() {
             eq(organisation.id.to_owned()),
             eq(OrganisationRelations::default()),
         )
-        .returning(move |_, _| Ok(org_clone.clone()));
+        .returning(move |_, _| Ok(Some(org_clone.clone())));
 
     let service = setup_service(organisation_repository);
     let result = service.get_organisation(&organisation.id).await;

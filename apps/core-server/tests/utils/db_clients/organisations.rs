@@ -19,6 +19,7 @@ impl OrganisationsDB {
             .get_organisation(id, &OrganisationRelations {})
             .await
             .unwrap()
+            .unwrap()
     }
 
     pub async fn create(&self) -> Organisation {

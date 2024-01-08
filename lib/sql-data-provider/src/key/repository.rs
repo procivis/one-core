@@ -25,7 +25,11 @@ impl KeyProvider {
                 Ok(Some(
                     self.organisation_repository
                         .get_organisation(&organisation_id, organisation_relations)
-                        .await?,
+                        .await?
+                        .ok_or(DataLayerError::MissingRequiredRelation {
+                            relation: "key-organisation",
+                            id: organisation_id.to_string(),
+                        })?,
                 ))
             }
         }
@@ -59,20 +63,30 @@ impl KeyRepository for KeyProvider {
         Ok(request.id)
     }
 
-    async fn get_key(&self, id: &KeyId, relations: &KeyRelations) -> Result<Key, DataLayerError> {
+    async fn get_key(
+        &self,
+        id: &KeyId,
+        relations: &KeyRelations,
+    ) -> Result<Option<Key>, DataLayerError> {
         let key = key::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
             .map_err(|e| {
                 tracing::error!("Error while fetching key {}. Error: {}", id, e.to_string());
                 DataLayerError::Db(e.into())
-            })?
-            .ok_or(DataLayerError::RecordNotFound)?;
+            })?;
+
+        let Some(key) = key else {
+            return Ok(None);
+        };
 
         let organisation = self.get_organisation(&key, &relations.organisation).await?;
 
-        from_model_and_relations(key, organisation)
+        let key = from_model_and_relations(key, organisation)?;
+
+        Ok(Some(key))
     }
+
     async fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError> {
         let limit: u64 = query_params.page_size as u64;
 

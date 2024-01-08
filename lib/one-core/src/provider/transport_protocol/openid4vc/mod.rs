@@ -199,7 +199,7 @@ impl TransportProtocol for OpenID4VC {
         let presentation_formatter = self
             .formatter_provider
             .get_formatter("JWT")
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .ok_or_else(|| TransportProtocolError::Failed("JWT formatter not found".to_string()))?;
 
         let holder_did = proof
             .holder_did
@@ -361,7 +361,9 @@ impl TransportProtocol for OpenID4VC {
         let response_credential = self
             .formatter_provider
             .get_formatter(&schema.format)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+            .ok_or_else(|| {
+                TransportProtocolError::Failed(format!("{} formatter not found", schema.format))
+            })?
             .extract_credentials(&result.credential, Box::new(SkipVerification))
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
@@ -394,9 +396,10 @@ impl TransportProtocol for OpenID4VC {
             .did_repository
             .get_did_by_value(&issuer_did_value, &DidRelations::default())
             .await
+            .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
         {
-            Ok(did) => did.id,
-            Err(DataLayerError::RecordNotFound) => self
+            Some(did) => did.id,
+            None => self
                 .did_repository
                 .create_did(Did {
                     id: Uuid::new_v4().into(),
@@ -412,9 +415,6 @@ impl TransportProtocol for OpenID4VC {
                 })
                 .await
                 .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
-            Err(error) => {
-                return Err(TransportProtocolError::Failed(error.to_string()));
-            }
         };
 
         self.credential_repository
@@ -521,7 +521,11 @@ impl TransportProtocol for OpenID4VC {
                 },
             )
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+            .ok_or(TransportProtocolError::Failed(format!(
+                "Share proof missing proof {}",
+                proof.id
+            )))?;
 
         let interaction_id = Uuid::new_v4();
 
@@ -826,11 +830,12 @@ async fn create_and_store_credential_schema(
 
     let credential_schema = match result {
         Ok(_) => credential_schema,
-        Err(DataLayerError::AlreadyExists) => {
-            repository
-                .get_credential_schema(&id, &CredentialSchemaRelations::default())
-                .await?
-        }
+        Err(DataLayerError::AlreadyExists) => repository
+            .get_credential_schema(&id, &CredentialSchemaRelations::default())
+            .await?
+            .ok_or(DataLayerError::Db(anyhow::anyhow!(
+                "Credential schema should already exist: {id}"
+            )))?,
         Err(error) => return Err(error),
     };
 

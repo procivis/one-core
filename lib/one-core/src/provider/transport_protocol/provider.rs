@@ -16,7 +16,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::mapper::get_issued_credential_update;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::service::error::ServiceError;
+use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
 use std::{collections::HashMap, sync::Arc};
 use url::Url;
 
@@ -143,7 +143,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .await?;
 
         let Some(credential) = credential else {
-            return Err(ServiceError::NotFound);
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
@@ -195,7 +195,10 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
 
         let token: String = self
             .formatter_provider
-            .get_formatter(&format)?
+            .get_formatter(&format)
+            .ok_or_else(|| ValidationError::InvalidFormatter {
+                formatter: format.to_string(),
+            })?
             .format_credentials(
                 &credential.try_into()?,
                 credential_status,

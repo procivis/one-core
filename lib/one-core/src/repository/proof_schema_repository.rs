@@ -15,7 +15,7 @@ pub trait ProofSchemaRepository {
         &self,
         id: &ProofSchemaId,
         relations: &ProofSchemaRelations,
-    ) -> Result<ProofSchema, DataLayerError>;
+    ) -> Result<Option<ProofSchema>, DataLayerError>;
 
     async fn get_proof_schema_list(
         &self,

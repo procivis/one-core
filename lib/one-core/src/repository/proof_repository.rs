@@ -15,13 +15,13 @@ pub trait ProofRepository {
         &self,
         id: &ProofId,
         relations: &ProofRelations,
-    ) -> Result<Proof, DataLayerError>;
+    ) -> Result<Option<Proof>, DataLayerError>;
 
     async fn get_proof_by_interaction_id(
         &self,
         interaction_id: &InteractionId,
         relations: &ProofRelations,
-    ) -> Result<Proof, DataLayerError>;
+    ) -> Result<Option<Proof>, DataLayerError>;
 
     async fn get_proof_list(
         &self,

@@ -218,7 +218,7 @@ impl TransportProtocol for ProcivisTemp {
         let presentation_formatter = self
             .formatter_provider
             .get_formatter("JWT")
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .ok_or_else(|| TransportProtocolError::Failed("JWT formatter not found".to_string()))?;
 
         let holder_did = proof
             .holder_did
@@ -445,7 +445,10 @@ async fn handle_credential_invitation(
                         },
                     )
                     .await
-                    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+                    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+                    .ok_or(TransportProtocolError::Failed(format!(
+                        "Credential schema not found: {credential_schema:?}"
+                    )))?;
             }
             error => {
                 return Err(TransportProtocolError::Failed(error.to_string()));
@@ -460,17 +463,22 @@ async fn handle_credential_invitation(
             "Issuer did not found in response".to_string(),
         ))?
         .did;
+
     let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
     let did_insert_result = deps.did_repository.create_did(issuer_did.clone()).await;
     let issuer_did = match did_insert_result {
         Ok(_) => issuer_did,
-        Err(DataLayerError::AlreadyExists) => deps
-            .did_repository
-            .get_did_by_value(&issuer_did_value, &DidRelations::default())
-            .await
-            .map_err(|error| {
-                TransportProtocolError::Failed(format!("Error while getting DID {error}"))
-            })?,
+        Err(DataLayerError::AlreadyExists) => {
+            let issuer_did = deps
+                .did_repository
+                .get_did_by_value(&issuer_did_value, &DidRelations::default())
+                .await
+                .map_err(|err| TransportProtocolError::Failed(err.to_string()))?;
+
+            issuer_did.ok_or(TransportProtocolError::Failed(format!(
+                "Error while getting DID {issuer_did_value}"
+            )))?
+        }
         Err(e) => {
             return Err(TransportProtocolError::Failed(format!(
                 "Data layer error {e}"
@@ -571,12 +579,13 @@ async fn handle_proof_invitation(
     let verifier_did_result = deps
         .did_repository
         .get_did_by_value(&proof_request.verifier_did, &DidRelations::default())
-        .await;
+        .await
+        .map_err(|err| TransportProtocolError::Failed(err.to_string()))?;
 
     let now = OffsetDateTime::now_utc();
     let verifier_did = match verifier_did_result {
-        Ok(did) => did,
-        Err(DataLayerError::RecordNotFound) => {
+        Some(did) => did,
+        None => {
             let new_did = Did {
                 id: Uuid::new_v4().into(),
                 created_date: now,
@@ -595,9 +604,9 @@ async fn handle_proof_invitation(
                 .map_err(|error| {
                     TransportProtocolError::Failed(format!("Data layer error {error}"))
                 })?;
+
             new_did
         }
-        Err(e) => return Err(TransportProtocolError::Failed(e.to_string())),
     };
 
     let data = serde_json::to_string(&proof_request.claims)

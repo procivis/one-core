@@ -59,7 +59,7 @@ pub fn validate_datatypes(
     Ok(())
 }
 
-pub fn validate_value(
+pub fn validate_datatype_value(
     value: &str,
     datatype: &str,
     config: &DatatypeConfig,
@@ -234,7 +234,7 @@ mod tests {
             "};
         let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
 
-        let empty_value = validate_value("", "STRING", &datatype_config);
+        let empty_value = validate_datatype_value("", "STRING", &datatype_config);
         assert!(empty_value.is_ok());
     }
 
@@ -263,7 +263,8 @@ mod tests {
         let datatype_config: DatatypeConfig =
             serde_yaml::from_str(&datatype_config_with(invalid_regex)).unwrap();
 
-        let invalid_regex_pattern = validate_value("abc@abc.com", "EMAIL", &datatype_config);
+        let invalid_regex_pattern =
+            validate_datatype_value("abc@abc.com", "EMAIL", &datatype_config);
         assert!(invalid_regex_pattern.is_err_and(|e| matches!(
             e,
             ConfigValidationError::DatatypeValidation(
@@ -274,10 +275,10 @@ mod tests {
         let datatype_config: DatatypeConfig =
             serde_yaml::from_str(&datatype_config_with(valid_regex)).unwrap();
 
-        let valid_email = validate_value("abc@abc.com", "EMAIL", &datatype_config);
+        let valid_email = validate_datatype_value("abc@abc.com", "EMAIL", &datatype_config);
         assert!(valid_email.is_ok());
 
-        let invalid_email = validate_value("not an email", "EMAIL", &datatype_config);
+        let invalid_email = validate_datatype_value("not an email", "EMAIL", &datatype_config);
         assert!(invalid_email.is_err_and(|e| matches!(
             e,
             ConfigValidationError::DatatypeValidation(
@@ -300,7 +301,7 @@ mod tests {
         "};
         let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
 
-        let parse_failure = validate_value("not_a_number", "NUMBER", &datatype_config);
+        let parse_failure = validate_datatype_value("not_a_number", "NUMBER", &datatype_config);
         assert!(parse_failure.is_err_and(|f| matches!(
             f,
             ConfigValidationError::DatatypeValidation(DatatypeValidationError::NumberParseFailure(
@@ -308,7 +309,7 @@ mod tests {
             ))
         )));
 
-        let too_small = validate_value("6", "NUMBER", &datatype_config);
+        let too_small = validate_datatype_value("6", "NUMBER", &datatype_config);
         assert!(too_small.is_err_and(|f| matches!(
             f,
             ConfigValidationError::DatatypeValidation(DatatypeValidationError::NumberTooSmall(
@@ -317,13 +318,13 @@ mod tests {
             ))
         )));
 
-        let too_big = validate_value("23", "NUMBER", &datatype_config);
+        let too_big = validate_datatype_value("23", "NUMBER", &datatype_config);
         assert!(too_big.is_err_and(|f| matches!(
             f,
             ConfigValidationError::DatatypeValidation(DatatypeValidationError::NumberTooBig(_, _))
         )));
 
-        let fine = validate_value("11", "NUMBER", &datatype_config);
+        let fine = validate_datatype_value("11", "NUMBER", &datatype_config);
         assert!(fine.is_ok());
     }
 
@@ -341,22 +342,25 @@ mod tests {
         "};
         let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
 
-        let valid = validate_value("2023-01-01T17:45:00.0123456Z", "DATE", &datatype_config);
+        let valid =
+            validate_datatype_value("2023-01-01T17:45:00.0123456Z", "DATE", &datatype_config);
         assert!(valid.is_ok());
 
-        let too_early = validate_value("2022-01-01T17:45:00.0123456Z", "DATE", &datatype_config);
+        let too_early =
+            validate_datatype_value("2022-01-01T17:45:00.0123456Z", "DATE", &datatype_config);
         assert!(too_early.is_err_and(|f| matches!(
             f,
             ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateTooEarly(_, _))
         )));
 
-        let too_late = validate_value("2023-01-02T17:45:00.0123456Z", "DATE", &datatype_config);
+        let too_late =
+            validate_datatype_value("2023-01-02T17:45:00.0123456Z", "DATE", &datatype_config);
         assert!(too_late.is_err_and(|f| matches!(
             f,
             ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateTooLate(_, _))
         )));
 
-        let invalid = validate_value("2023-01-01", "DATE", &datatype_config);
+        let invalid = validate_datatype_value("2023-01-01", "DATE", &datatype_config);
         assert!(invalid.is_err_and(|f| matches!(
             f,
             ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateParseFailure(_))

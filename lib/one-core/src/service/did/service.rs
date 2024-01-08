@@ -116,7 +116,7 @@ impl DidService {
             .await?;
 
         let Some(did) = did else {
-            return Err(ServiceError::NotFound);
+            return Err(EntityNotFoundError::Did(*id).into());
         };
 
         did.try_into()
@@ -177,6 +177,10 @@ impl DidService {
             .get_key(&key_id, &KeyRelations::default())
             .await?;
 
+        let Some(key) = key else {
+            return Err(EntityNotFoundError::Key(key_id).into());
+        };
+
         let new_did_id = DidId::from(Uuid::new_v4());
 
         let did_value = did_method
@@ -193,6 +197,11 @@ impl DidService {
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
             .await?;
+
+        let Some(organisation) = organisation else {
+            return Err(EntityNotFoundError::Organisation(request.organisation_id).into());
+        };
+
         let did = did_from_did_request(new_did_id, request, organisation, did_value, key, now);
 
         let did_id = self
@@ -216,7 +225,7 @@ impl DidService {
             .map_err(ServiceError::from)?;
 
         let Some(did) = did else {
-            return Err(ServiceError::NotFound);
+            return Err(EntityNotFoundError::Did(*id).into());
         };
 
         let did_method = self.did_method_provider.get_did_method(&did.did_method)?;

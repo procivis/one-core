@@ -13,7 +13,6 @@ use crate::model::organisation::Organisation;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
-use crate::repository::error::DataLayerError;
 use crate::{model::common::GetListResponse, service::error::ServiceError};
 
 pub fn convert_inner<'a, T, A>(outer: T) -> T::Mapped
@@ -86,10 +85,10 @@ pub(crate) async fn get_or_create_did(
     Ok(
         match did_repository
             .get_did_by_value(holder_did_value, &DidRelations::default())
-            .await
+            .await?
         {
-            Ok(did) => did,
-            Err(DataLayerError::RecordNotFound) => {
+            Some(did) => did,
+            None => {
                 let did_method = did_method_id_from_value(holder_did_value)?;
                 let organisation = organisation.as_ref().ok_or(ServiceError::MappingError(
                     "organisation is None".to_string(),
@@ -108,9 +107,6 @@ pub(crate) async fn get_or_create_did(
                 };
                 did_repository.create_did(did.clone()).await?;
                 did
-            }
-            Err(e) => {
-                return Err(ServiceError::from(e));
             }
         },
     )

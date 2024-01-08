@@ -20,7 +20,7 @@ pub trait CredentialSchemaRepository: Send + Sync {
         &self,
         id: &CredentialSchemaId,
         relations: &CredentialSchemaRelations,
-    ) -> Result<CredentialSchema, DataLayerError>;
+    ) -> Result<Option<CredentialSchema>, DataLayerError>;
 
     async fn get_credential_schema_list(
         &self,

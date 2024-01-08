@@ -2,7 +2,7 @@ use super::OrganisationProvider;
 use crate::test_utilities::*;
 use one_core::{
     model::organisation::{Organisation, OrganisationRelations},
-    repository::{error::DataLayerError, organisation_repository::OrganisationRepository},
+    repository::organisation_repository::OrganisationRepository,
 };
 use sea_orm::{DatabaseConnection, EntityTrait};
 use time::OffsetDateTime;
@@ -56,7 +56,7 @@ async fn test_get_organisation_missing() {
     let result = repository
         .get_organisation(&Uuid::new_v4(), &OrganisationRelations::default())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Ok(None)));
 }
 
 #[tokio::test]
@@ -73,7 +73,7 @@ async fn test_get_organisation_success() {
         .await;
 
     assert!(result.is_ok());
-    let organisation = result.unwrap();
+    let organisation = result.unwrap().unwrap();
     assert_eq!(organisation.id, org_id);
 }
 
