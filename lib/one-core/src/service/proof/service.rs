@@ -229,7 +229,8 @@ impl ProofService {
             .map_err(|err| {
                 ServiceError::MissingTransportProtocol(format!("{}. {err}", proof.transport))
             })?
-            .r#type();
+            .r#type()
+            .to_string();
 
         let transport = self.protocol_provider.get_protocol(transport_instance)?;
 

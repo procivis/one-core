@@ -38,7 +38,7 @@ use crate::{
             dto::{PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO},
             SSIHolderService,
         },
-        test_utilities::{dummy_did, dummy_proof},
+        test_utilities::{dummy_did, dummy_proof, generic_config},
     },
 };
 
@@ -436,6 +436,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         did_repository: Arc::new(MockDidRepository::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
+        config: Arc::new(generic_config().core),
     }
 }
 

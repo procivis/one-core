@@ -1,5 +1,4 @@
 use crate::{
-    config::validator::key::validate_key_storage,
     model::{
         key::{KeyId, KeyRelations},
         organisation::OrganisationRelations,
@@ -9,6 +8,7 @@ use crate::{
         key::{
             dto::{KeyRequestDTO, KeyResponseDTO},
             mapper::from_create_request,
+            validator::validate_generate_request,
         },
     },
 };
@@ -49,7 +49,7 @@ impl KeyService {
     ///
     /// * `request` - key data
     pub async fn generate_key(&self, request: KeyRequestDTO) -> Result<KeyId, ServiceError> {
-        validate_key_storage(&request.storage_type, &self.config.key_storage)?;
+        validate_generate_request(&request, &self.config)?;
 
         let organisation = self
             .organisation_repository

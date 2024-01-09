@@ -14,7 +14,10 @@ use crate::{
         did::DidRelations,
         organisation::OrganisationRelations,
     },
-    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
+    service::{
+        credential::dto::CredentialDetailResponseDTO, error::ServiceError,
+        ssi_validator::validate_config_entity_presence,
+    },
 };
 use shared_types::DidValue;
 use time::OffsetDateTime;
@@ -25,6 +28,8 @@ impl SSIIssuerService {
         credential_id: &CredentialId,
         holder_did_value: &DidValue,
     ) -> Result<CredentialDetailResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let credential = self
             .credential_repository
             .get_credential(
@@ -97,6 +102,8 @@ impl SSIIssuerService {
         &self,
         credential_id: &CredentialId,
     ) -> Result<IssuerResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let token = self
             .protocol_provider
             .issue_credential(credential_id)
@@ -108,6 +115,8 @@ impl SSIIssuerService {
     }
 
     pub async fn issuer_reject(&self, credential_id: &CredentialId) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let credential = self
             .credential_repository
             .get_credential(

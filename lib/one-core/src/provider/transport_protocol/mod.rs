@@ -2,9 +2,23 @@ use self::dto::{
     InvitationType, PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
 };
 use crate::{
+    config::{
+        core_config::{ExchangeConfig, ExchangeType},
+        ConfigValidationError,
+    },
+    crypto::CryptoProvider,
     model::{credential::Credential, did::Did, interaction::Interaction, proof::Proof},
+    provider::{
+        credential_formatter::provider::CredentialFormatterProvider,
+        key_storage::provider::KeyProvider,
+        revocation::provider::RevocationMethodProvider,
+        transport_protocol::{openid4vc::OpenID4VC, procivis_temp::ProcivisTemp},
+    },
+    repository::DataRepository,
     service::ssi_holder::dto::InvitationResponseDTO,
 };
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde::{de, Serialize};
@@ -119,4 +133,59 @@ pub(super) fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>
         ))?;
 
     serde_json::from_slice(data).map_err(TransportProtocolError::JsonError)
+}
+
+pub(crate) fn transport_protocol_providers_from_config(
+    config: &ExchangeConfig,
+    core_base_url: Option<String>,
+    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    data_provider: Arc<dyn DataRepository>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
+) -> Result<HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>, ConfigValidationError> {
+    let mut providers: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>> = HashMap::new();
+
+    for (name, fields) in config.as_inner() {
+        match fields.r#type {
+            ExchangeType::ProcivisTemporary => {
+                let protocol = Arc::new(ProcivisTemp::new(
+                    core_base_url.clone(),
+                    data_provider.get_credential_repository(),
+                    data_provider.get_proof_repository(),
+                    data_provider.get_interaction_repository(),
+                    data_provider.get_credential_schema_repository(),
+                    data_provider.get_did_repository(),
+                    formatter_provider.clone(),
+                    key_provider.clone(),
+                ));
+
+                providers.insert(name.to_string(), protocol);
+            }
+            ExchangeType::OpenId4Vc => {
+                let params = config.get(name)?;
+
+                let protocol = Arc::new(OpenID4VC::new(
+                    core_base_url.clone(),
+                    data_provider.get_credential_repository(),
+                    data_provider.get_credential_schema_repository(),
+                    data_provider.get_did_repository(),
+                    data_provider.get_proof_repository(),
+                    data_provider.get_interaction_repository(),
+                    formatter_provider.clone(),
+                    revocation_method_provider.clone(),
+                    key_provider.clone(),
+                    crypto.clone(),
+                    params,
+                ));
+
+                providers.insert(name.to_string(), protocol);
+            }
+            ExchangeType::Mdl => {
+                continue;
+            }
+        }
+    }
+
+    Ok(providers)
 }

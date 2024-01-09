@@ -37,7 +37,7 @@ async fn test_create_claim_schema_list() {
     assert!(result.is_ok());
 
     assert_eq!(
-        crate::entity::ClaimSchema::find()
+        crate::entity::claim_schema::Entity::find()
             .all(&db)
             .await
             .unwrap()

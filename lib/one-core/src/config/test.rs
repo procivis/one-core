@@ -221,7 +221,7 @@ rusty_fork_test! {
             .core
             .exchange
             .as_inner()
-            .get(&ExchangeType::ProcivisTemporary)
+            .get("PROCIVIS_TEMPORARY")
             .unwrap();
 
         assert_eq!(temporary.order, Some(10)); // via env 1

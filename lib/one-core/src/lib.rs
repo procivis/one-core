@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::provider::key_storage::key_providers_from_config;
 use crate::provider::key_storage::provider::KeyProviderImpl;
 use crate::provider::key_storage::KeyStorage;
-use config::core_config::{CoreConfig, ExchangeType};
+use config::core_config::CoreConfig;
 use config::ConfigError;
 use crypto::hasher::sha256::SHA256;
 use crypto::hasher::Hasher;
@@ -13,9 +13,7 @@ use crypto::signer::Signer;
 use crypto::{CryptoProvider, CryptoProviderImpl};
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::key_storage::secure_element::NativeKeyStorage;
-use provider::transport_protocol::{
-    procivis_temp::ProcivisTemp, provider::TransportProtocolProviderImpl, TransportProtocol,
-};
+use provider::transport_protocol::{provider::TransportProtocolProviderImpl, TransportProtocol};
 use repository::DataRepository;
 use service::{
     config::ConfigService, credential::CredentialService, did::DidService,
@@ -46,7 +44,7 @@ use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::RevocationMethodProviderImpl;
 use crate::provider::revocation::status_list_2021::StatusList2021;
 use crate::provider::revocation::RevocationMethod;
-use crate::provider::transport_protocol::openid4vc::OpenID4VC;
+use crate::provider::transport_protocol::transport_protocol_providers_from_config;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::key::KeyService;
 use crate::service::oidc::OIDCService;
@@ -58,7 +56,7 @@ pub struct OneCore {
     pub did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>>,
     pub key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>>,
     pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
-    pub transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
+    pub transport_protocols: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>,
     pub revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
@@ -146,37 +144,15 @@ impl OneCore {
             revocation_methods.to_owned(),
         ));
 
-        let transport_protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)> = vec![
-            (
-                "PROCIVIS_TEMPORARY".to_string(),
-                Arc::new(ProcivisTemp::new(
-                    core_base_url.clone(),
-                    data_provider.get_credential_repository(),
-                    data_provider.get_proof_repository(),
-                    data_provider.get_interaction_repository(),
-                    data_provider.get_credential_schema_repository(),
-                    data_provider.get_did_repository(),
-                    formatter_provider.clone(),
-                    key_provider.clone(),
-                )),
-            ),
-            (
-                "OPENID4VC".to_string(),
-                Arc::new(OpenID4VC::new(
-                    core_base_url.clone(),
-                    data_provider.get_credential_repository(),
-                    data_provider.get_credential_schema_repository(),
-                    data_provider.get_did_repository(),
-                    data_provider.get_proof_repository(),
-                    data_provider.get_interaction_repository(),
-                    formatter_provider.clone(),
-                    revocation_method_provider.clone(),
-                    key_provider.clone(),
-                    crypto.clone(),
-                    config.exchange.get(ExchangeType::OpenId4Vc)?,
-                )),
-            ),
-        ];
+        let transport_protocols = transport_protocol_providers_from_config(
+            &config.exchange,
+            core_base_url.clone(),
+            crypto.clone(),
+            data_provider.clone(),
+            formatter_provider.clone(),
+            key_provider.clone(),
+            revocation_method_provider.clone(),
+        )?;
 
         let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
             transport_protocols.to_owned(),
@@ -265,11 +241,13 @@ impl OneCore {
                 did_method_provider,
                 revocation_method_provider,
                 key_algorithm_provider,
+                config.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_did_repository(),
                 protocol_provider.clone(),
+                config.clone(),
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),
@@ -277,6 +255,7 @@ impl OneCore {
                 data_provider.get_did_repository(),
                 formatter_provider,
                 protocol_provider,
+                config.clone(),
             ),
             config_service: ConfigService::new(config.clone()),
             crypto,

@@ -35,7 +35,8 @@ use crate::service::oidc::model::OpenID4VPInteractionContent;
 use crate::service::oidc::validator::{
     throw_if_credential_request_invalid, throw_if_interaction_created_date,
     throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
-    throw_if_token_request_invalid, validate_claims, validate_credential, validate_presentation,
+    throw_if_token_request_invalid, validate_claims, validate_config_entity_presence,
+    validate_credential, validate_presentation,
 };
 use crate::service::oidc::{
     dto::{
@@ -60,6 +61,8 @@ impl OIDCService {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let (base_url, schema) = self
             .get_credential_schema_base_url(credential_schema_id)
             .await?;
@@ -71,6 +74,8 @@ impl OIDCService {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let (base_url, _) = self
             .get_credential_schema_base_url(credential_schema_id)
             .await?;
@@ -110,6 +115,8 @@ impl OIDCService {
         access_token: &str,
         request: OpenID4VCICredentialRequestDTO,
     ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let schema = self
             .credential_schema_repository
             .get_credential_schema(
@@ -210,6 +217,8 @@ impl OIDCService {
         credential_schema_id: &CredentialSchemaId,
         request: OpenID4VCITokenRequestDTO,
     ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         throw_if_token_request_invalid(&request)?;
 
         self.credential_schema_repository
@@ -286,6 +295,8 @@ impl OIDCService {
         &self,
         request: OpenID4VPDirectPostRequestDTO,
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let interaction_id = request.state;
 
         let proof = self

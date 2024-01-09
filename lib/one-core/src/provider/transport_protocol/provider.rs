@@ -58,7 +58,7 @@ pub(crate) struct TransportProtocolProviderImpl {
 
 impl TransportProtocolProviderImpl {
     pub fn new(
-        protocols: Vec<(String, Arc<dyn TransportProtocol + Send + Sync>)>,
+        protocols: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
@@ -66,7 +66,7 @@ impl TransportProtocolProviderImpl {
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
-            protocols: protocols.into_iter().collect(),
+            protocols,
             formatter_provider,
             credential_repository,
             revocation_method_provider,
@@ -98,7 +98,8 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .exchange
             .get_fields(protocol_key)
             .map_err(|err| ServiceError::MissingTransportProtocol(err.to_string()))?
-            .r#type();
+            .r#type()
+            .to_string();
 
         self.get_protocol(transport_instance)
     }

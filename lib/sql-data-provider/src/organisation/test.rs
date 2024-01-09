@@ -40,7 +40,7 @@ async fn test_create_organisation() {
     assert_eq!(result.unwrap(), org_id);
 
     assert_eq!(
-        crate::entity::Organisation::find()
+        crate::entity::organisation::Entity::find()
             .all(&db)
             .await
             .unwrap()

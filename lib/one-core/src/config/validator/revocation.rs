@@ -1,10 +1,11 @@
-use crate::config::{core_config::RevocationConfig, ConfigValidationError};
+use crate::config::{
+    core_config::RevocationConfig, validator::throw_if_disabled, ConfigValidationError,
+};
 
 pub fn validate_revocation(
     value: &str,
     config: &RevocationConfig,
 ) -> Result<(), ConfigValidationError> {
-    _ = config.get_fields(value)?;
-
-    Ok(())
+    let fields = config.get_fields(value)?;
+    throw_if_disabled(value, Ok(fields))
 }

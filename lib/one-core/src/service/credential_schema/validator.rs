@@ -44,8 +44,7 @@ pub(crate) fn validate_create_request(
             .map(|f| &f.datatype)
             .collect::<Vec<&String>>(),
         &config.datatype,
-    )
-    .map_err(ServiceError::ConfigValidationError)?;
+    )?;
 
     Ok(())
 }

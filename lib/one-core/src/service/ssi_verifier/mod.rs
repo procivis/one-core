@@ -1,4 +1,5 @@
 use crate::{
+    config::core_config,
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
         did_method::provider::DidMethodProvider, key_algorithm::provider::KeyAlgorithmProvider,
@@ -31,6 +32,7 @@ pub struct SSIVerifierService {
     did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -44,6 +46,7 @@ impl SSIVerifierService {
         did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             claim_schema_repository,
@@ -54,6 +57,7 @@ impl SSIVerifierService {
             did_method_provider,
             revocation_method_provider,
             key_algorithm_provider,
+            config,
         }
     }
 }
