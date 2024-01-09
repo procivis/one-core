@@ -275,11 +275,15 @@ async fn test_create_proof_success() {
     assert_eq!(result.unwrap(), proof_id);
 
     assert_eq!(
-        crate::entity::Proof::find().all(&db).await.unwrap().len(),
+        crate::entity::proof::Entity::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .len(),
         1
     );
     assert_eq!(
-        crate::entity::ProofState::find()
+        crate::entity::proof_state::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -567,7 +571,7 @@ async fn test_set_proof_state() {
         .await;
 
     assert!(result.is_ok());
-    let db_states = crate::entity::ProofState::find()
+    let db_states = crate::entity::proof_state::Entity::find()
         .order_by_desc(proof_state::Column::CreatedDate)
         .all(&db)
         .await
@@ -670,6 +674,9 @@ async fn test_set_proof_claims_success() {
     let result = repository.set_proof_claims(&proof_id, vec![claim]).await;
     assert!(result.is_ok());
 
-    let db_proof_claims = crate::entity::ProofClaim::find().all(&db).await.unwrap();
+    let db_proof_claims = crate::entity::proof_claim::Entity::find()
+        .all(&db)
+        .await
+        .unwrap();
     assert_eq!(db_proof_claims.len(), 1);
 }

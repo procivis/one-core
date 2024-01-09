@@ -3,13 +3,15 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
-use crate::service::test_utilities::{dummy_credential, dummy_did};
 use crate::{
     model::credential::{Credential, CredentialId, CredentialState, CredentialStateEnum},
+    provider::transport_protocol::provider::MockTransportProtocolProvider,
     repository::credential_repository::MockCredentialRepository,
     repository::did_repository::MockDidRepository,
-    service::ssi_issuer::SSIIssuerService,
+    service::{
+        ssi_issuer::SSIIssuerService,
+        test_utilities::{dummy_credential, dummy_did, generic_config},
+    },
 };
 
 #[tokio::test]
@@ -91,5 +93,6 @@ fn mock_ssi_issuer_service() -> SSIIssuerService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
+        config: Arc::new(generic_config().core),
     }
 }

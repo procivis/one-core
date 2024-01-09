@@ -11,6 +11,7 @@ pub mod proof_schema;
 pub mod oidc;
 pub mod ssi_holder;
 pub mod ssi_issuer;
+mod ssi_validator;
 pub mod ssi_verifier;
 
 pub mod revocation_list;

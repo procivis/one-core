@@ -86,7 +86,11 @@ async fn test_create_claim_list_success() {
     assert!(result.is_ok());
 
     assert_eq!(
-        crate::entity::Claim::find().all(&db).await.unwrap().len(),
+        crate::entity::claim::Entity::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .len(),
         4
     );
 }

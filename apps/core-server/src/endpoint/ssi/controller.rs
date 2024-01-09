@@ -91,6 +91,10 @@ pub(crate) async fn get_revocation_list_by_id(
 
     match result {
         Ok(result) => (StatusCode::OK, result).into_response(),
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {}", error);
+            StatusCode::BAD_REQUEST.into_response()
+        }
         Err(ServiceError::EntityNotFound(EntityNotFoundError::RevocationList(_))) => {
             tracing::error!("Missing revocation list");
             (StatusCode::NOT_FOUND, "Missing revocation list").into_response()
@@ -127,6 +131,10 @@ pub(crate) async fn oidc_get_issuer_metadata(
             Json(OpenID4VCIIssuerMetadataResponseRestDTO::from(value)),
         )
             .into_response(),
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
         Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
@@ -163,6 +171,10 @@ pub(crate) async fn oidc_service_discovery(
             Json(OpenID4VCIDiscoveryResponseRestDTO::from(value)),
         )
             .into_response(),
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
         Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
@@ -214,6 +226,10 @@ pub(crate) async fn oidc_create_token(
                 Json(OpenID4VCIErrorResponseRestDTO::from(error)),
             )
                 .into_response()
+        }
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            StatusCode::NOT_FOUND.into_response()
         }
         Err(ServiceError::NotFound) => {
             tracing::error!("Missing credential schema");
@@ -272,6 +288,10 @@ pub(crate) async fn oidc_create_credential(
             )
                 .into_response()
         }
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
         Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
@@ -318,6 +338,10 @@ pub(crate) async fn oidc_verifier_direct_post(
                 Json(OpenID4VCIErrorResponseRestDTO::from(error)),
             )
                 .into_response()
+        }
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            StatusCode::NOT_FOUND.into_response()
         }
         Err(ServiceError::EntityNotFound(EntityNotFoundError::ProofForInteraction(_))) => {
             tracing::error!("Missing interaction or proof");

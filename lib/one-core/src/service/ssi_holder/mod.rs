@@ -1,4 +1,5 @@
 use crate::{
+    config::core_config,
     provider::credential_formatter::provider::CredentialFormatterProvider,
     provider::transport_protocol::provider::TransportProtocolProvider,
     repository::{
@@ -23,6 +24,7 @@ pub struct SSIHolderService {
     did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -33,6 +35,7 @@ impl SSIHolderService {
         did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             credential_repository,
@@ -40,6 +43,7 @@ impl SSIHolderService {
             did_repository,
             formatter_provider,
             protocol_provider,
+            config,
         }
     }
 }

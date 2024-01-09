@@ -154,7 +154,7 @@ pub enum FormatType {
     Mdoc,
 }
 
-pub type ExchangeConfig = ConfigBlock<ExchangeType, String>;
+pub type ExchangeConfig = ConfigBlock<String, ExchangeType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,

@@ -277,7 +277,10 @@ async fn test_oidc_create_token() {
 #[tokio::test]
 async fn test_oidc_create_token_invalid_grant_type() {
     let schema = generic_credential_schema();
-    let service = setup_service(Mocks::default());
+    let service = setup_service(Mocks {
+        config: generic_config().core,
+        ..Default::default()
+    });
     let result = service
         .oidc_create_token(
             &schema.id,
@@ -514,6 +517,7 @@ async fn test_oidc_create_credential_format_invalid() {
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
+        config: generic_config().core,
         ..Default::default()
     });
 
@@ -558,6 +562,7 @@ async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
+        config: generic_config().core,
         ..Default::default()
     });
 

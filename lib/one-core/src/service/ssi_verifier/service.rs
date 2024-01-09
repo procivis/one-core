@@ -17,7 +17,10 @@ use crate::{
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
     provider::did_method::provider::DidMethodProvider,
-    service::error::{EntityNotFoundError, ServiceError},
+    service::{
+        error::{EntityNotFoundError, ServiceError},
+        ssi_validator::validate_config_entity_presence,
+    },
 };
 use shared_types::DidValue;
 use time::OffsetDateTime;
@@ -36,6 +39,8 @@ impl SSIVerifierService {
         holder_did_value: &DidValue,
         redirect_uri: &Option<String>,
     ) -> Result<ConnectVerifierResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let proof = self
             .proof_repository
             .get_proof(
@@ -87,6 +92,8 @@ impl SSIVerifierService {
         proof_id: &ProofId,
         presentation_content: &str,
     ) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let proof = self
             .get_proof_with_state(
                 proof_id,
@@ -139,6 +146,8 @@ impl SSIVerifierService {
     ///
     /// * `proof_id` - proof identifier
     pub async fn reject_proof(&self, proof_id: &ProofId) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let proof = self
             .get_proof_with_state(proof_id, ProofRelations::default())
             .await?;
@@ -350,6 +359,7 @@ mod tests {
                 proof_repository::MockProofRepository,
             },
         },
+        service::test_utilities::generic_config,
     };
 
     #[tokio::test]
@@ -376,6 +386,7 @@ mod tests {
             did_method_provider: Arc::new(MockDidMethodProvider::new()),
             revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
             key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+            config: Arc::new(generic_config().core),
         };
 
         let response = service.fail_proof(&proof_id).await;

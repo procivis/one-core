@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
+use crate::config::core_config::{CoreConfig, ExchangeType};
+use crate::config::ConfigValidationError;
 use crate::model::claim_schema::ClaimSchemaId;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaId};
 use crate::model::interaction::Interaction;
@@ -255,4 +257,21 @@ pub(super) fn validate_claims(
     }
 
     Ok(proved_claims)
+}
+
+pub(super) fn validate_config_entity_presence(
+    config: &CoreConfig,
+) -> Result<(), ConfigValidationError> {
+    if !config
+        .exchange
+        .as_inner()
+        .iter()
+        .any(|(_, v)| v.r#type == ExchangeType::OpenId4Vc)
+    {
+        Err(ConfigValidationError::KeyNotFound(
+            "No exchange method with type OPENID4VC".to_string(),
+        ))
+    } else {
+        Ok(())
+    }
 }

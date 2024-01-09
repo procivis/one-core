@@ -179,7 +179,7 @@ async fn test_create_credential_schema_success() {
     assert_eq!(result.unwrap(), credential_schema_id);
 
     assert_eq!(
-        crate::entity::CredentialSchema::find()
+        crate::entity::credential_schema::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -187,7 +187,7 @@ async fn test_create_credential_schema_success() {
         1
     );
     assert_eq!(
-        crate::entity::CredentialSchemaClaimSchema::find()
+        crate::entity::credential_schema_claim_schema::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -195,7 +195,7 @@ async fn test_create_credential_schema_success() {
         2
     );
     assert_eq!(
-        crate::entity::ClaimSchema::find()
+        crate::entity::claim_schema::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -421,7 +421,7 @@ async fn test_delete_credential_schema_success() {
         .await;
     assert!(result.is_ok());
 
-    let db_schemas = crate::entity::CredentialSchema::find()
+    let db_schemas = crate::entity::credential_schema::Entity::find()
         .all(&db)
         .await
         .unwrap();
@@ -455,7 +455,7 @@ async fn test_update_credential_schema_success() {
         .await;
     assert!(result.is_ok());
 
-    let db_schemas = crate::entity::CredentialSchema::find()
+    let db_schemas = crate::entity::credential_schema::Entity::find()
         .all(&db)
         .await
         .unwrap();

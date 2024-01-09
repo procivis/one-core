@@ -54,7 +54,7 @@ impl ProofRepository for ProofProvider {
         proof_id: &ProofId,
         relations: &ProofRelations,
     ) -> Result<Option<Proof>, DataLayerError> {
-        let proof_model = crate::entity::Proof::find_by_id(proof_id.to_string())
+        let proof_model = crate::entity::proof::Entity::find_by_id(proof_id.to_string())
             .one(&self.db)
             .await
             .map_err(|error| {
@@ -76,7 +76,7 @@ impl ProofRepository for ProofProvider {
         interaction_id: &InteractionId,
         relations: &ProofRelations,
     ) -> Result<Option<Proof>, DataLayerError> {
-        let proof_model = crate::entity::Proof::find()
+        let proof_model = crate::entity::proof::Entity::find()
             .filter(proof::Column::InteractionId.eq(interaction_id.to_string()))
             .one(&self.db)
             .await
@@ -121,7 +121,7 @@ impl ProofRepository for ProofProvider {
         // collect all states
         let proof_ids: Vec<String> = proofs.iter().map(|p| p.id.to_string()).collect();
 
-        let proof_states = crate::entity::ProofState::find()
+        let proof_states = crate::entity::proof_state::Entity::find()
             .filter(proof_state::Column::ProofId.is_in(proof_ids))
             .order_by_desc(proof_state::Column::CreatedDate)
             .all(&self.db)
@@ -259,8 +259,8 @@ impl ProofRepository for ProofProvider {
 }
 
 /// produces list query declared to be used together with `into_model::<ProofListItemModel>()`
-fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::Proof> {
-    crate::entity::Proof::find()
+fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::proof::Entity> {
+    crate::entity::proof::Entity::find()
         .select_only()
         .columns([
             proof::Column::Id,
@@ -349,7 +349,7 @@ impl ProofProvider {
         }
 
         if let Some(claim_relations) = &relations.claims {
-            let proof_claims = crate::entity::ProofClaim::find()
+            let proof_claims = crate::entity::proof_claim::Entity::find()
                 .filter(proof_claim::Column::ProofId.eq(&proof_model.id))
                 .all(&self.db)
                 .await
@@ -396,7 +396,7 @@ impl ProofProvider {
         }
 
         if let Some(_state_relations) = &relations.state {
-            let proof_states = crate::entity::ProofState::find()
+            let proof_states = crate::entity::proof_state::Entity::find()
                 .filter(proof_state::Column::ProofId.eq(&proof_model.id))
                 .order_by_desc(proof_state::Column::CreatedDate)
                 .all(&self.db)

@@ -273,7 +273,7 @@ async fn test_create_credential_success() {
     assert_eq!(result.unwrap(), credential_id);
 
     assert_eq!(
-        crate::entity::Credential::find()
+        crate::entity::credential::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -281,7 +281,7 @@ async fn test_create_credential_success() {
         1
     );
     assert_eq!(
-        crate::entity::CredentialClaim::find()
+        crate::entity::credential_claim::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -335,7 +335,7 @@ async fn test_create_credential_empty_claims() {
     assert_eq!(result.unwrap(), credential_id);
 
     assert_eq!(
-        crate::entity::Credential::find()
+        crate::entity::credential::Entity::find()
             .all(&db)
             .await
             .unwrap()
@@ -343,7 +343,7 @@ async fn test_create_credential_empty_claims() {
         1
     );
     assert_eq!(
-        crate::entity::CredentialClaim::find()
+        crate::entity::credential_claim::Entity::find()
             .all(&db)
             .await
             .unwrap()

@@ -6,8 +6,11 @@ use time::error::{ComponentRange, Parse, TryFromParsed};
 use time::macros::format_description;
 use time::{Date, Month, OffsetDateTime, PrimitiveDateTime};
 
-use crate::config::core_config::{DatatypeConfig, DatatypeType};
-use crate::config::ConfigValidationError;
+use crate::config::{
+    core_config::{DatatypeConfig, DatatypeType},
+    validator::throw_if_disabled,
+    ConfigValidationError,
+};
 
 #[derive(Debug, Error)]
 pub enum DatatypeValidationError {
@@ -53,7 +56,8 @@ pub fn validate_datatypes(
     config: &DatatypeConfig,
 ) -> Result<(), ConfigValidationError> {
     for datatype in query_datatypes {
-        _ = config.get_fields(datatype)?;
+        let fields = config.get_fields(datatype)?;
+        throw_if_disabled(datatype, Ok(fields))?;
     }
 
     Ok(())

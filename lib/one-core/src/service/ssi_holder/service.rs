@@ -27,7 +27,10 @@ use crate::{
             provider::DetectedProtocol,
         },
     },
-    service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
+    service::{
+        error::{BusinessLogicError, EntityNotFoundError, ServiceError},
+        ssi_validator::validate_config_entity_presence,
+    },
 };
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -39,6 +42,8 @@ impl SSIHolderService {
         url: Url,
         holder_did_id: &DidId,
     ) -> Result<InvitationResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let holder_did = self
             .did_repository
             .get_did(
@@ -68,6 +73,8 @@ impl SSIHolderService {
         &self,
         interaction_id: &InteractionId,
     ) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let proof = self
             .proof_repository
             .get_proof_by_interaction_id(
@@ -109,6 +116,8 @@ impl SSIHolderService {
         &self,
         request: PresentationSubmitRequestDTO,
     ) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let proof = self
             .proof_repository
             .get_proof_by_interaction_id(
@@ -274,6 +283,8 @@ impl SSIHolderService {
         &self,
         interaction_id: &InteractionId,
     ) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(
@@ -331,6 +342,8 @@ impl SSIHolderService {
         &self,
         interaction_id: &InteractionId,
     ) -> Result<(), ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(

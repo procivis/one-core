@@ -31,6 +31,8 @@ pub enum ConfigParsingError {
 pub enum ConfigValidationError {
     #[error("invalid configuration key: {0}")]
     InvalidKey(String),
+    #[error("configuration key `{0}` is disabled")]
+    KeyDisabled(String),
     #[error("configuration key `{0}` not found")]
     KeyNotFound(String),
     #[error("fields deserialization for key: {key}. error: {source}")]

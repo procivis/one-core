@@ -159,7 +159,14 @@ async fn test_create_did() {
     let response = result.unwrap();
     assert_eq!(id, response);
 
-    assert_eq!(crate::entity::Did::find().all(&db).await.unwrap().len(), 1);
+    assert_eq!(
+        crate::entity::did::Entity::find()
+            .all(&db)
+            .await
+            .unwrap()
+            .len(),
+        1
+    );
     assert_eq!(
         crate::entity::key_did::Entity::find()
             .all(&db)

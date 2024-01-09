@@ -75,7 +75,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         id: &ProofSchemaId,
         relations: &ProofSchemaRelations,
     ) -> Result<Option<ProofSchema>, DataLayerError> {
-        let proof_schema_model = crate::entity::ProofSchema::find_by_id(id.to_string())
+        let proof_schema_model = crate::entity::proof_schema::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
@@ -115,7 +115,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
     ) -> Result<GetProofSchemaList, DataLayerError> {
         let limit: u64 = query_params.page_size as u64;
 
-        let query = crate::entity::ProofSchema::find()
+        let query = crate::entity::proof_schema::Entity::find()
             .filter(proof_schema::Column::DeletedAt.is_null())
             .with_organisation_id(&query_params, &proof_schema::Column::OrganisationId)
             .with_list_query(&query_params, &Some(vec![proof_schema::Column::Name]))
@@ -141,7 +141,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         id: &ProofSchemaId,
         deleted_at: OffsetDateTime,
     ) -> Result<(), DataLayerError> {
-        let result = crate::entity::ProofSchema::find_by_id(id.to_string())
+        let result = crate::entity::proof_schema::Entity::find_by_id(id.to_string())
             .filter(proof_schema::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
@@ -189,7 +189,7 @@ impl ProofSchemaProvider {
             pub credential_schema_id: String,
         }
 
-        let proof_schema_claims = crate::entity::ProofSchemaClaimSchema::find()
+        let proof_schema_claims = crate::entity::proof_schema_claim_schema::Entity::find()
             .filter(
                 proof_schema_claim_schema::Column::ProofSchemaId.eq(proof_schema_id.to_string()),
             )

@@ -25,12 +25,18 @@ use crate::{
         key_algorithm::provider::MockKeyAlgorithmProvider,
         revocation::provider::MockRevocationMethodProvider,
     },
-    repository::did_repository::MockDidRepository,
-    repository::mock::{
-        claim_repository::MockClaimRepository, claim_schema_repository::MockClaimSchemaRepository,
-        proof_repository::MockProofRepository,
+    repository::{
+        did_repository::MockDidRepository,
+        mock::{
+            claim_repository::MockClaimRepository,
+            claim_schema_repository::MockClaimSchemaRepository,
+            proof_repository::MockProofRepository,
+        },
     },
-    service::{ssi_verifier::SSIVerifierService, test_utilities::dummy_proof},
+    service::{
+        ssi_verifier::SSIVerifierService,
+        test_utilities::{dummy_proof, generic_config},
+    },
 };
 
 use mockall::predicate::eq;
@@ -499,6 +505,7 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
         did_method_provider: Arc::new(did_method_provider),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        config: Arc::new(generic_config().core),
     }
 }
 
