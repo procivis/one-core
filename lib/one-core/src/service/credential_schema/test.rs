@@ -14,7 +14,7 @@ use crate::{
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
-        credential_schema_repository::MockCredentialSchemaRepository, error::DataLayerError,
+        credential_schema_repository::MockCredentialSchemaRepository,
         mock::organisation_repository::MockOrganisationRepository,
     },
     service::{
@@ -25,7 +25,7 @@ use crate::{
             },
             CredentialSchemaService,
         },
-        error::{BusinessLogicError, ServiceError, ValidationError},
+        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
         test_utilities::generic_config,
     },
 };
@@ -394,7 +394,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         organisation_repository
             .expect_get_organisation()
             .times(1)
-            .returning(move |_, _| Err(DataLayerError::RecordNotFound));
+            .returning(move |_, _| Ok(None));
         let clone = response.clone();
         repository
             .expect_get_credential_schema_list()
@@ -418,5 +418,8 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         })
         .await;
 
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::NotFound)));
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::EntityNotFound(EntityNotFoundError::Organisation(_))
+    )));
 }

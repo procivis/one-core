@@ -21,7 +21,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{CredentialRevocationInfo, RevocationMethod};
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::{
-    credential_repository::CredentialRepository, error::DataLayerError,
+    credential_repository::CredentialRepository,
     revocation_list_repository::RevocationListRepository,
 };
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -195,15 +195,21 @@ impl StatusList2021 {
         &self,
         credential_id: &CredentialId,
         issuer_did_id: &DidId,
-    ) -> Result<usize, DataLayerError> {
+    ) -> Result<usize, ServiceError> {
         let list = self
             .credential_repository
             .get_credentials_by_issuer_did_id(issuer_did_id, &CredentialRelations::default())
             .await?;
 
-        list.iter()
+        let index = list
+            .iter()
             .position(|credential| credential.id == *credential_id)
-            .ok_or(DataLayerError::RecordNotFound)
+            .ok_or(BusinessLogicError::MissingCredentialIndexOnRevocationList {
+                credential_id: *credential_id,
+                did: *issuer_did_id,
+            })?;
+
+        Ok(index)
     }
 
     async fn generate_bitstring_from_credentials(

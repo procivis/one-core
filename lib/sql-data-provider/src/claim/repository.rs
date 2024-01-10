@@ -1,4 +1,4 @@
-use super::{mapper::sort_claim_models, ClaimProvider};
+use super::ClaimProvider;
 use crate::{entity::claim, mapper::to_data_layer_error};
 use one_core::{
     common_mapper::iterable_try_into,
@@ -9,7 +9,7 @@ use one_core::{
     repository::{claim_repository::ClaimRepository, error::DataLayerError},
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;
 
 #[async_trait::async_trait]
@@ -33,13 +33,28 @@ impl ClaimRepository for ClaimProvider {
         ids: Vec<ClaimId>,
         relations: &ClaimRelations,
     ) -> Result<Vec<Claim>, DataLayerError> {
-        let ids_string: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+        let claims_cnt = ids.len();
+
+        let claim_id_to_index: HashMap<String, usize> = ids
+            .into_iter()
+            .enumerate()
+            .map(|(index, id)| (id.to_string(), index))
+            .collect();
+
         let mut models = claim::Entity::find()
-            .filter(claim::Column::Id.is_in(ids_string))
+            .filter(claim::Column::Id.is_in(claim_id_to_index.keys()))
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;
-        sort_claim_models(&ids, &mut models)?;
+
+        if claims_cnt != models.len() {
+            return Err(DataLayerError::IncompleteClaimsList {
+                expected: claims_cnt,
+                got: models.len(),
+            });
+        }
+
+        models.sort_by_key(|model| claim_id_to_index[&model.id]);
 
         if let Some(claim_schema_relations) = &relations.schema {
             let claim_schema_ids = models

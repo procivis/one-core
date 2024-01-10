@@ -1,35 +1,9 @@
-use shared_types::DidId;
-use std::sync::Arc;
-
-use one_core::{
-    model::did::{Did, DidRelations},
-    repository::{did_repository::DidRepository, error::DataLayerError},
-};
-
 pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u64 {
     if page_size == 0 {
         return 0;
     }
 
     (total_items_count / page_size) + std::cmp::min(total_items_count % page_size, 1)
-}
-
-pub(crate) async fn get_did(
-    did_id: &DidId,
-    relations: &Option<DidRelations>,
-    repository: Arc<dyn DidRepository>,
-) -> Result<Option<Did>, DataLayerError> {
-    match relations {
-        None => Ok(None),
-        Some(did_relations) => {
-            let did = repository
-                .get_did(did_id, did_relations)
-                .await?
-                .ok_or(DataLayerError::RecordNotFound)?;
-
-            Ok(Some(did))
-        }
-    }
 }
 
 #[cfg(test)]

@@ -5,6 +5,7 @@ use crate::{
         credential_schema::{CredentialSchemaId, CredentialSchemaRelations},
         organisation::OrganisationRelations,
     },
+    repository::error::DataLayerError,
     service::{
         credential_schema::{
             dto::{
@@ -66,7 +67,12 @@ impl CredentialSchemaService {
         self.credential_schema_repository
             .delete_credential_schema(credential_schema_id)
             .await
-            .map_err(ServiceError::from)
+            .map_err(|error| match error {
+                DataLayerError::RecordNotUpdated => {
+                    EntityNotFoundError::CredentialSchema(*credential_schema_id).into()
+                }
+                error => ServiceError::from(error),
+            })
     }
 
     /// Returns details of a credential schema

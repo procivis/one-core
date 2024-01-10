@@ -8,7 +8,7 @@ use super::ProofService;
 use crate::config::core_config::CoreConfig;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
-use crate::service::error::BusinessLogicError;
+use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::service::test_utilities::generic_config;
 use crate::{
     model::{
@@ -28,7 +28,6 @@ use crate::{
     repository::{
         credential_repository::MockCredentialRepository,
         did_repository::MockDidRepository,
-        error::DataLayerError,
         interaction_repository::MockInteractionRepository,
         mock::{
             proof_repository::MockProofRepository,
@@ -322,7 +321,7 @@ async fn test_get_proof_missing() {
     proof_repository
         .expect_get_proof()
         .times(1)
-        .returning(|_, _| Err(DataLayerError::RecordNotFound));
+        .returning(|_, _| Ok(None));
 
     let service = setup_service(Repositories {
         proof_repository,
@@ -330,7 +329,10 @@ async fn test_get_proof_missing() {
     });
 
     let result = service.get_proof(&Uuid::new_v4()).await;
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::Proof(_)))
+    ));
 }
 
 #[tokio::test]

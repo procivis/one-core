@@ -1,8 +1,8 @@
 use anyhow::anyhow;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, ModelTrait,
-    PaginatorTrait, QueryFilter, QueryOrder, SqlErr, Unchanged,
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, SqlErr, Unchanged,
 };
 use std::str::FromStr;
 use time::OffsetDateTime;
@@ -33,17 +33,6 @@ use crate::{
     list_query::SelectWithListQuery,
     mapper::to_data_layer_error,
 };
-
-async fn delete_credential_schema_from_database(
-    db: &DatabaseConnection,
-    credential_schema: credential_schema::Model,
-    now: OffsetDateTime,
-) -> Result<(), DbErr> {
-    let mut value: credential_schema::ActiveModel = credential_schema.into();
-    value.deleted_at = Set(Some(now));
-
-    value.update(db).await.map(|_| ())
-}
 
 #[async_trait::async_trait]
 impl CredentialSchemaRepository for CredentialSchemaProvider {
@@ -91,18 +80,24 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         &self,
         id: &CredentialSchemaId,
     ) -> Result<(), DataLayerError> {
-        let credential_schema = credential_schema::Entity::find_by_id(id.to_string())
-            .filter(credential_schema::Column::DeletedAt.is_null())
-            .one(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?
-            .ok_or(DataLayerError::RecordNotFound)?;
-
         let now = OffsetDateTime::now_utc();
 
-        delete_credential_schema_from_database(&self.db, credential_schema, now)
+        let credential_schema = credential_schema::ActiveModel {
+            id: Unchanged(id.to_string()),
+            deleted_at: Set(Some(now)),
+            ..Default::default()
+        };
+
+        credential_schema::Entity::update(credential_schema)
+            .filter(credential_schema::Column::DeletedAt.is_null())
+            .exec(&self.db)
             .await
-            .map_err(|error| DataLayerError::Db(error.into()))
+            .map_err(|error| match error {
+                DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
+                error => DataLayerError::Db(error.into()),
+            })?;
+
+        Ok(())
     }
 
     async fn get_credential_schema(

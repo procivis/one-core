@@ -152,7 +152,7 @@ pub(super) fn create_list_response(
             if let Some(states) = proof_states_map.get(&proof.id) {
                 proof.state = Some(states.to_owned());
             } else {
-                return Err(DataLayerError::RecordNotFound);
+                return Err(DataLayerError::MissingProofState { proof: proof.id });
             }
 
             Ok(proof)

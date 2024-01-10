@@ -4,7 +4,7 @@ use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{common::get_did, entity::revocation_list, revocation_list::RevocationListProvider};
+use crate::{entity::revocation_list, revocation_list::RevocationListProvider};
 use one_core::{
     model::revocation_list::{RevocationList, RevocationListId, RevocationListRelations},
     repository::{error::DataLayerError, revocation_list_repository::RevocationListRepository},
@@ -16,12 +16,22 @@ impl RevocationListProvider {
         revocation_list: revocation_list::Model,
         relations: &RevocationListRelations,
     ) -> Result<RevocationList, DataLayerError> {
-        let issuer_did = get_did(
-            &revocation_list.issuer_did_id,
-            &relations.issuer_did,
-            self.did_repository.clone(),
-        )
-        .await?;
+        let issuer_did = match relations.issuer_did.as_ref() {
+            None => None,
+            Some(relations) => {
+                let did_id = &revocation_list.issuer_did_id;
+                let did = self
+                    .did_repository
+                    .get_did(did_id, relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "revocation_list-did",
+                        id: did_id.to_string(),
+                    })?;
+
+                Some(did)
+            }
+        };
 
         Ok(RevocationList {
             id: Uuid::from_str(&revocation_list.id)?,

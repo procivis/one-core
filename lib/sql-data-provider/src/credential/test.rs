@@ -467,7 +467,7 @@ async fn test_delete_credential_failed_not_found() {
     };
 
     let result = provider.delete_credential(&credential_id).await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
 
 #[tokio::test]

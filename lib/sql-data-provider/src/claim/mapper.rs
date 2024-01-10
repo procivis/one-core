@@ -1,10 +1,7 @@
 use crate::entity::claim;
-use one_core::{
-    model::claim::{Claim, ClaimId},
-    repository::error::DataLayerError,
-};
+use one_core::{model::claim::Claim, repository::error::DataLayerError};
 use sea_orm::Set;
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 use uuid::Uuid;
 
 impl TryFrom<Claim> for claim::ActiveModel {
@@ -38,23 +35,4 @@ impl TryFrom<claim::Model> for Claim {
             schema: None,
         })
     }
-}
-
-pub(super) fn sort_claim_models(
-    id_order: &[ClaimId],
-    models: &mut Vec<claim::Model>,
-) -> Result<(), DataLayerError> {
-    if id_order.len() != models.len() {
-        return Err(DataLayerError::RecordNotFound);
-    }
-
-    let id_to_index: HashMap<String, usize> = id_order
-        .iter()
-        .enumerate()
-        .map(|(index, id)| (id.to_string(), index))
-        .collect();
-
-    models.sort_by(|a, b| id_to_index[&a.id].cmp(&id_to_index[&b.id]));
-
-    Ok(())
 }

@@ -1,6 +1,5 @@
 use super::CredentialService;
-use crate::repository::error::DataLayerError;
-use crate::service::error::ValidationError;
+use crate::service::error::{EntityNotFoundError, ValidationError};
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -166,25 +165,24 @@ async fn test_delete_credential_success() {
 #[tokio::test]
 async fn test_delete_credential_failed_credential_missing() {
     let mut credential_repository = MockCredentialRepository::default();
-    let credential_schema_repository = MockCredentialSchemaRepository::default();
-    let did_repository = MockDidRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
 
     credential_repository
         .expect_get_credential()
-        .returning(|_, _| Err(DataLayerError::RecordNotFound));
+        .returning(|_, _| Ok(None));
 
     let service = setup_service(Repositories {
         credential_repository,
-        credential_schema_repository,
-        did_repository,
-        revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
     });
 
     let result = service.delete_credential(&generic_credential().id).await;
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::EntityNotFound(
+            EntityNotFoundError::Credential(_)
+        ))
+    ));
 }
 
 #[tokio::test]

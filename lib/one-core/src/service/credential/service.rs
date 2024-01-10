@@ -1,5 +1,6 @@
 use time::OffsetDateTime;
 
+use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::{
     common_mapper::list_response_try_into,
@@ -162,7 +163,13 @@ impl CredentialService {
         self.credential_repository
             .delete_credential(credential_id)
             .await
-            .map_err(ServiceError::from)
+            .map_err(|error| match error {
+                // credential not found or already deleted
+                DataLayerError::RecordNotUpdated => {
+                    EntityNotFoundError::Credential(*credential_id).into()
+                }
+                error => ServiceError::from(error),
+            })
     }
 
     /// Returns details of a credential

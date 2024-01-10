@@ -1,5 +1,5 @@
 use crate::{
-    common::{calculate_pages_count, get_did},
+    common::calculate_pages_count,
     credential::{
         mapper::{get_credential_state_active_model, request_to_active_model},
         CredentialProvider,
@@ -21,13 +21,14 @@ use one_core::{
             UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::DidRelations,
+        did::{Did, DidRelations},
         interaction::InteractionId,
         organisation::OrganisationRelations,
     },
     repository::{
         claim_repository::ClaimRepository, credential_repository::CredentialRepository,
-        credential_schema_repository::CredentialSchemaRepository, error::DataLayerError,
+        credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
+        error::DataLayerError,
     },
 };
 use sea_orm::{
@@ -40,17 +41,6 @@ use shared_types::DidId;
 use std::{str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-async fn delete_credential_from_database(
-    db: &DatabaseConnection,
-    credential: credential::Model,
-    now: OffsetDateTime,
-) -> Result<(), DbErr> {
-    let mut value: credential::ActiveModel = credential.into();
-    value.deleted_at = sea_orm::ActiveValue::Set(Some(now));
-
-    value.update(db).await.map(|_| ())
-}
 
 async fn get_credential_schema(
     schema_id: &Uuid,
@@ -114,29 +104,18 @@ impl CredentialProvider {
         credential: credential::Model,
         relations: &CredentialRelations,
     ) -> Result<Credential, DataLayerError> {
-        let issuer_did = match &credential.issuer_did_id {
-            None => None,
-            Some(issuer_did_id) => {
-                get_did(
-                    issuer_did_id,
-                    &relations.issuer_did,
-                    self.did_repository.clone(),
-                )
-                .await?
-            }
-        };
-
-        let holder_did = match &credential.holder_did_id {
-            None => None,
-            Some(holder_did_id) => {
-                get_did(
-                    holder_did_id,
-                    &relations.holder_did,
-                    self.did_repository.clone(),
-                )
-                .await?
-            }
-        };
+        let issuer_did = get_related_did(
+            self.did_repository.as_ref(),
+            credential.issuer_did_id.as_ref(),
+            relations.issuer_did.as_ref(),
+        )
+        .await?;
+        let holder_did = get_related_did(
+            self.did_repository.as_ref(),
+            credential.holder_did_id.as_ref(),
+            relations.holder_did.as_ref(),
+        )
+        .await?;
 
         let state: Option<Vec<CredentialState>> = match &relations.state {
             None => None,
@@ -416,18 +395,23 @@ impl CredentialRepository for CredentialProvider {
     }
 
     async fn delete_credential(&self, id: &CredentialId) -> Result<(), DataLayerError> {
-        let credential = credential::Entity::find_by_id(id.to_string())
-            .filter(credential::Column::DeletedAt.is_null())
-            .one(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?
-            .ok_or(DataLayerError::RecordNotFound)?;
-
         let now = OffsetDateTime::now_utc();
 
-        delete_credential_from_database(&self.db, credential, now)
+        let credential = credential::ActiveModel {
+            id: Unchanged(id.to_string()),
+            deleted_at: Set(Some(now)),
+            ..Default::default()
+        };
+
+        credential::Entity::update(credential)
+            .filter(credential::Column::DeletedAt.is_null())
+            .exec(&self.db)
             .await
-            .map_err(|error| DataLayerError::Db(error.into()))
+            .map(|_| ())
+            .map_err(|error| match error {
+                sea_orm::DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
+                error => DataLayerError::Db(error.into()),
+            })
     }
 
     async fn get_credential(
@@ -576,12 +560,7 @@ impl CredentialRepository for CredentialProvider {
             credential_state::Entity::insert(get_credential_state_active_model(id, state))
                 .exec(&self.db)
                 .await
-                .map_err(|e| match e.sql_err() {
-                    Some(SqlErr::ForeignKeyConstraintViolation(_)) => {
-                        DataLayerError::RecordNotFound
-                    }
-                    _ => DataLayerError::Db(e.into()),
-                })?;
+                .map_err(|e| DataLayerError::Db(e.into()))?;
         }
 
         update_model.update(&self.db).await.map_err(|e| match e {
@@ -620,4 +599,26 @@ impl CredentialRepository for CredentialProvider {
 
         self.credentials_to_repository(credentials, relations).await
     }
+}
+
+async fn get_related_did(
+    repo: &dyn DidRepository,
+    id: Option<&DidId>,
+    relations: Option<&DidRelations>,
+) -> Result<Option<Did>, DataLayerError> {
+    let did = match id.zip(relations) {
+        None => None,
+        Some((id, relations)) => {
+            let did = repo.get_did(id, relations).await?.ok_or(
+                DataLayerError::MissingRequiredRelation {
+                    relation: "credential-did",
+                    id: id.to_string(),
+                },
+            )?;
+
+            Some(did)
+        }
+    };
+
+    Ok(did)
 }
