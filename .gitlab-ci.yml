@@ -1,4 +1,4 @@
-image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.74.0
+image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.74.0-0.2
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -142,16 +142,19 @@ build:
 tests:
   stage: test
   script:
-    - cargo tarpaulin --ignore-tests --all-features --out xml
-  coverage: '/^\d+.\d+% coverage/'
+    - cargo llvm-cov --no-clean --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$" --output-path lcov.info
+    - cargo llvm-cov report --cobertura --output-path cobertura.xml
+    - cargo llvm-cov report
+  coverage: '/^TOTAL\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(\d+\.\d+)%/'
   artifacts:
-    expire_in: 1 hour
+    expire_in: 1 day
     paths:
-      - cobertura.xml
+      - lcov.info
     reports:
       coverage_report:
         coverage_format: cobertura
         path: cobertura.xml
+
 
 linter:clippy:
   stage: test
