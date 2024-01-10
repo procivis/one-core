@@ -20,7 +20,6 @@ use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
-use uuid::Uuid;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_proof(
@@ -124,7 +123,8 @@ pub(super) async fn validate_proof(
             .extract_credentials(&credential, key_verification_credentials.clone())
             .await?;
 
-        let credential_schema_id = find_matching_schema(&credential, &remaining_requested_claims)?;
+        let (credential_schema_id, requested_proof_claims) =
+            extract_matching_requested_schema(&credential, &mut remaining_requested_claims)?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
         validate_issuance_time(credential.invalid_before, credential_formatter.get_leeway())?;
@@ -164,25 +164,8 @@ pub(super) async fn validate_proof(
             ));
         }
 
-        // check if this credential was requested
-        let requested_proof_claims: Result<Vec<ProofSchemaClaim>, ServiceError> =
-            match remaining_requested_claims.remove_entry(&credential_schema_id) {
-                None => {
-                    if proved_credentials.contains_key(&credential_schema_id) {
-                        Err(ServiceError::ValidationError(format!(
-                            "Duplicit credential for schema '{credential_schema_id}' received"
-                        )))
-                    } else {
-                        Err(ServiceError::ValidationError(format!(
-                            "Credential for schema '{credential_schema_id}' not requested"
-                        )))
-                    }
-                }
-                Some((.., value)) => Ok(value),
-            };
-
         let mut collected_proved_claims: Vec<ValidatedProofClaimDTO> = vec![];
-        for requested_proof_claim in requested_proof_claims? {
+        for requested_proof_claim in requested_proof_claims {
             let value = credential
                 .claims
                 .values
@@ -194,7 +177,7 @@ pub(super) async fn validate_proof(
             }
 
             let value = value.ok_or(ServiceError::ValidationError(format!(
-                "Credential key '{}' missing",
+                "Required credential key '{}' missing",
                 &requested_proof_claim.schema.key
             )))?;
 
@@ -224,22 +207,34 @@ pub(super) async fn validate_proof(
         .collect())
 }
 
-fn find_matching_schema(
-    credential: &DetailCredential,
-    remaining_requested_claims: &HashMap<Uuid, Vec<ProofSchemaClaim>>,
-) -> Result<Uuid, ServiceError> {
-    for (schema_id, claim_schemas) in remaining_requested_claims {
-        if credential.claims.values.keys().all(|key| {
-            claim_schemas
+fn extract_matching_requested_schema(
+    received_credential: &DetailCredential,
+    remaining_requested_claims: &mut HashMap<CredentialSchemaId, Vec<ProofSchemaClaim>>,
+) -> Result<(CredentialSchemaId, Vec<ProofSchemaClaim>), ServiceError> {
+    let (matching_credential_schema_id, matching_claim_schemas) = remaining_requested_claims
+        .iter()
+        .find(|(_, requested_claim_schemas)| {
+            requested_claim_schemas
                 .iter()
-                .any(|claim_schema| claim_schema.schema.key.eq(key))
-        }) {
-            return Ok(schema_id.to_owned());
-        }
-    }
-    Err(ServiceError::ValidationError(
-        "Could not find matching credential schema".to_owned(),
-    ))
+                .filter(|schema| schema.required)
+                .all(|required_claim_schema| {
+                    received_credential
+                        .claims
+                        .values
+                        .keys()
+                        .any(|key| key == &required_claim_schema.schema.key)
+                })
+        })
+        .ok_or(ServiceError::ValidationError(
+            "Could not find matching requested credential schema".to_owned(),
+        ))?;
+
+    let result = (
+        matching_credential_schema_id.to_owned(),
+        matching_claim_schemas.to_owned(),
+    );
+    remaining_requested_claims.remove(&result.0);
+    Ok(result)
 }
 
 #[cfg(test)]

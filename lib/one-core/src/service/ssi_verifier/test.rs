@@ -15,7 +15,9 @@ use crate::{
     },
     provider::{
         credential_formatter::{
-            model::Presentation, provider::MockCredentialFormatterProvider, MockCredentialFormatter,
+            model::{CredentialSubject, DetailCredential, Presentation},
+            provider::MockCredentialFormatterProvider,
+            MockCredentialFormatter,
         },
         did_method::{
             dto::{DidDocumentDTO, DidVerificationMethodDTO},
@@ -325,8 +327,13 @@ async fn test_connect_to_holder_succeeds_new_did() {
 async fn test_submit_proof_succeeds() {
     let proof_id = Uuid::new_v4();
     let verifier_did = "verifier did".parse().unwrap();
+    let holder_did: DidValue = "did:key:zDnaenbFCJgNyzfAfHmVrS8omec4Fthtipt32bswEnUwtbPot"
+        .parse()
+        .unwrap();
 
     let mut proof_repository = MockProofRepository::new();
+
+    let holder_did_clone = holder_did.clone();
     proof_repository
         .expect_get_proof()
         .withf(move |_proof_id, _| {
@@ -335,39 +342,40 @@ async fn test_submit_proof_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
+            let credential_schema = dummy_credential_schema();
             Ok(Some(Proof {
                 verifier_did: Some(Did {
                     did: verifier_did,
                     ..dummy_did()
                 }),
-                holder_did: Some(dummy_did()),
+                holder_did: Some(Did {
+                    did: holder_did_clone,
+                    ..dummy_did()
+                }),
                 state: Some(vec![ProofState {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     state: ProofStateEnum::Offered,
                 }]),
                 schema: Some(ProofSchema {
-                    claim_schemas: Some(vec![ProofSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4(),
-                            key: "key".to_string(),
-                            data_type: "data type".to_string(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
+                    claim_schemas: Some(vec![
+                        ProofSchemaClaim {
+                            schema: ClaimSchema {
+                                key: "required_key".to_string(),
+                                ..dummy_claim_schema()
+                            },
+                            required: true,
+                            credential_schema: Some(credential_schema.to_owned()),
                         },
-                        required: false,
-                        credential_schema: Some(CredentialSchema {
-                            id: Uuid::new_v4(),
-                            deleted_at: None,
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            name: "name".to_string(),
-                            format: "format".to_string(),
-                            revocation_method: "format".to_string(),
-                            claim_schemas: None,
-                            organisation: None,
-                        }),
-                    }]),
+                        ProofSchemaClaim {
+                            schema: ClaimSchema {
+                                key: "optional_key".to_string(),
+                                ..dummy_claim_schema()
+                            },
+                            required: false,
+                            credential_schema: Some(credential_schema),
+                        },
+                    ]),
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()
@@ -384,46 +392,76 @@ async fn test_submit_proof_succeeds() {
         .returning(|_, _| Ok(()));
 
     let mut formatter = MockCredentialFormatter::new();
+
+    let holder_did_clone = holder_did.clone();
     formatter
         .expect_extract_presentation()
         .once()
-        .returning(|_, _| {
+        .returning(move |_, _| {
             Ok(Presentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer_did: Some("issuer did".parse().unwrap()),
+                issuer_did: Some(holder_did_clone.to_owned()),
                 nonce: None,
-                credentials: vec![],
+                credentials: vec!["credential".to_string()],
             })
         });
     formatter.expect_get_leeway().returning(|| 10);
+    formatter
+        .expect_extract_credentials()
+        .once()
+        .returning(move |_, _| {
+            Ok(DetailCredential {
+                id: None,
+                issued_at: Some(OffsetDateTime::now_utc()),
+                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                invalid_before: Some(OffsetDateTime::now_utc()),
+                issuer_did: None,
+                subject: Some(holder_did.to_string()),
+                claims: CredentialSubject {
+                    // submitted claims
+                    values: HashMap::from([
+                        // ignored by verifier
+                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
+                        // required by verifier
+                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        // optional
+                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                    ]),
+                },
+                status: None,
+            })
+        });
 
+    let formatter = Arc::new(formatter);
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_formatter()
-        .once()
-        .return_once(move |_| Some(Arc::new(formatter)));
+        .times(2)
+        .returning(move |_| Some(formatter.clone()));
 
     let mut claim_schema_repository = MockClaimSchemaRepository::new();
     claim_schema_repository
         .expect_get_claim_schema_list()
         .once()
-        .return_once(move |_, _| {
-            Ok(vec![ClaimSchema {
-                id: Uuid::new_v4(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                key: "claim schema key".to_string(),
-                data_type: "claim data type".to_string(),
-            }])
+        .withf(|ids, _| ids.len() == 1)
+        .return_once(|ids, _| {
+            Ok(ids
+                .into_iter()
+                .map(|id| ClaimSchema {
+                    id,
+                    ..dummy_claim_schema()
+                })
+                .collect())
         });
 
     proof_repository
         .expect_set_proof_claims()
-        .withf(move |_proof_id, _| {
-            assert_eq!(_proof_id, &proof_id);
-            true
+        .withf(move |set_proof_id, claims| {
+            set_proof_id == &proof_id
+                && claims.len() == 1
+                && claims[0].value == "required_key_value"
         })
         .once()
         .returning(|_, _| Ok(()));
@@ -432,6 +470,7 @@ async fn test_submit_proof_succeeds() {
     claim_repository
         .expect_create_claim_list()
         .once()
+        .withf(|claims| claims.len() == 1 && claims[0].value == "required_key_value")
         .returning(|_| Ok(()));
 
     let service = SSIVerifierService {
@@ -540,6 +579,30 @@ fn dummy_did() -> Did {
 fn dummy_organisation() -> Organisation {
     Organisation {
         id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+    }
+}
+
+fn dummy_credential_schema() -> CredentialSchema {
+    CredentialSchema {
+        id: Uuid::new_v4(),
+        deleted_at: None,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "name".to_string(),
+        format: "format".to_string(),
+        revocation_method: "format".to_string(),
+        claim_schemas: None,
+        organisation: None,
+    }
+}
+
+fn dummy_claim_schema() -> ClaimSchema {
+    ClaimSchema {
+        id: Uuid::new_v4(),
+        key: "key".to_string(),
+        data_type: "data type".to_string(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
     }
