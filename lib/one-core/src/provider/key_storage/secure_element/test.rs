@@ -1,6 +1,6 @@
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
 use crate::model::key::{Key, KeyId};
-use crate::provider::key_storage::{GeneratedKey, KeyStorage};
+use crate::provider::key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities};
 use crate::service::error::{ServiceError, ValidationError};
 use mockall::predicate::eq;
 use std::sync::Arc;
@@ -28,7 +28,14 @@ async fn test_generate_success() {
             })
         });
 
-    let provider = SecureElementKeyProvider::new(Arc::new(native_storage), get_params());
+    let provider = SecureElementKeyProvider::new(
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string()],
+            security: vec!["HARDWARE,".to_string()],
+        },
+        Arc::new(native_storage),
+        get_params(),
+    );
 
     let result = provider.generate(&key_id, "ES256").await.unwrap();
     assert_eq!(result.public_key, b"public_key");
@@ -37,8 +44,14 @@ async fn test_generate_success() {
 
 #[tokio::test]
 async fn test_generate_invalid_key_type() {
-    let provider =
-        SecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()), get_params());
+    let provider = SecureElementKeyProvider::new(
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string()],
+            security: vec!["HARDWARE,".to_string()],
+        },
+        Arc::new(MockNativeKeyStorage::default()),
+        get_params(),
+    );
 
     let result = provider.generate(&KeyId::new_v4(), "invalid").await;
     assert!(matches!(
@@ -58,7 +71,14 @@ async fn test_sign_success() {
         .with(eq(b"key_reference".to_vec()), eq(b"message".to_vec()))
         .return_once(|_, _| Ok(b"signature".into()));
 
-    let provider = SecureElementKeyProvider::new(Arc::new(native_storage), get_params());
+    let provider = SecureElementKeyProvider::new(
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string()],
+            security: vec!["HARDWARE,".to_string()],
+        },
+        Arc::new(native_storage),
+        get_params(),
+    );
 
     let result = provider
         .sign(

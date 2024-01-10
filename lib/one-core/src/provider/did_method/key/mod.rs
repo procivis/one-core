@@ -7,10 +7,11 @@ use std::sync::Arc;
 
 use self::mapper::{categorize_did, convert_document};
 
-use super::{dto::DidDocumentDTO, DidMethodError};
+use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError};
 use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 pub struct KeyDidMethod {
+    capabilities: DidCapabilities,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     pub params: DidKeyParams,
 }
@@ -19,10 +20,12 @@ pub struct DidKeyParams;
 
 impl KeyDidMethod {
     pub fn new(
+        capabilities: DidCapabilities,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
         params: DidKeyParams,
     ) -> Self {
         Self {
+            capabilities,
             key_algorithm_provider,
             params,
         }
@@ -92,6 +95,10 @@ impl super::DidMethod for KeyDidMethod {
 
     fn can_be_deactivated(&self) -> bool {
         false
+    }
+
+    fn get_capabilities(&self) -> DidCapabilities {
+        self.capabilities.to_owned()
     }
 }
 

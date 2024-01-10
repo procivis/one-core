@@ -15,18 +15,18 @@ use mapper::{
     public_key_from_components,
 };
 
-use crate::service::error::ValidationError;
 use crate::{
-    crypto::signer::error::SignerError,
+    crypto::{signer::error::SignerError, CryptoProvider},
     model::key::{Key, KeyId},
     provider::{
-        key_storage::{azure_vault::dto::AzureHsmGetTokenResponse, GeneratedKey, KeyStorage},
+        key_storage::{
+            azure_vault::dto::AzureHsmGetTokenResponse, GeneratedKey, KeyStorage,
+            KeyStorageCapabilities,
+        },
         transport_protocol::TransportProtocolError,
     },
-    service::error::ServiceError,
+    service::error::{ServiceError, ValidationError},
 };
-
-use crate::crypto::CryptoProvider;
 
 mod dto;
 mod mapper;
@@ -48,6 +48,7 @@ struct AzureAccessToken {
 
 pub struct AzureVaultKeyProvider {
     access_token: Arc<Mutex<Option<AzureAccessToken>>>,
+    capabilities: KeyStorageCapabilities,
     client: reqwest::Client,
     crypto: Arc<dyn CryptoProvider + Send + Sync>,
     params: Params,
@@ -124,12 +125,21 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         Ok(decoded)
     }
+
+    fn get_capabilities(&self) -> KeyStorageCapabilities {
+        self.capabilities.to_owned()
+    }
 }
 
 impl AzureVaultKeyProvider {
-    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider + Send + Sync>) -> Self {
+    pub fn new(
+        capabilities: KeyStorageCapabilities,
+        params: Params,
+        crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    ) -> Self {
         Self {
             access_token: Arc::new(Mutex::new(None)),
+            capabilities,
             client: reqwest::Client::new(),
             crypto,
             params,

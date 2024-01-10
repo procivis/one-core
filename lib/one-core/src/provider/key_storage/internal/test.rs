@@ -4,7 +4,7 @@ use crate::model::key::{Key, KeyId};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::{GeneratedKey, KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_storage::internal::Params;
-use crate::provider::key_storage::KeyStorage;
+use crate::provider::key_storage::{KeyStorage, KeyStorageCapabilities};
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -29,6 +29,10 @@ async fn test_internal_generate() {
         .returning(move |_| Ok(arc.clone()));
 
     let provider = InternalKeyProvider::new(
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+            security: vec!["SOFTWARE,".to_string()],
+        },
         Arc::new(mock_key_algorithm_provider),
         Params { encryption: None },
     );
@@ -57,6 +61,10 @@ async fn test_internal_generate_with_encryption() {
         .returning(move |_| Ok(arc.clone()));
 
     let provider = InternalKeyProvider::new(
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+            security: vec!["SOFTWARE,".to_string()],
+        },
         Arc::new(mock_key_algorithm_provider),
         Params {
             encryption: Some("password".to_string()),
@@ -99,6 +107,10 @@ async fn test_internal_sign_with_encryption() {
         .returning(move |_| Ok(arc_signer.clone()));
 
     let provider = InternalKeyProvider::new(
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+            security: vec!["SOFTWARE,".to_string()],
+        },
         Arc::new(mock_key_algorithm_provider),
         Params {
             encryption: Some("password".to_string()),

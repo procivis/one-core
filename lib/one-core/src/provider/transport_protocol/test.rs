@@ -135,6 +135,7 @@ async fn test_issuer_submit_succeeds() {
             display: "display".to_string(),
             order: None,
             disabled: None,
+            capabilities: None,
             params: Some(Params {
                 public: Some(json!({
                     "algorithm": algorithm

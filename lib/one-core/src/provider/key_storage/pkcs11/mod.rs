@@ -1,3 +1,4 @@
+use crate::provider::key_storage::KeyStorageCapabilities;
 use crate::{
     crypto::signer::error::SignerError,
     model::key::{Key, KeyId},
@@ -19,6 +20,10 @@ impl KeyStorage for PKCS11KeyProvider {
         _key_id: &KeyId,
         _key_type: &str,
     ) -> Result<GeneratedKey, ServiceError> {
+        todo!()
+    }
+
+    fn get_capabilities(&self) -> KeyStorageCapabilities {
         todo!()
     }
 }

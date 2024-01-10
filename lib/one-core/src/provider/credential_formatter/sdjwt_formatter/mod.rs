@@ -31,11 +31,12 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
-    AuthenticationFn, CredentialFormatter, CredentialStatus, DetailCredential, FormatterError,
-    Presentation, VerificationFn,
+    AuthenticationFn, CredentialFormatter, CredentialStatus, DetailCredential,
+    FormatterCapabilities, FormatterError, Presentation, VerificationFn,
 };
 
 pub struct SDJWTFormatter {
+    capabilities: FormatterCapabilities,
     pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
     params: Params,
 }
@@ -177,11 +178,23 @@ impl CredentialFormatter for SDJWTFormatter {
     fn get_leeway(&self) -> u64 {
         self.params.leeway
     }
+
+    fn get_capabilities(&self) -> FormatterCapabilities {
+        self.capabilities.to_owned()
+    }
 }
 
 impl SDJWTFormatter {
-    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider + Send + Sync>) -> Self {
-        Self { params, crypto }
+    pub fn new(
+        capabilities: FormatterCapabilities,
+        params: Params,
+        crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    ) -> Self {
+        Self {
+            capabilities,
+            params,
+            crypto,
+        }
     }
 
     fn format_hashed_credential(

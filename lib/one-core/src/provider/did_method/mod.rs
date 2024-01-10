@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
@@ -24,6 +25,11 @@ pub mod key;
 pub mod provider;
 pub mod web;
 pub mod x509;
+
+#[derive(Clone, Default, Deserialize)]
+pub struct DidCapabilities {
+    pub operations: Vec<String>,
+}
 
 #[derive(Debug, Error)]
 pub enum DidMethodError {
@@ -53,6 +59,7 @@ pub trait DidMethod {
     async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, DidMethodError>;
     fn update(&self) -> Result<(), DidMethodError>;
     fn can_be_deactivated(&self) -> bool;
+    fn get_capabilities(&self) -> DidCapabilities;
 }
 
 pub fn did_method_providers_from_config(
@@ -63,31 +70,39 @@ pub fn did_method_providers_from_config(
     let mut providers = HashMap::new();
 
     for did_type in did_config.as_inner().keys() {
+        let type_str = did_type.to_string();
+
+        let capabilities = did_config.get_capabilities(&type_str)?;
+
         match did_type {
             core_config::DidType::Key => {
                 let method = Arc::new(KeyDidMethod::new(
+                    capabilities,
                     key_algorithm_provider.clone(),
                     DidKeyParams,
                 ));
 
-                providers.insert(did_type.to_string(), method as _);
+                providers.insert(type_str, method as _);
             }
             core_config::DidType::Web => {
-                let did_web = WebDidMethod::new(&base_url).map_err(|_| {
+                let did_web = WebDidMethod::new(&base_url, capabilities).map_err(|_| {
                     ConfigError::Validation(ConfigValidationError::KeyNotFound(
                         "Base url".to_string(),
                     ))
                 })?;
                 let method = Arc::new(did_web);
-                providers.insert(did_type.to_string(), method as _);
+                providers.insert(type_str, method as _);
             }
             core_config::DidType::Jwk => {
-                let method = Arc::new(JWKDidMethod::new(key_algorithm_provider.clone()));
-                providers.insert(did_type.to_string(), method as _);
+                let method = Arc::new(JWKDidMethod::new(
+                    capabilities,
+                    key_algorithm_provider.clone(),
+                ));
+                providers.insert(type_str, method as _);
             }
             core_config::DidType::X509 => {
                 let method = Arc::new(X509Method::new());
-                providers.insert(did_type.to_string(), method as _);
+                providers.insert(type_str, method as _);
             }
         }
     }

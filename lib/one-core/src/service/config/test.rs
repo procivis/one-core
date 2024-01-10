@@ -16,6 +16,7 @@ fn convert_internal_structure_to_dto() {
             display: "display".to_string(),
             order: None,
             disabled: None,
+            capabilities: None,
             params: Some(Params {
                 public: Some(json!({
                     "autocomplete": false
@@ -66,6 +67,7 @@ fn do_not_serialize_private_parameters() {
             display: "display".to_string(),
             order: None,
             disabled: None,
+            capabilities: None,
             params: Some(Params {
                 public: None,
                 private: Some(json!({

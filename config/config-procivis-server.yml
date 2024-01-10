@@ -20,6 +20,7 @@ format:
     type: "SDJWT"
     display: "format.sdjwt"
     order: 1
+    capabilities: ["SELECTIVE_DISCLOSURE"]
     params:
       public:
         leeway: 60
@@ -83,22 +84,30 @@ did:
     display: "did.key"
     order: 0
     type: "KEY"
+    capabilities:
+      operations: ["RESOLVE","CREATE"]
     params: null
   WEB:
     type: "WEB"
     display: "did.web"
     order: 1
+    capabilities:
+      operations: ["RESOLVE","CREATE","DEACTIVATE"]
     params: null
   JWK:
     type: "JWK"
     display: "did.jwk"
     order: 2
+    capabilities:
+      operations: ["RESOLVE","CREATE"]
     params: null
   X509:
     type: "X509"
     display: "did.x509"
     order: 3
     disabled: true
+    capabilities:
+      operations: ["RESOLVE","CREATE"]
     params: null
 datatype:
   STRING:
@@ -186,6 +195,9 @@ keyStorage:
     display: "keyStorage.internal"
     type: "INTERNAL"
     order: 0
+    capabilities:
+      algorithms: ["ES256","EDDSA"]
+      security: ["SOFTWARE"]
     params:
       private:
         encryption: "my encryption key"
@@ -200,6 +212,9 @@ keyStorage:
     type: "AZURE_VAULT"
     disabled: true
     order: 2
+    capabilities:
+      algorithms: ["ES256"]
+      security: ["HARDWARE"]
     params:
       private:
         oauthServiceUrl: "https://login.microsoftonline.com"

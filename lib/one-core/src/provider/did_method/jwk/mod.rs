@@ -1,6 +1,6 @@
 use self::helpers::{encode_to_did, extract_jwk, generate_document};
 
-use super::{dto::DidDocumentDTO, DidMethodError};
+use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError};
 use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 use async_trait::async_trait;
@@ -10,13 +10,18 @@ use std::sync::Arc;
 mod helpers;
 
 pub struct JWKDidMethod {
+    capabilities: DidCapabilities,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
 }
 
 impl JWKDidMethod {
     #[allow(clippy::new_without_default)]
-    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>) -> Self {
+    pub fn new(
+        capabilities: DidCapabilities,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    ) -> Self {
         Self {
+            capabilities,
             key_algorithm_provider,
         }
     }
@@ -63,6 +68,10 @@ impl super::DidMethod for JWKDidMethod {
 
     fn can_be_deactivated(&self) -> bool {
         false
+    }
+
+    fn get_capabilities(&self) -> DidCapabilities {
+        self.capabilities.to_owned()
     }
 }
 
