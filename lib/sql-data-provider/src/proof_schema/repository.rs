@@ -22,7 +22,7 @@ use one_core::{
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, RelationTrait, Set,
+    QueryOrder, QuerySelect, RelationTrait, Set, Unchanged,
 };
 use std::str::FromStr;
 use time::OffsetDateTime;
@@ -141,20 +141,20 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         id: &ProofSchemaId,
         deleted_at: OffsetDateTime,
     ) -> Result<(), DataLayerError> {
-        let result = crate::entity::proof_schema::Entity::find_by_id(id.to_string())
+        let schema = proof_schema::ActiveModel {
+            id: Unchanged(id.to_string()),
+            deleted_at: Set(Some(deleted_at)),
+            ..Default::default()
+        };
+
+        proof_schema::Entity::update(schema)
             .filter(proof_schema::Column::DeletedAt.is_null())
-            .one(&self.db)
+            .exec(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        let schema = result.ok_or(DataLayerError::RecordNotFound)?;
-
-        let mut value: proof_schema::ActiveModel = schema.into();
-        value.deleted_at = Set(Some(deleted_at));
-        value
-            .update(&self.db)
-            .await
-            .map_err(|_| DataLayerError::RecordNotUpdated)?;
+            .map_err(|error| match error {
+                sea_orm::DbErr::RecordNotUpdated => DataLayerError::RecordNotUpdated,
+                err => DataLayerError::Db(err.into()),
+            })?;
 
         Ok(())
     }

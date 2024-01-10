@@ -113,5 +113,11 @@ async fn test_get_claim_schema_list() {
             &ClaimSchemaRelations::default(),
         )
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(
+        result,
+        Err(DataLayerError::IncompleteClaimsSchemaList {
+            expected: 2,
+            got: 1
+        })
+    ));
 }

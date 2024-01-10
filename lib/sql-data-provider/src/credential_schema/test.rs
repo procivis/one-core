@@ -434,7 +434,7 @@ async fn test_delete_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
     let result = repository.delete_credential_schema(&Uuid::new_v4()).await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
 
 #[tokio::test]

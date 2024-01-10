@@ -316,7 +316,7 @@ async fn test_delete_proof_schema_twice() {
     let result = repository
         .delete_proof_schema(&proof_schema_id, get_dummy_date())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
 
 #[tokio::test]
@@ -331,7 +331,7 @@ async fn test_delete_proof_schema_missing() {
     let result = repository
         .delete_proof_schema(&Uuid::new_v4(), get_dummy_date())
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
 
 #[tokio::test]

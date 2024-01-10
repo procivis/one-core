@@ -17,7 +17,7 @@ use crate::{
         },
     },
     service::{
-        error::{BusinessLogicError, ServiceError, ValidationError},
+        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
         proof_schema::dto::{
             CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
         },
@@ -99,7 +99,7 @@ async fn test_get_proof_schema_missing() {
     proof_schema_repository
         .expect_get_proof_schema()
         .times(1)
-        .returning(|_id, _relations| Err(DataLayerError::RecordNotFound));
+        .returning(|_id, _relations| Ok(None));
 
     let service = setup_service(
         proof_schema_repository,
@@ -108,7 +108,10 @@ async fn test_get_proof_schema_missing() {
     );
 
     let result = service.get_proof_schema(&Uuid::new_v4()).await;
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::NotFound)));
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::EntityNotFound(EntityNotFoundError::ProofSchema(_))
+    )));
 }
 
 #[tokio::test]
@@ -229,7 +232,7 @@ async fn test_delete_proof_schema_failure() {
     proof_schema_repository
         .expect_delete_proof_schema()
         .times(1)
-        .returning(|_, _| Err(DataLayerError::RecordNotFound));
+        .returning(|_, _| Err(DataLayerError::RecordNotUpdated));
 
     let service = setup_service(
         proof_schema_repository,
@@ -238,7 +241,12 @@ async fn test_delete_proof_schema_failure() {
     );
 
     let result = service.delete_proof_schema(&Uuid::new_v4()).await;
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::EntityNotFound(
+            EntityNotFoundError::ProofSchema(_)
+        ))
+    ));
 }
 
 #[tokio::test]
@@ -400,7 +408,12 @@ async fn test_create_proof_schema_claims_dont_exist() {
     claim_schema_repository
         .expect_get_claim_schema_list()
         .times(1)
-        .returning(|_, _| Err(DataLayerError::RecordNotFound));
+        .returning(|_, _| {
+            Err(DataLayerError::IncompleteClaimsSchemaList {
+                expected: 1,
+                got: 0,
+            })
+        });
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
@@ -448,7 +461,12 @@ async fn test_create_proof_schema_claims_dont_exist() {
         })
         .await;
 
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::MissingClaimSchemas
+        ))
+    ));
 }
 
 #[tokio::test]

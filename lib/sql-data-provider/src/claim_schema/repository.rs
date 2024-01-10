@@ -1,11 +1,14 @@
+use std::collections::HashMap;
+
 use one_core::{
-    common_mapper::convert_inner,
+    common_mapper::{convert_inner, iterable_try_into},
     model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
     repository::{claim_schema_repository::ClaimSchemaRepository, error::DataLayerError},
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use uuid::Uuid;
 
-use super::{mapper::to_claim_schema_list, ClaimSchemaProvider};
+use super::ClaimSchemaProvider;
 use crate::{entity::claim_schema, mapper::to_data_layer_error};
 
 #[async_trait::async_trait]
@@ -29,13 +32,31 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
         ids: Vec<ClaimSchemaId>,
         _relations: &ClaimSchemaRelations,
     ) -> Result<Vec<ClaimSchema>, DataLayerError> {
-        let ids_string: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+        let claim_schema_cnt = ids.len();
+        let claim_schema_to_index: HashMap<Uuid, usize> = ids
+            .into_iter()
+            .enumerate()
+            .map(|(index, id)| (id, index))
+            .collect();
+
+        let claim_schema_ids = claim_schema_to_index.keys().map(ToString::to_string);
         let models = claim_schema::Entity::find()
-            .filter(claim_schema::Column::Id.is_in(ids_string))
+            .filter(claim_schema::Column::Id.is_in(claim_schema_ids))
             .all(&self.db)
             .await
-            .map_err(to_data_layer_error)?;
+            .map_err(|err| DataLayerError::Db(err.into()))?;
 
-        to_claim_schema_list(&ids, models)
+        if claim_schema_cnt != models.len() {
+            return Err(DataLayerError::IncompleteClaimsSchemaList {
+                expected: claim_schema_cnt,
+                got: models.len(),
+            });
+        }
+
+        let mut claim_schema_list: Vec<ClaimSchema> = iterable_try_into(models)?;
+
+        claim_schema_list.sort_by_key(|claim_schema| claim_schema_to_index[&claim_schema.id]);
+
+        Ok(claim_schema_list)
     }
 }

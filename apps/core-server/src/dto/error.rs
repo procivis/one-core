@@ -52,6 +52,8 @@ pub enum ErrorCode {
     KeyNotFound,
     CredentialSchemaNotFound,
     MissingInteractionForAccessToken,
+    MissingCredentialIndexOnRevocationList,
+    MissingClaimSchemas,
 
     Unmapped,
 }

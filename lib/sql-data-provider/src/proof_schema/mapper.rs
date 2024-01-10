@@ -3,6 +3,7 @@ use crate::{
     entity::{proof_schema, proof_schema_claim_schema},
     list_query::GetEntityColumn,
 };
+use anyhow::anyhow;
 use migration::SimpleExpr;
 use one_core::{
     common_mapper::iterable_try_into,
@@ -69,7 +70,10 @@ impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
             organisation_id: Set(value
                 .organisation
                 .as_ref()
-                .ok_or(DataLayerError::RecordNotFound)?
+                .ok_or(DataLayerError::Db(anyhow!(
+                    "Missing organisation for proof schema {}",
+                    value.id
+                )))?
                 .id
                 .to_string()),
             deleted_at: Set(None),

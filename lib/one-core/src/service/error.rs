@@ -31,8 +31,6 @@ pub enum ServiceError {
     GeneralRuntimeError(String),
     #[error("Mapping error: `{0}`")]
     MappingError(String),
-    #[error("Not updated")]
-    NotUpdated,
     #[error("Validation error: `{0}`")]
     ValidationError(String),
     #[error("OpenID4VCI validation error `{0}`")]
@@ -62,15 +60,19 @@ pub enum ServiceError {
 
     #[error(transparent)]
     EntityNotFound(#[from] EntityNotFoundError),
+
     #[error("Not found")]
     NotFound,
 
     #[error(transparent)]
     BusinessLogic(#[from] BusinessLogicError),
+
     #[error(transparent)]
     Validation(#[from] ValidationError),
+
     #[error(transparent)]
-    Repository(DataLayerError),
+    Repository(#[from] DataLayerError),
+
     #[error("Response mapping error: {0}")]
     ResponseMapping(String),
 }
@@ -163,6 +165,15 @@ pub enum BusinessLogicError {
 
     #[error("Missing interaction for access token: {interaction_id}")]
     MissingInteractionForAccessToken { interaction_id: Uuid },
+
+    #[error("Missing credential index on revocation list: {credential_id} for DID: {did}")]
+    MissingCredentialIndexOnRevocationList {
+        credential_id: uuid::Uuid,
+        did: DidId,
+    },
+
+    #[error("Some of the provided claim schema ids are missing")]
+    MissingClaimSchemas,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -244,8 +255,10 @@ pub enum ErrorCode {
     KeyNotFound,
     CredentialSchemaNotFound,
     MissingInteractionForAccessToken,
+    MissingCredentialIndexOnRevocationList,
 
     Unmapped,
+    MissingClaimSchemas,
 }
 
 impl From<FormatError> for ServiceError {
@@ -316,6 +329,10 @@ impl ErrorCode {
             ErrorCode::KeyNotFound => "Key not found",
             ErrorCode::CredentialSchemaNotFound => "Credential schema not found",
             ErrorCode::MissingInteractionForAccessToken => "Missing interaction for access token",
+            ErrorCode::MissingCredentialIndexOnRevocationList => {
+                "Missing credential index on revocation list"
+            }
+            ErrorCode::MissingClaimSchemas => "Missing claim schemas",
         }
     }
 }
@@ -333,7 +350,6 @@ impl ServiceError {
             | ServiceError::MappingError(_)
             | ServiceError::OpenID4VCError(_)
             | ServiceError::NotFound
-            | ServiceError::NotUpdated
             | ServiceError::ValidationError(_)
             | ServiceError::ConfigValidationError(_)
             | ServiceError::TransportProtocolError(_)
@@ -397,6 +413,10 @@ impl BusinessLogicError {
             BusinessLogicError::MissingInteractionForAccessToken { .. } => {
                 ErrorCode::MissingInteractionForAccessToken
             }
+            BusinessLogicError::MissingCredentialIndexOnRevocationList { .. } => {
+                ErrorCode::MissingCredentialIndexOnRevocationList
+            }
+            BusinessLogicError::MissingClaimSchemas => ErrorCode::MissingClaimSchemas,
         }
     }
 }
@@ -415,17 +435,6 @@ impl ValidationError {
             ValidationError::ProofSchemaNoRequiredClaim => ErrorCode::ProofSchemaNoRequiredClaim,
             ValidationError::ProofSchemaDuplicitClaim => ErrorCode::ProofSchemaDuplicitClaim,
             ValidationError::InvalidFormatter { .. } => ErrorCode::InvalidFormatter,
-        }
-    }
-}
-
-// Remove this once we map all NotFound and NotUpdated errors
-impl From<DataLayerError> for ServiceError {
-    fn from(value: DataLayerError) -> Self {
-        match value {
-            DataLayerError::RecordNotFound => ServiceError::NotFound,
-            DataLayerError::RecordNotUpdated => ServiceError::NotUpdated,
-            _ => Self::Repository(value),
         }
     }
 }

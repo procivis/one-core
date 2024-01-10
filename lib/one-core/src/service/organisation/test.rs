@@ -4,7 +4,7 @@ use crate::{
     repository::{
         error::DataLayerError, mock::organisation_repository::MockOrganisationRepository,
     },
-    service::error::{BusinessLogicError, ServiceError},
+    service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
 };
 use mockall::{predicate::eq, Sequence};
 use std::sync::Arc;
@@ -114,12 +114,17 @@ async fn test_get_organisation_failure() {
     organisation_repository
         .expect_get_organisation()
         .times(1)
-        .returning(|_, _| Err(DataLayerError::RecordNotFound));
+        .returning(|_, _| Ok(None));
 
     let service = setup_service(organisation_repository);
     let result = service.get_organisation(&Uuid::new_v4()).await;
 
-    assert!(matches!(result, Err(ServiceError::NotFound)));
+    assert!(matches!(
+        result,
+        Err(ServiceError::EntityNotFound(
+            EntityNotFoundError::Organisation(_)
+        ))
+    ));
 }
 
 #[tokio::test]

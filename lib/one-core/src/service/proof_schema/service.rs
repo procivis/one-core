@@ -15,7 +15,8 @@ use crate::{
         organisation::OrganisationRelations,
         proof_schema::{ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations},
     },
-    service::error::{EntityNotFoundError, ServiceError},
+    repository::error::DataLayerError,
+    service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
 };
 use time::OffsetDateTime;
 
@@ -87,7 +88,13 @@ impl ProofSchemaService {
         let claim_schemas = self
             .claim_schema_repository
             .get_claim_schema_list(claim_schema_ids, &ClaimSchemaRelations::default())
-            .await?;
+            .await
+            .map_err(|error| match error {
+                DataLayerError::IncompleteClaimsSchemaList { .. } => {
+                    BusinessLogicError::MissingClaimSchemas.into()
+                }
+                error => ServiceError::from(error),
+            })?;
 
         let claim_schemas: Vec<ProofSchemaClaim> = claim_schemas
             .into_iter()
@@ -128,6 +135,10 @@ impl ProofSchemaService {
         self.proof_schema_repository
             .delete_proof_schema(id, now)
             .await
-            .map_err(ServiceError::from)
+            .map_err(|error| match error {
+                // proof schema not found or already deleted
+                DataLayerError::RecordNotUpdated => EntityNotFoundError::ProofSchema(*id).into(),
+                error => ServiceError::from(error),
+            })
     }
 }

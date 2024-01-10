@@ -157,7 +157,13 @@ async fn test_get_claim_list() {
             &ClaimRelations::default(),
         )
         .await;
-    assert!(matches!(result, Err(DataLayerError::RecordNotFound)));
+    assert!(matches!(
+        result,
+        Err(DataLayerError::IncompleteClaimsList {
+            expected: 2,
+            got: 1
+        })
+    ));
 }
 
 #[tokio::test]
