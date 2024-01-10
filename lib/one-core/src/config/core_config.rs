@@ -233,6 +233,9 @@ pub enum DatatypeType {
     #[serde(rename = "DATE")]
     #[strum(serialize = "DATE")]
     Date,
+    #[serde(rename = "FILE")]
+    #[strum(serialize = "FILE")]
+    File,
 }
 
 pub type KeyAlgorithmConfig = ConfigBlock<KeyAlgorithmType, String>;

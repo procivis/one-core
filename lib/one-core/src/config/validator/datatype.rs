@@ -46,6 +46,24 @@ pub enum DatatypeValidationError {
     #[error("Date too late: `{0}` > `{1}`")]
     DateTooLate(String, String),
 
+    // file
+    #[error("File parse missing schema")]
+    FileParseMissingScheme,
+    #[error("File parse incorrect schema: `{0}`")]
+    FileParseIncorrectSchema(String),
+    #[error("File parse missing media part")]
+    FileParseMissingMediaPart,
+    #[error("File parse missing data part")]
+    FileParseMissingDataPart,
+    #[error("File parse no media type")]
+    FileParseNoMediaType,
+    #[error("File unsupported media type: `{0}`")]
+    FileUnsupportedMediaType(String),
+    #[error("File parse base64 supported only")]
+    FileParseNoBase64,
+    #[error("File too long")]
+    FileTooLong,
+
     // enum
     #[error("Enum invalid value: `{0}`")]
     EnumInvalidValue(String),
@@ -74,6 +92,7 @@ pub fn validate_datatype_value(
         DatatypeType::String => validate_string(value, config.get(datatype)?)?,
         DatatypeType::Number => validate_number(value, config.get(datatype)?)?,
         DatatypeType::Date => validate_date(value, config.get(datatype)?)?,
+        DatatypeType::File => validate_file(value, config.get(datatype)?)?,
     };
 
     Ok(())
@@ -159,6 +178,78 @@ fn validate_date(value: &str, params: DateParams) -> Result<(), DatatypeValidati
                 value.to_string(),
                 max.to_owned(),
             ));
+        }
+    }
+
+    Ok(())
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FileParams {
+    pub accept: Option<Vec<String>>,
+    pub file_size: Option<usize>,
+    pub show_as: Option<String>,
+}
+
+fn validate_file(value: &str, params: FileParams) -> Result<(), DatatypeValidationError> {
+    let mut parts = value.split(',');
+
+    let media_part = parts
+        .next()
+        .ok_or(DatatypeValidationError::FileParseMissingMediaPart)?;
+
+    if !media_part.starts_with("data:") {
+        let scheme = media_part
+            .split(':')
+            .next()
+            .ok_or(DatatypeValidationError::FileParseMissingScheme)?;
+
+        return Err(DatatypeValidationError::FileParseIncorrectSchema(
+            scheme.to_owned(),
+        ));
+    }
+
+    let content_type = media_part.trim_start_matches("data:");
+
+    if !content_type.contains("base64") {
+        return Err(DatatypeValidationError::FileParseNoBase64);
+    }
+
+    // Default policy; Accept all if not provided
+    if let Some(accept) = params.accept {
+        let media_type = content_type
+            .split(';')
+            .next()
+            .ok_or(DatatypeValidationError::FileParseNoMediaType)?
+            .to_owned();
+
+        if !accept.contains(&media_type) {
+            return Err(DatatypeValidationError::FileUnsupportedMediaType(
+                media_type,
+            ));
+        }
+    }
+
+    let data_part = parts
+        .next()
+        .ok_or(DatatypeValidationError::FileParseMissingDataPart)?;
+
+    // Default policy; Accept all if not provided
+    if let Some(max_file_size) = params.file_size {
+        let num_bytes = if data_part.ends_with("==") {
+            2
+        } else if data_part.ends_with('=') {
+            1
+        } else {
+            0
+        };
+
+        let file_size = (data_part.len() * 3 / 4) - num_bytes;
+
+        if file_size > max_file_size {
+            return Err(DatatypeValidationError::FileTooLong);
         }
     }
 
@@ -255,9 +346,9 @@ mod tests {
                     order: 110
                     params:
                         public:
-                            autocomplete: true 
-                            placeholder: 'abc@abc.com' 
-                            error: 
+                            autocomplete: true
+                            placeholder: 'abc@abc.com'
+                            error:
                                 de: 'Please provide email like abc@abc.com'
                                 en: 'Please provide email like abc@abc.com'
                             pattern: '{regex}'
@@ -369,5 +460,98 @@ mod tests {
             f,
             ConfigValidationError::DatatypeValidation(DatatypeValidationError::DateParseFailure(_))
         )));
+    }
+
+    #[test]
+    fn test_validate_values_image() {
+        let datatype_config = indoc! {r#"
+        PICTURE:
+            display: "datatype.picture"
+            type: "FILE"
+            order: 400
+            params:
+                public:
+                    accept:
+                        - image/jpeg
+                        - image/png
+                    fileSize: 20
+                    showAs: IMAGE
+        "#};
+
+        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+
+        let valid = validate_datatype_value(
+            "data:image/png;base64,dGVzdGNvbnRlbnQ=",
+            "PICTURE",
+            &datatype_config,
+        );
+
+        assert!(valid.is_ok());
+
+        let invalid = validate_datatype_value(
+            "data:image/jpg;base64,dGVzdGNvbnRlbnQ=",
+            "PICTURE",
+            &datatype_config,
+        );
+        assert!(invalid.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidation(
+                DatatypeValidationError::FileUnsupportedMediaType(_)
+            )
+        )));
+
+        let invalid = validate_datatype_value(
+            "data:image/png,dGVzdGNvbnRlbnQ=",
+            "PICTURE",
+            &datatype_config,
+        );
+        assert!(invalid.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidation(DatatypeValidationError::FileParseNoBase64)
+        )));
+
+        let valid_size = validate_datatype_value(
+            "data:image/png;base64,dGVzdHRoYXRpc3Rvb29vb2xvbmc=", //20 bytes
+            "PICTURE",
+            &datatype_config,
+        );
+        assert!(valid_size.is_ok());
+
+        let invalid_size = validate_datatype_value(
+            "data:image/png;base64,dGVzdHRoYXRpc3Rvb29vb29sb25n", //21 bytes
+            "PICTURE",
+            &datatype_config,
+        );
+        assert!(invalid_size.is_err_and(|f| matches!(
+            f,
+            ConfigValidationError::DatatypeValidation(DatatypeValidationError::FileTooLong)
+        )));
+    }
+
+    #[test]
+    fn test_validate_values_file() {
+        let datatype_config = indoc! {r#"
+        FILE:
+            display: "datatype.file"
+            type: "FILE"
+            order: 400
+            params: null
+        "#};
+
+        let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
+
+        let valid = validate_datatype_value(
+            "data:image/png;base64,dGVzdGNvbnRlbnQ=",
+            "FILE",
+            &datatype_config,
+        );
+        assert!(valid.is_ok());
+
+        let valid = validate_datatype_value(
+            "data:image/jpg;base64,dGVzdGNvbnRlbnQ=",
+            "FILE",
+            &datatype_config,
+        );
+        assert!(valid.is_ok());
     }
 }

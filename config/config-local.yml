@@ -127,6 +127,17 @@ datatype:
           de: "Please provide email like abc@abc.com"
           en: "Please provide email like abc@abc.com"
         pattern: '^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$'
+  PICTURE:
+    display: "datatype.picture"
+    type: "FILE"
+    order: 400
+    params:
+      public:
+        accept:
+          - image/jpeg
+          - image/png
+        fileSize: 4194304
+        showAs: IMAGE
   COUNT:
     display: "datatype.count"
     type: "NUMBER"
