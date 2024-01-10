@@ -65,6 +65,7 @@ fn get_did_config() -> DidConfig {
             display: "translation".to_string(),
             order: None,
             disabled: None,
+            capabilities: None,
             params: None,
         },
     );

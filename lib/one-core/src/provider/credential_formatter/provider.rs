@@ -38,24 +38,31 @@ pub(crate) fn credential_formatters_from_config(
     let mut formatters = HashMap::new();
 
     for format_type in config.as_inner().keys() {
+        let type_str = format_type.to_string();
+
         match format_type {
             FormatType::Jwt => {
+                let capabilities = config.get_capabilities(&type_str)?;
+
                 let params = config.get(format_type)?;
-                let formatter = Arc::new(JWTFormatter::new(params)) as _;
-                formatters.insert(format_type.to_string(), formatter);
+                let formatter = Arc::new(JWTFormatter::new(capabilities, params)) as _;
+                formatters.insert(type_str, formatter);
             }
             FormatType::Sdjwt => {
+                let capabilities = config.get_capabilities(&type_str)?;
+
                 let params = config.get(format_type)?;
-                let formatter = Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _;
-                formatters.insert(format_type.to_string(), formatter);
+                let formatter =
+                    Arc::new(SDJWTFormatter::new(capabilities, params, crypto.clone())) as _;
+                formatters.insert(type_str, formatter);
             }
             FormatType::JsonLd => {
                 let formatter = Arc::new(JsonLdFormatter::new()) as _;
-                formatters.insert(format_type.to_string(), formatter);
+                formatters.insert(type_str, formatter);
             }
             FormatType::Mdoc => {
                 let formatter = Arc::new(MdocFormatter::new()) as _;
-                formatters.insert(format_type.to_string(), formatter);
+                formatters.insert(type_str, formatter);
             }
         }
     }

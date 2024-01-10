@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use shared_types::DidValue;
 
 use super::model::{CredentialPresentation, Presentation};
-use super::{AuthenticationFn, CredentialFormatter, VerificationFn};
+use super::{AuthenticationFn, CredentialFormatter, FormatterCapabilities, VerificationFn};
 
 pub struct JsonLdFormatter {}
 
@@ -61,6 +61,10 @@ impl CredentialFormatter for JsonLdFormatter {
     }
 
     fn get_leeway(&self) -> u64 {
+        todo!()
+    }
+
+    fn get_capabilities(&self) -> FormatterCapabilities {
         todo!()
     }
 }

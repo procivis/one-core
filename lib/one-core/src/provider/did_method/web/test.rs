@@ -11,7 +11,7 @@ use wiremock::{
 use crate::provider::did_method::{
     dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkRsaDataDTO},
     web::{did_value_to_url, fetch_did_web_document, WebDidMethod},
-    DidMethod, DidMethodError,
+    DidCapabilities, DidMethod, DidMethodError,
 };
 
 static JSON_DATA: &str = r#"
@@ -83,7 +83,17 @@ static JSON_DATA: &str = r#"
 async fn test_did_web_create() {
     let base_url = "https://test-domain.com".to_string();
 
-    let did_web_method = WebDidMethod::new(&Some(base_url)).unwrap();
+    let did_web_method = WebDidMethod::new(
+        &Some(base_url),
+        DidCapabilities {
+            operations: vec![
+                "RESOLVE".to_string(),
+                "CREATE".to_string(),
+                "DEACTIVATE".to_string(),
+            ],
+        },
+    )
+    .unwrap();
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
@@ -99,7 +109,17 @@ async fn test_did_web_create() {
 async fn test_did_web_create_with_port() {
     let base_url = "https://test-domain.com:54812".to_string();
 
-    let did_web_method = WebDidMethod::new(&Some(base_url)).unwrap();
+    let did_web_method = WebDidMethod::new(
+        &Some(base_url),
+        DidCapabilities {
+            operations: vec![
+                "RESOLVE".to_string(),
+                "CREATE".to_string(),
+                "DEACTIVATE".to_string(),
+            ],
+        },
+    )
+    .unwrap();
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
@@ -113,7 +133,17 @@ async fn test_did_web_create_with_port() {
 
 #[tokio::test]
 async fn test_did_web_create_fail_no_base_url() {
-    let did_web_method = WebDidMethod::new(&None).unwrap();
+    let did_web_method = WebDidMethod::new(
+        &None,
+        DidCapabilities {
+            operations: vec![
+                "RESOLVE".to_string(),
+                "CREATE".to_string(),
+                "DEACTIVATE".to_string(),
+            ],
+        },
+    )
+    .unwrap();
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 

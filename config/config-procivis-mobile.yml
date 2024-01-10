@@ -10,6 +10,8 @@ format:
     type: "SDJWT"
     display: "format.sdjwt"
     order: 1
+    capabilities:
+      features: ["SELECTIVE_DISCLOSURE"]
     params:
       public:
         leeway: 60
@@ -73,22 +75,30 @@ did:
     display: "did.key"
     order: 0
     type: "KEY"
+    capabilities:
+      operations: ["RESOLVE","CREATE"]
     params: null
   WEB:
     type: "WEB"
     display: "did.web"
     order: 1
+    capabilities:
+      operations: ["RESOLVE","CREATE","DEACTIVATE"]
     params: null
   JWK:
     type: "JWK"
     display: "did.jwk"
     order: 2
+    capabilities:
+      operations: ["RESOLVE","CREATE"]
     params: null
   X509:
     type: "X509"
     display: "did.x509"
     order: 3
     disabled: true
+    capabilities:
+      operations: ["RESOLVE","CREATE"]
     params: null
 datatype:
   STRING:
@@ -165,6 +175,9 @@ keyStorage:
     display: "keyStorage.internal"
     type: "INTERNAL"
     order: 0
+    capabilities:
+      algorithms: ["ES256","EDDSA"]
+      security: ["SOFTWARE"]
     params:
       private:
         encryption: "my encryption key"
@@ -178,6 +191,9 @@ keyStorage:
     display: "keyStorage.secureElement"
     type: "SECURE_ELEMENT"
     order: 3
+    capabilities:
+      algorithms: ["ES256"]
+      security: ["HARDWARE"]
     params:
       private:
         aliasPrefix: "ch.procivis.one.wallet.keys"

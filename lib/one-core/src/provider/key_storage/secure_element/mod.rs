@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::{
     crypto::signer::error::SignerError,
     model::key::{Key, KeyId},
-    provider::key_storage::{GeneratedKey, KeyStorage},
+    provider::key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities},
     service::error::{ServiceError, ValidationError},
 };
 
@@ -15,6 +15,7 @@ pub trait NativeKeyStorage: Send + Sync {
 }
 
 pub struct SecureElementKeyProvider {
+    capabilities: KeyStorageCapabilities,
     native_storage: Arc<dyn NativeKeyStorage>,
     params: Params,
 }
@@ -43,11 +44,20 @@ impl KeyStorage for SecureElementKeyProvider {
         self.native_storage
             .sign(&key.key_reference, message.bytes().collect())
     }
+
+    fn get_capabilities(&self) -> KeyStorageCapabilities {
+        self.capabilities.to_owned()
+    }
 }
 
 impl SecureElementKeyProvider {
-    pub fn new(native_storage: Arc<dyn NativeKeyStorage>, params: Params) -> Self {
+    pub fn new(
+        capabilities: KeyStorageCapabilities,
+        native_storage: Arc<dyn NativeKeyStorage>,
+        params: Params,
+    ) -> Self {
         SecureElementKeyProvider {
+            capabilities,
             native_storage,
             params,
         }

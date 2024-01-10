@@ -1,5 +1,5 @@
 use super::dto::DidDocumentDTO;
-use super::DidMethodError;
+use super::{DidCapabilities, DidMethodError};
 use crate::model::key::Key;
 
 use async_trait::async_trait;
@@ -7,6 +7,7 @@ use shared_types::{DidId, DidValue};
 use url::Url;
 
 pub struct WebDidMethod {
+    capabilities: DidCapabilities,
     //pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     pub did_base_string: Option<String>,
     pub client: reqwest::Client,
@@ -15,6 +16,7 @@ pub struct WebDidMethod {
 impl WebDidMethod {
     pub fn new(
         base_url: &Option<String>,
+        capabilities: DidCapabilities,
         //key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     ) -> Result<Self, DidMethodError> {
         let did_base_string = if let Some(base_url) = base_url {
@@ -38,6 +40,7 @@ impl WebDidMethod {
         };
 
         Ok(Self {
+            capabilities,
             //key_algorithm_provider,
             did_base_string,
             client: reqwest::Client::new(),
@@ -84,6 +87,10 @@ impl super::DidMethod for WebDidMethod {
 
     fn can_be_deactivated(&self) -> bool {
         true
+    }
+
+    fn get_capabilities(&self) -> DidCapabilities {
+        self.capabilities.to_owned()
     }
 }
 

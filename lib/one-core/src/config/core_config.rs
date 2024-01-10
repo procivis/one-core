@@ -19,7 +19,7 @@ use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use strum_macros::{Display, EnumString};
 
-use super::{ConfigParsingError, ConfigValidationError};
+use super::{ConfigError, ConfigParsingError, ConfigValidationError};
 
 type Dict<K, V> = BTreeMap<K, V>;
 
@@ -307,6 +307,20 @@ where
         }
     }
 
+    pub fn get_capabilities<U>(&self, key: &str) -> Result<U, ConfigError>
+    where
+        U: Default + DeserializeOwned,
+        K: FromStr,
+    {
+        match &self.get_fields(key)?.capabilities {
+            None => Ok(U::default()),
+            Some(json_value) => {
+                Ok(serde_json::from_value(json_value.to_owned())
+                    .map_err(ConfigParsingError::Json)?)
+            }
+        }
+    }
+
     pub fn get_fields(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError>
     where
         K: FromStr,
@@ -342,6 +356,8 @@ pub struct Fields<T> {
     pub(crate) display: String,
     pub(crate) order: Option<u64>,
     pub(crate) disabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) capabilities: Option<Value>,
     #[serde(deserialize_with = "deserialize_params")]
     pub(crate) params: Option<Params>,
 }
@@ -472,6 +488,7 @@ mod tests {
             display: "jwt".to_string(),
             order: Some(0),
             disabled: None,
+            capabilities: None,
             params: Some(Params {
                 public: Some(json!({ "leeway": 60 })),
                 private: Some(json!({ "other": "thing" })),

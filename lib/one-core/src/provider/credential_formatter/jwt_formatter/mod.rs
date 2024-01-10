@@ -21,10 +21,11 @@ use super::{
     error::FormatterError,
     jwt::model::JWTPayload,
     model::{CredentialPresentation, CredentialStatus, DetailCredential, Presentation},
-    AuthenticationFn, CredentialFormatter, VerificationFn,
+    AuthenticationFn, CredentialFormatter, FormatterCapabilities, VerificationFn,
 };
 
 pub struct JWTFormatter {
+    capabilities: FormatterCapabilities,
     params: Params,
 }
 
@@ -35,8 +36,11 @@ pub struct Params {
 }
 
 impl JWTFormatter {
-    pub fn new(params: Params) -> Self {
-        Self { params }
+    pub fn new(capabilities: FormatterCapabilities, params: Params) -> Self {
+        Self {
+            capabilities,
+            params,
+        }
     }
 }
 
@@ -148,6 +152,10 @@ impl CredentialFormatter for JWTFormatter {
 
     fn get_leeway(&self) -> u64 {
         self.params.leeway
+    }
+
+    fn get_capabilities(&self) -> FormatterCapabilities {
+        self.capabilities.to_owned()
     }
 }
 

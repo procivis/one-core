@@ -12,12 +12,13 @@ use crate::model::key::KeyId;
 use crate::{
     provider::{
         key_algorithm::provider::KeyAlgorithmProvider,
-        key_storage::{GeneratedKey, KeyStorage},
+        key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities},
     },
     service::error::ServiceError,
 };
 
 pub struct InternalKeyProvider {
+    capabilities: KeyStorageCapabilities,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     encryption_key: Option<[u8; 32]>,
 }
@@ -30,10 +31,12 @@ pub struct Params {
 
 impl InternalKeyProvider {
     pub fn new(
+        capabilities: KeyStorageCapabilities,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
         params: Params,
     ) -> Self {
         Self {
+            capabilities,
             key_algorithm_provider,
             encryption_key: params
                 .encryption
@@ -73,6 +76,10 @@ impl KeyStorage for InternalKeyProvider {
                 &self.encryption_key,
             )?,
         })
+    }
+
+    fn get_capabilities(&self) -> KeyStorageCapabilities {
+        self.capabilities.to_owned()
     }
 }
 

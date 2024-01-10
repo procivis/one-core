@@ -17,6 +17,7 @@ pub(crate) mod provider;
 pub(crate) mod test_utilities;
 
 use async_trait::async_trait;
+use serde::Deserialize;
 use shared_types::DidValue;
 
 use crate::{
@@ -30,6 +31,11 @@ use self::{
 
 pub type AuthenticationFn = Box<dyn SignatureProvider + Send + Sync>;
 pub type VerificationFn = Box<dyn TokenVerifier + Send + Sync>;
+
+#[derive(Clone, Default, Deserialize)]
+pub struct FormatterCapabilities {
+    pub features: Vec<String>,
+}
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
@@ -91,6 +97,8 @@ pub trait CredentialFormatter: Send + Sync {
     ) -> Result<Presentation, FormatterError>;
 
     fn get_leeway(&self) -> u64;
+
+    fn get_capabilities(&self) -> FormatterCapabilities;
 }
 
 #[cfg(test)]

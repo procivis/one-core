@@ -1,4 +1,4 @@
-use super::{dto::DidDocumentDTO, DidMethodError};
+use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError};
 use crate::model::key::Key;
 
 use async_trait::async_trait;
@@ -42,5 +42,9 @@ impl super::DidMethod for X509Method {
 
     fn can_be_deactivated(&self) -> bool {
         false
+    }
+
+    fn get_capabilities(&self) -> DidCapabilities {
+        todo!()
     }
 }
