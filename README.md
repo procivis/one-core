@@ -194,3 +194,23 @@ EOF
 FILES="apps/core-server/bom.json apps/migration/bom.json lib/one-core/bom.json lib/shared-types/bom.json lib/sql-data-provider/bom.json platforms/uniffi/bom.json platforms/uniffi-bindgen/bom.json"
 cyclonedx-cli merge --input-files ${FILES} --input-format=json --output-format=json > merged_sbom.json
 ```
+
+
+### Testing
+
+##### Run tests
+```shell
+cargo llvm-cov --no-clean --workspace --release --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$"
+```
+
+##### Generate report
+
+* Cobertura
+```shell
+cargo llvm-cov report --release --cobertura --output-path cobertura.xml
+```
+
+* Lcov
+```shell
+cargo llvm-cov report --release --lcov --output-path lcov.info
+```
