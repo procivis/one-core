@@ -1,7 +1,8 @@
+use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialState, CredentialStateEnum};
 use one_core::repository::error::DataLayerError;
 use one_core::{
     model::interaction::Interaction,
@@ -29,7 +30,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialProvider;
@@ -438,23 +439,12 @@ async fn test_delete_credential_failed_not_found() {
 
 #[tokio::test]
 async fn test_get_credential_list_success() {
-    let claim_repository = MockClaimRepository::default();
-    let mut did_repository = MockDidRepository::default();
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-
     let TestSetup {
         credential_schema,
         did,
         db,
         ..
     } = setup_empty().await;
-
-    let did_clone = did.clone();
-    did_repository
-        .expect_get_did()
-        .times(2)
-        .with(eq(did_clone.id.to_owned()), always())
-        .returning(move |_, _| Ok(Some(did_clone.clone())));
 
     let _credential_one_id = insert_credential(
         &db,
@@ -488,17 +478,11 @@ async fn test_get_credential_list_success() {
     .await
     .unwrap();
 
-    let credential_schema_clone = credential_schema.clone();
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(2)
-        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
-
     let provider = CredentialProvider {
         db: db.clone(),
-        credential_schema_repository: Arc::from(credential_schema_repository),
-        claim_repository: Arc::from(claim_repository),
-        did_repository: Arc::from(did_repository),
+        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
+        claim_repository: Arc::from(MockClaimRepository::default()),
+        did_repository: Arc::from(MockDidRepository::default()),
         interaction_repository: Arc::from(MockInteractionRepository::default()),
         revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
         key_repository: Arc::new(MockKeyRepository::default()),
@@ -532,6 +516,76 @@ async fn test_get_credential_list_success() {
         .iter()
         .find(|credential| credential.id == forbidden_uuid);
     assert!(forbidden_credential.is_none());
+}
+
+#[tokio::test]
+async fn test_get_credential_list_success_verify_state_sorting() {
+    let TestSetup {
+        credential_schema,
+        did,
+        db,
+        ..
+    } = setup_empty().await;
+
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
+    insert_credential_state_to_database(
+        &db,
+        &credential_id,
+        CredentialState {
+            created_date: later,
+            state: CredentialStateEnum::Offered,
+        },
+    )
+    .await
+    .unwrap();
+
+    let provider = CredentialProvider {
+        db: db.clone(),
+        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
+        claim_repository: Arc::from(MockClaimRepository::default()),
+        did_repository: Arc::from(MockDidRepository::default()),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
+    };
+
+    let credentials = provider
+        .get_credential_list(GetCredentialQuery {
+            page: 0,
+            page_size: 5,
+            sort: None,
+            sort_direction: None,
+            exact: None,
+            name: None,
+            organisation_id: credential_schema
+                .organisation
+                .as_ref()
+                .unwrap()
+                .id
+                .to_string(),
+        })
+        .await;
+    assert!(credentials.is_ok());
+    let credentials = credentials.unwrap();
+    assert_eq!(1, credentials.total_pages);
+    assert_eq!(1, credentials.total_items);
+    assert_eq!(1, credentials.values.len());
+
+    let first = credentials.values.first().unwrap();
+    let states = first.state.as_ref().unwrap();
+    assert_eq!(1, states.len());
+    assert_eq!(CredentialStateEnum::Offered, states.first().unwrap().state);
 }
 
 #[tokio::test]
