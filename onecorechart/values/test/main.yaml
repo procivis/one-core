@@ -1,14 +1,14 @@
 image:
   tag: "v1.0.1"
 
-baseUrl: "https://core.test.one-trust-solution.com"
+baseUrl: "https://core.procivis-one.com"
 
 sentry:
   env: "test"
 
 ingress:
   hosts:
-  - host: core.test.one-trust-solution.com
+  - host: core.test.procivis-one.com
     paths:
       - path: /
         pathType: ImplementationSpecific

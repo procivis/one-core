@@ -60,17 +60,17 @@ helm dep build
 
 #### Update the deployment:
 
-* Dev (Namespace: default) [https://core.dev.one-trust-solution.com](https://core.dev.one-trust-solution.com)
+* Dev (Namespace: default) [https://core.dev.procivis-one.com](https://core.dev.procivis-one.com/swagger-ui/)
 ```shell
 helm upgrade --install one-core . --values values/dev/main.yaml -f secrets://values/dev/secrets.yaml --namespace default
 ```
 
-* Test (Namespace: one-test) [https://core.test.one-trust-solution.com](https://core.test.one-trust-solution.com)
+* Test (Namespace: one-test) [https://core.test.procivis-one.com](https://core.test.procivis-one.com/swagger-ui/)
 ```shell
 helm upgrade --install one-core . --values values/test/main.yaml -f secrets://values/test/secrets.yaml --namespace one-test
 ```
 
-* Demo (Namespace: default) [https://core.demo.procivis-one.com](https://core.demo.procivis-one.com)
+* Demo (Namespace: default) [https://core.demo.procivis-one.com](https://core.demo.procivis-one.com/swagger-ui/)
 ```shell
 helm upgrade --install one-core . --values values/demo/main.yaml -f secrets://values/demo/secrets.yaml --namespace default
 ```
