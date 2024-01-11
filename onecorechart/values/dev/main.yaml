@@ -1,11 +1,11 @@
-baseUrl: "https://core.dev.one-trust-solution.com"
+baseUrl: "https://core.dev.procivis-one.com"
 
 sentry:
   env: "dev"
 
 ingress:
   hosts:
-  - host: core.dev.one-trust-solution.com
+  - host: core.dev.procivis-one.com
     paths:
       - path: /
         pathType: ImplementationSpecific
