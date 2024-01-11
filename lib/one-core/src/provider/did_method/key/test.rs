@@ -22,7 +22,7 @@ fn setup_provider(
     algorithm_id: &str,
     algorithm_type: KeyAlgorithmType,
 ) -> Arc<dyn DidMethodProvider + Send + Sync> {
-    let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>> = HashMap::new();
+    let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
     key_algorithms.insert(algorithm_id.to_string(), Arc::new(key_algorithm));
 
     let key_algorithm_provider =
@@ -41,7 +41,7 @@ fn setup_provider(
         },
     );
 
-    let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
+    let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
     did_methods.insert(
         "KEY".to_string(),
         Arc::new(KeyDidMethod::new(

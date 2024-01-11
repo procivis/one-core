@@ -60,7 +60,7 @@ pub(super) async fn did_already_exists(
 
 pub(super) fn validate_deactivation_request(
     did: &Did,
-    did_method: &Arc<dyn DidMethod + Send + Sync>,
+    did_method: &dyn DidMethod,
     deactivate: bool,
 ) -> Result<(), BusinessLogicError> {
     if did.did_type.is_remote() {

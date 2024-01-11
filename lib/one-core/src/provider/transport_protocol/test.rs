@@ -107,7 +107,7 @@ async fn test_issuer_submit_succeeds() {
     revocation_method_provider
         .expect_get_revocation_method()
         .once()
-        .return_once(move |_| Ok(Arc::new(revocation_method)));
+        .return_once(move |_| Some(Arc::new(revocation_method)));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -151,7 +151,6 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
-        Arc::new(config),
     );
 
     service.issue_credential(&credential_id).await.unwrap();

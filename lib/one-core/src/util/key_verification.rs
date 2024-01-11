@@ -55,7 +55,9 @@ impl TokenVerifier for KeyVerification {
         let alg = self
             .key_algorithm_provider
             .get_key_algorithm(algorithm)
-            .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
+            .ok_or(SignerError::CouldNotVerify(format!(
+                "Invalid algorithm: {algorithm}"
+            )))?;
 
         let public_key = alg
             .jwk_to_bytes(&method.public_key_jwk)
@@ -162,7 +164,7 @@ mod test {
                 assert_eq!(alg, "ES256");
                 true
             })
-            .returning(move |_| Ok(key_alg.clone()));
+            .returning(move |_| Some(key_alg.clone()));
 
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),
@@ -248,7 +250,7 @@ mod test {
                 assert_eq!(alg, "ES256");
                 true
             })
-            .returning(move |_| Ok(key_alg.clone()));
+            .returning(move |_| Some(key_alg.clone()));
 
         let verification = KeyVerification {
             key_algorithm_provider: Arc::new(key_algorithm_provider),

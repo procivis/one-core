@@ -231,7 +231,7 @@ pub(crate) async fn oidc_create_token(
             tracing::error!("Config validation error: {error}");
             StatusCode::NOT_FOUND.into_response()
         }
-        Err(ServiceError::NotFound) => {
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }

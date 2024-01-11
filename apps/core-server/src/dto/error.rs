@@ -19,7 +19,7 @@ pub enum ErrorCode {
     CredentialSchemaAlreadyExists,
     CredentialSchemaMissingClaims,
 
-    Credential001,
+    CredentialNotFound,
     CredentialInvalidState,
     CredentialMissingClaim,
 
@@ -38,6 +38,15 @@ pub enum ErrorCode {
 
     MissingFormatter,
     InvalidFormatter,
+    InvalidKeyAlgorithm,
+    InvalidKeyStorage,
+    MissingKeyStorage,
+    MissingDidMethod,
+    MissingKeyAlgorithm,
+    MissingRevocationMethod,
+    MissingRevocationMethodByCredentialStatusType,
+    MissingTransportProtocol,
+
     MissingCredentialsForInteraction,
     ProofSchemaDeleted,
     MissingCredentialData,

@@ -531,7 +531,7 @@ async fn test_reject_proof_succeeds() {
 
 fn mock_ssi_verifier_service() -> SSIVerifierService {
     let did_method = MockDidMethod::new();
-    let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
+    let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
     did_methods.insert("INTERNAL".to_string(), Arc::new(did_method));
     let did_method_provider = DidMethodProviderImpl::new(did_methods);
 

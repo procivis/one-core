@@ -4,7 +4,7 @@ use crate::{
         organisation::OrganisationRelations,
     },
     service::{
-        error::{EntityNotFoundError, ServiceError},
+        error::{EntityNotFoundError, ServiceError, ValidationError},
         key::{
             dto::{KeyRequestDTO, KeyResponseDTO},
             mapper::from_create_request,
@@ -60,7 +60,12 @@ impl KeyService {
             return Err(EntityNotFoundError::Organisation(request.organisation_id).into());
         };
 
-        let provider = self.key_provider.get_key_storage(&request.storage_type)?;
+        let provider = self
+            .key_provider
+            .get_key_storage(&request.storage_type)
+            .ok_or(ValidationError::InvalidKeyStorage(
+                request.storage_type.clone(),
+            ))?;
 
         let key_id = KeyId::new_v4();
         let key = provider.generate(&key_id, &request.key_type).await?;

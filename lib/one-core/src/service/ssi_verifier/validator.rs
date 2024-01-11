@@ -12,7 +12,7 @@ use crate::{
         key_algorithm::provider::KeyAlgorithmProvider,
         revocation::provider::RevocationMethodProvider,
     },
-    service::error::{BusinessLogicError, ServiceError},
+    service::error::{MissingProviderError, ServiceError},
     util::key_verification::KeyVerification,
 };
 
@@ -45,11 +45,10 @@ pub(super) async fn validate_proof(
 
     // presentation envelope only JWT for now
     let formatter = "JWT";
-    let presentation_formatter = formatter_provider.get_formatter(formatter).ok_or(
-        BusinessLogicError::MissingFormatter {
-            formatter: formatter.to_owned(),
-        },
-    )?;
+    let presentation_formatter = formatter_provider
+        .get_formatter(formatter)
+        .ok_or(MissingProviderError::Formatter(formatter.to_owned()))?;
+
     let presentation = presentation_formatter
         .extract_presentation(presentation, key_verification_presentation.clone())
         .await?;
@@ -113,11 +112,9 @@ pub(super) async fn validate_proof(
         } else {
             "JWT"
         };
-        let credential_formatter = formatter_provider.get_formatter(format).ok_or(
-            BusinessLogicError::MissingFormatter {
-                formatter: format.to_owned(),
-            },
-        )?;
+        let credential_formatter = formatter_provider
+            .get_formatter(format)
+            .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 
         let credential = credential_formatter
             .extract_credentials(&credential, key_verification_credentials.clone())
@@ -132,7 +129,10 @@ pub(super) async fn validate_proof(
 
         if let Some(credential_status) = credential.status {
             let (revocation_method, _) = revocation_method_provider
-                .get_revocation_method_by_status_type(&credential_status.r#type)?;
+                .get_revocation_method_by_status_type(&credential_status.r#type)
+                .ok_or(MissingProviderError::RevocationMethod(
+                    credential_status.r#type.clone(),
+                ))?;
 
             let issuer_did = credential.issuer_did.ok_or(ServiceError::ValidationError(
                 "Issuer DID missing".to_owned(),

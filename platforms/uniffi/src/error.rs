@@ -26,7 +26,7 @@ pub enum BindingError {
 impl From<ServiceError> for BindingError {
     fn from(error: ServiceError) -> Self {
         match &error {
-            ServiceError::NotFound => Self::NotFound(error.to_string()),
+            ServiceError::EntityNotFound(error) => Self::NotFound(error.to_string()),
             ServiceError::ValidationError(_) => Self::ValidationError(error.to_string()),
             ServiceError::ConfigValidationError(_) => {
                 Self::ConfigValidationError(error.to_string())

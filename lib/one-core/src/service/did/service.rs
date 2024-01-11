@@ -13,8 +13,8 @@ use super::{
     validator::{did_already_exists, validate_deactivation_request},
     DidService,
 };
-use crate::service::did::mapper::map_key_to_verification_method;
 use crate::service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError};
+use crate::service::{did::mapper::map_key_to_verification_method, error::MissingProviderError};
 use crate::{
     config::validator::did::validate_did_method,
     model::{
@@ -84,7 +84,9 @@ impl DidService {
                     let key_algorithm = self
                         .key_algorithm_provider
                         .get_key_algorithm(&value.key_type)
-                        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                        .ok_or(MissingProviderError::KeyAlgorithm(
+                            value.key_type.to_owned(),
+                        ))?;
                     Ok((
                         key.to_owned(),
                         map_key_to_verification_method(
@@ -149,9 +151,11 @@ impl DidService {
         validate_did_method(&request.did_method, &self.config.did)?;
         validate_request_only_one_key_of_each_type(request.keys.to_owned())?;
 
+        let did_method_key = &request.did_method;
         let did_method = self
             .did_method_provider
-            .get_did_method(&request.did_method)?;
+            .get_did_method(did_method_key)
+            .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))?;
 
         let keys = request.keys.to_owned();
 
@@ -228,10 +232,14 @@ impl DidService {
             return Err(EntityNotFoundError::Did(*id).into());
         };
 
-        let did_method = self.did_method_provider.get_did_method(&did.did_method)?;
+        let did_method_key = &did.did_method;
+        let did_method = self
+            .did_method_provider
+            .get_did_method(did_method_key)
+            .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))?;
 
         if let Some(deactivated) = request.deactivated {
-            validate_deactivation_request(&did, &did_method, deactivated)?;
+            validate_deactivation_request(&did, did_method.as_ref(), deactivated)?;
         }
 
         let update_did = UpdateDidRequest {

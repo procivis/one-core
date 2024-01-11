@@ -12,7 +12,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{DetailCredential, Presentation};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::service::error::ServiceError;
+use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCIError, OpenID4VCIInteractionDataDTO,
     OpenID4VCITokenRequestDTO,
@@ -170,7 +170,12 @@ pub(super) async fn validate_credential(
 
     if let Some(credential_status) = &credential.status {
         let (revocation_method, _) = revocation_method_provider
-            .get_revocation_method_by_status_type(&credential_status.r#type)?;
+            .get_revocation_method_by_status_type(&credential_status.r#type)
+            .ok_or(
+                MissingProviderError::RevocationMethodByCredentialStatusType(
+                    credential_status.r#type.clone(),
+                ),
+            )?;
 
         let issuer_did = credential
             .issuer_did

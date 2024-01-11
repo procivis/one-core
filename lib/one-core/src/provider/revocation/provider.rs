@@ -1,26 +1,26 @@
-use crate::provider::revocation::RevocationMethod;
-use crate::service::error::ServiceError;
 use std::{collections::HashMap, sync::Arc};
+
+use crate::provider::revocation::RevocationMethod;
 
 #[cfg_attr(test, mockall::automock)]
 pub(crate) trait RevocationMethodProvider {
     fn get_revocation_method(
         &self,
         revocation_method_id: &str,
-    ) -> Result<Arc<dyn RevocationMethod + Send + Sync>, ServiceError>;
+    ) -> Option<Arc<dyn RevocationMethod>>;
 
     fn get_revocation_method_by_status_type(
         &self,
         credential_status_type: &str,
-    ) -> Result<(Arc<dyn RevocationMethod + Send + Sync>, String), ServiceError>;
+    ) -> Option<(Arc<dyn RevocationMethod>, String)>;
 }
 
 pub(crate) struct RevocationMethodProviderImpl {
-    revocation_methods: HashMap<String, Arc<dyn RevocationMethod + Send + Sync>>,
+    revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
 }
 
 impl RevocationMethodProviderImpl {
-    pub fn new(formatters: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)>) -> Self {
+    pub fn new(formatters: Vec<(String, Arc<dyn RevocationMethod>)>) -> Self {
         Self {
             revocation_methods: formatters.into_iter().collect(),
         }
@@ -31,24 +31,19 @@ impl RevocationMethodProvider for RevocationMethodProviderImpl {
     fn get_revocation_method(
         &self,
         revocation_method_id: &str,
-    ) -> Result<Arc<dyn RevocationMethod + Send + Sync>, ServiceError> {
-        Ok(self
-            .revocation_methods
-            .get(revocation_method_id)
-            .ok_or(ServiceError::NotFound)?
-            .to_owned())
+    ) -> Option<Arc<dyn RevocationMethod>> {
+        self.revocation_methods.get(revocation_method_id).cloned()
     }
 
     fn get_revocation_method_by_status_type(
         &self,
         credential_status_type: &str,
-    ) -> Result<(Arc<dyn RevocationMethod + Send + Sync>, String), ServiceError> {
+    ) -> Option<(Arc<dyn RevocationMethod>, String)> {
         let result = self
             .revocation_methods
             .iter()
-            .find(|(_id, method)| method.get_status_type() == credential_status_type)
-            .ok_or(ServiceError::NotFound)?;
+            .find(|(_id, method)| method.get_status_type() == credential_status_type)?;
 
-        Ok((result.1.to_owned(), result.0.to_owned()))
+        Some((result.1.to_owned(), result.0.to_owned()))
     }
 }

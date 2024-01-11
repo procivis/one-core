@@ -1,6 +1,5 @@
 use super::{dto::InvitationType, TransportProtocol};
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
-use crate::config::core_config::{self};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -16,28 +15,22 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::mapper::get_issued_credential_update;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
+use crate::service::error::{
+    EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+};
 use std::{collections::HashMap, sync::Arc};
 use url::Url;
 
 #[derive(Clone)]
 pub struct DetectedProtocol {
     pub invitation_type: InvitationType,
-    pub protocol: Arc<dyn TransportProtocol + Send + Sync>,
+    pub protocol: Arc<dyn TransportProtocol>,
 }
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub(crate) trait TransportProtocolProvider {
-    fn get_protocol(
-        &self,
-        protocol_id: &str,
-    ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, ServiceError>;
-
-    fn get_protocol_by_config_key(
-        &self,
-        protocol_config_key: &str,
-    ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, ServiceError>;
+    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn TransportProtocol>>;
 
     fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol>;
 
@@ -48,22 +41,20 @@ pub(crate) trait TransportProtocolProvider {
 }
 
 pub(crate) struct TransportProtocolProviderImpl {
-    protocols: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>,
+    protocols: HashMap<String, Arc<dyn TransportProtocol>>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    config: Arc<core_config::CoreConfig>,
 }
 
 impl TransportProtocolProviderImpl {
     pub fn new(
-        protocols: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>,
+        protocols: HashMap<String, Arc<dyn TransportProtocol>>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
         key_provider: Arc<dyn KeyProvider + Send + Sync>,
-        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             protocols,
@@ -71,37 +62,14 @@ impl TransportProtocolProviderImpl {
             credential_repository,
             revocation_method_provider,
             key_provider,
-            config,
         }
     }
 }
 
 #[async_trait::async_trait]
 impl TransportProtocolProvider for TransportProtocolProviderImpl {
-    fn get_protocol(
-        &self,
-        protocol_id: &str,
-    ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, ServiceError> {
-        Ok(self
-            .protocols
-            .get(protocol_id)
-            .ok_or(ServiceError::NotFound)?
-            .to_owned())
-    }
-
-    fn get_protocol_by_config_key(
-        &self,
-        protocol_key: &str,
-    ) -> Result<Arc<dyn TransportProtocol + Send + Sync>, ServiceError> {
-        let transport_instance = &self
-            .config
-            .exchange
-            .get_fields(protocol_key)
-            .map_err(|err| ServiceError::MissingTransportProtocol(err.to_string()))?
-            .r#type()
-            .to_string();
-
-        self.get_protocol(transport_instance)
+    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn TransportProtocol>> {
+        self.protocols.get(protocol_id).cloned()
     }
 
     fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol> {
@@ -170,7 +138,10 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
 
         let revocation_method = self
             .revocation_method_provider
-            .get_revocation_method(&credential_schema.revocation_method)?;
+            .get_revocation_method(&credential_schema.revocation_method)
+            .ok_or(MissingProviderError::RevocationMethod(
+                credential_schema.revocation_method.clone(),
+            ))?;
         let (credential_status, additional_context) =
             match revocation_method.add_issued_credential(&credential).await? {
                 None => (None, vec![]),
@@ -197,9 +168,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
         let token: String = self
             .formatter_provider
             .get_formatter(&format)
-            .ok_or_else(|| ValidationError::InvalidFormatter {
-                formatter: format.to_string(),
-            })?
+            .ok_or(ValidationError::InvalidFormatter(format.to_string()))?
             .format_credentials(
                 &credential.try_into()?,
                 credential_status,

@@ -23,7 +23,7 @@ pub struct GeneratedKey {
 }
 
 #[cfg_attr(test, mockall::automock)]
-pub trait KeyAlgorithm {
+pub trait KeyAlgorithm: Send + Sync {
     /// related crypto signer ID
     fn get_signer_algorithm_id(&self) -> String;
 
@@ -40,8 +40,8 @@ pub trait KeyAlgorithm {
 
 pub fn key_algorithms_from_config(
     config: &KeyAlgorithmConfig,
-) -> Result<HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>>, ConfigValidationError> {
-    let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>> = HashMap::new();
+) -> Result<HashMap<String, Arc<dyn KeyAlgorithm>>, ConfigValidationError> {
+    let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
     for (algorithm_type, fields) in config.as_inner() {
         // skip disabled algorithms

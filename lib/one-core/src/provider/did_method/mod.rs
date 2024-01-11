@@ -45,7 +45,7 @@ pub enum DidMethodError {
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
-pub trait DidMethod {
+pub trait DidMethod: Send + Sync {
     fn get_method(&self) -> String;
 
     async fn create(
@@ -66,7 +66,7 @@ pub fn did_method_providers_from_config(
     did_config: &DidConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     base_url: Option<String>,
-) -> Result<HashMap<String, Arc<dyn DidMethod + Send + Sync>>, ConfigError> {
+) -> Result<HashMap<String, Arc<dyn DidMethod>>, ConfigError> {
     let mut providers = HashMap::new();
 
     for did_type in did_config.as_inner().keys() {
