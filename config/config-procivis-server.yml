@@ -20,7 +20,8 @@ format:
     type: "SDJWT"
     display: "format.sdjwt"
     order: 1
-    capabilities: ["SELECTIVE_DISCLOSURE"]
+    capabilities:
+      features: ["SELECTIVE_DISCLOSURE"]
     params:
       public:
         leeway: 60
