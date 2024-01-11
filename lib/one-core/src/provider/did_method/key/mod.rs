@@ -50,7 +50,7 @@ impl super::DidMethod for KeyDidMethod {
         let key_algorithm = self
             .key_algorithm_provider
             .get_key_algorithm(&key.key_type)
-            .map_err(|_| DidMethodError::KeyAlgorithmNotFound)?;
+            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
         let multibase = key_algorithm.get_multibase(&key.public_key);
         // todo(mite): add constructor for this
         let did_value: DidValue = match format!("did:key:{}", multibase).parse() {
@@ -75,7 +75,9 @@ impl super::DidMethod for KeyDidMethod {
         let algorithm = self
             .key_algorithm_provider
             .get_key_algorithm(&key_type)
-            .map_err(|_| DidMethodError::ResolutionError("Unsupported algorithm".to_string()))?;
+            .ok_or(DidMethodError::ResolutionError(
+                "Unsupported algorithm".to_string(),
+            ))?;
 
         let public_key_jwk = algorithm.bytes_to_jwk(&public_key_bytes).map_err(|_| {
             DidMethodError::ResolutionError("Could not create jwk representation".to_string())

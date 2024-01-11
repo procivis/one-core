@@ -612,7 +612,7 @@ async fn test_share_proof_created_success() {
     protocol_provider
         .expect_get_protocol()
         .times(1)
-        .returning(move |_| Ok(protocol.clone()));
+        .returning(move |_| Some(protocol.clone()));
 
     let mut seq = Sequence::new();
     let mut proof_repository = MockProofRepository::default();
@@ -672,7 +672,7 @@ async fn test_share_proof_pending_success() {
     protocol_provider
         .expect_get_protocol()
         .times(1)
-        .returning(move |_| Ok(protocol.clone()));
+        .returning(move |_| Some(protocol.clone()));
 
     let mut proof_repository = MockProofRepository::default();
     {

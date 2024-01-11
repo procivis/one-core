@@ -53,7 +53,7 @@ pub enum TransportProtocolError {
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
-pub trait TransportProtocol {
+pub trait TransportProtocol: Send + Sync {
     // holder methods
     fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType>;
 
@@ -143,8 +143,8 @@ pub(crate) fn transport_protocol_providers_from_config(
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
     key_provider: Arc<dyn KeyProvider + Send + Sync>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-) -> Result<HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>, ConfigValidationError> {
-    let mut providers: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>> = HashMap::new();
+) -> Result<HashMap<String, Arc<dyn TransportProtocol>>, ConfigValidationError> {
+    let mut providers: HashMap<String, Arc<dyn TransportProtocol>> = HashMap::new();
 
     for (name, fields) in config.as_inner() {
         match fields.r#type {

@@ -33,7 +33,7 @@ pub struct GeneratedKey {
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
-pub trait KeyStorage {
+pub trait KeyStorage: Send + Sync {
     async fn generate(&self, key_id: &KeyId, key_type: &str) -> Result<GeneratedKey, ServiceError>;
     async fn sign(&self, key: &Key, message: &str) -> Result<Vec<u8>, SignerError>;
     fn get_capabilities(&self) -> KeyStorageCapabilities;
@@ -44,8 +44,8 @@ pub fn key_providers_from_config(
     crypto: Arc<dyn CryptoProvider + Send + Sync>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
-) -> Result<HashMap<String, Arc<dyn KeyStorage + Send + Sync>>, ConfigError> {
-    let mut providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>> = HashMap::new();
+) -> Result<HashMap<String, Arc<dyn KeyStorage>>, ConfigError> {
+    let mut providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
 
     for key_storage_type in config.as_inner().keys() {
         let type_str = key_storage_type.to_string();

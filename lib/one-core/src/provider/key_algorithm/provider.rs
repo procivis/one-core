@@ -3,27 +3,24 @@ use std::{collections::HashMap, sync::Arc};
 use super::KeyAlgorithm;
 use crate::{
     crypto::{signer::Signer, CryptoProvider},
-    service::error::ServiceError,
+    service::error::{ServiceError, ValidationError},
 };
 
 #[cfg_attr(test, mockall::automock)]
 pub trait KeyAlgorithmProvider {
-    fn get_key_algorithm(
-        &self,
-        algorithm: &str,
-    ) -> Result<Arc<dyn KeyAlgorithm + Send + Sync>, ServiceError>;
+    fn get_key_algorithm(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>>;
 
     fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer + Send + Sync>, ServiceError>;
 }
 
 pub struct KeyAlgorithmProviderImpl {
-    algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>>,
+    algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
     crypto: Arc<dyn CryptoProvider + Send + Sync>,
 }
 
 impl KeyAlgorithmProviderImpl {
     pub fn new(
-        algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>>,
+        algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
         crypto: Arc<dyn CryptoProvider + Send + Sync>,
     ) -> Self {
         Self { algorithms, crypto }
@@ -31,19 +28,14 @@ impl KeyAlgorithmProviderImpl {
 }
 
 impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
-    fn get_key_algorithm(
-        &self,
-        algorithm: &str,
-    ) -> Result<Arc<dyn KeyAlgorithm + Send + Sync>, ServiceError> {
-        Ok(self
-            .algorithms
-            .get(algorithm)
-            .ok_or(ServiceError::NotFound)?
-            .clone())
+    fn get_key_algorithm(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>> {
+        self.algorithms.get(algorithm).cloned()
     }
 
     fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer + Send + Sync>, ServiceError> {
-        let key_algorithm = self.get_key_algorithm(algorithm)?;
+        let key_algorithm = self
+            .get_key_algorithm(algorithm)
+            .ok_or(ValidationError::InvalidKeyAlgorithm(algorithm.to_owned()))?;
         let signer_algorithm = key_algorithm.get_signer_algorithm_id();
         self.crypto
             .get_signer(&signer_algorithm)

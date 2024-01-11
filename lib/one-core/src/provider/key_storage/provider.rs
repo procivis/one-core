@@ -5,18 +5,18 @@ use crate::{
     crypto::signer::error::SignerError,
     model::key::Key,
     provider::credential_formatter::{AuthenticationFn, SignatureProvider},
-    service::error::ServiceError,
+    service::error::{ServiceError, ValidationError},
 };
 
 #[cfg_attr(test, mockall::automock)]
 pub trait KeyProvider {
-    fn get_key_storage(
-        &self,
-        key_provider_id: &str,
-    ) -> Result<Arc<dyn KeyStorage + Send + Sync>, ServiceError>;
+    fn get_key_storage(&self, key_provider_id: &str) -> Option<Arc<dyn KeyStorage>>;
 
     fn get_signature_provider(&self, key: &Key) -> Result<AuthenticationFn, ServiceError> {
-        let storage = self.get_key_storage(&key.storage_type)?;
+        let storage = self
+            .get_key_storage(&key.storage_type)
+            .ok_or(ValidationError::InvalidKeyStorage(key.storage_type.clone()))?;
+
         Ok(Box::new(SignatureProviderImpl {
             key: key.to_owned(),
             storage,
@@ -25,30 +25,23 @@ pub trait KeyProvider {
 }
 
 pub struct KeyProviderImpl {
-    storages: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
+    storages: HashMap<String, Arc<dyn KeyStorage>>,
 }
 
 impl KeyProviderImpl {
-    pub fn new(storages: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>) -> Self {
+    pub fn new(storages: HashMap<String, Arc<dyn KeyStorage>>) -> Self {
         Self { storages }
     }
 }
 
 impl KeyProvider for KeyProviderImpl {
-    fn get_key_storage(
-        &self,
-        format: &str,
-    ) -> Result<Arc<dyn KeyStorage + Send + Sync>, ServiceError> {
-        Ok(self
-            .storages
-            .get(format)
-            .ok_or(ServiceError::NotFound)?
-            .clone())
+    fn get_key_storage(&self, format: &str) -> Option<Arc<dyn KeyStorage>> {
+        self.storages.get(format).cloned()
     }
 }
 
 struct SignatureProviderImpl {
-    pub storage: Arc<dyn KeyStorage + Send + Sync>,
+    pub storage: Arc<dyn KeyStorage>,
     pub key: Key,
 }
 

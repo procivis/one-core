@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::crypto::signer::error::SignerError;
 use crate::model::key::Key;
 use crate::model::key::KeyId;
+use crate::service::error::ValidationError;
 use crate::{
     provider::{
         key_algorithm::provider::KeyAlgorithmProvider,
@@ -66,7 +67,8 @@ impl KeyStorage for InternalKeyProvider {
     ) -> Result<GeneratedKey, ServiceError> {
         let key_pair = self
             .key_algorithm_provider
-            .get_key_algorithm(key_type)?
+            .get_key_algorithm(key_type)
+            .ok_or(ValidationError::InvalidKeyAlgorithm(key_type.to_owned()))?
             .generate_key_pair();
 
         Ok(GeneratedKey {

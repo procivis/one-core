@@ -36,7 +36,7 @@ fn setup_service(
     key_algorithm_provider: MockKeyAlgorithmProvider,
     did_config: DidConfig,
 ) -> DidService {
-    let mut did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>> = HashMap::new();
+    let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
     did_methods.insert("KEY".to_string(), Arc::new(did_method));
 
     let did_repository = Arc::new(did_repository);

@@ -6,12 +6,16 @@ use crate::{model::proof::ProofId, service::error::ErrorCode};
 pub enum DataLayerError {
     #[error("Already exists")]
     AlreadyExists,
+
     #[error("Wrong parameters")]
     IncorrectParameters,
+
     #[error("Record not updated")]
     RecordNotUpdated,
+
     #[error("Response could not be mapped")]
     MappingError,
+
     #[error("Database error: {0}")]
     Db(anyhow::Error),
 

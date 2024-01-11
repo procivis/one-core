@@ -372,7 +372,10 @@ impl TransportProtocol for OpenID4VC {
             let (_, revocation_method) = self
                 .revocation_provider
                 .get_revocation_method_by_status_type(&credential_status.r#type)
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+                .ok_or(TransportProtocolError::Failed(format!(
+                    "Revocation method not found for status type {}",
+                    credential_status.r#type
+                )))?;
 
             self.credential_schema_repository
                 .update_credential_schema(UpdateCredentialSchemaRequest {

@@ -412,7 +412,7 @@ async fn test_share_credential_success() {
     protocol_provider
         .expect_get_protocol()
         .times(1)
-        .returning(move |_| Ok(protocol.clone()));
+        .returning(move |_| Some(protocol.clone()));
 
     let credential = generic_credential();
     {
@@ -814,7 +814,7 @@ async fn test_check_revocation_non_revocable() {
 
     revocation_method_provider
         .expect_get_revocation_method()
-        .returning(|_| Ok(Arc::new(MockRevocationMethod::default())));
+        .returning(|_| Some(Arc::new(MockRevocationMethod::default())));
 
     let credential = Credential {
         state: Some(vec![CredentialState {
@@ -958,7 +958,7 @@ async fn test_check_revocation_being_revoked() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
-        .returning(move |_| Ok(revocation_method.clone()));
+        .returning(move |_| Some(revocation_method.clone()));
 
     let credential = Credential {
         state: Some(vec![CredentialState {

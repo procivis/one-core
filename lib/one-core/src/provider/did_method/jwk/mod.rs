@@ -45,7 +45,7 @@ impl super::DidMethod for JWKDidMethod {
         let key_algorithm = self
             .key_algorithm_provider
             .get_key_algorithm(&key.key_type)
-            .map_err(|_| DidMethodError::KeyAlgorithmNotFound)?;
+            .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
         let jwk = key_algorithm
             .bytes_to_jwk(&key.public_key)
             .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;

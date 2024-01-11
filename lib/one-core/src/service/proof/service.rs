@@ -6,7 +6,6 @@ use super::{
     mapper::{get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request},
     ProofService,
 };
-use crate::provider::transport_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::service::error::EntityNotFoundError;
 use crate::{
     common_mapper::list_response_try_into,
@@ -26,6 +25,10 @@ use crate::{
 };
 use crate::{
     common_validator::throw_if_latest_proof_state_not_eq, service::error::BusinessLogicError,
+};
+use crate::{
+    provider::transport_protocol::dto::PresentationDefinitionResponseDTO,
+    service::error::MissingProviderError,
 };
 use time::OffsetDateTime;
 
@@ -114,7 +117,12 @@ impl ProofService {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
-        let transport = self.protocol_provider.get_protocol(&proof.transport)?;
+        let transport = self
+            .protocol_provider
+            .get_protocol(&proof.transport)
+            .ok_or(MissingProviderError::TransportProtocol(
+                proof.transport.clone(),
+            ))?;
         Ok(transport.get_presentation_definition(&proof).await?)
     }
 
@@ -232,7 +240,12 @@ impl ProofService {
             .r#type()
             .to_string();
 
-        let transport = self.protocol_provider.get_protocol(transport_instance)?;
+        let transport = self
+            .protocol_provider
+            .get_protocol(transport_instance)
+            .ok_or(MissingProviderError::TransportProtocol(
+                transport_instance.clone(),
+            ))?;
 
         let url = transport.share_proof(&proof).await?;
 

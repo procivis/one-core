@@ -221,10 +221,14 @@ impl OIDCService {
 
         throw_if_token_request_invalid(&request)?;
 
-        self.credential_schema_repository
+        if self
+            .credential_schema_repository
             .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
+            .await?
+            .is_none()
+        {
+            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+        }
 
         let interaction_id = Uuid::from_str(&request.pre_authorized_code)?;
 

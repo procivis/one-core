@@ -232,7 +232,7 @@ async fn test_create_did_jwk_success() {
         .expect_get_key_algorithm()
         .with(eq("key_type"))
         .once()
-        .return_once(move |_| Ok(Arc::new(key_algorithm)));
+        .return_once(move |_| Some(Arc::new(key_algorithm)));
 
     let provider = JWKDidMethod::new(
         DidCapabilities {

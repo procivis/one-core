@@ -29,40 +29,54 @@ use super::did::DidDeactivationError;
 pub enum ServiceError {
     #[error("General repository error `{0}`")]
     GeneralRuntimeError(String),
+
     #[error("Mapping error: `{0}`")]
     MappingError(String),
+
     #[error("Validation error: `{0}`")]
     ValidationError(String),
+
     #[error("OpenID4VCI validation error `{0}`")]
     OpenID4VCError(#[from] OpenID4VCIError),
+
     #[error("Config validation error `{0}`")]
     ConfigValidationError(#[from] ConfigValidationError),
+
     #[error("Transport protocol error `{0}`")]
     TransportProtocolError(#[from] TransportProtocolError),
+
     #[error("Formatter error `{0}`")]
     FormatterError(#[from] FormatterError),
+
     #[error("Bitstring error `{0}`")]
     BitstringError(#[from] BitstringError),
+
     #[error("Missing signer for algorithm `{0}`")]
     MissingSigner(String),
+
     #[error("Missing algorithm `{0}`")]
     MissingAlgorithm(String),
+
     #[error("Missing transport protocol `{0}`")]
     MissingTransportProtocol(String),
+
+    #[error(transparent)]
+    MissingProvider(#[from] MissingProviderError),
+
     #[error("Key algorithm error `{0}`")]
     KeyAlgorithmError(String),
+
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
+
     #[error("Crypto provider error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
+
     #[error("Other Repository error: `{0}`")]
     Other(String),
 
     #[error(transparent)]
     EntityNotFound(#[from] EntityNotFoundError),
-
-    #[error("Not found")]
-    NotFound,
 
     #[error(transparent)]
     BusinessLogic(#[from] BusinessLogicError),
@@ -160,9 +174,6 @@ pub enum BusinessLogicError {
     #[error("Missing proof schema: {proof_schema_id}")]
     MissingProofSchema { proof_schema_id: Uuid },
 
-    #[error("Missing formatter {formatter}")]
-    MissingFormatter { formatter: String },
-
     #[error("Missing interaction for access token: {interaction_id}")]
     MissingInteractionForAccessToken { interaction_id: Uuid },
 
@@ -184,8 +195,14 @@ pub enum ValidationError {
         source: anyhow::Error,
     },
 
-    #[error("Invalid formatter: {formatter}")]
-    InvalidFormatter { formatter: String },
+    #[error("Invalid formatter: {0}")]
+    InvalidFormatter(String),
+
+    #[error("Invalid key algorithm: {0}")]
+    InvalidKeyAlgorithm(String),
+
+    #[error("Invalid key storage type: {0}")]
+    InvalidKeyStorage(String),
 
     #[error("Unsupported key type: {key_type}")]
     UnsupportedKeyType { key_type: String },
@@ -201,10 +218,52 @@ pub enum ValidationError {
 
     #[error("Proof schema: Missing claims")]
     ProofSchemaMissingClaims,
+
     #[error("Proof schema: No required claim")]
     ProofSchemaNoRequiredClaim,
+
     #[error("Proof schema: Duplicit claim schema")]
     ProofSchemaDuplicitClaim,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum MissingProviderError {
+    #[error("Cannot find `{0}` in formatter provider")]
+    Formatter(String),
+
+    #[error("Cannot find `{0}` in key storage provider")]
+    KeyStorage(String),
+
+    #[error("Cannot find `{0}` in did method provider")]
+    DidMethod(String),
+
+    #[error("Cannot find `{0}` in key algorithm provider")]
+    KeyAlgorithm(String),
+
+    #[error("Cannot find `{0}` in revocation method provider")]
+    RevocationMethod(String),
+
+    #[error("Cannot find revocation method provider for credential status type `{0}`")]
+    RevocationMethodByCredentialStatusType(String),
+
+    #[error("Cannot find `{0}` in transport protocol provider")]
+    TransportProtocol(String),
+}
+
+impl MissingProviderError {
+    pub fn error_code(&self) -> ErrorCode {
+        match self {
+            MissingProviderError::Formatter(_) => ErrorCode::MissingFormatter,
+            MissingProviderError::KeyStorage(_) => ErrorCode::MissingKeyStorage,
+            MissingProviderError::DidMethod(_) => ErrorCode::MissingDidMethod,
+            MissingProviderError::KeyAlgorithm(_) => ErrorCode::MissingKeyAlgorithm,
+            MissingProviderError::RevocationMethod(_) => ErrorCode::MissingRevocationMethod,
+            MissingProviderError::RevocationMethodByCredentialStatusType(_) => {
+                ErrorCode::MissingRevocationMethodByCredentialStatusType
+            }
+            MissingProviderError::TransportProtocol(_) => ErrorCode::MissingTransportProtocol,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -219,19 +278,27 @@ pub enum ErrorCode {
     DidCannotDeactivate,
     DidMissingKey,
 
+    CredentialSchemaNotFound,
     CredentialSchemaAlreadyExists,
     CredentialSchemaMissingClaims,
+    MissingCredentialSchema,
 
-    Credential001,
+    CredentialNotFound,
     CredentialInvalidState,
     CredentialMissingClaim,
+    MissingCredentialsForInteraction,
+    MissingCredentialData,
 
+    ProofNotFound,
+    ProofInvalidState,
+
+    ProofSchemaNotFound,
     ProofSchemaAlreadyExists,
     ProofSchemaMissingClaims,
     ProofSchemaNoRequiredClaim,
     ProofSchemaDuplicitClaim,
-
-    ProofInvalidState,
+    ProofSchemaDeleted,
+    MissingProofSchema,
 
     InvalidExchangeType,
     UnsupportedKeyType,
@@ -241,24 +308,29 @@ pub enum ErrorCode {
 
     MissingFormatter,
     InvalidFormatter,
-    MissingCredentialsForInteraction,
-    ProofSchemaDeleted,
-    MissingCredentialData,
-    MissingCredentialSchema,
+
     MissingClaimSchema,
+    MissingClaimSchemas,
+
     MissingRevocationListForDid,
     RevocationListNotFound,
-    MissingProofSchema,
-    ProofSchemaNotFound,
-    ProofNotFound,
-    OrganisationNotFound,
-    KeyNotFound,
-    CredentialSchemaNotFound,
-    MissingInteractionForAccessToken,
     MissingCredentialIndexOnRevocationList,
 
+    OrganisationNotFound,
+
+    KeyNotFound,
+
+    MissingInteractionForAccessToken,
+
     Unmapped,
-    MissingClaimSchemas,
+    MissingKeyStorage,
+    MissingDidMethod,
+    MissingKeyAlgorithm,
+    InvalidKeyAlgorithm,
+    InvalidKeyStorage,
+    MissingRevocationMethod,
+    MissingRevocationMethodByCredentialStatusType,
+    MissingTransportProtocol,
 }
 
 impl From<FormatError> for ServiceError {
@@ -291,7 +363,7 @@ impl ErrorCode {
             ErrorCode::CredentialSchemaAlreadyExists => "Credential schema already exists",
             ErrorCode::CredentialSchemaMissingClaims => "Credential schema: Missing claims",
 
-            ErrorCode::Credential001 => "Credential not found",
+            ErrorCode::CredentialNotFound => "Credential not found",
             ErrorCode::CredentialInvalidState => "Credential state invalid",
             ErrorCode::CredentialMissingClaim => "Credential: Missing claim",
 
@@ -311,8 +383,6 @@ impl ErrorCode {
 
             ErrorCode::Unmapped => "Unmapped error code",
 
-            ErrorCode::MissingFormatter => "Missing formatter",
-            ErrorCode::InvalidFormatter => "Invalid formatter",
             ErrorCode::MissingCredentialsForInteraction => {
                 "Missing credentials for provided interaction"
             }
@@ -333,6 +403,20 @@ impl ErrorCode {
                 "Missing credential index on revocation list"
             }
             ErrorCode::MissingClaimSchemas => "Missing claim schemas",
+
+            ErrorCode::MissingKeyStorage => "Missing key storage",
+            ErrorCode::MissingDidMethod => "Missing did method",
+            ErrorCode::MissingFormatter => "Missing formatter",
+            ErrorCode::MissingKeyAlgorithm => "Missing key algorithm",
+            ErrorCode::MissingRevocationMethod => "Missing revocation method",
+            ErrorCode::MissingRevocationMethodByCredentialStatusType => {
+                "Missing revocation method by status"
+            }
+            ErrorCode::MissingTransportProtocol => "Missing transport protocol",
+
+            ErrorCode::InvalidFormatter => "Invalid formatter type",
+            ErrorCode::InvalidKeyAlgorithm => "Invalid key algorithm type",
+            ErrorCode::InvalidKeyStorage => "Invalid key storage type",
         }
     }
 }
@@ -345,11 +429,11 @@ impl ServiceError {
             ServiceError::Validation(error) => error.error_code(),
             ServiceError::ResponseMapping(_) => ErrorCode::ResponseMapping,
             ServiceError::Repository(error) => error.error_code(),
+            ServiceError::MissingProvider(error) => error.error_code(),
 
             ServiceError::GeneralRuntimeError(_)
             | ServiceError::MappingError(_)
             | ServiceError::OpenID4VCError(_)
-            | ServiceError::NotFound
             | ServiceError::ValidationError(_)
             | ServiceError::ConfigValidationError(_)
             | ServiceError::TransportProtocolError(_)
@@ -369,7 +453,7 @@ impl ServiceError {
 impl EntityNotFoundError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            EntityNotFoundError::Credential(_) => ErrorCode::Credential001,
+            EntityNotFoundError::Credential(_) => ErrorCode::CredentialNotFound,
             EntityNotFoundError::Did(_) => ErrorCode::DidNotFound,
             EntityNotFoundError::RevocationList(_) => ErrorCode::RevocationListNotFound,
             EntityNotFoundError::ProofSchema(_) => ErrorCode::ProofSchemaNotFound,
@@ -409,7 +493,6 @@ impl BusinessLogicError {
                 ErrorCode::MissingRevocationListForDid
             }
             BusinessLogicError::MissingProofSchema { .. } => ErrorCode::MissingProofSchema,
-            BusinessLogicError::MissingFormatter { .. } => ErrorCode::MissingFormatter,
             BusinessLogicError::MissingInteractionForAccessToken { .. } => {
                 ErrorCode::MissingInteractionForAccessToken
             }
@@ -434,7 +517,9 @@ impl ValidationError {
             ValidationError::ProofSchemaMissingClaims => ErrorCode::ProofSchemaMissingClaims,
             ValidationError::ProofSchemaNoRequiredClaim => ErrorCode::ProofSchemaNoRequiredClaim,
             ValidationError::ProofSchemaDuplicitClaim => ErrorCode::ProofSchemaDuplicitClaim,
-            ValidationError::InvalidFormatter { .. } => ErrorCode::InvalidFormatter,
+            ValidationError::InvalidFormatter(_) => ErrorCode::InvalidFormatter,
+            ValidationError::InvalidKeyAlgorithm(_) => ErrorCode::InvalidKeyAlgorithm,
+            ValidationError::InvalidKeyStorage(_) => ErrorCode::InvalidKeyStorage,
         }
     }
 }

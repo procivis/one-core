@@ -1,7 +1,7 @@
 use time::OffsetDateTime;
 
 use crate::repository::error::DataLayerError;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError};
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, MissingProviderError};
 use crate::{
     common_mapper::list_response_try_into,
     common_validator::{
@@ -255,15 +255,20 @@ impl CredentialService {
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Accepted)?;
 
-        let revocation_method = self.revocation_method_provider.get_revocation_method(
-            &credential
-                .schema
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "credential schema is None".to_string(),
-                ))?
-                .revocation_method,
-        )?;
+        let revocation_method_key = &credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "credential schema is None".to_string(),
+            ))?
+            .revocation_method;
+
+        let revocation_method = self
+            .revocation_method_provider
+            .get_revocation_method(revocation_method_key)
+            .ok_or(MissingProviderError::RevocationMethod(
+                revocation_method_key.to_owned(),
+            ))?;
 
         revocation_method
             .mark_credential_revoked(&credential)
@@ -331,9 +336,7 @@ impl CredentialService {
                     let formatter = self
                         .formatter_provider
                         .get_formatter(&credential_schema.format)
-                        .ok_or(BusinessLogicError::MissingFormatter {
-                            formatter: credential_schema.format.clone(),
-                        })?;
+                        .ok_or(MissingProviderError::Formatter(credential_schema.format))?;
 
                     let credential = String::from_utf8(credential.credential)
                         .map_err(|e| ServiceError::MappingError(e.to_string()))?;
@@ -376,7 +379,10 @@ impl CredentialService {
 
             let revocation_method = self
                 .revocation_method_provider
-                .get_revocation_method(&credential_schema.revocation_method)?;
+                .get_revocation_method(&credential_schema.revocation_method)
+                .ok_or(MissingProviderError::RevocationMethod(
+                    credential_schema.revocation_method,
+                ))?;
 
             let issuer_did = credential
                 .issuer_did
@@ -469,7 +475,12 @@ impl CredentialService {
             .r#type()
             .to_string();
 
-        let transport = self.protocol_provider.get_protocol(transport_instance)?;
+        let transport = self
+            .protocol_provider
+            .get_protocol(transport_instance)
+            .ok_or(MissingProviderError::TransportProtocol(
+                transport_instance.clone(),
+            ))?;
 
         let url = transport.share_credential(&credential).await?;
 

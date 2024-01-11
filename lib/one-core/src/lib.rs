@@ -53,11 +53,11 @@ use crate::service::revocation_list::RevocationListService;
 // Clone just for now. Later it should be removed.
 #[derive(Clone)]
 pub struct OneCore {
-    pub did_methods: HashMap<String, Arc<dyn DidMethod + Send + Sync>>,
-    pub key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm + Send + Sync>>,
-    pub key_providers: HashMap<String, Arc<dyn KeyStorage + Send + Sync>>,
-    pub transport_protocols: HashMap<String, Arc<dyn TransportProtocol + Send + Sync>>,
-    pub revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)>,
+    pub did_methods: HashMap<String, Arc<dyn DidMethod>>,
+    pub key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
+    pub key_providers: HashMap<String, Arc<dyn KeyStorage>>,
+    pub transport_protocols: HashMap<String, Arc<dyn TransportProtocol>>,
+    pub revocation_methods: Vec<(String, Arc<dyn RevocationMethod>)>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
     pub credential_service: CredentialService,
@@ -125,7 +125,7 @@ impl OneCore {
 
         let config = Arc::new(core_config);
 
-        let revocation_methods: Vec<(String, Arc<dyn RevocationMethod + Send + Sync>)> = vec![
+        let revocation_methods: Vec<(String, Arc<dyn RevocationMethod>)> = vec![
             ("NONE".to_string(), Arc::new(NoneRevocation {})),
             (
                 "STATUSLIST2021".to_string(),
@@ -160,7 +160,6 @@ impl OneCore {
             data_provider.get_credential_repository(),
             revocation_method_provider.clone(),
             key_provider.clone(),
-            config.clone(),
         ));
 
         Ok(OneCore {

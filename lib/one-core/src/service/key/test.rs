@@ -26,7 +26,7 @@ fn setup_service(
     key_storage: MockKeyStorage,
     config: crate::config::core_config::CoreConfig,
 ) -> KeyService {
-    let mut storages: HashMap<String, Arc<dyn KeyStorage + Send + Sync>> = HashMap::new();
+    let mut storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
     storages.insert("INTERNAL".to_string(), Arc::new(key_storage));
 
     let provider = KeyProviderImpl::new(storages);

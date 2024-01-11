@@ -28,7 +28,7 @@ use crate::{
         },
     },
     service::{
-        error::{BusinessLogicError, EntityNotFoundError, ServiceError},
+        error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
         ssi_validator::validate_config_entity_presence,
     },
 };
@@ -94,7 +94,10 @@ impl SSIHolderService {
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         self.protocol_provider
-            .get_protocol(&proof.transport)?
+            .get_protocol(&proof.transport)
+            .ok_or(MissingProviderError::TransportProtocol(
+                proof.transport.clone(),
+            ))?
             .reject_proof(&proof)
             .await?;
 
@@ -140,7 +143,12 @@ impl SSIHolderService {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
-        let transport_protocol = self.protocol_provider.get_protocol(&proof.transport)?;
+        let transport_protocol = self
+            .protocol_provider
+            .get_protocol(&proof.transport)
+            .ok_or(MissingProviderError::TransportProtocol(
+                proof.transport.clone(),
+            ))?;
         let presentation_definition = transport_protocol
             .get_presentation_definition(&proof)
             .await?;
@@ -225,15 +233,11 @@ impl SSIHolderService {
                 }
             }
 
-            let Some(formatter) = self
+            let format = &credential_schema.format;
+            let formatter = self
                 .formatter_provider
-                .get_formatter(&credential_schema.format)
-            else {
-                return Err(BusinessLogicError::MissingFormatter {
-                    formatter: credential_schema.format,
-                }
-                .into());
-            };
+                .get_formatter(format)
+                .ok_or(MissingProviderError::Formatter(format.to_string()))?;
 
             let credential_presentation = CredentialPresentation {
                 token: credential_content.to_owned(),
@@ -318,7 +322,10 @@ impl SSIHolderService {
 
             let issuer_response = self
                 .protocol_provider
-                .get_protocol(&credential.transport)?
+                .get_protocol(&credential.transport)
+                .ok_or(MissingProviderError::TransportProtocol(
+                    credential.transport.clone(),
+                ))?
                 .accept_credential(&credential)
                 .await?;
 
@@ -367,7 +374,10 @@ impl SSIHolderService {
             throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
             self.protocol_provider
-                .get_protocol(&credential.transport)?
+                .get_protocol(&credential.transport)
+                .ok_or(MissingProviderError::TransportProtocol(
+                    credential.transport.clone(),
+                ))?
                 .reject_credential(&credential)
                 .await?;
 

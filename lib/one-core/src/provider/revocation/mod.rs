@@ -15,7 +15,7 @@ pub struct CredentialRevocationInfo {
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
-pub trait RevocationMethod {
+pub trait RevocationMethod: Send + Sync {
     fn get_status_type(&self) -> String;
 
     async fn add_issued_credential(
