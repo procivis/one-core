@@ -33,8 +33,8 @@ pub(crate) struct StatusList2021 {
     pub credential_repository: Arc<dyn CredentialRepository>,
     pub revocation_list_repository: Arc<dyn RevocationListRepository>,
     pub key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-    pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub client: reqwest::Client,
 }
 

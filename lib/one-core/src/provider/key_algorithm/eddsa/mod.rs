@@ -1,5 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use did_key::{Fingerprint, Generate, KeyMaterial};
+use ed25519_compact::{KeyPair, PublicKey};
 use serde::Deserialize;
 
 use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
@@ -38,15 +38,18 @@ impl KeyAlgorithm for Eddsa {
     }
 
     fn get_multibase(&self, public_key: &[u8]) -> String {
-        let key = did_key::Ed25519KeyPair::from_public_key(public_key);
-        key.fingerprint()
+        let codec = &[0xed, 0x1];
+        let key = PublicKey::from_slice(public_key).unwrap();
+        let data = [codec, key.as_ref()].concat();
+        format!("z{}", bs58::encode(data).into_string())
     }
 
     fn generate_key_pair(&self) -> GeneratedKey {
-        let key_pair = did_key::Ed25519KeyPair::new();
+        let key_pair = KeyPair::generate();
+
         GeneratedKey {
-            public: key_pair.public_key_bytes(),
-            private: key_pair.private_key_bytes(),
+            public: key_pair.pk.to_vec(),
+            private: key_pair.sk.to_vec(),
         }
     }
 

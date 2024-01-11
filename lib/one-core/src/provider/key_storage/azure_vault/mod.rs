@@ -1,8 +1,7 @@
-use std::ops::{Add, Sub};
+use std::ops::Add;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use did_key::{Generate, KeyMaterial, P256KeyPair};
 use serde::Deserialize;
 use time::{Duration, OffsetDateTime};
 use tokio::sync::Mutex;
@@ -26,6 +25,7 @@ use crate::{
         transport_protocol::TransportProtocolError,
     },
     service::error::{ServiceError, ValidationError},
+    util::p_256::p_256_vk_from_bytes,
 };
 
 mod dto;
@@ -86,10 +86,11 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
-        let key = P256KeyPair::from_public_key(&public_key_bytes);
+        let key = p_256_vk_from_bytes(&public_key_bytes)
+            .ok_or_else(|| ServiceError::Other("failed to build public key".into()))?;
 
         Ok(GeneratedKey {
-            public_key: key.public_key_bytes(),
+            public_key: key.to_encoded_point(true).as_bytes().to_vec(),
             key_reference: response.key.key_id.as_bytes().to_vec(),
         })
     }
@@ -208,7 +209,7 @@ impl AzureVaultKeyProvider {
             None => false,
             Some(token) => {
                 // Adding 5 seconds tolerance for network requests delay
-                token.valid_until > OffsetDateTime::now_utc().sub(Duration::seconds(5))
+                token.valid_until > OffsetDateTime::now_utc().add(Duration::seconds(5))
             }
         }
     }

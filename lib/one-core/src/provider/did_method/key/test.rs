@@ -15,13 +15,13 @@ use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::{DidKeyParams, KeyDidMethod};
+use super::KeyDidMethod;
 
 fn setup_provider(
     key_algorithm: MockKeyAlgorithm,
     algorithm_id: &str,
     algorithm_type: KeyAlgorithmType,
-) -> Arc<dyn DidMethodProvider + Send + Sync> {
+) -> Arc<dyn DidMethodProvider> {
     let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
     key_algorithms.insert(algorithm_id.to_string(), Arc::new(key_algorithm));
 
@@ -49,14 +49,12 @@ fn setup_provider(
                 operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
             },
             Arc::new(key_algorithm_provider),
-            DidKeyParams,
         )),
     );
 
     Arc::new(DidMethodProviderImpl::new(did_methods))
 }
 
-// https://github.com/w3c-ccg/did-method-key/blob/main/test-vectors/ed25519-x25519.json
 #[tokio::test]
 async fn test_did_key_resolve_details_eddsa() {
     let mut key_algorithm = MockKeyAlgorithm::default();
@@ -76,8 +74,7 @@ async fn test_did_key_resolve_details_eddsa() {
             }))
         });
 
-    let provider: Arc<dyn DidMethodProvider + Send + Sync> =
-        setup_provider(key_algorithm, "EDDSA", KeyAlgorithmType::Eddsa);
+    let provider = setup_provider(key_algorithm, "EDDSA", KeyAlgorithmType::Eddsa);
 
     let result = provider
         .resolve(
@@ -91,7 +88,8 @@ async fn test_did_key_resolve_details_eddsa() {
     assert_eq!(result,
     DidDocumentDTO {
         context: vec![
-            "https://www.w3.org/ns/did/v1".to_string(),
+            "https://www.w3.org/ns/did/v1".into(),
+            "https://w3id.org/security/suites/jws-2020/v1".into(),
         ],
         id: DidValue::from_str("did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp").unwrap(),
         verification_method: vec![
@@ -121,7 +119,7 @@ async fn test_did_key_resolve_details_eddsa() {
         ),
         key_agreement: Some(
             vec![
-                "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6LShs9GGnqk85isEBzzshkuVWrVKsRp24GnDuHk8QWkARMW".to_owned(),
+                "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
             ],
         ),
         capability_invocation: Some(
@@ -157,8 +155,7 @@ async fn test_did_key_resolve_details_es256() {
             }))
         });
 
-    let provider: Arc<dyn DidMethodProvider + Send + Sync> =
-        setup_provider(key_algorithm, "ES256", KeyAlgorithmType::Es256);
+    let provider = setup_provider(key_algorithm, "ES256", KeyAlgorithmType::Es256);
 
     let result = provider
         .resolve(
@@ -172,7 +169,8 @@ async fn test_did_key_resolve_details_es256() {
     assert_eq!(result,
     DidDocumentDTO {
         context: vec![
-            "https://www.w3.org/ns/did/v1".to_string(),
+            "https://www.w3.org/ns/did/v1".into(),
+            "https://w3id.org/security/suites/jws-2020/v1".into(),
         ],
         id: DidValue::from_str("did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv").unwrap(),
         verification_method: vec![

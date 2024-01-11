@@ -29,9 +29,9 @@ pub struct SSIVerifierService {
     proof_repository: Arc<dyn ProofRepository + Send + Sync>,
     did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -43,9 +43,9 @@ impl SSIVerifierService {
         proof_repository: Arc<dyn ProofRepository + Send + Sync>,
         did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-        did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

@@ -179,7 +179,7 @@ impl SSIVerifierService {
         &self,
         id: &ProofId,
         holder_did_value: &DidValue,
-        did_method_provider: &(dyn DidMethodProvider + Send + Sync),
+        did_method_provider: &dyn DidMethodProvider,
     ) -> Result<(), ServiceError> {
         let proof = self
             .get_proof_with_state(

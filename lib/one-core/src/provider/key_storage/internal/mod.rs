@@ -20,7 +20,7 @@ use crate::{
 
 pub struct InternalKeyProvider {
     capabilities: KeyStorageCapabilities,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     encryption_key: Option<[u8; 32]>,
 }
 
@@ -33,7 +33,7 @@ pub struct Params {
 impl InternalKeyProvider {
     pub fn new(
         capabilities: KeyStorageCapabilities,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         params: Params,
     ) -> Self {
         Self {

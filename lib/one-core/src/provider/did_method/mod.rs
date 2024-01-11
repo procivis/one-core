@@ -17,8 +17,8 @@ use crate::provider::did_method::x509::X509Method;
 use super::key_algorithm::provider::KeyAlgorithmProvider;
 
 use self::dto::DidDocumentDTO;
-use self::key::DidKeyParams;
 
+pub mod common;
 pub mod dto;
 pub mod jwk;
 pub mod key;
@@ -64,7 +64,7 @@ pub trait DidMethod: Send + Sync {
 
 pub fn did_method_providers_from_config(
     did_config: &DidConfig,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn DidMethod>>, ConfigError> {
     let mut providers = HashMap::new();
@@ -79,9 +79,7 @@ pub fn did_method_providers_from_config(
                 let method = Arc::new(KeyDidMethod::new(
                     capabilities,
                     key_algorithm_provider.clone(),
-                    DidKeyParams,
                 ));
-
                 providers.insert(type_str, method as _);
             }
             core_config::DidType::Web => {

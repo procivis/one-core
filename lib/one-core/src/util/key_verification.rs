@@ -12,8 +12,8 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub(crate) struct KeyVerification {
-    pub did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    pub did_method_provider: Arc<dyn DidMethodProvider>,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     pub key_role: KeyRole,
 }
 
