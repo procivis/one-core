@@ -1,5 +1,6 @@
 use super::ClaimProvider;
 use crate::{entity::claim, mapper::to_data_layer_error};
+use autometrics::autometrics;
 use one_core::{
     common_mapper::iterable_try_into,
     model::{
@@ -12,6 +13,7 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;
 
+#[autometrics]
 #[async_trait::async_trait]
 impl ClaimRepository for ClaimProvider {
     async fn create_claim_list(&self, claims: Vec<Claim>) -> Result<(), DataLayerError> {

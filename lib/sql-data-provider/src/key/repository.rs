@@ -2,6 +2,7 @@ use crate::entity::key;
 use crate::key::mapper::from_model_and_relations;
 use crate::key::KeyProvider;
 use crate::list_query::SelectWithListQuery;
+use autometrics::autometrics;
 use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyId, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
@@ -36,6 +37,7 @@ impl KeyProvider {
     }
 }
 
+#[autometrics]
 #[async_trait::async_trait]
 impl KeyRepository for KeyProvider {
     async fn create_key(&self, request: Key) -> Result<KeyId, DataLayerError> {

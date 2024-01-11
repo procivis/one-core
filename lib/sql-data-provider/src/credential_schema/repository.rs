@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use autometrics::autometrics;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
@@ -34,6 +35,7 @@ use crate::{
     mapper::to_data_layer_error,
 };
 
+#[autometrics]
 #[async_trait::async_trait]
 impl CredentialSchemaRepository for CredentialSchemaProvider {
     async fn create_credential_schema(

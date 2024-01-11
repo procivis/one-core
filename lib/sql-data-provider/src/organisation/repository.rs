@@ -1,5 +1,6 @@
 use super::OrganisationProvider;
 use crate::{entity::organisation, mapper::to_data_layer_error};
+use autometrics::autometrics;
 use one_core::{
     common_mapper::iterable_try_into,
     model::organisation::{Organisation, OrganisationId, OrganisationRelations},
@@ -9,6 +10,7 @@ use sea_orm::EntityTrait;
 use std::str::FromStr;
 use uuid::Uuid;
 
+#[autometrics]
 #[async_trait::async_trait]
 impl OrganisationRepository for OrganisationProvider {
     async fn create_organisation(

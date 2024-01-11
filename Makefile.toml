@@ -33,7 +33,6 @@ workspace = true
 command = "cargo"
 args = ["test"]
 
-
 [tasks.unit-tests]
 command = "cargo"
 args = ["test", "--lib"]

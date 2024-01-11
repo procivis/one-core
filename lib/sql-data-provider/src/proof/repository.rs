@@ -8,6 +8,7 @@ use crate::{
     list_query::SelectWithListQuery,
 };
 use anyhow::anyhow;
+use autometrics::autometrics;
 use one_core::model::proof::UpdateProofRequest;
 use one_core::{
     common_mapper::convert_inner,
@@ -28,6 +29,7 @@ use std::{collections::HashMap, str::FromStr};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+#[autometrics]
 #[async_trait::async_trait]
 impl ProofRepository for ProofProvider {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {

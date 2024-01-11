@@ -1,3 +1,4 @@
+use autometrics::autometrics;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set, Unchanged};
 use shared_types::DidId;
 use std::str::FromStr;
@@ -43,6 +44,7 @@ impl RevocationListProvider {
     }
 }
 
+#[autometrics]
 #[async_trait::async_trait]
 impl RevocationListRepository for RevocationListProvider {
     async fn create_revocation_list(

@@ -10,6 +10,7 @@ use crate::{
     },
     list_query::SelectWithListQuery,
 };
+use autometrics::autometrics;
 use one_core::{
     common_mapper::convert_inner,
     model::{
@@ -319,6 +320,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         .order_by_desc(credential::Column::Id)
 }
 
+#[autometrics]
 #[async_trait::async_trait]
 impl CredentialRepository for CredentialProvider {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
