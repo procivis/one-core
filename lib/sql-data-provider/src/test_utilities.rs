@@ -1,4 +1,4 @@
-use one_core::model::credential::CredentialStateEnum;
+use one_core::model::credential::{CredentialState, CredentialStateEnum};
 use one_core::model::interaction::InteractionId;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{DidId, DidValue};
@@ -60,6 +60,21 @@ pub async fn insert_credential(
     .await?;
 
     Ok(credential.id)
+}
+
+pub async fn insert_credential_state_to_database(
+    database: &DatabaseConnection,
+    credential_id: &str,
+    state: CredentialState,
+) -> Result<(), DbErr> {
+    credential_state::ActiveModel {
+        credential_id: Set(credential_id.to_owned()),
+        created_date: Set(state.created_date),
+        state: Set(state.state.into()),
+    }
+    .insert(database)
+    .await?;
+    Ok(())
 }
 
 pub async fn insert_credential_schema_to_database(

@@ -10,11 +10,12 @@ use one_core::{
     repository::error::DataLayerError,
 };
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
-use shared_types::DidId;
+use shared_types::{DidId, DidValue};
 use std::str::FromStr;
 use uuid::Uuid;
 
 use crate::{
+    credential::entity_model::CredentialListEntityModel,
     entity::{self, credential, credential_schema, credential_state, did},
     list_query::GetEntityColumn,
 };
@@ -97,4 +98,93 @@ pub(super) fn request_to_active_model(
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
         key_id: Set(key_id.map(|id| id.to_string())),
     }
+}
+
+pub(super) fn credential_list_model_to_repository_model(
+    credential: CredentialListEntityModel,
+) -> Result<Credential, DataLayerError> {
+    let schema_id = Uuid::from_str(&credential.credential_schema_id)?;
+    let schema = CredentialSchema {
+        id: schema_id,
+        deleted_at: credential.credential_schema_deleted_at,
+        created_date: credential.credential_schema_created_date,
+        last_modified: credential.credential_schema_last_modified,
+        name: credential.credential_schema_name,
+        format: credential.credential_schema_format,
+        revocation_method: credential.credential_schema_revocation_method,
+        claim_schemas: None,
+        organisation: None,
+    };
+
+    let issuer_did = match credential.issuer_did_id {
+        None => None,
+        Some(issuer_did_id) => {
+            let issuer_did_id = Uuid::from_str(&issuer_did_id)?;
+            Some(Did {
+                id: DidId::from(issuer_did_id),
+                created_date: credential
+                    .issuer_did_created_date
+                    .ok_or(DataLayerError::MappingError)?,
+                last_modified: credential
+                    .issuer_did_last_modified
+                    .ok_or(DataLayerError::MappingError)?,
+                name: credential
+                    .issuer_did_name
+                    .ok_or(DataLayerError::MappingError)?,
+                did: DidValue::from_str(
+                    &credential
+                        .issuer_did_did
+                        .ok_or(DataLayerError::MappingError)?,
+                )
+                .map_err(|_| DataLayerError::MappingError)?,
+                did_type: credential
+                    .issuer_did_type_field
+                    .ok_or(DataLayerError::MappingError)?
+                    .into(),
+                did_method: credential
+                    .issuer_did_method
+                    .ok_or(DataLayerError::MappingError)?,
+                deactivated: credential
+                    .issuer_did_deactivated
+                    .ok_or(DataLayerError::MappingError)?,
+                keys: None,
+                organisation: None,
+            })
+        }
+    };
+
+    let state = vec![CredentialState {
+        created_date: credential.credential_state_created_date,
+        state: credential.credential_state_state.into(),
+    }];
+
+    Ok(Credential {
+        id: Uuid::from_str(&credential.id).map_err(|_| DataLayerError::MappingError)?,
+        created_date: credential.created_date,
+        issuance_date: credential.issuance_date,
+        last_modified: credential.last_modified,
+        deleted_at: credential.deleted_at,
+        credential: credential.credential,
+        transport: credential.transport,
+        redirect_uri: credential.redirect_uri,
+        state: Some(state),
+        claims: None,
+        issuer_did,
+        holder_did: None,
+        schema: Some(schema),
+        interaction: None,
+        revocation_list: None,
+        key: None,
+    })
+}
+
+pub(super) fn credentials_to_repository(
+    credentials: Vec<CredentialListEntityModel>,
+) -> Result<Vec<Credential>, DataLayerError> {
+    let mut result: Vec<Credential> = Vec::new();
+    for credential in credentials.into_iter() {
+        result.push(credential_list_model_to_repository_model(credential)?);
+    }
+
+    Ok(result)
 }

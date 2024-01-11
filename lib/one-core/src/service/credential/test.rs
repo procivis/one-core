@@ -1,5 +1,4 @@
 use super::CredentialService;
-use crate::service::error::{EntityNotFoundError, ValidationError};
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -32,7 +31,7 @@ use crate::{
             self,
             dto::{CreateCredentialRequestDTO, CredentialRequestClaimDTO, GetCredentialQueryDTO},
         },
-        error::{BusinessLogicError, ServiceError},
+        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
         test_utilities::generic_config,
     },
 };
@@ -128,6 +127,53 @@ fn generic_credential() -> Credential {
                 required: true,
             }]),
             organisation: Some(organisation),
+        }),
+        interaction: None,
+        revocation_list: None,
+        key: None,
+    }
+}
+
+fn generic_credential_list_entity() -> Credential {
+    let now = OffsetDateTime::now_utc();
+
+    Credential {
+        id: Uuid::new_v4(),
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        deleted_at: None,
+        credential: vec![],
+        transport: "PROCIVIS_TEMPORARY".to_string(),
+        redirect_uri: None,
+        state: Some(vec![CredentialState {
+            created_date: now,
+            state: CredentialStateEnum::Created,
+        }]),
+        claims: None,
+        issuer_did: Some(Did {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation: None,
+            did: "did1".parse().unwrap(),
+            did_type: DidType::Local,
+            did_method: "KEY".to_string(),
+            keys: None,
+            deactivated: false,
+        }),
+        holder_did: None,
+        schema: Some(CredentialSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            claim_schemas: None,
+            organisation: None,
         }),
         interaction: None,
         revocation_list: None,
@@ -231,14 +277,14 @@ async fn test_get_credential_list_success() {
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
     let now = OffsetDateTime::now_utc();
-    let mut c = generic_credential().clone();
+    let mut c = generic_credential_list_entity();
     c.state = Some(vec![CredentialState {
         created_date: now,
         state: CredentialStateEnum::Revoked,
     }]);
 
     let credentials = GetCredentialList {
-        values: vec![generic_credential(), c],
+        values: vec![generic_credential_list_entity(), c],
         total_pages: 1,
         total_items: 2,
     };
@@ -267,14 +313,7 @@ async fn test_get_credential_list_success() {
             sort_direction: None,
             name: None,
             exact: None,
-            organisation_id: credentials.values[0]
-                .schema
-                .clone()
-                .unwrap()
-                .organisation
-                .unwrap()
-                .id
-                .to_string(),
+            organisation_id: Uuid::new_v4().to_string(),
         })
         .await;
 

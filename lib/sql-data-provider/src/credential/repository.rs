@@ -1,12 +1,15 @@
 use crate::{
     common::calculate_pages_count,
     credential::{
-        mapper::{get_credential_state_active_model, request_to_active_model},
+        entity_model::CredentialListEntityModel,
+        mapper::{
+            credentials_to_repository, get_credential_state_active_model, request_to_active_model,
+        },
         CredentialProvider,
     },
     entity::{
         claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
-        credential_state,
+        credential_state, did,
     },
     list_query::SelectWithListQuery,
 };
@@ -15,16 +18,13 @@ use one_core::{
     common_mapper::convert_inner,
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
-        claim_schema::ClaimSchemaRelations,
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialState,
-            CredentialStateRelations, GetCredentialList, GetCredentialQuery,
-            UpdateCredentialRequest,
+            Credential, CredentialId, CredentialRelations, CredentialState, GetCredentialList,
+            GetCredentialQuery, UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
         interaction::InteractionId,
-        organisation::OrganisationRelations,
     },
     repository::{
         claim_repository::ClaimRepository, credential_repository::CredentialRepository,
@@ -262,10 +262,39 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::DeletedAt,
             credential::Column::Transport,
             credential::Column::Credential,
-            credential::Column::IssuerDidId,
-            credential::Column::HolderDidId,
-            credential::Column::CredentialSchemaId,
+            credential::Column::RedirectUri,
         ])
+        .column_as(
+            credential_schema::Column::CreatedDate,
+            "credential_schema_created_date",
+        )
+        .column_as(
+            credential_schema::Column::Format,
+            "credential_schema_format",
+        )
+        .column_as(credential_schema::Column::Id, "credential_schema_id")
+        .column_as(
+            credential_schema::Column::LastModified,
+            "credential_schema_last_modified",
+        )
+        .column_as(credential_schema::Column::Name, "credential_schema_name")
+        .column_as(
+            credential_schema::Column::RevocationMethod,
+            "credential_schema_revocation_method",
+        )
+        .column_as(
+            credential_state::Column::CreatedDate,
+            "credential_state_created_date",
+        )
+        .column_as(credential_state::Column::State, "credential_state_state")
+        .column_as(did::Column::CreatedDate, "issuer_did_created_date")
+        .column_as(did::Column::Deactivated, "issuer_did_deactivated")
+        .column_as(did::Column::Did, "issuer_did_did")
+        .column_as(did::Column::Id, "issuer_did_id")
+        .column_as(did::Column::LastModified, "issuer_did_last_modified")
+        .column_as(did::Column::Method, "issuer_did_method")
+        .column_as(did::Column::Name, "issuer_did_name")
+        .column_as(did::Column::TypeField, "issuer_did_type_field")
         // add related schema (to enable sorting by schema name)
         .join(
             sea_orm::JoinType::InnerJoin,
@@ -475,27 +504,13 @@ impl CredentialRepository for CredentialProvider {
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
         let credentials = query
+            .into_model::<CredentialListEntityModel>()
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
         Ok(GetCredentialList {
-            values: self
-                .credentials_to_repository(
-                    credentials,
-                    &CredentialRelations {
-                        state: Some(CredentialStateRelations::default()),
-                        claims: None,
-                        issuer_did: Some(DidRelations::default()),
-                        holder_did: Some(DidRelations::default()),
-                        schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations {}),
-                            organisation: Some(OrganisationRelations {}),
-                        }),
-                        ..Default::default()
-                    },
-                )
-                .await?,
+            values: credentials_to_repository(credentials)?,
             total_pages: calculate_pages_count(items_count, limit),
             total_items: items_count,
         })

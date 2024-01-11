@@ -1,4 +1,3 @@
-use crate::model::revocation_list::RevocationListRelations;
 use shared_types::DidId;
 use strum_macros::Display;
 use time::OffsetDateTime;
@@ -11,7 +10,7 @@ use super::{
     did::{Did, DidRelations},
     interaction::{Interaction, InteractionId, InteractionRelations},
     key::{Key, KeyId, KeyRelations},
-    revocation_list::RevocationList,
+    revocation_list::{RevocationList, RevocationListRelations},
 };
 
 pub type CredentialId = Uuid;

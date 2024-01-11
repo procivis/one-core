@@ -7,6 +7,7 @@ use one_core::repository::{
     key_repository::KeyRepository, revocation_list_repository::RevocationListRepository,
 };
 
+mod entity_model;
 pub mod mapper;
 pub mod repository;
 
