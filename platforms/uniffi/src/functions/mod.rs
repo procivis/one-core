@@ -3,6 +3,7 @@ mod create_did;
 mod create_organisation;
 mod delete_credential;
 mod generate_key;
+mod get_config;
 mod get_credential;
 mod get_credentials;
 mod get_presentation_defintion;

@@ -1,4 +1,5 @@
 use crate::error::NativeKeyStorageError;
+use crate::mapper::serialize_config_entity;
 use crate::utils::TimestampFormat;
 use dto_mapper::{From, TryInto};
 use one_core::service::error::ServiceError;
@@ -16,6 +17,7 @@ use one_core::{
         },
     },
     service::{
+        config::dto::ConfigDTO,
         credential::dto::{
             CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
         },
@@ -24,6 +26,27 @@ use one_core::{
 };
 use std::collections::HashMap;
 use std::str::FromStr;
+
+#[derive(From)]
+#[convert(from = "ConfigDTO")]
+pub struct ConfigBindingDTO {
+    #[convert(with_fn = serialize_config_entity)]
+    pub format: HashMap<String, String>,
+    #[convert(with_fn = serialize_config_entity)]
+    pub exchange: HashMap<String, String>,
+    #[convert(with_fn = serialize_config_entity)]
+    pub transport: HashMap<String, String>,
+    #[convert(with_fn = serialize_config_entity)]
+    pub revocation: HashMap<String, String>,
+    #[convert(with_fn = serialize_config_entity)]
+    pub did: HashMap<String, String>,
+    #[convert(with_fn = serialize_config_entity)]
+    pub datatype: HashMap<String, String>,
+    #[convert(with_fn = serialize_config_entity)]
+    pub key_algorithm: HashMap<String, String>,
+    #[convert(with_fn = serialize_config_entity)]
+    pub key_storage: HashMap<String, String>,
+}
 
 #[derive(From)]
 #[convert(from = "CredentialStateEnum")]

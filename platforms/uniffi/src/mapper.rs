@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::dto::{ClaimBindingDTO, CredentialSchemaBindingDTO, ProofRequestClaimBindingDTO};
 use crate::{
     dto::{
@@ -23,6 +25,15 @@ use one_core::{
 };
 use serde_json::json;
 use uuid::Uuid;
+
+pub(crate) fn serialize_config_entity(
+    input: HashMap<String, serde_json::Value>,
+) -> HashMap<String, String> {
+    input
+        .into_iter()
+        .map(|(key, value)| (key, value.to_string()))
+        .collect()
+}
 
 impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
     fn from(value: CredentialDetailResponseDTO) -> Self {
