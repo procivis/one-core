@@ -24,8 +24,8 @@ pub struct DidService {
     did_repository: Arc<dyn DidRepository>,
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
-    did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -34,8 +34,8 @@ impl DidService {
         did_repository: Arc<dyn DidRepository>,
         key_repository: Arc<dyn KeyRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
-        did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

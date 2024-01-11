@@ -2,7 +2,8 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use shared_types::DidValue;
 
 use crate::provider::did_method::{
-    dto::{DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, ENC, SIG},
+    common::{jwk_context, jwk_verification_method},
+    dto::{DidDocumentDTO, PublicKeyJwkDTO, ENC, SIG},
     DidMethodError,
 };
 
@@ -23,19 +24,12 @@ pub(super) fn extract_jwk(did: &DidValue) -> Result<PublicKeyJwkDTO, DidMethodEr
 pub(super) fn generate_document(did: &DidValue, jwk: PublicKeyJwkDTO) -> DidDocumentDTO {
     let did_url = format!("{}#0", did.as_str());
     let urls = Some(vec![did_url.clone()]);
+    let verification_method = jwk_verification_method(did_url, did, jwk.clone());
 
     let mut template = DidDocumentDTO {
-        context: vec![
-            "https://www.w3.org/ns/did/v1".into(),
-            "https://w3id.org/security/suites/jws-2020/v1".into(),
-        ],
+        context: jwk_context(),
         id: did.clone(),
-        verification_method: vec![DidVerificationMethodDTO {
-            id: did_url,
-            r#type: "JsonWebKey2020".into(),
-            controller: did.as_str().into(),
-            public_key_jwk: jwk.clone(),
-        }],
+        verification_method: vec![verification_method],
         authentication: None,
         assertion_method: None,
         key_agreement: None,

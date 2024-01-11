@@ -1,33 +1,26 @@
-mod mapper;
+mod helpers;
 
+use self::helpers::{decode_did, generate_document};
 use async_trait::async_trait;
-use did_key::{Config, DIDCore, KeyMaterial};
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
-
-use self::mapper::{categorize_did, convert_document};
 
 use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError};
 use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 pub struct KeyDidMethod {
     capabilities: DidCapabilities,
-    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-    pub params: DidKeyParams,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
-
-pub struct DidKeyParams;
 
 impl KeyDidMethod {
     pub fn new(
         capabilities: DidCapabilities,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
-        params: DidKeyParams,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             capabilities,
             key_algorithm_provider,
-            params,
         }
     }
 }
@@ -65,30 +58,22 @@ impl super::DidMethod for KeyDidMethod {
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
-        let key_type = categorize_did(did_value)?;
+        let decoded = decode_did(did_value)?;
+        let key_type = match decoded.type_ {
+            helpers::DidKeyType::Eddsa => "EDDSA",
+            helpers::DidKeyType::Ecdsa => "ES256",
+        };
 
-        let resolved = did_key::resolve(did_value.as_str())
-            .map_err(|_| DidMethodError::ResolutionError("Failed to resolve".to_string()))?;
-
-        let public_key_bytes = resolved.public_key_bytes();
-
-        let algorithm = self
+        let jwk = self
             .key_algorithm_provider
-            .get_key_algorithm(&key_type)
-            .ok_or(DidMethodError::ResolutionError(
-                "Unsupported algorithm".to_string(),
-            ))?;
+            .get_key_algorithm(key_type)
+            .ok_or(DidMethodError::KeyAlgorithmNotFound)?
+            .bytes_to_jwk(&decoded.decoded_multibase)
+            .map_err(|_| {
+                DidMethodError::ResolutionError("Could not create jwk representation".to_string())
+            })?;
 
-        let public_key_jwk = algorithm.bytes_to_jwk(&public_key_bytes).map_err(|_| {
-            DidMethodError::ResolutionError("Could not create jwk representation".to_string())
-        })?;
-
-        let document = resolved.get_did_document(Config {
-            use_jose_format: true,
-            serialize_secrets: false,
-        });
-
-        convert_document(document, public_key_jwk)
+        generate_document(decoded, did_value, jwk)
     }
 
     fn update(&self) -> Result<(), DidMethodError> {

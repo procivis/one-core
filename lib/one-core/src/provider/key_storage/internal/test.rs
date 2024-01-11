@@ -1,8 +1,8 @@
 use super::InternalKeyProvider;
-use crate::crypto::signer::{MockSigner, Signer};
+use crate::crypto::signer::MockSigner;
 use crate::model::key::{Key, KeyId};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::{GeneratedKey, KeyAlgorithm, MockKeyAlgorithm};
+use crate::provider::key_algorithm::{GeneratedKey, MockKeyAlgorithm};
 use crate::provider::key_storage::internal::Params;
 use crate::provider::key_storage::{KeyStorage, KeyStorageCapabilities};
 use std::sync::Arc;
@@ -20,7 +20,7 @@ async fn test_internal_generate() {
             private: vec![1, 2, 3],
         });
 
-    let arc: Arc<dyn KeyAlgorithm + Send + Sync> = Arc::new(mock_key_algorithm);
+    let arc = Arc::new(mock_key_algorithm);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
     mock_key_algorithm_provider
@@ -52,7 +52,7 @@ async fn test_internal_generate_with_encryption() {
             private: vec![1, 2, 3],
         });
 
-    let arc: Arc<dyn KeyAlgorithm + Send + Sync> = Arc::new(mock_key_algorithm);
+    let arc = Arc::new(mock_key_algorithm);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
     mock_key_algorithm_provider
@@ -93,8 +93,8 @@ async fn test_internal_sign_with_encryption() {
         .times(1)
         .returning(move |_, _, _| Ok(expected_signed_response.clone()));
 
-    let arc_key_algorithm: Arc<dyn KeyAlgorithm + Send + Sync> = Arc::new(mock_key_algorithm);
-    let arc_signer: Arc<dyn Signer + Send + Sync> = Arc::new(mock_signer);
+    let arc_key_algorithm = Arc::new(mock_key_algorithm);
+    let arc_signer = Arc::new(mock_signer);
 
     let mut mock_key_algorithm_provider = MockKeyAlgorithmProvider::default();
     mock_key_algorithm_provider

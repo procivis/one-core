@@ -11,14 +11,14 @@ mod helpers;
 
 pub struct JWKDidMethod {
     capabilities: DidCapabilities,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl JWKDidMethod {
     #[allow(clippy::new_without_default)]
     pub fn new(
         capabilities: DidCapabilities,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             capabilities,

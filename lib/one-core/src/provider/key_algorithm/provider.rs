@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[cfg_attr(test, mockall::automock)]
-pub trait KeyAlgorithmProvider {
+pub trait KeyAlgorithmProvider: Send + Sync {
     fn get_key_algorithm(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>>;
 
     fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer + Send + Sync>, ServiceError>;

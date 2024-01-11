@@ -27,7 +27,6 @@ vulnerability = "deny"
 unmaintained = "warn"
 yanked = "deny"
 notice = "deny"
-ignore = ["RUSTSEC-2022-0093"]
 
 
 # This section is considered when running `cargo deny check licenses`
@@ -35,7 +34,7 @@ ignore = ["RUSTSEC-2022-0093"]
 # https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
 [licenses]
 unlicensed = "deny"
-allow = ["Unicode-DFS-2016"]
+allow = ["Unicode-DFS-2016", "MIT-0"]
 deny = []
 copyleft = "deny"
 allow-osi-fsf-free = "both"

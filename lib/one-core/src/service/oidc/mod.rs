@@ -32,8 +32,8 @@ pub struct OIDCService {
     protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
     did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
 }
 
@@ -50,8 +50,8 @@ impl OIDCService {
         protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
         did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-        did_method_provider: Arc<dyn DidMethodProvider + Send + Sync>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
     ) -> Self {
         Self {

@@ -8,7 +8,6 @@ use url::Url;
 
 pub struct WebDidMethod {
     capabilities: DidCapabilities,
-    //pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     pub did_base_string: Option<String>,
     pub client: reqwest::Client,
 }
@@ -17,7 +16,6 @@ impl WebDidMethod {
     pub fn new(
         base_url: &Option<String>,
         capabilities: DidCapabilities,
-        //key_algorithm_provider: Arc<dyn KeyAlgorithmProvider + Send + Sync>,
     ) -> Result<Self, DidMethodError> {
         let did_base_string = if let Some(base_url) = base_url {
             let url =
@@ -41,7 +39,6 @@ impl WebDidMethod {
 
         Ok(Self {
             capabilities,
-            //key_algorithm_provider,
             did_base_string,
             client: reqwest::Client::new(),
         })

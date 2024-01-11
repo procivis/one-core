@@ -10,7 +10,7 @@ use crate::{
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
-pub trait DidMethodProvider {
+pub trait DidMethodProvider: Send + Sync {
     fn get_did_method(&self, did_method_id: &str) -> Option<Arc<dyn DidMethod>>;
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, ServiceError>;
