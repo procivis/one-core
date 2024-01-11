@@ -9,6 +9,7 @@ use crate::{
     list_query::SelectWithListQuery,
     mapper::to_data_layer_error,
 };
+use autometrics::autometrics;
 use one_core::{
     model::{
         claim_schema::{ClaimSchemaId, ClaimSchemaRelations},
@@ -28,6 +29,7 @@ use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+#[autometrics]
 #[async_trait::async_trait]
 impl ProofSchemaRepository for ProofSchemaProvider {
     async fn create_proof_schema(

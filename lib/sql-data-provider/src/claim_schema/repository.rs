@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use autometrics::autometrics;
 use one_core::{
     common_mapper::{convert_inner, iterable_try_into},
     model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
@@ -11,6 +12,7 @@ use uuid::Uuid;
 use super::ClaimSchemaProvider;
 use crate::{entity::claim_schema, mapper::to_data_layer_error};
 
+#[autometrics]
 #[async_trait::async_trait]
 impl ClaimSchemaRepository for ClaimSchemaProvider {
     async fn create_claim_schema_list(

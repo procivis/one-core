@@ -1,3 +1,4 @@
+use autometrics::autometrics;
 use one_core::{
     model::interaction::{Interaction, InteractionId, InteractionRelations},
     repository::{error::DataLayerError, interaction_repository::InteractionRepository},
@@ -9,6 +10,7 @@ use uuid::Uuid;
 use super::InteractionProvider;
 use crate::{entity::interaction, mapper::to_data_layer_error};
 
+#[autometrics]
 #[async_trait::async_trait]
 impl InteractionRepository for InteractionProvider {
     async fn create_interaction(

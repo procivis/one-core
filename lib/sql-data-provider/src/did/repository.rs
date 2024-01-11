@@ -1,5 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
+use autometrics::autometrics;
 use one_core::model::{
     did::{Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest},
     key::{Key, KeyId},
@@ -80,6 +81,7 @@ impl DidProvider {
     }
 }
 
+#[autometrics]
 #[async_trait::async_trait]
 impl DidRepository for DidProvider {
     async fn get_did(
