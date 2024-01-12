@@ -15,22 +15,22 @@ pub mod service;
 #[derive(Clone)]
 pub struct ProofService {
     credential_repository: Arc<dyn CredentialRepository>,
-    proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-    proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
+    proof_repository: Arc<dyn ProofRepository>,
+    proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+    protocol_provider: Arc<dyn TransportProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
 impl ProofService {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,
-        proof_repository: Arc<dyn ProofRepository + Send + Sync>,
-        proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
+        proof_repository: Arc<dyn ProofRepository>,
+        proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
-        protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+        protocol_provider: Arc<dyn TransportProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

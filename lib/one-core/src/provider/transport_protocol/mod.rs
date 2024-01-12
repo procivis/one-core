@@ -138,11 +138,11 @@ pub(super) fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>
 pub(crate) fn transport_protocol_providers_from_config(
     config: &ExchangeConfig,
     core_base_url: Option<String>,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    crypto: Arc<dyn CryptoProvider>,
     data_provider: Arc<dyn DataRepository>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    key_provider: Arc<dyn KeyProvider + Send + Sync>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_provider: Arc<dyn KeyProvider>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 ) -> Result<HashMap<String, Arc<dyn TransportProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn TransportProtocol>> = HashMap::new();
 

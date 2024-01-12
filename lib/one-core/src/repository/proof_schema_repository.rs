@@ -5,7 +5,7 @@ use crate::model::proof_schema::{
 use time::OffsetDateTime;
 
 #[async_trait::async_trait]
-pub trait ProofSchemaRepository {
+pub trait ProofSchemaRepository: Send + Sync {
     async fn create_proof_schema(
         &self,
         request: ProofSchema,

@@ -7,7 +7,7 @@ use super::model::Disclosure;
 pub(super) fn verify_claims(
     hashed_claims: &[String],
     disclosures: &[(Disclosure, String, String)],
-    hasher: &Arc<dyn Hasher + Send + Sync>,
+    hasher: &Arc<dyn Hasher>,
 ) -> Result<(), FormatterError> {
     if !disclosures.iter().all(|disclosure| {
         hashed_claims.contains(

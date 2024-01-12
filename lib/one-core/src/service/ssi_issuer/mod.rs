@@ -16,7 +16,7 @@ mod test;
 pub struct SSIIssuerService {
     credential_repository: Arc<dyn CredentialRepository>,
     did_repository: Arc<dyn DidRepository>,
-    protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+    protocol_provider: Arc<dyn TransportProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -24,7 +24,7 @@ impl SSIIssuerService {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         did_repository: Arc<dyn DidRepository>,
-        protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+        protocol_provider: Arc<dyn TransportProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

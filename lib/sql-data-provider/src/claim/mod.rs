@@ -7,7 +7,7 @@ pub mod repository;
 
 pub(crate) struct ClaimProvider {
     pub db: DatabaseConnection,
-    pub claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
+    pub claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
 }
 
 #[cfg(test)]

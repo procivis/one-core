@@ -10,18 +10,18 @@ use crate::{
 pub trait KeyAlgorithmProvider: Send + Sync {
     fn get_key_algorithm(&self, algorithm: &str) -> Option<Arc<dyn KeyAlgorithm>>;
 
-    fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer + Send + Sync>, ServiceError>;
+    fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer>, ServiceError>;
 }
 
 pub struct KeyAlgorithmProviderImpl {
     algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    crypto: Arc<dyn CryptoProvider>,
 }
 
 impl KeyAlgorithmProviderImpl {
     pub fn new(
         algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
-        crypto: Arc<dyn CryptoProvider + Send + Sync>,
+        crypto: Arc<dyn CryptoProvider>,
     ) -> Self {
         Self { algorithms, crypto }
     }
@@ -32,7 +32,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         self.algorithms.get(algorithm).cloned()
     }
 
-    fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer + Send + Sync>, ServiceError> {
+    fn get_signer(&self, algorithm: &str) -> Result<Arc<dyn Signer>, ServiceError> {
         let key_algorithm = self
             .get_key_algorithm(algorithm)
             .ok_or(ValidationError::InvalidKeyAlgorithm(algorithm.to_owned()))?;

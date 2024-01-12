@@ -10,7 +10,6 @@ pub struct Qs<T>(pub T);
 #[async_trait]
 impl<S, T> FromRequestParts<S> for Qs<T>
 where
-    S: Send + Sync,
     T: serde::de::DeserializeOwned,
 {
     type Rejection = (StatusCode, String);

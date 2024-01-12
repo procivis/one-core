@@ -9,7 +9,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 pub async fn proof_schema_name_already_exists(
-    repository: &Arc<dyn ProofSchemaRepository + Send + Sync>,
+    repository: &Arc<dyn ProofSchemaRepository>,
     name: &str,
     organisation_id: &OrganisationId,
 ) -> Result<(), ServiceError> {

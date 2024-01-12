@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[cfg_attr(test, mockall::automock)]
-pub trait KeyProvider {
+pub trait KeyProvider: Send + Sync {
     fn get_key_storage(&self, key_provider_id: &str) -> Option<Arc<dyn KeyStorage>>;
 
     fn get_signature_provider(&self, key: &Key) -> Result<AuthenticationFn, ServiceError> {

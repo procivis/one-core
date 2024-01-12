@@ -19,9 +19,9 @@ pub struct CredentialService {
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    protocol_provider: Arc<dyn TransportProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -30,9 +30,9 @@ impl CredentialService {
         repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
-        revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-        protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        protocol_provider: Arc<dyn TransportProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

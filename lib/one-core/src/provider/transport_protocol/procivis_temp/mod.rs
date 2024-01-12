@@ -55,12 +55,12 @@ pub(crate) struct ProcivisTemp {
     client: reqwest::Client,
     base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
-    proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+    proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    key_provider: Arc<dyn KeyProvider>,
 }
 
 impl ProcivisTemp {
@@ -68,12 +68,12 @@ impl ProcivisTemp {
     pub fn new(
         base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository>,
-        proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+        proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-        key_provider: Arc<dyn KeyProvider + Send + Sync>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        key_provider: Arc<dyn KeyProvider>,
     ) -> Self {
         Self {
             client: reqwest::Client::new(),

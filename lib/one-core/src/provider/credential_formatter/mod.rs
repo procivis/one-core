@@ -29,8 +29,8 @@ use self::{
     model::{CredentialPresentation, CredentialStatus, DetailCredential, Presentation},
 };
 
-pub type AuthenticationFn = Box<dyn SignatureProvider + Send + Sync>;
-pub type VerificationFn = Box<dyn TokenVerifier + Send + Sync>;
+pub type AuthenticationFn = Box<dyn SignatureProvider>;
+pub type VerificationFn = Box<dyn TokenVerifier>;
 
 #[derive(Clone, Default, Deserialize)]
 pub struct FormatterCapabilities {
@@ -39,7 +39,7 @@ pub struct FormatterCapabilities {
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
-pub trait TokenVerifier {
+pub trait TokenVerifier: Send + Sync {
     async fn verify<'a>(
         &self,
         issuer_did_value: Option<DidValue>,
@@ -51,7 +51,7 @@ pub trait TokenVerifier {
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
-pub trait SignatureProvider {
+pub trait SignatureProvider: Send + Sync {
     async fn sign(&self, message: &str) -> Result<Vec<u8>, SignerError>;
 }
 
@@ -73,7 +73,7 @@ pub trait CredentialFormatter: Send + Sync {
     async fn extract_credentials(
         &self,
         credentials: &str,
-        verification: Box<dyn TokenVerifier + Send + Sync>,
+        verification: Box<dyn TokenVerifier>,
     ) -> Result<DetailCredential, FormatterError>;
 
     fn format_credential_presentation(
@@ -93,7 +93,7 @@ pub trait CredentialFormatter: Send + Sync {
     async fn extract_presentation(
         &self,
         token: &str,
-        verification: Box<dyn TokenVerifier + Send + Sync>,
+        verification: Box<dyn TokenVerifier>,
     ) -> Result<Presentation, FormatterError>;
 
     fn get_leeway(&self) -> u64;

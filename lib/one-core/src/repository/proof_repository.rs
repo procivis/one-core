@@ -8,7 +8,7 @@ use crate::model::{
 };
 
 #[async_trait::async_trait]
-pub trait ProofRepository {
+pub trait ProofRepository: Send + Sync {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError>;
 
     async fn get_proof(

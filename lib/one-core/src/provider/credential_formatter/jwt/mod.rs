@@ -40,7 +40,7 @@ impl TokenVerifier for SkipVerification {
 }
 
 #[async_trait]
-impl TokenVerifier for Box<dyn TokenVerifier + Send + Sync> {
+impl TokenVerifier for Box<dyn TokenVerifier> {
     async fn verify<'a>(
         &self,
         issuer_did_value: Option<DidValue>,
@@ -55,12 +55,12 @@ impl TokenVerifier for Box<dyn TokenVerifier + Send + Sync> {
 }
 
 #[derive(Debug)]
-pub struct Jwt<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> {
+pub struct Jwt<Payload: Serialize + DeserializeOwned + Debug> {
     pub(crate) header: JWTHeader,
     pub(crate) payload: JWTPayload<Payload>,
 }
 
-impl<Payload: Serialize + DeserializeOwned + Debug + Send + Sync> Jwt<Payload> {
+impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
     pub fn new(
         signature_type: String,
         algorithm: String,

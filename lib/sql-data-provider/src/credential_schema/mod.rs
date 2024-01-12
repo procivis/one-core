@@ -9,7 +9,7 @@ pub mod repository;
 
 pub(crate) struct CredentialSchemaProvider {
     pub db: DatabaseConnection,
-    pub claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
+    pub claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
     pub organisation_repository: Arc<dyn OrganisationRepository>,
 }
 

@@ -3,7 +3,7 @@ use super::error::DataLayerError;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations};
 
 #[async_trait::async_trait]
-pub trait ClaimSchemaRepository {
+pub trait ClaimSchemaRepository: Send + Sync {
     async fn create_claim_schema_list(
         &self,
         request: Vec<ClaimSchema>,

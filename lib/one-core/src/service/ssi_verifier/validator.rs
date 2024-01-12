@@ -26,10 +26,10 @@ pub(super) async fn validate_proof(
     proof_schema: ProofSchema,
     holder_did: Did,
     presentation: &str,
-    formatter_provider: &(dyn CredentialFormatterProvider + Send + Sync),
+    formatter_provider: &(dyn CredentialFormatterProvider),
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
     let key_verification_presentation = Box::new(KeyVerification {
         key_algorithm_provider: key_algorithm_provider.clone(),

@@ -12,7 +12,7 @@ use super::model::{SDCredentialSubject, Sdvc, VCContent};
 
 pub(super) fn claims_to_formatted_disclosure(
     claims: &[DetailCredentialClaimResponseDTO],
-    crypto: &Arc<dyn CryptoProvider + Send + Sync>,
+    crypto: &Arc<dyn CryptoProvider>,
 ) -> Vec<String> {
     claims
         .iter()
@@ -28,7 +28,7 @@ pub(super) fn claims_to_formatted_disclosure(
 }
 
 pub(super) fn vc_from_credential(
-    hasher: &Arc<dyn Hasher + Send + Sync>,
+    hasher: &Arc<dyn Hasher>,
     claims: &[String],
     credential_status: Option<CredentialStatus>,
     additional_context: Vec<String>,

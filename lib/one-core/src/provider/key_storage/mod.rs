@@ -41,7 +41,7 @@ pub trait KeyStorage: Send + Sync {
 
 pub fn key_providers_from_config(
     config: &KeyStorageConfig,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    crypto: Arc<dyn CryptoProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
 ) -> Result<HashMap<String, Arc<dyn KeyStorage>>, ConfigError> {

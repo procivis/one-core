@@ -66,7 +66,7 @@ async fn get_claims(
     credential: &credential::Model,
     relations: &ClaimRelations,
     db: &DatabaseConnection,
-    claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
+    claim_repository: Arc<dyn ClaimRepository>,
 ) -> Result<Vec<Claim>, DataLayerError> {
     let ids: Vec<ClaimId> = credential_claim::Entity::find()
         .select_only()

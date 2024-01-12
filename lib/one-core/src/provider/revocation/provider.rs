@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::provider::revocation::RevocationMethod;
 
 #[cfg_attr(test, mockall::automock)]
-pub(crate) trait RevocationMethodProvider {
+pub(crate) trait RevocationMethodProvider: Send + Sync {
     fn get_revocation_method(
         &self,
         revocation_method_id: &str,

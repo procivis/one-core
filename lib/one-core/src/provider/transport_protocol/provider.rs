@@ -29,7 +29,7 @@ pub struct DetectedProtocol {
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
-pub(crate) trait TransportProtocolProvider {
+pub(crate) trait TransportProtocolProvider: Send + Sync {
     fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn TransportProtocol>>;
 
     fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol>;
@@ -42,19 +42,19 @@ pub(crate) trait TransportProtocolProvider {
 
 pub(crate) struct TransportProtocolProviderImpl {
     protocols: HashMap<String, Arc<dyn TransportProtocol>>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    key_provider: Arc<dyn KeyProvider>,
 }
 
 impl TransportProtocolProviderImpl {
     pub fn new(
         protocols: HashMap<String, Arc<dyn TransportProtocol>>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
         credential_repository: Arc<dyn CredentialRepository>,
-        revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-        key_provider: Arc<dyn KeyProvider + Send + Sync>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+        key_provider: Arc<dyn KeyProvider>,
     ) -> Self {
         Self {
             protocols,
