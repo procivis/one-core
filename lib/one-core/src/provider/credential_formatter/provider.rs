@@ -11,7 +11,7 @@ use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use super::CredentialFormatter;
 
 #[cfg_attr(test, mockall::automock)]
-pub(crate) trait CredentialFormatterProvider {
+pub(crate) trait CredentialFormatterProvider: Send + Sync {
     fn get_formatter(&self, formatter_id: &str) -> Option<Arc<dyn CredentialFormatter>>;
 }
 
@@ -33,7 +33,7 @@ impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
 
 pub(crate) fn credential_formatters_from_config(
     config: &FormatConfig,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    crypto: Arc<dyn CryptoProvider>,
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter>>, ConfigError> {
     let mut formatters = HashMap::new();
 

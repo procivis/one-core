@@ -35,7 +35,7 @@ struct TestSetup {
 }
 
 async fn setup_empty(
-    claim_schema_repository: Arc<dyn claim_schema_repository::ClaimSchemaRepository + Send + Sync>,
+    claim_schema_repository: Arc<dyn claim_schema_repository::ClaimSchemaRepository>,
     organisation_repository: Arc<dyn organisation_repository::OrganisationRepository>,
     credential_schema_repository: Arc<dyn credential_schema_repository::CredentialSchemaRepository>,
 ) -> TestSetup {
@@ -65,7 +65,7 @@ struct TestSetupWithProofSchema {
 }
 
 async fn setup_with_proof_schema(
-    claim_schema_repository: Arc<dyn claim_schema_repository::ClaimSchemaRepository + Send + Sync>,
+    claim_schema_repository: Arc<dyn claim_schema_repository::ClaimSchemaRepository>,
     organisation_repository: Arc<dyn organisation_repository::OrganisationRepository>,
     credential_schema_repository: Arc<dyn credential_schema_repository::CredentialSchemaRepository>,
 ) -> TestSetupWithProofSchema {
@@ -104,7 +104,7 @@ async fn setup_with_proof_schema(
     }
 }
 
-fn get_claim_schema_repository_mock() -> Arc<dyn ClaimSchemaRepository + Send + Sync> {
+fn get_claim_schema_repository_mock() -> Arc<dyn ClaimSchemaRepository> {
     Arc::from(MockClaimSchemaRepository::default())
 }
 

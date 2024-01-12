@@ -34,7 +34,7 @@ pub(super) fn create_generate_key_request() -> AzureHsmGenerateKeyRequest {
 
 pub(super) fn create_sign_request(
     value: &str,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    crypto: Arc<dyn CryptoProvider>,
 ) -> Result<AzureHsmSignRequest, SignerError> {
     let hasher = crypto
         .get_hasher("sha-256")

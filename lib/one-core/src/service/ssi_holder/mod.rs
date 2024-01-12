@@ -20,10 +20,10 @@ mod test;
 #[derive(Clone)]
 pub struct SSIHolderService {
     credential_repository: Arc<dyn CredentialRepository>,
-    proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+    proof_repository: Arc<dyn ProofRepository>,
     did_repository: Arc<dyn DidRepository>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    protocol_provider: Arc<dyn TransportProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -31,10 +31,10 @@ pub struct SSIHolderService {
 impl SSIHolderService {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,
-        proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+        proof_repository: Arc<dyn ProofRepository>,
         did_repository: Arc<dyn DidRepository>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-        protocol_provider: Arc<dyn TransportProtocolProvider + Send + Sync>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        protocol_provider: Arc<dyn TransportProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

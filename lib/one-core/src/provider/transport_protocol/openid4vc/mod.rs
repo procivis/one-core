@@ -100,13 +100,13 @@ pub(crate) struct OpenID4VC {
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
-    proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+    proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-    revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    revocation_provider: Arc<dyn RevocationMethodProvider>,
+    key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    crypto: Arc<dyn CryptoProvider>,
     _params: OpenID4VCParams,
 }
 
@@ -124,12 +124,12 @@ impl OpenID4VC {
         credential_repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
-        proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+        proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
-        revocation_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
-        key_provider: Arc<dyn KeyProvider + Send + Sync>,
-        crypto: Arc<dyn CryptoProvider + Send + Sync>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        revocation_provider: Arc<dyn RevocationMethodProvider>,
+        key_provider: Arc<dyn KeyProvider>,
+        crypto: Arc<dyn CryptoProvider>,
         params: OpenID4VCParams,
     ) -> Self {
         Self {
@@ -635,7 +635,7 @@ async fn update_credentials_interaction(
 async fn update_proof_interaction(
     proof_id: &ProofId,
     interaction_id: &InteractionId,
-    proof_repository: &Arc<dyn ProofRepository + Send + Sync>,
+    proof_repository: &Arc<dyn ProofRepository>,
 ) -> Result<(), TransportProtocolError> {
     let update = UpdateProofRequest {
         id: proof_id.to_owned(),

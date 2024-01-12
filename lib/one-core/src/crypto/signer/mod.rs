@@ -6,7 +6,7 @@ pub mod error;
 pub mod es256;
 
 #[cfg_attr(test, mockall::automock)]
-pub trait Signer {
+pub trait Signer: Send + Sync {
     fn sign(
         &self,
         input: &str,

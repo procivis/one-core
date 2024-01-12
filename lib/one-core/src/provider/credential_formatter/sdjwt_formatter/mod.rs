@@ -37,7 +37,7 @@ use super::{
 
 pub struct SDJWTFormatter {
     capabilities: FormatterCapabilities,
-    pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    pub crypto: Arc<dyn CryptoProvider>,
     params: Params,
 }
 
@@ -188,7 +188,7 @@ impl SDJWTFormatter {
     pub fn new(
         capabilities: FormatterCapabilities,
         params: Params,
-        crypto: Arc<dyn CryptoProvider + Send + Sync>,
+        crypto: Arc<dyn CryptoProvider>,
     ) -> Self {
         Self {
             capabilities,

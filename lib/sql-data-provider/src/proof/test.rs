@@ -49,8 +49,8 @@ struct TestSetup {
 }
 
 async fn setup(
-    proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
-    claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
+    proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+    claim_repository: Arc<dyn ClaimRepository>,
     did_repository: Arc<dyn DidRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
 ) -> TestSetup {
@@ -143,8 +143,8 @@ struct TestSetupWithProof {
 }
 
 async fn setup_with_proof(
-    proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
-    claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
+    proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+    claim_repository: Arc<dyn ClaimRepository>,
     did_repository: Arc<dyn DidRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
 ) -> TestSetupWithProof {
@@ -198,11 +198,11 @@ async fn setup_with_proof(
     }
 }
 
-fn get_proof_schema_repository_mock() -> Arc<dyn ProofSchemaRepository + Send + Sync> {
+fn get_proof_schema_repository_mock() -> Arc<dyn ProofSchemaRepository> {
     Arc::from(MockProofSchemaRepository::default())
 }
 
-fn get_claim_repository_mock() -> Arc<dyn ClaimRepository + Send + Sync> {
+fn get_claim_repository_mock() -> Arc<dyn ClaimRepository> {
     Arc::from(MockClaimRepository::default())
 }
 

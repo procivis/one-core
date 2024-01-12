@@ -73,7 +73,7 @@ pub struct OneCore {
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
     pub config: Arc<CoreConfig>,
-    pub crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    pub crypto: Arc<dyn CryptoProvider>,
 }
 
 impl OneCore {
@@ -86,10 +86,10 @@ impl OneCore {
         // For now we will just put them here.
         // We will introduce a builder later.
 
-        let hashers: Vec<(String, Arc<dyn Hasher + Send + Sync>)> =
+        let hashers: Vec<(String, Arc<dyn Hasher>)> =
             vec![("sha-256".to_string(), Arc::new(SHA256 {}))];
 
-        let signers: Vec<(String, Arc<dyn Signer + Send + Sync>)> = vec![
+        let signers: Vec<(String, Arc<dyn Signer>)> = vec![
             ("Ed25519".to_string(), Arc::new(EDDSASigner {})),
             ("ES256".to_string(), Arc::new(ES256Signer {})),
             ("CRYDI3".to_string(), Arc::new(CRYDI3Signer {})),

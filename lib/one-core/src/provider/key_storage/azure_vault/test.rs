@@ -110,9 +110,7 @@ async fn sign_mock(mock_server: &MockServer, expect: u64) {
         .await;
 }
 
-fn get_crypto(
-    hashers: Vec<(String, Arc<dyn Hasher + Send + Sync>)>,
-) -> Arc<dyn CryptoProvider + Send + Sync> {
+fn get_crypto(hashers: Vec<(String, Arc<dyn Hasher>)>) -> Arc<dyn CryptoProvider> {
     Arc::new(CryptoProviderImpl::new(
         HashMap::from_iter(hashers),
         HashMap::new(),

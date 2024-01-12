@@ -13,7 +13,7 @@ pub mod repository;
 pub(crate) struct CredentialProvider {
     pub db: DatabaseConnection,
     pub credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
-    pub claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
+    pub claim_repository: Arc<dyn ClaimRepository>,
     pub did_repository: Arc<dyn DidRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub revocation_list_repository: Arc<dyn RevocationListRepository>,

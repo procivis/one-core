@@ -106,7 +106,7 @@ pub(super) async fn validate_presentation(
     presentation_string: &str,
     nonce: &str,
     oidc_format: &str,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<KeyVerification>,
 ) -> Result<Presentation, ServiceError> {
     let format = map_from_oidc_vp_format_to_core(oidc_format)?;
@@ -145,9 +145,9 @@ pub(super) async fn validate_credential(
     credential_string: &str,
     holder_did: &DidValue,
     oidc_format: &str,
-    formatter_provider: &Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<KeyVerification>,
-    revocation_method_provider: &Arc<dyn RevocationMethodProvider + Send + Sync>,
+    revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
 ) -> Result<DetailCredential, ServiceError> {
     let format = map_from_oidc_format_to_core(oidc_format)?;
     let formatter = formatter_provider

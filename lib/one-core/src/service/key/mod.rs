@@ -15,7 +15,7 @@ pub(crate) mod validator;
 pub struct KeyService {
     key_repository: Arc<dyn KeyRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
-    key_provider: Arc<dyn KeyProvider + Send + Sync>,
+    key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -23,7 +23,7 @@ impl KeyService {
     pub fn new(
         key_repository: Arc<dyn KeyRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
-        key_provider: Arc<dyn KeyProvider + Send + Sync>,
+        key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

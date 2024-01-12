@@ -19,7 +19,7 @@ struct TestSetup {
     pub claim_schemas: Vec<ClaimSchema>,
 }
 
-async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>) -> TestSetup {
+async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
@@ -56,7 +56,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + S
     }
 }
 
-fn get_claim_schema_repository_mock() -> Arc<dyn ClaimSchemaRepository + Send + Sync> {
+fn get_claim_schema_repository_mock() -> Arc<dyn ClaimSchemaRepository> {
     Arc::from(MockClaimSchemaRepository::default())
 }
 

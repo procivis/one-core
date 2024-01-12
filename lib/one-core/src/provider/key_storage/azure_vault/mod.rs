@@ -50,7 +50,7 @@ pub struct AzureVaultKeyProvider {
     access_token: Arc<Mutex<Option<AzureAccessToken>>>,
     capabilities: KeyStorageCapabilities,
     client: reqwest::Client,
-    crypto: Arc<dyn CryptoProvider + Send + Sync>,
+    crypto: Arc<dyn CryptoProvider>,
     params: Params,
 }
 
@@ -136,7 +136,7 @@ impl AzureVaultKeyProvider {
     pub fn new(
         capabilities: KeyStorageCapabilities,
         params: Params,
-        crypto: Arc<dyn CryptoProvider + Send + Sync>,
+        crypto: Arc<dyn CryptoProvider>,
     ) -> Self {
         Self {
             access_token: Arc::new(Mutex::new(None)),

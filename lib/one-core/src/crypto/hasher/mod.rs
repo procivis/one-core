@@ -4,6 +4,6 @@ pub mod error;
 pub mod sha256;
 
 #[cfg_attr(test, mockall::automock)]
-pub trait Hasher {
+pub trait Hasher: Send + Sync {
     fn hash_base64(&self, input: &[u8]) -> Result<String, HasherError>;
 }

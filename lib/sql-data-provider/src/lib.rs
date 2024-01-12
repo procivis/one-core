@@ -54,13 +54,13 @@ pub struct DataLayer {
     db: DatabaseConnection,
     organisation_repository: Arc<dyn OrganisationRepository>,
     did_repository: Arc<dyn DidRepository>,
-    claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
-    claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
+    claim_repository: Arc<dyn ClaimRepository>,
+    claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     key_repository: Arc<dyn KeyRepository>,
-    proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
-    proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+    proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
 }
@@ -140,10 +140,10 @@ impl DataRepository for DataLayer {
     fn get_did_repository(&self) -> Arc<dyn DidRepository> {
         self.did_repository.clone()
     }
-    fn get_claim_repository(&self) -> Arc<dyn ClaimRepository + Send + Sync> {
+    fn get_claim_repository(&self) -> Arc<dyn ClaimRepository> {
         self.claim_repository.clone()
     }
-    fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository + Send + Sync> {
+    fn get_claim_schema_repository(&self) -> Arc<dyn ClaimSchemaRepository> {
         self.claim_schema_repository.clone()
     }
     fn get_credential_repository(&self) -> Arc<dyn CredentialRepository> {
@@ -155,10 +155,10 @@ impl DataRepository for DataLayer {
     fn get_key_repository(&self) -> Arc<dyn KeyRepository> {
         self.key_repository.clone()
     }
-    fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository + Send + Sync> {
+    fn get_proof_schema_repository(&self) -> Arc<dyn ProofSchemaRepository> {
         self.proof_schema_repository.clone()
     }
-    fn get_proof_repository(&self) -> Arc<dyn ProofRepository + Send + Sync> {
+    fn get_proof_repository(&self) -> Arc<dyn ProofRepository> {
         self.proof_repository.clone()
     }
     fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository> {

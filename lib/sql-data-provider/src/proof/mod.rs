@@ -11,8 +11,8 @@ pub mod repository;
 
 pub(crate) struct ProofProvider {
     pub db: DatabaseConnection,
-    pub proof_schema_repository: Arc<dyn ProofSchemaRepository + Send + Sync>,
-    pub claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
+    pub proof_schema_repository: Arc<dyn ProofSchemaRepository>,
+    pub claim_repository: Arc<dyn ClaimRepository>,
     pub did_repository: Arc<dyn DidRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
 }

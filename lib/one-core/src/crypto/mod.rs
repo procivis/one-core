@@ -16,16 +16,10 @@ pub mod signer;
 mod test;
 
 #[cfg_attr(test, mockall::automock)]
-pub trait CryptoProvider {
-    fn get_hasher(
-        &self,
-        hasher: &str,
-    ) -> Result<Arc<dyn Hasher + Send + Sync>, CryptoProviderError>;
+pub trait CryptoProvider: Send + Sync {
+    fn get_hasher(&self, hasher: &str) -> Result<Arc<dyn Hasher>, CryptoProviderError>;
 
-    fn get_signer(
-        &self,
-        signer: &str,
-    ) -> Result<Arc<dyn Signer + Send + Sync>, CryptoProviderError>;
+    fn get_signer(&self, signer: &str) -> Result<Arc<dyn Signer>, CryptoProviderError>;
 
     fn generate_salt_base64(&self) -> String;
 
@@ -34,24 +28,21 @@ pub trait CryptoProvider {
 
 #[derive(Clone)]
 pub struct CryptoProviderImpl {
-    hashers: HashMap<String, Arc<dyn Hasher + Send + Sync>>,
-    signers: HashMap<String, Arc<dyn Signer + Send + Sync>>,
+    hashers: HashMap<String, Arc<dyn Hasher>>,
+    signers: HashMap<String, Arc<dyn Signer>>,
 }
 
 impl CryptoProviderImpl {
     pub fn new(
-        hashers: HashMap<String, Arc<dyn Hasher + Send + Sync>>,
-        signers: HashMap<String, Arc<dyn Signer + Send + Sync>>,
+        hashers: HashMap<String, Arc<dyn Hasher>>,
+        signers: HashMap<String, Arc<dyn Signer>>,
     ) -> Self {
         Self { hashers, signers }
     }
 }
 
 impl CryptoProvider for CryptoProviderImpl {
-    fn get_hasher(
-        &self,
-        hasher: &str,
-    ) -> Result<Arc<dyn Hasher + Send + Sync>, CryptoProviderError> {
+    fn get_hasher(&self, hasher: &str) -> Result<Arc<dyn Hasher>, CryptoProviderError> {
         Ok(self
             .hashers
             .get(hasher)
@@ -59,10 +50,7 @@ impl CryptoProvider for CryptoProviderImpl {
             .clone())
     }
 
-    fn get_signer(
-        &self,
-        signer: &str,
-    ) -> Result<Arc<dyn Signer + Send + Sync>, CryptoProviderError> {
+    fn get_signer(&self, signer: &str) -> Result<Arc<dyn Signer>, CryptoProviderError> {
         Ok(self
             .signers
             .get(signer)

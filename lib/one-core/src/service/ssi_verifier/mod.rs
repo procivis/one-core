@@ -24,13 +24,13 @@ mod test;
 #[allow(unused)]
 #[derive(Clone)]
 pub struct SSIVerifierService {
-    claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
-    claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
-    proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+    claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
+    claim_repository: Arc<dyn ClaimRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
     did_repository: Arc<dyn DidRepository>,
-    formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
-    revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     config: Arc<core_config::CoreConfig>,
 }
@@ -38,13 +38,13 @@ pub struct SSIVerifierService {
 #[allow(clippy::too_many_arguments)]
 impl SSIVerifierService {
     pub(crate) fn new(
-        claim_schema_repository: Arc<dyn ClaimSchemaRepository + Send + Sync>,
-        claim_repository: Arc<dyn ClaimRepository + Send + Sync>,
-        proof_repository: Arc<dyn ProofRepository + Send + Sync>,
+        claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
+        claim_repository: Arc<dyn ClaimRepository>,
+        proof_repository: Arc<dyn ProofRepository>,
         did_repository: Arc<dyn DidRepository>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider + Send + Sync>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
-        revocation_method_provider: Arc<dyn RevocationMethodProvider + Send + Sync>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
