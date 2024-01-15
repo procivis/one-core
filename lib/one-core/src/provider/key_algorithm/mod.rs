@@ -3,10 +3,12 @@ use std::sync::Arc;
 
 pub mod eddsa;
 pub mod es256;
+pub mod ml_dsa;
 pub mod provider;
 
 use eddsa::Eddsa;
 use es256::Es256;
+use ml_dsa::MlDsa;
 
 use crate::config::{
     core_config::{KeyAlgorithmConfig, KeyAlgorithmType},
@@ -64,6 +66,12 @@ pub fn key_algorithms_from_config(
             }
             KeyAlgorithmType::Ecdsa => unimplemented!(),
             KeyAlgorithmType::BbsPlus => unimplemented!(),
+            KeyAlgorithmType::MlDsa => {
+                let params = config.get(algorithm_type)?;
+                let algorithm = MlDsa::new(params);
+
+                key_algorithms.insert(algorithm_type.to_string(), Arc::new(algorithm) as _);
+            }
         }
     }
 

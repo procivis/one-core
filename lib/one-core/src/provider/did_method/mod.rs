@@ -27,8 +27,10 @@ pub mod web;
 pub mod x509;
 
 #[derive(Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DidCapabilities {
     pub operations: Vec<String>,
+    pub key_algorithms: Vec<String>,
 }
 
 #[derive(Debug, Error)]

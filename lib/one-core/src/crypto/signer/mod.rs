@@ -1,5 +1,6 @@
 use self::error::SignerError;
 
+pub mod crydi3;
 pub mod eddsa;
 pub mod error;
 pub mod es256;

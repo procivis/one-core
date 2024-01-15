@@ -106,10 +106,11 @@ pub struct DidWebVerificationMethodResponseDTO {
     pub public_key_jwk: PublicKeyJwkResponseDTO,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct PublicKeyJwkResponseDTO {
     pub kty: String,
-    pub crv: String,
+    pub crv: Option<String>,
+    pub alg: Option<String>,
     pub x: String,
     pub y: Option<String>,
 }

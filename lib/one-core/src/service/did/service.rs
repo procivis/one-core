@@ -182,6 +182,17 @@ impl DidService {
 
         let new_did_id = DidId::from(Uuid::new_v4());
 
+        if !did_method
+            .get_capabilities()
+            .key_algorithms
+            .contains(&key.key_type)
+        {
+            return Err(BusinessLogicError::DidMethodIncapableKeyAlgorithm {
+                key_algorithm: key.key_type.to_owned(),
+            }
+            .into());
+        }
+
         let did_value = did_method
             .create(&new_did_id, &request.params, &Some(key.clone()))
             .await?;

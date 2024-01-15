@@ -166,7 +166,10 @@ pub struct DidWebVerificationMethodResponseRestDTO {
 #[convert(from = "PublicKeyJwkResponseDTO")]
 pub struct PublicKeyJwkResponseRestDTO {
     pub kty: String,
-    pub crv: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crv: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alg: Option<String>,
     pub x: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub y: Option<String>,

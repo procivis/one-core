@@ -353,7 +353,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Did::Did).string().not_null())
+                    .col(ColumnDef::new(Did::Did).string_len(4000).not_null())
                     .col(
                         ColumnDef::new(Did::CreatedDate)
                             .custom::<CustomDateTime>(CustomDateTime(
