@@ -1,14 +1,6 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::service::{
-    credential::dto::{
-        CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-        CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
-        DetailCredentialSchemaResponseDTO,
-    },
-    error::{BusinessLogicError, ServiceError},
-};
 use crate::{
     common_mapper::convert_inner,
     model::{
@@ -16,6 +8,17 @@ use crate::{
         credential::{Credential, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::Did,
+    },
+};
+use crate::{
+    model::credential::CredentialId,
+    service::{
+        credential::dto::{
+            CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
+            CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
+            DetailCredentialSchemaResponseDTO,
+        },
+        error::{BusinessLogicError, ServiceError},
     },
 };
 
@@ -151,6 +154,7 @@ fn get_revocation_date(latest_state: &CredentialState) -> Option<OffsetDateTime>
 
 pub(super) fn from_create_request(
     request: CreateCredentialRequestDTO,
+    credential_id: CredentialId,
     claims: Vec<Claim>,
     issuer_did: Did,
     schema: CredentialSchema,
@@ -158,7 +162,7 @@ pub(super) fn from_create_request(
     let now = OffsetDateTime::now_utc();
 
     Credential {
-        id: Uuid::new_v4(),
+        id: credential_id,
         created_date: now,
         issuance_date: now,
         state: Some(vec![CredentialState {
@@ -181,6 +185,7 @@ pub(super) fn from_create_request(
 }
 
 pub(super) fn claims_from_create_request(
+    credential_id: CredentialId,
     claims: Vec<CredentialRequestClaimDTO>,
     claim_schemas: &[CredentialSchemaClaim],
 ) -> Result<Vec<Claim>, ServiceError> {
@@ -196,6 +201,7 @@ pub(super) fn claims_from_create_request(
                 .ok_or(BusinessLogicError::MissingClaimSchema { claim_schema_id })?;
             Ok(Claim {
                 id: Uuid::new_v4(),
+                credential_id,
                 created_date: now,
                 last_modified: now,
                 value: claim.value,

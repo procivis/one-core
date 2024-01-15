@@ -94,13 +94,6 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
             credential_schema_repository: credential_schema_repository.clone(),
         });
-        let proof_repository = Arc::new(ProofProvider {
-            db: db.clone(),
-            claim_repository: claim_repository.clone(),
-            proof_schema_repository: proof_schema_repository.clone(),
-            did_repository: did_repository.clone(),
-            interaction_repository: interaction_repository.clone(),
-        });
         let revocation_list_repository = Arc::new(RevocationListProvider {
             db: db.clone(),
             did_repository: did_repository.clone(),
@@ -113,6 +106,14 @@ impl DataLayer {
             interaction_repository: interaction_repository.clone(),
             revocation_list_repository: revocation_list_repository.clone(),
             key_repository: key_repository.clone(),
+        });
+        let proof_repository = Arc::new(ProofProvider {
+            db: db.clone(),
+            claim_repository: claim_repository.clone(),
+            credential_repository: credential_repository.clone(),
+            proof_schema_repository: proof_schema_repository.clone(),
+            did_repository: did_repository.clone(),
+            interaction_repository: interaction_repository.clone(),
         });
 
         Self {

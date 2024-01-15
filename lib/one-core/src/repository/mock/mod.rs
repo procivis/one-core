@@ -1,4 +1,3 @@
-pub mod claim_repository;
 pub mod claim_schema_repository;
 pub mod key_repository;
 pub mod organisation_repository;

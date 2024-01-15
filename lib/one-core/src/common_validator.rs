@@ -56,7 +56,7 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
 }
 
 pub(crate) fn validate_issuance_time(
-    issued_at: Option<OffsetDateTime>,
+    issued_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
@@ -72,7 +72,7 @@ pub(crate) fn validate_issuance_time(
 }
 
 pub(crate) fn validate_expiration_time(
-    expires_at: Option<OffsetDateTime>,
+    expires_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
     let now = OffsetDateTime::now_utc();
@@ -94,4 +94,40 @@ fn get_latest_state(credential: &Credential) -> Result<&CredentialState, Service
         .ok_or(ServiceError::MappingError("state is None".to_string()))?
         .first()
         .ok_or(ServiceError::MappingError("state is missing".to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        ops::{Add, Sub},
+        time::Duration,
+    };
+
+    use time::OffsetDateTime;
+
+    use super::*;
+
+    #[test]
+    fn test_validate_issuance_time() {
+        let leeway = 5u64;
+
+        let correctly_issued = validate_issuance_time(&Some(OffsetDateTime::now_utc()), leeway);
+        assert!(correctly_issued.is_ok());
+
+        let now_plus_minute = OffsetDateTime::now_utc().add(Duration::from_secs(60));
+        let issued_in_future = validate_issuance_time(&Some(now_plus_minute), leeway);
+        assert!(issued_in_future.is_err());
+    }
+
+    #[test]
+    fn test_validate_expiration_time() {
+        let leeway = 5u64;
+
+        let correctly_issued = validate_expiration_time(&Some(OffsetDateTime::now_utc()), leeway);
+        assert!(correctly_issued.is_ok());
+
+        let now_minus_minute = OffsetDateTime::now_utc().sub(Duration::from_secs(60));
+        let issued_in_future = validate_expiration_time(&Some(now_minus_minute), leeway);
+        assert!(issued_in_future.is_err());
+    }
 }

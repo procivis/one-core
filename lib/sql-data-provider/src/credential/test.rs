@@ -23,21 +23,17 @@ use one_core::{
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
-        credential_repository::CredentialRepository,
+        claim_repository::MockClaimRepository, credential_repository::CredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
         did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
-        mock::claim_repository::MockClaimRepository,
     },
 };
-use sea_orm::{DatabaseConnection, EntityTrait, Set};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::CredentialProvider;
-use crate::{
-    entity::{claim, credential_claim},
-    test_utilities::*,
-};
+use crate::{entity::claim, test_utilities::*};
 
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
@@ -209,6 +205,7 @@ async fn test_create_credential_success() {
     let claims = vec![
         Claim {
             id: ClaimId::new_v4(),
+            credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value1".to_string(),
@@ -220,6 +217,7 @@ async fn test_create_credential_success() {
         },
         Claim {
             id: ClaimId::new_v4(),
+            credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value2".to_string(),
@@ -230,23 +228,6 @@ async fn test_create_credential_success() {
             ),
         },
     ];
-
-    // claims need to be present for db consistence
-    claim::Entity::insert_many(
-        claims
-            .iter()
-            .map(|claim| claim::ActiveModel {
-                id: Set(claim.id.to_string()),
-                claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
-                value: Set(claim.value.as_bytes().to_owned()),
-                created_date: Set(get_dummy_date()),
-                last_modified: Set(get_dummy_date()),
-            })
-            .collect::<Vec<claim::ActiveModel>>(),
-    )
-    .exec(&db)
-    .await
-    .unwrap();
 
     let result = provider
         .create_credential(Credential {
@@ -279,14 +260,6 @@ async fn test_create_credential_success() {
             .unwrap()
             .len(),
         1
-    );
-    assert_eq!(
-        crate::entity::credential_claim::Entity::find()
-            .all(&db)
-            .await
-            .unwrap()
-            .len(),
-        2
     );
 }
 
@@ -342,14 +315,6 @@ async fn test_create_credential_empty_claims() {
             .len(),
         1
     );
-    assert_eq!(
-        crate::entity::credential_claim::Entity::find()
-            .all(&db)
-            .await
-            .unwrap()
-            .len(),
-        0
-    );
 }
 
 #[tokio::test]
@@ -373,6 +338,7 @@ async fn test_create_credential_already_exists() {
 
     let claims = vec![Claim {
         id: ClaimId::new_v4(),
+        credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         value: "value1".to_string(),
@@ -598,6 +564,7 @@ async fn test_get_credential_success() {
     let claims = vec![
         Claim {
             id: ClaimId::new_v4(),
+            credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value1".to_string(),
@@ -610,6 +577,7 @@ async fn test_get_credential_success() {
         },
         Claim {
             id: ClaimId::new_v4(),
+            credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "value2".to_string(),
@@ -627,24 +595,13 @@ async fn test_get_credential_success() {
             .iter()
             .map(|claim| claim::ActiveModel {
                 id: Set(claim.id.to_string()),
+                credential_id: Set(credential_id.to_string()),
                 claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
                 value: Set(claim.value.to_owned().into()),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
             })
             .collect::<Vec<claim::ActiveModel>>(),
-    )
-    .exec(&db)
-    .await
-    .unwrap();
-    credential_claim::Entity::insert_many(
-        claims
-            .iter()
-            .map(|claim| credential_claim::ActiveModel {
-                claim_id: Set(claim.id.to_string()),
-                credential_id: Set(credential_id.to_string()),
-            })
-            .collect::<Vec<credential_claim::ActiveModel>>(),
     )
     .exec(&db)
     .await
@@ -850,4 +807,71 @@ async fn test_update_credential_success() {
         interaction_id,
         credential_after_update.interaction.unwrap().id
     );
+}
+
+#[tokio::test]
+async fn test_get_credential_by_claim_id_success() {
+    let TestSetup {
+        credential_schema,
+        did,
+        db,
+        ..
+    } = setup_empty().await;
+
+    let credential_id = Uuid::parse_str(
+        &insert_credential(
+            &db,
+            &credential_schema.id.to_string(),
+            CredentialStateEnum::Created,
+            "PROCIVIS_TEMPORARY",
+            did.id,
+            None,
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
+    let claim = Claim {
+        id: ClaimId::new_v4(),
+        credential_id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        value: "value1".to_string(),
+        schema: Some(
+            credential_schema.claim_schemas.as_ref().unwrap()[0]
+                .to_owned()
+                .schema,
+        ),
+    };
+
+    claim::ActiveModel {
+        id: Set(claim.id.to_string()),
+        credential_id: Set(credential_id.to_string()),
+        claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
+        value: Set(claim.value.as_bytes().to_owned()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    let provider = CredentialProvider {
+        db: db.clone(),
+        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
+        claim_repository: Arc::from(MockClaimRepository::default()),
+        did_repository: Arc::from(MockDidRepository::default()),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
+    };
+
+    let credential = provider
+        .get_credential_by_claim_id(&claim.id, &CredentialRelations::default())
+        .await;
+
+    assert!(credential.is_ok());
+    let credential = credential.unwrap().unwrap();
+    assert_eq!(credential_id, credential.id);
 }

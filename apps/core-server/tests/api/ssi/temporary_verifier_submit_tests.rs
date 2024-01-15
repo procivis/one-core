@@ -139,5 +139,5 @@ async fn test_correct() {
         .all(|required_claim| claims
             .iter()
             // Values are just keys uppercase
-            .any(|db_claim| db_claim.value == required_claim.1.to_ascii_uppercase())));
+            .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase())));
 }

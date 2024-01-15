@@ -95,8 +95,13 @@ impl CredentialService {
             &self.config,
         )?;
 
-        let claims = claims_from_create_request(request.claim_values.clone(), &claim_schemas)?;
-        let credential = from_create_request(request, claims, issuer_did, schema);
+        let credential_id = CredentialId::new_v4();
+        let claims = claims_from_create_request(
+            credential_id,
+            request.claim_values.clone(),
+            &claim_schemas,
+        )?;
+        let credential = from_create_request(request, credential_id, claims, issuer_did, schema);
 
         let result = self
             .credential_repository

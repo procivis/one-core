@@ -199,7 +199,6 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_interaction_repository(),
-                data_provider.get_claim_repository(),
                 config.clone(),
                 protocol_provider.clone(),
                 data_provider.get_did_repository(),
@@ -234,8 +233,7 @@ impl OneCore {
                 config.clone(),
             ),
             ssi_verifier_service: SSIVerifierService::new(
-                data_provider.get_claim_schema_repository(),
-                data_provider.get_claim_repository(),
+                data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),

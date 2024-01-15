@@ -19,7 +19,8 @@ use crate::{
         interaction::InteractionRelations,
         organisation::{Organisation, OrganisationRelations},
         proof::{
-            GetProofList, Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
+            GetProofList, Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
+            ProofStateRelations,
         },
         proof_schema::{
             ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -288,8 +289,11 @@ async fn test_get_proof_exists() {
                         organisation: Some(OrganisationRelations::default()),
                     }),
                     state: Some(ProofStateRelations::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
+                    claims: Some(ProofClaimRelations {
+                        claim: ClaimRelations {
+                            schema: Some(ClaimSchemaRelations::default()),
+                        },
+                        ..Default::default()
                     }),
                     verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations {

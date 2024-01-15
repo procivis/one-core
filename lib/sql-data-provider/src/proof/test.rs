@@ -1,24 +1,28 @@
 use std::sync::Arc;
 
+use mockall::predicate::eq;
 use one_core::{
     model::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaId,
+        credential::{Credential, CredentialRelations, CredentialStateEnum},
         did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::OrganisationId,
-        proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
+        proof::{
+            Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
+            ProofStateRelations,
+        },
         proof_schema::{ProofSchema, ProofSchemaId, ProofSchemaRelations},
     },
     repository::{
         claim_repository::ClaimRepository,
+        claim_repository::MockClaimRepository,
+        credential_repository::{CredentialRepository, MockCredentialRepository},
         did_repository::{DidRepository, MockDidRepository},
         interaction_repository::InteractionRepository,
         interaction_repository::MockInteractionRepository,
-        mock::{
-            claim_repository::MockClaimRepository,
-            proof_schema_repository::MockProofSchemaRepository,
-        },
+        mock::proof_schema_repository::MockProofSchemaRepository,
         proof_repository::ProofRepository,
         proof_schema_repository::ProofSchemaRepository,
     },
@@ -31,7 +35,7 @@ use uuid::Uuid;
 use super::ProofProvider;
 use crate::{
     entity::{
-        claim,
+        claim, credential, proof_claim,
         proof_state::{self, ProofRequestState},
     },
     list_query::from_pagination,
@@ -49,6 +53,7 @@ struct TestSetup {
 }
 
 async fn setup(
+    credential_repository: Arc<dyn CredentialRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
     did_repository: Arc<dyn DidRepository>,
@@ -119,6 +124,7 @@ async fn setup(
             db: db.clone(),
             proof_schema_repository,
             claim_repository,
+            credential_repository,
             did_repository,
             interaction_repository,
         }),
@@ -143,6 +149,7 @@ struct TestSetupWithProof {
 }
 
 async fn setup_with_proof(
+    credential_repository: Arc<dyn CredentialRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
     did_repository: Arc<dyn DidRepository>,
@@ -158,6 +165,7 @@ async fn setup_with_proof(
         interaction_id,
         ..
     } = setup(
+        credential_repository,
         proof_schema_repository,
         claim_repository,
         did_repository,
@@ -206,6 +214,10 @@ fn get_claim_repository_mock() -> Arc<dyn ClaimRepository> {
     Arc::from(MockClaimRepository::default())
 }
 
+fn get_credential_repository_mock() -> Arc<dyn CredentialRepository> {
+    Arc::from(MockCredentialRepository::default())
+}
+
 fn get_did_repository_mock() -> Arc<dyn DidRepository> {
     Arc::from(MockDidRepository::default())
 }
@@ -223,6 +235,7 @@ async fn test_create_proof_success() {
         did_id,
         ..
     } = setup(
+        get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
@@ -300,6 +313,7 @@ async fn test_get_proof_list() {
         proof_id,
         ..
     } = setup_with_proof(
+        get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
@@ -323,6 +337,7 @@ async fn test_get_proof_list() {
 #[tokio::test]
 async fn test_get_proof_missing() {
     let TestSetup { repository, .. } = setup(
+        get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
@@ -343,6 +358,7 @@ async fn test_get_proof_no_relations() {
         proof_id,
         ..
     } = setup_with_proof(
+        get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
@@ -408,27 +424,131 @@ async fn test_get_proof_with_relations() {
         }))
     });
 
+    let credential_id = Uuid::new_v4();
+    let claim_id = Uuid::new_v4();
+    let mut claim_repository = MockClaimRepository::default();
+    claim_repository
+        .expect_get_claim_list()
+        .once()
+        .with(eq(vec![claim_id]), eq(ClaimRelations::default()))
+        .returning(move |ids, _| {
+            Ok(vec![Claim {
+                id: ids[0],
+                credential_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                value: "value".to_string(),
+                schema: None,
+            }])
+        });
+
+    let mut credential_repository = MockCredentialRepository::default();
+    credential_repository
+        .expect_get_credential_by_claim_id()
+        .once()
+        .with(eq(claim_id), eq(CredentialRelations::default()))
+        .returning(move |_, _| {
+            Ok(Some(Credential {
+                id: credential_id,
+                created_date: get_dummy_date(),
+                issuance_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                deleted_at: None,
+                credential: b"credential".to_vec(),
+                transport: "protocol".to_string(),
+                redirect_uri: None,
+                state: None,
+                claims: None,
+                issuer_did: None,
+                holder_did: None,
+                schema: None,
+                interaction: None,
+                revocation_list: None,
+                key: None,
+            }))
+        });
+
     let TestSetupWithProof {
         repository,
         proof_id,
         proof_schema_id,
         did_id,
         interaction_id,
+        claim_schema_ids,
+        db,
+        organisation_id,
         ..
     } = setup_with_proof(
+        Arc::from(credential_repository),
         Arc::from(proof_schema_repository),
-        get_claim_repository_mock(),
+        Arc::from(claim_repository),
         Arc::from(did_repository),
         Arc::from(interaction_repository),
     )
     .await;
+
+    let credential_schema_id = Uuid::parse_str(
+        &insert_credential_schema_to_database(
+            &db,
+            None,
+            &organisation_id.to_string(),
+            "credential schema",
+            "JWT",
+            "NONE",
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
+    credential::ActiveModel {
+        id: Set(credential_id.to_string()),
+        credential_schema_id: Set(credential_schema_id.to_string()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        issuance_date: Set(get_dummy_date()),
+        redirect_uri: Set(None),
+        deleted_at: Set(None),
+        transport: Set("PROCIVIS_TEMPORARY".to_owned()),
+        credential: Set(vec![0, 0, 0, 0]),
+        issuer_did_id: Set(Some(did_id)),
+        holder_did_id: Set(None),
+        interaction_id: Set(None),
+        revocation_list_id: Set(None),
+        key_id: Set(None),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+
+    claim::ActiveModel {
+        id: Set(claim_id.to_string()),
+        credential_id: Set(credential_id.to_string()),
+        claim_schema_id: Set(claim_schema_ids[0].to_string()),
+        value: Set("value".as_bytes().to_owned()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
+    proof_claim::ActiveModel {
+        claim_id: Set(claim_id.to_string()),
+        proof_id: Set(proof_id.to_string()),
+    }
+    .insert(&db)
+    .await
+    .unwrap();
 
     let proof = repository
         .get_proof(
             &proof_id,
             &ProofRelations {
                 state: Some(ProofStateRelations::default()),
-                claims: Some(ClaimRelations::default()),
+                claims: Some(ProofClaimRelations {
+                    claim: ClaimRelations::default(),
+                    credential: Some(CredentialRelations::default()),
+                }),
                 schema: Some(ProofSchemaRelations::default()),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
@@ -444,11 +564,17 @@ async fn test_get_proof_with_relations() {
     assert_eq!(proof.verifier_did.unwrap().id, did_id);
     assert!(proof.holder_did.is_none());
     assert_eq!(proof.interaction.unwrap().id, interaction_id);
+
+    let claims = proof.claims.unwrap();
+    assert_eq!(claims.len(), 1);
+    assert_eq!(claims[0].claim.id, claim_id);
+    assert_eq!(claims[0].credential.to_owned().unwrap().id, credential_id);
 }
 
 #[tokio::test]
 async fn test_get_proof_by_interaction_id_missing() {
     let TestSetupWithProof { repository, .. } = setup_with_proof(
+        get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
@@ -517,6 +643,7 @@ async fn test_get_proof_by_interaction_id_success() {
         interaction_id,
         ..
     } = setup_with_proof(
+        get_credential_repository_mock(),
         Arc::from(proof_schema_repository),
         get_claim_repository_mock(),
         Arc::from(did_repository),
@@ -529,7 +656,7 @@ async fn test_get_proof_by_interaction_id_success() {
             &interaction_id,
             &ProofRelations {
                 state: Some(ProofStateRelations::default()),
-                claims: Some(ClaimRelations::default()),
+                claims: Some(ProofClaimRelations::default()),
                 schema: Some(ProofSchemaRelations::default()),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
@@ -552,6 +679,7 @@ async fn test_set_proof_state() {
         db,
         ..
     } = setup_with_proof(
+        get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
@@ -589,6 +717,7 @@ async fn test_set_proof_holder_did() {
         db,
         ..
     } = setup_with_proof(
+        get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
@@ -637,21 +766,16 @@ async fn test_set_proof_holder_did() {
 
 #[tokio::test]
 async fn test_set_proof_claims_success() {
-    let claim = Claim {
-        id: Uuid::new_v4(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        value: "value".to_string(),
-        schema: None,
-    };
-
     let TestSetupWithProof {
         repository,
         proof_id,
         db,
         claim_schema_ids,
+        organisation_id,
+        did_id,
         ..
     } = setup_with_proof(
+        get_credential_repository_mock(),
         get_proof_schema_repository_mock(),
         get_claim_repository_mock(),
         get_did_repository_mock(),
@@ -659,9 +783,47 @@ async fn test_set_proof_claims_success() {
     )
     .await;
 
+    let credential_schema_id = Uuid::parse_str(
+        &insert_credential_schema_to_database(
+            &db,
+            None,
+            &organisation_id.to_string(),
+            "credential schema",
+            "JWT",
+            "NONE",
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
+    let credential_id = Uuid::parse_str(
+        &insert_credential(
+            &db,
+            &credential_schema_id.to_string(),
+            CredentialStateEnum::Created,
+            "PROCIVIS_TEMPORARY",
+            did_id,
+            None,
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
+    let claim = Claim {
+        id: Uuid::new_v4(),
+        credential_id,
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        value: "value".to_string(),
+        schema: None,
+    };
+
     // necessary to pass db consistency checks
     claim::ActiveModel {
         id: Set(claim.id.to_string()),
+        credential_id: Set(credential_id.to_string()),
         claim_schema_id: Set(claim_schema_ids[0].to_string()),
         value: Set("value".into()),
         created_date: Set(get_dummy_date()),

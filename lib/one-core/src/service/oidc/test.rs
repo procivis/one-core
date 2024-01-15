@@ -21,7 +21,6 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::mock::claim_repository::MockClaimRepository;
 use crate::repository::mock::proof_repository::MockProofRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::oidc::dto::{
@@ -38,7 +37,6 @@ struct Mocks {
     pub credential_repository: MockCredentialRepository,
     pub proof_repository: MockProofRepository,
     pub interaction_repository: MockInteractionRepository,
-    pub claim_repository: MockClaimRepository,
     pub config: CoreConfig,
     pub transport_provider: MockTransportProtocolProvider,
     pub did_repository: MockDidRepository,
@@ -56,7 +54,6 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.proof_repository),
         Arc::new(mocks.interaction_repository),
-        Arc::new(mocks.claim_repository),
         Arc::new(mocks.config),
         Arc::new(mocks.transport_provider),
         Arc::new(mocks.did_repository),

@@ -80,8 +80,9 @@ fn generic_credential() -> Credential {
         last_modified: now,
     };
 
+    let credential_id = Uuid::new_v4();
     Credential {
-        id: Uuid::new_v4(),
+        id: credential_id,
         created_date: now,
         issuance_date: now,
         last_modified: now,
@@ -95,6 +96,7 @@ fn generic_credential() -> Credential {
         }]),
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),
+            credential_id,
             created_date: now,
             last_modified: now,
             value: "123".to_string(),

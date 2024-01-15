@@ -1,5 +1,5 @@
 use crate::{
-    model::claim_schema::ClaimSchemaId,
+    model::claim_schema::ClaimSchemaId, provider::credential_formatter::model::DetailCredential,
     service::credential_schema::dto::CredentialSchemaListItemResponseDTO,
 };
 use shared_types::DidValue;
@@ -26,5 +26,6 @@ pub struct ProofRequestClaimDTO {
 #[derive(Clone, Debug)]
 pub(super) struct ValidatedProofClaimDTO {
     pub claim_schema_id: ClaimSchemaId,
+    pub credential: DetailCredential,
     pub value: String,
 }

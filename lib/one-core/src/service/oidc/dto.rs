@@ -4,7 +4,13 @@ use thiserror::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
+use crate::{
+    model::proof_schema::ProofSchemaClaim,
+    provider::{
+        credential_formatter::model::DetailCredential,
+        transport_protocol::dto::SubmitIssuerResponse,
+    },
+};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataResponseDTO {
@@ -159,4 +165,11 @@ pub struct OpenID4VPDirectPostResponseDTO {
 pub enum PresentationToken {
     One(String),
     Multiple(Vec<String>),
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct ValidatedProofClaimDTO {
+    pub claim_schema: ProofSchemaClaim,
+    pub credential: DetailCredential,
+    pub value: String,
 }

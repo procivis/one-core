@@ -47,7 +47,7 @@ use crate::{
         did::{Did, DidRelations, DidType, KeyRole},
         interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::{Organisation, OrganisationRelations},
-        proof::{Proof, ProofId, ProofRelations, UpdateProofRequest},
+        proof::{Proof, ProofClaimRelations, ProofId, ProofRelations, UpdateProofRequest},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
     provider::{
@@ -508,8 +508,11 @@ impl TransportProtocol for OpenID4VC {
                 &proof.id,
                 &ProofRelations {
                     interaction: Some(InteractionRelations::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
+                    claims: Some(ProofClaimRelations {
+                        claim: ClaimRelations {
+                            schema: Some(ClaimSchemaRelations::default()),
+                        },
+                        ..Default::default()
                     }),
                     schema: Some(ProofSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations {
@@ -755,7 +758,9 @@ async fn handle_credential_invitation(
     // for now generate a new credential_schema for each issued OpenID4VCI credential
     let credential_schema_id = CredentialSchemaId::new_v4();
 
-    let claims = create_claims_from_credential_definition(&credential.credential_definition)?;
+    let credential_id = CredentialId::new_v4();
+    let claims =
+        create_claims_from_credential_definition(credential_id, &credential.credential_definition)?;
     let (claim_schemas, claims): (Vec<_>, Vec<_>) = claims.into_iter().unzip();
 
     let display_name = issuer_metadata
@@ -790,6 +795,7 @@ async fn handle_credential_invitation(
 
     let credential = create_and_store_credential(
         &deps.credential_repository,
+        credential_id,
         holder_did,
         credential_schema,
         claims,
@@ -861,6 +867,7 @@ async fn create_and_store_interaction(
 
 async fn create_and_store_credential(
     repository: &Arc<dyn CredentialRepository>,
+    credential_id: CredentialId,
     holder_did: Did,
     credential_schema: CredentialSchema,
     claims: Vec<Claim>,
@@ -871,7 +878,7 @@ async fn create_and_store_credential(
 
     repository
         .create_credential(Credential {
-            id: Uuid::new_v4(),
+            id: credential_id,
             created_date: now,
             issuance_date: now,
             last_modified: now,

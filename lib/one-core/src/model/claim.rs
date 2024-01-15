@@ -1,13 +1,17 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use super::{
+    claim_schema::{ClaimSchema, ClaimSchemaRelations},
+    credential::CredentialId,
+};
 
 pub type ClaimId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Claim {
     pub id: ClaimId,
+    pub credential_id: CredentialId, // cannot be a relation, because credential defines a reverse relation already
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub value: String,

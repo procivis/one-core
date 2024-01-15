@@ -84,12 +84,13 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
             let claim = claims
                 .iter()
                 .find(|c| {
-                    c.schema
+                    c.claim
+                        .schema
                         .as_ref()
                         .is_some_and(|s| s.id == proof_claim_schema.schema.id)
                 })
                 .cloned();
-            proof_claim_from_claim(proof_claim_schema.clone(), claim)
+            proof_claim_from_claim(proof_claim_schema.clone(), claim.map(|c| c.claim))
         })
         .collect::<Result<Vec<ProofClaimDTO>, ServiceError>>()?;
 

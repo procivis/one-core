@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::anyhow;
 use autometrics::autometrics;
-use one_core::model::proof::UpdateProofRequest;
+use one_core::model::proof::{ProofClaim, UpdateProofRequest};
 use one_core::{
     common_mapper::convert_inner,
     model::{
@@ -365,11 +365,31 @@ impl ProofProvider {
             proof.claims = if claim_ids.is_empty() {
                 Some(vec![])
             } else {
-                Some(
-                    self.claim_repository
-                        .get_claim_list(claim_ids, claim_relations)
-                        .await?,
-                )
+                let claims = self
+                    .claim_repository
+                    .get_claim_list(claim_ids, &claim_relations.claim)
+                    .await?;
+
+                let mut claims: Vec<ProofClaim> = claims
+                    .into_iter()
+                    .map(|claim| ProofClaim {
+                        claim,
+                        credential: None,
+                    })
+                    .collect();
+
+                if let Some(credential_relations) = &claim_relations.credential {
+                    for claim in claims.iter_mut() {
+                        let credential = self
+                            .credential_repository
+                            .get_credential_by_claim_id(&claim.claim.id, credential_relations)
+                            .await?
+                            .ok_or(DataLayerError::Db(anyhow!("Credential not found")))?;
+                        claim.credential = Some(credential);
+                    }
+                }
+
+                Some(claims)
             };
         }
 

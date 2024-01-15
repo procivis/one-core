@@ -162,9 +162,9 @@ fn dummy_config() -> CoreConfig {
 
 fn dummy_credential() -> Credential {
     let claim_schema_id = Uuid::new_v4();
-
+    let credential_id = Uuid::new_v4();
     Credential {
-        id: Uuid::new_v4(),
+        id: credential_id,
         created_date: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
@@ -178,6 +178,7 @@ fn dummy_credential() -> Credential {
         }]),
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),
+            credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             value: "claim value".to_string(),
