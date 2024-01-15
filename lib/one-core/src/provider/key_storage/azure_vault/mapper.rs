@@ -1,6 +1,9 @@
-use crate::crypto::{signer::error::SignerError, CryptoProvider};
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use std::sync::Arc;
+
+use anyhow::anyhow;
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+
+use crate::crypto::{signer::error::SignerError, CryptoProvider};
 
 use super::dto::{
     AzureHsmGenerateKeyRequest, AzureHsmGenerateKeyResponseKey, AzureHsmGetTokenRequest,
@@ -49,10 +52,14 @@ pub(super) fn create_sign_request(
 pub(super) fn public_key_from_components(
     key: &AzureHsmGenerateKeyResponseKey,
 ) -> Result<Vec<u8>, ServiceError> {
-    let mut x_component = Base64UrlSafeNoPadding::decode_to_vec(&key.x_component, None)
-        .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
-    let mut y_component = Base64UrlSafeNoPadding::decode_to_vec(&key.y_component, None)
-        .map_err(|e| ServiceError::GeneralRuntimeError(e.to_string()))?;
+    let mut x_component =
+        Base64UrlSafeNoPadding::decode_to_vec(&key.x_component, None).map_err(|e| {
+            ServiceError::KeyStorageError(anyhow!(e).context("could not decode x component"))
+        })?;
+    let mut y_component =
+        Base64UrlSafeNoPadding::decode_to_vec(&key.y_component, None).map_err(|e| {
+            ServiceError::KeyStorageError(anyhow!(e).context("could not decode y component"))
+        })?;
 
     const PUBLIC_KEY_FULL: u8 = 0x04;
     let mut result = vec![PUBLIC_KEY_FULL];

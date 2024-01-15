@@ -63,7 +63,19 @@ pub enum ErrorCode {
     MissingInteractionForAccessToken,
     MissingCredentialIndexOnRevocationList,
     MissingClaimSchemas,
-
+    GenericKeyStorageError,
+    ModelMapping,
+    Validation,
+    OpenID4VCI,
+    ConfigurationValidation,
+    BitstringHandling,
+    MissingSigner,
+    MissingAlgorithm,
+    KeyAlgorithm,
+    DidMethod,
+    FormatterProvider,
+    CryptoProvider,
+    TransportProtocol,
     Unmapped,
 }
 

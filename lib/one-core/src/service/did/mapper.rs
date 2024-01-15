@@ -183,7 +183,7 @@ impl TryFrom<PublicKeyJwkDTO> for PublicKeyJwkResponseDTO {
                 x: data.x,
                 y: data.y,
             }),
-            _ => Err(ServiceError::GeneralRuntimeError(
+            _ => Err(ServiceError::MappingError(
                 "Only EC and OKP did algorithms are supported.".to_string(),
             )),
         }

@@ -77,12 +77,12 @@ impl KeyStorage for AzureVaultKeyProvider {
             .bearer_auth(access_token)
             .send()
             .await
-            .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
+            .map_err(TransportProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
+            .map_err(TransportProtocolError::HttpRequestError)?
             .json()
             .await
-            .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?;
+            .map_err(TransportProtocolError::HttpRequestError)?;
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
@@ -162,12 +162,12 @@ impl AzureVaultKeyProvider {
             .form(&request)
             .send()
             .await
-            .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
+            .map_err(TransportProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(|e| ServiceError::from(TransportProtocolError::HttpRequestError(e)))?
+            .map_err(TransportProtocolError::HttpRequestError)?
             .json()
             .await
-            .map_err(|e| ServiceError::from(TransportProtocolError::HttpResponse(e)))?;
+            .map_err(TransportProtocolError::HttpResponse)?;
 
         if response.token_type != "Bearer" {
             return Err(ServiceError::Other(format!(

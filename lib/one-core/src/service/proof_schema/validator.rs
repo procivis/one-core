@@ -15,8 +15,7 @@ pub async fn proof_schema_name_already_exists(
 ) -> Result<(), ServiceError> {
     let proof_schemas = repository
         .get_proof_schema_list(create_unique_name_check_request(name, organisation_id)?)
-        .await
-        .map_err(ServiceError::from)?;
+        .await?;
     if proof_schemas.total_items > 0 {
         return Err(BusinessLogicError::ProofSchemaAlreadyExists.into());
     }

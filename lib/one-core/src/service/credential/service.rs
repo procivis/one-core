@@ -126,8 +126,7 @@ impl CredentialService {
                     ..Default::default()
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let Some(credential) = credential else {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
@@ -456,8 +455,7 @@ impl CredentialService {
                         }),
                         ..Default::default()
                     })
-                    .await
-                    .map_err(ServiceError::from)?;
+                    .await?;
             }
             CredentialStateEnum::Pending => {}
             state => return Err(BusinessLogicError::InvalidCredentialState { state }.into()),

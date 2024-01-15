@@ -48,8 +48,7 @@ impl DidService {
                     ..Default::default()
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let Some(did) = did else {
             return Err(EntityNotFoundError::Did(*id).into());
@@ -133,11 +132,7 @@ impl DidService {
         &self,
         query: DidListQuery,
     ) -> Result<GetDidListResponseDTO, ServiceError> {
-        let result = self
-            .did_repository
-            .get_did_list(query)
-            .await
-            .map_err(ServiceError::from)?;
+        let result = self.did_repository.get_did_list(query).await?;
         Ok(result.into())
     }
 
@@ -189,8 +184,7 @@ impl DidService {
 
         let did_value = did_method
             .create(&new_did_id, &request.params, &Some(key.clone()))
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         if did_already_exists(&self.did_repository, &did_value).await? {
             return Err(BusinessLogicError::DidValueAlreadyExists(did_value).into());
@@ -208,11 +202,7 @@ impl DidService {
 
         let did = did_from_did_request(new_did_id, request, organisation, did_value, key, now);
 
-        let did_id = self
-            .did_repository
-            .create_did(did)
-            .await
-            .map_err(ServiceError::from)?;
+        let did_id = self.did_repository.create_did(did).await?;
 
         Ok(did_id)
     }
@@ -225,8 +215,7 @@ impl DidService {
         let did = self
             .did_repository
             .get_did(id, &DidRelations::default())
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let Some(did) = did else {
             return Err(EntityNotFoundError::Did(*id).into());

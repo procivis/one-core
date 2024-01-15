@@ -226,8 +226,7 @@ impl StatusList2021 {
                     ..Default::default()
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let states = credentials
             .into_iter()
