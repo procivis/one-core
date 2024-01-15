@@ -663,7 +663,7 @@ async fn test_set_proof_claims_success() {
     claim::ActiveModel {
         id: Set(claim.id.to_string()),
         claim_schema_id: Set(claim_schema_ids[0].to_string()),
-        value: Set("value".to_string()),
+        value: Set("value".into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
     }

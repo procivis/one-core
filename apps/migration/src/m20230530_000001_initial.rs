@@ -532,7 +532,11 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Credential::Transport).string().not_null())
                     .col(ColumnDef::new(Credential::RedirectUri).string())
-                    .col(ColumnDef::new(Credential::Credential).binary().not_null())
+                    .col(
+                        ColumnDef::new(Credential::Credential)
+                            .blob(BlobSize::Long)
+                            .not_null(),
+                    )
                     .col(
                         ColumnDef::new(Credential::CredentialSchemaId)
                             .char_len(36)
@@ -799,7 +803,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Claim::ClaimSchemaId).char_len(36).not_null())
-                    .col(ColumnDef::new(Claim::Value).string().not_null())
+                    .col(ColumnDef::new(Claim::Value).blob(BlobSize::Long).not_null())
                     .col(
                         ColumnDef::new(Claim::CreatedDate)
                             .custom::<CustomDateTime>(CustomDateTime(

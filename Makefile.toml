@@ -70,7 +70,7 @@ args = ["run", "-p", "migration", "--", "down", "-n1"]
 
 [tasks.dbtempent]
 command = "sea-orm-cli"
-args = ["generate", "entity", "--date-time-crate" , "time", "-o", "lib/sql-data-provider/src/entity_new/" ]
+args = ["generate", "entity", "--date-time-crate" , "time", "--database-url", "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core", "-o", "lib/sql-data-provider/src/entity_new/" ]
 
 [tasks.mobile-build]
 script.pre = '''
