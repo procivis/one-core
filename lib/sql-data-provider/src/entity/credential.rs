@@ -19,7 +19,7 @@ pub struct Model {
     pub transport: String,
     pub redirect_uri: Option<String>,
 
-    #[sea_orm(column_type = "Binary(BlobSize::Blob(None))")]
+    #[sea_orm(column_type = "Binary(BlobSize::Long)")]
     pub credential: Vec<u8>,
 
     pub issuer_did_id: Option<DidId>,

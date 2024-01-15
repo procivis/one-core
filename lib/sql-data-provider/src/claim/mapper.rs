@@ -12,7 +12,7 @@ impl TryFrom<Claim> for claim::ActiveModel {
             id: Set(value.id.to_string()),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
-            value: Set(value.value),
+            value: Set(value.value.as_bytes().to_owned()),
             claim_schema_id: Set(value
                 .schema
                 .ok_or(DataLayerError::IncorrectParameters)?
@@ -29,7 +29,7 @@ impl TryFrom<claim::Model> for Claim {
         let id = Uuid::from_str(&value.id)?;
         Ok(Self {
             id,
-            value: value.value,
+            value: String::from_utf8_lossy(&value.value).into_owned(),
             created_date: value.created_date,
             last_modified: value.last_modified,
             schema: None,

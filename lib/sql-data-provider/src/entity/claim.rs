@@ -7,7 +7,8 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
     pub claim_schema_id: String,
-    pub value: String,
+    #[sea_orm(column_type = "Binary(BlobSize::Long)")]
+    pub value: Vec<u8>,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
 }

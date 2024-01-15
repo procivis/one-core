@@ -238,7 +238,7 @@ async fn test_create_credential_success() {
             .map(|claim| claim::ActiveModel {
                 id: Set(claim.id.to_string()),
                 claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
-                value: Set(claim.value.to_owned()),
+                value: Set(claim.value.as_bytes().to_owned()),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
             })
@@ -628,7 +628,7 @@ async fn test_get_credential_success() {
             .map(|claim| claim::ActiveModel {
                 id: Set(claim.id.to_string()),
                 claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
-                value: Set(claim.value.to_owned()),
+                value: Set(claim.value.to_owned().into()),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
             })
