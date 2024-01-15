@@ -65,7 +65,7 @@ impl SSIIssuerService {
          * I was able to insert 'test' string as a DID value and it got accepted
          */
         let holder_did = get_or_create_did(
-            &self.did_repository,
+            &*self.did_repository,
             &credential_schema.organisation,
             holder_did_value,
         )

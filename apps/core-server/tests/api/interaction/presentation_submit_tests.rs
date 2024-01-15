@@ -147,7 +147,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
         .as_ref()
         .unwrap()
         .iter()
-        .any(|c| c.value == "test"));
+        .any(|c| c.claim.value == "test"));
     assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
 }
 
@@ -342,6 +342,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         .as_ref()
         .unwrap()
         .iter()
-        .any(|c| c.value == "test"));
+        .any(|c| c.claim.value == "test"));
     assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
 }

@@ -58,13 +58,15 @@ impl CredentialsDB {
         transport: &str,
         params: TestingCredentialParams<'_>,
     ) -> Credential {
+        let credential_id = Uuid::new_v4();
         let claims = credential_schema
             .claim_schemas
             .as_ref()
             .unwrap()
             .iter()
-            .map(|claim_schema| Claim {
+            .map(move |claim_schema| Claim {
                 id: Uuid::new_v4(),
+                credential_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 value: "test".to_string(),
@@ -73,7 +75,7 @@ impl CredentialsDB {
             .collect();
 
         let credential = Credential {
-            id: Uuid::new_v4(),
+            id: credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             issuance_date: get_dummy_date(),

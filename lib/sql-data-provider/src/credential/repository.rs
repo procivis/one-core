@@ -5,8 +5,8 @@ use crate::{
         CredentialProvider,
     },
     entity::{
-        claim, claim_schema, credential, credential_claim, credential_schema,
-        credential_schema_claim_schema, credential_state,
+        claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
+        credential_state,
     },
     list_query::SelectWithListQuery,
 };
@@ -34,9 +34,9 @@ use one_core::{
 };
 use sea_orm::{
     sea_query::{Alias, Expr, IntoCondition, Query},
-    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, JoinType,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait,
+    FromQueryResult, JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
+    Select, Set, SqlErr, Unchanged,
 };
 use shared_types::DidId;
 use std::{str::FromStr, sync::Arc};
@@ -68,17 +68,15 @@ async fn get_claims(
     db: &DatabaseConnection,
     claim_repository: Arc<dyn ClaimRepository>,
 ) -> Result<Vec<Claim>, DataLayerError> {
-    let ids: Vec<ClaimId> = credential_claim::Entity::find()
+    #[derive(FromQueryResult)]
+    struct ClaimIdModel {
+        pub id: String,
+    }
+
+    let ids: Vec<ClaimId> = claim::Entity::find()
         .select_only()
-        .columns([
-            credential_claim::Column::ClaimId,
-            credential_claim::Column::CredentialId,
-        ])
-        .filter(credential_claim::Column::CredentialId.eq(&credential.id))
-        .join(
-            sea_orm::JoinType::LeftJoin,
-            credential_claim::Relation::Claim.def(),
-        )
+        .columns([claim::Column::Id])
+        .filter(claim::Column::CredentialId.eq(&credential.id))
         .join(
             sea_orm::JoinType::LeftJoin,
             claim::Relation::ClaimSchema.def(),
@@ -89,11 +87,12 @@ async fn get_claims(
         )
         // sorting claims according to the order from credential_schema
         .order_by_asc(credential_schema_claim_schema::Column::Order)
+        .into_model::<ClaimIdModel>()
         .all(db)
         .await
         .map_err(|e| DataLayerError::Db(e.into()))?
         .into_iter()
-        .map(|claim| Uuid::from_str(&claim.claim_id))
+        .map(|claim| Uuid::from_str(&claim.id))
         .collect::<Result<Vec<_>, _>>()?;
 
     claim_repository.get_claim_list(ids, relations).await
@@ -348,7 +347,13 @@ impl CredentialRepository for CredentialProvider {
 
         let key_id = request.key.as_ref().map(|key| key.id);
 
-        let credential = request_to_active_model(
+        if claims.iter().any(|claim| claim.credential_id != request.id) {
+            return Err(DataLayerError::Db(anyhow::anyhow!(
+                "Claim credential-id mismatch!",
+            )));
+        }
+
+        request_to_active_model(
             &request,
             schema,
             issuer_did,
@@ -365,21 +370,7 @@ impl CredentialRepository for CredentialProvider {
         })?;
 
         if !claims.is_empty() {
-            self.claim_repository
-                .create_claim_list(claims.to_owned())
-                .await?;
-
-            let credential_claim_models: Vec<credential_claim::ActiveModel> = claims
-                .into_iter()
-                .map(|claim| credential_claim::ActiveModel {
-                    claim_id: Set(claim.id.to_string()),
-                    credential_id: Set(credential.id.clone()),
-                })
-                .collect();
-            credential_claim::Entity::insert_many(credential_claim_models)
-                .exec(&self.db)
-                .await
-                .map_err(|e| DataLayerError::Db(e.into()))?;
+            self.claim_repository.create_claim_list(claims).await?;
         }
 
         if let Some(states) = request.state {
@@ -579,17 +570,13 @@ impl CredentialRepository for CredentialProvider {
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
-            .join(
-                JoinType::LeftJoin,
-                credential::Relation::CredentialClaim.def(),
-            )
-            .join(JoinType::LeftJoin, credential_claim::Relation::Claim.def())
+            .join(JoinType::LeftJoin, credential::Relation::Claim.def())
             .join(
                 JoinType::LeftJoin,
                 claim::Relation::ClaimSchema
                     .def()
                     .on_condition(move |_left, _right| {
-                        Expr::col(claim_schema::Column::Key)
+                        Expr::col((claim_schema::Entity, claim_schema::Column::Key))
                             .is_in(&claim_names)
                             .into_condition()
                     }),
@@ -600,6 +587,36 @@ impl CredentialRepository for CredentialProvider {
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
         self.credentials_to_repository(credentials, relations).await
+    }
+
+    async fn get_credential_by_claim_id(
+        &self,
+        claim_id: &ClaimId,
+        relations: &CredentialRelations,
+    ) -> Result<Option<Credential>, DataLayerError> {
+        let claim_id = claim_id.to_string();
+        let credential = credential::Entity::find()
+            .join(
+                JoinType::LeftJoin,
+                credential::Relation::Claim
+                    .def()
+                    .on_condition(move |_left, _right| {
+                        Expr::col((claim::Entity, claim::Column::Id))
+                            .eq(&claim_id)
+                            .into_condition()
+                    }),
+            )
+            .one(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        Ok(match credential {
+            None => None,
+            Some(credential) => Some(
+                self.credential_model_to_repository_model(credential, relations)
+                    .await?,
+            ),
+        })
     }
 }
 

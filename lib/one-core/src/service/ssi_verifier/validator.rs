@@ -23,8 +23,8 @@ use std::{
 
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_proof(
-    proof_schema: ProofSchema,
-    holder_did: Did,
+    proof_schema: &ProofSchema,
+    holder_did: &Did,
     presentation: &str,
     formatter_provider: &(dyn CredentialFormatterProvider),
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -54,14 +54,19 @@ pub(super) async fn validate_proof(
         .await?;
 
     // Check if presentation is expired
-    validate_issuance_time(presentation.issued_at, presentation_formatter.get_leeway())?;
-    validate_expiration_time(presentation.expires_at, presentation_formatter.get_leeway())?;
+    validate_issuance_time(&presentation.issued_at, presentation_formatter.get_leeway())?;
+    validate_expiration_time(
+        &presentation.expires_at,
+        presentation_formatter.get_leeway(),
+    )?;
 
-    let proof_schema_claims = proof_schema
-        .claim_schemas
-        .ok_or(ServiceError::MappingError(
-            "claim_schemas is None".to_string(),
-        ))?;
+    let proof_schema_claims =
+        proof_schema
+            .claim_schemas
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "claim_schemas is None".to_string(),
+            ))?;
 
     let requested_cred_schema_ids = proof_schema_claims
         .iter()
@@ -124,22 +129,29 @@ pub(super) async fn validate_proof(
             extract_matching_requested_schema(&credential, &mut remaining_requested_claims)?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
-        validate_issuance_time(credential.invalid_before, credential_formatter.get_leeway())?;
-        validate_expiration_time(credential.expires_at, credential_formatter.get_leeway())?;
+        validate_issuance_time(
+            &credential.invalid_before,
+            credential_formatter.get_leeway(),
+        )?;
+        validate_expiration_time(&credential.expires_at, credential_formatter.get_leeway())?;
 
-        if let Some(credential_status) = credential.status {
+        if let Some(credential_status) = &credential.status {
             let (revocation_method, _) = revocation_method_provider
                 .get_revocation_method_by_status_type(&credential_status.r#type)
                 .ok_or(MissingProviderError::RevocationMethod(
                     credential_status.r#type.clone(),
                 ))?;
 
-            let issuer_did = credential.issuer_did.ok_or(ServiceError::ValidationError(
-                "Issuer DID missing".to_owned(),
-            ))?;
+            let issuer_did =
+                credential
+                    .issuer_did
+                    .as_ref()
+                    .ok_or(ServiceError::ValidationError(
+                        "Issuer DID missing".to_owned(),
+                    ))?;
 
             if revocation_method
-                .check_credential_revocation_status(&credential_status, &issuer_did)
+                .check_credential_revocation_status(credential_status, issuer_did)
                 .await?
             {
                 return Err(ServiceError::ValidationError(
@@ -149,7 +161,7 @@ pub(super) async fn validate_proof(
         }
 
         // Check if all subjects of the submitted VCs is matching the holder did.
-        let claim_subject = match credential.subject {
+        let claim_subject = match &credential.subject {
             None => {
                 return Err(ServiceError::ValidationError(
                     "Claim Holder DID missing".to_owned(),
@@ -176,14 +188,17 @@ pub(super) async fn validate_proof(
                 continue;
             }
 
-            let value = value.ok_or(ServiceError::ValidationError(format!(
-                "Required credential key '{}' missing",
-                &requested_proof_claim.schema.key
-            )))?;
+            let value = value
+                .ok_or(ServiceError::ValidationError(format!(
+                    "Required credential key '{}' missing",
+                    &requested_proof_claim.schema.key
+                )))?
+                .to_owned();
 
             collected_proved_claims.push(ValidatedProofClaimDTO {
                 claim_schema_id: requested_proof_claim.schema.id,
-                value: value.to_owned(),
+                credential: credential.to_owned(),
+                value,
             });
         }
 
@@ -235,40 +250,4 @@ fn extract_matching_requested_schema(
     );
     remaining_requested_claims.remove(&result.0);
     Ok(result)
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{
-        ops::{Add, Sub},
-        time::Duration,
-    };
-
-    use time::OffsetDateTime;
-
-    use super::*;
-
-    #[test]
-    fn test_validate_issuance_time() {
-        let leeway = 5u64;
-
-        let correctly_issued = validate_issuance_time(Some(OffsetDateTime::now_utc()), leeway);
-        assert!(correctly_issued.is_ok());
-
-        let now_plus_minute = OffsetDateTime::now_utc().add(Duration::from_secs(60));
-        let issued_in_future = validate_issuance_time(Some(now_plus_minute), leeway);
-        assert!(issued_in_future.is_err());
-    }
-
-    #[test]
-    fn test_validate_expiration_time() {
-        let leeway = 5u64;
-
-        let correctly_issued = validate_expiration_time(Some(OffsetDateTime::now_utc()), leeway);
-        assert!(correctly_issued.is_ok());
-
-        let now_minus_minute = OffsetDateTime::now_utc().sub(Duration::from_secs(60));
-        let issued_in_future = validate_expiration_time(Some(now_minus_minute), leeway);
-        assert!(issued_in_future.is_err());
-    }
 }

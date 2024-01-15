@@ -9,6 +9,7 @@ use crate::model::interaction::InteractionId;
 use super::{
     claim::{Claim, ClaimRelations},
     common::{GetListQueryParams, GetListResponse},
+    credential::{Credential, CredentialRelations},
     did::{Did, DidRelations},
     interaction::{Interaction, InteractionRelations},
     proof_schema::{ProofSchema, ProofSchemaRelations},
@@ -28,7 +29,7 @@ pub struct Proof {
     // Relations
     pub state: Option<Vec<ProofState>>,
     pub schema: Option<ProofSchema>,
-    pub claims: Option<Vec<Claim>>,
+    pub claims: Option<Vec<ProofClaim>>,
     pub verifier_did: Option<Did>,
     pub holder_did: Option<Did>, // empty either because relation not specified or not set in database
     pub interaction: Option<Interaction>,
@@ -52,6 +53,14 @@ pub struct ProofState {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProofClaim {
+    pub claim: Claim,
+
+    // Relations
+    pub credential: Option<Credential>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableProofColumn {
     SchemaName,
     VerifierDid,
@@ -65,8 +74,8 @@ pub type GetProofQuery = GetListQueryParams<SortableProofColumn>;
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofRelations {
     pub state: Option<ProofStateRelations>,
-    pub claims: Option<ClaimRelations>,
     pub schema: Option<ProofSchemaRelations>,
+    pub claims: Option<ProofClaimRelations>,
     pub verifier_did: Option<DidRelations>,
     pub holder_did: Option<DidRelations>,
     pub interaction: Option<InteractionRelations>,
@@ -74,6 +83,12 @@ pub struct ProofRelations {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofStateRelations {}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct ProofClaimRelations {
+    pub claim: ClaimRelations,
+    pub credential: Option<CredentialRelations>,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateProofRequest {

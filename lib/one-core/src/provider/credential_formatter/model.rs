@@ -3,7 +3,7 @@ use shared_types::DidValue;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DetailCredential {
     pub id: Option<String>,
     pub issued_at: Option<OffsetDateTime>,
@@ -32,7 +32,7 @@ pub struct VCCredentialSchemaResponse {
     pub claims: Vec<VCCredentialClaimSchemaResponse>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSubject {
     #[serde(flatten)]
@@ -55,7 +55,7 @@ pub struct CredentialPresentation {
     pub disclosed_keys: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialStatus {
     pub id: String,

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::credential::CredentialId;
 use crate::model::proof::ProofId;
 use crate::provider::transport_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
@@ -300,6 +301,7 @@ pub(super) fn create_credential_offer_encoded(
 }
 
 pub(super) fn create_claims_from_credential_definition(
+    credential_id: CredentialId,
     credential_definition: &OpenID4VCICredentialDefinition,
 ) -> Result<Vec<(CredentialSchemaClaim, Claim)>, TransportProtocolError> {
     let credential_subject =
@@ -326,6 +328,7 @@ pub(super) fn create_claims_from_credential_definition(
 
         let claim = Claim {
             id: Uuid::new_v4(),
+            credential_id,
             created_date: now,
             last_modified: now,
             value: value_details.value.to_string(),

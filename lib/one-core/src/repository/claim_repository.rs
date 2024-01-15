@@ -2,6 +2,7 @@ use super::error::DataLayerError;
 
 use crate::model::claim::{Claim, ClaimId, ClaimRelations};
 
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait ClaimRepository: Send + Sync {
     async fn create_claim_list(&self, request: Vec<Claim>) -> Result<(), DataLayerError>;

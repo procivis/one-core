@@ -6,7 +6,6 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::provider::TransportProtocolProvider;
-use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -28,7 +27,6 @@ pub struct OIDCService {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     config: Arc<core_config::CoreConfig>,
-    claim_repository: Arc<dyn ClaimRepository>,
     protocol_provider: Arc<dyn TransportProtocolProvider>,
     did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -45,7 +43,6 @@ impl OIDCService {
         credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
-        claim_repository: Arc<dyn ClaimRepository>,
         config: Arc<core_config::CoreConfig>,
         protocol_provider: Arc<dyn TransportProtocolProvider>,
         did_repository: Arc<dyn DidRepository>,
@@ -60,7 +57,6 @@ impl OIDCService {
             credential_repository,
             proof_repository,
             interaction_repository,
-            claim_repository,
             config,
             protocol_provider,
             did_repository,

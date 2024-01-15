@@ -167,7 +167,7 @@ async fn test_direct_post_one_credential_correct() {
         .all(|required_claim| claims
             .iter()
             // Values are just keys uppercase
-            .any(|db_claim| db_claim.value == required_claim.1.to_ascii_uppercase())));
+            .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase())));
 }
 
 #[tokio::test]
@@ -492,7 +492,7 @@ async fn test_direct_post_multiple_presentations() {
         .all(|required_claim| claims
             .iter()
             // Values are just keys uppercase
-            .any(|db_claim| db_claim.value == required_claim.1.to_ascii_uppercase())));
+            .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase())));
 
     // TODO: Add additional checks when https://procivis.atlassian.net/browse/ONE-1133 is implemented
 }

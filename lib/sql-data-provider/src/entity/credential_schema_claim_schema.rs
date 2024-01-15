@@ -6,9 +6,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub claim_schema_id: String,
 
-    #[sea_orm(primary_key, auto_increment = false)]
     pub credential_schema_id: String,
-
     pub required: bool,
     pub order: u32,
 }

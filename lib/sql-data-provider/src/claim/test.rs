@@ -4,6 +4,7 @@ use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
+        credential::{CredentialId, CredentialStateEnum},
     },
     repository::{
         claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
@@ -12,11 +13,13 @@ use one_core::{
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use std::sync::Arc;
+use uuid::Uuid;
 
 struct TestSetup {
     pub db: DatabaseConnection,
     pub repository: Box<dyn ClaimRepository>,
     pub claim_schemas: Vec<ClaimSchema>,
+    pub credential_id: CredentialId,
 }
 
 async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestSetup {
@@ -37,12 +40,55 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         .unwrap();
     }
 
+    let organisation_id =
+        Uuid::parse_str(&insert_organisation_to_database(&db, None).await.unwrap()).unwrap();
+
+    let credential_schema_id = Uuid::parse_str(
+        &insert_credential_schema_to_database(
+            &db,
+            None,
+            &organisation_id.to_string(),
+            "credential schema",
+            "JWT",
+            "NONE",
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
+    let did_id = &insert_did_key(
+        &db,
+        "issuer",
+        Uuid::new_v4(),
+        "did:key:123".parse().unwrap(),
+        "KEY",
+        &organisation_id.to_string(),
+    )
+    .await
+    .unwrap();
+
+    let credential_id = Uuid::parse_str(
+        &insert_credential(
+            &db,
+            &credential_schema_id.to_string(),
+            CredentialStateEnum::Created,
+            "PROCIVIS_TEMPORARY",
+            did_id.to_owned(),
+            None,
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
     TestSetup {
         repository: Box::new(ClaimProvider {
             db: db.clone(),
             claim_schema_repository,
         }),
         db,
+        credential_id,
         claim_schemas: claim_schema_ids
             .into_iter()
             .map(|id| ClaimSchema {
@@ -66,6 +112,7 @@ async fn test_create_claim_list_success() {
         repository,
         claim_schemas,
         db,
+        credential_id,
         ..
     } = setup(get_claim_schema_repository_mock()).await;
 
@@ -75,6 +122,7 @@ async fn test_create_claim_list_success() {
                 .into_iter()
                 .map(|schema| Claim {
                     id: ClaimId::new_v4(),
+                    credential_id,
                     value: "value".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -97,11 +145,16 @@ async fn test_create_claim_list_success() {
 
 #[tokio::test]
 async fn test_create_claim_list_missing_schema() {
-    let TestSetup { repository, .. } = setup(get_claim_schema_repository_mock()).await;
+    let TestSetup {
+        repository,
+        credential_id,
+        ..
+    } = setup(get_claim_schema_repository_mock()).await;
 
     let result = repository
         .create_claim_list(vec![Claim {
             id: ClaimId::new_v4(),
+            credential_id,
             value: "value".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -116,6 +169,7 @@ async fn test_get_claim_list() {
     let TestSetup {
         repository,
         claim_schemas,
+        credential_id,
         ..
     } = setup(get_claim_schema_repository_mock()).await;
 
@@ -123,6 +177,7 @@ async fn test_get_claim_list() {
         .iter()
         .map(|schema| Claim {
             id: ClaimId::new_v4(),
+            credential_id,
             value: "value".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -189,6 +244,7 @@ async fn test_get_claim_list_with_relation() {
     let TestSetup {
         repository,
         claim_schemas,
+        credential_id,
         ..
     } = setup(Arc::from(claim_schema_repository)).await;
 
@@ -196,6 +252,7 @@ async fn test_get_claim_list_with_relation() {
         .iter()
         .map(|schema| Claim {
             id: ClaimId::new_v4(),
+            credential_id,
             value: "value".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),

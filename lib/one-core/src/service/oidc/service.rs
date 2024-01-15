@@ -1,12 +1,12 @@
 use crate::common_mapper::{
-    get_exchange_param_pre_authorization_expires_in, get_exchange_param_token_expires_in,
-    get_or_create_did,
+    extracted_credential_to_model, get_exchange_param_pre_authorization_expires_in,
+    get_exchange_param_token_expires_in, get_or_create_did,
 };
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchemaId;
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaId};
 use crate::model::credential::{
     CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
     UpdateCredentialRequest,
@@ -24,6 +24,7 @@ use crate::model::proof_schema::{
     ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
@@ -48,13 +49,16 @@ use crate::service::oidc::{
 };
 use crate::util::key_verification::KeyVerification;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
+use shared_types::DidValue;
 use std::collections::HashMap;
 use std::ops::Add;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO};
+use super::dto::{
+    OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, ValidatedProofClaimDTO,
+};
 
 impl OIDCService {
     pub async fn oidc_get_issuer_metadata(
@@ -180,7 +184,7 @@ impl OIDCService {
                 })?;
 
             get_or_create_did(
-                &self.did_repository,
+                &*self.did_repository,
                 &schema.organisation,
                 &holder_did_value,
             )
@@ -311,7 +315,7 @@ impl OIDCService {
                         claim_schemas: Some(ProofSchemaClaimRelations {
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
-                        ..Default::default()
+                        organisation: Some(OrganisationRelations::default()),
                     }),
                     interaction: Some(InteractionRelations::default()),
                     state: Some(ProofStateRelations::default()),
@@ -328,10 +332,9 @@ impl OIDCService {
 
         match self.process_proof_submission(request, &proof).await {
             Ok(proved_claims) => {
-                self.accept_proof(&proof.id, proved_claims).await?;
-                Ok(OpenID4VPDirectPostResponseDTO {
-                    redirect_uri: proof.redirect_uri,
-                })
+                let redirect_uri = proof.redirect_uri.to_owned();
+                self.accept_proof(proof, proved_claims).await?;
+                Ok(OpenID4VPDirectPostResponseDTO { redirect_uri })
             }
             Err(err) => {
                 self.mark_proof_as_failed(&proof.id).await?;
@@ -344,7 +347,7 @@ impl OIDCService {
         &self,
         submission: OpenID4VPDirectPostRequestDTO,
         proof: &Proof,
-    ) -> Result<Vec<(ProofSchemaClaim, String)>, ServiceError> {
+    ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
         let interaction = proof
             .interaction
             .as_ref()
@@ -419,7 +422,7 @@ impl OIDCService {
                 .insert(proof_schema_claim.schema.id, credential_schema.id);
         }
 
-        let mut total_proved_claims: Vec<(ProofSchemaClaim, String)> = Vec::new();
+        let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
         // Unpack presentations and credentials
         for presentation_submitted in &presentation_submission.descriptor_map {
             let input_descriptor = interaction_data
@@ -472,7 +475,7 @@ impl OIDCService {
             )
             .await?;
 
-            let proved_claims: Vec<(ProofSchemaClaim, String)> = validate_claims(
+            let proved_claims: Vec<ValidatedProofClaimDTO> = validate_claims(
                 credential,
                 input_descriptor,
                 &claim_to_credential_schema_mapping,
@@ -495,29 +498,105 @@ impl OIDCService {
 
     async fn accept_proof(
         &self,
-        id: &ProofId,
-        proved_claims: Vec<(ProofSchemaClaim, String)>,
+        proof: Proof,
+        proved_claims: Vec<ValidatedProofClaimDTO>,
     ) -> Result<(), ServiceError> {
-        let now = OffsetDateTime::now_utc();
-        let claims: Vec<Claim> = proved_claims
-            .into_iter()
-            .map(|(proof_schema, value)| Claim {
-                id: Uuid::new_v4(),
-                created_date: now,
-                last_modified: now,
-                value,
-                schema: Some(proof_schema.schema),
-            })
-            .collect();
+        let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
+            "proof schema is None".to_string(),
+        ))?;
 
-        self.claim_repository
-            .create_claim_list(claims.clone())
+        struct ProvedClaim {
+            claim_schema: ClaimSchema,
+            value: String,
+            credential: DetailCredential,
+            credential_schema: CredentialSchema,
+        }
+        let proved_claims = proved_claims
+            .into_iter()
+            .map(|proved_claim| {
+                Ok(ProvedClaim {
+                    value: proved_claim.value,
+                    credential: proved_claim.credential,
+                    credential_schema: proved_claim.claim_schema.credential_schema.ok_or(
+                        ServiceError::MappingError("credential schema is None".to_string()),
+                    )?,
+                    claim_schema: proved_claim.claim_schema.schema,
+                })
+            })
+            .collect::<Result<Vec<ProvedClaim>, ServiceError>>()?;
+
+        let mut claims_per_credential: HashMap<CredentialSchemaId, Vec<ProvedClaim>> =
+            HashMap::new();
+        for proved_claim in proved_claims {
+            claims_per_credential
+                .entry(proved_claim.credential_schema.id)
+                .or_default()
+                .push(proved_claim);
+        }
+
+        let mut proof_claims: Vec<Claim> = vec![];
+        for (_, credential_claims) in claims_per_credential {
+            let claims: Vec<(String, ClaimSchema)> = credential_claims
+                .iter()
+                .map(|claim| (claim.value.to_owned(), claim.claim_schema.to_owned()))
+                .collect();
+
+            let first_claim = credential_claims
+                .first()
+                .ok_or(ServiceError::MappingError("claims are empty".to_string()))?;
+            let credential = &first_claim.credential;
+            let issuer_did = credential
+                .issuer_did
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "issuer_did is missing".to_string(),
+                ))?;
+            let issuer_did = get_or_create_did(
+                &*self.did_repository,
+                &proof_schema.organisation,
+                issuer_did,
+            )
             .await?;
-        self.proof_repository.set_proof_claims(id, claims).await?;
+
+            let holder_did = DidValue::from_str(credential.subject.as_ref().ok_or(
+                ServiceError::MappingError("credential subject is missing".to_string()),
+            )?)
+            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+            let holder_did = get_or_create_did(
+                &*self.did_repository,
+                &proof_schema.organisation,
+                &holder_did,
+            )
+            .await?;
+
+            let credential = extracted_credential_to_model(
+                first_claim.credential_schema.to_owned(),
+                claims,
+                issuer_did,
+                holder_did,
+            );
+
+            proof_claims.append(
+                &mut credential
+                    .claims
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError("claims missing".to_string()))?
+                    .to_owned(),
+            );
+
+            self.credential_repository
+                .create_credential(credential)
+                .await?;
+        }
 
         self.proof_repository
+            .set_proof_claims(&proof.id, proof_claims)
+            .await?;
+
+        let now = OffsetDateTime::now_utc();
+        self.proof_repository
             .set_proof_state(
-                id,
+                &proof.id,
                 ProofState {
                     created_date: now,
                     last_modified: now,

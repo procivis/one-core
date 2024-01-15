@@ -1,5 +1,4 @@
 use std::iter::IntoIterator;
-use std::sync::Arc;
 
 use fmap::Functor;
 use serde::{Deserialize, Deserializer};
@@ -8,9 +7,12 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, ExchangeType};
+use crate::model::claim::{Claim, ClaimId};
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialId, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
-use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::{model::common::GetListResponse, service::error::ServiceError};
@@ -78,7 +80,7 @@ pub(crate) fn get_exchange_param_token_expires_in(
 }
 
 pub(crate) async fn get_or_create_did(
-    did_repository: &Arc<dyn DidRepository>,
+    did_repository: &dyn DidRepository,
     organisation: &Option<Organisation>,
     holder_did_value: &DidValue,
 ) -> Result<Did, ServiceError> {
@@ -133,23 +135,45 @@ pub(super) fn did_method_id_from_value(did_value: &DidValue) -> Result<String, S
     Ok(did_method.to_uppercase())
 }
 
-pub(super) fn did_from_did_document(
-    did_document: &DidDocumentDTO,
-    organisation: &Organisation,
-) -> Result<Did, ServiceError> {
+pub fn extracted_credential_to_model(
+    credential_schema: CredentialSchema,
+    claims: Vec<(String, ClaimSchema)>,
+    issuer_did: Did,
+    holder_did: Did,
+) -> Credential {
     let now = OffsetDateTime::now_utc();
-    let did_method = did_method_id_from_value(&did_document.id)?;
-
-    Ok(Did {
-        id: Uuid::new_v4().into(),
+    let credential_id = CredentialId::new_v4();
+    Credential {
+        id: credential_id,
         created_date: now,
+        issuance_date: now,
         last_modified: now,
-        name: did_document.id.to_string(),
-        did: did_document.id.clone(),
-        did_type: DidType::Remote,
-        did_method,
-        keys: None,
-        organisation: Some(organisation.to_owned()),
-        deactivated: false,
-    })
+        deleted_at: None,
+        credential: vec![],
+        transport: "PROCIVIS_TEMPORARY".to_string(),
+        state: Some(vec![CredentialState {
+            created_date: now,
+            state: CredentialStateEnum::Accepted,
+        }]),
+        claims: Some(
+            claims
+                .into_iter()
+                .map(|(value, claim_schema)| Claim {
+                    id: ClaimId::new_v4(),
+                    credential_id,
+                    created_date: now,
+                    last_modified: now,
+                    value,
+                    schema: Some(claim_schema),
+                })
+                .collect(),
+        ),
+        issuer_did: Some(issuer_did),
+        holder_did: Some(holder_did),
+        schema: Some(credential_schema),
+        redirect_uri: None,
+        interaction: None,
+        revocation_list: None,
+        key: None,
+    }
 }

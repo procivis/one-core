@@ -10,6 +10,7 @@ impl TryFrom<Claim> for claim::ActiveModel {
     fn try_from(value: Claim) -> Result<Self, Self::Error> {
         Ok(Self {
             id: Set(value.id.to_string()),
+            credential_id: Set(value.credential_id.to_string()),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             value: Set(value.value.as_bytes().to_owned()),
@@ -27,8 +28,10 @@ impl TryFrom<claim::Model> for Claim {
 
     fn try_from(value: claim::Model) -> Result<Self, Self::Error> {
         let id = Uuid::from_str(&value.id)?;
+        let credential_id = Uuid::from_str(&value.credential_id)?;
         Ok(Self {
             id,
+            credential_id,
             value: String::from_utf8_lossy(&value.value).into_owned(),
             created_date: value.created_date,
             last_modified: value.last_modified,

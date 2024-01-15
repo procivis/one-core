@@ -15,7 +15,7 @@ use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyId, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
-use one_core::model::proof::{Proof, ProofState, ProofStateEnum};
+use one_core::model::proof::{Proof, ProofClaimRelations, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
     ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaId, ProofSchemaRelations,
@@ -443,13 +443,15 @@ pub async fn create_credential(
 ) -> Credential {
     let data_layer = DataLayer::build(db_conn.to_owned());
 
+    let credential_id = Uuid::new_v4();
     let claims: Vec<Claim> = credential_schema
         .claim_schemas
         .as_ref()
         .unwrap()
         .iter()
-        .map(|claim_schema| Claim {
+        .map(move |claim_schema| Claim {
             id: Uuid::new_v4(),
+            credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             value: "test".to_string(),
@@ -458,7 +460,7 @@ pub async fn create_credential(
         .collect();
 
     let credential = Credential {
-        id: Uuid::new_v4(),
+        id: credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),
@@ -584,8 +586,11 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
             proof_id,
             &ProofRelations {
                 state: Some(ProofStateRelations {}),
-                claims: Some(ClaimRelations {
-                    schema: Some(ClaimSchemaRelations {}),
+                claims: Some(ProofClaimRelations {
+                    claim: ClaimRelations {
+                        schema: Some(ClaimSchemaRelations {}),
+                    },
+                    ..Default::default()
                 }),
                 schema: Some(ProofSchemaRelations {
                     claim_schemas: Some(ProofSchemaClaimRelations {

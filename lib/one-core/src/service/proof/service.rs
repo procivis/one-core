@@ -18,6 +18,7 @@ use crate::{
         did::DidRelations,
         interaction::InteractionRelations,
         organisation::OrganisationRelations,
+        proof::ProofClaimRelations,
         proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
@@ -51,8 +52,11 @@ impl ProofService {
                         organisation: Some(OrganisationRelations::default()),
                     }),
                     state: Some(ProofStateRelations::default()),
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
+                    claims: Some(ProofClaimRelations {
+                        claim: ClaimRelations {
+                            schema: Some(ClaimSchemaRelations::default()),
+                        },
+                        ..Default::default()
                     }),
                     verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations {

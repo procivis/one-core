@@ -22,6 +22,7 @@ use crate::util::oidc::{map_from_oidc_format_to_core, map_from_oidc_vp_format_to
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
+use super::dto::ValidatedProofClaimDTO;
 use super::model::OpenID4VPPresentationDefinitionInputDescriptor;
 
 pub(crate) fn throw_if_token_request_invalid(
@@ -125,8 +126,8 @@ pub(super) async fn validate_presentation(
             }
         })?;
 
-    validate_issuance_time(presentation.issued_at, formatter.get_leeway())?;
-    validate_expiration_time(presentation.expires_at, formatter.get_leeway())?;
+    validate_issuance_time(&presentation.issued_at, formatter.get_leeway())?;
+    validate_expiration_time(&presentation.expires_at, formatter.get_leeway())?;
 
     if !presentation
         .nonce
@@ -165,8 +166,8 @@ pub(super) async fn validate_credential(
             }
         })?;
 
-    validate_issuance_time(credential.issued_at, formatter.get_leeway())?;
-    validate_expiration_time(credential.expires_at, formatter.get_leeway())?;
+    validate_issuance_time(&credential.issued_at, formatter.get_leeway())?;
+    validate_expiration_time(&credential.expires_at, formatter.get_leeway())?;
 
     if let Some(credential_status) = &credential.status {
         let (revocation_method, _) = revocation_method_provider
@@ -218,7 +219,7 @@ pub(super) fn validate_claims(
     descriptor: &OpenID4VPPresentationDefinitionInputDescriptor,
     claim_to_credential_schema_mapping: &HashMap<ClaimSchemaId, CredentialSchemaId>,
     expected_credential_claims: &HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>>,
-) -> Result<Vec<(ProofSchemaClaim, String)>, ServiceError> {
+) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
     // each descriptor contains only fields from a single credential_schema...
     let first_claim_schema = descriptor
         .constraints
@@ -241,7 +242,7 @@ pub(super) fn validate_claims(
             OpenID4VCIError::InvalidRequest,
         ))?;
 
-    let mut proved_claims: Vec<(ProofSchemaClaim, String)> = Vec::new();
+    let mut proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
     for &expected_credential_claim in expected_credential_claims {
         if let Some(value) = received_credential
             .claims
@@ -249,7 +250,11 @@ pub(super) fn validate_claims(
             .get(&expected_credential_claim.schema.key)
         {
             // Expected claim present in the presentation
-            proved_claims.push((expected_credential_claim.clone(), value.to_owned()))
+            proved_claims.push(ValidatedProofClaimDTO {
+                claim_schema: expected_credential_claim.to_owned(),
+                credential: received_credential.to_owned(),
+                value: value.to_owned(),
+            })
         } else if expected_credential_claim.required {
             // Fail as required claim was not sent
             return Err(ServiceError::OpenID4VCError(

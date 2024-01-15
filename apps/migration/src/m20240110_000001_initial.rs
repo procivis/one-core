@@ -8,11 +8,12 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let datetime = CustomDateTime(manager.get_database_backend());
+
         manager
             .create_table(
                 Table::create()
                     .table(Interaction::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(Interaction::Id)
                             .char_len(36)
@@ -21,16 +22,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Interaction::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Interaction::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Interaction::Host).string())
@@ -43,7 +40,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Organisation::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(Organisation::Id)
                             .char_len(36)
@@ -52,16 +48,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Organisation::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Organisation::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .to_owned(),
@@ -72,7 +64,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(CredentialSchema::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(CredentialSchema::Id)
                             .char_len(36)
@@ -81,23 +72,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(CredentialSchema::DeletedAt)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .null(),
                     )
                     .col(
                         ColumnDef::new(CredentialSchema::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(CredentialSchema::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(ColumnDef::new(CredentialSchema::Name).string().not_null())
@@ -127,7 +112,6 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .if_not_exists()
                     .name("index-CredentialSchema-Name")
                     .table(CredentialSchema::Table)
                     .col(CredentialSchema::OrganisationId)
@@ -140,7 +124,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(ClaimSchema::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(ClaimSchema::Id)
                             .char_len(36)
@@ -151,16 +134,12 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(ClaimSchema::Datatype).string().not_null())
                     .col(
                         ColumnDef::new(ClaimSchema::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(ClaimSchema::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .to_owned(),
@@ -171,7 +150,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(ProofSchema::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(ProofSchema::Id)
                             .char_len(36)
@@ -180,23 +158,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(ProofSchema::DeletedAt)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .null(),
                     )
                     .col(
                         ColumnDef::new(ProofSchema::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(ProofSchema::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(ColumnDef::new(ProofSchema::Name).string().not_null())
@@ -225,7 +197,6 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .if_not_exists()
                     .name("index-ProofSchema-Name-Unique")
                     .unique()
                     .table(ProofSchema::Table)
@@ -239,11 +210,12 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(CredentialSchemaClaimSchema::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(CredentialSchemaClaimSchema::ClaimSchemaId)
                             .char_len(36)
-                            .not_null(),
+                            .not_null()
+                            // this table is in a one-to-one relation with ClaimSchema, so setting ClaimSchemaId as primary/unique key
+                            .primary_key(),
                     )
                     .col(
                         ColumnDef::new(CredentialSchemaClaimSchema::CredentialSchemaId)
@@ -261,16 +233,9 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .default(0),
                     )
-                    .primary_key(
-                        Index::create()
-                            .name("pk-CredentialSchema_ClaimSchema")
-                            .col(CredentialSchemaClaimSchema::ClaimSchemaId)
-                            .col(CredentialSchemaClaimSchema::CredentialSchemaId)
-                            .primary(),
-                    )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("fk-CredentialSchema_ClaimSchema-ClaimId")
+                            .name("fk-CredentialSchemaClaimSchema-ClaimSchemaId")
                             .from_tbl(CredentialSchemaClaimSchema::Table)
                             .from_col(CredentialSchemaClaimSchema::ClaimSchemaId)
                             .to_tbl(ClaimSchema::Table)
@@ -278,7 +243,7 @@ impl MigrationTrait for Migration {
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("fk-CredentialSchema_ClaimSchema-ProofId")
+                            .name("fk-CredentialSchemaClaimSchema-CredentialSchemaId")
                             .from_tbl(CredentialSchemaClaimSchema::Table)
                             .from_col(CredentialSchemaClaimSchema::CredentialSchemaId)
                             .to_tbl(CredentialSchema::Table)
@@ -292,7 +257,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(ProofSchemaClaimSchema::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(ProofSchemaClaimSchema::ClaimSchemaId)
                             .char_len(36)
@@ -316,15 +280,14 @@ impl MigrationTrait for Migration {
                     )
                     .primary_key(
                         Index::create()
-                            .if_not_exists()
-                            .name("pk-ProofSchema_ClaimSchema")
+                            .name("pk-ProofSchemaClaimSchema")
                             .col(ProofSchemaClaimSchema::ClaimSchemaId)
                             .col(ProofSchemaClaimSchema::ProofSchemaId)
                             .primary(),
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("fk-ProofSchema_ClaimSchema-ClaimId")
+                            .name("fk-ProofSchemaClaimSchema-ClaimSchemaId")
                             .from_tbl(ProofSchemaClaimSchema::Table)
                             .from_col(ProofSchemaClaimSchema::ClaimSchemaId)
                             .to_tbl(ClaimSchema::Table)
@@ -332,7 +295,7 @@ impl MigrationTrait for Migration {
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("fk-ProofSchema_ClaimSchema-ProofId")
+                            .name("fk-ProofSchemaClaimSchema-ProofSchemaId")
                             .from_tbl(ProofSchemaClaimSchema::Table)
                             .from_col(ProofSchemaClaimSchema::ProofSchemaId)
                             .to_tbl(ProofSchema::Table)
@@ -346,7 +309,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Did::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(Did::Id)
                             .char_len(36)
@@ -354,18 +316,10 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Did::Did).string_len(4000).not_null())
-                    .col(
-                        ColumnDef::new(Did::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Did::CreatedDate).custom(datetime).not_null())
                     .col(
                         ColumnDef::new(Did::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Did::Name).string().not_null())
@@ -392,7 +346,6 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .if_not_exists()
                     .name("index-Did-Did-Unique")
                     .unique()
                     .table(Did::Table)
@@ -405,7 +358,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(RevocationList::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(RevocationList::Id)
                             .char_len(36)
@@ -414,16 +366,12 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(RevocationList::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(RevocationList::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
@@ -452,25 +400,16 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Key::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(Key::Id)
                             .char_len(36)
                             .not_null()
                             .primary_key(),
                     )
-                    .col(
-                        ColumnDef::new(Key::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(Key::CreatedDate).custom(datetime).not_null())
                     .col(
                         ColumnDef::new(Key::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Key::Name).string().not_null())
@@ -495,7 +434,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Credential::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(Credential::Id)
                             .char_len(36)
@@ -504,30 +442,22 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Credential::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Credential::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Credential::IssuanceDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Credential::DeletedAt)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .null(),
                     )
                     .col(ColumnDef::new(Credential::Transport).string().not_null())
@@ -603,7 +533,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(CredentialState::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(CredentialState::CredentialId)
                             .char_len(36)
@@ -611,9 +540,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(CredentialState::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
@@ -655,7 +582,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Proof::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(Proof::Id)
                             .char_len(36)
@@ -664,23 +590,17 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(Proof::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Proof::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Proof::IssuanceDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(ColumnDef::new(Proof::RedirectUri).string())
@@ -728,7 +648,6 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .if_not_exists()
                     .name("index-ProofSchema-Name")
                     .table(ProofSchema::Table)
                     .col(ProofSchema::OrganisationId)
@@ -741,20 +660,15 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(ProofState::Table)
-                    .if_not_exists()
                     .col(ColumnDef::new(ProofState::ProofId).char_len(36).not_null())
                     .col(
                         ColumnDef::new(ProofState::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(ProofState::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
@@ -795,7 +709,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(Claim::Table)
-                    .if_not_exists()
                     .col(
                         ColumnDef::new(Claim::Id)
                             .char_len(36)
@@ -803,19 +716,16 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Claim::ClaimSchemaId).char_len(36).not_null())
+                    .col(ColumnDef::new(Claim::CredentialId).char_len(36).not_null())
                     .col(ColumnDef::new(Claim::Value).blob(BlobSize::Long).not_null())
                     .col(
                         ColumnDef::new(Claim::CreatedDate)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .col(
                         ColumnDef::new(Claim::LastModified)
-                            .custom::<CustomDateTime>(CustomDateTime(
-                                manager.get_database_backend(),
-                            ))
+                            .custom(datetime)
                             .not_null(),
                     )
                     .foreign_key(
@@ -826,6 +736,14 @@ impl MigrationTrait for Migration {
                             .to_tbl(ClaimSchema::Table)
                             .to_col(ClaimSchema::Id),
                     )
+                    .foreign_key(
+                        ForeignKeyCreateStatement::new()
+                            .name("fk-Claim-CredentialId")
+                            .from_tbl(Claim::Table)
+                            .from_col(Claim::CredentialId)
+                            .to_tbl(Credential::Table)
+                            .to_col(Credential::Id),
+                    )
                     .to_owned(),
             )
             .await?;
@@ -834,7 +752,6 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(KeyDid::Table)
-                    .if_not_exists()
                     .col(ColumnDef::new(KeyDid::DidId).char_len(36).not_null())
                     .col(ColumnDef::new(KeyDid::KeyId).char_len(36).not_null())
                     .col(
@@ -882,57 +799,19 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(CredentialClaim::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(CredentialClaim::ClaimId)
-                            .char_len(36)
-                            .not_null()
-                            .primary_key(),
-                    )
-                    .col(
-                        ColumnDef::new(CredentialClaim::CredentialId)
-                            .char_len(36)
-                            .not_null(),
-                    )
-                    .foreign_key(
-                        ForeignKeyCreateStatement::new()
-                            .name("fk-Credential_Claim-ClaimId")
-                            .from_tbl(CredentialClaim::Table)
-                            .from_col(CredentialClaim::ClaimId)
-                            .to_tbl(Claim::Table)
-                            .to_col(Claim::Id),
-                    )
-                    .foreign_key(
-                        ForeignKeyCreateStatement::new()
-                            .name("fk-Credential_Claim-CredentialId")
-                            .from_tbl(CredentialClaim::Table)
-                            .from_col(CredentialClaim::CredentialId)
-                            .to_tbl(Credential::Table)
-                            .to_col(Credential::Id),
-                    )
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .create_table(
-                Table::create()
                     .table(ProofClaim::Table)
-                    .if_not_exists()
                     .col(ColumnDef::new(ProofClaim::ClaimId).char_len(36).not_null())
                     .col(ColumnDef::new(ProofClaim::ProofId).char_len(36).not_null())
                     .primary_key(
                         Index::create()
-                            .if_not_exists()
-                            .name("pk-Proof_Claim")
+                            .name("pk-ProofClaim")
                             .col(ProofClaim::ClaimId)
                             .col(ProofClaim::ProofId)
                             .primary(),
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("fk-Proof_Claim-ClaimId")
+                            .name("fk-ProofClaim-ClaimId")
                             .from_tbl(ProofClaim::Table)
                             .from_col(ProofClaim::ClaimId)
                             .to_tbl(Claim::Table)
@@ -940,7 +819,7 @@ impl MigrationTrait for Migration {
                     )
                     .foreign_key(
                         ForeignKeyCreateStatement::new()
-                            .name("fk-Proof_Claim-ProofId")
+                            .name("fk-ProofClaim-ProofId")
                             .from_tbl(ProofClaim::Table)
                             .from_col(ProofClaim::ProofId)
                             .to_tbl(Proof::Table)
@@ -956,9 +835,6 @@ impl MigrationTrait for Migration {
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .drop_table(Table::drop().table(ProofClaim::Table).to_owned())
-            .await?;
-        manager
-            .drop_table(Table::drop().table(CredentialClaim::Table).to_owned())
             .await?;
         manager
             .drop_table(Table::drop().table(Claim::Table).to_owned())
@@ -1218,6 +1094,7 @@ pub enum Claim {
     Table,
     Id,
     ClaimSchemaId,
+    CredentialId,
     Value,
     CreatedDate,
     LastModified,
@@ -1278,14 +1155,8 @@ pub enum ProofClaim {
     ProofId,
 }
 
-#[derive(Iden)]
-pub enum CredentialClaim {
-    Table,
-    ClaimId,
-    CredentialId,
-}
-
-pub struct CustomDateTime(pub sea_orm::DatabaseBackend);
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+struct CustomDateTime(sea_orm::DatabaseBackend);
 
 impl Iden for CustomDateTime {
     fn unquoted(&self, s: &mut dyn fmt::Write) {

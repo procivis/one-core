@@ -140,8 +140,9 @@ fn generic_credential() -> Credential {
         last_modified: now,
     };
 
+    let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     Credential {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        id: credential_id,
         created_date: now,
         issuance_date: now,
         last_modified: now,
@@ -155,6 +156,7 @@ fn generic_credential() -> Credential {
         }]),
         claims: Some(vec![Claim {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            credential_id,
             created_date: now,
             last_modified: now,
             value: "123".to_string(),

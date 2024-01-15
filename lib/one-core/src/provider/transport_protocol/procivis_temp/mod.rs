@@ -498,6 +498,7 @@ async fn handle_credential_invitation(
         })?;
 
     // create credential
+    let credential_id = issuer_response.id;
     let incoming_claims = issuer_response.claims;
     let claims = credential_schema
         .claim_schemas
@@ -513,9 +514,10 @@ async fn handle_credential_invitation(
                     .find(|claim| claim.schema.key == claim_schema.schema.key)
                 {
                     Ok(Some(Claim {
+                        id: ClaimId::new_v4(),
+                        credential_id,
                         schema: Some(claim_schema.schema.to_owned()),
                         value: value.value.to_owned(),
-                        id: ClaimId::new_v4(),
                         created_date: now,
                         last_modified: now,
                     }))
@@ -536,7 +538,7 @@ async fn handle_credential_invitation(
 
     deps.credential_repository
         .create_credential(Credential {
-            id: issuer_response.id,
+            id: credential_id,
             created_date: now,
             issuance_date: now,
             last_modified: now,
@@ -562,7 +564,7 @@ async fn handle_credential_invitation(
         })?;
 
     Ok(InvitationResponseDTO::Credential {
-        credential_ids: vec![issuer_response.id],
+        credential_ids: vec![credential_id],
         interaction_id,
     })
 }

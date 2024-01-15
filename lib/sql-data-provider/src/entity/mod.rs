@@ -3,7 +3,6 @@
 pub mod claim;
 pub mod claim_schema;
 pub mod credential;
-pub mod credential_claim;
 pub mod credential_schema;
 pub mod credential_schema_claim_schema;
 pub mod credential_state;
