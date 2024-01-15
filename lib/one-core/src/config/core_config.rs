@@ -256,6 +256,10 @@ pub enum KeyAlgorithmType {
     #[serde(rename = "ES256")]
     #[strum(serialize = "ES256")]
     Es256,
+    // Fixme change to ML_DSA when possible
+    #[serde(rename = "DILITHIUM")]
+    #[strum(serialize = "DILITHIUM")]
+    MlDsa,
 }
 
 pub type KeyStorageConfig = ConfigBlock<KeyStorageType, String>;

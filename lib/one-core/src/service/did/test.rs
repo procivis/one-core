@@ -1,4 +1,5 @@
 use super::DidService;
+use crate::provider::did_method::DidCapabilities;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::error::EntityNotFoundError;
 use crate::service::error::{BusinessLogicError, ValidationError};
@@ -269,6 +270,14 @@ async fn test_create_did_success() {
         .once()
         .returning(|_, _request, _key| Ok(DidValue::from_str("value").unwrap()));
 
+    did_method
+        .expect_get_capabilities()
+        .times(1)
+        .returning(|| DidCapabilities {
+            operations: vec![],
+            key_algorithms: vec!["".to_owned()],
+        });
+
     let mut did_repository = MockDidRepository::default();
     did_repository
         .expect_get_did_by_value()
@@ -346,6 +355,14 @@ async fn test_create_did_value_already_exists() {
         .expect_create()
         .times(1)
         .returning(|_, _, _| Ok(DidValue::from_str("value").unwrap()));
+
+    did_method
+        .expect_get_capabilities()
+        .times(1)
+        .returning(|| DidCapabilities {
+            operations: vec![],
+            key_algorithms: vec!["".to_owned()],
+        });
 
     let mut did_repository = MockDidRepository::default();
     did_repository

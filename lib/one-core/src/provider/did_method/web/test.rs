@@ -91,6 +91,7 @@ async fn test_did_web_create() {
                 "CREATE".to_string(),
                 "DEACTIVATE".to_string(),
             ],
+            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
         },
     )
     .unwrap();
@@ -117,6 +118,7 @@ async fn test_did_web_create_with_port() {
                 "CREATE".to_string(),
                 "DEACTIVATE".to_string(),
             ],
+            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
         },
     )
     .unwrap();
@@ -141,6 +143,7 @@ async fn test_did_web_create_fail_no_base_url() {
                 "CREATE".to_string(),
                 "DEACTIVATE".to_string(),
             ],
+            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
         },
     )
     .unwrap();

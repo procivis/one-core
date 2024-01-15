@@ -18,7 +18,10 @@
                     "kind": "bin"
                 }
             },
-            "envFile": "./dev.env",
+            "args": [
+                "--config",
+                "config/config-local.yml",
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -37,12 +40,15 @@
                     "kind": "bin"
                 }
             },
-            "envFile": "./dev.env",
             "env": {
-                "SERVER_PORT": "3001",
-                "DATABASE_URL": "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core",
-                "CORE_BASE_URL": "http://0.0.0.0:3001"
+                "ONE_app__serverPort": "3001",
+                "ONE_app__databaseUrl": "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core",
+                "ONE_app__coreBaseUrl": "http://0.0.0.0:3001"
             },
+            "args": [
+                "--config",
+                "config/config-local.yml",
+            ],
             "cwd": "${workspaceFolder}"
         }
     ]

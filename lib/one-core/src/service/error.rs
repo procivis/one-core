@@ -135,6 +135,9 @@ pub enum BusinessLogicError {
     #[error("Invalid DID method: {method}")]
     InvalidDidMethod { method: String },
 
+    #[error("Incapable DID method: {key_algorithm}")]
+    DidMethodIncapableKeyAlgorithm { key_algorithm: String },
+
     #[error("Did value already exists: {0}")]
     DidValueAlreadyExists(DidValue),
 
@@ -272,6 +275,7 @@ pub enum ErrorCode {
 
     DidNotFound,
     DidInvalidType,
+    DidMethodIncapableKeyAlgorithm,
     DidInvalidMethod,
     DidDeactivated,
     DidValueAlreadyExists,
@@ -367,6 +371,7 @@ impl ErrorCode {
 
             ErrorCode::DidNotFound => "DID not found",
             ErrorCode::DidInvalidType => "Invalid DID type",
+            ErrorCode::DidMethodIncapableKeyAlgorithm => "Did method incapable",
             ErrorCode::DidInvalidMethod => "Invalid DID method",
             ErrorCode::DidDeactivated => "DID deactivated",
             ErrorCode::DidValueAlreadyExists => "DID value already exists",
@@ -496,6 +501,9 @@ impl BusinessLogicError {
         match self {
             BusinessLogicError::OrganisationAlreadyExists => ErrorCode::OrganisationAlreadyExists,
             BusinessLogicError::IncompatibleDidType { .. } => ErrorCode::DidInvalidType,
+            BusinessLogicError::DidMethodIncapableKeyAlgorithm { .. } => {
+                ErrorCode::DidMethodIncapableKeyAlgorithm
+            }
             BusinessLogicError::InvalidDidMethod { .. } => ErrorCode::DidInvalidMethod,
             BusinessLogicError::DidIsDeactivated(_) => ErrorCode::DidDeactivated,
             BusinessLogicError::DidValueAlreadyExists(_) => ErrorCode::DidValueAlreadyExists,

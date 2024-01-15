@@ -47,6 +47,7 @@ fn setup_provider(
         Arc::new(KeyDidMethod::new(
             DidCapabilities {
                 operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
+                key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
             },
             Arc::new(key_algorithm_provider),
         )),

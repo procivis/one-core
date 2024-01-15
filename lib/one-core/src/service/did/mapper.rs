@@ -173,18 +173,26 @@ impl TryFrom<PublicKeyJwkDTO> for PublicKeyJwkResponseDTO {
         match value {
             PublicKeyJwkDTO::Ec(data) => Ok(PublicKeyJwkResponseDTO {
                 kty: "EC".to_string(),
-                crv: data.crv,
+                crv: Some(data.crv),
                 x: data.x,
                 y: data.y,
+                ..Default::default()
             }),
             PublicKeyJwkDTO::Okp(data) => Ok(PublicKeyJwkResponseDTO {
                 kty: "OKP".to_string(),
-                crv: data.crv,
+                crv: Some(data.crv),
                 x: data.x,
                 y: data.y,
+                ..Default::default()
+            }),
+            PublicKeyJwkDTO::Mlwe(data) => Ok(PublicKeyJwkResponseDTO {
+                kty: "MLWE".to_string(),
+                alg: Some(data.alg),
+                x: data.x,
+                ..Default::default()
             }),
             _ => Err(ServiceError::MappingError(
-                "Only EC and OKP did algorithms are supported.".to_string(),
+                "Only EC, OKP and MLWE did algorithms are supported.".to_string(),
             )),
         }
     }

@@ -8,6 +8,7 @@ use config::core_config::CoreConfig;
 use config::ConfigError;
 use crypto::hasher::sha256::SHA256;
 use crypto::hasher::Hasher;
+use crypto::signer::crydi3::CRYDI3Signer;
 use crypto::signer::eddsa::EDDSASigner;
 use crypto::signer::Signer;
 use crypto::{CryptoProvider, CryptoProviderImpl};
@@ -91,6 +92,7 @@ impl OneCore {
         let signers: Vec<(String, Arc<dyn Signer + Send + Sync>)> = vec![
             ("Ed25519".to_string(), Arc::new(EDDSASigner {})),
             ("ES256".to_string(), Arc::new(ES256Signer {})),
+            ("CRYDI3".to_string(), Arc::new(CRYDI3Signer {})),
         ];
 
         let crypto = Arc::new(CryptoProviderImpl::new(

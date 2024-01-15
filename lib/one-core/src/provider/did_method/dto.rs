@@ -41,6 +41,8 @@ pub enum PublicKeyJwkDTO {
     Okp(PublicKeyJwkEllipticDataDTO),
     #[serde(rename = "oct")]
     Oct(PublicKeyJwkOctDataDTO),
+    #[serde(rename = "MLWE")]
+    Mlwe(PublicKeyJwkMlweDataDTO),
 }
 
 impl PublicKeyJwkDTO {
@@ -50,6 +52,7 @@ impl PublicKeyJwkDTO {
             PublicKeyJwkDTO::Rsa(val) => &val.r#use,
             PublicKeyJwkDTO::Okp(val) => &val.r#use,
             PublicKeyJwkDTO::Oct(val) => &val.r#use,
+            PublicKeyJwkDTO::Mlwe(val) => &val.r#use,
         }
     }
 }
@@ -69,7 +72,15 @@ pub struct PublicKeyJwkRsaDataDTO {
 pub struct PublicKeyJwkOctDataDTO {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub r#use: Option<String>,
-    k: String,
+    pub k: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct PublicKeyJwkMlweDataDTO {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub r#use: Option<String>,
+    pub alg: String,
+    pub x: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]

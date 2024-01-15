@@ -10,6 +10,7 @@ pub enum ErrorCode {
 
     DidNotFound,
     DidInvalidType,
+    DidMethodIncapableKeyAlgorithm,
     DidInvalidMethod,
     DidDeactivated,
     DidValueAlreadyExists,
