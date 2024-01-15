@@ -93,8 +93,7 @@ impl CredentialSchemaService {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let Some(schema) = schema else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
@@ -115,8 +114,7 @@ impl CredentialSchemaService {
         let result = self
             .credential_schema_repository
             .get_credential_schema_list(query)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
         Ok(list_response_into(result))
     }
 }

@@ -61,8 +61,7 @@ impl ProofSchemaService {
         let result = self
             .proof_schema_repository
             .get_proof_schema_list(query)
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
         Ok(list_response_into(result))
     }
 

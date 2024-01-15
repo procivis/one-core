@@ -33,8 +33,7 @@ impl KeyService {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let Some(key) = key else {
             return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
@@ -87,11 +86,7 @@ impl KeyService {
         &self,
         query: GetKeyQueryDTO,
     ) -> Result<GetKeyListResponseDTO, ServiceError> {
-        let result = self
-            .key_repository
-            .get_key_list(query)
-            .await
-            .map_err(ServiceError::from)?;
+        let result = self.key_repository.get_key_list(query).await?;
 
         Ok(result.into())
     }

@@ -27,9 +27,6 @@ use super::did::DidDeactivationError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
-    #[error("General repository error `{0}`")]
-    GeneralRuntimeError(String),
-
     #[error("Mapping error: `{0}`")]
     MappingError(String),
 
@@ -65,6 +62,9 @@ pub enum ServiceError {
 
     #[error("Key algorithm error `{0}`")]
     KeyAlgorithmError(String),
+
+    #[error("Key storage error `{0}`")]
+    KeyStorageError(anyhow::Error),
 
     #[error("Did method error `{0}`")]
     DidMethodError(#[from] DidMethodError),
@@ -322,7 +322,6 @@ pub enum ErrorCode {
 
     MissingInteractionForAccessToken,
 
-    Unmapped,
     MissingKeyStorage,
     MissingDidMethod,
     MissingKeyAlgorithm,
@@ -331,6 +330,20 @@ pub enum ErrorCode {
     MissingRevocationMethod,
     MissingRevocationMethodByCredentialStatusType,
     MissingTransportProtocol,
+    GenericKeyStorageError,
+    ModelMapping,
+    OpenID4VCI,
+    Validation,
+    ConfigurationValidation,
+    BitstringHandling,
+    MissingSigner,
+    MissingAlgorithm,
+    KeyAlgorithm,
+    DidMethod,
+    Unmapped,
+    FormatterProvider,
+    CryptoProvider,
+    TransportProtocol,
 }
 
 impl From<FormatError> for ServiceError {
@@ -381,8 +394,6 @@ impl ErrorCode {
 
             ErrorCode::ResponseMapping => "Response mapping error",
 
-            ErrorCode::Unmapped => "Unmapped error code",
-
             ErrorCode::MissingCredentialsForInteraction => {
                 "Missing credentials for provided interaction"
             }
@@ -417,6 +428,20 @@ impl ErrorCode {
             ErrorCode::InvalidFormatter => "Invalid formatter type",
             ErrorCode::InvalidKeyAlgorithm => "Invalid key algorithm type",
             ErrorCode::InvalidKeyStorage => "Invalid key storage type",
+            ErrorCode::GenericKeyStorageError => "Generic key storage error",
+            ErrorCode::ModelMapping => "Model mapping error",
+            ErrorCode::OpenID4VCI => "OpenID4VCI error",
+            ErrorCode::Validation => "Generic validation error",
+            ErrorCode::ConfigurationValidation => "Configuration validation error",
+            ErrorCode::BitstringHandling => "Bitstring handling error",
+            ErrorCode::MissingSigner => "Missing signer",
+            ErrorCode::MissingAlgorithm => "Missing algorithm",
+            ErrorCode::KeyAlgorithm => "Key algorithm error",
+            ErrorCode::DidMethod => "Did method error",
+            ErrorCode::Unmapped => "Unmapped error code",
+            ErrorCode::FormatterProvider => "Formatter provider error",
+            ErrorCode::CryptoProvider => "Crypto provider error",
+            ErrorCode::TransportProtocol => "Transport protocol error",
         }
     }
 }
@@ -430,22 +455,21 @@ impl ServiceError {
             ServiceError::ResponseMapping(_) => ErrorCode::ResponseMapping,
             ServiceError::Repository(error) => error.error_code(),
             ServiceError::MissingProvider(error) => error.error_code(),
-
-            ServiceError::GeneralRuntimeError(_)
-            | ServiceError::MappingError(_)
-            | ServiceError::OpenID4VCError(_)
-            | ServiceError::ValidationError(_)
-            | ServiceError::ConfigValidationError(_)
-            | ServiceError::TransportProtocolError(_)
-            | ServiceError::FormatterError(_)
-            | ServiceError::BitstringError(_)
-            | ServiceError::MissingSigner(_)
-            | ServiceError::MissingAlgorithm(_)
-            | ServiceError::MissingTransportProtocol(_)
-            | ServiceError::KeyAlgorithmError(_)
-            | ServiceError::DidMethodError(_)
-            | ServiceError::CryptoError(_)
-            | ServiceError::Other(_) => ErrorCode::Unmapped,
+            ServiceError::TransportProtocolError(_) => ErrorCode::TransportProtocol,
+            ServiceError::CryptoError(_) => ErrorCode::CryptoProvider,
+            ServiceError::FormatterError(_) => ErrorCode::FormatterProvider,
+            ServiceError::KeyStorageError(_) => ErrorCode::GenericKeyStorageError,
+            ServiceError::MappingError(_) => ErrorCode::ModelMapping,
+            ServiceError::OpenID4VCError(_) => ErrorCode::OpenID4VCI,
+            ServiceError::ValidationError(_) => ErrorCode::Validation,
+            ServiceError::ConfigValidationError(_) => ErrorCode::ConfigurationValidation,
+            ServiceError::BitstringError(_) => ErrorCode::BitstringHandling,
+            ServiceError::MissingSigner(_) => ErrorCode::MissingSigner,
+            ServiceError::MissingAlgorithm(_) => ErrorCode::MissingAlgorithm,
+            ServiceError::MissingTransportProtocol(_) => ErrorCode::MissingTransportProtocol,
+            ServiceError::KeyAlgorithmError(_) => ErrorCode::KeyAlgorithm,
+            ServiceError::DidMethodError(_) => ErrorCode::DidMethod,
+            ServiceError::Other(_) => ErrorCode::Unmapped,
         }
     }
 }
