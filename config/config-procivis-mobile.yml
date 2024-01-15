@@ -150,6 +150,17 @@ datatype:
         min: 1900-01-01
         max: "NOW"
         error: "datatype.birth_date_error"
+  PICTURE:
+    display: "datatype.picture"
+    type: "FILE"
+    order: 400
+    params:
+      public:
+        accept:
+          - image/jpeg
+          - image/png
+        fileSize: 4194304
+        showAs: IMAGE
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"
