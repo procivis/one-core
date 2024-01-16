@@ -402,22 +402,24 @@ impl TransportProtocol for OpenID4VC {
             .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
         {
             Some(did) => did.id,
-            None => self
-                .did_repository
-                .create_did(Did {
-                    id: Uuid::new_v4().into(),
-                    name: "issuer".to_string(),
-                    created_date: now,
-                    last_modified: now,
-                    organisation: schema.organisation.to_owned(),
-                    did: issuer_did_value,
-                    did_type: DidType::Remote,
-                    did_method: "KEY".to_string(),
-                    keys: None,
-                    deactivated: false,
-                })
-                .await
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+            None => {
+                let id = Uuid::new_v4();
+                self.did_repository
+                    .create_did(Did {
+                        id: id.into(),
+                        name: format!("issuer {id}"),
+                        created_date: now,
+                        last_modified: now,
+                        organisation: schema.organisation.to_owned(),
+                        did: issuer_did_value,
+                        did_type: DidType::Remote,
+                        did_method: "KEY".to_string(),
+                        keys: None,
+                        deactivated: false,
+                    })
+                    .await
+                    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+            }
         };
 
         self.credential_repository

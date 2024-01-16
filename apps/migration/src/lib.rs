@@ -1,12 +1,16 @@
 pub use sea_orm_migration::prelude::*;
 
 mod m20240110_000001_initial;
+mod m20240115_093859_unique_did_name_and_key_name_in_org;
 
 pub struct Migrator;
 
 #[async_trait::async_trait]
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
-        vec![Box::new(m20240110_000001_initial::Migration)]
+        vec![
+            Box::new(m20240110_000001_initial::Migration),
+            Box::new(m20240115_093859_unique_did_name_and_key_name_in_org::Migration),
+        ]
     }
 }

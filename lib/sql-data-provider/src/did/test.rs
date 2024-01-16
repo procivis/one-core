@@ -418,7 +418,7 @@ async fn test_get_did_list_pages() {
     for i in 0..50 {
         insert_did_key(
             &db,
-            "test did name",
+            &format!("test did name {}", i),
             Uuid::new_v4(),
             format!("did:key:{}", i).parse().unwrap(),
             "KEY",

@@ -7,12 +7,14 @@ use self::credential_schemas::CredentialSchemasApi;
 use self::credentials::CredentialsApi;
 use self::dids::DidsApi;
 use self::interactions::InteractionsApi;
+use self::keys::KeysApi;
 use self::organisations::OrganisationsApi;
 
 pub mod credential_schemas;
 pub mod credentials;
 pub mod dids;
 pub mod interactions;
+pub mod keys;
 pub mod organisations;
 
 pub fn http_client() -> &'static reqwest::Client {
@@ -107,6 +109,7 @@ pub struct Client {
     pub interactions: InteractionsApi,
     pub credential_schemas: CredentialSchemasApi,
     pub dids: DidsApi,
+    pub keys: KeysApi,
 }
 
 impl Client {
@@ -118,7 +121,8 @@ impl Client {
             credentials: CredentialsApi::new(client.clone()),
             interactions: InteractionsApi::new(client.clone()),
             credential_schemas: CredentialSchemasApi::new(client.clone()),
-            dids: DidsApi::new(client),
+            dids: DidsApi::new(client.clone()),
+            keys: KeysApi::new(client),
         }
     }
 }

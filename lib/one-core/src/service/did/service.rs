@@ -13,7 +13,6 @@ use super::{
     validator::{did_already_exists, validate_deactivation_request},
     DidService,
 };
-use crate::service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError};
 use crate::service::{did::mapper::map_key_to_verification_method, error::MissingProviderError};
 use crate::{
     config::validator::did::validate_did_method,
@@ -28,6 +27,10 @@ use crate::{
     },
 };
 use crate::{model::key::Key, service::error::EntityNotFoundError};
+use crate::{
+    repository::error::DataLayerError,
+    service::{did::mapper::map_did_model_to_did_web_response, error::BusinessLogicError},
+};
 
 impl DidService {
     /// Returns did document for did:web
@@ -212,8 +215,18 @@ impl DidService {
         };
 
         let did = did_from_did_request(new_did_id, request, organisation, did_value, key, now);
+        let did_value = did.did.clone();
 
-        let did_id = self.did_repository.create_did(did).await?;
+        let did_id = self
+            .did_repository
+            .create_did(did)
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => {
+                    ServiceError::from(BusinessLogicError::DidValueAlreadyExists(did_value))
+                }
+                err => ServiceError::from(err),
+            })?;
 
         Ok(did_id)
     }

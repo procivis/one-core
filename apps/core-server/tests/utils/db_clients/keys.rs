@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use one_core::model::key::Key;
-use one_core::model::organisation::Organisation;
+use one_core::model::key::{Key, KeyId, KeyRelations};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::key_repository::KeyRepository;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::TestingKeyParams;
+use crate::fixtures::{unwrap_or_random, TestingKeyParams};
 
 pub struct KeysDB {
     repository: Arc<dyn KeyRepository>,
@@ -25,7 +25,7 @@ impl KeysDB {
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
             public_key: params.public_key.unwrap_or_default(),
-            name: params.name.unwrap_or_default(),
+            name: unwrap_or_random(params.name),
             key_reference: params.key_reference.unwrap_or_default(),
             storage_type: params.storage_type.unwrap_or_default(),
             key_type: params.key_type.unwrap_or_default(),
@@ -34,7 +34,20 @@ impl KeysDB {
 
         self.repository.create_key(key.clone()).await.unwrap();
 
-        key
+        self.get(&key.id).await
+    }
+
+    pub async fn get(&self, id: &KeyId) -> Key {
+        self.repository
+            .get_key(
+                id,
+                &KeyRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
+            .await
+            .unwrap()
+            .unwrap()
     }
 }
 

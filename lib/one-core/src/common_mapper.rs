@@ -91,15 +91,16 @@ pub(crate) async fn get_or_create_did(
         {
             Some(did) => did,
             None => {
+                let id = Uuid::new_v4();
                 let did_method = did_method_id_from_value(holder_did_value)?;
                 let organisation = organisation.as_ref().ok_or(ServiceError::MappingError(
                     "organisation is None".to_string(),
                 ))?;
                 let did = Did {
-                    id: DidId::from(Uuid::new_v4()),
+                    id: DidId::from(id),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    name: "holder".to_string(),
+                    name: format!("holder {id}"),
                     organisation: Some(organisation.to_owned()),
                     did: holder_did_value.to_owned(),
                     did_method,

@@ -9,7 +9,7 @@ use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::fixtures::TestingDidParams;
+use crate::fixtures::{unwrap_or_random, TestingDidParams};
 
 pub struct DidsDB {
     repository: Arc<dyn DidRepository>,
@@ -28,7 +28,7 @@ impl DidsDB {
             id: did_id.to_owned(),
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
-            name: params.name.unwrap_or_default(),
+            name: unwrap_or_random(params.name),
             organisation: Some(organisation.clone()),
             did: params
                 .did
