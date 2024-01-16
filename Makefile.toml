@@ -1,53 +1,51 @@
 # Docs: https://github.com/sagiegurari/cargo-make
 
-env_files = [
-    "./dev.env",
-]
+env_files = ["./dev.env"]
 
 [config]
 default_to_workspace = false
 
 [tasks.clean]
 command = "cargo"
-args = ["clean"]
+args    = ["clean"]
 
 [tasks.build]
 command = "cargo"
-args = ["build", "-p", "core-server"]
+args    = ["build", "-p", "core-server"]
 
 [tasks.run]
 command = "cargo"
-args = ["run", "-p", "core-server", "--", "--config", "config/config-local.yml"]
+args    = ["run", "-p", "core-server", "--", "--config", "config/config-local.yml"]
 
 [tasks.runwallet]
 command = "cargo"
-env = { "ONE_app__serverPort" = "3001", "ONE_app__databaseUrl" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core", "ONE_app__coreBaseUrl"="http://0.0.0.0:3001" }
-args = ["run", "-p", "core-server", "--", "--config", "config/config-local.yml"]
+env     = { "ONE_app__serverPort" = "3001", "ONE_app__databaseUrl" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core", "ONE_app__coreBaseUrl" = "http://0.0.0.0:3001" }
+args    = ["run", "-p", "core-server", "--", "--config", "config/config-local.yml"]
 
 [tasks.runw]
 command = "cargo"
-args = ["watch", "--ignore", "*.md", "--ignore", "*.yaml", "--ignore", "*.yml", "--exec", "make run"]
+args    = ["watch", "--ignore", "*.md", "--ignore", "*.yaml", "--ignore", "*.yml", "--exec", "make run"]
 
 [tasks.test]
 workspace = true
-command = "cargo"
-args = ["test"]
+command   = "cargo"
+args      = ["test"]
 
 [tasks.unit-tests]
 command = "cargo"
-args = ["test", "--lib"]
+args    = ["test", "--lib"]
 
 [tasks.integration-tests]
 command = "cargo"
-args = ["test", "--test", "integration_tests"]
+args    = ["test", "--test", "integration_tests"]
 
 [tasks.dbstart]
 command = "docker-compose"
-args = ["-f", "docker/db.yml", "up", "-d"]
+args    = ["-f", "docker/db.yml", "up", "-d"]
 
 [tasks.dbstop]
 command = "docker-compose"
-args = ["-f", "docker/db.yml", "down"]
+args    = ["-f", "docker/db.yml", "down"]
 
 [tasks.dbdrop]
 script = [
@@ -58,19 +56,30 @@ script = [
 
 [tasks.install_seaormcli]
 command = "cargo"
-args = ["install", "sea-orm-cli", "--force", "--version", "0.12.1"]
+args    = ["install", "sea-orm-cli", "--force", "--version", "0.12.1"]
 
 [tasks.dbup1]
+env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
 command = "cargo"
-args = ["run", "-p", "migration", "--", "up", "-n1"]
+args    = ["run", "-p", "migration", "--", "up", "-n1"]
 
 [tasks.dbdown1]
+env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" }
 command = "cargo"
-args = ["run", "-p", "migration", "--", "down", "-n1"]
+args    = ["run", "-p", "migration", "--", "down", "-n1"]
 
 [tasks.dbtempent]
 command = "sea-orm-cli"
-args = ["generate", "entity", "--date-time-crate" , "time", "--database-url", "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core", "-o", "lib/sql-data-provider/src/entity_new/" ]
+args = [
+  "generate",
+  "entity",
+  "--date-time-crate",
+  "time",
+  "--database-url",
+  "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core",
+  "-o",
+  "lib/sql-data-provider/src/entity_new/",
+]
 
 [tasks.mobile-build]
 script.pre = '''
@@ -84,11 +93,11 @@ export CARGO_PROFILE_RELEASE_STRIP=symbols
 [tasks.add_android_targets]
 # x86_64 is skipped due to: https://github.com/rust-lang/rust/issues/109717
 command = "rustup"
-args = ["target", "add", "i686-linux-android", "armv7-linux-androideabi", "aarch64-linux-android"]
+args    = ["target", "add", "i686-linux-android", "armv7-linux-androideabi", "aarch64-linux-android"]
 
 [tasks.install_cross]
 command = "cargo"
-args = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--rev", "1aab4cf"]
+args    = ["install", "cross", "--git", "https://github.com/cross-rs/cross", "--rev", "1aab4cf"]
 
 [tasks.generateuniffi_android]
 script = '''
@@ -200,5 +209,12 @@ cp ../platforms/ios/Package.swift bindings/ios/one_core/Package.swift
 '''
 
 [tasks.build_ios]
-dependencies = ["generateuniffi_ios", "add_ios_targets", "build_ios_code", "collect_ios_libs", "create_xc_framework", "package_ios_bindings"]
+dependencies = [
+  "generateuniffi_ios",
+  "add_ios_targets",
+  "build_ios_code",
+  "collect_ios_libs",
+  "create_xc_framework",
+  "package_ios_bindings",
+]
 script = 'echo "--- output available in target/bindings/ios ---"'

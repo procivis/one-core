@@ -2,6 +2,7 @@ use crate::entity::key;
 use crate::key::mapper::from_model_and_relations;
 use crate::key::KeyProvider;
 use crate::list_query::SelectWithListQuery;
+use crate::mapper::to_data_layer_error;
 use autometrics::autometrics;
 use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyId, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
@@ -60,7 +61,7 @@ impl KeyRepository for KeyProvider {
         }
         .insert(&self.db)
         .await
-        .map_err(|e| DataLayerError::Db(e.into()))?;
+        .map_err(to_data_layer_error)?;
 
         Ok(request.id)
     }

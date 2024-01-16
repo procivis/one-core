@@ -837,6 +837,9 @@ impl MigrationTrait for Migration {
             .drop_table(Table::drop().table(ProofClaim::Table).to_owned())
             .await?;
         manager
+            .drop_table(Table::drop().table(KeyDid::Table).to_owned())
+            .await?;
+        manager
             .drop_table(Table::drop().table(Claim::Table).to_owned())
             .await?;
         manager
@@ -859,9 +862,6 @@ impl MigrationTrait for Migration {
             .await?;
         manager
             .drop_table(Table::drop().table(Did::Table).to_owned())
-            .await?;
-        manager
-            .drop_table(Table::drop().table(KeyDid::Table).to_owned())
             .await?;
 
         manager

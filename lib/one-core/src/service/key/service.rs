@@ -3,8 +3,9 @@ use crate::{
         key::{KeyId, KeyRelations},
         organisation::OrganisationRelations,
     },
+    repository::error::DataLayerError,
     service::{
-        error::{EntityNotFoundError, ServiceError, ValidationError},
+        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
         key::{
             dto::{KeyRequestDTO, KeyResponseDTO},
             mapper::from_create_request,
@@ -72,7 +73,13 @@ impl KeyService {
         let uuid = self
             .key_repository
             .create_key(from_create_request(key_id, request, organisation, key))
-            .await?;
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => {
+                    ServiceError::from(BusinessLogicError::KeyAlreadyExists)
+                }
+                err => ServiceError::from(err),
+            })?;
 
         Ok(uuid)
     }

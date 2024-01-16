@@ -20,10 +20,11 @@ use crate::provider::transport_protocol::mapper::{
 };
 
 pub fn remote_did_from_value(did_value: DidValue, organisation: &Organisation) -> Did {
+    let id = Uuid::new_v4();
     let now = OffsetDateTime::now_utc();
     Did {
-        id: Uuid::new_v4().into(),
-        name: "issuer".to_string(),
+        id: id.into(),
+        name: format!("issuer {id}"),
         created_date: now,
         last_modified: now,
         organisation: Some(organisation.to_owned()),

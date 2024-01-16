@@ -60,6 +60,7 @@ pub enum ErrorCode {
     ProofNotFound,
     OrganisationNotFound,
     KeyNotFound,
+    KeyAlreadyExists,
     CredentialSchemaNotFound,
     MissingInteractionForAccessToken,
     MissingCredentialIndexOnRevocationList,

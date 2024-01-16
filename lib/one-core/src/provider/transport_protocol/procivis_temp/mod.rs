@@ -588,11 +588,12 @@ async fn handle_proof_invitation(
     let verifier_did = match verifier_did_result {
         Some(did) => did,
         None => {
+            let id = Uuid::new_v4();
             let new_did = Did {
-                id: Uuid::new_v4().into(),
+                id: id.into(),
                 created_date: now,
                 last_modified: now,
-                name: "verifier".to_owned(),
+                name: format!("verifier {id}"),
                 did: proof_request.verifier_did,
                 did_type: crate::model::did::DidType::Remote,
                 did_method: "KEY".to_owned(),

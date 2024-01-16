@@ -23,11 +23,23 @@ use one_core::model::proof_schema::{
 use one_core::model::revocation_list::{RevocationList, RevocationListRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use shared_types::{DidId, DidValue};
 use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
+
+pub fn unwrap_or_random(op: Option<String>) -> String {
+    op.unwrap_or_else(|| {
+        rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(10)
+            .map(char::from)
+            .collect()
+    })
+}
 
 pub fn create_config(core_base_url: impl Into<String>) -> AppConfig<ServerConfig> {
     let root = std::env!("CARGO_MANIFEST_DIR");
@@ -101,7 +113,7 @@ pub async fn create_key(
         created_date: params.created_date.unwrap_or(now),
         last_modified: params.last_modified.unwrap_or(now),
         public_key: params.public_key.unwrap_or_default(),
-        name: params.name.unwrap_or_default(),
+        name: unwrap_or_random(params.name),
         key_reference: params.key_reference.unwrap_or_default(),
         storage_type: params.storage_type.unwrap_or_default(),
         key_type: params.key_type.unwrap_or_default(),
@@ -211,7 +223,7 @@ pub async fn create_did(
         id: did_id.to_owned(),
         created_date: params.created_date.unwrap_or(now),
         last_modified: params.last_modified.unwrap_or(now),
-        name: params.name.unwrap_or_default(),
+        name: unwrap_or_random(params.name),
         organisation: Some(organisation.to_owned()),
         did: params
             .did

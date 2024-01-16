@@ -1,49 +1,27 @@
-use std::str::FromStr;
-
-use core_server::router::start_server;
 use reqwest::StatusCode;
-use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::{fixtures, utils};
+use crate::utils::{
+    context::TestContext, db_clients::keys::eddsa_testing_params, field_match::FieldHelpers,
+};
 
 #[tokio::test]
 async fn test_create_key_es256() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
 
     // WHEN
-    let url = format!("{base_url}/api/key/v1");
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "keyParams": {},
-          "keyType": "ES256",
-          "name": "ESTEST",
-          "organisationId": organisation.id,
-          "storageParams": {},
-          "storageType": "INTERNAL"
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .keys
+        .create(organisation.id, "ES256", "ESTEST")
+        .await;
 
     // THEN
     assert_eq!(resp.status(), StatusCode::CREATED);
 
-    let resp: Value = resp.json().await.unwrap();
-    let id = Uuid::from_str(resp["id"].as_str().unwrap()).unwrap();
-
-    let key = fixtures::get_key(&db_conn, &id).await;
+    let resp = resp.json_value().await;
+    let key = context.db.keys.get(&resp["id"].parse()).await;
 
     assert_eq!(key.name, "ESTEST");
     assert_eq!(key.key_type, "ES256");
@@ -54,40 +32,20 @@ async fn test_create_key_es256() {
 #[tokio::test]
 async fn test_create_key_eddsa() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
 
     // WHEN
-    let url = format!("{base_url}/api/key/v1");
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "keyParams": {},
-          "keyType": "EDDSA",
-          "name": "EDDSATEST",
-          "organisationId": organisation.id,
-          "storageParams": {},
-          "storageType": "INTERNAL"
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .keys
+        .create(organisation.id, "EDDSA", "EDDSATEST")
+        .await;
 
     // THEN
     assert_eq!(resp.status(), StatusCode::CREATED);
 
-    let resp: Value = resp.json().await.unwrap();
-    let id = Uuid::from_str(resp["id"].as_str().unwrap()).unwrap();
-
-    let key = fixtures::get_key(&db_conn, &id).await;
+    let resp = resp.json_value().await;
+    let key = context.db.keys.get(&resp["id"].parse()).await;
 
     assert_eq!(key.name, "EDDSATEST");
     assert_eq!(key.key_type, "EDDSA");
@@ -98,32 +56,14 @@ async fn test_create_key_eddsa() {
 #[tokio::test]
 async fn test_create_invalid_type() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
 
     // WHEN
-    let url = format!("{base_url}/api/key/v1");
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "keyParams": {},
-          "keyType": "INVALID",
-          "name": "TEST",
-          "organisationId": organisation.id,
-          "storageParams": {},
-          "storageType": "INTERNAL"
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .keys
+        .create(organisation.id, "INVALID", "TEST")
+        .await;
 
     // THEN
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
@@ -132,32 +72,59 @@ async fn test_create_invalid_type() {
 #[tokio::test]
 async fn test_create_invalid_organisation() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
-    let db_conn = fixtures::create_db(&config).await;
+    let context = TestContext::new().await;
 
     // WHEN
-    let url = format!("{base_url}/api/key/v1");
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "keyParams": {},
-          "keyType": "EDDSA",
-          "name": "TEST",
-          "organisationId": Uuid::new_v4(),
-          "storageParams": {},
-          "storageType": "INTERNAL"
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .keys
+        .create(Uuid::new_v4(), "EDDSA", "TEST")
+        .await;
 
     // THEN
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_create_key_with_same_name_in_different_organisations() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let organisation1 = context.db.organisations.create().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .keys
+        .create(organisation1.id, "EDDSA", &key.name)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+}
+
+#[tokio::test]
+async fn test_fail_to_create_key_with_same_name_in_same_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .keys
+        .create(organisation.id, "EDDSA", &key.name)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
 }

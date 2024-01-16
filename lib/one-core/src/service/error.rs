@@ -144,6 +144,9 @@ pub enum BusinessLogicError {
     #[error("Credential schema already exists")]
     CredentialSchemaAlreadyExists,
 
+    #[error("Key already exists")]
+    KeyAlreadyExists,
+
     #[error("Invalid Credential state: {state}")]
     InvalidCredentialState { state: CredentialStateEnum },
 
@@ -323,6 +326,7 @@ pub enum ErrorCode {
     OrganisationNotFound,
 
     KeyNotFound,
+    KeyAlreadyExists,
 
     MissingInteractionForAccessToken,
 
@@ -447,6 +451,7 @@ impl ErrorCode {
             ErrorCode::FormatterProvider => "Formatter provider error",
             ErrorCode::CryptoProvider => "Crypto provider error",
             ErrorCode::TransportProtocol => "Transport protocol error",
+            ErrorCode::KeyAlreadyExists => "Key already exists",
         }
     }
 }
@@ -532,6 +537,7 @@ impl BusinessLogicError {
                 ErrorCode::MissingCredentialIndexOnRevocationList
             }
             BusinessLogicError::MissingClaimSchemas => ErrorCode::MissingClaimSchemas,
+            BusinessLogicError::KeyAlreadyExists => ErrorCode::KeyAlreadyExists,
         }
     }
 }

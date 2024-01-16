@@ -19,6 +19,7 @@ impl DidsApi {
         organisation_id: impl Into<Uuid>,
         key_id: impl Into<Uuid>,
         method: &str,
+        name: &str,
     ) -> Response {
         let key_id = key_id.into();
         let body = json!({
@@ -40,7 +41,7 @@ impl DidsApi {
             ]
           },
           "method": method,
-          "name": "test",
+          "name": name,
           "organisationId": organisation_id.into(),
           "params": {}
         });
