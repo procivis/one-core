@@ -9,10 +9,13 @@ impl Signer for EDDSASigner {
         public_key: &[u8],
         private_key: &[u8],
     ) -> Result<Vec<u8>, SignerError> {
-        let key_pair: &[u8] = &[private_key, public_key].concat();
-
-        let ed25519_kp = ed25519_compact::KeyPair::from_slice(key_pair)
+        let ed25519_kp = ed25519_compact::KeyPair::from_slice(private_key)
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
+
+        if ed25519_kp.pk.as_slice() != public_key {
+            return Err(SignerError::CouldNotExtractKeyPair);
+        }
+
         Ok(ed25519_kp.sk.sign(input, None).to_vec())
     }
 
