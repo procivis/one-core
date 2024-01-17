@@ -14,7 +14,7 @@ impl CredentialSchemasApi {
         Self { client }
     }
 
-    pub async fn create(&self, organisation_id: impl Into<Uuid>) -> Response {
+    pub async fn create(&self, name: &str, organisation_id: impl Into<Uuid>) -> Response {
         let body = json!({
           "claims": [
             {
@@ -24,7 +24,7 @@ impl CredentialSchemasApi {
             }
           ],
           "format": "JWT",
-          "name": "some credential schema",
+          "name": name,
           "organisationId": organisation_id.into(),
           "revocationMethod": "STATUSLIST2021"
         });

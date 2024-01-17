@@ -13,7 +13,7 @@ targets = [
     { triple = "aarch64-apple-ios" },
 ]
 
-all-features = false
+all-features        = false
 no-default-features = false
 
 
@@ -21,31 +21,30 @@ no-default-features = false
 # More documentation for the advisories section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 [advisories]
-db-path = "~/.cargo/advisory-db"
-db-urls = ["https://github.com/rustsec/advisory-db"]
+db-path       = "~/.cargo/advisory-db"
+db-urls       = ["https://github.com/rustsec/advisory-db"]
 vulnerability = "deny"
-unmaintained = "warn"
-yanked = "deny"
-notice = "deny"
+unmaintained  = "warn"
+yanked        = "deny"
+notice        = "deny"
 
 
 # This section is considered when running `cargo deny check licenses`
 # More documentation for the licenses section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
 [licenses]
-unlicensed = "deny"
-allow = ["Unicode-DFS-2016", "MIT-0"]
-deny = []
-copyleft = "deny"
+unlicensed         = "deny"
+allow              = ["Unicode-DFS-2016", "MIT-0"]
+deny               = []
+copyleft           = "deny"
 allow-osi-fsf-free = "both"
 # Deny licenses not covered by allow/deny, copyleft and OSI/FSF rules
-default = "deny"
+default              = "deny"
 confidence-threshold = 0.8
 
 exceptions = [
     # Allow MPL-2.0 for libraries we do not modify
     { allow = ["MPL-2.0"], name = "webpki-roots", version = "*" },
-    { allow = ["MPL-2.0"], name = "option-ext", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_bindgen", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_build", version = "*" },
@@ -65,20 +64,20 @@ ignore = true
 
 # Clarify ring crate license (LICENSE file not properly detected)
 [[licenses.clarify]]
-name = "ring"
-expression = "MIT AND ISC AND OpenSSL"
+name          = "ring"
+expression    = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
 # This section is considered when running `cargo deny check bans`.
 # More documentation about the 'bans' section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
 [bans]
-multiple-versions = "allow"
-wildcards = "deny"
+multiple-versions          = "allow"
+wildcards                  = "deny"
 workspace-default-features = "allow"
-external-default-features = "allow"
-allow = []
-deny = []
+external-default-features  = "allow"
+allow                      = []
+deny                       = []
 
 
 # This section is considered when running `cargo deny check sources`.
@@ -86,6 +85,6 @@ deny = []
 # https://embarkstudios.github.io/cargo-deny/checks/sources/cfg.html
 [sources]
 unknown-registry = "deny"
-unknown-git = "deny"
-allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-private = ["https://gitlab.procivis.ch"]
+unknown-git      = "deny"
+allow-registry   = ["https://github.com/rust-lang/crates.io-index"]
+private          = ["https://gitlab.procivis.ch"]
