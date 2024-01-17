@@ -72,8 +72,8 @@ impl From<&ServiceError> for ErrorResponseRestDTO {
         let cause = Cause::with_message_from_error(error);
 
         ErrorResponseRestDTO {
-            message: code.msg(),
             code: ErrorCode::from(code),
+            message: code.into(),
             cause: Some(cause),
         }
     }

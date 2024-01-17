@@ -35,7 +35,7 @@ pub enum DataLayerError {
 impl DataLayerError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            DataLayerError::Db(_) => ErrorCode::Database,
+            DataLayerError::Db(_) => ErrorCode::BR_0054,
             DataLayerError::AlreadyExists
             | DataLayerError::IncorrectParameters
             | DataLayerError::RecordNotUpdated
@@ -43,7 +43,7 @@ impl DataLayerError {
             | DataLayerError::IncompleteClaimsList { .. }
             | DataLayerError::IncompleteClaimsSchemaList { .. }
             | DataLayerError::MissingProofState { .. }
-            | DataLayerError::MissingRequiredRelation { .. } => ErrorCode::Unmapped,
+            | DataLayerError::MissingRequiredRelation { .. } => ErrorCode::BR_0000,
         }
     }
 }

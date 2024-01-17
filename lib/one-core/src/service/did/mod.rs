@@ -62,9 +62,8 @@ pub enum DidDeactivationError {
 impl DidDeactivationError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            Self::DeactivatedSameValue { .. } => ErrorCode::DidDeactivated,
-            Self::CannotBeDeactivated { .. } => ErrorCode::DidCannotDeactivate,
-            Self::RemoteDid => ErrorCode::DidCannotDeactivate,
+            Self::DeactivatedSameValue { .. } => ErrorCode::BR_0027,
+            Self::CannotBeDeactivated { .. } | Self::RemoteDid => ErrorCode::BR_0029,
         }
     }
 }

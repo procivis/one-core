@@ -7,32 +7,16 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum BitstringError {
-    #[error("Base64 error: `{0}`")]
-    Base64Error(ct_codecs::Error),
-    #[error("IO error: `{0}`")]
-    IoError(std::io::Error),
-    #[error("Parsing error: `{0}`")]
-    ParsingError(String),
-}
-
-fn gzip_compress(input: Vec<u8>) -> Result<Vec<u8>, BitstringError> {
-    let mut encoder = GzEncoder::new(Vec::new(), Default::default());
-    encoder.write_all(&input).map_err(BitstringError::IoError)?;
-    encoder.finish().map_err(BitstringError::IoError)
-}
-
-fn gzip_decompress(input: Vec<u8>, up_to_bit_index: usize) -> Result<Vec<u8>, BitstringError> {
-    let mut decoder = GzDecoder::new(&input[..]);
-    let mut result: Vec<u8> = vec![0; 1 + (up_to_bit_index / 8)];
-    decoder
-        .read_exact(&mut result)
-        .map_err(BitstringError::IoError)?;
-    Ok(result)
-}
-
-fn calculate_bitstring_size(input_size: usize) -> usize {
-    const MINIMUM_INPUT_SIZE: usize = 131072;
-    std::cmp::max(input_size, MINIMUM_INPUT_SIZE)
+    #[error("Bitstring encoding error: `{0}`")]
+    Base64Encoding(ct_codecs::Error),
+    #[error("Bitstring decoding error: `{0}`")]
+    Base64Decoding(ct_codecs::Error),
+    #[error("Bitstring compression error: `{0}`")]
+    Compression(std::io::Error),
+    #[error("Bitstring decompression error: `{0}`")]
+    Decompression(std::io::Error),
+    #[error("Index `{index}` out of bounds for provided bitstring")]
+    IndexOutOfBounds { index: usize },
 }
 
 pub fn generate_bitstring(input: Vec<bool>) -> Result<String, BitstringError> {
@@ -45,17 +29,43 @@ pub fn generate_bitstring(input: Vec<bool>) -> Result<String, BitstringError> {
     });
 
     let bytes = bits.to_bytes();
-    let compressed = gzip_compress(bytes)?;
-    Base64UrlSafeNoPadding::encode_to_string(compressed).map_err(BitstringError::Base64Error)
+    let compressed = gzip_compress(bytes).map_err(BitstringError::Compression)?;
+
+    Base64UrlSafeNoPadding::encode_to_string(compressed).map_err(BitstringError::Base64Encoding)
 }
 
 pub fn extract_bitstring_index(input: String, index: usize) -> Result<bool, BitstringError> {
-    let compressed =
-        Base64UrlSafeNoPadding::decode_to_vec(input, None).map_err(BitstringError::Base64Error)?;
-    let bytes = gzip_decompress(compressed, index)?;
+    let compressed = Base64UrlSafeNoPadding::decode_to_vec(input, None)
+        .map_err(BitstringError::Base64Decoding)?;
+
+    let bytes = gzip_decompress(compressed, index).map_err(|err| {
+        if err.kind() == std::io::ErrorKind::UnexpectedEof {
+            BitstringError::IndexOutOfBounds { index }
+        } else {
+            BitstringError::Decompression(err)
+        }
+    })?;
+
     let bits = BitVec::from_bytes(&bytes);
-    bits.get(index)
-        .ok_or(BitstringError::ParsingError("index not found".to_string()))
+    Ok(bits[index])
+}
+
+fn gzip_compress(input: Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
+    let mut encoder = GzEncoder::new(Vec::new(), Default::default());
+    encoder.write_all(&input)?;
+    encoder.finish()
+}
+
+fn gzip_decompress(input: Vec<u8>, index: usize) -> Result<Vec<u8>, std::io::Error> {
+    let mut decoder = GzDecoder::new(&input[..]);
+    let mut result: Vec<u8> = vec![0; index / 8 + 1];
+    decoder.read_exact(&mut result)?;
+    Ok(result)
+}
+
+fn calculate_bitstring_size(input_size: usize) -> usize {
+    const MINIMUM_INPUT_SIZE: usize = 131072;
+    std::cmp::max(input_size, MINIMUM_INPUT_SIZE)
 }
 
 #[cfg(test)]
@@ -90,12 +100,15 @@ mod test {
     #[test]
     fn test_extract_bitstring_invalid_base64() {
         let result = extract_bitstring_index("invalid".to_owned(), 1000000);
-        assert!(matches!(result, Err(BitstringError::Base64Error(_))));
+        assert!(matches!(result, Err(BitstringError::Base64Decoding(_))));
     }
 
     #[test]
     fn test_extract_bitstring_index_out_of_bounds() {
         let result = extract_bitstring_index(BITSTRING_ONE_REVOCATION.to_owned(), 1000000);
-        assert!(matches!(result, Err(BitstringError::IoError(_))));
+        assert!(matches!(
+            result,
+            Err(BitstringError::IndexOutOfBounds { index: 1000000 })
+        ));
     }
 }
