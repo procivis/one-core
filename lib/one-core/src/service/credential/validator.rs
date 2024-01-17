@@ -41,7 +41,11 @@ pub(crate) fn validate_create_request(
             None => return Err(BusinessLogicError::MissingClaimSchema { claim_schema_id }.into()),
             Some(schema) => {
                 validate_datatype_value(&claim.value, &schema.schema.data_type, &config.datatype)
-                    .map_err(ServiceError::ConfigValidationError)?;
+                    .map_err(|err| ValidationError::InvalidDatatype {
+                    value: claim.value.clone(),
+                    datatype: schema.schema.data_type.clone(),
+                    source: err,
+                })?;
             }
         }
     }

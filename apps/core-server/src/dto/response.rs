@@ -24,9 +24,9 @@ impl ErrorResponse {
         let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
         match error {
             ServiceError::EntityNotFound(_) => Self::NotFound(response),
-            ServiceError::Validation(_)
-            | ServiceError::BusinessLogic(_)
-            | ServiceError::ConfigValidationError(_) => Self::BadRequest(response),
+            ServiceError::Validation(_) | ServiceError::BusinessLogic(_) => {
+                Self::BadRequest(response)
+            }
             _ => Self::ServerError(response),
         }
     }

@@ -1,4 +1,5 @@
 use shared_types::{DidId, DidValue};
+use strum_macros::IntoStaticStr;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -45,7 +46,7 @@ pub enum ServiceError {
     #[error("Formatter error `{0}`")]
     FormatterError(#[from] FormatterError),
 
-    #[error("Bitstring error `{0}`")]
+    #[error("Credential revocation status list bitstring error `{0}`")]
     BitstringError(#[from] BitstringError),
 
     #[error("Missing signer for algorithm `{0}`")]
@@ -230,6 +231,13 @@ pub enum ValidationError {
 
     #[error("Proof schema: Duplicit claim schema")]
     ProofSchemaDuplicitClaim,
+
+    #[error("Invalid datatype `{datatype}` for value `{value}`: {source}")]
+    InvalidDatatype {
+        datatype: String,
+        value: String,
+        source: ConfigValidationError,
+    },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -259,99 +267,220 @@ pub enum MissingProviderError {
 impl MissingProviderError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            MissingProviderError::Formatter(_) => ErrorCode::MissingFormatter,
-            MissingProviderError::KeyStorage(_) => ErrorCode::MissingKeyStorage,
-            MissingProviderError::DidMethod(_) => ErrorCode::MissingDidMethod,
-            MissingProviderError::KeyAlgorithm(_) => ErrorCode::MissingKeyAlgorithm,
-            MissingProviderError::RevocationMethod(_) => ErrorCode::MissingRevocationMethod,
-            MissingProviderError::RevocationMethodByCredentialStatusType(_) => {
-                ErrorCode::MissingRevocationMethodByCredentialStatusType
-            }
-            MissingProviderError::TransportProtocol(_) => ErrorCode::MissingTransportProtocol,
+            MissingProviderError::Formatter(_) => ErrorCode::BR_0038,
+            MissingProviderError::KeyStorage(_) => ErrorCode::BR_0040,
+            MissingProviderError::DidMethod(_) => ErrorCode::BR_0031,
+            MissingProviderError::KeyAlgorithm(_) => ErrorCode::BR_0042,
+            MissingProviderError::RevocationMethod(_) => ErrorCode::BR_0044,
+            MissingProviderError::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
+            MissingProviderError::TransportProtocol(_) => ErrorCode::BR_0046,
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, IntoStaticStr)]
+#[allow(non_camel_case_types)]
 pub enum ErrorCode {
-    OrganisationAlreadyExists,
+    #[strum(to_string = "Unmapped error code")]
+    BR_0000,
 
-    DidNotFound,
-    DidInvalidType,
-    DidMethodIncapableKeyAlgorithm,
-    DidInvalidMethod,
-    DidDeactivated,
-    DidValueAlreadyExists,
-    DidCannotDeactivate,
-    DidMissingKey,
+    #[strum(to_string = "Credential not found")]
+    BR_0001,
 
-    CredentialSchemaNotFound,
-    CredentialSchemaAlreadyExists,
-    CredentialSchemaMissingClaims,
-    MissingCredentialSchema,
+    #[strum(to_string = "Credential state invalid")]
+    BR_0002,
 
-    CredentialNotFound,
-    CredentialInvalidState,
-    CredentialMissingClaim,
-    MissingCredentialsForInteraction,
-    MissingCredentialData,
+    #[strum(to_string = "Credential: Missing claim")]
+    BR_0003,
 
-    ProofNotFound,
-    ProofInvalidState,
+    #[strum(to_string = "Missing credentials for provided interaction")]
+    BR_0004,
 
-    ProofSchemaNotFound,
-    ProofSchemaAlreadyExists,
-    ProofSchemaMissingClaims,
-    ProofSchemaNoRequiredClaim,
-    ProofSchemaDuplicitClaim,
-    ProofSchemaDeleted,
-    MissingProofSchema,
+    #[strum(to_string = "Missing credential data for provided credential")]
+    BR_0005,
 
-    InvalidExchangeType,
-    UnsupportedKeyType,
+    #[strum(to_string = "Credential schema not found")]
+    BR_0006,
 
-    Database,
-    ResponseMapping,
+    #[strum(to_string = "Credential schema already exists")]
+    BR_0007,
 
-    MissingFormatter,
-    InvalidFormatter,
+    #[strum(to_string = "Credential schema: Missing claims")]
+    BR_0008,
 
-    MissingClaimSchema,
-    MissingClaimSchemas,
+    #[strum(to_string = "Missing credential schema")]
+    BR_0009,
 
-    MissingRevocationListForDid,
-    RevocationListNotFound,
-    MissingCredentialIndexOnRevocationList,
+    #[strum(to_string = "Missing claim schema")]
+    BR_0010,
 
-    OrganisationNotFound,
+    #[strum(to_string = "Missing claim schemas")]
+    BR_0011,
 
-    KeyNotFound,
-    KeyAlreadyExists,
+    #[strum(to_string = "Proof not found")]
+    BR_0012,
 
-    MissingInteractionForAccessToken,
+    #[strum(to_string = "Proof state invalid")]
+    BR_0013,
 
-    MissingKeyStorage,
-    MissingDidMethod,
-    MissingKeyAlgorithm,
-    InvalidKeyAlgorithm,
-    InvalidKeyStorage,
-    MissingRevocationMethod,
-    MissingRevocationMethodByCredentialStatusType,
-    MissingTransportProtocol,
-    GenericKeyStorageError,
-    ModelMapping,
-    OpenID4VCI,
-    Validation,
-    ConfigurationValidation,
-    BitstringHandling,
-    MissingSigner,
-    MissingAlgorithm,
-    KeyAlgorithm,
-    DidMethod,
-    Unmapped,
-    FormatterProvider,
-    CryptoProvider,
-    TransportProtocol,
+    #[strum(to_string = "Proof schema not found")]
+    BR_0014,
+
+    #[strum(to_string = "Proof schema already exists")]
+    BR_0015,
+
+    #[strum(to_string = "Proof schema: missing claims ")]
+    BR_0016,
+
+    #[strum(to_string = "Proof schema: no required claim")]
+    BR_0017,
+
+    #[strum(to_string = "Proof schema: Duplicit claim schema")]
+    BR_0018,
+
+    #[strum(to_string = "The proof schema is deleted")]
+    BR_0019,
+
+    #[strum(to_string = "Missing proof schema")]
+    BR_0020,
+
+    #[strum(to_string = "The proof schema is deleted")]
+    BR_0021,
+
+    #[strum(to_string = "Organisation not found")]
+    BR_0022,
+
+    #[strum(to_string = "Organisation already exists")]
+    BR_0023,
+
+    #[strum(to_string = "DID not found")]
+    BR_0024,
+
+    #[strum(to_string = "Invalid DID type")]
+    BR_0025,
+
+    #[strum(to_string = "Invalid DID method")]
+    BR_0026,
+
+    #[strum(to_string = "DID deactivated")]
+    BR_0027,
+
+    #[strum(to_string = "DID value already exists")]
+    BR_0028,
+
+    #[strum(to_string = "DID cannot be deactivated ")]
+    BR_0029,
+
+    #[strum(to_string = "DID missing key")]
+    BR_0030,
+
+    #[strum(to_string = "Missing DID method")]
+    BR_0031,
+
+    #[strum(to_string = "Credential schema already exists")]
+    BR_0032,
+
+    #[strum(to_string = "Missing interaction for access token")]
+    BR_0033,
+
+    #[strum(to_string = "Revocation list not found")]
+    BR_0034,
+
+    #[strum(to_string = "Missing revocation list for provided DID")]
+    BR_0035,
+
+    #[strum(to_string = "Missing credential index on revocation list")]
+    BR_0036,
+
+    #[strum(to_string = "Key not found")]
+    BR_0037,
+
+    #[strum(to_string = "Missing formatter")]
+    BR_0038,
+
+    #[strum(to_string = "Generic key storage error")]
+    BR_0039,
+
+    #[strum(to_string = "Missing key storage")]
+    BR_0040,
+
+    #[strum(to_string = "Invalid key storage type")]
+    BR_0041,
+
+    #[strum(to_string = "Missing key algorithm")]
+    BR_0042,
+
+    #[strum(to_string = "Invalid key algorithm type")]
+    BR_0043,
+
+    #[strum(to_string = "Missing revocation method")]
+    BR_0044,
+
+    #[strum(to_string = "Missing revocation method for the provided credential status type")]
+    BR_0045,
+
+    #[strum(to_string = "Missing transport protocol")]
+    BR_0046,
+
+    #[strum(to_string = "Model mapping")]
+    BR_0047,
+
+    #[strum(to_string = "OpenID4VCI error")]
+    BR_0048,
+
+    #[strum(to_string = "Credential status list bitstring handling error")]
+    BR_0049,
+
+    #[strum(to_string = "Crypto provider error")]
+    BR_0050,
+
+    #[strum(to_string = "Configuration validation error")]
+    BR_0051,
+
+    #[strum(to_string = "Invalid exchange type")]
+    BR_0052,
+
+    #[strum(to_string = "Unsupported key type")]
+    BR_0053,
+
+    #[strum(to_string = "Database error")]
+    BR_0054,
+
+    #[strum(to_string = "Response mapping error")]
+    BR_0055,
+
+    #[strum(to_string = "Invalid formatter type")]
+    BR_0056,
+
+    #[strum(to_string = "Formatter provider error")]
+    BR_0057,
+
+    #[strum(to_string = "Crypto provider error")]
+    BR_0058,
+
+    #[strum(to_string = "Missing signer")]
+    BR_0059,
+
+    #[strum(to_string = "Missing signer algorithm")]
+    BR_0060,
+
+    #[strum(to_string = "Provided datatype is not valid or value doesn't match the expected type")]
+    BR_0061,
+
+    #[strum(to_string = "Transport protocol provider error")]
+    BR_0062,
+
+    #[strum(to_string = "Key algorithm provider error")]
+    BR_0063,
+
+    #[strum(to_string = "DID method provider error")]
+    BR_0064,
+
+    #[strum(to_string = "DID method is missing key algorithm capability")]
+    BR_0065,
+
+    #[strum(to_string = "Key already exists")]
+    BR_0066,
 }
 
 impl From<FormatError> for ServiceError {
@@ -368,118 +497,29 @@ impl From<uuid::Error> for ServiceError {
     }
 }
 
-impl ErrorCode {
-    pub const fn msg(&self) -> &'static str {
-        match self {
-            ErrorCode::OrganisationAlreadyExists => "Organisation already exists",
-
-            ErrorCode::DidNotFound => "DID not found",
-            ErrorCode::DidInvalidType => "Invalid DID type",
-            ErrorCode::DidMethodIncapableKeyAlgorithm => "Did method incapable",
-            ErrorCode::DidInvalidMethod => "Invalid DID method",
-            ErrorCode::DidDeactivated => "DID deactivated",
-            ErrorCode::DidValueAlreadyExists => "DID value already exists",
-            ErrorCode::DidCannotDeactivate => "DID cannot be deactivated",
-            ErrorCode::DidMissingKey => "DID missing key",
-
-            ErrorCode::CredentialSchemaAlreadyExists => "Credential schema already exists",
-            ErrorCode::CredentialSchemaMissingClaims => "Credential schema: Missing claims",
-
-            ErrorCode::CredentialNotFound => "Credential not found",
-            ErrorCode::CredentialInvalidState => "Credential state invalid",
-            ErrorCode::CredentialMissingClaim => "Credential: Missing claim",
-
-            ErrorCode::ProofSchemaAlreadyExists => "Proof schema already exists",
-            ErrorCode::ProofSchemaMissingClaims => "Proof schema: Missing claims",
-            ErrorCode::ProofSchemaNoRequiredClaim => "Proof schema: No required claim",
-            ErrorCode::ProofSchemaDuplicitClaim => "Proof schema: Duplicit claim schema",
-
-            ErrorCode::ProofInvalidState => "Proof state invalid",
-
-            ErrorCode::InvalidExchangeType => "Invalid exchange type",
-            ErrorCode::UnsupportedKeyType => "Unsupported key type",
-
-            ErrorCode::Database => "Database error",
-
-            ErrorCode::ResponseMapping => "Response mapping error",
-
-            ErrorCode::MissingCredentialsForInteraction => {
-                "Missing credentials for provided interaction"
-            }
-            ErrorCode::ProofSchemaDeleted => "The proof schema is deleted",
-            ErrorCode::MissingCredentialData => "Missing credential data for provided credential",
-            ErrorCode::MissingCredentialSchema => "Missing credential schema",
-            ErrorCode::MissingClaimSchema => "Missing claim schema",
-            ErrorCode::MissingRevocationListForDid => "Missing revocation list for provided DID",
-            ErrorCode::RevocationListNotFound => "Revocation list not found",
-            ErrorCode::MissingProofSchema => "Missing proof schema",
-            ErrorCode::ProofSchemaNotFound => "Proof schema not found",
-            ErrorCode::ProofNotFound => "Proof not found",
-            ErrorCode::OrganisationNotFound => "Organisation not found",
-            ErrorCode::KeyNotFound => "Key not found",
-            ErrorCode::CredentialSchemaNotFound => "Credential schema not found",
-            ErrorCode::MissingInteractionForAccessToken => "Missing interaction for access token",
-            ErrorCode::MissingCredentialIndexOnRevocationList => {
-                "Missing credential index on revocation list"
-            }
-            ErrorCode::MissingClaimSchemas => "Missing claim schemas",
-
-            ErrorCode::MissingKeyStorage => "Missing key storage",
-            ErrorCode::MissingDidMethod => "Missing did method",
-            ErrorCode::MissingFormatter => "Missing formatter",
-            ErrorCode::MissingKeyAlgorithm => "Missing key algorithm",
-            ErrorCode::MissingRevocationMethod => "Missing revocation method",
-            ErrorCode::MissingRevocationMethodByCredentialStatusType => {
-                "Missing revocation method by status"
-            }
-            ErrorCode::MissingTransportProtocol => "Missing transport protocol",
-
-            ErrorCode::InvalidFormatter => "Invalid formatter type",
-            ErrorCode::InvalidKeyAlgorithm => "Invalid key algorithm type",
-            ErrorCode::InvalidKeyStorage => "Invalid key storage type",
-            ErrorCode::GenericKeyStorageError => "Generic key storage error",
-            ErrorCode::ModelMapping => "Model mapping error",
-            ErrorCode::OpenID4VCI => "OpenID4VCI error",
-            ErrorCode::Validation => "Generic validation error",
-            ErrorCode::ConfigurationValidation => "Configuration validation error",
-            ErrorCode::BitstringHandling => "Bitstring handling error",
-            ErrorCode::MissingSigner => "Missing signer",
-            ErrorCode::MissingAlgorithm => "Missing algorithm",
-            ErrorCode::KeyAlgorithm => "Key algorithm error",
-            ErrorCode::DidMethod => "Did method error",
-            ErrorCode::Unmapped => "Unmapped error code",
-            ErrorCode::FormatterProvider => "Formatter provider error",
-            ErrorCode::CryptoProvider => "Crypto provider error",
-            ErrorCode::TransportProtocol => "Transport protocol error",
-            ErrorCode::KeyAlreadyExists => "Key already exists",
-        }
-    }
-}
-
 impl ServiceError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
             ServiceError::EntityNotFound(error) => error.error_code(),
             ServiceError::BusinessLogic(error) => error.error_code(),
             ServiceError::Validation(error) => error.error_code(),
-            ServiceError::ResponseMapping(_) => ErrorCode::ResponseMapping,
             ServiceError::Repository(error) => error.error_code(),
             ServiceError::MissingProvider(error) => error.error_code(),
-            ServiceError::TransportProtocolError(_) => ErrorCode::TransportProtocol,
-            ServiceError::CryptoError(_) => ErrorCode::CryptoProvider,
-            ServiceError::FormatterError(_) => ErrorCode::FormatterProvider,
-            ServiceError::KeyStorageError(_) => ErrorCode::GenericKeyStorageError,
-            ServiceError::MappingError(_) => ErrorCode::ModelMapping,
-            ServiceError::OpenID4VCError(_) => ErrorCode::OpenID4VCI,
-            ServiceError::ValidationError(_) => ErrorCode::Validation,
-            ServiceError::ConfigValidationError(_) => ErrorCode::ConfigurationValidation,
-            ServiceError::BitstringError(_) => ErrorCode::BitstringHandling,
-            ServiceError::MissingSigner(_) => ErrorCode::MissingSigner,
-            ServiceError::MissingAlgorithm(_) => ErrorCode::MissingAlgorithm,
-            ServiceError::MissingTransportProtocol(_) => ErrorCode::MissingTransportProtocol,
-            ServiceError::KeyAlgorithmError(_) => ErrorCode::KeyAlgorithm,
-            ServiceError::DidMethodError(_) => ErrorCode::DidMethod,
-            ServiceError::Other(_) => ErrorCode::Unmapped,
+            ServiceError::ResponseMapping(_) => ErrorCode::BR_0055,
+            ServiceError::TransportProtocolError(_) => ErrorCode::BR_0062,
+            ServiceError::CryptoError(_) => ErrorCode::BR_0050,
+            ServiceError::FormatterError(_) => ErrorCode::BR_0058,
+            ServiceError::KeyStorageError(_) => ErrorCode::BR_0039,
+            ServiceError::MappingError(_) => ErrorCode::BR_0047,
+            ServiceError::OpenID4VCError(_) => ErrorCode::BR_0048,
+            ServiceError::ConfigValidationError(_) => ErrorCode::BR_0051,
+            ServiceError::BitstringError(_) => ErrorCode::BR_0049,
+            ServiceError::MissingSigner(_) => ErrorCode::BR_0060,
+            ServiceError::MissingAlgorithm(_) => ErrorCode::BR_0061,
+            ServiceError::MissingTransportProtocol(_) => ErrorCode::BR_0046,
+            ServiceError::KeyAlgorithmError(_) => ErrorCode::BR_0063,
+            ServiceError::DidMethodError(_) => ErrorCode::BR_0064,
+            ServiceError::ValidationError(_) | ServiceError::Other(_) => ErrorCode::BR_0000,
         }
     }
 }
@@ -487,16 +527,16 @@ impl ServiceError {
 impl EntityNotFoundError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            EntityNotFoundError::Credential(_) => ErrorCode::CredentialNotFound,
-            EntityNotFoundError::Did(_) => ErrorCode::DidNotFound,
-            EntityNotFoundError::RevocationList(_) => ErrorCode::RevocationListNotFound,
-            EntityNotFoundError::ProofSchema(_) => ErrorCode::ProofSchemaNotFound,
+            EntityNotFoundError::Credential(_) => ErrorCode::BR_0001,
+            EntityNotFoundError::Did(_) => ErrorCode::BR_0024,
+            EntityNotFoundError::RevocationList(_) => ErrorCode::BR_0034,
+            EntityNotFoundError::ProofSchema(_) => ErrorCode::BR_0014,
             EntityNotFoundError::Proof(_) | EntityNotFoundError::ProofForInteraction(_) => {
-                ErrorCode::ProofNotFound
+                ErrorCode::BR_0012
             }
-            EntityNotFoundError::Organisation(_) => ErrorCode::OrganisationNotFound,
-            EntityNotFoundError::Key(_) => ErrorCode::KeyNotFound,
-            EntityNotFoundError::CredentialSchema(_) => ErrorCode::CredentialSchemaNotFound,
+            EntityNotFoundError::Organisation(_) => ErrorCode::BR_0022,
+            EntityNotFoundError::Key(_) => ErrorCode::BR_0037,
+            EntityNotFoundError::CredentialSchema(_) => ErrorCode::BR_0006,
         }
     }
 }
@@ -504,40 +544,28 @@ impl EntityNotFoundError {
 impl BusinessLogicError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            BusinessLogicError::OrganisationAlreadyExists => ErrorCode::OrganisationAlreadyExists,
-            BusinessLogicError::IncompatibleDidType { .. } => ErrorCode::DidInvalidType,
-            BusinessLogicError::DidMethodIncapableKeyAlgorithm { .. } => {
-                ErrorCode::DidMethodIncapableKeyAlgorithm
-            }
-            BusinessLogicError::InvalidDidMethod { .. } => ErrorCode::DidInvalidMethod,
-            BusinessLogicError::DidIsDeactivated(_) => ErrorCode::DidDeactivated,
-            BusinessLogicError::DidValueAlreadyExists(_) => ErrorCode::DidValueAlreadyExists,
-            BusinessLogicError::CredentialSchemaAlreadyExists => {
-                ErrorCode::CredentialSchemaAlreadyExists
-            }
-            BusinessLogicError::InvalidCredentialState { .. } => ErrorCode::CredentialInvalidState,
-            BusinessLogicError::ProofSchemaAlreadyExists => ErrorCode::ProofSchemaAlreadyExists,
-            BusinessLogicError::InvalidProofState { .. } => ErrorCode::ProofInvalidState,
+            BusinessLogicError::OrganisationAlreadyExists => ErrorCode::BR_0023,
+            BusinessLogicError::IncompatibleDidType { .. } => ErrorCode::BR_0025,
+            BusinessLogicError::DidMethodIncapableKeyAlgorithm { .. } => ErrorCode::BR_0065,
+            BusinessLogicError::InvalidDidMethod { .. } => ErrorCode::BR_0026,
+            BusinessLogicError::DidIsDeactivated(_) => ErrorCode::BR_0027,
+            BusinessLogicError::DidValueAlreadyExists(_) => ErrorCode::BR_0028,
+            BusinessLogicError::CredentialSchemaAlreadyExists => ErrorCode::BR_0007,
+            BusinessLogicError::InvalidCredentialState { .. } => ErrorCode::BR_0002,
+            BusinessLogicError::ProofSchemaAlreadyExists => ErrorCode::BR_0015,
+            BusinessLogicError::InvalidProofState { .. } => ErrorCode::BR_0013,
+            BusinessLogicError::MissingCredentialsForInteraction { .. } => ErrorCode::BR_0004,
+            BusinessLogicError::ProofSchemaDeleted { .. } => ErrorCode::BR_0019,
+            BusinessLogicError::MissingCredentialData { .. } => ErrorCode::BR_0005,
+            BusinessLogicError::MissingCredentialSchema => ErrorCode::BR_0009,
+            BusinessLogicError::MissingClaimSchema { .. } => ErrorCode::BR_0010,
+            BusinessLogicError::MissingRevocationListForDid { .. } => ErrorCode::BR_0035,
+            BusinessLogicError::MissingProofSchema { .. } => ErrorCode::BR_0020,
+            BusinessLogicError::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
+            BusinessLogicError::MissingCredentialIndexOnRevocationList { .. } => ErrorCode::BR_0036,
+            BusinessLogicError::MissingClaimSchemas => ErrorCode::BR_0011,
             BusinessLogicError::DidDeactivation(error) => error.error_code(),
-            BusinessLogicError::MissingCredentialsForInteraction { .. } => {
-                ErrorCode::MissingCredentialsForInteraction
-            }
-            BusinessLogicError::ProofSchemaDeleted { .. } => ErrorCode::ProofSchemaDeleted,
-            BusinessLogicError::MissingCredentialData { .. } => ErrorCode::MissingCredentialData,
-            BusinessLogicError::MissingCredentialSchema => ErrorCode::MissingCredentialSchema,
-            BusinessLogicError::MissingClaimSchema { .. } => ErrorCode::MissingClaimSchema,
-            BusinessLogicError::MissingRevocationListForDid { .. } => {
-                ErrorCode::MissingRevocationListForDid
-            }
-            BusinessLogicError::MissingProofSchema { .. } => ErrorCode::MissingProofSchema,
-            BusinessLogicError::MissingInteractionForAccessToken { .. } => {
-                ErrorCode::MissingInteractionForAccessToken
-            }
-            BusinessLogicError::MissingCredentialIndexOnRevocationList { .. } => {
-                ErrorCode::MissingCredentialIndexOnRevocationList
-            }
-            BusinessLogicError::MissingClaimSchemas => ErrorCode::MissingClaimSchemas,
-            BusinessLogicError::KeyAlreadyExists => ErrorCode::KeyAlreadyExists,
+            BusinessLogicError::KeyAlreadyExists => ErrorCode::BR_0066,
         }
     }
 }
@@ -545,19 +573,18 @@ impl BusinessLogicError {
 impl ValidationError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            ValidationError::InvalidExchangeType { .. } => ErrorCode::InvalidExchangeType,
-            ValidationError::UnsupportedKeyType { .. } => ErrorCode::UnsupportedKeyType,
-            ValidationError::DidMissingKey => ErrorCode::DidMissingKey,
-            ValidationError::CredentialSchemaMissingClaims => {
-                ErrorCode::CredentialSchemaMissingClaims
-            }
-            ValidationError::CredentialMissingClaim { .. } => ErrorCode::CredentialMissingClaim,
-            ValidationError::ProofSchemaMissingClaims => ErrorCode::ProofSchemaMissingClaims,
-            ValidationError::ProofSchemaNoRequiredClaim => ErrorCode::ProofSchemaNoRequiredClaim,
-            ValidationError::ProofSchemaDuplicitClaim => ErrorCode::ProofSchemaDuplicitClaim,
-            ValidationError::InvalidFormatter(_) => ErrorCode::InvalidFormatter,
-            ValidationError::InvalidKeyAlgorithm(_) => ErrorCode::InvalidKeyAlgorithm,
-            ValidationError::InvalidKeyStorage(_) => ErrorCode::InvalidKeyStorage,
+            ValidationError::InvalidExchangeType { .. } => ErrorCode::BR_0052,
+            ValidationError::UnsupportedKeyType { .. } => ErrorCode::BR_0053,
+            ValidationError::DidMissingKey => ErrorCode::BR_0030,
+            ValidationError::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
+            ValidationError::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
+            ValidationError::ProofSchemaMissingClaims => ErrorCode::BR_0016,
+            ValidationError::ProofSchemaNoRequiredClaim => ErrorCode::BR_0017,
+            ValidationError::ProofSchemaDuplicitClaim => ErrorCode::BR_0018,
+            ValidationError::InvalidFormatter(_) => ErrorCode::BR_0056,
+            ValidationError::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
+            ValidationError::InvalidKeyStorage(_) => ErrorCode::BR_0041,
+            ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
         }
     }
 }
