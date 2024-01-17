@@ -7,7 +7,11 @@ async fn test_create_credential_schema_success() {
     let (context, organisation) = TestContext::new_with_organisation().await;
 
     // WHEN
-    let resp = context.api.credential_schemas.create(organisation.id).await;
+    let resp = context
+        .api
+        .credential_schemas
+        .create("some credential schema", organisation.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 201);
@@ -19,4 +23,50 @@ async fn test_create_credential_schema_success() {
     assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
     assert_eq!(credential_schema.format, "JWT");
     assert_eq!(credential_schema.claim_schemas.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_with_the_same_name_in_different_organisations() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let organisation1 = context.db.organisations.create().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create("some credential schema", organisation.id)
+        .await;
+
+    let resp1 = context
+        .api
+        .credential_schemas
+        .create("some credential schema", organisation1.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    assert_eq!(resp1.status(), 201);
+}
+#[tokio::test]
+async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create("some credential schema", organisation.id)
+        .await;
+    assert_eq!(resp.status(), 201);
+
+    let resp = context
+        .api
+        .credential_schemas
+        .create("some credential schema", organisation.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
 }

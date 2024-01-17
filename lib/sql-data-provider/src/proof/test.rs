@@ -492,7 +492,7 @@ async fn test_get_proof_with_relations() {
             &db,
             None,
             &organisation_id.to_string(),
-            "credential schema",
+            "credential schema 1",
             "JWT",
             "NONE",
         )
@@ -788,7 +788,7 @@ async fn test_set_proof_claims_success() {
             &db,
             None,
             &organisation_id.to_string(),
-            "credential schema",
+            "credential schema 1",
             "JWT",
             "NONE",
         )

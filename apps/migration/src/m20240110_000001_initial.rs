@@ -6,6 +6,8 @@ use sea_orm_migration::prelude::*;
 pub struct Migration;
 
 pub const UNIQUE_DID_DID_INDEX: &str = "index-Did-Did-Unique";
+pub const CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX: &str = "index-CredentialSchema-Name";
+pub const PROOF_SCHEMA_NAME_IN_ORGANISATION_INDEX: &str = "index-ProofSchema-Name";
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
@@ -114,7 +116,7 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name("index-CredentialSchema-Name")
+                    .name(CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX)
                     .table(CredentialSchema::Table)
                     .col(CredentialSchema::OrganisationId)
                     .col(CredentialSchema::Name)
@@ -650,7 +652,7 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name("index-ProofSchema-Name")
+                    .name(PROOF_SCHEMA_NAME_IN_ORGANISATION_INDEX)
                     .table(ProofSchema::Table)
                     .col(ProofSchema::OrganisationId)
                     .col(ProofSchema::Name)
