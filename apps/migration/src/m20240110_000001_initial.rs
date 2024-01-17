@@ -5,6 +5,8 @@ use sea_orm_migration::prelude::*;
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
+pub const UNIQUE_DID_DID_INDEX: &str = "index-Did-Did-Unique";
+
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -346,7 +348,7 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name("index-Did-Did-Unique")
+                    .name(UNIQUE_DID_DID_INDEX)
                     .unique()
                     .table(Did::Table)
                     .col(Did::Did)

@@ -2,6 +2,7 @@ pub use sea_orm_migration::prelude::*;
 
 mod m20240110_000001_initial;
 mod m20240115_093859_unique_did_name_and_key_name_in_org;
+mod m20240116_110014_unique_did_in_organisation;
 
 pub struct Migrator;
 
@@ -11,6 +12,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20240110_000001_initial::Migration),
             Box::new(m20240115_093859_unique_did_name_and_key_name_in_org::Migration),
+            Box::new(m20240116_110014_unique_did_in_organisation::Migration),
         ]
     }
 }
