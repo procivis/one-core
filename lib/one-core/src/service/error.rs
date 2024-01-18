@@ -1,5 +1,5 @@
 use shared_types::{DidId, DidValue};
-use strum_macros::IntoStaticStr;
+use strum_macros::Display;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -278,7 +278,7 @@ impl MissingProviderError {
     }
 }
 
-#[derive(Debug, Clone, Copy, IntoStaticStr)]
+#[derive(Debug, Clone, Copy, Display)]
 #[allow(non_camel_case_types)]
 pub enum ErrorCode {
     #[strum(to_string = "Unmapped error code")]

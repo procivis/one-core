@@ -73,7 +73,7 @@ impl From<&ServiceError> for ErrorResponseRestDTO {
 
         ErrorResponseRestDTO {
             code: ErrorCode::from(code),
-            message: code.into(),
+            message: code.to_string(),
             cause: Some(cause),
         }
     }

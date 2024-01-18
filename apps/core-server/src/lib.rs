@@ -9,7 +9,6 @@ pub mod mapper;
 pub mod metrics;
 pub mod router;
 pub mod serialize;
-
 pub mod build_info {
     use shadow_rs::shadow;
 
@@ -17,6 +16,7 @@ pub mod build_info {
 
     pub use build::*;
 }
+mod middleware;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
