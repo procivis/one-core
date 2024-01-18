@@ -2,10 +2,10 @@ use elliptic_curve::{generic_array::GenericArray, sec1::EncodedPoint};
 use serde::Deserialize;
 
 use super::KeyAlgorithm;
+use crate::crypto::signer::es256::ES256Signer;
 use crate::provider::did_method::dto::PublicKeyJwkEllipticDataDTO;
 use crate::provider::{did_method::dto::PublicKeyJwkDTO, key_algorithm::GeneratedKey};
 use crate::service::error::ServiceError;
-use crate::util::p_256::{p_256_vk_from_bytes, random_p_256};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 pub struct Es256;
@@ -39,18 +39,15 @@ impl KeyAlgorithm for Es256 {
 
     fn get_multibase(&self, public_key: &[u8]) -> String {
         let codec = &[0x80, 0x24];
-        let key = p_256_vk_from_bytes(public_key).unwrap();
-        let data = [codec, key.to_encoded_point(true).as_ref()].concat();
+        let key = ES256Signer::to_bytes(public_key).unwrap();
+        let data = [codec, key.as_slice()].concat();
         format!("z{}", bs58::encode(data).into_string())
     }
 
     fn generate_key_pair(&self) -> GeneratedKey {
-        let (private, public) = random_p_256().unwrap();
+        let (private, public) = ES256Signer::random();
 
-        GeneratedKey {
-            public: public.to_encoded_point(true).as_bytes().to_vec(),
-            private: private.to_bytes().to_vec(),
-        }
+        GeneratedKey { public, private }
     }
 
     fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError> {
