@@ -42,6 +42,7 @@ pub async fn insert_credential(
         deleted_at: Set(deleted_at),
         transport: Set(protocol.to_owned()),
         credential: Set(vec![0, 0, 0, 0]),
+        role: Set(credential::CredentialRole::Issuer),
         issuer_did_id: Set(Some(did_id)),
         holder_did_id: Set(None),
         interaction_id: Set(None),

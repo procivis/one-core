@@ -1,6 +1,9 @@
+use dto_mapper::From;
 use sea_orm::entity::prelude::*;
 use shared_types::DidId;
 use time::OffsetDateTime;
+
+use one_core::model::credential::CredentialRole as ModelCredentialRole;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "credential")]
@@ -21,6 +24,8 @@ pub struct Model {
 
     #[sea_orm(column_type = "Binary(BlobSize::Long)")]
     pub credential: Vec<u8>,
+
+    pub role: CredentialRole,
 
     pub issuer_did_id: Option<DidId>,
     pub holder_did_id: Option<DidId>,
@@ -121,4 +126,17 @@ impl Related<super::revocation_list::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::RevocationList.def()
     }
+}
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, From)]
+#[convert(from = "ModelCredentialRole", into = "ModelCredentialRole")]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+pub enum CredentialRole {
+    #[sea_orm(string_value = "HOLDER")]
+    Holder,
+    #[default]
+    #[sea_orm(string_value = "ISSUER")]
+    Issuer,
+    #[sea_orm(string_value = "VERIFIER")]
+    Verifier,
 }

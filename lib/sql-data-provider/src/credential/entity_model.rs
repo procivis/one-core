@@ -1,7 +1,7 @@
 use sea_orm::FromQueryResult;
 use time::OffsetDateTime;
 
-use crate::entity::{credential_state, did::DidType};
+use crate::entity::{credential, credential_state, did::DidType};
 
 #[derive(FromQueryResult)]
 pub(super) struct CredentialListEntityModel {
@@ -13,6 +13,7 @@ pub(super) struct CredentialListEntityModel {
     pub transport: String,
     pub credential: Vec<u8>,
     pub redirect_uri: Option<String>,
+    pub role: credential::CredentialRole,
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,
     pub credential_schema_format: String,

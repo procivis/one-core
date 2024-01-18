@@ -2,7 +2,10 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 
 use crate::{
-    model::{credential::Credential, proof::Proof},
+    model::{
+        credential::{Credential, CredentialRole},
+        proof::Proof,
+    },
     provider::{
         credential_formatter::provider::MockCredentialFormatterProvider,
         key_storage::provider::MockKeyProvider,
@@ -49,6 +52,7 @@ fn generate_credential(redirect_uri: Option<String>) -> Credential {
         credential: vec![],
         transport: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri,
+        role: CredentialRole::Issuer,
         state: None,
         claims: None,
         issuer_did: None,

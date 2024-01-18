@@ -4,16 +4,14 @@ use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
-use crate::provider::credential_formatter::MockSignatureProvider;
-use crate::provider::transport_protocol::provider::{
-    TransportProtocolProvider, TransportProtocolProviderImpl,
-};
 use crate::{
+    config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params},
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
-        credential::{Credential, CredentialId, CredentialState, CredentialStateEnum},
+        credential::{
+            Credential, CredentialId, CredentialRole, CredentialState, CredentialStateEnum,
+        },
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidType, KeyRole, RelatedKey},
         interaction::Interaction,
@@ -23,12 +21,13 @@ use crate::{
     provider::{
         credential_formatter::{
             model::CredentialStatus, provider::MockCredentialFormatterProvider,
-            MockCredentialFormatter,
+            MockCredentialFormatter, MockSignatureProvider,
         },
         key_storage::provider::MockKeyProvider,
         revocation::{
             provider::MockRevocationMethodProvider, CredentialRevocationInfo, MockRevocationMethod,
         },
+        transport_protocol::provider::{TransportProtocolProvider, TransportProtocolProviderImpl},
     },
     repository::credential_repository::MockCredentialRepository,
 };
@@ -172,6 +171,7 @@ fn dummy_credential() -> Credential {
         credential: b"credential".to_vec(),
         transport: "protocol".to_string(),
         redirect_uri: None,
+        role: CredentialRole::Holder,
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Pending,

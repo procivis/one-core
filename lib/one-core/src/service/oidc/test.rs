@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
-use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
@@ -110,6 +110,7 @@ fn dummy_credential(state: CredentialStateEnum, pre_authroized_code: bool) -> Cr
         credential: b"credential".to_vec(),
         transport: "protocol".to_string(),
         redirect_uri: None,
+        role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state,

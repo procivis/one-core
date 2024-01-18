@@ -2,31 +2,31 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use one_core::model::credential::{CredentialState, CredentialStateEnum};
-use one_core::repository::error::DataLayerError;
-use one_core::{
-    model::interaction::Interaction,
-    repository::mock::{
-        key_repository::MockKeyRepository, revocation_list_repository::MockRevocationListRepository,
-    },
-};
 use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialStateRelations,
-            GetCredentialQuery, UpdateCredentialRequest,
+            Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
+            CredentialStateEnum, CredentialStateRelations, GetCredentialQuery,
+            UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations},
         did::{Did, DidRelations},
-        interaction::InteractionRelations,
+        interaction::{Interaction, InteractionRelations},
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
-        claim_repository::MockClaimRepository, credential_repository::CredentialRepository,
+        claim_repository::MockClaimRepository,
+        credential_repository::CredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
+        did_repository::MockDidRepository,
+        error::DataLayerError,
+        interaction_repository::MockInteractionRepository,
+        mock::{
+            key_repository::MockKeyRepository,
+            revocation_list_repository::MockRevocationListRepository,
+        },
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
@@ -240,6 +240,7 @@ async fn test_create_credential_success() {
             credential: vec![],
             transport: "transport".to_string(),
             redirect_uri: None,
+            role: CredentialRole::Issuer,
             state: None,
             claims: Some(claims),
             issuer_did: Some(did),
@@ -294,6 +295,7 @@ async fn test_create_credential_empty_claims() {
             credential: vec![],
             transport: "transport".to_string(),
             redirect_uri: None,
+            role: CredentialRole::Issuer,
             state: None,
             claims: Some(vec![]),
             issuer_did: Some(did),
@@ -360,6 +362,7 @@ async fn test_create_credential_already_exists() {
             credential: vec![],
             transport: "transport".to_string(),
             redirect_uri: None,
+            role: CredentialRole::Issuer,
             state: None,
             claims: Some(claims),
             issuer_did: Some(did),
@@ -576,7 +579,6 @@ async fn test_get_credential_list_success_verify_state_sorting() {
                 .to_string(),
         })
         .await;
-    assert!(credentials.is_ok());
     let credentials = credentials.unwrap();
     assert_eq!(1, credentials.total_pages);
     assert_eq!(1, credentials.total_items);

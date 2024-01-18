@@ -9,7 +9,9 @@ use uuid::Uuid;
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{Credential, CredentialId, CredentialState, CredentialStateEnum};
+use crate::model::credential::{
+    Credential, CredentialId, CredentialRole, CredentialState, CredentialStateEnum,
+};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
@@ -176,5 +178,6 @@ pub fn extracted_credential_to_model(
         interaction: None,
         revocation_list: None,
         key: None,
+        role: CredentialRole::Verifier,
     }
 }
