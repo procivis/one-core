@@ -1,6 +1,7 @@
-use crate::{
-    model::{credential::CredentialId, interaction::InteractionId},
-    service::proof::dto::ProofId,
+use crate::model::{
+    credential::{Credential, CredentialId},
+    interaction::InteractionId,
+    proof::Proof,
 };
 use std::collections::HashMap;
 
@@ -8,11 +9,11 @@ use std::collections::HashMap;
 pub enum InvitationResponseDTO {
     Credential {
         interaction_id: InteractionId,
-        credential_ids: Vec<CredentialId>,
+        credentials: Vec<Credential>,
     },
     ProofRequest {
         interaction_id: InteractionId,
-        proof_id: ProofId,
+        proof: Box<Proof>, // https://rust-lang.github.io/rust-clippy/master/index.html#large_enum_variant
     },
 }
 

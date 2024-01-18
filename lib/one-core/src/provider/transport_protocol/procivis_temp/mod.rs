@@ -42,7 +42,6 @@ use crate::{
         credential_repository::CredentialRepository,
         credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
         error::DataLayerError, interaction_repository::InteractionRepository,
-        proof_repository::ProofRepository,
     },
     service::{
         credential::dto::CredentialDetailResponseDTO, ssi_holder::dto::InvitationResponseDTO,
@@ -55,7 +54,6 @@ pub(crate) struct ProcivisTemp {
     client: reqwest::Client,
     base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
-    proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
@@ -68,7 +66,6 @@ impl ProcivisTemp {
     pub fn new(
         base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository>,
-        proof_repository: Arc<dyn ProofRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
@@ -79,7 +76,6 @@ impl ProcivisTemp {
             client: reqwest::Client::new(),
             base_url,
             credential_repository,
-            proof_repository,
             interaction_repository,
             credential_schema_repository,
             did_repository,
@@ -536,35 +532,29 @@ async fn handle_credential_invitation(
         .flatten()
         .collect();
 
-    deps.credential_repository
-        .create_credential(Credential {
-            id: credential_id,
+    let credential = Credential {
+        id: credential_id,
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        deleted_at: None,
+        credential: vec![],
+        transport: "PROCIVIS_TEMPORARY".to_string(),
+        redirect_uri: issuer_response.redirect_uri,
+        state: Some(vec![CredentialState {
             created_date: now,
-            issuance_date: now,
-            last_modified: now,
-            deleted_at: None,
-            credential: vec![],
-            transport: "PROCIVIS_TEMPORARY".to_string(),
-            redirect_uri: issuer_response.redirect_uri,
-            state: Some(vec![CredentialState {
-                created_date: now,
-                state: CredentialStateEnum::Pending,
-            }]),
-            claims: Some(claims),
-            issuer_did: Some(issuer_did),
-            holder_did: Some(holder_did),
-            schema: Some(credential_schema),
-            interaction: Some(interaction),
-            revocation_list: None,
-            key: None,
-        })
-        .await
-        .map_err(|error| {
-            TransportProtocolError::Failed(format!("Credential creation error {error}"))
-        })?;
-
+            state: CredentialStateEnum::Pending,
+        }]),
+        claims: Some(claims),
+        issuer_did: Some(issuer_did),
+        holder_did: Some(holder_did),
+        schema: Some(credential_schema),
+        interaction: Some(interaction),
+        revocation_list: None,
+        key: None,
+    };
     Ok(InvitationResponseDTO::Credential {
-        credential_ids: vec![credential_id],
+        credentials: vec![credential],
         interaction_id,
     })
 }
@@ -639,14 +629,9 @@ async fn handle_proof_invitation(
         now,
     );
 
-    deps.proof_repository
-        .create_proof(proof)
-        .await
-        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
-
     Ok(InvitationResponseDTO::ProofRequest {
         interaction_id,
-        proof_id,
+        proof: Box::new(proof),
     })
 }
 

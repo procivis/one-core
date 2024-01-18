@@ -348,7 +348,6 @@ fn generic_holder_did() -> Did {
 
 #[tokio::test]
 async fn test_handle_invitation_proof_success() {
-    let mut proof_repository = MockProofRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
 
     let mut seq = Sequence::new();
@@ -359,14 +358,7 @@ async fn test_handle_invitation_proof_success() {
         .in_sequence(&mut seq)
         .returning(move |request| Ok(request.id));
 
-    proof_repository
-        .expect_create_proof()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(move |request| Ok(request.id));
-
     let protocol = setup_protocol(Repositories {
-        proof_repository,
         interaction_repository,
         ..Default::default()
     });

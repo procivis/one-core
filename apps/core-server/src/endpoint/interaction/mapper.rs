@@ -5,21 +5,26 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseRestDTO {
     fn from(value: InvitationResponseDTO) -> Self {
         match value {
             InvitationResponseDTO::Credential {
-                credential_ids,
+                credentials,
                 interaction_id,
             } => Self {
                 interaction_id,
-                credential_ids: Some(credential_ids),
+                credential_ids: Some(
+                    credentials
+                        .into_iter()
+                        .map(|credential| credential.id)
+                        .collect(),
+                ),
                 proof_id: None,
             },
             InvitationResponseDTO::ProofRequest {
-                proof_id,
+                proof,
                 interaction_id,
                 ..
             } => Self {
                 interaction_id,
                 credential_ids: None,
-                proof_id: Some(proof_id),
+                proof_id: Some(proof.id),
             },
         }
     }
