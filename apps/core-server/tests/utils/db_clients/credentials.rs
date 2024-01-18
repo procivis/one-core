@@ -3,8 +3,8 @@ use std::sync::Arc;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::ClaimSchemaRelations;
 use one_core::model::credential::{
-    Credential, CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
-    CredentialStateRelations,
+    Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
+    CredentialStateEnum, CredentialStateRelations,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::did::{Did, DidRelations};
@@ -83,6 +83,7 @@ impl CredentialsDB {
             credential: params.credential.unwrap_or("").as_bytes().to_owned(),
             transport: transport.to_owned(),
             redirect_uri: None,
+            role: CredentialRole::Issuer,
             state: Some(vec![CredentialState {
                 created_date: get_dummy_date(),
                 state,

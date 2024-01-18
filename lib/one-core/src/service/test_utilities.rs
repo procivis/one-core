@@ -8,7 +8,7 @@ use crate::{
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
-        credential::{Credential, CredentialState, CredentialStateEnum},
+        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidType},
         interaction::Interaction,
@@ -112,6 +112,7 @@ pub fn dummy_credential() -> Credential {
         credential: b"credential".to_vec(),
         transport: "protocol".to_string(),
         redirect_uri: None,
+        role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Pending,

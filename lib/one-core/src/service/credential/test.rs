@@ -5,7 +5,7 @@ use crate::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential::{
-            Credential, CredentialState, CredentialStateEnum, GetCredentialList,
+            Credential, CredentialRole, CredentialState, CredentialStateEnum, GetCredentialList,
             UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
@@ -89,6 +89,7 @@ fn generic_credential() -> Credential {
         credential: vec![],
         transport: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
+        role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Created,
@@ -146,6 +147,7 @@ fn generic_credential_list_entity() -> Credential {
         credential: vec![],
         transport: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
+        role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Created,

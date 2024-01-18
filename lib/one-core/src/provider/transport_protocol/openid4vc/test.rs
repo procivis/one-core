@@ -11,7 +11,7 @@ use crate::{
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
-        credential::{Credential, CredentialState, CredentialStateEnum},
+        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidType},
         interaction::Interaction,
@@ -150,6 +150,7 @@ fn generic_credential() -> Credential {
         credential: vec![],
         transport: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
+        role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Created,

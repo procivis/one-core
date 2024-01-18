@@ -263,6 +263,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::Transport,
             credential::Column::Credential,
             credential::Column::RedirectUri,
+            credential::Column::Role,
         ])
         .column_as(
             credential_schema::Column::CreatedDate,

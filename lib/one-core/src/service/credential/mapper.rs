@@ -5,13 +5,12 @@ use crate::{
     common_mapper::convert_inner,
     model::{
         claim::Claim,
-        credential::{Credential, CredentialState, CredentialStateEnum},
+        credential::{
+            Credential, CredentialId, CredentialRole, CredentialState, CredentialStateEnum,
+        },
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::Did,
     },
-};
-use crate::{
-    model::credential::CredentialId,
     service::{
         credential::dto::{
             CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
@@ -181,6 +180,7 @@ pub(super) fn from_create_request(
         revocation_list: None,
         key: None,
         redirect_uri: request.redirect_uri,
+        role: CredentialRole::Issuer,
     }
 }
 

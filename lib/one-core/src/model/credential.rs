@@ -25,6 +25,7 @@ pub struct Credential {
     pub credential: Vec<u8>,
     pub transport: String,
     pub redirect_uri: Option<String>,
+    pub role: CredentialRole,
 
     // Relations:
     pub state: Option<Vec<CredentialState>>,
@@ -90,4 +91,11 @@ pub struct UpdateCredentialRequest {
     pub interaction: Option<InteractionId>,
     pub key: Option<KeyId>,
     pub redirect_uri: Option<Option<String>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CredentialRole {
+    Holder,
+    Issuer,
+    Verifier,
 }

@@ -37,8 +37,8 @@ use crate::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
-            CredentialStateRelations, UpdateCredentialRequest,
+            Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
+            CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
@@ -885,6 +885,7 @@ async fn create_credential(
         credential: vec![],
         transport: "OPENID4VC".to_string(),
         redirect_uri,
+        role: CredentialRole::Holder,
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Pending,

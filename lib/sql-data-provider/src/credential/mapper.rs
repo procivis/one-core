@@ -61,6 +61,7 @@ impl TryFrom<entity::credential::Model> for Credential {
             credential: credential.credential,
             transport: credential.transport,
             redirect_uri: credential.redirect_uri,
+            role: credential.role.into(),
             state: None,
             claims: None,
             issuer_did: None,
@@ -97,6 +98,7 @@ pub(super) fn request_to_active_model(
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
         key_id: Set(key_id.map(|id| id.to_string())),
+        role: Set(request.role.to_owned().into()),
     }
 }
 
@@ -167,6 +169,7 @@ pub(super) fn credential_list_model_to_repository_model(
         credential: credential.credential,
         transport: credential.transport,
         redirect_uri: credential.redirect_uri,
+        role: credential.role.into(),
         state: Some(state),
         claims: None,
         issuer_did,

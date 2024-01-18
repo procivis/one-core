@@ -18,7 +18,7 @@ use crate::{
     model::{
         claim::{Claim, ClaimId},
         claim_schema::ClaimSchemaRelations,
-        credential::{Credential, CredentialState, CredentialStateEnum},
+        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations, KeyRole},
         proof::Proof,
@@ -541,6 +541,7 @@ async fn handle_credential_invitation(
         credential: vec![],
         transport: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: issuer_response.redirect_uri,
+        role: CredentialRole::Holder,
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Pending,

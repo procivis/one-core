@@ -5,8 +5,8 @@ use one_core::config::core_config::{self, AppConfig};
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
-    Credential, CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
-    CredentialStateRelations,
+    Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
+    CredentialStateEnum, CredentialStateRelations,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
@@ -482,6 +482,7 @@ pub async fn create_credential(
         credential: params.credential.unwrap_or("").as_bytes().to_owned(),
         transport: transport.to_owned(),
         redirect_uri: None,
+        role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
             created_date: get_dummy_date(),
             state,
