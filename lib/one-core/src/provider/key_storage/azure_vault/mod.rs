@@ -15,7 +15,10 @@ use mapper::{
 };
 
 use crate::{
-    crypto::{signer::error::SignerError, CryptoProvider},
+    crypto::{
+        signer::{error::SignerError, es256::ES256Signer},
+        CryptoProvider,
+    },
     model::key::{Key, KeyId},
     provider::{
         key_storage::{
@@ -25,7 +28,6 @@ use crate::{
         transport_protocol::TransportProtocolError,
     },
     service::error::{ServiceError, ValidationError},
-    util::p_256::p_256_vk_from_bytes,
 };
 
 mod dto;
@@ -86,11 +88,11 @@ impl KeyStorage for AzureVaultKeyProvider {
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
-        let key = p_256_vk_from_bytes(&public_key_bytes)
-            .ok_or_else(|| ServiceError::Other("failed to build public key".into()))?;
+        let public_key = ES256Signer::to_bytes(&public_key_bytes)
+            .map_err(|err| ServiceError::Other(format!("failed to build public key: {err}")))?;
 
         Ok(GeneratedKey {
-            public_key: key.to_encoded_point(true).as_bytes().to_vec(),
+            public_key,
             key_reference: response.key.key_id.as_bytes().to_vec(),
         })
     }
