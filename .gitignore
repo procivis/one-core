@@ -2,16 +2,22 @@
 /target
 
 # IDE settings
-.idea/
-
+.idea
 .vscode
+.DS_Store
 
 mariadb-*.tgz
 
+# Reports file
 report.json
 coverage.xml
 cobertura.xml
 lcov.info
+clippy.json
+deny.json
+sonar-issues.json
 
+# Sonar scanner
 .sonar
 .scannerwork
+sonar.yml

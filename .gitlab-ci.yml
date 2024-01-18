@@ -159,13 +159,12 @@ tests:
 linter:clippy:
   stage: test
   script:
-    - cargo clippy --all-targets -- -D warnings
-    - cargo clippy --package sql-data-provider -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used
-    - cargo clippy --message-format=json &> report.json
+    - cargo clippy --all-targets --message-format=json -- -D warnings > clippy.json
+    - cargo clippy --package sql-data-provider --message-format=json -- -W clippy::expect_used -W clippy::panic -W clippy::unwrap_used >> clippy.json
   artifacts:
-    expire_in: 1 hour
+    expire_in: 1 day
     paths:
-      - report.json
+      - clippy.json
 
 linter:rustfmt:
   stage: test
@@ -175,8 +174,14 @@ linter:rustfmt:
 linter:dependencies:
   stage: test
   script:
+    - cargo deny --format json check 2> deny.json || true
     - cargo deny check
   allow_failure: true
+  artifacts:
+    expire_in: 1 day
+    when: always
+    paths:
+      - deny.json
 
 sonarqube-check:
   stage: test
