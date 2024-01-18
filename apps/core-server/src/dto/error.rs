@@ -79,7 +79,7 @@ pub enum ErrorCode {
 #[derive(Serialize, ToSchema)]
 pub struct ErrorResponseRestDTO {
     pub code: ErrorCode,
-    pub message: &'static str,
+    pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cause: Option<Cause>,
 }

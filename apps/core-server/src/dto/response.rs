@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
-use super::error::ErrorResponseRestDTO;
+use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
 use crate::router::AppState;
 use one_core::{common_mapper::convert_inner, service::error::ServiceError};
 
@@ -20,6 +20,16 @@ pub enum ErrorResponse {
 }
 
 impl ErrorResponse {
+    pub fn for_panic(panic_msg: String) -> Self {
+        Self::ServerError(ErrorResponseRestDTO {
+            code: ErrorCode::BR_0000,
+            message: panic_msg,
+            cause: Some(Cause {
+                message: "Panic".to_string(),
+            }),
+        })
+    }
+
     fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
         let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
         match error {

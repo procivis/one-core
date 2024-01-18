@@ -1,16 +1,12 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener};
-use std::panic;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use clap::Parser;
 use one_core::config::core_config::{self, AppConfig};
-use sentry_tracing::EventFilter;
-use tracing::info;
-use tracing_subscriber::fmt::format::FmtSpan;
+use sentry::integrations::tracing::EventFilter;
 use tracing_subscriber::prelude::*;
 
-use core_server::router::{start_server, HttpRequestContext, SENTRY_HTTP_REQUEST};
+use core_server::router::start_server;
 use core_server::{build_info, metrics, ServerConfig};
 
 #[derive(Parser, Debug)]
@@ -27,12 +23,11 @@ fn main() {
     config_files.insert(0, "config/config.yml".into());
 
     let app_config: AppConfig<ServerConfig> =
-        core_config::AppConfig::from_files(&config_files).unwrap();
+        core_config::AppConfig::from_files(&config_files).expect("Failed creating config");
 
     let _sentry_init_guard = initialize_sentry(&app_config.app);
 
     initialize_tracing(&app_config.app);
-    log_build_info();
     metrics::setup();
 
     let addr = SocketAddr::new(
@@ -56,16 +51,6 @@ fn main() {
         })
 }
 
-fn log_build_info() {
-    info!("Build target: {}", build_info::BUILD_RUST_CHANNEL);
-    info!("Build time: {}", build_info::BUILD_TIME);
-    info!("Branch: {}", build_info::BRANCH);
-    info!("Tag: {}", build_info::TAG);
-    info!("Commit: {}", build_info::COMMIT_HASH);
-    info!("Rust version: {}", build_info::RUST_VERSION);
-    info!("Pipeline ID: {}", build_info::CI_PIPELINE_ID);
-}
-
 fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuard> {
     let ServerConfig {
         sentry_dsn,
@@ -78,69 +63,32 @@ fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuard> {
             return None;
         }
 
-        Some(sentry::init((
+        let guard = sentry::init((
             dsn.to_owned(),
             sentry::ClientOptions {
                 release: sentry::release_name!(),
                 environment: Some(environment.to_owned().into()),
                 max_breadcrumbs: 50,
-                before_send: Some(Arc::new(|mut event| {
-                    if event.level == sentry::Level::Error
-                        && event
-                            .message
-                            .as_ref()
-                            .is_some_and(|message| message.starts_with("PANIC!"))
-                    {
-                        event.level = sentry::Level::Fatal;
-                    }
-
-                    let _ = SENTRY_HTTP_REQUEST.try_with(|http_request| {
-                        let HttpRequestContext {
-                            method,
-                            path,
-                            request_id,
-                            session_id,
-                        } = http_request;
-
-                        event
-                            .tags
-                            .insert("http-request".to_string(), format!("{method} {path}"));
-
-                        if let Some(request_id) = request_id {
-                            event
-                                .tags
-                                .insert("ONE-request-id".to_string(), request_id.to_owned());
-                        }
-                        if let Some(session_id) = session_id {
-                            event
-                                .tags
-                                .insert("ONE-session-id".to_string(), session_id.to_owned());
-                        }
-                    });
-
-                    Some(event)
-                })),
+                traces_sample_rate: 1.0,
                 ..Default::default()
             },
-        )))
+        ));
+
+        // This will be inherited when a new hub is created
+        sentry::configure_scope(|scope| {
+            scope.set_tag("build-target", build_info::BUILD_RUST_CHANNEL);
+            scope.set_tag("build-time", build_info::BUILD_TIME);
+            scope.set_tag("branch", build_info::BRANCH);
+            scope.set_tag("tag", build_info::TAG);
+            scope.set_tag("commit", build_info::COMMIT_HASH);
+            scope.set_tag("rust-version", build_info::RUST_VERSION);
+            scope.set_tag("pipeline-ID", build_info::CI_PIPELINE_ID);
+        });
+
+        Some(guard)
     } else {
         None
     }
-}
-
-fn get_sentry_tracing_layer<
-    S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
->() -> sentry_tracing::SentryLayer<S> {
-    sentry_tracing::layer().event_filter(|md| {
-        match md.level() {
-            // error traces report directly to Sentry
-            &tracing::Level::ERROR => EventFilter::Event,
-            // info/warn traces log as sentry breadcrumb
-            &tracing::Level::INFO | &tracing::Level::WARN => EventFilter::Breadcrumb,
-            // lower level traces are ignored by sentry
-            _ => EventFilter::Ignore,
-        }
-    })
 }
 
 fn initialize_tracing(config: &ServerConfig) {
@@ -153,27 +101,26 @@ fn initialize_tracing(config: &ServerConfig) {
         })
         .expect("Failed to create env filter");
 
+    let sentry_layer = sentry::integrations::tracing::layer().event_filter(|md| {
+        match md.level() {
+            // error traces report directly to Sentry
+            &tracing::Level::ERROR => EventFilter::Event,
+            // info/warn traces log as sentry breadcrumb
+            &tracing::Level::INFO | &tracing::Level::WARN => EventFilter::Breadcrumb,
+            // lower level traces are ignored by sentry
+            _ => EventFilter::Ignore,
+        }
+    });
+
+    let tracing_layer = tracing_subscriber::registry()
+        .with(filter)
+        .with(sentry_layer);
+
     if config.trace_json.unwrap_or_default() {
-        let subscriber = tracing_subscriber::fmt()
-            .with_env_filter(filter)
-            .with_span_events(FmtSpan::CLOSE)
-            .json()
-            .flatten_event(true)
-            .finish();
-
-        tracing::subscriber::set_global_default(subscriber.with(get_sentry_tracing_layer()))
-            .expect("Tracing subscriber initialized.");
+        tracing_layer
+            .with(tracing_subscriber::fmt::layer().json().flatten_event(true))
+            .init();
     } else {
-        let subscriber = tracing_subscriber::fmt()
-            .with_env_filter(filter)
-            .with_span_events(FmtSpan::CLOSE)
-            .finish();
-
-        tracing::subscriber::set_global_default(subscriber.with(get_sentry_tracing_layer()))
-            .expect("Tracing subscriber initialized.");
+        tracing_layer.with(tracing_subscriber::fmt::layer()).init();
     };
-
-    panic::set_hook(Box::new(|p| {
-        tracing::error!("PANIC! Error: {p}");
-    }));
 }

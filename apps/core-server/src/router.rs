@@ -1,23 +1,28 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
+use std::any::Any;
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::time::Duration;
 
 use axum::body::Body;
-use axum::http::{Request, Response, StatusCode};
-use axum::middleware::{self, Next};
+use axum::http::{Request, Response};
+use axum::middleware;
+use axum::response::IntoResponse;
 use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Router};
 use one_core::config::core_config::AppConfig;
 use one_core::OneCore;
 use sql_data_provider::{DataLayer, DbConn};
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
 use tracing::{info, info_span, Span};
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
+use crate::dto::response::ErrorResponse;
+use crate::middleware::get_http_request_context;
 use crate::{build_info, ServerConfig};
 use crate::{
     dto,
@@ -34,17 +39,6 @@ pub(crate) struct InternalAppState {
 }
 
 pub(crate) type AppState = Arc<InternalAppState>;
-
-pub struct HttpRequestContext {
-    pub path: String,
-    pub method: String,
-    pub request_id: Option<String>,
-    pub session_id: Option<String>,
-}
-
-tokio::task_local! {
-    pub static SENTRY_HTTP_REQUEST: HttpRequestContext;
-}
 
 pub async fn start_server(listener: TcpListener, config: AppConfig<ServerConfig>, db_conn: DbConn) {
     listener.set_nonblocking(true).unwrap();
@@ -178,7 +172,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             "/api/interaction/v1/presentation-reject",
             post(interaction::controller::presentation_reject),
         )
-        .layer(middleware::from_fn(bearer_check));
+        .layer(middleware::from_fn(crate::middleware::bearer_check));
 
     let unprotected = Router::new()
         .route(
@@ -269,76 +263,12 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                     tracing::debug!("SERVICE CALL END {}", response.status())
                 }),
         )
+        .layer(middleware::from_fn(crate::middleware::new_sentry_hub))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation))
         .merge(technical_endpoints)
-        .layer(middleware::from_fn(sentry_context))
+        .layer(CatchPanicLayer::custom(handle_panic))
         .layer(Extension(config))
         .with_state(state)
-}
-
-#[derive(Debug, Clone)]
-pub struct Authorized {}
-
-async fn bearer_check(
-    Extension(config): Extension<Arc<ServerConfig>>,
-    mut request: Request<Body>,
-    next: Next,
-) -> Result<axum::response::Response, StatusCode> {
-    let auth_header = request
-        .headers()
-        .get("Authorization")
-        .and_then(|header| header.to_str().ok());
-
-    let auth_header = if let Some(auth_header) = auth_header {
-        auth_header.to_owned()
-    } else {
-        tracing::warn!("Authorization header not found.");
-        return Err(StatusCode::UNAUTHORIZED);
-    };
-
-    let mut split = auth_header.split(' ');
-    let auth_type = split.next().unwrap_or_default();
-    let token = split.next().unwrap_or_default();
-
-    if auth_type == "Bearer" && !token.is_empty() && token == config.auth_token {
-        request.extensions_mut().insert(Authorized {});
-    } else {
-        tracing::warn!("Could not authorize request. Incorrect authorization method or token.");
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-    Ok(next.run(request).await)
-}
-
-fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext {
-    let headers = request.headers();
-    let request_id = headers
-        .get("x-request-id")
-        .and_then(|header| header.to_str().ok())
-        .and_then(|value| if value.is_empty() { None } else { Some(value) })
-        .map(ToOwned::to_owned);
-    let session_id = headers
-        .get("x-session-id")
-        .and_then(|header| header.to_str().ok())
-        .and_then(|value| if value.is_empty() { None } else { Some(value) })
-        .map(ToOwned::to_owned);
-
-    HttpRequestContext {
-        path: request.uri().path().to_owned(),
-        method: request.method().to_string(),
-        request_id,
-        session_id,
-    }
-}
-
-async fn sentry_context(
-    request: Request<Body>,
-    next: Next,
-) -> Result<axum::response::Response, StatusCode> {
-    SENTRY_HTTP_REQUEST
-        .scope(get_http_request_context(&request), async move {
-            Ok(next.run(request).await)
-        })
-        .await
 }
 
 fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
@@ -566,4 +496,18 @@ fn app_version() -> String {
     build_info::APP_VERSION
         .map(Into::into)
         .unwrap_or_else(|| format!("{}-{}", build_info::PKG_VERSION, build_info::SHORT_COMMIT))
+}
+
+fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Body> {
+    let message = if let Some(s) = err.downcast_ref::<String>() {
+        s.clone()
+    } else if let Some(s) = err.downcast_ref::<&str>() {
+        s.to_string()
+    } else {
+        "Unknown panic message".to_string()
+    };
+
+    tracing::error!("PANIC occurred in request: {message}");
+
+    ErrorResponse::for_panic(message).into_response()
 }
