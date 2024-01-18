@@ -121,18 +121,18 @@ impl From<InvitationResponseDTO> for HandleInvitationResponseBindingEnum {
     fn from(value: InvitationResponseDTO) -> Self {
         match value {
             InvitationResponseDTO::Credential {
-                credential_ids,
+                credentials,
                 interaction_id,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
-                credential_ids: credential_ids.iter().map(|item| item.to_string()).collect(),
+                credential_ids: credentials.iter().map(|item| item.id.to_string()).collect(),
             },
             InvitationResponseDTO::ProofRequest {
                 interaction_id,
-                proof_id,
+                proof,
             } => Self::ProofRequest {
                 interaction_id: interaction_id.to_string(),
-                proof_id: proof_id.to_string(),
+                proof_id: proof.id.to_string(),
             },
         }
     }

@@ -152,7 +152,6 @@ pub(crate) fn transport_protocol_providers_from_config(
                 let protocol = Arc::new(ProcivisTemp::new(
                     core_base_url.clone(),
                     data_provider.get_credential_repository(),
-                    data_provider.get_proof_repository(),
                     data_provider.get_interaction_repository(),
                     data_provider.get_credential_schema_repository(),
                     data_provider.get_did_repository(),

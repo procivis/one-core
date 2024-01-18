@@ -795,8 +795,7 @@ async fn handle_credential_invitation(
     .await
     .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
 
-    let credential = create_and_store_credential(
-        &deps.credential_repository,
+    let credential = create_credential(
         credential_id,
         holder_did,
         credential_schema,
@@ -809,7 +808,7 @@ async fn handle_credential_invitation(
 
     Ok(InvitationResponseDTO::Credential {
         interaction_id,
-        credential_ids: vec![credential],
+        credentials: vec![credential],
     })
 }
 
@@ -867,40 +866,37 @@ async fn create_and_store_interaction(
     Ok(interaction)
 }
 
-async fn create_and_store_credential(
-    repository: &Arc<dyn CredentialRepository>,
+async fn create_credential(
     credential_id: CredentialId,
     holder_did: Did,
     credential_schema: CredentialSchema,
     claims: Vec<Claim>,
     interaction: Interaction,
     redirect_uri: Option<String>,
-) -> Result<CredentialId, DataLayerError> {
+) -> Result<Credential, DataLayerError> {
     let now = OffsetDateTime::now_utc();
 
-    repository
-        .create_credential(Credential {
-            id: credential_id,
+    Ok(Credential {
+        id: credential_id,
+        created_date: now,
+        issuance_date: now,
+        last_modified: now,
+        deleted_at: None,
+        credential: vec![],
+        transport: "OPENID4VC".to_string(),
+        redirect_uri,
+        state: Some(vec![CredentialState {
             created_date: now,
-            issuance_date: now,
-            last_modified: now,
-            deleted_at: None,
-            credential: vec![],
-            transport: "OPENID4VC".to_string(),
-            redirect_uri,
-            state: Some(vec![CredentialState {
-                created_date: now,
-                state: CredentialStateEnum::Pending,
-            }]),
-            claims: Some(claims),
-            issuer_did: None,
-            holder_did: Some(holder_did),
-            schema: Some(credential_schema),
-            interaction: Some(interaction),
-            revocation_list: None,
-            key: None,
-        })
-        .await
+            state: CredentialStateEnum::Pending,
+        }]),
+        claims: Some(claims),
+        issuer_did: None,
+        holder_did: Some(holder_did),
+        schema: Some(credential_schema),
+        interaction: Some(interaction),
+        revocation_list: None,
+        key: None,
+    })
 }
 
 async fn get_discovery_and_issuer_metadata(
@@ -979,13 +975,8 @@ async fn handle_proof_invitation(
         now,
     );
 
-    deps.proof_repository
-        .create_proof(proof)
-        .await
-        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
-
     Ok(InvitationResponseDTO::ProofRequest {
         interaction_id,
-        proof_id,
+        proof: Box::new(proof),
     })
 }

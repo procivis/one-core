@@ -66,7 +66,23 @@ impl SSIHolderService {
                 "Cannot detect transport protocol".to_string(),
             ))?;
 
-        Ok(protocol.handle_invitation(url, holder_did).await?)
+        let response = protocol.handle_invitation(url, holder_did).await?;
+        match &response {
+            InvitationResponseDTO::Credential { credentials, .. } => {
+                for credential in credentials.iter() {
+                    self.credential_repository
+                        .create_credential(credential.to_owned())
+                        .await?;
+                }
+            }
+            InvitationResponseDTO::ProofRequest { proof, .. } => {
+                self.proof_repository
+                    .create_proof(proof.as_ref().to_owned())
+                    .await?;
+            }
+        }
+
+        Ok(response)
     }
 
     pub async fn reject_proof_request(

@@ -12,7 +12,6 @@ use crate::{
         credential_repository::MockCredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
         did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
-        mock::proof_repository::MockProofRepository,
     },
 };
 
@@ -23,7 +22,6 @@ struct Repositories {
     pub credential_repository: MockCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub did_repository: MockDidRepository,
-    pub proof_repository: MockProofRepository,
     pub interaction_repository: MockInteractionRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub key_provider: MockKeyProvider,
@@ -33,7 +31,6 @@ fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> Proci
     ProcivisTemp::new(
         base_url,
         Arc::new(repositories.credential_repository),
-        Arc::new(repositories.proof_repository),
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.did_repository),
