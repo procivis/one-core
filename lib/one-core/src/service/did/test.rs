@@ -24,6 +24,7 @@ use crate::{
     },
 };
 use mockall::predicate::*;
+use serde_json::Value;
 use shared_types::{DidId, DidValue};
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use time::OffsetDateTime;
@@ -63,7 +64,7 @@ fn get_did_config() -> DidConfig {
         core_config::DidType::Key,
         Fields {
             r#type: "KEY".to_string(),
-            display: "translation".to_string(),
+            display: Value::String("translation".to_string()),
             order: None,
             disabled: None,
             capabilities: None,
