@@ -197,11 +197,11 @@ impl ProofSchemaProvider {
             )
             .order_by_asc(proof_schema_claim_schema::Column::Order)
             .join(
-                sea_orm::JoinType::LeftJoin,
+                sea_orm::JoinType::InnerJoin,
                 proof_schema_claim_schema::Relation::ClaimSchema.def(),
             )
             .join(
-                sea_orm::JoinType::LeftJoin,
+                sea_orm::JoinType::InnerJoin,
                 claim_schema::Relation::CredentialSchemaClaimSchema.def(),
             )
             .select_only()
