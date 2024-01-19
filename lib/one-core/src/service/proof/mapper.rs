@@ -83,7 +83,7 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         .claims
         .iter()
         .flatten()
-        .filter_map(|proof| proof.credential.clone())
+        .filter_map(|claim| claim.credential.clone())
         .map(TryInto::try_into)
         .collect::<Result<_, _>>()?;
 
@@ -146,7 +146,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         .claims
         .iter()
         .flatten()
-        .filter_map(|proof| proof.credential.clone())
+        .filter_map(|claim| claim.credential.clone())
         .map(TryInto::try_into)
         .collect::<Result<_, _>>()?;
 
