@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use serde_json::json;
+use serde_json::{json, Value};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -131,7 +131,7 @@ async fn test_issuer_submit_succeeds() {
         KeyAlgorithmType::Eddsa,
         Fields {
             r#type: "EDDSA".to_string(),
-            display: "display".to_string(),
+            display: Value::String("display".to_string()),
             order: None,
             disabled: None,
             capabilities: None,

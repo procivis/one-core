@@ -1,4 +1,4 @@
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::{
     config::core_config::{CoreConfig, DatatypeType, Fields, Params},
@@ -13,7 +13,7 @@ fn convert_internal_structure_to_dto() {
         "STRING".to_string(),
         Fields {
             r#type: DatatypeType::String,
-            display: "display".to_string(),
+            display: Value::String("display".to_string()),
             order: None,
             disabled: None,
             capabilities: None,
@@ -64,7 +64,7 @@ fn do_not_serialize_private_parameters() {
         "STRING".to_string(),
         Fields {
             r#type: DatatypeType::String,
-            display: "display".to_string(),
+            display: Value::String("display".to_string()),
             order: None,
             disabled: None,
             capabilities: None,

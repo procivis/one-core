@@ -347,7 +347,7 @@ impl<K: Ord, T> Default for ConfigBlock<K, T> {
 #[serde(rename_all = "camelCase")]
 pub struct Fields<T> {
     pub(crate) r#type: T,
-    pub(crate) display: String,
+    pub(crate) display: Value,
     pub(crate) order: Option<u64>,
     pub(crate) disabled: Option<bool>,
     #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
@@ -479,7 +479,7 @@ mod tests {
     fn test_merge_fields_with_public_and_private_params() {
         let fields = Fields {
             r#type: "JWT".to_string(),
-            display: "jwt".to_string(),
+            display: Value::String("jwt".to_string()),
             order: Some(0),
             disabled: None,
             capabilities: None,

@@ -9,6 +9,7 @@ use crate::provider::did_method::{provider::DidMethodProviderImpl, DidMethod};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use mockall::predicate;
+use serde_json::Value;
 use shared_types::{DidId, DidValue};
 use std::str::FromStr;
 use std::{collections::HashMap, sync::Arc};
@@ -33,7 +34,7 @@ fn setup_provider(
         algorithm_type,
         Fields {
             r#type: algorithm_id.to_string(),
-            display: algorithm_id.to_string(),
+            display: Value::String(algorithm_id.to_string()),
             order: None,
             disabled: None,
             capabilities: None,
