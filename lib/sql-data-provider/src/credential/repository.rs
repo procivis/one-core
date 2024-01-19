@@ -77,12 +77,9 @@ async fn get_claims(
         .select_only()
         .columns([claim::Column::Id])
         .filter(claim::Column::CredentialId.eq(&credential.id))
+        .join(JoinType::InnerJoin, claim::Relation::ClaimSchema.def())
         .join(
-            sea_orm::JoinType::LeftJoin,
-            claim::Relation::ClaimSchema.def(),
-        )
-        .join(
-            sea_orm::JoinType::LeftJoin,
+            JoinType::InnerJoin,
             claim_schema::Relation::CredentialSchemaClaimSchema.def(),
         )
         // sorting claims according to the order from credential_schema
@@ -302,10 +299,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Relation::CredentialSchema.def(),
         )
         // add related issuer did (to enable sorting)
-        .join(
-            sea_orm::JoinType::LeftJoin,
-            credential::Relation::IssuerDid.def(),
-        )
+        .join(JoinType::LeftJoin, credential::Relation::IssuerDid.def())
         // find most recent state (to enable sorting)
         .join(
             sea_orm::JoinType::InnerJoin,
@@ -588,9 +582,9 @@ impl CredentialRepository for CredentialProvider {
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
-            .join(JoinType::LeftJoin, credential::Relation::Claim.def())
+            .join(JoinType::InnerJoin, credential::Relation::Claim.def())
             .join(
-                JoinType::LeftJoin,
+                JoinType::InnerJoin,
                 claim::Relation::ClaimSchema
                     .def()
                     .on_condition(move |_left, _right| {
