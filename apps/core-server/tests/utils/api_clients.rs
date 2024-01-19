@@ -10,6 +10,7 @@ use self::interactions::InteractionsApi;
 use self::keys::KeysApi;
 use self::organisations::OrganisationsApi;
 use self::proof_schemas::ProofSchemasApi;
+use self::proofs::ProofsApi;
 
 pub mod credential_schemas;
 pub mod credentials;
@@ -18,6 +19,7 @@ pub mod interactions;
 pub mod keys;
 pub mod organisations;
 pub mod proof_schemas;
+pub mod proofs;
 
 pub fn http_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
@@ -113,6 +115,7 @@ pub struct Client {
     pub dids: DidsApi,
     pub keys: KeysApi,
     pub proof_schemas: ProofSchemasApi,
+    pub proofs: ProofsApi,
 }
 
 impl Client {
@@ -126,7 +129,8 @@ impl Client {
             credential_schemas: CredentialSchemasApi::new(client.clone()),
             dids: DidsApi::new(client.clone()),
             keys: KeysApi::new(client.clone()),
-            proof_schemas: ProofSchemasApi::new(client),
+            proof_schemas: ProofSchemasApi::new(client.clone()),
+            proofs: ProofsApi::new(client),
         }
     }
 }
