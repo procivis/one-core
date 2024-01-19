@@ -8,6 +8,7 @@ use self::interactions::InteractionsDB;
 use self::keys::KeysDB;
 use self::organisations::OrganisationsDB;
 use self::proof_schemas::ProofSchemasDB;
+use self::proofs::ProofsDB;
 use self::revocation_lists::RevocationListsDB;
 
 pub mod credential_schemas;
@@ -17,6 +18,7 @@ pub mod interactions;
 pub mod keys;
 pub mod organisations;
 pub mod proof_schemas;
+pub mod proofs;
 pub mod revocation_lists;
 
 pub struct DbClient {
@@ -27,6 +29,7 @@ pub struct DbClient {
     pub keys: KeysDB,
     pub revocation_lists: RevocationListsDB,
     pub proof_schemas: ProofSchemasDB,
+    pub proofs: ProofsDB,
     pub interactions: InteractionsDB,
 }
 
@@ -41,6 +44,7 @@ impl DbClient {
             keys: KeysDB::new(layer.get_key_repository()),
             revocation_lists: RevocationListsDB::new(layer.get_revocation_list_repository()),
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),
+            proofs: ProofsDB::new(layer.get_proof_repository()),
             interactions: InteractionsDB::new(layer.get_interaction_repository()),
         }
     }

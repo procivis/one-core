@@ -1,3 +1,4 @@
+use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::{
     model::{
         common::{GetListQueryParams, GetListResponse},
@@ -46,6 +47,7 @@ pub struct ProofDetailResponseDTO {
     pub schema: Option<GetProofSchemaListItemDTO>,
     pub claims: Vec<ProofClaimDTO>,
     pub redirect_uri: Option<String>,
+    pub credentials: Vec<CredentialDetailResponseDTO>,
 }
 
 #[derive(Clone, Debug)]

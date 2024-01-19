@@ -78,6 +78,15 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
             "organisation is None".to_string(),
         ))?
         .id;
+
+    let credentials = value
+        .claims
+        .iter()
+        .flatten()
+        .filter_map(|proof| proof.credential.clone())
+        .map(TryInto::try_into)
+        .collect::<Result<_, _>>()?;
+
     let claims = proof_claim_schemas
         .iter()
         .map(|proof_claim_schema| {
@@ -89,10 +98,11 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
                         .as_ref()
                         .is_some_and(|s| s.id == proof_claim_schema.schema.id)
                 })
+                .map(|c| &c.claim)
                 .cloned();
-            proof_claim_from_claim(proof_claim_schema.clone(), claim.map(|c| c.claim))
+            proof_claim_from_claim(proof_claim_schema.clone(), claim)
         })
-        .collect::<Result<Vec<ProofClaimDTO>, ServiceError>>()?;
+        .collect::<Result<_, _>>()?;
 
     let redirect_uri = value.redirect_uri.to_owned();
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
@@ -111,6 +121,7 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         organisation_id,
         schema: list_item_response.schema,
         redirect_uri,
+        credentials,
     })
 }
 
@@ -131,7 +142,16 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
     let holder_did_id = holder_did.id.to_owned();
 
     let redirect_uri = value.redirect_uri.to_owned();
+    let credentials = value
+        .claims
+        .iter()
+        .flatten()
+        .filter_map(|proof| proof.credential.clone())
+        .map(TryInto::try_into)
+        .collect::<Result<_, _>>()?;
+
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
+
     Ok(ProofDetailResponseDTO {
         // TODO: properly reconstruct claims when proof submitted
         claims: vec![],
@@ -148,6 +168,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         organisation_id,
         schema: list_item_response.schema,
         redirect_uri,
+        credentials,
     })
 }
 
