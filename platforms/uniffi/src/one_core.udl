@@ -109,6 +109,7 @@ dictionary ProofRequestBindingDTO {
     string? verifier_did;
     string transport;
     string? redirect_uri;
+    sequence<CredentialDetailBindingDTO> credentials;
 };
 
 dictionary PresentationSubmitCredentialRequestBindingDTO {

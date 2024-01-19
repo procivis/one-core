@@ -77,6 +77,7 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             verifier_did: value.verifier_did.map(|inner| inner.did.to_string()),
             transport: value.transport,
             redirect_uri: value.redirect_uri,
+            credentials: convert_inner(value.credentials),
         }
     }
 }

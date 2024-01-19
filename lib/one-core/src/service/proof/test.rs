@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::CoreConfig;
+use crate::model::credential::CredentialRelations;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError};
@@ -13,7 +14,7 @@ use crate::service::test_utilities::generic_config;
 use crate::{
     model::{
         claim::ClaimRelations,
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
+        claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations, DidType},
         interaction::InteractionRelations,
@@ -291,9 +292,21 @@ async fn test_get_proof_exists() {
                     state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
-                            schema: Some(ClaimSchemaRelations::default()),
+                            schema: Some(Default::default()),
                         },
-                        ..Default::default()
+                        credential: Some(CredentialRelations {
+                            state: Some(Default::default()),
+                            claims: Some(ClaimRelations {
+                                schema: Some(Default::default()),
+                            }),
+                            schema: Some(CredentialSchemaRelations {
+                                claim_schemas: Some(Default::default()),
+                                organisation: Some(Default::default()),
+                            }),
+                            issuer_did: Some(Default::default()),
+                            holder_did: Some(Default::default()),
+                            ..Default::default()
+                        }),
                     }),
                     verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations {

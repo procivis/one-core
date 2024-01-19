@@ -6,18 +6,15 @@ use super::{
     mapper::{get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request},
     ProofService,
 };
-use crate::service::error::EntityNotFoundError;
 use crate::{
     common_mapper::list_response_try_into,
     config::validator::exchange::validate_exchange_type,
     model::{
         claim::ClaimRelations,
-        claim_schema::ClaimSchemaRelations,
         common::EntityShareResponseDTO,
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
         interaction::InteractionRelations,
-        organisation::OrganisationRelations,
         proof::ProofClaimRelations,
         proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
@@ -27,6 +24,7 @@ use crate::{
 use crate::{
     common_validator::throw_if_latest_proof_state_not_eq, service::error::BusinessLogicError,
 };
+use crate::{model::credential::CredentialRelations, service::error::EntityNotFoundError};
 use crate::{
     provider::transport_protocol::dto::PresentationDefinitionResponseDTO,
     service::error::MissingProviderError,
@@ -47,27 +45,38 @@ impl ProofService {
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
+                            credential_schema: Some(Default::default()),
                         }),
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                     }),
-                    state: Some(ProofStateRelations::default()),
+                    state: Some(Default::default()),
                     claims: Some(ProofClaimRelations {
                         claim: ClaimRelations {
-                            schema: Some(ClaimSchemaRelations::default()),
+                            schema: Some(Default::default()),
                         },
-                        ..Default::default()
+                        credential: Some(CredentialRelations {
+                            state: Some(Default::default()),
+                            claims: Some(ClaimRelations {
+                                schema: Some(Default::default()),
+                            }),
+                            schema: Some(CredentialSchemaRelations {
+                                claim_schemas: Some(Default::default()),
+                                organisation: Some(Default::default()),
+                            }),
+                            issuer_did: Some(Default::default()),
+                            holder_did: Some(Default::default()),
+                            ..Default::default()
+                        }),
                     }),
-                    verifier_did: Some(DidRelations::default()),
+                    verifier_did: Some(Default::default()),
                     holder_did: Some(DidRelations {
-                        organisation: Some(OrganisationRelations::default()),
+                        organisation: Some(Default::default()),
                         ..Default::default()
                     }),
-                    interaction: Some(InteractionRelations::default()),
+                    interaction: Some(Default::default()),
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let Some(proof) = proof else {
             return Err(EntityNotFoundError::Proof(*id).into());
