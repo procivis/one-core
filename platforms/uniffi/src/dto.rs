@@ -141,6 +141,7 @@ pub struct ProofRequestBindingDTO {
     pub verifier_did: Option<String>,
     pub transport: String,
     pub redirect_uri: Option<String>,
+    pub credentials: Vec<CredentialDetailBindingDTO>,
 }
 
 pub struct ProofRequestClaimBindingDTO {

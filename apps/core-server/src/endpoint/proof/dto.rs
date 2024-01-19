@@ -204,6 +204,8 @@ pub struct ProofDetailResponseRestDTO {
     #[convert(with_fn = convert_inner)]
     pub claims: Vec<ProofClaimRestDTO>,
     pub redirect_uri: Option<String>,
+    #[convert(with_fn = convert_inner)]
+    pub credentials: Vec<GetCredentialResponseRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
