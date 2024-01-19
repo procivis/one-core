@@ -1,13 +1,10 @@
-use std::{collections::HashSet, sync::Arc};
-
-use shared_types::DidValue;
+use std::collections::HashSet;
 
 use crate::model::did::Did;
 use crate::provider::did_method::DidMethod;
 use crate::service::error::BusinessLogicError;
 use crate::{
-    model::{did::DidRelations, key::KeyId},
-    repository::did_repository::DidRepository,
+    model::key::KeyId,
     service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError},
 };
 
@@ -45,17 +42,6 @@ pub(super) fn validate_request_only_one_key_of_each_type(
     } else {
         Ok(())
     }
-}
-
-pub(super) async fn did_already_exists(
-    repository: &Arc<dyn DidRepository>,
-    did_value: &DidValue,
-) -> Result<bool, ServiceError> {
-    let did = repository
-        .get_did_by_value(did_value, &DidRelations::default())
-        .await?;
-
-    Ok(did.is_some())
 }
 
 pub(super) fn validate_deactivation_request(
