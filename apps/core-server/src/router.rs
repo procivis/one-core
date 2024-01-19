@@ -256,10 +256,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                         request.uri().path()
                     )
                 })
-                .on_response(|response: &Response<_>, latency: Duration, _span: &Span| {
-                    // this will also count itself and the health check which is probably not what we want
-                    // TODO: add a separate layer for metrics
-                    metrics::track_request_count_and_time(latency.as_millis() as f64);
+                .on_response(|response: &Response<_>, _: Duration, _span: &Span| {
                     tracing::debug!("SERVICE CALL END {}", response.status())
                 }),
         )
@@ -267,6 +264,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation))
         .merge(technical_endpoints)
         .layer(CatchPanicLayer::custom(handle_panic))
+        .layer(middleware::from_fn(crate::middleware::metrics_counter))
         .layer(Extension(config))
         .with_state(state)
 }

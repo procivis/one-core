@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use time::Instant;
 
 use axum::{
     body::Body,
@@ -104,4 +105,27 @@ pub fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext {
         request_id,
         session_id,
     }
+}
+
+pub async fn metrics_counter(
+    path: MatchedPath,
+    request: Request<Body>,
+    next: Next,
+) -> Result<axum::response::Response, StatusCode> {
+    let method = request.method().to_owned();
+
+    let start_time = Instant::now();
+    let resp = next.run(request).await;
+    let duration = start_time.elapsed();
+
+    let duration = duration.whole_microseconds() as f64 / 1_000_000f64;
+
+    crate::metrics::track_response_status_code(
+        method.as_str(),
+        path.as_str(),
+        resp.status().as_str(),
+        duration,
+    );
+
+    Ok(resp)
 }
