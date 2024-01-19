@@ -208,7 +208,7 @@ keyStorage:
     type: "INTERNAL"
     order: 0
     capabilities:
-      algorithms: ["ES256", "EDDSA"]
+      algorithms: ["ES256", "EDDSA", "DILITHIUM"]
       security: ["SOFTWARE"]
     params:
       private:
