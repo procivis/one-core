@@ -1,9 +1,9 @@
 use super::DidService;
 use crate::provider::did_method::DidCapabilities;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::repository::error::DataLayerError;
 use crate::service::error::EntityNotFoundError;
 use crate::service::error::{BusinessLogicError, ValidationError};
-use crate::service::test_utilities::dummy_did;
 use crate::{
     config::core_config::{self, CoreConfig, DidConfig, Fields},
     model::{
@@ -279,10 +279,6 @@ async fn test_create_did_success() {
         });
 
     let mut did_repository = MockDidRepository::default();
-    did_repository
-        .expect_get_did_by_value()
-        .once()
-        .returning(|_, _| Ok(None));
 
     did_repository
         .expect_create_did()
@@ -364,16 +360,28 @@ async fn test_create_did_value_already_exists() {
             key_algorithms: vec!["".to_owned()],
         });
 
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .once()
+        .returning(|id, _| {
+            Ok(Some(Organisation {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }))
+        });
+
     let mut did_repository = MockDidRepository::default();
     did_repository
-        .expect_get_did_by_value()
+        .expect_create_did()
         .once()
-        .returning(|_, _| Ok(Some(dummy_did())));
+        .returning(|_| Err(DataLayerError::AlreadyExists));
 
     let service = setup_service(
         did_repository,
         key_repository,
-        MockOrganisationRepository::default(),
+        organisation_repository,
         did_method,
         MockKeyAlgorithmProvider::default(),
         get_did_config(),

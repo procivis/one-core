@@ -14,6 +14,7 @@ async fn test_create_did_key_es256_success() {
         .keys
         .create(&organisation, es256_testing_params())
         .await;
+
     // WHEN
     let resp = context
         .api
@@ -68,6 +69,7 @@ async fn test_create_did_key_eddsa_success() {
         .keys
         .create(&organisation, eddsa_testing_params())
         .await;
+
     // WHEN
     let resp = context
         .api
@@ -206,4 +208,63 @@ async fn test_fail_to_create_did_with_same_name_in_same_organisation() {
 
     // THEN
     assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_fail_to_create_did_with_same_value_in_same_organisation() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let resp = context
+        .api
+        .dids
+        .create(organisation.id, key.id, "JWK", "test 1")
+        .await;
+    assert_eq!(resp.status(), 201);
+
+    // WHEN
+    let resp = context
+        .api
+        .dids
+        .create(organisation.id, key.id, "JWK", "test 2")
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+}
+
+#[tokio::test]
+async fn test_create_did_with_same_value_in_different_organisations() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let organisation1 = context.db.organisations.create().await;
+    let key1 = context
+        .db
+        .keys
+        .create(&organisation1, eddsa_testing_params())
+        .await;
+
+    // WHEN
+    let resp1 = context
+        .api
+        .dids
+        .create(organisation1.id, key1.id, "JWK", "test 1")
+        .await;
+
+    let resp2 = context
+        .api
+        .dids
+        .create(organisation.id, key1.id, "JWK", "test 2")
+        .await;
+
+    // THEN
+    assert_eq!(resp1.status(), 201);
+    assert_eq!(resp2.status(), 201);
 }

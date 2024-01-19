@@ -10,7 +10,7 @@ use super::{
         GetDidListResponseDTO,
     },
     mapper::did_from_did_request,
-    validator::{did_already_exists, validate_deactivation_request},
+    validator::validate_deactivation_request,
     DidService,
 };
 use crate::service::{did::mapper::map_key_to_verification_method, error::MissingProviderError};
@@ -199,10 +199,6 @@ impl DidService {
         let did_value = did_method
             .create(&new_did_id, &request.params, &Some(key.clone()))
             .await?;
-
-        if did_already_exists(&self.did_repository, &did_value).await? {
-            return Err(BusinessLogicError::DidValueAlreadyExists(did_value).into());
-        }
 
         let now = OffsetDateTime::now_utc();
         let organisation = self
