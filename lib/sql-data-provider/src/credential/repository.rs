@@ -613,7 +613,7 @@ impl CredentialRepository for CredentialProvider {
         let claim_id = claim_id.to_string();
         let credential = credential::Entity::find()
             .join(
-                JoinType::LeftJoin,
+                JoinType::InnerJoin,
                 credential::Relation::Claim
                     .def()
                     .on_condition(move |_left, _right| {

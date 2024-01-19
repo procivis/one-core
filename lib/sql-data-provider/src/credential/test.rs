@@ -874,6 +874,18 @@ async fn test_get_credential_by_claim_id_success() {
         ..
     } = setup_empty().await;
 
+    // an unrelated credential
+    insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
+    )
+    .await
+    .unwrap();
+
     let credential_id = Uuid::parse_str(
         &insert_credential(
             &db,
