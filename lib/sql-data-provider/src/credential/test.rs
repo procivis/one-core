@@ -8,12 +8,13 @@ use one_core::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential::{
             Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
-            CredentialStateEnum, CredentialStateRelations, GetCredentialQuery,
-            UpdateCredentialRequest,
+            CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations},
         did::{Did, DidRelations},
         interaction::{Interaction, InteractionRelations},
+        list_filter::ListFilterValue,
+        list_query::ListPagination,
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
@@ -28,6 +29,7 @@ use one_core::{
             revocation_list_repository::MockRevocationListRepository,
         },
     },
+    service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO},
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use time::{Duration, OffsetDateTime};
@@ -492,19 +494,16 @@ async fn test_get_credential_list_success() {
     };
 
     let credentials = provider
-        .get_credential_list(GetCredentialQuery {
-            page: 0,
-            page_size: 5,
-            sort: None,
-            sort_direction: None,
-            exact: None,
-            name: None,
-            organisation_id: credential_schema
-                .organisation
-                .as_ref()
-                .unwrap()
-                .id
-                .to_string(),
+        .get_credential_list(GetCredentialQueryDTO {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            sorting: None,
+            filtering: Some(
+                CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
+                    .condition(),
+            ),
         })
         .await;
     assert!(credentials.is_ok());
@@ -564,19 +563,16 @@ async fn test_get_credential_list_success_verify_state_sorting() {
     };
 
     let credentials = provider
-        .get_credential_list(GetCredentialQuery {
-            page: 0,
-            page_size: 5,
-            sort: None,
-            sort_direction: None,
-            exact: None,
-            name: None,
-            organisation_id: credential_schema
-                .organisation
-                .as_ref()
-                .unwrap()
-                .id
-                .to_string(),
+        .get_credential_list(GetCredentialQueryDTO {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            sorting: None,
+            filtering: Some(
+                CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
+                    .condition(),
+            ),
         })
         .await;
     let credentials = credentials.unwrap();

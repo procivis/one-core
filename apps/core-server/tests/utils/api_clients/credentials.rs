@@ -36,10 +36,23 @@ impl CredentialsApi {
         self.client.post("/api/credential/v1", body).await
     }
 
-    pub async fn list(&self, page: u64, size: u64, organisation_id: &impl Display) -> Response {
-        let url = format!(
+    pub async fn list(
+        &self,
+        page: u64,
+        size: u64,
+        organisation_id: &impl Display,
+        role: Option<&str>,
+        name: Option<&str>,
+    ) -> Response {
+        let mut url = format!(
             "/api/credential/v1?page={page}&pageSize={size}&organisationId={organisation_id}"
         );
+        if let Some(role) = role {
+            url += &format!("&role={role}")
+        }
+        if let Some(name) = name {
+            url += &format!("&name={name}")
+        }
         self.client.get(&url).await
     }
 

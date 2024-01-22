@@ -8,8 +8,8 @@ use crate::{
     model::did::DidType,
     service::{
         credential::dto::{
-            CredentialDetailResponseDTO, CredentialStateEnum, DetailCredentialClaimResponseDTO,
-            DetailCredentialSchemaResponseDTO,
+            CredentialDetailResponseDTO, CredentialRole, CredentialStateEnum,
+            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
         },
         credential_schema::dto::CredentialClaimSchemaDTO,
         did::dto::DidListItemResponseDTO,
@@ -74,5 +74,6 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
             },
         ],
         redirect_uri: None,
+        role: CredentialRole::Holder,
     }
 }

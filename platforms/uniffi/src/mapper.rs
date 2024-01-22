@@ -48,6 +48,7 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             schema: value.schema.into(),
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
+            role: value.role.into(),
         }
     }
 }
@@ -63,6 +64,7 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             issuer_did: value.issuer_did.map(|inner| inner.did.to_string()),
             state: value.state.into(),
             schema: value.schema.into(),
+            role: value.role.into(),
         }
     }
 }

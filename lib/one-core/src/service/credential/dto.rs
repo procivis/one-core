@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use shared_types::DidId;
+use strum_macros::AsRefStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -7,9 +8,11 @@ use dto_mapper::From;
 
 use crate::{
     model::{
-        common::{GetListQueryParams, GetListResponse},
+        common::GetListResponse,
         credential::{CredentialId, SortableCredentialColumn},
         credential_schema::{CredentialFormat, CredentialSchemaId, RevocationMethod},
+        list_filter::{ListFilterValue, StringMatch},
+        list_query::ListQuery,
         organisation::OrganisationId,
     },
     service::{
@@ -29,6 +32,7 @@ pub struct CredentialListItemResponseDTO {
     pub schema: CredentialSchemaListItemResponseDTO,
     pub issuer_did: Option<DidListItemResponseDTO>,
     pub credential: Vec<u8>,
+    pub role: CredentialRole,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -48,6 +52,7 @@ pub struct CredentialDetailResponseDTO {
     pub issuer_did: Option<DidListItemResponseDTO>,
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
     pub redirect_uri: Option<String>,
+    pub role: CredentialRole,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -71,7 +76,17 @@ pub struct DetailCredentialClaimResponseDTO {
     pub value: String,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, From)]
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, From, AsRefStr)]
+#[convert(from = "crate::model::credential::CredentialRole")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum CredentialRole {
+    Holder,
+    Issuer,
+    Verifier,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Deserialize, From)]
 #[convert(from = "crate::model::credential::CredentialStateEnum")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialStateEnum {
@@ -84,8 +99,17 @@ pub enum CredentialStateEnum {
     Error,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CredentialFilterValue {
+    Name(StringMatch),
+    OrganisationId(OrganisationId),
+    Role(CredentialRole),
+}
+
+impl ListFilterValue for CredentialFilterValue {}
+
 pub type GetCredentialListResponseDTO = GetListResponse<CredentialListItemResponseDTO>;
-pub type GetCredentialQueryDTO = GetListQueryParams<SortableCredentialColumn>;
+pub type GetCredentialQueryDTO = ListQuery<SortableCredentialColumn, CredentialFilterValue>;
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialRequestDTO {

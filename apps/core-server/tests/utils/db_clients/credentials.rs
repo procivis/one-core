@@ -83,7 +83,7 @@ impl CredentialsDB {
             credential: params.credential.unwrap_or("").as_bytes().to_owned(),
             transport: transport.to_owned(),
             redirect_uri: None,
-            role: CredentialRole::Issuer,
+            role: params.role.unwrap_or(CredentialRole::Issuer),
             state: Some(vec![CredentialState {
                 created_date: get_dummy_date(),
                 state,

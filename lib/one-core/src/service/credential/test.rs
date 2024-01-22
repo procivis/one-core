@@ -10,6 +10,8 @@ use crate::{
         },
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidType},
+        list_filter::ListFilterValue as _,
+        list_query::ListPagination,
         organisation::Organisation,
     },
     provider::credential_formatter::{
@@ -29,7 +31,10 @@ use crate::{
     service::{
         credential::{
             self,
-            dto::{CreateCredentialRequestDTO, CredentialRequestClaimDTO, GetCredentialQueryDTO},
+            dto::{
+                CreateCredentialRequestDTO, CredentialFilterValue, CredentialRequestClaimDTO,
+                GetCredentialQueryDTO,
+            },
         },
         error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
         test_utilities::generic_config,
@@ -309,13 +314,12 @@ async fn test_get_credential_list_success() {
 
     let result = service
         .get_credential_list(GetCredentialQueryDTO {
-            page: 0,
-            page_size: 5,
-            sort: None,
-            sort_direction: None,
-            name: None,
-            exact: None,
-            organisation_id: Uuid::new_v4().to_string(),
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            sorting: None,
+            filtering: Some(CredentialFilterValue::OrganisationId(Uuid::new_v4()).condition()),
         })
         .await;
 

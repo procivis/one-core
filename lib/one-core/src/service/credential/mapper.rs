@@ -52,6 +52,7 @@ impl TryFrom<Credential> for CredentialDetailResponseDTO {
             schema: schema.try_into()?,
             issuer_did: convert_inner(value.issuer_did),
             redirect_uri: value.redirect_uri,
+            role: value.role.into(),
         })
     }
 }
@@ -139,6 +140,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             schema: schema.into(),
             issuer_did: convert_inner(value.issuer_did),
             credential: value.credential,
+            role: value.role.into(),
         })
     }
 }

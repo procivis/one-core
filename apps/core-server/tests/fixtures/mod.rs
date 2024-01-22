@@ -444,6 +444,7 @@ pub struct TestingCredentialParams<'a> {
     pub credential: Option<&'a str>,
     pub interaction: Option<Interaction>,
     pub deleted_at: Option<OffsetDateTime>,
+    pub role: Option<CredentialRole>,
 }
 
 #[allow(clippy::too_many_arguments)]

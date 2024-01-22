@@ -8,6 +8,7 @@ use one_core::{
         revocation_list::RevocationListId,
     },
     repository::error::DataLayerError,
+    service::credential::dto::CredentialFilterValue,
 };
 use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
 use shared_types::{DidId, DidValue};
@@ -17,20 +18,33 @@ use uuid::Uuid;
 use crate::{
     credential::entity_model::CredentialListEntityModel,
     entity::{self, credential, credential_schema, credential_state, did},
-    list_query::GetEntityColumn,
+    list_query_generic::{
+        get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+    },
 };
 
-impl GetEntityColumn for SortableCredentialColumn {
-    fn get_simple_expr(&self) -> SimpleExpr {
+impl IntoSortingColumn for SortableCredentialColumn {
+    fn get_column(&self) -> SimpleExpr {
         match self {
-            SortableCredentialColumn::CreatedDate => {
-                credential::Column::CreatedDate.into_simple_expr()
+            Self::CreatedDate => credential::Column::CreatedDate.into_simple_expr(),
+            Self::SchemaName => credential_schema::Column::Name.into_simple_expr(),
+            Self::IssuerDid => did::Column::Did.into_simple_expr(),
+            Self::State => credential_state::Column::State.into_simple_expr(),
+        }
+    }
+}
+
+impl IntoFilterCondition for CredentialFilterValue {
+    fn get_condition(self) -> sea_orm::Condition {
+        match self {
+            Self::Name(string_match) => {
+                get_string_match_condition(credential_schema::Column::Name, string_match)
             }
-            SortableCredentialColumn::SchemaName => {
-                credential_schema::Column::Name.into_simple_expr()
-            }
-            SortableCredentialColumn::IssuerDid => did::Column::Did.into_simple_expr(),
-            SortableCredentialColumn::State => credential_state::Column::State.into_simple_expr(),
+            Self::OrganisationId(organisation_id) => get_equals_condition(
+                credential_schema::Column::OrganisationId,
+                organisation_id.to_string(),
+            ),
+            Self::Role(role) => get_equals_condition(credential::Column::Role, role.as_ref()),
         }
     }
 }

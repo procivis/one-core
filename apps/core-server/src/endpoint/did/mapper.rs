@@ -21,7 +21,7 @@ impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
 impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
     fn from(value: DidFilterQueryParamsRest) -> Self {
         let exact = value.exact.unwrap_or_default();
-        let get_string_match_type = move |column: ExactDidFilterColumnRestEnum| -> StringMatchType {
+        let get_string_match_type = |column| {
             if exact.contains(&column) {
                 StringMatchType::Equals
             } else {

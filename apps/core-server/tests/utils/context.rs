@@ -2,6 +2,8 @@ use core_server::router::start_server;
 use one_core::model::did::Did;
 use one_core::model::organisation::Organisation;
 use tokio::task::JoinHandle;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 use super::api_clients::Client;
 use super::db_clients::DbClient;
@@ -17,6 +19,9 @@ pub struct TestContext {
 
 impl TestContext {
     pub async fn new() -> Self {
+        let stdout_log = tracing_subscriber::fmt::layer().with_test_writer();
+        let _ = tracing_subscriber::registry().with(stdout_log).try_init();
+
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let base_url = format!("http://{}", listener.local_addr().unwrap());
         let config = fixtures::create_config(&base_url);

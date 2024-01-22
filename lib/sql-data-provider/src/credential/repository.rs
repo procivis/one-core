@@ -11,7 +11,7 @@ use crate::{
         claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
         credential_state, did,
     },
-    list_query::SelectWithListQuery,
+    list_query_generic::SelectWithListQuery,
 };
 use autometrics::autometrics;
 use one_core::{
@@ -342,8 +342,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
                 .add(credential::Column::DeletedAt.is_null()),
         )
         // list query
-        .with_list_query(&query_params, &Some(vec![credential_schema::Column::Name]))
-        .with_organisation_id(&query_params, &credential_schema::Column::OrganisationId)
+        .with_list_query(&query_params)
         // fallback ordering
         .order_by_desc(credential::Column::CreatedDate)
         .order_by_desc(credential::Column::Id)
@@ -494,7 +493,10 @@ impl CredentialRepository for CredentialProvider {
         &self,
         query_params: GetCredentialQuery,
     ) -> Result<GetCredentialList, DataLayerError> {
-        let limit: u64 = query_params.page_size as u64;
+        let limit = query_params
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.page_size as _);
 
         let query = get_credential_list_query(query_params);
 
@@ -512,7 +514,7 @@ impl CredentialRepository for CredentialProvider {
 
         Ok(GetCredentialList {
             values: credentials_to_repository(credentials)?,
-            total_pages: calculate_pages_count(items_count, limit),
+            total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
             total_items: items_count,
         })
     }

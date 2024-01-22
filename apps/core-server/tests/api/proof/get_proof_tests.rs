@@ -139,6 +139,7 @@ async fn test_get_proof_with_credentials() {
     resp["id"].assert_eq(&proof.id);
     assert_eq!(resp["credentials"].as_array().unwrap().len(), 1);
     resp["credentials"][0]["id"].assert_eq(&credential.id);
+    assert!(resp["credentials"][0]["role"].is_string());
 }
 
 #[tokio::test]

@@ -72,7 +72,8 @@ impl MockServer {
                         "organisationId": "2476ebaa-0108-413d-aa72-c2a6babd423f",
                         "revocationMethod": "STATUSLIST2021"
                     },
-                    "state": "PENDING"
+                    "state": "PENDING",
+                    "role": "ISSUER",
                 }
             )))
             .expect(1)
