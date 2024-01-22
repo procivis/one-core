@@ -45,6 +45,9 @@ impl super::DidMethod for X509Method {
     }
 
     fn get_capabilities(&self) -> DidCapabilities {
-        todo!()
+        DidCapabilities {
+            operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
+            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+        }
     }
 }

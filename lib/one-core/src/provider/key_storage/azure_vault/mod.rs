@@ -50,7 +50,6 @@ struct AzureAccessToken {
 
 pub struct AzureVaultKeyProvider {
     access_token: Arc<Mutex<Option<AzureAccessToken>>>,
-    capabilities: KeyStorageCapabilities,
     client: reqwest::Client,
     crypto: Arc<dyn CryptoProvider>,
     params: Params,
@@ -130,19 +129,17 @@ impl KeyStorage for AzureVaultKeyProvider {
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {
-        self.capabilities.to_owned()
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string()],
+            security: vec!["HARDWARE".to_string()],
+        }
     }
 }
 
 impl AzureVaultKeyProvider {
-    pub fn new(
-        capabilities: KeyStorageCapabilities,
-        params: Params,
-        crypto: Arc<dyn CryptoProvider>,
-    ) -> Self {
+    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider>) -> Self {
         Self {
             access_token: Arc::new(Mutex::new(None)),
-            capabilities,
             client: reqwest::Client::new(),
             crypto,
             params,

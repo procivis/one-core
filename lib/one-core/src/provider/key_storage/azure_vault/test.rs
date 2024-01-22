@@ -12,7 +12,6 @@ use wiremock::matchers::{
 };
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::provider::key_storage::KeyStorageCapabilities;
 use crate::{
     crypto::{
         hasher::{Hasher, MockHasher},
@@ -124,14 +123,7 @@ async fn test_azure_vault_generate() {
     get_token_mock(&mock_server, 3600, 1).await;
     generate_key_mock(&mock_server, 2).await;
 
-    let vault = AzureVaultKeyProvider::new(
-        KeyStorageCapabilities {
-            algorithms: vec!["ES256".to_string()],
-            security: vec!["HARDWARE".to_string()],
-        },
-        get_params(mock_server.uri()),
-        get_crypto(vec![]),
-    );
+    let vault = AzureVaultKeyProvider::new(get_params(mock_server.uri()), get_crypto(vec![]));
     vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
     vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
 }
@@ -143,14 +135,7 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
     get_token_mock(&mock_server, -5, 2).await;
     generate_key_mock(&mock_server, 2).await;
 
-    let vault = AzureVaultKeyProvider::new(
-        KeyStorageCapabilities {
-            algorithms: vec!["ES256".to_string()],
-            security: vec!["HARDWARE".to_string()],
-        },
-        get_params(mock_server.uri()),
-        get_crypto(vec![]),
-    );
+    let vault = AzureVaultKeyProvider::new(get_params(mock_server.uri()), get_crypto(vec![]));
     vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
     vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
 }
@@ -170,10 +155,6 @@ async fn test_azure_vault_sign() {
     let key_reference = format!("{}/keys/uuid/keyid", mock_server.uri());
 
     let vault = AzureVaultKeyProvider::new(
-        KeyStorageCapabilities {
-            algorithms: vec!["ES256".to_string()],
-            security: vec!["HARDWARE".to_string()],
-        },
         get_params(mock_server.uri()),
         get_crypto(vec![("sha-256".to_string(), Arc::new(hasher_mock))]),
     );

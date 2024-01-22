@@ -7,16 +7,12 @@ use shared_types::{DidId, DidValue};
 use url::Url;
 
 pub struct WebDidMethod {
-    capabilities: DidCapabilities,
     pub did_base_string: Option<String>,
     pub client: reqwest::Client,
 }
 
 impl WebDidMethod {
-    pub fn new(
-        base_url: &Option<String>,
-        capabilities: DidCapabilities,
-    ) -> Result<Self, DidMethodError> {
+    pub fn new(base_url: &Option<String>) -> Result<Self, DidMethodError> {
         let did_base_string = if let Some(base_url) = base_url {
             let url =
                 Url::parse(base_url).map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
@@ -38,7 +34,6 @@ impl WebDidMethod {
         };
 
         Ok(Self {
-            capabilities,
             did_base_string,
             client: reqwest::Client::new(),
         })
@@ -87,7 +82,18 @@ impl super::DidMethod for WebDidMethod {
     }
 
     fn get_capabilities(&self) -> DidCapabilities {
-        self.capabilities.to_owned()
+        DidCapabilities {
+            operations: vec![
+                "RESOLVE".to_string(),
+                "CREATE".to_string(),
+                "DEACTIVATE".to_string(),
+            ],
+            key_algorithms: vec![
+                "ES256".to_string(),
+                "EDDSA".to_string(),
+                "DILITHIUM".to_string(),
+            ],
+        }
     }
 }
 

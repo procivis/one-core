@@ -5,7 +5,7 @@ use crate::provider::did_method::dto::{
     DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::did_method::{provider::DidMethodProviderImpl, DidCapabilities, DidMethod};
+use crate::provider::did_method::{provider::DidMethodProviderImpl, DidMethod};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use mockall::predicate;
@@ -44,13 +44,7 @@ fn setup_provider(
     let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
     did_methods.insert(
         "KEY".to_string(),
-        Arc::new(KeyDidMethod::new(
-            DidCapabilities {
-                operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
-                key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
-            },
-            Arc::new(key_algorithm_provider),
-        )),
+        Arc::new(KeyDidMethod::new(Arc::new(key_algorithm_provider))),
     );
 
     Arc::new(DidMethodProviderImpl::new(did_methods))

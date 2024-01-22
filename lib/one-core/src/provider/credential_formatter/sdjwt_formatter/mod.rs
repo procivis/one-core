@@ -36,7 +36,6 @@ use super::{
 };
 
 pub struct SDJWTFormatter {
-    capabilities: FormatterCapabilities,
     pub crypto: Arc<dyn CryptoProvider>,
     params: Params,
 }
@@ -180,21 +179,15 @@ impl CredentialFormatter for SDJWTFormatter {
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
-        self.capabilities.to_owned()
+        FormatterCapabilities {
+            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
+        }
     }
 }
 
 impl SDJWTFormatter {
-    pub fn new(
-        capabilities: FormatterCapabilities,
-        params: Params,
-        crypto: Arc<dyn CryptoProvider>,
-    ) -> Self {
-        Self {
-            capabilities,
-            params,
-            crypto,
-        }
+    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider>) -> Self {
+        Self { params, crypto }
     }
 
     fn format_hashed_credential(

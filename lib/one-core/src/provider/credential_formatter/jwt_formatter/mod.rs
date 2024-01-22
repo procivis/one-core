@@ -25,7 +25,6 @@ use super::{
 };
 
 pub struct JWTFormatter {
-    capabilities: FormatterCapabilities,
     params: Params,
 }
 
@@ -36,11 +35,8 @@ pub struct Params {
 }
 
 impl JWTFormatter {
-    pub fn new(capabilities: FormatterCapabilities, params: Params) -> Self {
-        Self {
-            capabilities,
-            params,
-        }
+    pub fn new(params: Params) -> Self {
+        Self { params }
     }
 }
 
@@ -155,7 +151,7 @@ impl CredentialFormatter for JWTFormatter {
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
-        self.capabilities.to_owned()
+        FormatterCapabilities::default()
     }
 }
 

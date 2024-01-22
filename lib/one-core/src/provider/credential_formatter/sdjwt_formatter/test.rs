@@ -13,7 +13,7 @@ use crate::{
         model::{CredentialPresentation, CredentialStatus},
         sdjwt_formatter::{model::Sdvc, Params},
         test_utilities::test_credential_detail_response_dto,
-        CredentialFormatter, FormatterCapabilities, MockAuth, MockTokenVerifier,
+        CredentialFormatter, MockAuth, MockTokenVerifier,
     },
 };
 
@@ -42,9 +42,6 @@ async fn test_format_credential() {
     let leeway = 45u64;
 
     let sd_formatter = SDJWTFormatter {
-        capabilities: FormatterCapabilities {
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
-        },
         crypto: Arc::new(crypto),
         params: Params { leeway },
     };
@@ -176,9 +173,6 @@ async fn test_extract_credentials() {
     let leeway = 45u64;
 
     let sd_formatter = SDJWTFormatter {
-        capabilities: FormatterCapabilities {
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
-        },
         crypto: Arc::new(crypto),
         params: Params { leeway },
     };
@@ -249,9 +243,6 @@ async fn test_extract_presentation() {
     let leeway = 45u64;
 
     let sd_formatter = SDJWTFormatter {
-        capabilities: FormatterCapabilities {
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
-        },
         crypto: Arc::new(crypto),
         params: Params { leeway },
     };
@@ -344,9 +335,6 @@ fn test_prepare_sd_presentation() {
 #[test]
 fn test_get_capabilities() {
     let sd_formatter = SDJWTFormatter {
-        capabilities: FormatterCapabilities {
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
-        },
         crypto: Arc::new(MockCryptoProvider::default()),
         params: Params { leeway: 123u64 },
     };

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::config::core_config::{FormatConfig, FormatType};
-use crate::config::ConfigError;
+use crate::config::{ConfigError, ConfigParsingError};
 use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::json_ld_formatter::JsonLdFormatter;
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
@@ -32,28 +32,23 @@ impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
 }
 
 pub(crate) fn credential_formatters_from_config(
-    config: &FormatConfig,
+    config: &mut FormatConfig,
     crypto: Arc<dyn CryptoProvider>,
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter>>, ConfigError> {
-    let mut formatters = HashMap::new();
+    let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
 
     for format_type in config.as_inner().keys() {
         let type_str = format_type.to_string();
 
         match format_type {
             FormatType::Jwt => {
-                let capabilities = config.get_capabilities(&type_str)?;
-
                 let params = config.get(format_type)?;
-                let formatter = Arc::new(JWTFormatter::new(capabilities, params)) as _;
+                let formatter = Arc::new(JWTFormatter::new(params)) as _;
                 formatters.insert(type_str, formatter);
             }
             FormatType::Sdjwt => {
-                let capabilities = config.get_capabilities(&type_str)?;
-
                 let params = config.get(format_type)?;
-                let formatter =
-                    Arc::new(SDJWTFormatter::new(capabilities, params, crypto.clone())) as _;
+                let formatter = Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _;
                 formatters.insert(type_str, formatter);
             }
             FormatType::JsonLd => {
@@ -64,6 +59,14 @@ pub(crate) fn credential_formatters_from_config(
                 let formatter = Arc::new(MdocFormatter::new()) as _;
                 formatters.insert(type_str, formatter);
             }
+        }
+    }
+
+    for (key, value) in config.as_inner_mut().iter_mut() {
+        if let Some(entity) = formatters.get(&key.to_string()) {
+            let json = serde_json::to_value(entity.get_capabilities())
+                .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;
+            value.capabilities = Some(json);
         }
     }
 

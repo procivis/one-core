@@ -19,7 +19,6 @@ use crate::{
 };
 
 pub struct InternalKeyProvider {
-    capabilities: KeyStorageCapabilities,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     encryption_key: Option<[u8; 32]>,
 }
@@ -31,13 +30,8 @@ pub struct Params {
 }
 
 impl InternalKeyProvider {
-    pub fn new(
-        capabilities: KeyStorageCapabilities,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        params: Params,
-    ) -> Self {
+    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>, params: Params) -> Self {
         Self {
-            capabilities,
             key_algorithm_provider,
             encryption_key: params
                 .encryption
@@ -81,7 +75,14 @@ impl KeyStorage for InternalKeyProvider {
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {
-        self.capabilities.to_owned()
+        KeyStorageCapabilities {
+            algorithms: vec![
+                "ES256".to_string(),
+                "EDDSA".to_string(),
+                "DILITHIUM".to_string(),
+            ],
+            security: vec!["SOFTWARE".to_string()],
+        }
     }
 }
 
