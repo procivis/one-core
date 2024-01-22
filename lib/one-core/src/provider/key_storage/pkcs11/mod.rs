@@ -24,7 +24,7 @@ impl KeyStorage for PKCS11KeyProvider {
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {
-        todo!()
+        KeyStorageCapabilities::default()
     }
 }
 

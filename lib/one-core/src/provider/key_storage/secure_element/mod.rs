@@ -15,7 +15,6 @@ pub trait NativeKeyStorage: Send + Sync {
 }
 
 pub struct SecureElementKeyProvider {
-    capabilities: KeyStorageCapabilities,
     native_storage: Arc<dyn NativeKeyStorage>,
     params: Params,
 }
@@ -46,18 +45,16 @@ impl KeyStorage for SecureElementKeyProvider {
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {
-        self.capabilities.to_owned()
+        KeyStorageCapabilities {
+            algorithms: vec!["ES256".to_string()],
+            security: vec!["HARDWARE".to_string()],
+        }
     }
 }
 
 impl SecureElementKeyProvider {
-    pub fn new(
-        capabilities: KeyStorageCapabilities,
-        native_storage: Arc<dyn NativeKeyStorage>,
-        params: Params,
-    ) -> Self {
+    pub fn new(native_storage: Arc<dyn NativeKeyStorage>, params: Params) -> Self {
         SecureElementKeyProvider {
-            capabilities,
             native_storage,
             params,
         }

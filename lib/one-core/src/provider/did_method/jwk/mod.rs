@@ -10,18 +10,13 @@ use std::sync::Arc;
 mod helpers;
 
 pub struct JWKDidMethod {
-    capabilities: DidCapabilities,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl JWKDidMethod {
     #[allow(clippy::new_without_default)]
-    pub fn new(
-        capabilities: DidCapabilities,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    ) -> Self {
+    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
         Self {
-            capabilities,
             key_algorithm_provider,
         }
     }
@@ -71,7 +66,14 @@ impl super::DidMethod for JWKDidMethod {
     }
 
     fn get_capabilities(&self) -> DidCapabilities {
-        self.capabilities.to_owned()
+        DidCapabilities {
+            operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
+            key_algorithms: vec![
+                "ES256".to_string(),
+                "EDDSA".to_string(),
+                "DILITHIUM".to_string(),
+            ],
+        }
     }
 }
 

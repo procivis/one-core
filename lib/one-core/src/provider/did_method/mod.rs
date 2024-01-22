@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::Serialize;
 use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
 use crate::config::core_config::{self, DidConfig};
-use crate::config::{ConfigError, ConfigValidationError};
+use crate::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use crate::model::key::Key;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
@@ -26,7 +26,7 @@ pub mod provider;
 pub mod web;
 pub mod x509;
 
-#[derive(Clone, Default, Deserialize)]
+#[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DidCapabilities {
     pub operations: Vec<String>,
@@ -65,27 +65,22 @@ pub trait DidMethod: Send + Sync {
 }
 
 pub fn did_method_providers_from_config(
-    did_config: &DidConfig,
+    did_config: &mut DidConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     base_url: Option<String>,
 ) -> Result<HashMap<String, Arc<dyn DidMethod>>, ConfigError> {
-    let mut providers = HashMap::new();
+    let mut providers: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
 
     for did_type in did_config.as_inner().keys() {
         let type_str = did_type.to_string();
 
-        let capabilities = did_config.get_capabilities(&type_str)?;
-
         match did_type {
             core_config::DidType::Key => {
-                let method = Arc::new(KeyDidMethod::new(
-                    capabilities,
-                    key_algorithm_provider.clone(),
-                ));
+                let method = Arc::new(KeyDidMethod::new(key_algorithm_provider.clone()));
                 providers.insert(type_str, method as _);
             }
             core_config::DidType::Web => {
-                let did_web = WebDidMethod::new(&base_url, capabilities).map_err(|_| {
+                let did_web = WebDidMethod::new(&base_url).map_err(|_| {
                     ConfigError::Validation(ConfigValidationError::KeyNotFound(
                         "Base url".to_string(),
                     ))
@@ -94,16 +89,21 @@ pub fn did_method_providers_from_config(
                 providers.insert(type_str, method as _);
             }
             core_config::DidType::Jwk => {
-                let method = Arc::new(JWKDidMethod::new(
-                    capabilities,
-                    key_algorithm_provider.clone(),
-                ));
+                let method = Arc::new(JWKDidMethod::new(key_algorithm_provider.clone()));
                 providers.insert(type_str, method as _);
             }
             core_config::DidType::X509 => {
                 let method = Arc::new(X509Method::new());
                 providers.insert(type_str, method as _);
             }
+        }
+    }
+
+    for (key, value) in did_config.as_inner_mut().iter_mut() {
+        if let Some(entity) = providers.get(&key.to_string()) {
+            let json = serde_json::to_value(entity.get_capabilities())
+                .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;
+            value.capabilities = Some(json);
         }
     }
 

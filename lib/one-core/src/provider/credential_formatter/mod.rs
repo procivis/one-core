@@ -17,7 +17,7 @@ pub(crate) mod provider;
 pub(crate) mod test_utilities;
 
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::Serialize;
 use shared_types::DidValue;
 
 use crate::{
@@ -32,7 +32,7 @@ use self::{
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
 
-#[derive(Clone, Default, Deserialize)]
+#[derive(Clone, Default, Serialize)]
 pub struct FormatterCapabilities {
     pub features: Vec<String>,
 }

@@ -19,7 +19,7 @@ use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use strum_macros::{Display, EnumString};
 
-use super::{ConfigError, ConfigParsingError, ConfigValidationError};
+use super::{ConfigParsingError, ConfigValidationError};
 
 type Dict<K, V> = BTreeMap<K, V>;
 
@@ -311,20 +311,6 @@ where
         }
     }
 
-    pub fn get_capabilities<U>(&self, key: &str) -> Result<U, ConfigError>
-    where
-        U: Default + DeserializeOwned,
-        K: FromStr,
-    {
-        match &self.get_fields(key)?.capabilities {
-            None => Ok(U::default()),
-            Some(json_value) => {
-                Ok(serde_json::from_value(json_value.to_owned())
-                    .map_err(ConfigParsingError::Json)?)
-            }
-        }
-    }
-
     pub fn get_fields(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError>
     where
         K: FromStr,
@@ -339,6 +325,10 @@ where
 
     pub fn as_inner(&self) -> &Dict<K, Fields<T>> {
         &self.0
+    }
+
+    pub fn as_inner_mut(&mut self) -> &mut Dict<K, Fields<T>> {
+        &mut self.0
     }
 
     #[cfg(test)]
@@ -360,7 +350,7 @@ pub struct Fields<T> {
     pub(crate) display: String,
     pub(crate) order: Option<u64>,
     pub(crate) disabled: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub(crate) capabilities: Option<Value>,
     #[serde(deserialize_with = "deserialize_params")]
     pub(crate) params: Option<Params>,

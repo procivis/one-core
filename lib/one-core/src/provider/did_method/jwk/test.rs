@@ -3,7 +3,6 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::provider::did_method::DidCapabilities;
 use crate::{
     model::key::Key,
     provider::{
@@ -18,13 +17,7 @@ use crate::{
 
 #[tokio::test]
 async fn test_resolve_jwk_did_without_use_field() {
-    let provider = JWKDidMethod::new(
-        DidCapabilities {
-            operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
-            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
-        },
-        Arc::new(MockKeyAlgorithmProvider::default()),
-    );
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -67,10 +60,7 @@ async fn test_resolve_jwk_did_without_use_field() {
 
 #[tokio::test]
 async fn test_resolve_jwk_did_with_use_enc_field() {
-    let provider = JWKDidMethod::new(
-        get_default_capabilities(),
-        Arc::new(MockKeyAlgorithmProvider::default()),
-    );
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -109,10 +99,7 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
 
 #[tokio::test]
 async fn test_resolve_jwk_did_with_use_sig_field() {
-    let provider = JWKDidMethod::new(
-        get_default_capabilities(),
-        Arc::new(MockKeyAlgorithmProvider::default()),
-    );
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -154,10 +141,7 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
-    let provider = JWKDidMethod::new(
-        get_default_capabilities(),
-        Arc::new(MockKeyAlgorithmProvider::default()),
-    );
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -172,10 +156,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_did_prefix() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_encoding() {
-    let provider = JWKDidMethod::new(
-        get_default_capabilities(),
-        Arc::new(MockKeyAlgorithmProvider::default()),
-    );
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -190,10 +171,7 @@ async fn test_fail_to_resolve_jwk_did_invalid_encoding() {
 
 #[tokio::test]
 async fn test_fail_to_resolve_jwk_did_invalid_jwk_format() {
-    let provider = JWKDidMethod::new(
-        get_default_capabilities(),
-        Arc::new(MockKeyAlgorithmProvider::default()),
-    );
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     let result = provider
         .resolve(
@@ -225,7 +203,7 @@ async fn test_create_did_jwk_success() {
         .once()
         .return_once(move |_| Some(Arc::new(key_algorithm)));
 
-    let provider = JWKDidMethod::new(get_default_capabilities(), Arc::new(key_algorithm_provider));
+    let provider = JWKDidMethod::new(Arc::new(key_algorithm_provider));
 
     let result = provider
         .create(
@@ -254,20 +232,10 @@ async fn test_create_did_jwk_success() {
 
 #[test]
 fn test_get_capabilities() {
-    let provider = JWKDidMethod::new(
-        get_default_capabilities(),
-        Arc::new(MockKeyAlgorithmProvider::default()),
-    );
+    let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     assert_eq!(
         vec!["RESOLVE".to_string(), "CREATE".to_string()],
         provider.get_capabilities().operations
     );
-}
-
-fn get_default_capabilities() -> DidCapabilities {
-    DidCapabilities {
-        operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
-        key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
-    }
 }

@@ -65,7 +65,7 @@ impl CredentialFormatter for JsonLdFormatter {
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
-        todo!()
+        FormatterCapabilities::default()
     }
 }
 

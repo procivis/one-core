@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use serde::Deserialize;
+use serde::Serialize;
 
 use crate::config::core_config::{KeyStorageConfig, KeyStorageType};
-use crate::config::{ConfigError, ConfigValidationError};
+use crate::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use crate::crypto::{signer::error::SignerError, CryptoProvider};
 use crate::model::key::{Key, KeyId};
 use crate::provider::key_storage::azure_vault::AzureVaultKeyProvider;
@@ -20,7 +20,7 @@ pub mod pkcs11;
 pub mod provider;
 pub mod secure_element;
 
-#[derive(Clone, Default, Deserialize)]
+#[derive(Clone, Default, Serialize)]
 pub struct KeyStorageCapabilities {
     pub algorithms: Vec<String>,
     pub security: Vec<String>,
@@ -40,7 +40,7 @@ pub trait KeyStorage: Send + Sync {
 }
 
 pub fn key_providers_from_config(
-    config: &KeyStorageConfig,
+    config: &mut KeyStorageConfig,
     crypto: Arc<dyn CryptoProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
@@ -50,14 +50,11 @@ pub fn key_providers_from_config(
     for key_storage_type in config.as_inner().keys() {
         let type_str = key_storage_type.to_string();
 
-        let capabilities = config.get_capabilities(&type_str)?;
-
         match key_storage_type {
             KeyStorageType::Internal => {
                 let params = config.get(key_storage_type)?;
 
                 let key_storage = Arc::new(InternalKeyProvider::new(
-                    capabilities,
                     key_algorithm_provider.clone(),
                     params,
                 ));
@@ -70,18 +67,13 @@ pub fn key_providers_from_config(
             }
             KeyStorageType::AzureVault => {
                 let params = config.get(key_storage_type)?;
-                let key_storage = Arc::new(AzureVaultKeyProvider::new(
-                    capabilities,
-                    params,
-                    crypto.clone(),
-                ));
+                let key_storage = Arc::new(AzureVaultKeyProvider::new(params, crypto.clone()));
                 providers.insert(type_str, key_storage);
             }
             KeyStorageType::SecureElement => {
                 if let Some(native_key_storage) = &secure_element_key_storage {
                     let params = config.get(key_storage_type)?;
                     let key_storage = Arc::new(SecureElementKeyProvider::new(
-                        capabilities,
                         native_key_storage.to_owned(),
                         params,
                     ));
@@ -92,6 +84,14 @@ pub fn key_providers_from_config(
                     )));
                 }
             }
+        }
+    }
+
+    for (key, value) in config.as_inner_mut().iter_mut() {
+        if let Some(entity) = providers.get(&key.to_string()) {
+            let json = serde_json::to_value(entity.get_capabilities())
+                .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;
+            value.capabilities = Some(json);
         }
     }
 

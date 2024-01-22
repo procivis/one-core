@@ -13,7 +13,7 @@ use crate::provider::credential_formatter::{
     },
     model::{CredentialPresentation, CredentialStatus},
     test_utilities::test_credential_detail_response_dto,
-    CredentialFormatter, FormatterCapabilities, MockAuth, MockTokenVerifier,
+    CredentialFormatter, MockAuth, MockTokenVerifier,
 };
 
 #[tokio::test]
@@ -21,7 +21,6 @@ async fn test_format_credential() {
     let leeway = 45u64;
 
     let sd_formatter = JWTFormatter {
-        capabilities: FormatterCapabilities::default(),
         params: Params { leeway },
     };
 
@@ -121,7 +120,6 @@ async fn test_extract_credentials() {
     let leeway = 45u64;
 
     let jwt_formatter = JWTFormatter {
-        capabilities: FormatterCapabilities::default(),
         params: Params { leeway },
     };
 
@@ -181,7 +179,6 @@ async fn test_format_credential_presentation() {
         IlZhbDEifX0sIl9zZF9hbGciOiJzaGEtMjU2In0.QUJD";
 
     let jwt_formatter = JWTFormatter {
-        capabilities: FormatterCapabilities::default(),
         params: Params { leeway: 45 },
     };
 
@@ -222,7 +219,6 @@ async fn test_format_presentation() {
     let leeway = 45u64;
 
     let jwt_formatter = JWTFormatter {
-        capabilities: FormatterCapabilities::default(),
         params: Params { leeway },
     };
 
@@ -298,7 +294,6 @@ async fn test_extract_presentation() {
     let leeway = 45u64;
 
     let jwt_formatter = JWTFormatter {
-        capabilities: FormatterCapabilities::default(),
         params: Params { leeway },
     };
 
@@ -335,7 +330,6 @@ async fn test_extract_presentation() {
 #[test]
 fn test_get_capabilities() {
     let jwt_formatter = JWTFormatter {
-        capabilities: FormatterCapabilities::default(),
         params: Params { leeway: 123u64 },
     };
 

@@ -79,7 +79,7 @@ pub struct OneCore {
 impl OneCore {
     pub fn new(
         data_provider: Arc<dyn DataRepository>,
-        core_config: CoreConfig,
+        mut core_config: CoreConfig,
         core_base_url: Option<String>,
         secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
     ) -> Result<OneCore, ConfigError> {
@@ -101,7 +101,8 @@ impl OneCore {
         ));
 
         let credential_formatters =
-            credential_formatters_from_config(&core_config.format, crypto.clone())?;
+            credential_formatters_from_config(&mut core_config.format, crypto.clone())?;
+
         let formatter_provider =
             Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
 
@@ -111,7 +112,7 @@ impl OneCore {
             crypto.clone(),
         ));
         let key_providers = key_providers_from_config(
-            &core_config.key_storage,
+            &mut core_config.key_storage,
             crypto.clone(),
             key_algorithm_provider.clone(),
             secure_element_key_storage,
@@ -119,7 +120,7 @@ impl OneCore {
         let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
 
         let did_methods = did_method_providers_from_config(
-            &core_config.did,
+            &mut core_config.did,
             key_algorithm_provider.clone(),
             core_base_url.clone(),
         )?;

@@ -9,17 +9,12 @@ use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError};
 use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 pub struct KeyDidMethod {
-    capabilities: DidCapabilities,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl KeyDidMethod {
-    pub fn new(
-        capabilities: DidCapabilities,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    ) -> Self {
+    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
         Self {
-            capabilities,
             key_algorithm_provider,
         }
     }
@@ -85,7 +80,10 @@ impl super::DidMethod for KeyDidMethod {
     }
 
     fn get_capabilities(&self) -> DidCapabilities {
-        self.capabilities.to_owned()
+        DidCapabilities {
+            operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
+            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+        }
     }
 }
 
