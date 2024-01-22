@@ -1,3 +1,6 @@
+datatype:
+  PICTURE:
+    disabled: true
 keyStorage:
   AZURE_VAULT:
     params:
