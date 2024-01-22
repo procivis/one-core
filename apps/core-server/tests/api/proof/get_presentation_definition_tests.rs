@@ -99,6 +99,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
         resp["credentials"][0]["id"].as_str().unwrap(),
         credential.id.to_string()
     );
+    assert!(resp["credentials"][0]["role"].is_string());
     assert_eq!(
         resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"][0]
             .as_str()

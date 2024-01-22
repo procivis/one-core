@@ -2,6 +2,7 @@ use crate::error::NativeKeyStorageError;
 use crate::mapper::serialize_config_entity;
 use crate::utils::TimestampFormat;
 use dto_mapper::{From, TryInto};
+use one_core::service::credential::dto::CredentialRole;
 use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
@@ -62,10 +63,19 @@ pub enum CredentialStateBindingEnum {
 
 pub type VersionBindingDTO = one_core::Version;
 
+#[derive(From, Clone)]
+#[convert(from = CredentialRole, into = CredentialRole)]
+pub enum CredentialRoleBindingDTO {
+    Holder,
+    Issuer,
+    Verifier,
+}
+
 pub struct ListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
     pub organisation_id: String,
+    pub role: Option<CredentialRoleBindingDTO>,
 }
 
 #[derive(From)]
@@ -88,6 +98,7 @@ pub struct CredentialDetailBindingDTO {
     pub schema: CredentialSchemaBindingDTO,
     pub claims: Vec<ClaimBindingDTO>,
     pub redirect_uri: Option<String>,
+    pub role: CredentialRoleBindingDTO,
 }
 
 pub struct CredentialListItemBindingDTO {
@@ -99,6 +110,7 @@ pub struct CredentialListItemBindingDTO {
     pub issuer_did: Option<String>,
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
+    pub role: CredentialRoleBindingDTO,
 }
 
 #[derive(From)]

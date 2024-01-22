@@ -1,5 +1,11 @@
-use crate::{error::BindingError, CredentialListBindingDTO, ListQueryBindingDTO, OneCoreBinding};
-use one_core::service::credential::dto::GetCredentialQueryDTO;
+use crate::{
+    error::BindingError, utils::into_uuid, CredentialListBindingDTO, ListQueryBindingDTO,
+    OneCoreBinding,
+};
+use one_core::{
+    model::{list_filter::ListFilterValue, list_query::ListPagination},
+    service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO},
+};
 
 impl OneCoreBinding {
     pub fn get_credentials(
@@ -8,16 +14,22 @@ impl OneCoreBinding {
     ) -> Result<CredentialListBindingDTO, BindingError> {
         self.block_on(async {
             let core = self.use_core().await?;
+            let condition =
+                CredentialFilterValue::OrganisationId(into_uuid(&query.organisation_id)?)
+                    .condition()
+                    & query
+                        .role
+                        .clone()
+                        .map(|role| CredentialFilterValue::Role(role.into()));
             Ok(core
                 .credential_service
                 .get_credential_list(GetCredentialQueryDTO {
-                    page: query.page,
-                    page_size: query.page_size,
-                    sort: None,
-                    exact: None,
-                    sort_direction: None,
-                    name: None,
-                    organisation_id: query.organisation_id.to_owned(),
+                    pagination: Some(ListPagination {
+                        page: query.page,
+                        page_size: query.page_size,
+                    }),
+                    sorting: None,
+                    filtering: Some(condition),
                 })
                 .await?
                 .into())

@@ -21,11 +21,11 @@ dictionary GeneratedKeyBindingDTO {
 };
 
 callback interface NativeKeyStorage {
-    [Throws=NativeKeyStorageError]
-    GeneratedKeyBindingDTO generate_key(string key_alias);
+  [Throws=NativeKeyStorageError]
+  GeneratedKeyBindingDTO generate_key(string key_alias);
 
-    [Throws=NativeKeyStorageError]
-    bytes sign(bytes key_reference, bytes message);
+  [Throws=NativeKeyStorageError]
+  bytes sign(bytes key_reference, bytes message);
 };
 
 dictionary VersionBindingDTO {
@@ -69,6 +69,10 @@ dictionary ClaimBindingDTO {
   string value;
 };
 
+enum CredentialRoleBindingDTO {
+  "Holder", "Issuer", "Verifier"
+};
+
 dictionary CredentialListItemBindingDTO {
   string id;
   string created_date;
@@ -78,6 +82,7 @@ dictionary CredentialListItemBindingDTO {
   string? issuer_did;
   CredentialStateBindingEnum state;
   CredentialSchemaBindingDTO schema;
+  CredentialRoleBindingDTO role;
 };
 
 dictionary CredentialDetailBindingDTO {
@@ -91,30 +96,31 @@ dictionary CredentialDetailBindingDTO {
   sequence<ClaimBindingDTO> claims;
   CredentialSchemaBindingDTO schema;
   string? redirect_uri;
+  CredentialRoleBindingDTO role;
 };
 
 dictionary ProofRequestClaimBindingDTO {
-    string id;
-    string key;
-    string data_type;
-    boolean required;
-    CredentialSchemaBindingDTO credential_schema;
+  string id;
+  string key;
+  string data_type;
+  boolean required;
+  CredentialSchemaBindingDTO credential_schema;
 };
 
 dictionary ProofRequestBindingDTO {
-    string id;
-    string created_date;
-    string last_modified;
-    sequence<ProofRequestClaimBindingDTO> claims;
-    string? verifier_did;
-    string transport;
-    string? redirect_uri;
-    sequence<CredentialDetailBindingDTO> credentials;
+  string id;
+  string created_date;
+  string last_modified;
+  sequence<ProofRequestClaimBindingDTO> claims;
+  string? verifier_did;
+  string transport;
+  string? redirect_uri;
+  sequence<CredentialDetailBindingDTO> credentials;
 };
 
 dictionary PresentationSubmitCredentialRequestBindingDTO {
-    string credential_id;
-    sequence<string> submit_claims;
+  string credential_id;
+  sequence<string> submit_claims;
 };
 
 [Enum]
@@ -124,43 +130,44 @@ interface HandleInvitationResponseBindingEnum {
 };
 
 dictionary ListQueryBindingDTO {
-    u32 page;
-    u32 page_size;
-    string organisation_id;
+  u32 page;
+  u32 page_size;
+  string organisation_id;
+  CredentialRoleBindingDTO? role;
 };
 
 dictionary CredentialListBindingDTO {
-    sequence<CredentialListItemBindingDTO> values;
-    u64 total_pages;
-    u64 total_items;
+  sequence<CredentialListItemBindingDTO> values;
+  u64 total_pages;
+  u64 total_items;
 };
 
 dictionary PresentationDefinitionBindingDTO {
-    sequence<PresentationDefinitionRequestGroupBindingDTO> request_groups;
+  sequence<PresentationDefinitionRequestGroupBindingDTO> request_groups;
 };
 
 dictionary PresentationDefinitionRequestGroupBindingDTO {
-    string id;
-    string? name;
-    string? purpose;
-    PresentationDefinitionRuleBindingDTO rule;
-    sequence<PresentationDefinitionRequestedCredentialBindingDTO> requested_credentials;
+  string id;
+  string? name;
+  string? purpose;
+  PresentationDefinitionRuleBindingDTO rule;
+  sequence<PresentationDefinitionRequestedCredentialBindingDTO> requested_credentials;
 };
 
 dictionary PresentationDefinitionRequestedCredentialBindingDTO {
-    string id;
-    string? name;
-    string? purpose;
-    sequence<PresentationDefinitionFieldBindingDTO> fields;
-    sequence<string> applicable_credentials;
+  string id;
+  string? name;
+  string? purpose;
+  sequence<PresentationDefinitionFieldBindingDTO> fields;
+  sequence<string> applicable_credentials;
 };
 
 dictionary PresentationDefinitionFieldBindingDTO {
-    string id;
-    string? name;
-    string? purpose;
-    boolean required;
-    record<string, string> key_map;
+  string id;
+  string? name;
+  string? purpose;
+  boolean required;
+  record<string, string> key_map;
 };
 
 enum PresentationDefinitionRuleTypeBindingEnum {
@@ -168,19 +175,19 @@ enum PresentationDefinitionRuleTypeBindingEnum {
 };
 
 dictionary PresentationDefinitionRuleBindingDTO {
-    PresentationDefinitionRuleTypeBindingEnum type;
-    u32? min;
-    u32? max;
-    u32? count;
+  PresentationDefinitionRuleTypeBindingEnum type;
+  u32? min;
+  u32? max;
+  u32? count;
 };
 
 dictionary KeyRequestBindingDTO {
-    string organisation_id;
-    string key_type;
-    record<string, string> key_params;
-    string name;
-    string storage_type;
-    record<string, string> storage_params;
+  string organisation_id;
+  string key_type;
+  record<string, string> key_params;
+  string name;
+  string storage_type;
+  record<string, string> storage_params;
 };
 
 enum DidTypeBindingEnum {
@@ -188,27 +195,27 @@ enum DidTypeBindingEnum {
 };
 
 dictionary DidRequestKeysBindingDTO {
-    sequence<string> authentication;
-    sequence<string> assertion;
-    sequence<string> key_agreement;
-    sequence<string> capability_invocation;
-    sequence<string> capability_delegation;
+  sequence<string> authentication;
+  sequence<string> assertion;
+  sequence<string> key_agreement;
+  sequence<string> capability_invocation;
+  sequence<string> capability_delegation;
 };
 
 dictionary DidRequestBindingDTO {
-    string organisation_id;
-    string name;
-    string did_method;
-    DidTypeBindingEnum did_type;
-    DidRequestKeysBindingDTO keys;
-    record<string, string> params;
+  string organisation_id;
+  string name;
+  string did_method;
+  DidTypeBindingEnum did_type;
+  DidRequestKeysBindingDTO keys;
+  record<string, string> params;
 };
 
 dictionary CredentialRevocationCheckResponseBindingDTO {
-    string credential_id;
-    CredentialStateBindingEnum status;
-    boolean success;
-    string? reason;
+  string credential_id;
+  CredentialStateBindingEnum status;
+  boolean success;
+  string? reason;
 };
 
 interface OneCoreBinding {

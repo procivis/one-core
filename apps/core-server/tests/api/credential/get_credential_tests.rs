@@ -37,4 +37,5 @@ async fn test_get_credential_success() {
     assert_eq!(resp["schema"]["name"], "test");
     assert!(resp["revocationDate"].is_null());
     assert_eq!(resp["state"], "CREATED");
+    assert_eq!(resp["role"], "ISSUER");
 }

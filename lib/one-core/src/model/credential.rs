@@ -3,13 +3,16 @@ use strum_macros::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::service::credential::dto::CredentialFilterValue;
+
 use super::{
     claim::{Claim, ClaimRelations},
-    common::{GetListQueryParams, GetListResponse},
+    common::GetListResponse,
     credential_schema::{CredentialSchema, CredentialSchemaRelations},
     did::{Did, DidRelations},
     interaction::{Interaction, InteractionId, InteractionRelations},
     key::{Key, KeyId, KeyRelations},
+    list_query::ListQuery,
     revocation_list::{RevocationList, RevocationListRelations},
 };
 
@@ -78,7 +81,7 @@ pub enum SortableCredentialColumn {
 }
 
 pub type GetCredentialList = GetListResponse<Credential>;
-pub type GetCredentialQuery = GetListQueryParams<SortableCredentialColumn>;
+pub type GetCredentialQuery = ListQuery<SortableCredentialColumn, CredentialFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateCredentialRequest {

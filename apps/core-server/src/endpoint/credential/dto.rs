@@ -1,12 +1,11 @@
+use crate::dto::common::ExactColumn;
+use crate::dto::common::ListQueryParamsRest;
+use crate::endpoint::credential_schema::dto::{
+    CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
+};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::serialize::front_time;
 use crate::serialize::front_time_option;
-use crate::{
-    dto::common::GetListQueryParams,
-    endpoint::credential_schema::dto::{
-        CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
-    },
-};
 use dto_mapper::From;
 use one_core::common_mapper::convert_inner;
 use one_core::service::credential::dto::CreateCredentialRequestDTO;
@@ -14,11 +13,13 @@ use one_core::service::credential::dto::CredentialDetailResponseDTO;
 use one_core::service::credential::dto::CredentialListItemResponseDTO;
 use one_core::service::credential::dto::CredentialRequestClaimDTO;
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
+use one_core::service::credential::dto::CredentialRole;
 use one_core::service::credential::dto::CredentialStateEnum;
 use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
 use one_core::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use utoipa::IntoParams;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -43,6 +44,7 @@ pub struct CredentialListItemResponseRestDTO {
     pub schema: CredentialSchemaListItemResponseRestDTO,
     #[convert(with_fn = convert_inner)]
     pub issuer_did: Option<DidListItemResponseRestDTO>,
+    pub role: CredentialRoleRestEnum,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -69,6 +71,16 @@ pub struct GetCredentialResponseRestDTO {
     #[convert(with_fn = convert_inner)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
     pub redirect_uri: Option<String>,
+    pub role: CredentialRoleRestEnum,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[convert(from = "CredentialRole", into = "CredentialRole")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CredentialRoleRestEnum {
+    Holder,
+    Issuer,
+    Verifier,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -109,7 +121,18 @@ pub enum CredentialStateRestEnum {
     Error,
 }
 
-pub type GetCredentialQuery = GetListQueryParams<SortableCredentialColumnRestEnum>;
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialsFilterQueryParamsRest {
+    pub organisation_id: Uuid,
+    pub name: Option<String>,
+    pub role: Option<CredentialRoleRestEnum>,
+    #[param(inline, rename = "exact[]")]
+    pub exact: Option<Vec<ExactColumn>>,
+}
+
+pub type GetCredentialQuery =
+    ListQueryParamsRest<CredentialsFilterQueryParamsRest, SortableCredentialColumnRestEnum>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
