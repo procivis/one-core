@@ -50,6 +50,7 @@ pub(crate) async fn get_organisations(
     OkOrErrorResponse::from_result(result, state, "getting organisations")
 }
 
+//TODO Handle option
 #[utoipa::path(
     post,
     path = "/api/organisation/v1",
@@ -62,6 +63,7 @@ pub(crate) async fn get_organisations(
 )]
 pub(crate) async fn post_organisation(
     state: State<AppState>,
+    // In this case fail turns into None.
     request: Option<Json<CreateOrganisationRequestRestDTO>>,
 ) -> CreatedOrErrorResponse<CreateOrganisationResponseRestDTO> {
     let Json(request): Json<CreateOrganisationRequestRestDTO> =

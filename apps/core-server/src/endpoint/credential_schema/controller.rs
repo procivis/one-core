@@ -1,8 +1,10 @@
 use axum::extract::{Path, State};
 use axum::Json;
+use axum_extra::extract::WithRejection;
 use uuid::Uuid;
 
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemaResponseDTO};
+use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
     OkOrErrorResponse,
@@ -28,7 +30,7 @@ use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
 )]
 pub(crate) async fn delete_credential_schema(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -52,7 +54,7 @@ pub(crate) async fn delete_credential_schema(
 )]
 pub(crate) async fn get_credential_schema(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<CredentialSchemaResponseRestDTO> {
     let result = state
         .core
@@ -76,7 +78,7 @@ declare_utoipa_alias!(GetCredentialSchemaResponseDTO);
 )]
 pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,
-    Qs(query): Qs<GetCredentialSchemaQuery>,
+    WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialSchemaQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialSchemaResponseDTO> {
     let result = state
         .core
@@ -98,7 +100,10 @@ pub(crate) async fn get_credential_schema_list(
 )]
 pub(crate) async fn post_credential_schema(
     state: State<AppState>,
-    Json(request): Json<CreateCredentialSchemaRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateCredentialSchemaRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core

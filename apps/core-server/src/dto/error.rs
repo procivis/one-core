@@ -1,3 +1,10 @@
+use axum::{
+    extract::rejection::{FormRejection, JsonRejection, PathRejection, QueryRejection},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
+use axum_extra::typed_header::TypedHeaderRejection;
 use dto_mapper::From;
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -74,6 +81,7 @@ pub enum ErrorCode {
     BR_0064,
     BR_0065,
     BR_0066,
+    BR_0084,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -106,3 +114,53 @@ impl Cause {
         }
     }
 }
+
+impl IntoResponse for ErrorResponseRestDTO {
+    fn into_response(self) -> axum::response::Response {
+        (StatusCode::BAD_REQUEST, Json(self)).into_response()
+    }
+}
+
+// For Qs
+impl From<(StatusCode, String)> for ErrorResponseRestDTO {
+    fn from(value: (StatusCode, String)) -> Self {
+        Self {
+            code: ErrorCode::BR_0084,
+            message: "General input validation error".to_string(),
+            cause: Some(Cause { message: value.1 }),
+        }
+    }
+}
+
+impl From<TypedHeaderRejection> for ErrorResponseRestDTO {
+    fn from(value: TypedHeaderRejection) -> Self {
+        Self {
+            code: ErrorCode::BR_0084,
+            message: "General input validation error".to_string(),
+            cause: Some(Cause {
+                message: format!("{:?}", value.reason()),
+            }),
+        }
+    }
+}
+
+macro_rules! gen_from_rejection {
+    ($from:ty, $rejection:ty ) => {
+        impl From<$from> for $rejection {
+            fn from(value: $from) -> Self {
+                Self {
+                    code: ErrorCode::BR_0084,
+                    message: "General input validation error".to_string(),
+                    cause: Some(Cause {
+                        message: value.body_text(),
+                    }),
+                }
+            }
+        }
+    };
+}
+
+gen_from_rejection!(JsonRejection, ErrorResponseRestDTO);
+gen_from_rejection!(QueryRejection, ErrorResponseRestDTO);
+gen_from_rejection!(PathRejection, ErrorResponseRestDTO);
+gen_from_rejection!(FormRejection, ErrorResponseRestDTO);

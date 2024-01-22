@@ -4,6 +4,7 @@ use super::dto::{
 };
 use crate::dto::common::GetProofsResponseRestDTO;
 use crate::dto::common::{EntityResponseRestDTO, EntityShareResponseRestDTO};
+use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, OkOrErrorResponse,
 };
@@ -15,6 +16,7 @@ use axum::{
     extract::{Path, State},
     Json,
 };
+use axum_extra::extract::WithRejection;
 use uuid::Uuid;
 
 #[utoipa::path(
@@ -31,7 +33,7 @@ use uuid::Uuid;
 )]
 pub(crate) async fn get_proof_presentation_definition(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<PresentationDefinitionResponseRestDTO> {
     let result = state
         .core
@@ -55,7 +57,7 @@ pub(crate) async fn get_proof_presentation_definition(
 )]
 pub(crate) async fn get_proof_details(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<ProofDetailResponseRestDTO> {
     let result = state.core.proof_service.get_proof(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting proof")
@@ -75,7 +77,7 @@ declare_utoipa_alias!(GetProofsResponseRestDTO);
 )]
 pub(crate) async fn get_proofs(
     state: State<AppState>,
-    Qs(query): Qs<GetProofQuery>,
+    WithRejection(Qs(query), _): WithRejection<Qs<GetProofQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetProofsResponseRestDTO> {
     let result = state.core.proof_service.get_proof_list(query.into()).await;
     OkOrErrorResponse::from_result(result, state, "getting proofs")
@@ -93,7 +95,10 @@ pub(crate) async fn get_proofs(
 )]
 pub(crate) async fn post_proof(
     state: State<AppState>,
-    Json(request): Json<CreateProofRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateProofRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state.core.proof_service.create_proof(request.into()).await;
     CreatedOrErrorResponse::from_result(result, state, "creating proof")
@@ -113,7 +118,7 @@ pub(crate) async fn post_proof(
 )]
 pub(crate) async fn share_proof(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
     let result = state.core.proof_service.share_proof(&id).await;
     OkOrErrorResponse::from_result(result, state, "sharing proof")

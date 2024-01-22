@@ -1,11 +1,13 @@
 use axum::extract::{Path, State};
 use axum::Json;
+use axum_extra::extract::WithRejection;
 use uuid::Uuid;
 
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
+use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, OkOrErrorResponse,
 };
@@ -31,7 +33,7 @@ use crate::router::AppState;
 )]
 pub(crate) async fn get_key(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<KeyResponseRestDTO> {
     let result = state.core.key_service.get_key(&id).await;
 
@@ -67,7 +69,7 @@ use super::dto::GetKeyQuery;
 )]
 pub(crate) async fn post_key(
     state: State<AppState>,
-    Json(request): Json<KeyRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<Json<KeyRequestRestDTO>, ErrorResponseRestDTO>,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state.core.key_service.generate_key(request.into()).await;
     CreatedOrErrorResponse::from_result(result, state, "creating key")
@@ -87,7 +89,7 @@ declare_utoipa_alias!(GetKeyListResponseRestDTO);
 )]
 pub(crate) async fn get_key_list(
     state: State<AppState>,
-    Qs(query): Qs<GetKeyQuery>,
+    WithRejection(Qs(query), _): WithRejection<Qs<GetKeyQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetKeyListResponseRestDTO> {
     let result = state.core.key_service.get_key_list(query.into()).await;
 
