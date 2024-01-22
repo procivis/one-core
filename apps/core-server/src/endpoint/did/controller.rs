@@ -1,5 +1,6 @@
 use axum::extract::{Path, State};
 use axum::Json;
+use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
 use shared_types::DidId;
 
@@ -7,6 +8,7 @@ use super::dto::{
     CreateDidRequestRestDTO, DidPatchRequestRestDTO, DidResponseRestDTO, GetDidQuery,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetDidsResponseRestDTO};
+use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
     OkOrErrorResponse,
@@ -29,7 +31,7 @@ use crate::router::AppState;
 )]
 pub(crate) async fn get_did(
     state: State<AppState>,
-    Path(id): Path<DidId>,
+    WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<DidResponseRestDTO> {
     let result = state.core.did_service.get_did(&id).await;
 
@@ -67,7 +69,7 @@ declare_utoipa_alias!(GetDidsResponseRestDTO);
 )]
 pub(crate) async fn get_did_list(
     state: State<AppState>,
-    Qs(query): Qs<GetDidQuery>,
+    WithRejection(Qs(query), _): WithRejection<Qs<GetDidQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetDidsResponseRestDTO> {
     let result = state.core.did_service.get_did_list(query.into()).await;
     OkOrErrorResponse::from_result(result, state, "getting dids")
@@ -85,7 +87,10 @@ pub(crate) async fn get_did_list(
 )]
 pub(crate) async fn post_did(
     state: State<AppState>,
-    Json(request): Json<CreateDidRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateDidRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state.core.did_service.create_did(request.into()).await;
 
@@ -116,8 +121,11 @@ pub(crate) async fn post_did(
 )]
 pub(crate) async fn update_did(
     state: State<AppState>,
-    Path(id): Path<DidId>,
-    Json(request): Json<DidPatchRequestRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<DidPatchRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> EmptyOrErrorResponse {
     let result = state.core.did_service.update_did(&id, request.into()).await;
     EmptyOrErrorResponse::from_result(result, state, "updating DID")

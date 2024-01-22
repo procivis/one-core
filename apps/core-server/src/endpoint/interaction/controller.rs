@@ -4,11 +4,15 @@ use super::dto::{
     PresentationSubmitRequestRestDTO,
 };
 use crate::{
-    dto::response::{EmptyOrErrorResponse, OkOrErrorResponse},
+    dto::{
+        error::ErrorResponseRestDTO,
+        response::{EmptyOrErrorResponse, OkOrErrorResponse},
+    },
     router::AppState,
 };
 
 use axum::{extract::State, Json};
+use axum_extra::extract::WithRejection;
 
 #[utoipa::path(
     post,
@@ -22,7 +26,10 @@ use axum::{extract::State, Json};
 )]
 pub(crate) async fn handle_invitation(
     state: State<AppState>,
-    Json(request): Json<HandleInvitationRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<HandleInvitationRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> OkOrErrorResponse<HandleInvitationResponseRestDTO> {
     let result = state
         .core
@@ -44,7 +51,10 @@ pub(crate) async fn handle_invitation(
 )]
 pub(crate) async fn issuance_submit(
     state: State<AppState>,
-    Json(request): Json<IssuanceSubmitRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<IssuanceSubmitRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -66,7 +76,10 @@ pub(crate) async fn issuance_submit(
 )]
 pub(crate) async fn issuance_reject(
     state: State<AppState>,
-    Json(request): Json<IssuanceRejectRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<IssuanceRejectRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -88,7 +101,10 @@ pub(crate) async fn issuance_reject(
 )]
 pub(crate) async fn presentation_reject(
     state: State<AppState>,
-    Json(request): Json<PresentationRejectRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<PresentationRejectRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -110,7 +126,10 @@ pub(crate) async fn presentation_reject(
 )]
 pub(crate) async fn presentation_submit(
     state: State<AppState>,
-    Json(request): Json<PresentationSubmitRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<PresentationSubmitRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core

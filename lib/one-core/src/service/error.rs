@@ -192,6 +192,9 @@ pub enum BusinessLogicError {
 
     #[error("Some of the provided claim schema ids are missing")]
     MissingClaimSchemas,
+
+    #[error("General input validation error")]
+    GeneralInputValidationError,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -481,6 +484,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Key already exists")]
     BR_0066,
+
+    #[strum(to_string = "General input validation error")]
+    BR_0084,
 }
 
 impl From<FormatError> for ServiceError {
@@ -566,6 +572,7 @@ impl BusinessLogicError {
             BusinessLogicError::MissingClaimSchemas => ErrorCode::BR_0011,
             BusinessLogicError::DidDeactivation(error) => error.error_code(),
             BusinessLogicError::KeyAlreadyExists => ErrorCode::BR_0066,
+            BusinessLogicError::GeneralInputValidationError => ErrorCode::BR_0084,
         }
     }
 }

@@ -1,10 +1,12 @@
 use axum::extract::{Path, State};
 use axum::Json;
+use axum_extra::extract::WithRejection;
 use uuid::Uuid;
 
 use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
 };
+use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
     OkOrErrorResponse, VecResponse,
@@ -34,7 +36,7 @@ use super::dto::{
 )]
 pub(crate) async fn delete_credential(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state.core.credential_service.delete_credential(&id).await;
     EmptyOrErrorResponse::from_result(result, state, "deleting credential")
@@ -54,7 +56,7 @@ pub(crate) async fn delete_credential(
 )]
 pub(crate) async fn get_credential(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
     let result = state.core.credential_service.get_credential(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting credential")
@@ -76,7 +78,7 @@ declare_utoipa_alias!(GetCredentialsResponseDTO);
 )]
 pub(crate) async fn get_credential_list(
     state: State<AppState>,
-    Qs(query): Qs<GetCredentialQuery>,
+    WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialsResponseDTO> {
     let result = state
         .core
@@ -99,7 +101,10 @@ pub(crate) async fn get_credential_list(
 )]
 pub(crate) async fn post_credential(
     state: State<AppState>,
-    Json(request): Json<CreateCredentialRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateCredentialRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
@@ -124,7 +129,7 @@ pub(crate) async fn post_credential(
 )]
 pub(crate) async fn revoke_credential(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state.core.credential_service.revoke_credential(&id).await;
     EmptyOrErrorResponse::from_result(result, state, "revoking credential")
@@ -144,7 +149,7 @@ pub(crate) async fn revoke_credential(
 )]
 pub(crate) async fn share_credential(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<EntityShareResponseRestDTO> {
     let result = state.core.credential_service.share_credential(&id).await;
     OkOrErrorResponse::from_result(result, state, "sharing credential")
@@ -162,7 +167,10 @@ pub(crate) async fn share_credential(
 )]
 pub(crate) async fn revocation_check(
     state: State<AppState>,
-    Json(request): Json<CredentialRevocationCheckRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CredentialRevocationCheckRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> OkOrErrorResponse<VecResponse<CredentialRevocationCheckResponseRestDTO>> {
     let result = state
         .core

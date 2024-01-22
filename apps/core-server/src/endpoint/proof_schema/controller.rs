@@ -2,6 +2,7 @@ use super::dto::{
     CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
+use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
     OkOrErrorResponse,
@@ -12,6 +13,7 @@ use crate::router::AppState;
 
 use axum::extract::{Path, State};
 use axum::Json;
+use axum_extra::extract::WithRejection;
 use uuid::Uuid;
 
 #[utoipa::path(
@@ -26,7 +28,10 @@ use uuid::Uuid;
 )]
 pub(crate) async fn post_proof_schema(
     state: State<AppState>,
-    Json(request): Json<CreateProofSchemaRequestRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateProofSchemaRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
@@ -50,7 +55,7 @@ declare_utoipa_alias!(GetProofSchemaListResponseRestDTO);
 )]
 pub(crate) async fn get_proof_schemas(
     state: State<AppState>,
-    Qs(query): Qs<GetProofSchemaQuery>,
+    WithRejection(Qs(query), _): WithRejection<Qs<GetProofSchemaQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetProofSchemaListResponseRestDTO> {
     let result = state
         .core
@@ -74,7 +79,7 @@ pub(crate) async fn get_proof_schemas(
 )]
 pub(crate) async fn get_proof_schema_detail(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetProofSchemaResponseRestDTO> {
     let result = state.core.proof_schema_service.get_proof_schema(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting proof schema")
@@ -94,7 +99,7 @@ pub(crate) async fn get_proof_schema_detail(
 )]
 pub(crate) async fn delete_proof_schema(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core

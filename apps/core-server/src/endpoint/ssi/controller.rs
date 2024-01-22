@@ -4,6 +4,7 @@ use super::dto::{
     OpenID4VPDirectPostResponseRestDTO, PostSsiIssuerConnectQueryParams,
     PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
+use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::ssi::dto::{
     DidWebResponseRestDTO, OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
@@ -20,6 +21,7 @@ use axum::{
     response::{IntoResponse, Response},
     Form, Json,
 };
+use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use one_core::service::error::{EntityNotFoundError, ServiceError};
@@ -38,8 +40,14 @@ use uuid::Uuid;
 )]
 pub(crate) async fn ssi_verifier_connect(
     state: State<AppState>,
-    Query(query): Query<PostSsiVerifierConnectQueryParams>,
-    Json(request): Json<ConnectRequestRestDTO>,
+    WithRejection(Query(query), _): WithRejection<
+        Query<PostSsiVerifierConnectQueryParams>,
+        ErrorResponseRestDTO,
+    >,
+    WithRejection(Json(request), _): WithRejection<
+        Json<ConnectRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> OkOrErrorResponse<ConnectVerifierResponseRestDTO> {
     let result = state
         .core
@@ -60,7 +68,7 @@ pub(crate) async fn ssi_verifier_connect(
 )]
 pub(crate) async fn get_did_web_document(
     state: State<AppState>,
-    Path(id): Path<DidId>,
+    WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<DidWebResponseRestDTO> {
     let result = state.core.did_service.get_did_web_document(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting did:web document")
@@ -81,7 +89,7 @@ pub(crate) async fn get_did_web_document(
 )]
 pub(crate) async fn get_revocation_list_by_id(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core
@@ -121,7 +129,7 @@ pub(crate) async fn get_revocation_list_by_id(
 )]
 pub(crate) async fn oidc_get_issuer_metadata(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state.core.oidc_service.oidc_get_issuer_metadata(&id).await;
 
@@ -161,7 +169,7 @@ pub(crate) async fn oidc_get_issuer_metadata(
 )]
 pub(crate) async fn oidc_service_discovery(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state.core.oidc_service.oidc_service_discovery(&id).await;
 
@@ -204,8 +212,11 @@ pub(crate) async fn oidc_service_discovery(
 )]
 pub(crate) async fn oidc_create_token(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
-    Form(request): Form<OpenID4VCITokenRequestRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Form(request), _): WithRejection<
+        Form<OpenID4VCITokenRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     let result = state
         .core
@@ -263,9 +274,15 @@ pub(crate) async fn oidc_create_token(
 )]
 pub(crate) async fn oidc_create_credential(
     state: State<AppState>,
-    Path(credential_schema_id): Path<Uuid>,
-    TypedHeader(token): TypedHeader<headers::Authorization<Bearer>>,
-    Json(request): Json<OpenID4VCICredentialRequestRestDTO>,
+    WithRejection(Path(credential_schema_id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(TypedHeader(token), _): WithRejection<
+        TypedHeader<headers::Authorization<Bearer>>,
+        ErrorResponseRestDTO,
+    >,
+    WithRejection(Json(request), _): WithRejection<
+        Json<OpenID4VCICredentialRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     let access_token = token.token();
     let result = state
@@ -317,7 +334,10 @@ pub(crate) async fn oidc_create_credential(
 )]
 pub(crate) async fn oidc_verifier_direct_post(
     state: State<AppState>,
-    Form(request): Form<OpenID4VPDirectPostRequestRestDTO>,
+    WithRejection(Form(request), _): WithRejection<
+        Form<OpenID4VPDirectPostRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     let result = state
         .core
@@ -363,7 +383,10 @@ pub(crate) async fn oidc_verifier_direct_post(
 )]
 pub(crate) async fn ssi_verifier_reject_proof(
     state: State<AppState>,
-    Query(query): Query<ProofRequestQueryParams>,
+    WithRejection(Query(query), _): WithRejection<
+        Query<ProofRequestQueryParams>,
+        ErrorResponseRestDTO,
+    >,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -383,7 +406,10 @@ pub(crate) async fn ssi_verifier_reject_proof(
 )]
 pub(crate) async fn ssi_verifier_submit_proof(
     state: State<AppState>,
-    Query(query): Query<ProofRequestQueryParams>,
+    WithRejection(Query(query), _): WithRejection<
+        Query<ProofRequestQueryParams>,
+        ErrorResponseRestDTO,
+    >,
     request: String,
 ) -> EmptyOrErrorResponse {
     let result = state
@@ -404,8 +430,14 @@ pub(crate) async fn ssi_verifier_submit_proof(
 )]
 pub(crate) async fn ssi_issuer_connect(
     state: State<AppState>,
-    Query(query): Query<PostSsiIssuerConnectQueryParams>,
-    Json(request): Json<ConnectRequestRestDTO>,
+    WithRejection(Query(query), _): WithRejection<
+        Query<PostSsiIssuerConnectQueryParams>,
+        ErrorResponseRestDTO,
+    >,
+    WithRejection(Json(request), _): WithRejection<
+        Json<ConnectRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
 ) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
     let result = state
         .core
@@ -424,7 +456,10 @@ pub(crate) async fn ssi_issuer_connect(
 )]
 pub(crate) async fn ssi_issuer_reject(
     state: State<AppState>,
-    Query(query): Query<PostSsiIssuerRejectQueryParams>,
+    WithRejection(Query(query), _): WithRejection<
+        Query<PostSsiIssuerRejectQueryParams>,
+        ErrorResponseRestDTO,
+    >,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -443,7 +478,10 @@ pub(crate) async fn ssi_issuer_reject(
 )]
 pub(crate) async fn ssi_issuer_submit(
     state: State<AppState>,
-    Query(query): Query<PostSsiIssuerSubmitQueryParams>,
+    WithRejection(Query(query), _): WithRejection<
+        Query<PostSsiIssuerSubmitQueryParams>,
+        ErrorResponseRestDTO,
+    >,
 ) -> OkOrErrorResponse<IssuerResponseRestDTO> {
     let result = state
         .core
