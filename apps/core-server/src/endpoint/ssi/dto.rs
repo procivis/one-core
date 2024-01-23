@@ -2,8 +2,8 @@ use crate::{
     endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
     serialize::front_time,
 };
-use dto_mapper::From;
-use one_core::common_mapper::{convert_inner, convert_inner_of_inner};
+use dto_mapper::{convert_inner, convert_inner_of_inner};
+use dto_mapper::{From, Into};
 use one_core::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
     OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
@@ -54,47 +54,47 @@ pub struct PostSsiVerifierConnectQueryParams {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "ConnectVerifierResponseDTO")]
+#[from(ConnectVerifierResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectVerifierResponseRestDTO {
-    #[convert(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofRequestClaimRestDTO>,
     pub verifier_did: DidValue,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "OpenID4VCIIssuerMetadataResponseDTO")]
+#[from(OpenID4VCIIssuerMetadataResponseDTO)]
 pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub credential_endpoint: String,
-    #[convert(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO")]
+#[from(OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[convert(with_fn = convert_inner_of_inner)]
+    #[from(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO")]
+#[from(OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
     pub name: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO")]
+#[from(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO)]
 pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO {
     pub r#type: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "OpenID4VCIDiscoveryResponseDTO")]
+#[from(OpenID4VCIDiscoveryResponseDTO)]
 pub struct OpenID4VCIDiscoveryResponseRestDTO {
     pub issuer: String,
     pub authorization_endpoint: String,
@@ -106,30 +106,30 @@ pub struct OpenID4VCIDiscoveryResponseRestDTO {
     pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "OpenID4VCITokenRequestDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(OpenID4VCITokenRequestDTO)]
 pub struct OpenID4VCITokenRequestRestDTO {
     pub grant_type: String,
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "OpenID4VCICredentialDefinitionRequestDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(OpenID4VCICredentialDefinitionRequestDTO)]
 pub struct OpenID4VCICredentialDefinitionRequestRestDTO {
     pub r#type: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "OpenID4VCICredentialRequestDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(OpenID4VCICredentialRequestDTO)]
 pub struct OpenID4VCICredentialRequestRestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCICredentialDefinitionRequestRestDTO,
     pub proof: OpenID4VCIProofRequestRestDTO,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "OpenID4VCIProofRequestDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(OpenID4VCIProofRequestDTO)]
 pub struct OpenID4VCIProofRequestRestDTO {
     pub proof_type: String,
     pub jwt: String,
@@ -137,12 +137,12 @@ pub struct OpenID4VCIProofRequestRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "DidWebResponseDTO")]
+#[from(DidWebResponseDTO)]
 pub struct DidWebResponseRestDTO {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
     pub id: DidValue,
-    #[convert(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub verification_method: Vec<DidWebVerificationMethodResponseRestDTO>,
     pub authentication: Vec<String>,
     pub assertion_method: Vec<String>,
@@ -153,7 +153,7 @@ pub struct DidWebResponseRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "DidWebVerificationMethodResponseDTO")]
+#[from(DidWebVerificationMethodResponseDTO)]
 pub struct DidWebVerificationMethodResponseRestDTO {
     pub id: String,
     pub r#type: String,
@@ -163,7 +163,7 @@ pub struct DidWebVerificationMethodResponseRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "PublicKeyJwkResponseDTO")]
+#[from(PublicKeyJwkResponseDTO)]
 pub struct PublicKeyJwkResponseRestDTO {
     pub kty: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -180,7 +180,7 @@ pub struct PublicKeyJwkResponseRestDTO {
 pub struct DurationSecondsRest(pub i64);
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "OpenID4VCITokenResponseDTO")]
+#[from(OpenID4VCITokenResponseDTO)]
 pub struct OpenID4VCITokenResponseRestDTO {
     pub access_token: String,
     pub token_type: String,
@@ -194,7 +194,7 @@ pub struct OpenID4VCIErrorResponseRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "snake_case")]
-#[convert(from = "OpenID4VCIError")]
+#[from(OpenID4VCIError)]
 pub enum OpenID4VCIErrorRestEnum {
     UnsupportedGrantType,
     InvalidGrant,
@@ -208,8 +208,8 @@ pub enum OpenID4VCIErrorRestEnum {
 }
 
 #[serde_with::serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "OpenID4VPDirectPostRequestDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(OpenID4VPDirectPostRequestDTO)]
 pub struct OpenID4VPDirectPostRequestRestDTO {
     #[serde_as(as = "JsonString")]
     pub presentation_submission: PresentationSubmissionMappingRestDTO,
@@ -219,42 +219,42 @@ pub struct OpenID4VPDirectPostRequestRestDTO {
     pub state: Uuid,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "PresentationSubmissionMappingDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(PresentationSubmissionMappingDTO)]
 pub struct PresentationSubmissionMappingRestDTO {
     pub id: String,
     pub definition_id: String,
-    #[convert(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub descriptor_map: Vec<PresentationSubmissionDescriptorRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "PresentationSubmissionDescriptorDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(PresentationSubmissionDescriptorDTO)]
 pub struct PresentationSubmissionDescriptorRestDTO {
     pub id: String,
     #[schema(example = "SDJWT")]
     pub format: String,
     pub path: String,
-    #[convert(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub path_nested: Option<NestedPresentationSubmissionDescriptorRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "NestedPresentationSubmissionDescriptorDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(NestedPresentationSubmissionDescriptorDTO)]
 pub struct NestedPresentationSubmissionDescriptorRestDTO {
     pub format: String,
     pub path: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "OpenID4VPDirectPostResponseDTO")]
+#[from(OpenID4VPDirectPostResponseDTO)]
 pub struct OpenID4VPDirectPostResponseRestDTO {
     pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "ProofRequestClaimDTO")]
+#[from(ProofRequestClaimDTO)]
 pub struct ProofRequestClaimRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
@@ -281,7 +281,7 @@ pub struct PostSsiIssuerConnectQueryParams {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "IssuerResponseDTO")]
+#[from(IssuerResponseDTO)]
 pub struct IssuerResponseRestDTO {
     pub credential: String,
     pub format: String,
@@ -289,7 +289,7 @@ pub struct IssuerResponseRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "OpenID4VCICredentialResponseDTO")]
+#[from(OpenID4VCICredentialResponseDTO)]
 pub struct OpenID4VCICredentialResponseRestDTO {
     pub credential: String,
     pub format: String,

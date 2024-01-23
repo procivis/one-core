@@ -21,7 +21,7 @@ pub struct CreateOrganisationResponseRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "GetOrganisationDetailsResponseDTO")]
+#[from(GetOrganisationDetailsResponseDTO)]
 pub struct GetOrganisationDetailsResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]

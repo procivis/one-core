@@ -77,7 +77,7 @@ pub struct DetailCredentialClaimResponseDTO {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, From, AsRefStr)]
-#[convert(from = "crate::model::credential::CredentialRole")]
+#[from("crate::model::credential::CredentialRole")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialRole {
@@ -87,7 +87,7 @@ pub enum CredentialRole {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, From)]
-#[convert(from = "crate::model::credential::CredentialStateEnum")]
+#[from("crate::model::credential::CredentialStateEnum")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialStateEnum {
     Created,

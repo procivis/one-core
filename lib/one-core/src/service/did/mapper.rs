@@ -1,3 +1,4 @@
+use dto_mapper::convert_inner;
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
@@ -7,7 +8,6 @@ use crate::service::did::dto::{
     DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO,
 };
 use crate::{
-    common_mapper::convert_inner,
     model::{
         did::{Did, GetDidList, KeyRole, RelatedKey},
         key::{Key, KeyId},

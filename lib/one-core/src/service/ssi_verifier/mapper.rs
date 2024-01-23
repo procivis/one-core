@@ -1,5 +1,6 @@
+use dto_mapper::iterable_try_into;
+
 use crate::{
-    common_mapper::iterable_try_into,
     model::{
         did::Did,
         proof_schema::{ProofSchema, ProofSchemaClaim},

@@ -1,4 +1,3 @@
-use crate::common_mapper::convert_inner;
 use crate::model::organisation::OrganisationId;
 use crate::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
 use crate::{
@@ -16,6 +15,7 @@ use crate::{
         error::ServiceError,
     },
 };
+use dto_mapper::convert_inner;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

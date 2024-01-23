@@ -1,4 +1,4 @@
-use dto_mapper::From;
+use dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -128,8 +128,9 @@ impl Related<super::revocation_list::Entity> for Entity {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, From)]
-#[convert(from = "ModelCredentialRole", into = "ModelCredentialRole")]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(ModelCredentialRole)]
+#[into(ModelCredentialRole)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum CredentialRole {
     #[sea_orm(string_value = "HOLDER")]

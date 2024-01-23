@@ -35,7 +35,7 @@ pub struct GetProofSchemaResponseDTO {
 }
 
 #[derive(Clone, Debug, From)]
-#[convert(from = "ProofSchema")]
+#[from(ProofSchema)]
 pub struct GetProofSchemaListItemDTO {
     pub id: ProofSchemaId,
     pub created_date: OffsetDateTime,

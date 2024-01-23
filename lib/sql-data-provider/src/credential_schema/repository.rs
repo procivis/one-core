@@ -1,16 +1,7 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
-use sea_orm::ActiveValue::Set;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, SqlErr, Unchanged,
-};
-use std::str::FromStr;
-use time::OffsetDateTime;
-use uuid::Uuid;
-
+use dto_mapper::iterable_try_into;
 use one_core::{
-    common_mapper::iterable_try_into,
     model::{
         claim_schema::ClaimSchemaId,
         credential_schema::{
@@ -21,6 +12,14 @@ use one_core::{
     },
     repository::{credential_schema_repository::CredentialSchemaRepository, error::DataLayerError},
 };
+use sea_orm::ActiveValue::Set;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, SqlErr, Unchanged,
+};
+use std::str::FromStr;
+use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::{
     credential_schema::{

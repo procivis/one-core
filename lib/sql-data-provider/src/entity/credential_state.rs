@@ -1,15 +1,15 @@
-use dto_mapper::From;
+use dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use time::OffsetDateTime;
 
 use one_core::model::credential::CredentialState as ModelCredentialState;
 use one_core::model::credential::CredentialStateEnum as ModelCredentialStateEnum;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, From)]
-#[convert(into = "ModelCredentialState")]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Into)]
+#[into(ModelCredentialState)]
 #[sea_orm(table_name = "credential_state")]
 pub struct Model {
-    #[convert(skip)]
+    #[into(skip)]
     #[sea_orm(primary_key, auto_increment = false)]
     pub credential_id: String,
     #[sea_orm(primary_key, auto_increment = false)]
@@ -38,8 +38,9 @@ impl Related<super::credential::Entity> for Entity {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, From)]
-#[convert(from = "ModelCredentialStateEnum", into = "ModelCredentialStateEnum")]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(ModelCredentialStateEnum)]
+#[into(ModelCredentialStateEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum CredentialState {
     #[default]

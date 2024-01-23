@@ -2,7 +2,7 @@ use crate::{
     dto::CredentialRevocationCheckResponseBindingDTO, error::BindingError, utils::into_uuid,
     OneCoreBinding,
 };
-use one_core::common_mapper::convert_inner;
+use dto_mapper::convert_inner;
 
 impl OneCoreBinding {
     pub fn check_revocation(

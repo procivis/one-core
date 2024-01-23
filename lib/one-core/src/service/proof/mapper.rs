@@ -2,7 +2,6 @@ use super::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
 };
 use crate::{
-    common_mapper::convert_inner,
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
@@ -14,6 +13,7 @@ use crate::{
     provider::transport_protocol::dto::ProofClaimSchema,
     service::error::ServiceError,
 };
+use dto_mapper::convert_inner;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;

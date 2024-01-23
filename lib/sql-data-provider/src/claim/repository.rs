@@ -1,8 +1,8 @@
 use super::ClaimProvider;
 use crate::{entity::claim, mapper::to_data_layer_error};
 use autometrics::autometrics;
+use dto_mapper::iterable_try_into;
 use one_core::{
-    common_mapper::iterable_try_into,
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::ClaimSchemaId,

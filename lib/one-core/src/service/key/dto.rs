@@ -29,7 +29,7 @@ pub struct KeyResponseDTO {
 }
 
 #[derive(Clone, Debug, From)]
-#[convert(from = "Key")]
+#[from(Key)]
 pub struct KeyListItemResponseDTO {
     pub id: Uuid,
     pub created_date: OffsetDateTime,

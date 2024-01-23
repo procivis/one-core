@@ -14,8 +14,8 @@ use crate::{
     list_query_generic::SelectWithListQuery,
 };
 use autometrics::autometrics;
+use dto_mapper::convert_inner;
 use one_core::{
-    common_mapper::convert_inner,
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         credential::{

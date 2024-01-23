@@ -1,4 +1,4 @@
-use dto_mapper::From;
+use dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use utoipa::{IntoParams, ToSchema};
@@ -68,8 +68,8 @@ pub struct ListQueryParamsRest<Filter: IntoParams, SortColumn: for<'a> ToSchema<
     pub filter: Filter,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, From)]
-#[convert(into = "one_core::model::common::SortDirection")]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, Into)]
+#[into("one_core::model::common::SortDirection")]
 pub enum SortDirection {
     #[serde(rename = "ASC")]
     Ascending,
@@ -77,8 +77,8 @@ pub enum SortDirection {
     Descending,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, From)]
-#[convert(into = "one_core::model::common::ExactColumn")]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, Into)]
+#[into("one_core::model::common::ExactColumn")]
 pub enum ExactColumn {
     #[serde(rename = "name")]
     Name,
@@ -97,7 +97,7 @@ impl From<Uuid> for EntityResponseRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "one_core::model::common::EntityShareResponseDTO")]
+#[from("one_core::model::common::EntityShareResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub struct EntityShareResponseRestDTO {
     pub url: String,

@@ -1,11 +1,12 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use dto_mapper::convert_inner;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
 use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
 use crate::router::AppState;
-use one_core::{common_mapper::convert_inner, service::error::ServiceError};
+use one_core::service::error::ServiceError;
 
 #[derive(utoipa::IntoResponses)]
 pub enum ErrorResponse {

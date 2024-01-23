@@ -9,9 +9,9 @@ use crate::{
 };
 use anyhow::anyhow;
 use autometrics::autometrics;
+use dto_mapper::convert_inner;
 use one_core::model::proof::{ProofClaim, UpdateProofRequest};
 use one_core::{
-    common_mapper::convert_inner,
     model::{
         claim::{Claim, ClaimId},
         did::Did,

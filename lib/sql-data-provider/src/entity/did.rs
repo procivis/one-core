@@ -1,4 +1,4 @@
-use dto_mapper::From;
+use dto_mapper::{From, Into};
 use one_core::model::did::DidType as ModelDidType;
 use sea_orm::entity::prelude::*;
 use shared_types::{DidId, DidValue};
@@ -58,8 +58,9 @@ impl Related<super::key::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, From)]
-#[convert(from = "ModelDidType", into = "ModelDidType")]
+#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(ModelDidType)]
+#[into(ModelDidType)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum DidType {
     #[default]

@@ -21,7 +21,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, From, TryFrom)]
-#[convert(from = "CredentialSchema")]
+#[from(CredentialSchema)]
 #[try_from(T = ProofCredentialSchema, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaListItemResponseDTO {
