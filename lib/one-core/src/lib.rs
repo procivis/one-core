@@ -195,7 +195,7 @@ impl OneCore {
                 data_provider.get_revocation_list_repository(),
             ),
             oidc_service: OIDCService::new(
-                core_base_url,
+                core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
@@ -244,10 +244,12 @@ impl OneCore {
                 config.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
+                data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
                 data_provider.get_did_repository(),
                 protocol_provider.clone(),
                 config.clone(),
+                core_base_url,
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),

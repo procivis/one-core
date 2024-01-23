@@ -1,6 +1,12 @@
+use std::collections::HashMap;
+
+use super::dto::{
+    JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
+};
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
+use crate::model::credential_schema::CredentialSchemaId;
 use crate::service::error::EntityNotFoundError;
 use crate::{
     model::{
@@ -19,8 +25,10 @@ use crate::{
         ssi_validator::validate_config_entity_presence,
     },
 };
+use convert_case::{Case, Casing};
 use shared_types::DidValue;
 use time::OffsetDateTime;
+use url::Url;
 
 impl SSIIssuerService {
     pub async fn issuer_connect(
@@ -154,4 +162,88 @@ impl SSIIssuerService {
 
         Ok(())
     }
+
+    pub async fn get_json_ld_context(
+        &self,
+        credential_schema_id: CredentialSchemaId,
+    ) -> Result<JsonLDContextResponseDTO, ServiceError> {
+        let credential_schema = self
+            .credential_schema_repository
+            .get_credential_schema(
+                &credential_schema_id,
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let Some(credential_schema) = credential_schema else {
+            return Err(EntityNotFoundError::CredentialSchema(credential_schema_id).into());
+        };
+
+        let claim_schemas =
+            credential_schema
+                .claim_schemas
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "claim schemas missing".to_string(),
+                ))?;
+
+        let base_url = format!(
+            "{}/ssi/context/v1/{credential_schema_id}",
+            self.core_base_url
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "Host URL not specified".to_string()
+                ))?,
+        );
+
+        let schema_name = credential_schema.name.to_case(Case::Pascal);
+        let credential_name = format!("{schema_name}Credential");
+        let subject_name = format!("{schema_name}Subject");
+        let claims = claim_schemas
+            .iter()
+            .map(|claim_schema| {
+                Ok((
+                    claim_schema.schema.key.to_owned(),
+                    JsonLDEntityDTO::Reference(get_url_with_fragment(
+                        &base_url,
+                        &claim_schema.schema.key,
+                    )?),
+                ))
+            })
+            .collect::<Result<HashMap<String, JsonLDEntityDTO>, ServiceError>>()?;
+
+        Ok(JsonLDContextResponseDTO {
+            context: JsonLDContextDTO {
+                entities: HashMap::from([
+                    (
+                        credential_name.to_owned(),
+                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                            id: get_url_with_fragment(&base_url, &credential_name)?,
+                            context: JsonLDContextDTO::default(),
+                        }),
+                    ),
+                    (
+                        subject_name.to_owned(),
+                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                            id: get_url_with_fragment(&base_url, &subject_name)?,
+                            context: JsonLDContextDTO {
+                                entities: claims,
+                                ..Default::default()
+                            },
+                        }),
+                    ),
+                ]),
+                ..Default::default()
+            },
+        })
+    }
+}
+
+fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, ServiceError> {
+    let mut url = Url::parse(base_url).map_err(|e| ServiceError::MappingError(e.to_string()))?;
+    url.set_fragment(Some(fragment));
+    Ok(url.to_string())
 }
