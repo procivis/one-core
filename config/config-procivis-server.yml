@@ -206,7 +206,7 @@ keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"
     type: "AZURE_VAULT"
-    disabled: true
+    disabled: false
     order: 2
     params:
       private:

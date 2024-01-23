@@ -1,0 +1,3 @@
+keyStorage:
+  AZURE_VAULT:
+    disabled: true
