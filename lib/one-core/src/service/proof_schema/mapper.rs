@@ -4,7 +4,6 @@ use super::dto::{
 use crate::model::common::ExactColumn;
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 use crate::{
-    common_mapper::iterable_try_into,
     model::{
         organisation::Organisation,
         organisation::OrganisationId,
@@ -12,6 +11,7 @@ use crate::{
     },
     service::error::ServiceError,
 };
+use dto_mapper::iterable_try_into;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

@@ -1,8 +1,6 @@
 use crate::dto::common::{GetListQueryParams, GetListResponseRestDTO};
-use one_core::{
-    common_mapper::{convert_inner, iterable_try_into},
-    model::common::GetListResponse,
-};
+use dto_mapper::{convert_inner, iterable_try_into};
+use one_core::model::common::GetListResponse;
 use serde::Serialize;
 use std::fmt;
 use thiserror::Error;

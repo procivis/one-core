@@ -9,19 +9,17 @@ use crate::{
     },
     utils::{into_uuid, TimestampFormat},
 };
-use one_core::{
-    common_mapper::convert_inner,
-    service::{
-        credential::dto::{
-            CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
-        },
-        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
-        error::ServiceError,
-        key::dto::KeyRequestDTO,
-        proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
-        ssi_holder::dto::InvitationResponseDTO,
+use dto_mapper::convert_inner;
+use one_core::service::{
+    credential::dto::{
+        CredentialDetailResponseDTO, CredentialListItemResponseDTO,
+        DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
     },
+    did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
+    error::ServiceError,
+    key::dto::KeyRequestDTO,
+    proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
+    ssi_holder::dto::InvitationResponseDTO,
 };
 use serde_json::json;
 use uuid::Uuid;

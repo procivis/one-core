@@ -4,9 +4,9 @@ use crate::{
     list_query::GetEntityColumn,
 };
 use anyhow::anyhow;
+use dto_mapper::iterable_try_into;
 use migration::SimpleExpr;
 use one_core::{
-    common_mapper::iterable_try_into,
     model::proof_schema::{
         GetProofSchemaList, ProofSchema, ProofSchemaClaim, ProofSchemaId, SortableProofSchemaColumn,
     },

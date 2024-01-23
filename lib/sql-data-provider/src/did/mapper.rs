@@ -1,5 +1,5 @@
+use dto_mapper::convert_inner;
 use one_core::{
-    common_mapper::convert_inner,
     model::did::{Did, DidFilterValue, GetDidList, SortableDidColumn},
     repository::error::DataLayerError,
 };

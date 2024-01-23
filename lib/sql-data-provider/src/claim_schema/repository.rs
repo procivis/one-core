@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use autometrics::autometrics;
+use dto_mapper::{convert_inner, iterable_try_into};
 use one_core::{
-    common_mapper::{convert_inner, iterable_try_into},
     model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
     repository::{claim_schema_repository::ClaimSchemaRepository, error::DataLayerError},
 };

@@ -38,7 +38,7 @@ pub struct DidResponseKeysDTO {
 
 #[derive(Clone, Debug, Deserialize, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "Did")]
+#[from(Did)]
 pub struct DidListItemResponseDTO {
     pub id: DidId,
     #[serde(with = "time::serde::rfc3339")]

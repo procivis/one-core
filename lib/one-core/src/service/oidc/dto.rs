@@ -1,4 +1,4 @@
-use dto_mapper::From;
+use dto_mapper::Into;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
@@ -100,8 +100,8 @@ pub struct OpenID4VCIInteractionDataDTO {
     pub access_token_expires_at: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Deserialize, From)]
-#[convert(into = "SubmitIssuerResponse")]
+#[derive(Clone, Debug, Deserialize, Into)]
+#[into(SubmitIssuerResponse)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenID4VCICredentialResponseDTO {
     pub credential: String,

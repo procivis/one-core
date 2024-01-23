@@ -1,10 +1,12 @@
-use dto_mapper::{From, TryFrom};
-use one_core::{
-    common_mapper::iterable_try_into,
-    service::did::dto::{
-        CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO, DidResponseDTO,
-        DidResponseKeysDTO,
-    },
+use crate::{
+    dto::common::ListQueryParamsRest, endpoint::key::dto::KeyListItemResponseRestDTO,
+    mapper::MapperError, serialize::front_time,
+};
+use dto_mapper::iterable_try_into;
+use dto_mapper::{From, Into, TryFrom};
+use one_core::service::did::dto::{
+    CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO, DidResponseDTO,
+    DidResponseKeysDTO,
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue};
@@ -12,19 +14,12 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::{
-    dto::common::ListQueryParamsRest, endpoint::key::dto::KeyListItemResponseRestDTO,
-    mapper::MapperError, serialize::front_time,
-};
-
 pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[convert(
-    from = "one_core::model::did::DidType",
-    into = "one_core::model::did::DidType"
-)]
+#[from("one_core::model::did::DidType")]
+#[into("one_core::model::did::DidType")]
 pub enum DidType {
     #[default]
     Remote,
@@ -33,7 +28,7 @@ pub enum DidType {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "DidListItemResponseDTO")]
+#[from(DidListItemResponseDTO)]
 pub struct DidListItemResponseRestDTO {
     pub id: DidId,
     #[serde(serialize_with = "front_time")]
@@ -109,8 +104,8 @@ pub struct CreateDidRequestRestDTO {
     pub params: Option<serde_json::Value>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
-#[convert(into = "CreateDidRequestKeysDTO")]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
+#[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestKeysRestDTO {
     pub authentication: Vec<Uuid>,
@@ -120,9 +115,9 @@ pub struct CreateDidRequestKeysRestDTO {
     pub capability_delegation: Vec<Uuid>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[convert(into = "one_core::model::did::SortableDidColumn")]
+#[into("one_core::model::did::SortableDidColumn")]
 pub enum SortableDidColumnRestDTO {
     Name,
     CreatedDate,
@@ -166,9 +161,9 @@ pub struct DidFilterQueryParamsRest {
     pub deactivated: Option<Boolean>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[convert(into = "DidPatchRequestDTO")]
+#[into(DidPatchRequestDTO)]
 pub struct DidPatchRequestRestDTO {
     pub deactivated: Option<bool>,
 }

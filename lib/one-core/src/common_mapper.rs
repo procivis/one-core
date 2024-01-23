@@ -1,11 +1,5 @@
 use std::iter::IntoIterator;
 
-use fmap::Functor;
-use serde::{Deserialize, Deserializer};
-use shared_types::{DidId, DidValue};
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
-
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
@@ -18,32 +12,11 @@ use crate::model::organisation::Organisation;
 use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::{model::common::GetListResponse, service::error::ServiceError};
-
-pub fn convert_inner<'a, T, A>(outer: T) -> T::Mapped
-where
-    T: Functor<'a, A>,
-    T::Inner: Into<A>,
-{
-    outer.fmap(Into::into)
-}
-
-pub fn convert_inner_of_inner<'a, T, K, A: 'a>(outer: T) -> T::Mapped
-where
-    T: Functor<'a, K>,
-    T::Inner: Functor<'a, A, Mapped = K>,
-    <T::Inner as Functor<'a, A>>::Inner: Into<A>,
-{
-    outer.fmap(|val| val.fmap(Into::into))
-}
-
-pub fn iterable_try_into<T, C, R>(input: C) -> Result<R, <C::Item as TryInto<T>>::Error>
-where
-    C: IntoIterator,
-    C::Item: TryInto<T>,
-    R: FromIterator<T>,
-{
-    input.into_iter().map(|item| item.try_into()).collect()
-}
+use dto_mapper::{convert_inner, iterable_try_into};
+use serde::{Deserialize, Deserializer};
+use shared_types::{DidId, DidValue};
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
 
 pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListResponse<T> {
     GetListResponse::<T> {

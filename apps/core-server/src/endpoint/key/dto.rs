@@ -1,5 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use dto_mapper::{From, TryFrom};
+use dto_mapper::{Into, TryFrom};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -9,8 +9,8 @@ use one_core::service::key::dto::{KeyListItemResponseDTO, KeyRequestDTO, KeyResp
 
 use crate::{dto::common::GetListQueryParams, mapper::MapperError, serialize::front_time};
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "KeyRequestDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(KeyRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyRequestRestDTO {
     pub organisation_id: Uuid,
@@ -75,9 +75,9 @@ pub struct KeyListItemResponseRestDTO {
     pub storage_type: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[convert(into = "one_core::model::key::SortableKeyColumn")]
+#[into("one_core::model::key::SortableKeyColumn")]
 pub enum SortableKeyColumnRestDTO {
     Name,
     CreatedDate,

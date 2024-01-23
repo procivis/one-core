@@ -1,5 +1,5 @@
-use dto_mapper::From;
-use one_core::common_mapper::convert_inner;
+use dto_mapper::convert_inner;
+use dto_mapper::Into;
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
@@ -44,18 +44,18 @@ pub struct PresentationRejectRequestRestDTO {
     pub interaction_id: Uuid,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = PresentationSubmitRequestDTO)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(PresentationSubmitRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct PresentationSubmitRequestRestDTO {
     pub interaction_id: Uuid,
-    #[convert(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, dto_mapper::From)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[convert(into = "PresentationSubmitCredentialRequestDTO")]
+#[into(PresentationSubmitCredentialRequestDTO)]
 pub struct PresentationSubmitCredentialRequestRestDTO {
     pub credential_id: Uuid,
     pub submit_claims: Vec<String>,

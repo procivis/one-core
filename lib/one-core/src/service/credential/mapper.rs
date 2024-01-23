@@ -1,8 +1,8 @@
+use dto_mapper::convert_inner;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    common_mapper::convert_inner,
     model::{
         claim::Claim,
         credential::{

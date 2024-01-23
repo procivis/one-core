@@ -6,8 +6,7 @@ use crate::endpoint::credential_schema::dto::{
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::serialize::front_time;
 use crate::serialize::front_time_option;
-use dto_mapper::From;
-use one_core::common_mapper::convert_inner;
+use dto_mapper::{convert_inner, From, Into};
 use one_core::service::credential::dto::CreateCredentialRequestDTO;
 use one_core::service::credential::dto::CredentialDetailResponseDTO;
 use one_core::service::credential::dto::CredentialListItemResponseDTO;
@@ -25,7 +24,7 @@ use uuid::Uuid;
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "CredentialListItemResponseDTO")]
+#[from(CredentialListItemResponseDTO)]
 pub struct CredentialListItemResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
@@ -42,13 +41,13 @@ pub struct CredentialListItemResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub schema: CredentialSchemaListItemResponseRestDTO,
-    #[convert(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub issuer_did: Option<DidListItemResponseRestDTO>,
     pub role: CredentialRoleRestEnum,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(from = "CredentialDetailResponseDTO")]
+#[from(CredentialDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct GetCredentialResponseRestDTO {
     pub id: Uuid,
@@ -66,16 +65,17 @@ pub struct GetCredentialResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub schema: CredentialDetailSchemaResponseRestDTO,
-    #[convert(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub issuer_did: Option<DidListItemResponseRestDTO>,
-    #[convert(with_fn = convert_inner)]
+    #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRoleRestEnum,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
-#[convert(from = "CredentialRole", into = "CredentialRole")]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
+#[from(CredentialRole)]
+#[into(CredentialRole)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialRoleRestEnum {
     Holder,
@@ -85,7 +85,7 @@ pub enum CredentialRoleRestEnum {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "DetailCredentialSchemaResponseDTO")]
+#[from(DetailCredentialSchemaResponseDTO)]
 pub struct CredentialDetailSchemaResponseRestDTO {
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
@@ -102,7 +102,7 @@ pub struct CredentialDetailSchemaResponseRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "DetailCredentialClaimResponseDTO")]
+#[from(DetailCredentialClaimResponseDTO)]
 pub struct CredentialDetailClaimResponseRestDTO {
     pub schema: CredentialClaimSchemaResponseRestDTO,
     pub value: String,
@@ -110,7 +110,7 @@ pub struct CredentialDetailClaimResponseRestDTO {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[convert(from = "CredentialStateEnum")]
+#[from(CredentialStateEnum)]
 pub enum CredentialStateRestEnum {
     Created,
     Pending,
@@ -134,9 +134,9 @@ pub struct CredentialsFilterQueryParamsRest {
 pub type GetCredentialQuery =
     ListQueryParamsRest<CredentialsFilterQueryParamsRest, SortableCredentialColumnRestEnum>;
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[convert(into = "one_core::model::credential::SortableCredentialColumn")]
+#[into("one_core::model::credential::SortableCredentialColumn")]
 pub enum SortableCredentialColumnRestEnum {
     CreatedDate,
     #[serde(rename = "schema.name")]
@@ -145,23 +145,23 @@ pub enum SortableCredentialColumnRestEnum {
     State,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[convert(into = "CreateCredentialRequestDTO")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(CreateCredentialRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCredentialRequestRestDTO {
     pub credential_schema_id: Uuid,
     pub issuer_did: Uuid,
     pub transport: String,
-    #[convert(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
     pub redirect_uri: Option<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[convert(into = CredentialRequestClaimDTO)]
+#[into(CredentialRequestClaimDTO)]
 pub struct CredentialRequestClaimRestDTO {
-    #[convert(rename = "claim_schema_id")]
+    #[into(rename = "claim_schema_id")]
     pub claim_id: Uuid,
     pub value: String,
 }
@@ -174,7 +174,7 @@ pub struct CredentialRevocationCheckRequestRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[convert(from = "CredentialRevocationCheckResponseDTO")]
+#[from(CredentialRevocationCheckResponseDTO)]
 pub struct CredentialRevocationCheckResponseRestDTO {
     pub credential_id: Uuid,
     pub status: CredentialStateRestEnum,

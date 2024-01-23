@@ -11,7 +11,7 @@ use utoipa::ToSchema;
 
 #[derive(Serialize, From, ToSchema)]
 #[schema(example = "BR_XXXX")]
-#[convert(from = "one_core::service::error::ErrorCode")]
+#[from("one_core::service::error::ErrorCode")]
 #[allow(non_camel_case_types)]
 pub enum ErrorCode {
     BR_0000,
