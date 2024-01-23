@@ -15,6 +15,9 @@ use one_core::service::oidc::dto::{
     OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
     PresentationSubmissionMappingDTO,
 };
+use one_core::service::ssi_issuer::dto::{
+    JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
+};
 use one_core::service::{
     did::dto::{DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO},
     oidc::dto::{
@@ -367,4 +370,42 @@ pub struct OpenID4VCICredentialSubjectRestDTO {
 pub struct OpenID4VCICredentialValueDetailsRestDTO {
     pub value: String,
     pub value_type: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(JsonLDContextResponseDTO)]
+pub struct JsonLDContextResponseRestDTO {
+    #[serde(rename = "@context")]
+    pub context: JsonLDContextRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(JsonLDContextDTO)]
+pub struct JsonLDContextRestDTO {
+    #[serde(rename = "@version")]
+    pub version: String,
+    #[serde(rename = "@protected")]
+    pub protected: bool,
+    pub id: String,
+    pub r#type: String,
+    #[serde(flatten)]
+    #[from(with_fn = convert_inner)]
+    pub entities: HashMap<String, JsonLDEntityRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(JsonLDEntityDTO)]
+#[serde(untagged)]
+pub enum JsonLDEntityRestDTO {
+    Reference(String),
+    Inline(JsonLDInlineEntityRestDTO),
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(JsonLDInlineEntityDTO)]
+pub struct JsonLDInlineEntityRestDTO {
+    #[serde(rename = "@context")]
+    pub context: JsonLDContextRestDTO,
+    #[serde(rename = "@id")]
+    pub id: String,
 }

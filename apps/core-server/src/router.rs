@@ -231,6 +231,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             "/ssi/temporary-verifier/v1/reject",
             post(ssi::controller::ssi_verifier_reject_proof),
         )
+        .route(
+            "/ssi/context/v1/:id",
+            get(ssi::controller::get_json_ld_context),
+        )
         .route("/metrics", get(metrics::get_metrics));
 
     let technical_endpoints = Router::new()
@@ -331,6 +335,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::oidc_create_token,
             endpoint::ssi::controller::oidc_create_credential,
             endpoint::ssi::controller::oidc_verifier_direct_post,
+            endpoint::ssi::controller::get_json_ld_context,
 
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_submit,
@@ -429,6 +434,10 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::DidWebResponseRestDTO,
                 endpoint::ssi::dto::DidWebVerificationMethodResponseRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkResponseRestDTO,
+                endpoint::ssi::dto::JsonLDContextResponseRestDTO,
+                endpoint::ssi::dto::JsonLDContextRestDTO,
+                endpoint::ssi::dto::JsonLDEntityRestDTO,
+                endpoint::ssi::dto::JsonLDInlineEntityRestDTO,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,

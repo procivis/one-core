@@ -6,8 +6,11 @@ use uuid::Uuid;
 use crate::{
     model::credential::{Credential, CredentialId, CredentialState, CredentialStateEnum},
     provider::transport_protocol::provider::MockTransportProtocolProvider,
-    repository::credential_repository::MockCredentialRepository,
     repository::did_repository::MockDidRepository,
+    repository::{
+        credential_repository::MockCredentialRepository,
+        credential_schema_repository::MockCredentialSchemaRepository,
+    },
     service::{
         ssi_issuer::SSIIssuerService,
         test_utilities::{dummy_credential, dummy_did, generic_config},
@@ -90,9 +93,11 @@ async fn test_issuer_reject_succeeds() {
 
 fn mock_ssi_issuer_service() -> SSIIssuerService {
     SSIIssuerService {
+        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         credential_repository: Arc::new(MockCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
         config: Arc::new(generic_config().core),
+        core_base_url: None,
     }
 }

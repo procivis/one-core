@@ -39,4 +39,9 @@ impl SSIApi {
 
         self.client.get(&url).await
     }
+
+    pub async fn get_json_ld_context(&self, credential_schema_id: impl Into<Uuid>) -> Response {
+        let url = format!("/ssi/context/v1/{}", credential_schema_id.into());
+        self.client.get(&url).await
+    }
 }

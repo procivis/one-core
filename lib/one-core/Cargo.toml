@@ -44,7 +44,8 @@ shared-types = { version = "0.1.0", path = "../shared-types" }
 elliptic-curve.workspace = true
 p256.workspace = true
 fmap.workspace = true
-pqc_dilithium = { version = "0.2.0", git = "https://github.com/kibernetikos/dilithium", rev = "b7106801cf"}
+pqc_dilithium = { version = "0.2.0", git = "https://github.com/kibernetikos/dilithium", rev = "b7106801cf" }
+convert_case = { version = "0.6" }
 
 [dev-dependencies]
 bs58 = { version = "0.5" }

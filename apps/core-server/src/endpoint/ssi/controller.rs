@@ -1,8 +1,9 @@
 use super::dto::{
     ConnectRequestRestDTO, ConnectVerifierResponseRestDTO, IssuerResponseRestDTO,
-    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VPDirectPostRequestRestDTO,
-    OpenID4VPDirectPostResponseRestDTO, PostSsiIssuerConnectQueryParams,
-    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
+    JsonLDContextResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
+    OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
+    PostSsiIssuerConnectQueryParams, PostSsiIssuerSubmitQueryParams,
+    PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
@@ -545,4 +546,44 @@ pub(crate) async fn ssi_issuer_submit(
         .issuer_submit(&query.credential_id)
         .await;
     OkOrErrorResponse::from_result(result, state, "accepting credential")
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/context/v1/{id}",
+    params(
+        ("id" = Uuid, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = JsonLDContextResponseRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn get_json_ld_context(
+    state: State<AppState>,
+    WithRejection(Path(credential_schema_id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .ssi_issuer_service
+        .get_json_ld_context(credential_schema_id)
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(JsonLDContextResponseRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
+            tracing::error!("Missing credential schema");
+            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }
