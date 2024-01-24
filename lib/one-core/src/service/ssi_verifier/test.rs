@@ -300,7 +300,7 @@ async fn test_submit_proof_succeeds() {
                 state: Some(vec![ProofState {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    state: ProofStateEnum::Offered,
+                    state: ProofStateEnum::Requested,
                 }]),
                 schema: Some(ProofSchema {
                     claim_schemas: Some(vec![
@@ -446,7 +446,7 @@ async fn test_reject_proof_succeeds() {
                 state: Some(vec![ProofState {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
-                    state: ProofStateEnum::Offered,
+                    state: ProofStateEnum::Requested,
                 }]),
                 ..dummy_proof()
             }))

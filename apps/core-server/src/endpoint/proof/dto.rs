@@ -31,7 +31,7 @@ use uuid::Uuid;
 pub enum ProofStateRestEnum {
     Created,
     Pending,
-    Offered,
+    Requested,
     Accepted,
     Rejected,
     Error,

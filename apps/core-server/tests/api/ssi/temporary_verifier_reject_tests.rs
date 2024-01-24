@@ -41,7 +41,7 @@ async fn test_temporary_verifier_reject_success() {
         &did,
         None,
         Some(&proof_schema),
-        ProofStateEnum::Offered,
+        ProofStateEnum::Requested,
         "OPENID4VC",
         None,
     )

@@ -678,7 +678,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(ProofState::State)
                             .enumeration(
-                                ProofRequestState::Table,
+                                ProofRequestStateEnum,
                                 [
                                     ProofRequestState::Created,
                                     ProofRequestState::Pending,
@@ -1076,8 +1076,10 @@ pub enum ProofState {
 }
 
 #[derive(Iden)]
+pub struct ProofRequestStateEnum;
+
+#[derive(Iden)]
 pub enum ProofRequestState {
-    Table,
     #[iden = "CREATED"]
     Created,
     #[iden = "PENDING"]

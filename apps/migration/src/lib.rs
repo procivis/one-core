@@ -5,6 +5,7 @@ mod m20240115_093859_unique_did_name_and_key_name_in_org;
 mod m20240116_110014_unique_did_in_organisation;
 mod m20240116_153515_make_name_indexes_unique;
 mod m20240118_070610_credential_add_role;
+mod m20240123_124653_proof_state_enum_rename_offered_to_requested;
 
 pub struct Migrator;
 
@@ -17,6 +18,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240116_110014_unique_did_in_organisation::Migration),
             Box::new(m20240116_153515_make_name_indexes_unique::Migration),
             Box::new(m20240118_070610_credential_add_role::Migration),
+            Box::new(m20240123_124653_proof_state_enum_rename_offered_to_requested::Migration),
         ]
     }
 }
