@@ -1,4 +1,6 @@
 use core_server::router::start_server;
+use core_server::ServerConfig;
+use one_core::config::core_config::AppConfig;
 use one_core::model::did::Did;
 use one_core::model::organisation::Organisation;
 use tokio::task::JoinHandle;
@@ -14,6 +16,7 @@ pub struct TestContext {
     pub db: DbClient,
     pub api: Client,
     pub server_mock: MockServer,
+    pub config: AppConfig<ServerConfig>,
     _handle: JoinHandle<()>,
 }
 
@@ -26,15 +29,17 @@ impl TestContext {
         let base_url = format!("http://{}", listener.local_addr().unwrap());
         let config = fixtures::create_config(&base_url);
         let db = fixtures::create_db(&config).await;
+        let config_clone = config.clone();
         let _handle = tokio::spawn({
             let db = db.clone();
-            async move { start_server(listener, config, db).await }
+            async move { start_server(listener, config_clone, db).await }
         });
 
         Self {
             db: DbClient::new(db),
             api: Client::new(base_url, "test".into()),
             server_mock: MockServer::new().await,
+            config,
             _handle,
         }
     }

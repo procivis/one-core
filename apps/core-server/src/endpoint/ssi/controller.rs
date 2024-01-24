@@ -7,9 +7,10 @@ use super::dto::{
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::ssi::dto::{
-    DidWebResponseRestDTO, OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
-    OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
-    OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
+    DidWebResponseRestDTO, OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
+    OpenID4VCICredentialResponseRestDTO, OpenID4VCIErrorResponseRestDTO,
+    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
+    OpenID4VCITokenResponseRestDTO,
 };
 use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
@@ -24,6 +25,8 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
+use one_core::model::credential::CredentialId;
+use one_core::model::credential_schema::CredentialSchemaId;
 use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::DidId;
 use uuid::Uuid;
@@ -186,6 +189,59 @@ pub(crate) async fn oidc_service_discovery(
         Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/oidc-issuer/v1/{credential_schema_id}/offer/{credential_id}",
+    params(
+        ("credential_schema_id" = Uuid, Path, description = "Credential schema id"),
+        ("credential_id" = Uuid, Path, description = "Credential id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = OpenID4VCICredentialOfferRestDTO),
+        (status = 400, description = "Invalid request"),
+        (status = 404, description = "Credential not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn oidc_get_credential_offer(
+    state: State<AppState>,
+    WithRejection(Path((credential_schema_id, credential_id)), _): WithRejection<
+        Path<(CredentialSchemaId, CredentialId)>,
+        ErrorResponseRestDTO,
+    >,
+) -> Response {
+    let result = state
+        .core
+        .oidc_service
+        .oidc_get_credential_offer(credential_schema_id, credential_id)
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(OpenID4VCICredentialOfferRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(ServiceError::OpenID4VCError(error)) => {
+            tracing::error!("OpenID4VCI credential offer error: {:?}", error);
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO::from(error)),
+            )
+                .into_response()
+        }
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::Credential(_))) => {
+            tracing::error!("Missing credential");
+            StatusCode::NOT_FOUND.into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
