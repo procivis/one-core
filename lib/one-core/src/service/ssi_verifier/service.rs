@@ -115,7 +115,7 @@ impl SSIVerifierService {
             )
             .await?;
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Offered)?;
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),
@@ -158,7 +158,7 @@ impl SSIVerifierService {
             .get_proof_with_state(proof_id, ProofRelations::default())
             .await?;
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Offered)?;
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let now = OffsetDateTime::now_utc();
         self.proof_repository
@@ -210,7 +210,7 @@ impl SSIVerifierService {
                 ProofState {
                     created_date: now,
                     last_modified: now,
-                    state: ProofStateEnum::Offered,
+                    state: ProofStateEnum::Requested,
                 },
             )
             .await

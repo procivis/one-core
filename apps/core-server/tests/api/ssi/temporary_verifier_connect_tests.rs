@@ -88,7 +88,7 @@ async fn test_temporary_verifier_connect_success() {
 
     let proof = fixtures::get_proof(&db_conn, &proof.id).await;
     assert_eq!(
-        ProofStateEnum::Offered,
+        ProofStateEnum::Requested,
         proof.state.unwrap().first().unwrap().state
     );
 }

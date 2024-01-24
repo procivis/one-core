@@ -166,7 +166,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
 
     for state in [
         ProofStateEnum::Created,
-        ProofStateEnum::Offered,
+        ProofStateEnum::Requested,
         ProofStateEnum::Accepted,
         ProofStateEnum::Rejected,
         ProofStateEnum::Error,

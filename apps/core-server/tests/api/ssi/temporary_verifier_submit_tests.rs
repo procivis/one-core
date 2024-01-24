@@ -100,7 +100,7 @@ async fn test_correct() {
         &verifier_did,
         Some(&holder_did),
         Some(&proof_schema),
-        ProofStateEnum::Offered,
+        ProofStateEnum::Requested,
         "PROCIVIS_TEMPORARY",
         Some(&interaction),
     )

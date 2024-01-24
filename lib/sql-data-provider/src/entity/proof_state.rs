@@ -42,15 +42,19 @@ impl Related<super::proof::Entity> for Entity {
 #[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ProofStateEnum)]
 #[into(ProofStateEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "proof_request_state_enum"
+)]
 pub enum ProofRequestState {
     #[default]
     #[sea_orm(string_value = "CREATED")]
     Created,
     #[sea_orm(string_value = "PENDING")]
     Pending,
-    #[sea_orm(string_value = "OFFERED")]
-    Offered,
+    #[sea_orm(string_value = "REQUESTED")]
+    Requested,
     #[sea_orm(string_value = "ACCEPTED")]
     Accepted,
     #[sea_orm(string_value = "REJECTED")]

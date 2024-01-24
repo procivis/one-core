@@ -39,7 +39,7 @@ pub struct Proof {
 pub enum ProofStateEnum {
     Created,
     Pending,
-    Offered,
+    Requested,
     Accepted,
     Rejected,
     Error,

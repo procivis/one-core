@@ -30,7 +30,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
         let requested_date = states
             .iter()
-            .find(|state| state.state == ProofStateEnum::Offered)
+            .find(|state| state.state == ProofStateEnum::Requested)
             .map(|state| state.created_date);
 
         let completed_date = states
