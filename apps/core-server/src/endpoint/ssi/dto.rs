@@ -1,9 +1,15 @@
+use std::collections::HashMap;
+
 use crate::{
     endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
     serialize::front_time,
 };
-use dto_mapper::{convert_inner, convert_inner_of_inner};
-use dto_mapper::{From, Into};
+use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
+use one_core::provider::transport_protocol::openid4vc::dto::{
+    OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferCredentialDTO,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
+    OpenID4VCIGrant, OpenID4VCIGrants,
+};
 use one_core::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
     OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
@@ -306,4 +312,59 @@ pub struct PostSsiIssuerRejectQueryParams {
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerSubmitQueryParams {
     pub credential_id: Uuid,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialOfferDTO)]
+pub struct OpenID4VCICredentialOfferRestDTO {
+    pub credential_issuer: String,
+    #[from(with_fn = convert_inner)]
+    pub credentials: Vec<OpenID4VCICredentialOfferCredentialRestDTO>,
+    pub grants: OpenID4VCIGrantsRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCIGrants)]
+pub struct OpenID4VCIGrantsRestDTO {
+    #[serde(rename = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
+    pub code: OpenID4VCIGrantRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCIGrant)]
+pub struct OpenID4VCIGrantRestDTO {
+    #[serde(rename = "pre-authorized_code")]
+    pub pre_authorized_code: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialOfferCredentialDTO)]
+pub struct OpenID4VCICredentialOfferCredentialRestDTO {
+    pub format: String,
+    pub credential_definition: OpenID4VCICredentialDefinitionRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialDefinition)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VCICredentialDefinitionRestDTO {
+    pub r#type: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    pub credential_subject: Option<OpenID4VCICredentialSubjectRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialSubject)]
+pub struct OpenID4VCICredentialSubjectRestDTO {
+    #[serde(flatten)]
+    #[from(with_fn = convert_inner)]
+    pub keys: HashMap<String, OpenID4VCICredentialValueDetailsRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialValueDetails)]
+pub struct OpenID4VCICredentialValueDetailsRestDTO {
+    pub value: String,
+    pub value_type: String,
 }

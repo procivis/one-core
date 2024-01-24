@@ -5,11 +5,11 @@ use crate::common_mapper::{
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
-use crate::model::claim::Claim;
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaId};
+use crate::model::claim::{Claim, ClaimRelations};
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations};
 use crate::model::credential::{
-    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
-    UpdateCredentialRequest,
+    CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
+    CredentialStateRelations, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaId, CredentialSchemaRelations,
@@ -25,6 +25,8 @@ use crate::model::proof_schema::{
 };
 
 use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::transport_protocol::openid4vc::dto::OpenID4VCICredentialOfferDTO;
+use crate::provider::transport_protocol::openid4vc::mapper::create_credential_offer;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
@@ -111,6 +113,65 @@ impl OIDCService {
             format!("{}/ssi/oidc-issuer/v1/{}", core_base_url, schema.id),
             schema,
         ))
+    }
+
+    pub async fn oidc_get_credential_offer(
+        &self,
+        credential_schema_id: CredentialSchemaId,
+        credential_id: CredentialId,
+    ) -> Result<OpenID4VCICredentialOfferDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
+        let credential = self
+            .credential_repository
+            .get_credential(
+                &credential_id,
+                &CredentialRelations {
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    state: Some(CredentialStateRelations::default()),
+                    schema: Some(CredentialSchemaRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let Some(credential) = credential else {
+            return Err(EntityNotFoundError::Credential(credential_id).into());
+        };
+
+        throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
+            .map_err(|_| ServiceError::OpenID4VCError(OpenID4VCIError::InvalidRequest))?;
+
+        if credential.transport != "OPENID4VC" {
+            return Err(OpenID4VCIError::InvalidRequest.into());
+        }
+
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "credential schema missing".to_string(),
+            ))?;
+
+        if credential_schema.id != credential_schema_id {
+            return Err(OpenID4VCIError::InvalidRequest.into());
+        }
+
+        let interaction = credential
+            .interaction
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "interaction missing".to_string(),
+            ))?;
+
+        Ok(create_credential_offer(
+            self.core_base_url.to_owned(),
+            &interaction.id,
+            &credential,
+        )?)
     }
 
     pub async fn oidc_create_credential(

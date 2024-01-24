@@ -27,8 +27,8 @@ use crate::{
     },
     provider::transport_protocol::{
         openid4vc::dto::{
-            OpenID4VCICredentialDefinition, OpenID4VCICredentialOffer,
-            OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialSubject,
+            OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferCredentialDTO,
+            OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject,
             OpenID4VCICredentialValueDetails, OpenID4VCIGrant, OpenID4VCIGrants,
             OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPInteractionData,
             OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
@@ -243,11 +243,11 @@ fn get_url(base_url: Option<String>) -> Result<String, TransportProtocolError> {
     ))
 }
 
-pub(super) fn create_credential_offer_encoded(
+pub(crate) fn create_credential_offer(
     base_url: Option<String>,
     interaction_id: &InteractionId,
     credential: &Credential,
-) -> Result<String, TransportProtocolError> {
+) -> Result<OpenID4VCICredentialOfferDTO, TransportProtocolError> {
     let credential_schema = credential
         .schema
         .as_ref()
@@ -262,7 +262,7 @@ pub(super) fn create_credential_offer_encoded(
 
     let url = get_url(base_url)?;
 
-    let offer = OpenID4VCICredentialOffer {
+    Ok(OpenID4VCICredentialOfferDTO {
         credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", url, credential_schema.id),
         credentials: vec![OpenID4VCICredentialOfferCredentialDTO {
             format: map_core_to_oidc_format(&credential_schema.format)
@@ -289,15 +289,24 @@ pub(super) fn create_credential_offer_encoded(
                 pre_authorized_code: interaction_id.to_string(),
             },
         },
-    };
+    })
+}
 
-    let offer_string =
-        serde_json::to_string(&offer).map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-
-    let offer_encoded = serde_urlencoded::to_string([("credential_offer", offer_string)])
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-
-    Ok(offer_encoded)
+pub(super) fn get_credential_offer_url(
+    base_url: Option<String>,
+    credential: &Credential,
+) -> Result<String, TransportProtocolError> {
+    let credential_schema = credential
+        .schema
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "Missing credential schema".to_owned(),
+        ))?;
+    let base_url = get_url(base_url)?;
+    Ok(format!(
+        "{base_url}/ssi/oidc-issuer/v1/{}/offer/{}",
+        credential_schema.id, credential.id
+    ))
 }
 
 pub(super) fn create_claims_from_credential_definition(
