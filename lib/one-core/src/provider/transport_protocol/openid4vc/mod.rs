@@ -9,12 +9,13 @@ use uuid::Uuid;
 
 use self::{
     dto::{
-        OpenID4VCICredential, OpenID4VCICredentialDefinition, OpenID4VCICredentialOffer,
+        OpenID4VCICredential, OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferDTO,
         OpenID4VCIProof,
     },
     mapper::{
-        create_claims_from_credential_definition, create_credential_offer_encoded,
+        create_claims_from_credential_definition, create_credential_offer,
         create_open_id_for_vp_presentation_definition, create_presentation_submission,
+        get_credential_offer_url,
     },
     model::{HolderInteractionData, OpenID4VCIInteractionContent},
 };
@@ -88,11 +89,13 @@ use crate::{
 mod test;
 
 pub mod dto;
-pub(super) mod mapper;
+pub(crate) mod mapper;
 mod model;
 mod validator;
 
-const CREDENTIAL_OFFER_QUERY_PARAM_KEY: &str = "credential_offer";
+const CREDENTIAL_OFFER_URL_SCHEME: &str = "openid-credential-offer";
+const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
+const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 const PRESENTATION_DEFINITION_QUERY_PARAM_KEY: &str = "presentation_definition";
 
 pub(crate) struct OpenID4VC {
@@ -107,7 +110,7 @@ pub(crate) struct OpenID4VC {
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
     crypto: Arc<dyn CryptoProvider>,
-    _params: OpenID4VCParams,
+    params: OpenID4VCParams,
 }
 
 #[derive(Deserialize)]
@@ -115,6 +118,7 @@ pub(crate) struct OpenID4VC {
 pub(crate) struct OpenID4VCParams {
     pub(crate) pre_authorized_code_expires_in: u64,
     pub(crate) token_expires_in: u64,
+    pub(crate) credential_offer_by_value: Option<bool>,
 }
 
 impl OpenID4VC {
@@ -144,7 +148,7 @@ impl OpenID4VC {
             key_provider,
             client: reqwest::Client::new(),
             crypto,
-            _params: params,
+            params,
         }
     }
 }
@@ -154,7 +158,9 @@ impl TransportProtocol for OpenID4VC {
     fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType> {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
-        if query_has_key(CREDENTIAL_OFFER_QUERY_PARAM_KEY) {
+        if query_has_key(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY)
+            || query_has_key(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY)
+        {
             return Some(InvitationType::CredentialIssuance);
         }
 
@@ -498,9 +504,29 @@ impl TransportProtocol for OpenID4VC {
         )
         .await?;
         clear_previous_interaction(&self.interaction_repository, &credential.interaction).await?;
-        let encoded_offer =
-            create_credential_offer_encoded(self.base_url.clone(), &interaction_id, &credential)?;
-        Ok(format!("openid-credential-offer://?{encoded_offer}"))
+
+        let mut url = Url::parse(&format!("{CREDENTIAL_OFFER_URL_SCHEME}://"))
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let mut query = url.query_pairs_mut();
+
+        if self
+            .params
+            .credential_offer_by_value
+            .is_some_and(|by_value| by_value)
+        {
+            let offer =
+                create_credential_offer(self.base_url.to_owned(), &interaction_id, &credential)?;
+
+            let offer_string = serde_json::to_string(&offer)
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+            query.append_pair(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY, &offer_string);
+        } else {
+            let offer_url = get_credential_offer_url(self.base_url.to_owned(), &credential)?;
+            query.append_pair(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY, &offer_url);
+        }
+
+        Ok(query.finish().to_string())
     }
 
     async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError> {
@@ -685,22 +711,66 @@ async fn add_new_interaction(
     Ok(())
 }
 
+async fn resolve_credential_offer(
+    deps: &OpenID4VC,
+    invitation_url: Url,
+) -> Result<OpenID4VCICredentialOfferDTO, TransportProtocolError> {
+    let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();
+    let credential_offer_param = query_pairs.get(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY);
+    let credential_offer_reference_param =
+        query_pairs.get(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY);
+
+    if credential_offer_param.is_some() && credential_offer_reference_param.is_some() {
+        return Err(TransportProtocolError::Failed(
+            format!("Detected both {CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY} and {CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY}"),
+        ));
+    }
+
+    if let Some(credential_offer) = credential_offer_param {
+        serde_json::from_str(credential_offer).map_err(|error| {
+            TransportProtocolError::Failed(format!("Failed decoding credential offer {error}"))
+        })
+    } else if let Some(credential_offer_reference) = credential_offer_reference_param {
+        let credential_offer_url = Url::parse(credential_offer_reference).map_err(|error| {
+            TransportProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
+        })?;
+
+        // TODO: forbid plain-text http requests in production
+        // let url_scheme = credential_offer_url.scheme();
+        // if url_scheme != "https" {
+        //     return Err(TransportProtocolError::Failed(format!(
+        //         "Invalid {CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY} url scheme: {url_scheme}"
+        //     )));
+        // }
+
+        Ok(deps
+            .client
+            .get(credential_offer_url)
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .json()
+            .await
+            .map_err(|error| {
+                TransportProtocolError::Failed(format!(
+                    "Failed decoding credential offer json {error}"
+                ))
+            })?)
+    } else {
+        Err(TransportProtocolError::Failed(
+            "Missing credential offer param".to_string(),
+        ))
+    }
+}
+
 async fn handle_credential_invitation(
     deps: &OpenID4VC,
-    url: Url,
+    invitation_url: Url,
     holder_did: Did,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
-    let credential_offer = url
-        .query_pairs()
-        .find_map(|(k, v)| (k == CREDENTIAL_OFFER_QUERY_PARAM_KEY).then_some(v))
-        .ok_or(TransportProtocolError::Failed(
-            "Missing credential offer param".to_string(),
-        ))?;
-
-    let credential_offer: OpenID4VCICredentialOffer = serde_json::from_str(&credential_offer)
-        .map_err(|error| {
-            TransportProtocolError::Failed(format!("Failed decoding credential offer {error}"))
-        })?;
+    let credential_offer = resolve_credential_offer(deps, invitation_url).await?;
 
     let credential_issuer_endpoint: Url =
         credential_offer.credential_issuer.parse().map_err(|_| {

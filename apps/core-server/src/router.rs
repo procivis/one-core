@@ -184,6 +184,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::oidc_service_discovery),
         )
         .route(
+            "/ssi/oidc-issuer/v1/:credential_schema_id/offer/:credential_id",
+            get(ssi::controller::oidc_get_credential_offer),
+        )
+        .route(
             "/ssi/oidc-issuer/v1/:id/token",
             post(ssi::controller::oidc_create_token),
         )
@@ -323,6 +327,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::get_did_web_document,
             endpoint::ssi::controller::oidc_get_issuer_metadata,
             endpoint::ssi::controller::oidc_service_discovery,
+            endpoint::ssi::controller::oidc_get_credential_offer,
             endpoint::ssi::controller::oidc_create_token,
             endpoint::ssi::controller::oidc_create_credential,
             endpoint::ssi::controller::oidc_verifier_direct_post,
@@ -408,6 +413,13 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::OpenID4VCIErrorResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIErrorRestEnum,
                 endpoint::ssi::dto::OpenID4VCITokenRequestRestDTO,
+                endpoint::ssi::dto::OpenID4VCICredentialOfferRestDTO,
+                endpoint::ssi::dto::OpenID4VCIGrantsRestDTO,
+                endpoint::ssi::dto::OpenID4VCIGrantRestDTO,
+                endpoint::ssi::dto::OpenID4VCICredentialOfferCredentialRestDTO,
+                endpoint::ssi::dto::OpenID4VCICredentialDefinitionRestDTO,
+                endpoint::ssi::dto::OpenID4VCICredentialSubjectRestDTO,
+                endpoint::ssi::dto::OpenID4VCICredentialValueDetailsRestDTO,
                 endpoint::ssi::dto::OpenID4VPDirectPostRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VPDirectPostResponseRestDTO,
                 endpoint::ssi::dto::NestedPresentationSubmissionDescriptorRestDTO,

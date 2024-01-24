@@ -35,7 +35,7 @@ pub struct OpenID4VCICredentialOfferCredentialDTO {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct OpenID4VCICredentialOffer {
+pub struct OpenID4VCICredentialOfferDTO {
     pub credential_issuer: String,
     pub credentials: Vec<OpenID4VCICredentialOfferCredentialDTO>,
     pub grants: OpenID4VCIGrants,

@@ -43,7 +43,7 @@ use crate::{
 use super::{OpenID4VC, OpenID4VCParams};
 
 #[derive(Default)]
-struct Repositories {
+struct TestInputs {
     pub credential_repository: MockCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub did_repository: MockDidRepository,
@@ -53,24 +53,26 @@ struct Repositories {
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_provider: MockKeyProvider,
     pub crypto: MockCryptoProvider,
+    pub params: Option<OpenID4VCParams>,
 }
 
-fn setup_protocol(repositories: Repositories) -> OpenID4VC {
+fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
     OpenID4VC::new(
         Some("http://base_url".to_string()),
-        Arc::new(repositories.credential_repository),
-        Arc::new(repositories.credential_schema_repository),
-        Arc::new(repositories.did_repository),
-        Arc::new(repositories.proof_repository),
-        Arc::new(repositories.interaction_repository),
-        Arc::new(repositories.formatter_provider),
-        Arc::new(repositories.revocation_provider),
-        Arc::new(repositories.key_provider),
-        Arc::new(repositories.crypto),
-        OpenID4VCParams {
+        Arc::new(inputs.credential_repository),
+        Arc::new(inputs.credential_schema_repository),
+        Arc::new(inputs.did_repository),
+        Arc::new(inputs.proof_repository),
+        Arc::new(inputs.interaction_repository),
+        Arc::new(inputs.formatter_provider),
+        Arc::new(inputs.revocation_provider),
+        Arc::new(inputs.key_provider),
+        Arc::new(inputs.crypto),
+        inputs.params.unwrap_or(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
-        },
+            credential_offer_by_value: None,
+        }),
     )
 }
 
@@ -210,16 +212,13 @@ async fn test_generate_offer() {
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential();
 
-    let offer = super::mapper::create_credential_offer_encoded(
-        Some(base_url),
-        &interaction_id,
-        &credential,
-    )
-    .unwrap();
+    let offer =
+        super::mapper::create_credential_offer(Some(base_url), &interaction_id, &credential)
+            .unwrap();
 
     assert_eq!(
-        offer,
-        r#"credential_offer=%7B%22credential_issuer%22%3A%22BASE_URL%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%22c322aa7f-9803-410d-b891-939b279fb965%22%7D%7D%7D"#
+        serde_json::to_string(&offer).unwrap(),
+        r#"{"credential_issuer":"BASE_URL/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965","credentials":[{"format":"jwt_vc_json","credential_definition":{"type":["VerifiableCredential"],"credentialSubject":{"NUMBER":{"value":"123","value_type":"NUMBER"}}}}],"grants":{"urn:ietf:params:oauth:grant-type:pre-authorized_code":{"pre-authorized_code":"c322aa7f-9803-410d-b891-939b279fb965"}}}"#
     )
 }
 
@@ -265,7 +264,7 @@ async fn test_generate_share_credentials() {
         .once()
         .returning(|_| String::from("ABC123"));
 
-    let protocol = setup_protocol(Repositories {
+    let protocol = setup_protocol(TestInputs {
         credential_repository,
         interaction_repository,
         crypto,
@@ -273,12 +272,70 @@ async fn test_generate_share_credentials() {
     });
 
     let result = protocol.share_credential(&credential).await.unwrap();
+    assert_eq!(result, "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965");
+}
+
+#[tokio::test]
+async fn test_generate_share_credentials_offer_by_value() {
+    let credential = generic_credential();
+
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+
+    let mut seq = Sequence::new();
+
+    let credential_moved = credential.clone();
+    credential_repository
+        .expect_get_credential()
+        .once()
+        .in_sequence(&mut seq)
+        .returning(move |_, _| Ok(Some(credential_moved.clone())));
+
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .in_sequence(&mut seq)
+        .returning(move |req| Ok(req.id));
+
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .in_sequence(&mut seq)
+        .withf(move |req| req.id == credential.id)
+        .returning(|_| Ok(()));
+
+    interaction_repository
+        .expect_delete_interaction()
+        .once()
+        .in_sequence(&mut seq)
+        .with(predicate::eq(credential.interaction.as_ref().unwrap().id))
+        .returning(move |_| Ok(()));
+
+    let mut crypto = MockCryptoProvider::default();
+    crypto
+        .expect_generate_alphanumeric()
+        .once()
+        .returning(|_| String::from("ABC123"));
+
+    let protocol = setup_protocol(TestInputs {
+        credential_repository,
+        interaction_repository,
+        crypto,
+        params: Some(OpenID4VCParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: Some(true),
+        }),
+        ..Default::default()
+    });
+
+    let result = protocol.share_credential(&credential).await.unwrap();
 
     // Everything except for interaction id is here.
-    // Generating token with predictable interaction id it tested somewhere else.
+    // Generating token with predictable interaction id is tested somewhere else.
     assert!(
-        result.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
-    )
+         result.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+      )
 }
 
 #[tokio::test]
@@ -319,7 +376,7 @@ async fn test_generate_share_proof_open_id_flow_success() {
         .once()
         .returning(|_| String::from("ABC123"));
 
-    let protocol = setup_protocol(Repositories {
+    let protocol = setup_protocol(TestInputs {
         proof_repository,
         interaction_repository,
         crypto,
@@ -359,7 +416,7 @@ async fn test_handle_invitation_proof_success() {
         .in_sequence(&mut seq)
         .returning(move |request| Ok(request.id));
 
-    let protocol = setup_protocol(Repositories {
+    let protocol = setup_protocol(TestInputs {
         interaction_repository,
         ..Default::default()
     });
@@ -395,7 +452,7 @@ async fn test_handle_invitation_proof_success() {
 
 #[tokio::test]
 async fn test_handle_invitation_proof_failed() {
-    let protocol = setup_protocol(Repositories {
+    let protocol = setup_protocol(TestInputs {
         ..Default::default()
     });
 

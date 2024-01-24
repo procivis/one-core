@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
+use uuid::Uuid;
 
 use super::{HttpClient, Response};
 
@@ -23,5 +24,19 @@ impl SSIApi {
         });
 
         self.client.post(&url, body).await
+    }
+
+    pub async fn get_credential_offer(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+        credential_id: impl Into<Uuid>,
+    ) -> Response {
+        let url = format!(
+            "/ssi/oidc-issuer/v1/{}/offer/{}",
+            credential_schema_id.into(),
+            credential_id.into()
+        );
+
+        self.client.get(&url).await
     }
 }
