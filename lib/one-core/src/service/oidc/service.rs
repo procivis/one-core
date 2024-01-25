@@ -306,8 +306,7 @@ impl OIDCService {
                     ..Default::default()
                 },
             )
-            .await
-            .map_err(ServiceError::from)?;
+            .await?;
 
         let now = OffsetDateTime::now_utc();
 

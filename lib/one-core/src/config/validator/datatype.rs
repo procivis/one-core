@@ -8,7 +8,6 @@ use time::{Date, Month, OffsetDateTime, PrimitiveDateTime};
 
 use crate::config::{
     core_config::{DatatypeConfig, DatatypeType},
-    validator::throw_if_disabled,
     ConfigValidationError,
 };
 
@@ -74,8 +73,7 @@ pub fn validate_datatypes(
     config: &DatatypeConfig,
 ) -> Result<(), ConfigValidationError> {
     for datatype in query_datatypes {
-        let fields = config.get_fields(datatype)?;
-        throw_if_disabled(datatype, Ok(fields))?;
+        config.get_if_enabled(datatype)?;
     }
 
     Ok(())

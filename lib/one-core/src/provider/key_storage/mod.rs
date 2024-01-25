@@ -47,47 +47,38 @@ pub fn key_providers_from_config(
 ) -> Result<HashMap<String, Arc<dyn KeyStorage>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
 
-    for key_storage_type in config.as_inner().keys() {
-        let type_str = key_storage_type.to_string();
-
-        match key_storage_type {
+    for (name, field) in config.iter() {
+        let provider = match &field.r#type {
             KeyStorageType::Internal => {
-                let params = config.get(key_storage_type)?;
-
-                let key_storage = Arc::new(InternalKeyProvider::new(
+                let params = config.get(name)?;
+                Arc::new(InternalKeyProvider::new(
                     key_algorithm_provider.clone(),
                     params,
-                ));
-
-                providers.insert(type_str, key_storage);
+                )) as _
             }
-            KeyStorageType::Pkcs11 => {
-                let key_storage = Arc::new(PKCS11KeyProvider::new());
-                providers.insert(type_str, key_storage);
-            }
+            KeyStorageType::Pkcs11 => Arc::new(PKCS11KeyProvider::new()) as _,
             KeyStorageType::AzureVault => {
-                let params = config.get(key_storage_type)?;
-                let key_storage = Arc::new(AzureVaultKeyProvider::new(params, crypto.clone()));
-                providers.insert(type_str, key_storage);
+                let params = config.get(name)?;
+                Arc::new(AzureVaultKeyProvider::new(params, crypto.clone())) as _
             }
             KeyStorageType::SecureElement => {
                 if let Some(native_key_storage) = &secure_element_key_storage {
-                    let params = config.get(key_storage_type)?;
-                    let key_storage = Arc::new(SecureElementKeyProvider::new(
+                    let params = config.get(name)?;
+                    Arc::new(SecureElementKeyProvider::new(
                         native_key_storage.to_owned(),
                         params,
-                    ));
-                    providers.insert(type_str, key_storage);
+                    )) as _
                 } else {
                     return Err(ConfigError::Validation(ConfigValidationError::InvalidKey(
-                        type_str,
+                        name.to_string(),
                     )));
                 }
             }
-        }
+        };
+        providers.insert(field.r#type.to_string(), provider);
     }
 
-    for (key, value) in config.as_inner_mut().iter_mut() {
+    for (key, value) in config.iter_mut() {
         if let Some(entity) = providers.get(&key.to_string()) {
             let json = serde_json::to_value(entity.get_capabilities())
                 .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;

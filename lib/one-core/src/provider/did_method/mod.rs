@@ -71,13 +71,10 @@ pub fn did_method_providers_from_config(
 ) -> Result<HashMap<String, Arc<dyn DidMethod>>, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
 
-    for did_type in did_config.as_inner().keys() {
-        let type_str = did_type.to_string();
-
-        match did_type {
+    for (name, field) in did_config.iter() {
+        let method = match &field.r#type {
             core_config::DidType::Key => {
-                let method = Arc::new(KeyDidMethod::new(key_algorithm_provider.clone()));
-                providers.insert(type_str, method as _);
+                Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as _
             }
             core_config::DidType::Web => {
                 let did_web = WebDidMethod::new(&base_url).map_err(|_| {
@@ -85,22 +82,18 @@ pub fn did_method_providers_from_config(
                         "Base url".to_string(),
                     ))
                 })?;
-                let method = Arc::new(did_web);
-                providers.insert(type_str, method as _);
+                Arc::new(did_web) as _
             }
             core_config::DidType::Jwk => {
-                let method = Arc::new(JWKDidMethod::new(key_algorithm_provider.clone()));
-                providers.insert(type_str, method as _);
+                Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
             }
-            core_config::DidType::X509 => {
-                let method = Arc::new(X509Method::new());
-                providers.insert(type_str, method as _);
-            }
-        }
+            core_config::DidType::X509 => Arc::new(X509Method::new()) as _,
+        };
+        providers.insert(name.to_owned(), method);
     }
 
-    for (key, value) in did_config.as_inner_mut().iter_mut() {
-        if let Some(entity) = providers.get(&key.to_string()) {
+    for (key, value) in did_config.iter_mut() {
+        if let Some(entity) = providers.get(key) {
             let json = serde_json::to_value(entity.get_capabilities())
                 .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;
             value.capabilities = Some(json);

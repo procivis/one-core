@@ -170,7 +170,7 @@ keyAlgorithm:
     display: "keyAlgorithm.bbs_plus"
     order: 2
     disabled: true
-    type: "BBS+"
+    type: "BBS_PLUS"
     params:
       public:
         algorithm: "Ed25519"

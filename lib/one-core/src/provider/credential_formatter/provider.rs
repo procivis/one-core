@@ -37,33 +37,24 @@ pub(crate) fn credential_formatters_from_config(
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter>>, ConfigError> {
     let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
 
-    for format_type in config.as_inner().keys() {
-        let type_str = format_type.to_string();
-
-        match format_type {
+    for (name, field) in config.iter() {
+        let formatter = match &field.r#type {
             FormatType::Jwt => {
-                let params = config.get(format_type)?;
-                let formatter = Arc::new(JWTFormatter::new(params)) as _;
-                formatters.insert(type_str, formatter);
+                let params = config.get(name)?;
+                Arc::new(JWTFormatter::new(params)) as _
             }
             FormatType::Sdjwt => {
-                let params = config.get(format_type)?;
-                let formatter = Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _;
-                formatters.insert(type_str, formatter);
+                let params = config.get(name)?;
+                Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
             }
-            FormatType::JsonLd => {
-                let formatter = Arc::new(JsonLdFormatter::new()) as _;
-                formatters.insert(type_str, formatter);
-            }
-            FormatType::Mdoc => {
-                let formatter = Arc::new(MdocFormatter::new()) as _;
-                formatters.insert(type_str, formatter);
-            }
-        }
+            FormatType::JsonLd => Arc::new(JsonLdFormatter::new()) as _,
+            FormatType::Mdoc => Arc::new(MdocFormatter::new()) as _,
+        };
+        formatters.insert(name.to_owned(), formatter);
     }
 
-    for (key, value) in config.as_inner_mut().iter_mut() {
-        if let Some(entity) = formatters.get(&key.to_string()) {
+    for (key, value) in config.iter_mut() {
+        if let Some(entity) = formatters.get(key) {
             let json = serde_json::to_value(entity.get_capabilities())
                 .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;
             value.capabilities = Some(json);

@@ -35,6 +35,8 @@ pub enum ConfigValidationError {
     KeyDisabled(String),
     #[error("configuration key `{0}` not found")]
     KeyNotFound(String),
+    #[error("configuration type `{0}` not found")]
+    TypeNotFound(String),
     #[error("fields deserialization for key: {key}. error: {source}")]
     FieldsDeserialization {
         key: String,

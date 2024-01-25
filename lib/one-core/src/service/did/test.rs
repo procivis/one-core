@@ -61,9 +61,9 @@ fn get_did_config() -> DidConfig {
     let mut config = DidConfig::default();
 
     config.insert(
-        core_config::DidType::Key,
+        "KEY".to_string(),
         Fields {
-            r#type: "KEY".to_string(),
+            r#type: core_config::DidType::Key,
             display: Value::String("translation".to_string()),
             order: None,
             disabled: None,

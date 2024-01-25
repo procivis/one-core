@@ -45,34 +45,24 @@ pub fn key_algorithms_from_config(
 ) -> Result<HashMap<String, Arc<dyn KeyAlgorithm>>, ConfigValidationError> {
     let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
-    for (algorithm_type, fields) in config.as_inner() {
-        // skip disabled algorithms
-        if fields.disabled.is_some_and(|is_disabled| is_disabled) {
-            continue;
-        }
-
-        match algorithm_type {
+    for (name, field) in config.iter() {
+        let key_algorithm = match &field.r#type {
             KeyAlgorithmType::Eddsa => {
-                let params = config.get(algorithm_type)?;
-                let algorithm = Eddsa::new(params);
-
-                key_algorithms.insert(algorithm_type.to_string(), Arc::new(algorithm) as _);
+                let params = config.get(name)?;
+                Arc::new(Eddsa::new(params)) as _
             }
             KeyAlgorithmType::Es256 => {
-                let params = config.get(algorithm_type)?;
-                let algorithm = Es256::new(params);
-
-                key_algorithms.insert(algorithm_type.to_string(), Arc::new(algorithm) as _);
+                let params = config.get(name)?;
+                Arc::new(Es256::new(params)) as _
             }
-            KeyAlgorithmType::Ecdsa => unimplemented!(),
-            KeyAlgorithmType::BbsPlus => unimplemented!(),
+            KeyAlgorithmType::Ecdsa => continue,
+            KeyAlgorithmType::BbsPlus => continue,
             KeyAlgorithmType::MlDsa => {
-                let params = config.get(algorithm_type)?;
-                let algorithm = MlDsa::new(params);
-
-                key_algorithms.insert(algorithm_type.to_string(), Arc::new(algorithm) as _);
+                let params = config.get(name)?;
+                Arc::new(MlDsa::new(params)) as _
             }
-        }
+        };
+        key_algorithms.insert(name.to_owned(), key_algorithm);
     }
 
     Ok(key_algorithms)

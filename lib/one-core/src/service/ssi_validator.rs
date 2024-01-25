@@ -8,7 +8,6 @@ pub(super) fn validate_config_entity_presence(
 ) -> Result<(), ConfigValidationError> {
     if !config
         .exchange
-        .as_inner()
         .iter()
         .any(|(_, v)| v.r#type == ExchangeType::ProcivisTemporary)
     {
