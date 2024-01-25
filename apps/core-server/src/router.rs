@@ -234,12 +234,12 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route(
             "/ssi/context/v1/:id",
             get(ssi::controller::get_json_ld_context),
-        )
-        .route("/metrics", get(metrics::get_metrics));
+        );
 
     let technical_endpoints = Router::new()
         .route("/build-info", get(misc::get_build_info))
-        .route("/health", get(misc::health_check));
+        .route("/health", get(misc::health_check))
+        .route("/metrics", get(metrics::get_metrics));
 
     Router::new()
         .merge(protected)
@@ -270,9 +270,9 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .layer(middleware::from_fn(crate::middleware::new_sentry_hub))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation))
+        .layer(middleware::from_fn(crate::middleware::metrics_counter))
         .merge(technical_endpoints)
         .layer(CatchPanicLayer::custom(handle_panic))
-        .layer(middleware::from_fn(crate::middleware::metrics_counter))
         .layer(Extension(config))
         .with_state(state)
 }
