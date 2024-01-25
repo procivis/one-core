@@ -12,7 +12,7 @@ use crate::{
                 CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
                 GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
             },
-            mapper::from_create_request,
+            mapper::{from_create_request, schema_create_history_event},
             CredentialSchemaService,
         },
         error::{EntityNotFoundError, ServiceError},
@@ -49,10 +49,18 @@ impl CredentialSchemaService {
 
         let credential_schema = from_create_request(request, organisation)?;
 
-        self.credential_schema_repository
-            .create_credential_schema(credential_schema)
+        let result = self
+            .credential_schema_repository
+            .create_credential_schema(credential_schema.to_owned())
             .await
-            .map_err(ServiceError::from)
+            .map_err(ServiceError::from)?;
+
+        let _ = self
+            .history_repository
+            .create_history(schema_create_history_event(credential_schema))
+            .await;
+
+        Ok(result)
     }
 
     /// Deletes a credential schema

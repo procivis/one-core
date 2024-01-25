@@ -47,6 +47,7 @@ use crate::provider::revocation::status_list_2021::StatusList2021;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::transport_protocol::transport_protocol_providers_from_config;
 use crate::service::credential_schema::CredentialSchemaService;
+use crate::service::history::HistoryService;
 use crate::service::key::KeyService;
 use crate::service::oidc::OIDCService;
 use crate::service::revocation_list::RevocationListService;
@@ -63,6 +64,7 @@ pub struct OneCore {
     pub did_service: DidService,
     pub credential_service: CredentialService,
     pub credential_schema_service: CredentialSchemaService,
+    pub history_service: HistoryService,
     pub key_service: KeyService,
     pub proof_schema_service: ProofSchemaService,
     pub proof_service: ProofService,
@@ -173,11 +175,13 @@ impl OneCore {
             revocation_methods,
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
+                data_provider.get_history_repository(),
             ),
             credential_service: CredentialService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_did_repository(),
+                data_provider.get_history_repository(),
                 revocation_method_provider.clone(),
                 formatter_provider.clone(),
                 protocol_provider.clone(),
@@ -185,6 +189,7 @@ impl OneCore {
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
+                data_provider.get_history_repository(),
                 data_provider.get_key_repository(),
                 data_provider.get_organisation_repository(),
                 did_method_provider.clone(),
@@ -210,11 +215,14 @@ impl OneCore {
             ),
             credential_schema_service: CredentialSchemaService::new(
                 data_provider.get_credential_schema_repository(),
+                data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
                 config.clone(),
             ),
+            history_service: HistoryService::new(data_provider.get_history_repository()),
             key_service: KeyService::new(
                 data_provider.get_key_repository(),
+                data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
                 key_provider,
                 config.clone(),

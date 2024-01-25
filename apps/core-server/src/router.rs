@@ -27,8 +27,8 @@ use crate::{build_info, ServerConfig};
 use crate::{
     dto,
     endpoint::{
-        self, config, credential, credential_schema, did, interaction, key, misc, organisation,
-        proof, proof_schema, ssi,
+        self, config, credential, credential_schema, did, history, interaction, key, misc,
+        organisation, proof, proof_schema, ssi,
     },
 };
 
@@ -115,6 +115,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             "/api/proof-schema/v1/:id",
             delete(proof_schema::controller::delete_proof_schema)
                 .get(proof_schema::controller::get_proof_schema_detail),
+        )
+        .route(
+            "/api/history/v1",
+            get(history::controller::get_history_list),
         )
         .route("/api/key/v1/:id", get(key::controller::get_key))
         .route(
@@ -305,6 +309,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::did::controller::post_did,
             endpoint::did::controller::update_did,
 
+            endpoint::history::controller::get_history_list,
+
             endpoint::key::controller::get_key,
             endpoint::key::controller::get_key_list,
             endpoint::key::controller::post_key,
@@ -379,6 +385,10 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::did::dto::DidResponseKeysRestDTO,
                 endpoint::did::dto::DidListItemResponseRestDTO,
                 endpoint::did::dto::DidType,
+
+                endpoint::history::dto::HistoryResponseRestDTO,
+                endpoint::history::dto::HistoryAction,
+                endpoint::history::dto::HistoryEntityType,
 
                 endpoint::key::dto::KeyRequestRestDTO,
                 endpoint::key::dto::KeyResponseRestDTO,
@@ -468,6 +478,9 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
                 shared_types::DidId,
                 shared_types::DidValue,
+                shared_types::EntityId,
+                shared_types::HistoryId,
+                shared_types::OrganisationId,
             )
         ),
         tags(

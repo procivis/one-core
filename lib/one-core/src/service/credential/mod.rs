@@ -7,6 +7,7 @@ use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::history_repository::HistoryRepository;
 
 pub mod dto;
 pub mod mapper;
@@ -19,6 +20,7 @@ pub struct CredentialService {
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     did_repository: Arc<dyn DidRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn TransportProtocolProvider>,
@@ -26,10 +28,12 @@ pub struct CredentialService {
 }
 
 impl CredentialService {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         did_repository: Arc<dyn DidRepository>,
+        history_repository: Arc<dyn HistoryRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn TransportProtocolProvider>,
@@ -39,6 +43,7 @@ impl CredentialService {
             credential_repository: repository,
             credential_schema_repository,
             did_repository,
+            history_repository,
             revocation_method_provider,
             formatter_provider,
             protocol_provider,

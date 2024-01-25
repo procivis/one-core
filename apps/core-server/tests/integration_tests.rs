@@ -12,6 +12,9 @@ mod api_credential_schema_tests;
 #[path = "api/credential/mod.rs"]
 mod api_credential_tests;
 
+#[path = "api/history/mod.rs"]
+mod api_history_tests;
+
 #[path = "api/oidc/mod.rs"]
 mod api_oidc_tests;
 

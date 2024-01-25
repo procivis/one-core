@@ -8,7 +8,10 @@ use one_core::service::credential_schema::dto::GetCredentialSchemaListResponseDT
 use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
-    model::did::DidType,
+    model::{
+        did::DidType,
+        history::{HistoryAction, HistoryEntityType},
+    },
     provider::{
         key_storage::GeneratedKey,
         transport_protocol::dto::{
@@ -24,6 +27,7 @@ use one_core::{
             CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
+        history::dto::{GetHistoryListResponseDTO, HistoryResponseDTO},
     },
 };
 use std::collections::HashMap;
@@ -307,4 +311,70 @@ pub trait NativeKeyStorage: Send + Sync {
         key_reference: Vec<u8>,
         message: Vec<u8>,
     ) -> Result<Vec<u8>, NativeKeyStorageError>;
+}
+
+#[derive(From, Into)]
+#[from(HistoryAction)]
+#[into(HistoryAction)]
+pub enum HistoryActionBindingEnum {
+    Accepted,
+    Created,
+    Deactivated,
+    Deleted,
+    Issued,
+    Offered,
+    Rejected,
+    Requested,
+    Revoked,
+}
+
+#[derive(From, Into)]
+#[from(HistoryEntityType)]
+#[into(HistoryEntityType)]
+pub enum HistoryEntityTypeBindingEnum {
+    Key,
+    Did,
+    Credential,
+    CredentialSchema,
+    Proof,
+    ProofSchema,
+    Organisation,
+}
+
+#[derive(From)]
+#[from(HistoryResponseDTO)]
+pub struct HistoryListItemBindingDTO {
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    pub action: HistoryActionBindingEnum,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub entity_id: String,
+    pub entity_type: HistoryEntityTypeBindingEnum,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub organisation_id: String,
+}
+
+pub struct HistoryListQueryBindingDTO {
+    pub page: u32,
+    pub page_size: u32,
+    pub organisation_id: String,
+    pub entity_id: Option<String>,
+    pub entity_type: Option<HistoryEntityTypeBindingEnum>,
+    pub action: Option<HistoryActionBindingEnum>,
+    pub created_date_from: Option<String>,
+    pub created_date_to: Option<String>,
+    pub did_id: Option<String>,
+    pub credential_id: Option<String>,
+    pub credential_schema_id: Option<String>,
+}
+
+#[derive(From)]
+#[from(GetHistoryListResponseDTO)]
+pub struct HistoryListBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub values: Vec<HistoryListItemBindingDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
 }

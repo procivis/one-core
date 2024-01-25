@@ -4,6 +4,7 @@ use sql_data_provider::{DataLayer, DbConn};
 use self::credential_schemas::CredentialSchemasDB;
 use self::credentials::CredentialsDB;
 use self::dids::DidsDB;
+use self::histories::HistoriesDB;
 use self::interactions::InteractionsDB;
 use self::keys::KeysDB;
 use self::organisations::OrganisationsDB;
@@ -14,6 +15,7 @@ use self::revocation_lists::RevocationListsDB;
 pub mod credential_schemas;
 pub mod credentials;
 pub mod dids;
+pub mod histories;
 pub mod interactions;
 pub mod keys;
 pub mod organisations;
@@ -26,6 +28,7 @@ pub struct DbClient {
     pub dids: DidsDB,
     pub credential_schemas: CredentialSchemasDB,
     pub credentials: CredentialsDB,
+    pub histories: HistoriesDB,
     pub keys: KeysDB,
     pub revocation_lists: RevocationListsDB,
     pub proof_schemas: ProofSchemasDB,
@@ -41,6 +44,7 @@ impl DbClient {
             dids: DidsDB::new(layer.get_did_repository()),
             credential_schemas: CredentialSchemasDB::new(layer.get_credential_schema_repository()),
             credentials: CredentialsDB::new(layer.get_credential_repository()),
+            histories: HistoriesDB::new(layer.get_history_repository()),
             keys: KeysDB::new(layer.get_key_repository()),
             revocation_lists: RevocationListsDB::new(layer.get_revocation_list_repository()),
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),

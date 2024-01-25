@@ -10,6 +10,7 @@ use crate::{
         },
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::Did,
+        history::{History, HistoryAction, HistoryEntityType},
     },
     service::{
         credential::dto::{
@@ -211,4 +212,22 @@ pub(super) fn claims_from_create_request(
             })
         })
         .collect::<Result<Vec<_>, _>>()
+}
+
+pub(super) fn credential_create_history_event(
+    credential: Credential,
+) -> Result<History, ServiceError> {
+    Ok(History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Issued,
+        entity_id: credential.id.into(),
+        entity_type: HistoryEntityType::Credential,
+        organisation: credential
+            .schema
+            .ok_or(ServiceError::MappingError(
+                "organisation is None".to_string(),
+            ))?
+            .organisation,
+    })
 }

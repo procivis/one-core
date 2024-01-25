@@ -1163,7 +1163,7 @@ pub enum ProofClaim {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-struct CustomDateTime(sea_orm::DatabaseBackend);
+pub(crate) struct CustomDateTime(pub sea_orm::DatabaseBackend);
 
 impl Iden for CustomDateTime {
     fn unquoted(&self, s: &mut dyn fmt::Write) {

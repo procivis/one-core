@@ -11,8 +11,11 @@ use crate::{
         organisation::Organisation,
     },
     provider::key_storage::{provider::KeyProviderImpl, GeneratedKey, KeyStorage, MockKeyStorage},
-    repository::mock::{
-        key_repository::MockKeyRepository, organisation_repository::MockOrganisationRepository,
+    repository::{
+        history_repository::MockHistoryRepository,
+        mock::{
+            key_repository::MockKeyRepository, organisation_repository::MockOrganisationRepository,
+        },
     },
     service::{
         key::dto::{GetKeyQueryDTO, KeyRequestDTO},
@@ -22,6 +25,7 @@ use crate::{
 
 fn setup_service(
     repository: MockKeyRepository,
+    history_repository: MockHistoryRepository,
     organisation_repository: MockOrganisationRepository,
     key_storage: MockKeyStorage,
     config: crate::config::core_config::CoreConfig,
@@ -33,6 +37,7 @@ fn setup_service(
 
     KeyService::new(
         Arc::new(repository),
+        Arc::new(history_repository),
         Arc::new(organisation_repository),
         Arc::new(provider),
         Arc::new(config),
@@ -89,8 +94,15 @@ async fn test_create_key_success() {
             .returning(move |_| Ok(key.id));
     }
 
+    let mut history_repository = MockHistoryRepository::default();
+    history_repository
+        .expect_create_history()
+        .times(1)
+        .returning(|history| Ok(history.id));
+
     let service = setup_service(
         repository,
+        history_repository,
         organisation_repository,
         key_storage,
         generic_config().core,
@@ -129,6 +141,7 @@ async fn test_get_key_success() {
 
     let service = setup_service(
         repository,
+        MockHistoryRepository::default(),
         organisation_repository,
         key_storage,
         generic_config().core,
@@ -159,6 +172,7 @@ async fn test_get_key_list() {
 
     let service = setup_service(
         repository,
+        MockHistoryRepository::default(),
         organisation_repository,
         key_storage,
         generic_config().core,

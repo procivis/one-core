@@ -1,20 +1,28 @@
 use std::sync::Arc;
 
-use crate::repository::organisation_repository::OrganisationRepository;
+use crate::repository::{
+    history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
+};
 
 pub mod dto;
+pub mod mapper;
 pub mod service;
 pub mod validator;
 
 #[derive(Clone)]
 pub struct OrganisationService {
+    history_repository: Arc<dyn HistoryRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
 }
 
 impl OrganisationService {
-    pub fn new(repository: Arc<dyn OrganisationRepository>) -> Self {
+    pub fn new(
+        organisation_repository: Arc<dyn OrganisationRepository>,
+        history_repository: Arc<dyn HistoryRepository>,
+    ) -> Self {
         Self {
-            organisation_repository: repository,
+            history_repository,
+            organisation_repository,
         }
     }
 }

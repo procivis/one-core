@@ -1,16 +1,16 @@
-use crate::model::organisation::OrganisationId;
-use crate::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
 use crate::{
     model::{
         claim_schema::ClaimSchema,
         common::ExactColumn,
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        organisation::Organisation,
+        history::{History, HistoryAction, HistoryEntityType},
+        organisation::{Organisation, OrganisationId},
     },
     service::{
         credential_schema::dto::{
             CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
             CredentialClaimSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
+            GetCredentialSchemaQueryDTO,
         },
         error::ServiceError,
     },
@@ -117,5 +117,16 @@ fn from_jwt_request_claim_schema(
             last_modified: now,
         },
         required: claim_schema.required,
+    }
+}
+
+pub(super) fn schema_create_history_event(schema: CredentialSchema) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Created,
+        entity_id: schema.id.into(),
+        entity_type: HistoryEntityType::CredentialSchema,
+        organisation: schema.organisation,
     }
 }
