@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[tokio::test]
-async fn test_issuance_submit_procivis_temp() {
+async fn test_issuance_accept_procivis_temp() {
     // for debugging only
     // _ = tracing_subscriber::fmt().init();
     let mock_server = MockServer::start().await;
@@ -56,7 +56,7 @@ async fn test_issuance_submit_procivis_temp() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
 
-    let url = format!("{base_url}/api/interaction/v1/issuance-submit");
+    let url = format!("{base_url}/api/interaction/v1/issuance-accept");
 
     let backup_db_conn = db_conn.to_owned();
 
@@ -83,7 +83,7 @@ async fn test_issuance_submit_procivis_temp() {
 }
 
 #[tokio::test]
-async fn test_issuance_submit_openid4vc() {
+async fn test_issuance_accept_openid4vc() {
     // for debugging only
     // _ = tracing_subscriber::fmt().init();
     let mock_server = MockServer::start().await;
@@ -154,7 +154,7 @@ async fn test_issuance_submit_openid4vc() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
 
-    let url = format!("{base_url}/api/interaction/v1/issuance-submit");
+    let url = format!("{base_url}/api/interaction/v1/issuance-accept");
 
     let backup_db_conn = db_conn.to_owned();
 

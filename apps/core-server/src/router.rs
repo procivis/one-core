@@ -157,8 +157,8 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(interaction::controller::handle_invitation),
         )
         .route(
-            "/api/interaction/v1/issuance-submit",
-            post(interaction::controller::issuance_submit),
+            "/api/interaction/v1/issuance-accept",
+            post(interaction::controller::issuance_accept),
         )
         .route(
             "/api/interaction/v1/issuance-reject",
@@ -338,7 +338,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::get_json_ld_context,
 
             endpoint::interaction::controller::handle_invitation,
-            endpoint::interaction::controller::issuance_submit,
+            endpoint::interaction::controller::issuance_accept,
             endpoint::interaction::controller::issuance_reject,
             endpoint::interaction::controller::presentation_submit,
             endpoint::interaction::controller::presentation_reject,
@@ -441,7 +441,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,
-                endpoint::interaction::dto::IssuanceSubmitRequestRestDTO,
+                endpoint::interaction::dto::IssuanceAcceptRequestRestDTO,
                 endpoint::interaction::dto::IssuanceRejectRequestRestDTO,
                 endpoint::interaction::dto::PresentationRejectRequestRestDTO,
                 endpoint::interaction::dto::PresentationSubmitRequestRestDTO,
