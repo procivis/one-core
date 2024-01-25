@@ -1,5 +1,5 @@
 use super::dto::DidDocumentDTO;
-use super::{DidCapabilities, DidMethodError};
+use super::{DidCapabilities, DidMethodError, Operation};
 use crate::model::key::Key;
 
 use async_trait::async_trait;
@@ -83,11 +83,7 @@ impl super::DidMethod for WebDidMethod {
 
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
-            operations: vec![
-                "RESOLVE".to_string(),
-                "CREATE".to_string(),
-                "DEACTIVATE".to_string(),
-            ],
+            operations: vec![Operation::RESOLVE, Operation::CREATE, Operation::DEACTIVATE],
             key_algorithms: vec![
                 "ES256".to_string(),
                 "EDDSA".to_string(),

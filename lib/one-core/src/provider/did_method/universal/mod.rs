@@ -1,22 +1,16 @@
-use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError, Operation};
-use crate::model::key::Key;
-
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 
-pub struct X509Method {}
+use crate::model::key::Key;
 
-impl X509Method {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self {}
-    }
-}
+use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError, Operation};
+
+pub struct UniversalDidMethod {}
 
 #[async_trait]
-impl super::DidMethod for X509Method {
+impl super::DidMethod for UniversalDidMethod {
     fn get_method(&self) -> String {
-        "x509".to_string()
+        todo!()
     }
 
     async fn create(
@@ -32,22 +26,25 @@ impl super::DidMethod for X509Method {
         todo!()
     }
 
-    async fn resolve(&self, _did: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
+    async fn resolve(&self, _did_value: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
         todo!()
     }
 
     fn update(&self) -> Result<(), DidMethodError> {
-        Err(DidMethodError::NotSupported)
+        todo!()
     }
 
     fn can_be_deactivated(&self) -> bool {
-        false
+        todo!()
     }
 
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
-            operations: vec![Operation::RESOLVE, Operation::CREATE],
-            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+            operations: vec![Operation::RESOLVE],
+            key_algorithms: vec![],
         }
     }
 }
+
+#[cfg(test)]
+mod test;

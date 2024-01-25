@@ -1,6 +1,6 @@
 use self::helpers::{encode_to_did, extract_jwk, generate_document};
 
-use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError};
+use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError, Operation};
 use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 use async_trait::async_trait;
@@ -67,7 +67,7 @@ impl super::DidMethod for JWKDidMethod {
 
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
-            operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
+            operations: vec![Operation::RESOLVE, Operation::CREATE],
             key_algorithms: vec![
                 "ES256".to_string(),
                 "EDDSA".to_string(),

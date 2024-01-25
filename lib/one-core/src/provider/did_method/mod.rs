@@ -17,19 +17,28 @@ use crate::provider::did_method::x509::X509Method;
 use super::key_algorithm::provider::KeyAlgorithmProvider;
 
 use self::dto::DidDocumentDTO;
+use self::universal::UniversalDidMethod;
 
 pub mod common;
 pub mod dto;
 pub mod jwk;
 pub mod key;
 pub mod provider;
+pub mod universal;
 pub mod web;
 pub mod x509;
+
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
+pub enum Operation {
+    RESOLVE,
+    CREATE,
+    DEACTIVATE,
+}
 
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DidCapabilities {
-    pub operations: Vec<String>,
+    pub operations: Vec<Operation>,
     pub key_algorithms: Vec<String>,
 }
 
@@ -88,6 +97,7 @@ pub fn did_method_providers_from_config(
                 Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
             }
             core_config::DidType::X509 => Arc::new(X509Method::new()) as _,
+            core_config::DidType::UNIVERSAL => Arc::new(UniversalDidMethod {}) as _,
         };
         providers.insert(name.to_owned(), method);
     }

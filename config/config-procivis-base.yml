@@ -90,6 +90,14 @@ did:
     order: 3
     disabled: true
     params: null
+  ION:
+    display: "did.ion"
+    order: 9
+    disabled: true
+    type: "UNIVERSAL_RESOLVER"
+    params:
+      public:
+        resolverUrl: https://dev.uniresolver.io/
 datatype:
   STRING:
     display: "datatype.string"
