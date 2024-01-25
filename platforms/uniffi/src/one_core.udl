@@ -133,6 +133,18 @@ dictionary ListQueryBindingDTO {
   u32 page;
   u32 page_size;
   string organisation_id;
+};
+
+dictionary CredentialSchemaListBindingDTO {
+  sequence<CredentialSchemaBindingDTO> values;
+  u64 total_pages;
+  u64 total_items;
+};
+
+dictionary CredentialListQueryBindingDTO {
+  u32 page;
+  u32 page_size;
+  string organisation_id;
   CredentialRoleBindingDTO? role;
 };
 
@@ -255,10 +267,13 @@ interface OneCoreBinding {
   void delete_credential(string credential_id);
 
   [Throws=BindingError]
-  CredentialListBindingDTO get_credentials([ByRef] ListQueryBindingDTO query);
+  CredentialListBindingDTO get_credentials(CredentialListQueryBindingDTO query);
 
   [Throws=BindingError]
   CredentialDetailBindingDTO get_credential(string credential_id);
+
+  [Throws=BindingError]
+  CredentialSchemaListBindingDTO get_credential_schemas(ListQueryBindingDTO query);
 
   [Throws=BindingError]
   ProofRequestBindingDTO get_proof(string proof_id);
