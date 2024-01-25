@@ -1,6 +1,6 @@
 use super::dto::{
-    HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceRejectRequestRestDTO,
-    IssuanceSubmitRequestRestDTO, PresentationRejectRequestRestDTO,
+    HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
+    IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
     PresentationSubmitRequestRestDTO,
 };
 use crate::{
@@ -41,18 +41,18 @@ pub(crate) async fn handle_invitation(
 
 #[utoipa::path(
     post,
-    path = "/api/interaction/v1/issuance-submit",
-    request_body = IssuanceSubmitRequestRestDTO,
+    path = "/api/interaction/v1/issuance-accept",
+    request_body = IssuanceAcceptRequestRestDTO,
     responses(EmptyOrErrorResponse),
     tag = "interaction",
     security(
         ("bearer" = [])
     ),
 )]
-pub(crate) async fn issuance_submit(
+pub(crate) async fn issuance_accept(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
-        Json<IssuanceSubmitRequestRestDTO>,
+        Json<IssuanceAcceptRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {

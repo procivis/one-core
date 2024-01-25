@@ -28,7 +28,7 @@ pub struct HandleInvitationResponseRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct IssuanceSubmitRequestRestDTO {
+pub struct IssuanceAcceptRequestRestDTO {
     pub interaction_id: Uuid,
 }
 
