@@ -9,7 +9,7 @@ use crate::{
         did_method::{
             dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO},
             jwk::JWKDidMethod,
-            DidMethod, DidMethodError,
+            DidMethod, DidMethodError, Operation,
         },
         key_algorithm::{provider::MockKeyAlgorithmProvider, MockKeyAlgorithm},
     },
@@ -235,7 +235,7 @@ fn test_get_capabilities() {
     let provider = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
 
     assert_eq!(
-        vec!["RESOLVE".to_string(), "CREATE".to_string()],
+        vec![Operation::RESOLVE, Operation::CREATE],
         provider.get_capabilities().operations
     );
 }

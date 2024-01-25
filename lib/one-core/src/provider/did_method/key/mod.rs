@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
 
-use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError};
+use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError, Operation};
 use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 pub struct KeyDidMethod {
@@ -81,7 +81,7 @@ impl super::DidMethod for KeyDidMethod {
 
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
-            operations: vec!["RESOLVE".to_string(), "CREATE".to_string()],
+            operations: vec![Operation::RESOLVE, Operation::CREATE],
             key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
         }
     }
