@@ -15,12 +15,30 @@ args    = ["build", "-p", "core-server"]
 
 [tasks.run]
 command = "cargo"
-args    = ["run", "-p", "core-server", "--", "--config", "config/config-local.yml"]
+args = [
+  "run",
+  "-p",
+  "core-server",
+  "--",
+  "--config",
+  "config/config-procivis-base.yml",
+  "--config",
+  "config/config-local.yml",
+]
 
 [tasks.runwallet]
 command = "cargo"
-env     = { "ONE_app__serverPort" = "3001", "ONE_app__databaseUrl" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core", "ONE_app__coreBaseUrl" = "http://0.0.0.0:3001" }
-args    = ["run", "-p", "core-server", "--", "--config", "config/config-local.yml"]
+env = { "ONE_app__serverPort" = "3001", "ONE_app__databaseUrl" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost:3307/core", "ONE_app__coreBaseUrl" = "http://0.0.0.0:3001" }
+args = [
+  "run",
+  "-p",
+  "core-server",
+  "--",
+  "--config",
+  "config/config-procivis-base.yml",
+  "--config",
+  "config/config-local.yml",
+]
 
 [tasks.runw]
 command = "cargo"

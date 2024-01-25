@@ -8,12 +8,13 @@ sentry:
 
 ingress:
   hosts:
-  - host: core.demo.procivis-one.com
-    paths:
-      - path: /
-        pathType: ImplementationSpecific
+    - host: core.demo.procivis-one.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
 
 configs:
+  - "config-procivis-base.yml"
   - "config-procivis-server.yml"
   - "config-procivis-server-demo.yml"
 
