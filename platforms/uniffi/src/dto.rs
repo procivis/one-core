@@ -4,6 +4,7 @@ use crate::utils::TimestampFormat;
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into, TryInto};
 use one_core::service::credential::dto::CredentialRole;
+use one_core::service::credential_schema::dto::GetCredentialSchemaListResponseDTO;
 use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
@@ -73,6 +74,21 @@ pub enum CredentialRoleBindingDTO {
 }
 
 pub struct ListQueryBindingDTO {
+    pub page: u32,
+    pub page_size: u32,
+    pub organisation_id: String,
+}
+
+#[derive(From)]
+#[from(GetCredentialSchemaListResponseDTO)]
+pub struct CredentialSchemaListBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub values: Vec<CredentialSchemaBindingDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+pub struct CredentialListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
     pub organisation_id: String,

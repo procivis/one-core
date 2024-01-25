@@ -1,5 +1,5 @@
 use crate::{
-    error::BindingError, utils::into_uuid, CredentialListBindingDTO, ListQueryBindingDTO,
+    error::BindingError, utils::into_uuid, CredentialListBindingDTO, CredentialListQueryBindingDTO,
     OneCoreBinding,
 };
 use one_core::{
@@ -10,7 +10,7 @@ use one_core::{
 impl OneCoreBinding {
     pub fn get_credentials(
         &self,
-        query: &ListQueryBindingDTO,
+        query: CredentialListQueryBindingDTO,
     ) -> Result<CredentialListBindingDTO, BindingError> {
         self.block_on(async {
             let core = self.use_core().await?;
