@@ -13,6 +13,7 @@ use super::{
     validator::validate_deactivation_request,
     DidService,
 };
+use crate::service::did::mapper::did_create_history_event;
 use crate::service::{did::mapper::map_key_to_verification_method, error::MissingProviderError};
 use crate::{
     config::validator::did::validate_did_method,
@@ -215,7 +216,7 @@ impl DidService {
 
         let did_id = self
             .did_repository
-            .create_did(did)
+            .create_did(did.to_owned())
             .await
             .map_err(|err| match err {
                 DataLayerError::AlreadyExists => {
@@ -223,6 +224,11 @@ impl DidService {
                 }
                 err => ServiceError::from(err),
             })?;
+
+        let _ = self
+            .history_repository
+            .create_history(did_create_history_event(did))
+            .await;
 
         Ok(did_id)
     }

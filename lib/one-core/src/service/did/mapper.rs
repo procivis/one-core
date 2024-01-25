@@ -3,6 +3,8 @@ use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
 use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
+
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::provider::did_method::dto::PublicKeyJwkDTO;
 use crate::service::did::dto::{
     DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO,
@@ -16,6 +18,8 @@ use crate::{
     service::{error::ServiceError, key::dto::KeyListItemResponseDTO},
 };
 use std::collections::HashMap;
+use uuid::Uuid;
+
 impl TryFrom<Did> for DidResponseDTO {
     type Error = ServiceError;
     fn try_from(value: Did) -> Result<Self, Self::Error> {
@@ -195,5 +199,16 @@ impl TryFrom<PublicKeyJwkDTO> for PublicKeyJwkResponseDTO {
                 "Only EC, OKP and MLWE did algorithms are supported.".to_string(),
             )),
         }
+    }
+}
+
+pub(super) fn did_create_history_event(did: Did) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Created,
+        entity_id: did.id.into(),
+        entity_type: HistoryEntityType::Did,
+        organisation: did.organisation,
     }
 }

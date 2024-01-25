@@ -230,6 +230,57 @@ dictionary CredentialRevocationCheckResponseBindingDTO {
   string? reason;
 };
 
+enum HistoryActionBindingEnum {
+    "Accepted",
+    "Created",
+    "Deactivated",
+    "Deleted",
+    "Issued",
+    "Offered",
+    "Rejected",
+    "Requested",
+    "Revoked",
+};
+
+enum HistoryEntityTypeBindingEnum {
+    "Key",
+    "Did",
+    "Credential",
+    "CredentialSchema",
+    "Proof",
+    "ProofSchema",
+    "Organisation"
+};
+
+dictionary HistoryListItemBindingDTO {
+  string created_date;
+  string id;
+  HistoryActionBindingEnum action;
+  string entity_id;
+  HistoryEntityTypeBindingEnum entity_type;
+  string organisation_id;
+};
+
+dictionary HistoryListQueryBindingDTO {
+  u32 page;
+  u32 page_size;
+  string organisation_id;
+  string? entity_id;
+  HistoryActionBindingEnum? action;
+  HistoryEntityTypeBindingEnum? entity_type;
+  string? created_date_from;
+  string? created_date_to;
+  string? did_id;
+  string? credential_id;
+  string? credential_schema_id;
+};
+
+dictionary HistoryListBindingDTO {
+  sequence<HistoryListItemBindingDTO> values;
+  u64 total_pages;
+  u64 total_items;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -280,6 +331,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   sequence<CredentialRevocationCheckResponseBindingDTO> check_revocation(sequence<string> credential_ids);
+  
+  [Throws=BindingError]
+  HistoryListBindingDTO get_history_list(HistoryListQueryBindingDTO query);
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);

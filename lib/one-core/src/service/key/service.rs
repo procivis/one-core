@@ -8,7 +8,7 @@ use crate::{
         error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
         key::{
             dto::{KeyRequestDTO, KeyResponseDTO},
-            mapper::from_create_request,
+            mapper::{from_create_request, key_create_history_event},
             validator::validate_generate_request,
         },
     },
@@ -70,9 +70,11 @@ impl KeyService {
         let key_id = KeyId::new_v4();
         let key = provider.generate(&key_id, &request.key_type).await?;
 
+        let key_entity = from_create_request(key_id, request, organisation, key);
+
         let uuid = self
             .key_repository
-            .create_key(from_create_request(key_id, request, organisation, key))
+            .create_key(key_entity.to_owned())
             .await
             .map_err(|err| match err {
                 DataLayerError::AlreadyExists => {
@@ -80,6 +82,11 @@ impl KeyService {
                 }
                 err => ServiceError::from(err),
             })?;
+
+        let _ = self
+            .history_repository
+            .create_history(key_create_history_event(key_entity))
+            .await;
 
         Ok(uuid)
     }

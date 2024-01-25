@@ -8,7 +8,10 @@ use super::{
 };
 use crate::{
     model::organisation::{Organisation, OrganisationId, OrganisationRelations},
-    service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
+    service::{
+        error::{BusinessLogicError, EntityNotFoundError, ServiceError},
+        organisation::mapper::create_organisation_history_event,
+    },
 };
 
 impl OrganisationService {
@@ -69,8 +72,13 @@ impl OrganisationService {
 
         let uuid = self
             .organisation_repository
-            .create_organisation(request)
+            .create_organisation(request.to_owned())
             .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(create_organisation_history_event(request))
+            .await;
 
         Ok(uuid)
     }

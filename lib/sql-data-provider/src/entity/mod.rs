@@ -7,6 +7,7 @@ pub mod credential_schema;
 pub mod credential_schema_claim_schema;
 pub mod credential_state;
 pub mod did;
+pub mod history;
 pub mod interaction;
 pub mod key;
 pub mod key_did;

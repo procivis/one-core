@@ -15,6 +15,7 @@ use crate::{
     },
     repository::{
         credential_schema_repository::MockCredentialSchemaRepository,
+        history_repository::MockHistoryRepository,
         mock::organisation_repository::MockOrganisationRepository,
     },
     service::{
@@ -32,11 +33,13 @@ use crate::{
 
 fn setup_service(
     credential_schema_repository: MockCredentialSchemaRepository,
+    history_repository: MockHistoryRepository,
     organisation_repository: MockOrganisationRepository,
     config: CoreConfig,
 ) -> CredentialSchemaService {
     CredentialSchemaService::new(
         Arc::new(credential_schema_repository),
+        Arc::new(history_repository),
         Arc::new(organisation_repository),
         Arc::new(config),
     )
@@ -73,6 +76,7 @@ fn generic_credential_schema() -> CredentialSchema {
 #[tokio::test]
 async fn test_get_credential_schema_success() {
     let mut repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
@@ -89,7 +93,12 @@ async fn test_get_credential_schema_success() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config().core);
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
 
     let result = service.get_credential_schema(&schema.id).await;
 
@@ -101,6 +110,7 @@ async fn test_get_credential_schema_success() {
 #[tokio::test]
 async fn test_get_credential_schema_fail() {
     let mut repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
@@ -118,7 +128,12 @@ async fn test_get_credential_schema_fail() {
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config().core);
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
 
     let organisation_is_none = service.get_credential_schema(&schema.id).await;
     assert!(organisation_is_none.is_err_and(|e| matches!(e, ServiceError::MappingError(_))));
@@ -127,6 +142,7 @@ async fn test_get_credential_schema_fail() {
 #[tokio::test]
 async fn test_get_credential_schema_list_success() {
     let mut repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
     let response = GetCredentialSchemaList {
@@ -147,7 +163,12 @@ async fn test_get_credential_schema_list_success() {
             .returning(move |_| Ok(clone.clone()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config().core);
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
 
     let result = service
         .get_credential_schema_list(GetCredentialSchemaQueryDTO {
@@ -173,6 +194,7 @@ async fn test_get_credential_schema_list_success() {
 #[tokio::test]
 async fn test_delete_credential_schema() {
     let mut repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
     let schema_id = Uuid::new_v4();
@@ -185,7 +207,12 @@ async fn test_delete_credential_schema() {
             .returning(move |_| Ok(()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config().core);
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
 
     let result = service.delete_credential_schema(&schema_id).await;
     assert!(result.is_ok());
@@ -194,7 +221,13 @@ async fn test_delete_credential_schema() {
 #[tokio::test]
 async fn test_create_credential_schema_success() {
     let mut repository = MockCredentialSchemaRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
+
+    history_repository
+        .expect_create_history()
+        .times(1)
+        .returning(|history| Ok(history.id));
 
     let now = OffsetDateTime::now_utc();
     let organisation = Organisation {
@@ -235,7 +268,12 @@ async fn test_create_credential_schema_success() {
             .returning(move |_| Ok(clone.clone()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config().core);
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
 
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
@@ -257,6 +295,7 @@ async fn test_create_credential_schema_success() {
 #[tokio::test]
 async fn test_create_credential_schema_unique_name_error() {
     let mut repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
 
     let now = OffsetDateTime::now_utc();
     let organisation = Organisation {
@@ -284,6 +323,7 @@ async fn test_create_credential_schema_unique_name_error() {
 
     let service = setup_service(
         repository,
+        history_repository,
         MockOrganisationRepository::default(),
         generic_config().core,
     );
@@ -310,9 +350,15 @@ async fn test_create_credential_schema_unique_name_error() {
 #[tokio::test]
 async fn test_create_credential_schema_fail_validation() {
     let repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
-    let service = setup_service(repository, organisation_repository, generic_config().core);
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
 
     let non_existing_format = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
@@ -378,6 +424,7 @@ async fn test_create_credential_schema_fail_validation() {
 #[tokio::test]
 async fn test_create_credential_schema_fail_missing_organisation() {
     let mut repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
 
     let response = GetCredentialSchemaList {
@@ -402,7 +449,12 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             .returning(move |_| Ok(clone.clone()));
     }
 
-    let service = setup_service(repository, organisation_repository, generic_config().core);
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
 
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {

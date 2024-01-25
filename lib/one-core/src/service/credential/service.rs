@@ -1,13 +1,11 @@
 use time::OffsetDateTime;
 
-use crate::config::core_config::RevocationType;
-use crate::repository::error::DataLayerError;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, MissingProviderError};
 use crate::{
     common_mapper::list_response_try_into,
     common_validator::{
         throw_if_latest_credential_state_eq, throw_if_latest_credential_state_not_eq,
     },
+    config::core_config::RevocationType,
     model::{
         claim::ClaimRelations,
         claim_schema::ClaimSchemaRelations,
@@ -22,6 +20,7 @@ use crate::{
         organisation::OrganisationRelations,
     },
     provider::credential_formatter::jwt::SkipVerification,
+    repository::error::DataLayerError,
     service::{
         credential::{
             dto::{
@@ -29,10 +28,12 @@ use crate::{
                 CredentialRevocationCheckResponseDTO, GetCredentialListResponseDTO,
                 GetCredentialQueryDTO,
             },
-            mapper::{claims_from_create_request, from_create_request},
+            mapper::{
+                claims_from_create_request, credential_create_history_event, from_create_request,
+            },
             CredentialService,
         },
-        error::ServiceError,
+        error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
     },
 };
 
@@ -73,7 +74,7 @@ impl CredentialService {
                 &request.credential_schema_id,
                 &CredentialSchemaRelations {
                     claim_schemas: Some(ClaimSchemaRelations::default()),
-                    organisation: None,
+                    organisation: Some(OrganisationRelations::default()),
                 },
             )
             .await?;
@@ -106,8 +107,13 @@ impl CredentialService {
 
         let result = self
             .credential_repository
-            .create_credential(credential)
+            .create_credential(credential.to_owned())
             .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(credential_create_history_event(credential)?)
+            .await;
 
         Ok(result)
     }

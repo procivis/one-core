@@ -13,7 +13,7 @@ pub enum BindingError {
     NotFound(String),
     #[error("Not supported: `{0}`")]
     NotSupported(String),
-    #[error("Validation errror: `{0}`")]
+    #[error("Validation error: `{0}`")]
     ValidationError(String),
     #[error("Config validation error `{0}`")]
     ConfigValidationError(String),
@@ -58,6 +58,12 @@ impl From<ConfigParsingError> for BindingError {
 impl From<ConfigError> for BindingError {
     fn from(error: ConfigError) -> Self {
         Self::ConfigValidationError(error.to_string())
+    }
+}
+
+impl From<time::error::Parse> for BindingError {
+    fn from(error: time::error::Parse) -> Self {
+        Self::ValidationError(format!("OffsetDateTime parse error: {}", error))
     }
 }
 

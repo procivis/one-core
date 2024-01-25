@@ -9,9 +9,9 @@ use one_core::repository::{
     claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
     credential_repository::CredentialRepository,
     credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-    interaction_repository::InteractionRepository, key_repository::KeyRepository,
-    organisation_repository::OrganisationRepository, proof_repository::ProofRepository,
-    proof_schema_repository::ProofSchemaRepository,
+    history_repository::HistoryRepository, interaction_repository::InteractionRepository,
+    key_repository::KeyRepository, organisation_repository::OrganisationRepository,
+    proof_repository::ProofRepository, proof_schema_repository::ProofSchemaRepository,
     revocation_list_repository::RevocationListRepository, DataRepository,
 };
 use organisation::OrganisationProvider;
@@ -21,6 +21,7 @@ use sea_orm::{ConnectOptions, DatabaseConnection};
 
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
+use crate::history::HistoryProvider;
 use crate::key::KeyProvider;
 use crate::revocation_list::RevocationListProvider;
 
@@ -37,6 +38,7 @@ pub mod claim_schema;
 pub mod credential;
 pub mod credential_schema;
 pub mod did;
+pub mod history;
 pub mod interaction;
 pub mod key;
 pub mod organisation;
@@ -58,6 +60,7 @@ pub struct DataLayer {
     claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
     key_repository: Arc<dyn KeyRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     proof_repository: Arc<dyn ProofRepository>,
@@ -83,6 +86,7 @@ impl DataLayer {
             db: db.clone(),
             organisation_repository: organisation_repository.clone(),
         });
+        let history_repository = Arc::new(HistoryProvider { db: db.clone() });
         let did_repository = Arc::new(DidProvider {
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
@@ -121,6 +125,7 @@ impl DataLayer {
             credential_repository,
             credential_schema_repository,
             key_repository,
+            history_repository,
             proof_schema_repository,
             proof_repository,
             claim_schema_repository,
@@ -152,6 +157,9 @@ impl DataRepository for DataLayer {
     }
     fn get_credential_schema_repository(&self) -> Arc<dyn CredentialSchemaRepository> {
         self.credential_schema_repository.clone()
+    }
+    fn get_history_repository(&self) -> Arc<dyn HistoryRepository> {
+        self.history_repository.clone()
     }
     fn get_key_repository(&self) -> Arc<dyn KeyRepository> {
         self.key_repository.clone()

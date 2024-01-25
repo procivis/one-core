@@ -1,18 +1,20 @@
 use one_core::model::credential::{CredentialState, CredentialStateEnum};
 use one_core::model::interaction::InteractionId;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, EntityId, HistoryId, OrganisationId};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::entity::did::DidType;
-use crate::entity::key_did::KeyRole;
 use crate::{
     db_conn,
     entity::{
-        claim_schema, credential, credential_schema, credential_schema_claim_schema,
-        credential_state, did, interaction, key, key_did, organisation, proof, proof_schema,
-        proof_schema_claim_schema,
+        claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
+        credential_state, did,
+        did::DidType,
+        history::{self, HistoryAction, HistoryEntityType},
+        interaction, key, key_did,
+        key_did::KeyRole,
+        organisation, proof, proof_claim, proof_schema, proof_schema_claim_schema,
         proof_state::{self, ProofRequestState},
     },
     DataLayer,
@@ -100,6 +102,26 @@ pub async fn insert_credential_schema_to_database(
     .insert(database)
     .await?;
     Ok(schema.id)
+}
+
+pub async fn insert_many_claims_to_database(
+    database: &DatabaseConnection,
+    claims: &[(Uuid, Uuid, &str, Vec<u8>)],
+) -> Result<(), DbErr> {
+    let models =
+        claims.iter().map(
+            |(id, claim_schema_id, credential_id, value)| claim::ActiveModel {
+                id: Set(id.to_string()),
+                claim_schema_id: Set(claim_schema_id.to_string()),
+                credential_id: Set(credential_id.to_string()),
+                value: Set(value.to_owned()),
+                created_date: Set(get_dummy_date()),
+                last_modified: Set(get_dummy_date()),
+            },
+        );
+
+    claim::Entity::insert_many(models).exec(database).await?;
+    Ok(())
 }
 
 #[allow(clippy::ptr_arg)]
@@ -231,6 +253,24 @@ pub async fn insert_proof_schema_to_database(
     .insert(database)
     .await?;
     Ok(schema.id)
+}
+
+pub async fn insert_many_proof_claim_to_database(
+    database: &DatabaseConnection,
+    proof_claims: &[(Uuid, Uuid)],
+) -> Result<(), DbErr> {
+    let models = proof_claims
+        .iter()
+        .map(|(proof_id, claim_id)| proof_claim::ActiveModel {
+            claim_id: Set(claim_id.to_string()),
+            proof_id: Set(proof_id.to_string()),
+        });
+
+    proof_claim::Entity::insert_many(models)
+        .exec(database)
+        .await?;
+
+    Ok(())
 }
 
 pub async fn insert_organisation_to_database(
@@ -393,6 +433,29 @@ pub async fn setup_test_data_layer_and_connection() -> DataLayer {
 
 pub fn are_datetimes_within_minute(d1: OffsetDateTime, d2: OffsetDateTime) -> bool {
     (d2 - d1).abs() < Duration::minutes(1)
+}
+
+pub async fn insert_history(
+    database: &DatabaseConnection,
+    action: HistoryAction,
+    entity_id: EntityId,
+    entity_type: HistoryEntityType,
+    organisation_id: OrganisationId,
+) -> Result<HistoryId, DbErr> {
+    let now = OffsetDateTime::now_utc();
+
+    let model = history::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(now),
+        action: Set(action),
+        entity_id: Set(entity_id),
+        entity_type: Set(entity_type),
+        organisation_id: Set(organisation_id),
+    }
+    .insert(database)
+    .await?;
+
+    Ok(model.id)
 }
 
 #[test]

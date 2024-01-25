@@ -1,8 +1,10 @@
 use dto_mapper::convert_inner;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::{
     model::{
+        history::{History, HistoryAction, HistoryEntityType},
         key::{GetKeyList, Key, KeyId},
         organisation::Organisation,
     },
@@ -67,5 +69,16 @@ impl From<GetKeyList> for GetKeyListResponseDTO {
             total_pages: value.total_pages,
             total_items: value.total_items,
         }
+    }
+}
+
+pub(super) fn key_create_history_event(key: Key) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Created,
+        entity_id: key.id.into(),
+        entity_type: HistoryEntityType::Key,
+        organisation: key.organisation,
     }
 }

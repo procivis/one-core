@@ -117,3 +117,19 @@ pub(crate) fn get_string_match_condition(
 pub(crate) fn get_equals_condition(column: impl ColumnTrait, value: impl Into<Value>) -> Condition {
     column.eq(value).into_condition()
 }
+
+/// helper function to construct an `gt` `sea_query::Condition` with a specific value
+pub(crate) fn get_greater_than_condition(
+    column: impl ColumnTrait,
+    value: impl Into<Value>,
+) -> Condition {
+    column.gt(value).into_condition()
+}
+
+/// helper function to construct an `lt` `sea_query::Condition` with a specific value
+pub(crate) fn get_lesser_than_condition(
+    column: impl ColumnTrait,
+    value: impl Into<Value>,
+) -> Condition {
+    column.lt(value).into_condition()
+}

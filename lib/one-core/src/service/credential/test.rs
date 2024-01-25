@@ -26,7 +26,7 @@ use crate::{
     repository::{
         credential_repository::MockCredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository,
+        did_repository::MockDidRepository, history_repository::MockHistoryRepository,
     },
     service::{
         credential::{
@@ -50,6 +50,7 @@ struct Repositories {
     pub credential_repository: MockCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub did_repository: MockDidRepository,
+    pub history_repository: MockHistoryRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockTransportProtocolProvider,
@@ -61,6 +62,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.credential_repository),
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.did_repository),
+        Arc::new(repositories.history_repository),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
@@ -534,6 +536,12 @@ async fn test_create_credential_success() {
     let mut did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
+    let mut history_repository = MockHistoryRepository::default();
+    history_repository
+        .expect_create_history()
+        .times(1)
+        .returning(|history| Ok(history.id));
+
     let credential = generic_credential();
     {
         let clone = credential.clone();
@@ -560,6 +568,7 @@ async fn test_create_credential_success() {
         credential_repository,
         credential_schema_repository,
         did_repository,
+        history_repository,
         revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
@@ -636,6 +645,12 @@ async fn test_create_credential_one_required_claim_missing() {
     let mut did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
+    let mut history_repository = MockHistoryRepository::default();
+    history_repository
+        .expect_create_history()
+        .times(1)
+        .returning(|history| Ok(history.id));
+
     let credential = generic_credential();
     let credential_schema = CredentialSchema {
         claim_schemas: Some(vec![
@@ -685,6 +700,7 @@ async fn test_create_credential_one_required_claim_missing() {
         credential_repository,
         credential_schema_repository,
         did_repository,
+        history_repository,
         revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
