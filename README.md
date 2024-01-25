@@ -71,7 +71,7 @@ makers runw
 Run compiled application (Local env)
 
 ```shell
-./target/debug/core-server --config config/config-local.yml
+./target/debug/core-server --config config/config-procivis-base.yml --config config/config-local.yml
 ```
 
 ## Docker
@@ -115,7 +115,7 @@ docker build -t one-core -f docker/Dockerfile .
 ```shell
 docker run --init -p 3000:3000 -it --rm \
   -e ONE_app__databaseUrl=mysql://core:886eOqVMmlHsayu6Vyxw@host.docker.internal/core \
-  one-core --config config/config-local.yml
+  one-core --config config/config-procivis-base.yml --config config/config-local.yml
 ```
 
 - Run project on Linux
@@ -123,7 +123,7 @@ docker run --init -p 3000:3000 -it --rm \
 ```shell
 docker run --init -p 3000:3000 -it --rm \
   -e ONE_app__databaseUrl=mysql://core:886eOqVMmlHsayu6Vyxw@172.17.0.1/core \
-  one-core --config config/config-local.yml
+  one-core --config config/config-procivis-base.yml --config config/config-local.yml
 ```
 
 - Run shell in the container
@@ -195,22 +195,24 @@ FILES="apps/core-server/bom.json apps/migration/bom.json lib/one-core/bom.json l
 cyclonedx-cli merge --input-files ${FILES} --input-format=json --output-format=json > merged_sbom.json
 ```
 
-
 ### Testing
 
 ##### Run tests
+
 ```shell
 cargo llvm-cov --no-clean --workspace --release --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$"
 ```
 
 ##### Generate report
 
-* Cobertura
+- Cobertura
+
 ```shell
 cargo llvm-cov report --release --cobertura --output-path cobertura.xml
 ```
 
-* Lcov
+- Lcov
+
 ```shell
 cargo llvm-cov report --release --lcov --output-path lcov.info
 ```

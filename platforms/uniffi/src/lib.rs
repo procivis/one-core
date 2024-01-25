@@ -24,6 +24,7 @@ fn initialize_core(
     let placeholder_config: AppConfig<NoCustomConfig> =
         core_config::AppConfig::from_yaml_str_configs(vec![
             include_str!("../../../config/config.yml"),
+            include_str!("../../../config/config-procivis-base.yml"),
             include_str!("../../../config/config-procivis-mobile.yml"),
         ])?;
 

@@ -46,6 +46,7 @@ pub fn create_config(core_base_url: impl Into<String>) -> AppConfig<ServerConfig
 
     let mut app_config: AppConfig<ServerConfig> = core_config::AppConfig::from_files(&[
         format!("{}/../../config/config.yml", root),
+        format!("{}/../../config/config-procivis-base.yml", root),
         format!("{}/../../config/config-local.yml", root),
     ])
     .unwrap();

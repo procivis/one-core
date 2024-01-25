@@ -5,11 +5,12 @@ sentry:
 
 ingress:
   hosts:
-  - host: core.dev.procivis-one.com
-    paths:
-      - path: /
-        pathType: ImplementationSpecific
+    - host: core.dev.procivis-one.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
 
 configs:
+  - "config-procivis-base.yml"
   - "config-procivis-server.yml"
   - "config-procivis-server-dev.yml"
