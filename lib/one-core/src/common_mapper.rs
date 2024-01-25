@@ -39,7 +39,7 @@ pub fn list_response_try_into<T, F: TryInto<T>>(
 pub(crate) fn get_exchange_param_pre_authorization_expires_in(
     config: &CoreConfig,
 ) -> Result<Duration, ServiceError> {
-    let params: OpenID4VCParams = config.exchange.get(ExchangeType::OpenId4Vc)?;
+    let params: OpenID4VCParams = config.exchange.get_by_type(ExchangeType::OpenId4Vc)?;
 
     Ok(Duration::seconds(
         params.pre_authorized_code_expires_in as _,
@@ -49,7 +49,7 @@ pub(crate) fn get_exchange_param_pre_authorization_expires_in(
 pub(crate) fn get_exchange_param_token_expires_in(
     config: &CoreConfig,
 ) -> Result<Duration, ServiceError> {
-    let params: OpenID4VCParams = config.exchange.get(ExchangeType::OpenId4Vc)?;
+    let params: OpenID4VCParams = config.exchange.get_by_type(ExchangeType::OpenId4Vc)?;
 
     Ok(Duration::seconds(params.token_expires_in as _))
 }

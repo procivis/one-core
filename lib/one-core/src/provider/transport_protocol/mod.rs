@@ -146,7 +146,7 @@ pub(crate) fn transport_protocol_providers_from_config(
 ) -> Result<HashMap<String, Arc<dyn TransportProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn TransportProtocol>> = HashMap::new();
 
-    for (name, fields) in config.as_inner() {
+    for (name, fields) in config.iter() {
         match fields.r#type {
             ExchangeType::ProcivisTemporary => {
                 let protocol = Arc::new(ProcivisTemp::new(

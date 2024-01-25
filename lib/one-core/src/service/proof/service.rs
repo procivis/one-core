@@ -166,8 +166,7 @@ impl ProofService {
         &self,
         request: CreateProofRequestDTO,
     ) -> Result<ProofId, ServiceError> {
-        validate_exchange_type(&request.transport, &self.config.exchange)
-            .map_err(ServiceError::from)?;
+        validate_exchange_type(&request.transport, &self.config.exchange)?;
 
         let now = OffsetDateTime::now_utc();
         let proof_schema_id = request.proof_schema_id;

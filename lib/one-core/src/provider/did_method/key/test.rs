@@ -31,9 +31,9 @@ fn setup_provider(
 
     let mut key_algorithm_config = KeyAlgorithmConfig::default();
     key_algorithm_config.insert(
-        algorithm_type,
+        algorithm_id.to_string(),
         Fields {
-            r#type: algorithm_id.to_string(),
+            r#type: algorithm_type,
             display: Value::String(algorithm_id.to_string()),
             order: None,
             disabled: None,

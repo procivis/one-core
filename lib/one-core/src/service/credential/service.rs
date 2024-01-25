@@ -1,5 +1,6 @@
 use time::OffsetDateTime;
 
+use crate::config::core_config::RevocationType;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, MissingProviderError};
 use crate::{
@@ -160,7 +161,7 @@ impl CredentialService {
             .issuer_did
             .as_ref()
             .is_some_and(|did| did.did_type == DidType::Local);
-        if is_issuer && *revocation_type != "NONE" {
+        if is_issuer && **revocation_type != RevocationType::None {
             throw_if_latest_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
 

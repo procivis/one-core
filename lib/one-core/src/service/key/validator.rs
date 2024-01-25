@@ -1,16 +1,19 @@
 use crate::{
-    config::{
-        core_config::CoreConfig,
-        validator::key::{validate_key_algorithm, validate_key_storage},
-        ConfigValidationError,
-    },
-    service::key::dto::KeyRequestDTO,
+    config::core_config::CoreConfig,
+    service::{error::ValidationError, key::dto::KeyRequestDTO},
 };
 
 pub(super) fn validate_generate_request(
     request: &KeyRequestDTO,
     config: &CoreConfig,
-) -> Result<(), ConfigValidationError> {
-    validate_key_algorithm(&request.key_type, &config.key_algorithm)?;
-    validate_key_storage(&request.storage_type, &config.key_storage)
+) -> Result<(), ValidationError> {
+    config
+        .key_algorithm
+        .get_if_enabled(&request.key_type)
+        .map_err(|err| ValidationError::InvalidKeyAlgorithm(err.to_string()))?;
+    config
+        .key_storage
+        .get_if_enabled(&request.storage_type)
+        .map_err(|err| ValidationError::InvalidKeyStorage(err.to_string()))?;
+    Ok(())
 }

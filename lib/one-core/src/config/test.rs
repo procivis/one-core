@@ -13,7 +13,6 @@ struct SystemConfig {
 }
 
 rusty_fork_test! {
-
     #[test]
     #[cfg(all(
         feature = "config_yaml",
@@ -122,7 +121,7 @@ rusty_fork_test! {
                 BBS_PLUS:
                     order: 10
                     display: 'display'
-                    type: 'TESTDSA'
+                    type: 'BBS_PLUS'
                     params:
                         public:
                             algorithm: 'TestAlg'
@@ -137,7 +136,7 @@ rusty_fork_test! {
                 \"BBS_PLUS\": {
                     \"order\": 15,
                     \"display\": \"display\",
-                    \"type\": \"TESTDSA\",
+                    \"type\": \"BBS_PLUS\",
                     \"params\": {
                         \"public\": {
                             \"algorithm\": \"TestAlg\"
@@ -180,7 +179,7 @@ rusty_fork_test! {
 
         assert_eq!(config.app.database_url, "test2"); // via config2
 
-        let jwt = config.core.format.as_inner().get(&FormatType::Jwt).unwrap();
+        let jwt = config.core.format.get_fields("JWT").unwrap();
 
         assert_eq!(
             jwt.params.as_ref().unwrap().public,
@@ -190,8 +189,7 @@ rusty_fork_test! {
         let eddsa = config
             .core
             .key_algorithm
-            .as_inner()
-            .get(&KeyAlgorithmType::Eddsa)
+            .get_fields("EDDSA")
             .unwrap();
 
         assert_eq!(eddsa.order, Some(10)); // via config 3
@@ -203,8 +201,8 @@ rusty_fork_test! {
         let bbs_plus = config
             .core
             .key_algorithm
-            .as_inner()
-            .get(&KeyAlgorithmType::BbsPlus);
+            .get_fields("BBS_PLUS")
+            .ok();
 
         assert!(bbs_plus.is_some());
 
@@ -220,8 +218,7 @@ rusty_fork_test! {
         let temporary = config
             .core
             .exchange
-            .as_inner()
-            .get("PROCIVIS_TEMPORARY")
+            .get_fields("PROCIVIS_TEMPORARY")
             .unwrap();
 
         assert_eq!(temporary.order, Some(10)); // via env 1

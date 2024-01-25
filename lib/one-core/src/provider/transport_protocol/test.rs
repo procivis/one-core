@@ -128,9 +128,9 @@ async fn test_issuer_submit_succeeds() {
 
     let mut config = dummy_config();
     config.key_algorithm.insert(
-        KeyAlgorithmType::Eddsa,
+        "EDDSA".to_string(),
         Fields {
-            r#type: "EDDSA".to_string(),
+            r#type: KeyAlgorithmType::Eddsa,
             display: Value::String("display".to_string()),
             order: None,
             disabled: None,

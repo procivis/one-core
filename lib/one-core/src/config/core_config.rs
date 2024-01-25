@@ -1,7 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    str::FromStr,
 };
 
 use figment::{providers::Format, Figment};
@@ -134,7 +133,7 @@ where
     }
 }
 
-pub type FormatConfig = ConfigBlock<FormatType, String>;
+pub type FormatConfig = ConfigBlock<FormatType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -154,7 +153,7 @@ pub enum FormatType {
     Mdoc,
 }
 
-pub type ExchangeConfig = ConfigBlock<String, ExchangeType>;
+pub type ExchangeConfig = ConfigBlock<ExchangeType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -171,7 +170,7 @@ pub enum ExchangeType {
     Mdl,
 }
 
-pub type TransportConfig = ConfigBlock<TransportType, String>;
+pub type TransportConfig = ConfigBlock<TransportType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -181,7 +180,7 @@ pub enum TransportType {
     Http,
 }
 
-pub type RevocationConfig = ConfigBlock<RevocationType, String>;
+pub type RevocationConfig = ConfigBlock<RevocationType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -198,7 +197,7 @@ pub enum RevocationType {
     Lvvc,
 }
 
-pub type DidConfig = ConfigBlock<DidType, String>;
+pub type DidConfig = ConfigBlock<DidType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -218,7 +217,7 @@ pub enum DidType {
     X509,
 }
 
-pub type DatatypeConfig = ConfigBlock<String, DatatypeType>;
+pub type DatatypeConfig = ConfigBlock<DatatypeType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -238,7 +237,7 @@ pub enum DatatypeType {
     File,
 }
 
-pub type KeyAlgorithmConfig = ConfigBlock<KeyAlgorithmType, String>;
+pub type KeyAlgorithmConfig = ConfigBlock<KeyAlgorithmType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -262,7 +261,7 @@ pub enum KeyAlgorithmType {
     MlDsa,
 }
 
-pub type KeyStorageConfig = ConfigBlock<KeyStorageType, String>;
+pub type KeyStorageConfig = ConfigBlock<KeyStorageType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -284,60 +283,81 @@ pub enum KeyStorageType {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct ConfigBlock<K: Ord, V>(Dict<K, Fields<V>>);
+pub struct ConfigBlock<T>(Dict<String, Fields<T>>);
 
-impl<K, T> ConfigBlock<K, T>
+impl<T> ConfigBlock<T>
 where
-    K: Ord,
-    T: Serialize + DeserializeOwned + Clone,
+    T: Serialize + Clone,
 {
     // Deserialize current fields for a given key into a type.
     // Private and public fields will be merged.
-    // Note: We use the `impl ToString` bound for the key since `strum::EnumString` derives it
-    pub fn get<U>(&self, key: impl ToString) -> Result<U, ConfigValidationError>
+    pub fn get<U>(&self, key: &str) -> Result<U, ConfigValidationError>
     where
         U: DeserializeOwned,
-        K: FromStr,
     {
-        let key = key.to_string();
-        let parsed_key =
-            K::from_str(&key).map_err(|_| ConfigValidationError::InvalidKey(key.to_string()))?;
+        let fields = self
+            .0
+            .get(key)
+            .ok_or_else(|| ConfigValidationError::KeyNotFound(key.to_owned()))?;
 
-        match self.0.get(&parsed_key) {
-            None => Err(ConfigValidationError::KeyNotFound(key)),
-            Some(fields) => fields
-                .deserialize()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization { key, source }),
-        }
+        fields
+            .deserialize()
+            .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                key: key.to_owned(),
+                source,
+            })
     }
 
-    pub fn get_fields(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError>
+    pub fn get_by_type<U>(&self, key: T) -> Result<U, ConfigValidationError>
     where
-        K: FromStr,
+        U: DeserializeOwned,
+        T: PartialEq + std::fmt::Display,
     {
-        let parsed_key =
-            K::from_str(key).map_err(|_| ConfigValidationError::InvalidKey(key.to_string()))?;
-
-        self.0
-            .get(&parsed_key)
-            .ok_or(ConfigValidationError::KeyNotFound(key.to_string()))
+        self.iter()
+            .find(|(_, v)| v.r#type == key)
+            .ok_or_else(|| ConfigValidationError::TypeNotFound(key.to_string()))?
+            .1
+            .deserialize()
+            .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                key: key.to_string(),
+                source,
+            })
     }
 
-    pub fn as_inner(&self) -> &Dict<K, Fields<T>> {
-        &self.0
+    pub fn get_fields(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError> {
+        let fields = self
+            .0
+            .get(key)
+            .ok_or(ConfigValidationError::KeyNotFound(key.to_string()))?;
+
+        Ok(fields)
     }
 
-    pub fn as_inner_mut(&mut self) -> &mut Dict<K, Fields<T>> {
-        &mut self.0
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &Fields<T>)> {
+        self.0.iter().map(|(k, v)| (k as _, v))
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&str, &mut Fields<T>)> {
+        self.0.iter_mut().map(|(k, v)| (k as _, v))
+    }
+
+    pub fn get_if_enabled(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError> {
+        let fields = self.get_fields(key)?;
+
+        if fields.disabled() {
+            return Err(ConfigValidationError::KeyDisabled(key.to_owned()));
+        }
+
+        Ok(fields)
     }
 
     #[cfg(test)]
-    pub fn insert(&mut self, key: K, fields: Fields<T>) {
+    pub fn insert(&mut self, key: String, fields: Fields<T>) {
         self.0.insert(key, fields);
     }
 }
 
-impl<K: Ord, T> Default for ConfigBlock<K, T> {
+impl<T> Default for ConfigBlock<T> {
     fn default() -> Self {
         Self(Dict::default())
     }
@@ -362,6 +382,10 @@ where
 {
     pub fn r#type(&self) -> &T {
         &self.r#type
+    }
+
+    pub fn disabled(&self) -> bool {
+        self.disabled == Some(true)
     }
 
     /// Deserialize current fields into a type.
