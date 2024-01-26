@@ -1,7 +1,9 @@
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::{http::StatusCode, Json};
 
 use serde_json::{json, Value};
+
+use crate::metrics::encode_metrics;
 
 #[utoipa::path(
     get,
@@ -27,6 +29,34 @@ pub(crate) async fn get_build_info() -> Json<Value> {
     }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 204, description = "No content")
+    ),
+    tag = "other",
+)]
 pub(crate) async fn health_check() -> impl IntoResponse {
     StatusCode::NO_CONTENT
+}
+
+#[utoipa::path(
+    get,
+    path = "/metrics",
+    responses(
+        (status = 200, description = "OK"),
+        (status = 500, description = "Internal error")
+    ),
+    tag = "other",
+)]
+pub(crate) async fn get_metrics() -> Response {
+    match encode_metrics() {
+        Ok(result) => (StatusCode::OK, result).into_response(),
+        Err(error) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Metrics encoding error: {:?}", error),
+        )
+            .into_response(),
+    }
 }

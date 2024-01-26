@@ -30,7 +30,6 @@ use crate::{
         self, config, credential, credential_schema, did, interaction, key, misc, organisation,
         proof, proof_schema, ssi,
     },
-    metrics,
 };
 
 pub(crate) struct InternalAppState {
@@ -239,7 +238,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
     let technical_endpoints = Router::new()
         .route("/build-info", get(misc::get_build_info))
         .route("/health", get(misc::health_check))
-        .route("/metrics", get(metrics::get_metrics));
+        .route("/metrics", get(misc::get_metrics));
 
     Router::new()
         .merge(protected)
@@ -264,11 +263,12 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                         request.uri().path()
                     )
                 })
+                .on_failure(|_, _, _: &_| {}) // override default on_failure handler
                 .on_response(|response: &Response<_>, _: Duration, _span: &Span| {
                     tracing::debug!("SERVICE CALL END {}", response.status())
                 }),
         )
-        .layer(middleware::from_fn(crate::middleware::new_sentry_hub))
+        .layer(middleware::from_fn(crate::middleware::sentry_layer))
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation))
         .layer(middleware::from_fn(crate::middleware::metrics_counter))
         .merge(technical_endpoints)
@@ -344,6 +344,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::interaction::controller::presentation_reject,
 
             endpoint::misc::get_build_info,
+            endpoint::misc::health_check,
+            endpoint::misc::get_metrics,
         ),
         components(
             schemas(
@@ -362,6 +364,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::credential::dto::CredentialRevocationCheckRequestRestDTO,
                 endpoint::credential::dto::CredentialRevocationCheckResponseRestDTO,
                 endpoint::credential::dto::CredentialStateRestEnum,
+                endpoint::credential::dto::CredentialRoleRestEnum,
 
                 endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO,
                 endpoint::credential_schema::dto::CredentialClaimSchemaRequestRestDTO,

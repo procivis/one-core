@@ -18,6 +18,7 @@
                     "kind": "bin"
                 }
             },
+            "envFile": "./dev.env",
             "args": [
                 "--config",
                 "config/config-local.yml",
