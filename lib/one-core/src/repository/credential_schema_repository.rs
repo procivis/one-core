@@ -1,6 +1,13 @@
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaId, CredentialSchemaRelations, GetCredentialSchemaList,
-    GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+use std::vec;
+
+use uuid::Uuid;
+
+use crate::model::{
+    common::ExactColumn,
+    credential_schema::{
+        CredentialSchema, CredentialSchemaId, CredentialSchemaRelations, GetCredentialSchemaList,
+        GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+    },
 };
 
 use super::error::DataLayerError;
@@ -31,4 +38,26 @@ pub trait CredentialSchemaRepository: Send + Sync {
         &self,
         schema: UpdateCredentialSchemaRequest,
     ) -> Result<(), DataLayerError>;
+}
+
+impl dyn CredentialSchemaRepository {
+    pub async fn get_by_name_and_organisation(
+        &self,
+        name: &str,
+        organisation_id: Uuid,
+    ) -> Result<Option<CredentialSchema>, DataLayerError> {
+        let mut schema = self
+            .get_credential_schema_list(GetCredentialSchemaQuery {
+                page: 0,
+                page_size: 1,
+                organisation_id: organisation_id.to_string(),
+                name: Some(name.to_owned()),
+                exact: Some(vec![ExactColumn::Name]),
+                sort: None,
+                sort_direction: None,
+            })
+            .await?;
+
+        Ok(schema.values.pop())
+    }
 }

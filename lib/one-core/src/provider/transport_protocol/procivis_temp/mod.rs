@@ -414,43 +414,45 @@ async fn handle_credential_invitation(
             "organisation is None".to_string(),
         ))?;
 
-    let mut credential_schema: CredentialSchema = issuer_response.schema.into();
-    credential_schema.organisation = Some(organisation.to_owned());
-    credential_schema.claim_schemas = Some(
-        issuer_response
-            .claims
-            .iter()
-            .map(|claim| claim.schema.to_owned().into())
-            .collect(),
-    );
-
-    let result = deps
+    let credential_schema: CredentialSchema = issuer_response.schema.into();
+    let credential_schema = match deps
         .credential_schema_repository
-        .create_credential_schema(credential_schema.clone())
-        .await;
-    if let Err(error) = result {
-        match error {
-            DataLayerError::AlreadyExists => {
-                credential_schema = deps
-                    .credential_schema_repository
-                    .get_credential_schema(
-                        &credential_schema.id,
-                        &CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations::default()),
-                            ..Default::default()
-                        },
-                    )
-                    .await
-                    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
-                    .ok_or(TransportProtocolError::Failed(format!(
-                        "Credential schema not found: {credential_schema:?}"
-                    )))?;
-            }
-            error => {
-                return Err(TransportProtocolError::Failed(error.to_string()));
-            }
-        };
-    }
+        .get_by_name_and_organisation(&credential_schema.name, organisation.id)
+        .await
+        .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
+    {
+        Some(credential_schema) => deps
+            .credential_schema_repository
+            .get_credential_schema(
+                &credential_schema.id,
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
+            .unwrap(),
+        None => {
+            let mut credential_schema = credential_schema;
+            credential_schema.organisation = Some(organisation.to_owned());
+            credential_schema.claim_schemas = Some(
+                issuer_response
+                    .claims
+                    .iter()
+                    .map(|claim| claim.schema.to_owned().into())
+                    .collect(),
+            );
+
+            let _ = deps
+                .credential_schema_repository
+                .create_credential_schema(credential_schema.clone())
+                .await
+                .map_err(|err| TransportProtocolError::Failed(err.to_string()))?;
+
+            credential_schema
+        }
+    };
 
     // insert issuer did if not yet known
     let issuer_did_value = issuer_response
