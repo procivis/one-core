@@ -23,11 +23,13 @@ pub struct HttpRequestContext<'a> {
 }
 
 // create new sentry hub per request
-pub async fn new_sentry_hub(
+pub async fn sentry_layer(
     path: MatchedPath,
     request: Request<Body>,
     next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
+    use sentry::protocol::*;
+
     async {
         let HttpRequestContext {
             method,
@@ -39,7 +41,7 @@ pub async fn new_sentry_hub(
         let method_path = format!("{} {}", method, path.as_str());
 
         sentry::configure_scope(|scope| {
-            scope.set_tag("http-request", method_path);
+            scope.set_tag("http-request", method_path.to_owned());
 
             if let Some(request_id) = request_id {
                 scope.set_tag("ONE-request-id", request_id);
@@ -50,7 +52,24 @@ pub async fn new_sentry_hub(
             }
         });
 
-        Ok(next.run(request).await)
+        let response = next.run(request).await;
+
+        let status = response.status();
+        let server_error = status.is_server_error();
+        if server_error || status.is_client_error() {
+            let level = if server_error {
+                Level::Error
+            } else {
+                Level::Warning
+            };
+            sentry::capture_event(Event {
+                level,
+                message: Some(format!("[{}] {method_path}", status.as_u16())),
+                ..Default::default()
+            });
+        }
+
+        Ok(response)
     }
     // make sure that the future is run in the new hub
     .bind_hub(Hub::new_from_top(Hub::main()))

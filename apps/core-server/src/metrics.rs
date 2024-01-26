@@ -1,9 +1,5 @@
 use std::sync::OnceLock;
 
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
 use prometheus::{CounterVec, HistogramOpts, HistogramVec, IntCounter, Opts, Registry};
 
 // creates the custom registry and registers the custom metrics
@@ -74,18 +70,7 @@ pub(crate) fn track_response_status_code(method: &str, path: &str, status: &str,
         .observe(duration);
 }
 
-pub(crate) async fn get_metrics() -> Response {
-    match encode_metrics() {
-        Ok(result) => (StatusCode::OK, result).into_response(),
-        Err(error) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Metrics encoding error: {:?}", error),
-        )
-            .into_response(),
-    }
-}
-
-fn encode_metrics() -> Result<String, prometheus::Error> {
+pub(crate) fn encode_metrics() -> Result<String, prometheus::Error> {
     let encoder = prometheus::TextEncoder::new();
     let mut metrics = String::new();
 

@@ -76,13 +76,19 @@ fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuard> {
 
         // This will be inherited when a new hub is created
         sentry::configure_scope(|scope| {
-            scope.set_tag("build-target", build_info::BUILD_RUST_CHANNEL);
-            scope.set_tag("build-time", build_info::BUILD_TIME);
-            scope.set_tag("branch", build_info::BRANCH);
-            scope.set_tag("tag", build_info::TAG);
-            scope.set_tag("commit", build_info::COMMIT_HASH);
-            scope.set_tag("rust-version", build_info::RUST_VERSION);
-            scope.set_tag("pipeline-ID", build_info::CI_PIPELINE_ID);
+            let mut set_tag = |tag: &str, value: &str| {
+                if !value.is_empty() {
+                    scope.set_tag(tag, value)
+                }
+            };
+
+            set_tag("build-target", build_info::BUILD_RUST_CHANNEL);
+            set_tag("build-time", build_info::BUILD_TIME);
+            set_tag("branch", build_info::BRANCH);
+            set_tag("tag", build_info::TAG);
+            set_tag("commit", build_info::COMMIT_HASH);
+            set_tag("rust-version", build_info::RUST_VERSION);
+            set_tag("pipeline-ID", build_info::CI_PIPELINE_ID);
         });
 
         Some(guard)
@@ -103,10 +109,10 @@ fn initialize_tracing(config: &ServerConfig) {
 
     let sentry_layer = sentry::integrations::tracing::layer().event_filter(|md| {
         match md.level() {
-            // error traces report directly to Sentry
-            &tracing::Level::ERROR => EventFilter::Event,
-            // info/warn traces log as sentry breadcrumb
-            &tracing::Level::INFO | &tracing::Level::WARN => EventFilter::Breadcrumb,
+            // info/warn/error traces log as sentry breadcrumb
+            &tracing::Level::INFO | &tracing::Level::WARN | &tracing::Level::ERROR => {
+                EventFilter::Breadcrumb
+            }
             // lower level traces are ignored by sentry
             _ => EventFilter::Ignore,
         }
