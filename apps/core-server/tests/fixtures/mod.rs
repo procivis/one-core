@@ -18,7 +18,7 @@ use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{Proof, ProofClaimRelations, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
-    ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaId, ProofSchemaRelations,
+    ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use one_core::model::revocation_list::{RevocationList, RevocationListRelations};
 use one_core::repository::error::DataLayerError;
@@ -545,27 +545,6 @@ pub async fn create_proof(
         .unwrap();
 
     proof
-}
-
-pub async fn get_proof_schema(db_conn: &DbConn, proof_schema_id: &ProofSchemaId) -> ProofSchema {
-    let data_layer = DataLayer::build(db_conn.to_owned());
-    data_layer
-        .get_proof_schema_repository()
-        .get_proof_schema(
-            proof_schema_id,
-            &ProofSchemaRelations {
-                claim_schemas: Some(ProofSchemaClaimRelations {
-                    credential_schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations {}),
-                        ..Default::default()
-                    }),
-                }),
-                organisation: Some(OrganisationRelations {}),
-            },
-        )
-        .await
-        .unwrap()
-        .unwrap()
 }
 
 pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> Credential {

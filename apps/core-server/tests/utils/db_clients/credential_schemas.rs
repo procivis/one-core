@@ -70,4 +70,8 @@ impl CredentialSchemasDB {
             .unwrap()
             .unwrap()
     }
+
+    pub async fn delete(&self, id: &CredentialSchemaId) {
+        self.repository.delete_credential_schema(id).await.unwrap();
+    }
 }
