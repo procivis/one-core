@@ -13,6 +13,7 @@ use one_core::{
     repository::proof_schema_repository::ProofSchemaRepository,
 };
 use sql_data_provider::test_utilities::get_dummy_date;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub struct ProofSchemasDB {
@@ -82,5 +83,13 @@ impl ProofSchemasDB {
             .await
             .unwrap()
             .unwrap()
+    }
+
+    pub async fn delete(&self, id: &ProofSchemaId) {
+        let deleted_at = OffsetDateTime::now_utc();
+        self.repository
+            .delete_proof_schema(id, deleted_at)
+            .await
+            .unwrap();
     }
 }

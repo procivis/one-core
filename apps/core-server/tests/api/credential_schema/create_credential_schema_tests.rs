@@ -70,3 +70,33 @@ async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisatio
     // THEN
     assert_eq!(resp.status(), 400);
 }
+
+#[tokio::test]
+async fn test_create_credential_schema_with_the_same_name_and_organisation_as_deleted_credential_schema(
+) {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let schema_name = "test schema";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(schema_name, &organisation, "NONE")
+        .await;
+
+    context
+        .db
+        .credential_schemas
+        .delete(&credential_schema.id)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(schema_name, organisation.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+}

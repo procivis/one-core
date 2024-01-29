@@ -1,15 +1,15 @@
 use sea_orm_migration::prelude::*;
 
-use crate::m20240110_000001_initial::{
-    CredentialSchema, ProofSchema, CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX,
-    PROOF_SCHEMA_NAME_IN_ORGANISATION_INDEX,
+use crate::{
+    m20240110_000001_initial::CredentialSchema,
+    m20240116_153515_make_name_indexes_unique::UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX,
 };
+
+const UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT: &str =
+    "index-CredentialSchema-OrganisationId-Name-DeletedAt_Unique";
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
-
-pub const UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX: &str =
-    "index-CredentialSchema-Name-OrganisationId-Unique";
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
@@ -17,11 +17,12 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name(UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX)
                     .unique()
+                    .name(UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT)
                     .table(CredentialSchema::Table)
                     .col(CredentialSchema::OrganisationId)
                     .col(CredentialSchema::Name)
+                    .col(CredentialSchema::DeletedAt)
                     .to_owned(),
             )
             .await?;
@@ -29,17 +30,8 @@ impl MigrationTrait for Migration {
         manager
             .drop_index(
                 Index::drop()
-                    .name(CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX)
+                    .name(UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX)
                     .table(CredentialSchema::Table)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
-            .drop_index(
-                Index::drop()
-                    .name(PROOF_SCHEMA_NAME_IN_ORGANISATION_INDEX)
-                    .table(ProofSchema::Table)
                     .to_owned(),
             )
             .await
@@ -49,7 +41,8 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name(CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX)
+                    .unique()
+                    .name(UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX)
                     .table(CredentialSchema::Table)
                     .col(CredentialSchema::OrganisationId)
                     .col(CredentialSchema::Name)
@@ -58,20 +51,9 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
-            .create_index(
-                Index::create()
-                    .name(PROOF_SCHEMA_NAME_IN_ORGANISATION_INDEX)
-                    .table(ProofSchema::Table)
-                    .col(ProofSchema::OrganisationId)
-                    .col(ProofSchema::Name)
-                    .to_owned(),
-            )
-            .await?;
-
-        manager
             .drop_index(
                 Index::drop()
-                    .name(UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX)
+                    .name(UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT)
                     .table(CredentialSchema::Table)
                     .to_owned(),
             )

@@ -8,6 +8,7 @@ pub struct Migration;
 pub const UNIQUE_DID_DID_INDEX: &str = "index-Did-Did-Unique";
 pub const CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX: &str = "index-CredentialSchema-Name";
 pub const PROOF_SCHEMA_NAME_IN_ORGANISATION_INDEX: &str = "index-ProofSchema-Name";
+pub const UNIQUE_PROOF_SCHEMA_ORGANISATION_ID_NAME_INDEX: &str = "index-ProofSchema-Name-Unique";
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
@@ -201,7 +202,7 @@ impl MigrationTrait for Migration {
         manager
             .create_index(
                 Index::create()
-                    .name("index-ProofSchema-Name-Unique")
+                    .name(UNIQUE_PROOF_SCHEMA_ORGANISATION_ID_NAME_INDEX)
                     .unique()
                     .table(ProofSchema::Table)
                     .col(ProofSchema::OrganisationId)
