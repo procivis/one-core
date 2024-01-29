@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use mockall::predicate::eq;
 use time::OffsetDateTime;
@@ -6,6 +6,8 @@ use uuid::Uuid;
 
 use crate::{
     model::{
+        claim::Claim,
+        claim_schema::ClaimSchema,
         credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
         credential_schema::CredentialSchema,
         did::{Did, DidType, KeyRole, RelatedKey},
@@ -16,7 +18,7 @@ use crate::{
     },
     provider::transport_protocol::{
         dto::{
-            PresentationDefinitionRequestGroupResponseDTO,
+            PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
             PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionRuleDTO,
             PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
         },
@@ -350,6 +352,218 @@ async fn test_submit_proof_succeeds() {
                 },
             ))
             .collect(),
+        })
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_submit_proof_repeating_claims() {
+    let interaction_id = Uuid::new_v4();
+    let proof_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4();
+    let claim_id = Uuid::new_v4();
+    let protocol = "protocol";
+
+    let mut proof_repository = MockProofRepository::new();
+    proof_repository
+        .expect_get_proof_by_interaction_id()
+        .once()
+        .returning(move |_, _| {
+            Ok(Some(Proof {
+                id: proof_id,
+                transport: protocol.to_string(),
+                state: Some(vec![ProofState {
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    state: ProofStateEnum::Pending,
+                }]),
+                holder_did: Some(Did {
+                    keys: Some(vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: Key {
+                            id: Uuid::new_v4(),
+                            created_date: OffsetDateTime::now_utc(),
+                            last_modified: OffsetDateTime::now_utc(),
+                            public_key: b"public_key".to_vec(),
+                            name: "key name".to_string(),
+                            key_reference: b"private_key".to_vec(),
+                            storage_type: "storage type".to_string(),
+                            key_type: "ECDSA".to_string(),
+                            organisation: Some(Organisation {
+                                id: Uuid::new_v4(),
+                                created_date: OffsetDateTime::now_utc(),
+                                last_modified: OffsetDateTime::now_utc(),
+                            }),
+                        },
+                    }]),
+                    ..dummy_did()
+                }),
+                interaction: Some(Interaction {
+                    id: interaction_id,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    host: Some("http://www.host.co".parse().unwrap()),
+                    data: None,
+                }),
+                ..dummy_proof()
+            }))
+        });
+
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_get_credential()
+        .returning(move |_, _| {
+            Ok(Some(Credential {
+                id: credential_id,
+                credential: b"credential data".to_vec(),
+                claims: Some(vec![Claim {
+                    id: claim_id,
+                    credential_id,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    value: "claim value".to_string(),
+                    schema: Some(ClaimSchema {
+                        id: claim_id,
+                        key: "claim1".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    }),
+                }]),
+                ..dummy_credential()
+            }))
+        });
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_format_credential_presentation()
+        .returning(|presentation| Ok(presentation.token));
+
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_formatter()
+        .returning(move |_| Some(formatter.clone()));
+
+    let mut transport_protocol = MockTransportProtocol::new();
+    transport_protocol
+        .expect_get_presentation_definition()
+        .withf(move |proof| {
+            assert_eq!(proof.id, proof_id);
+            true
+        })
+        .once()
+        .returning(move |_| {
+            Ok(PresentationDefinitionResponseDTO {
+                request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
+                    id: "random".to_string(),
+                    name: None,
+                    purpose: None,
+                    rule: PresentationDefinitionRuleDTO {
+                        r#type: PresentationDefinitionRuleTypeEnum::All,
+                        min: None,
+                        max: None,
+                        count: None,
+                    },
+                    requested_credentials: vec![
+                        PresentationDefinitionRequestedCredentialResponseDTO {
+                            id: "cred1".to_string(),
+                            name: None,
+                            purpose: None,
+                            fields: vec![PresentationDefinitionFieldDTO {
+                                id: "claim1".to_string(),
+                                name: None,
+                                purpose: None,
+                                required: None,
+                                key_map: HashMap::from([(
+                                    credential_id.to_string(),
+                                    "claim1".to_string(),
+                                )]),
+                            }],
+                            applicable_credentials: vec![],
+                        },
+                        PresentationDefinitionRequestedCredentialResponseDTO {
+                            id: "cred2".to_string(),
+                            name: None,
+                            purpose: None,
+                            fields: vec![PresentationDefinitionFieldDTO {
+                                id: "claim1".to_string(),
+                                name: None,
+                                purpose: None,
+                                required: None,
+                                key_map: HashMap::from([(
+                                    credential_id.to_string(),
+                                    "claim1".to_string(),
+                                )]),
+                            }],
+                            applicable_credentials: vec![credential_id.to_string()],
+                        },
+                    ],
+                }],
+                credentials: vec![],
+            })
+        });
+
+    transport_protocol
+        .expect_submit_proof()
+        .withf(move |proof, _| {
+            assert_eq!(proof.id, proof_id);
+            true
+        })
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let mut protocol_provider = MockTransportProtocolProvider::new();
+    protocol_provider
+        .expect_get_protocol()
+        .with(eq(protocol))
+        .once()
+        .return_once(move |_| Some(Arc::new(transport_protocol)));
+
+    proof_repository
+        .expect_set_proof_claims()
+        .once()
+        .withf(move |_proof_id, claims| {
+            assert_eq!(_proof_id, &proof_id);
+            assert_eq!(claims.len(), 1);
+            assert_eq!(claims[0].id, claim_id);
+            true
+        })
+        .returning(|_, _| Ok(()));
+
+    proof_repository
+        .expect_set_proof_state()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let service = SSIHolderService {
+        credential_repository: Arc::new(credential_repository),
+        proof_repository: Arc::new(proof_repository),
+        formatter_provider: Arc::new(formatter_provider),
+        protocol_provider: Arc::new(protocol_provider),
+        ..mock_ssi_holder_service()
+    };
+
+    service
+        .submit_proof(PresentationSubmitRequestDTO {
+            interaction_id,
+            submit_credentials: HashMap::from([
+                (
+                    "cred1".to_string(),
+                    PresentationSubmitCredentialRequestDTO {
+                        credential_id,
+                        submit_claims: vec!["claim1".to_string()],
+                    },
+                ),
+                (
+                    "cred2".to_string(),
+                    PresentationSubmitCredentialRequestDTO {
+                        credential_id,
+                        submit_claims: vec!["claim1".to_string()],
+                    },
+                ),
+            ]),
         })
         .await
         .unwrap();
