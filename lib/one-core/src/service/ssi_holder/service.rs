@@ -133,14 +133,14 @@ impl SSIHolderService {
 
     pub async fn submit_proof(
         &self,
-        request: PresentationSubmitRequestDTO,
+        submission: PresentationSubmitRequestDTO,
     ) -> Result<(), ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
         let proof = self
             .proof_repository
             .get_proof_by_interaction_id(
-                &request.interaction_id,
+                &submission.interaction_id,
                 &ProofRelations {
                     state: Some(ProofStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
@@ -154,7 +154,7 @@ impl SSIHolderService {
             .await?;
 
         let Some(proof) = proof else {
-            return Err(EntityNotFoundError::ProofForInteraction(request.interaction_id).into());
+            return Err(EntityNotFoundError::ProofForInteraction(submission.interaction_id).into());
         };
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
@@ -179,7 +179,7 @@ impl SSIHolderService {
         let mut submitted_claims: Vec<Claim> = vec![];
         let mut credential_presentations: Vec<PresentedCredential> = vec![];
 
-        for (requested_credential_id, credential_request) in request.submit_credentials {
+        for (requested_credential_id, credential_request) in submission.submit_credentials {
             let requested_credential = requested_credentials
                 .iter()
                 .find(|credential| credential.id == requested_credential_id)
@@ -244,7 +244,9 @@ impl SSIHolderService {
                 let claim_schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
                     "claim_schema missing".to_string(),
                 ))?;
-                if submitted_keys.contains(&claim_schema.key) {
+                if submitted_keys.contains(&claim_schema.key)
+                    && submitted_claims.iter().all(|c| c.id != claim.id)
+                {
                     submitted_claims.push(claim);
                 }
             }
