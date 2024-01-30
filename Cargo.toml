@@ -35,7 +35,7 @@ tracing            = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 uuid               = { version = "1.6", features = ["v4", "serde"] }
 validator          = { version = "0.16", features = ["derive"] }
-uniffi             = { version = "0.25", features = ["cli"] }
+uniffi             = { version = "0.26", features = ["cli"] }
 thiserror          = { version = "1.0" }
 tokio              = { version = "1.35" }
 url                = { version = "2.5", features = ["serde"] }

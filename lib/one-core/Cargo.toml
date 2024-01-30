@@ -1,70 +1,66 @@
 [package]
-name = "one-core"
+name    = "one-core"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
+build   = "build.rs"
 publish = false
 
 [dependencies]
-anyhow.workspace = true
-async-trait = { version = "0.1" }
-ct-codecs.workspace = true
-dto_mapper.workspace = true
-reqwest.workspace = true
-serde_yaml = { version = "0.9" }
-serde.workspace = true
-serde_json.workspace = true
-serde_qs.workspace = true
+anyhow.workspace           = true
+async-trait                = { version = "0.1" }
+ct-codecs.workspace        = true
+dto_mapper.workspace       = true
+reqwest.workspace          = true
+serde_yaml                 = { version = "0.9" }
+serde.workspace            = true
+serde_json.workspace       = true
+serde_qs.workspace         = true
 serde_urlencoded.workspace = true
-thiserror.workspace = true
-time.workspace = true
-tokio.workspace = true
-uuid.workspace = true
-shadow-rs.workspace = true
-strum.workspace = true
-mockall = { workspace = true, optional = true }
-
-rand.workspace = true
-rand_chacha.workspace = true
-sha2 = { version = "0.10" }
-ed25519-compact = { version = "2.0" }
-bit-vec = { version = "0.6" }
-flate2 = { version = "1.0" }
-regex = { version = "1.10" }
-url = { workspace = true }
-figment = { version = "0.10", default-features = false }
-bs58 = { version = "0.5" }
-
-strum_macros = { version = "0.25" }
-
-cocoon = { version = "0.4" }
-tokio-util = { version = "0.7", features = ["compat"] }
-
-shared-types = { version = "0.1.0", path = "../shared-types" }
-elliptic-curve.workspace = true
-p256.workspace = true
-fmap.workspace = true
-pqc_dilithium = { version = "0.2.0", git = "https://github.com/kibernetikos/dilithium", rev = "b7106801cf" }
-convert_case = { version = "0.6" }
+thiserror.workspace        = true
+time.workspace             = true
+tokio.workspace            = true
+uuid.workspace             = true
+shadow-rs.workspace        = true
+strum.workspace            = true
+mockall                    = { workspace = true, optional = true }
+rand.workspace             = true
+rand_chacha.workspace      = true
+sha2                       = { version = "0.10" }
+ed25519-compact            = { version = "2.0" }
+bit-vec                    = { version = "0.6" }
+flate2                     = { version = "1.0" }
+regex                      = { version = "1.10" }
+url.workspace              = true
+figment                    = { version = "0.10", default-features = false }
+bs58                       = { version = "0.5" }
+strum_macros               = { version = "0.25" }
+cocoon                     = { version = "0.4" }
+tokio-util                 = { version = "0.7", features = ["compat"] }
+shared-types               = { version = "0.1.0", path = "../shared-types" }
+elliptic-curve.workspace   = true
+p256.workspace             = true
+fmap.workspace             = true
+pqc_dilithium              = { version = "0.2.0", git = "https://github.com/kibernetikos/dilithium", rev = "b7106801cf" }
+convert_case               = { version = "0.6" }
 
 [dev-dependencies]
-bs58 = { version = "0.5" }
+bs58               = { version = "0.5" }
 wiremock.workspace = true
-mockall.workspace = true
-tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
-assert2 = { version = "0.3" }
-indoc = { version = "2.0" }
-rusty-fork = "0.3.0"
+mockall.workspace  = true
+tokio              = { workspace = true, features = ["rt-multi-thread", "macros"] }
+assert2            = { version = "0.3" }
+indoc              = { version = "2.0" }
+rusty-fork         = { version = "0.3" }
 
 [build-dependencies]
 shadow-rs.workspace = true
 
 [features]
-default = ["config_yaml"]
-mock = ["mockall"]
+default     = ["config_yaml"]
+mock        = ["mockall"]
 config_yaml = ["figment/yaml"]
 config_json = ["figment/json"]
-config_env = ["figment/env"]
+config_env  = ["figment/env"]
 
 
 [lints]

@@ -5,7 +5,7 @@ use shared_types::DidValue;
 #[serde(rename_all = "camelCase")]
 pub struct DidDocumentDTO {
     #[serde(rename = "@context")]
-    pub context: Vec<String>,
+    pub context: serde_json::Value,
     pub id: DidValue,
     pub verification_method: Vec<DidVerificationMethodDTO>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -18,6 +18,9 @@ pub struct DidDocumentDTO {
     pub capability_invocation: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub capability_delegation: Option<Vec<String>>,
+
+    #[serde(flatten)]
+    pub rest: serde_json::Value,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

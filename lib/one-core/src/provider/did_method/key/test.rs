@@ -9,7 +9,7 @@ use crate::provider::did_method::{provider::DidMethodProviderImpl, DidMethod};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use mockall::predicate;
-use serde_json::Value;
+use serde_json::{json, Value};
 use shared_types::{DidId, DidValue};
 use std::str::FromStr;
 use std::{collections::HashMap, sync::Arc};
@@ -83,10 +83,10 @@ async fn test_did_key_resolve_details_eddsa() {
 
     assert_eq!(result,
     DidDocumentDTO {
-        context: vec![
-            "https://www.w3.org/ns/did/v1".into(),
-            "https://w3id.org/security/suites/jws-2020/v1".into(),
-        ],
+        context: json!([
+            "https://www.w3.org/ns/did/v1",
+            "https://w3id.org/security/suites/jws-2020/v1",
+        ]),
         id: DidValue::from_str("did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp").unwrap(),
         verification_method: vec![
             DidVerificationMethodDTO {
@@ -128,6 +128,7 @@ async fn test_did_key_resolve_details_eddsa() {
                 "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
             ],
         ),
+        rest: Default::default(),
     });
 }
 
@@ -164,10 +165,10 @@ async fn test_did_key_resolve_details_es256() {
 
     assert_eq!(result,
     DidDocumentDTO {
-        context: vec![
-            "https://www.w3.org/ns/did/v1".into(),
-            "https://w3id.org/security/suites/jws-2020/v1".into(),
-        ],
+        context: json!([
+            "https://www.w3.org/ns/did/v1",
+            "https://w3id.org/security/suites/jws-2020/v1",
+        ]),
         id: DidValue::from_str("did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv").unwrap(),
         verification_method: vec![
             DidVerificationMethodDTO {
@@ -209,6 +210,7 @@ async fn test_did_key_resolve_details_es256() {
                 "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
             ],
         ),
+        rest: Default::default(),
     });
 }
 

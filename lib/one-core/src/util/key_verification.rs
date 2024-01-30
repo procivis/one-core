@@ -90,10 +90,11 @@ mod test {
         service::error::ServiceError,
     };
     use mockall::predicate::*;
+    use serde_json::json;
 
     fn get_dummy_did_document() -> DidDocumentDTO {
         DidDocumentDTO {
-            context: vec!["https://www.w3.org/ns/did/v1".to_owned()],
+            context: json!(["https://www.w3.org/ns/did/v1"]),
             id: DidValue::from_str("did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb").unwrap(),
             verification_method: vec![
                 DidVerificationMethodDTO {
@@ -115,6 +116,7 @@ mod test {
             key_agreement: Some(vec!["did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned()]),
             capability_invocation: Some(vec!["did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned()]),
             capability_delegation: Some(vec!["did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned()]),
+            rest: Default::default(),
         }
     }
 

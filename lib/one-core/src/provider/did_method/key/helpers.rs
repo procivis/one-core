@@ -66,5 +66,6 @@ pub(super) fn generate_document(
         capability_delegation: Some(vec![verification_method.id.clone()]),
         key_agreement: Some(vec![verification_method.id.clone()]),
         verification_method: vec![verification_method],
+        rest: Default::default(),
     })
 }

@@ -97,7 +97,7 @@ did:
     type: "UNIVERSAL_RESOLVER"
     params:
       public:
-        resolverUrl: https://dev.uniresolver.io/
+        resolverUrl: https://dev.uniresolver.io
 datatype:
   STRING:
     display: "datatype.string"
