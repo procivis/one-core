@@ -97,7 +97,10 @@ pub fn did_method_providers_from_config(
                 Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as _
             }
             core_config::DidType::X509 => Arc::new(X509Method::new()) as _,
-            core_config::DidType::UNIVERSAL => Arc::new(UniversalDidMethod {}) as _,
+            core_config::DidType::UNIVERSAL => {
+                let params = did_config.get(name)?;
+                Arc::new(UniversalDidMethod::new(params)) as _
+            }
         };
         providers.insert(name.to_owned(), method);
     }

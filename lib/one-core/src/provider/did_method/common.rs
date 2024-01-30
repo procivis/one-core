@@ -1,12 +1,13 @@
+use serde_json::json;
 use shared_types::DidValue;
 
 use super::dto::{DidVerificationMethodDTO, PublicKeyJwkDTO};
 
-pub fn jwk_context() -> Vec<String> {
-    vec![
-        "https://www.w3.org/ns/did/v1".into(),
-        "https://w3id.org/security/suites/jws-2020/v1".into(),
-    ]
+pub fn jwk_context() -> serde_json::Value {
+    json!([
+        "https://www.w3.org/ns/did/v1",
+        "https://w3id.org/security/suites/jws-2020/v1",
+    ])
 }
 
 pub fn jwk_verification_method(

@@ -14,10 +14,9 @@ doctest = false
 strict = []
 
 [dependencies]
-one-core          = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
-sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["mysql"] }
-shared-types      = { version = "0.1.0", path = "../../lib/shared-types", features = ["utoipa"] }
-
+one-core                     = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
+sql-data-provider            = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["mysql"] }
+shared-types                 = { version = "0.1.0", path = "../../lib/shared-types", features = ["utoipa"] }
 axum.workspace               = true
 ct-codecs.workspace          = true
 dto_mapper.workspace         = true
@@ -34,23 +33,16 @@ tracing-subscriber.workspace = true
 url.workspace                = true
 uuid.workspace               = true
 validator.workspace          = true
-
-tower-http = { version = "0.5", features = ["trace", "catch-panic"] }
-headers = { version = "0.4" }
-axum-extra = { version = "0.9", features = ["typed-header"] }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-utoipa = { workspace = true, features = ["uuid", "axum_extras", "url"] }
-utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
-serde_with = { version = "3.4", features = ["json"] }
-sentry = { version = "0.32", default-features = false, features = [
-    "backtrace",
-    "panic",
-    "rustls",
-    "reqwest",
-    "tracing",
-] }
-prometheus = { version = "0.13", features = ["process"] }
-clap = { version = "4.4", features = ["derive"] }
+tower-http                   = { version = "0.5", features = ["trace", "catch-panic"] }
+headers                      = { version = "0.4" }
+axum-extra                   = { version = "0.9", features = ["typed-header"] }
+tokio                        = { workspace = true, features = ["macros", "rt-multi-thread"] }
+utoipa                       = { workspace = true, features = ["uuid", "axum_extras", "url"] }
+utoipa-swagger-ui            = { version = "6.0", features = ["axum"] }
+serde_with                   = { version = "3.5", features = ["json"] }
+sentry                       = { version = "0.32", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }
+prometheus                   = { version = "0.13", features = ["process"] }
+clap                         = { version = "4.4", features = ["derive"] }
 
 
 [build-dependencies]
