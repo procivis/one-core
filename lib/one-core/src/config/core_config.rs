@@ -108,7 +108,6 @@ where
         AppConfig::parse(inputs)
     }
 
-    #[allow(unreachable_patterns)]
     pub(super) fn parse(inputs: Vec<InputFormat>) -> Result<Self, ConfigParsingError> {
         let mut figment = Figment::new();
 
@@ -118,7 +117,6 @@ where
                 InputFormat::Yaml { content } => figment.merge(Yaml::string(&content)),
                 #[cfg(feature = "config_json")]
                 InputFormat::Json { content } => figment.merge(Json::string(&content)),
-                _ => figment,
             };
         }
 

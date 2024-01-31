@@ -8,7 +8,7 @@ use super::dto::{
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::ssi::dto::{
-    DidWebResponseRestDTO, OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
+    DidDocumentRestDTO, OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
     OpenID4VCICredentialResponseRestDTO, OpenID4VCIErrorResponseRestDTO,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO,
@@ -67,13 +67,13 @@ pub(crate) async fn ssi_verifier_connect(
     params(
         ("id" = Uuid, Path, description = "Did id")
     ),
-    responses(OkOrErrorResponse<DidWebResponseRestDTO>),
+    responses(OkOrErrorResponse<DidDocumentRestDTO>),
     tag = "ssi",
 )]
 pub(crate) async fn get_did_web_document(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<DidWebResponseRestDTO> {
+) -> OkOrErrorResponse<DidDocumentRestDTO> {
     let result = state.core.did_service.get_did_web_document(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting did:web document")
 }

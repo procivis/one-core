@@ -1,44 +1,34 @@
 [package]
-name = "sql-data-provider"
+name              = "sql-data-provider"
 version.workspace = true
 edition.workspace = true
-publish = false
+publish           = false
 
 [features]
 # Treat build warnings as error
-strict = []
-mysql = ["migration/mysql", "sea-orm/sqlx-mysql"]
+strict     = []
+mysql      = ["migration/mysql", "sea-orm/sqlx-mysql"]
 test_utils = []
 
 [dependencies]
-one-core = { version = "0.1.0", path = "../../lib/one-core" }
-anyhow.workspace = true
-async-trait = { version = "0.1" }
-migration = { version = "0.1.0", path = "../../apps/migration", default-features = false }
-sea-orm = { workspace = true, features = [
-    "sqlx-sqlite",
-    "runtime-tokio-rustls",
-    "macros",
-    "with-time",
-    "with-json",
-] }
-serde_yaml = { version = "0.9" }
-dto_mapper.workspace = true
-time.workspace = true
-tracing.workspace = true
-uuid.workspace = true
-tokio = { workspace = true, features = ["macros"] }
-url = { workspace = true }
-shared-types = { version = "0.1.0", path = "../shared-types", features = [
-    "sea-orm",
-] }
+one-core              = { version = "0.1.0", path = "../../lib/one-core" }
+anyhow.workspace      = true
+async-trait           = { version = "0.1" }
+migration             = { version = "0.1.0", path = "../../apps/migration", default-features = false }
+sea-orm               = { workspace = true, features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros", "with-time", "with-json"] }
+serde_yaml            = { version = "0.9" }
+dto_mapper.workspace  = true
+time.workspace        = true
+tracing.workspace     = true
+uuid.workspace        = true
+tokio                 = { workspace = true, features = ["macros"] }
+url                   = { workspace = true }
+shared-types          = { version = "0.1.0", path = "../shared-types", features = ["sea-orm"] }
 autometrics.workspace = true
 
 [dev-dependencies]
 mockall.workspace = true
-one-core = { version = "0.1.0", path = "../../lib/one-core", features = [
-    "mock",
-] }
+one-core          = { version = "0.1.0", path = "../../lib/one-core", features = ["mock"] }
 
 [lints]
 workspace = true

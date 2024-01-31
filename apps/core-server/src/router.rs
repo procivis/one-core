@@ -22,6 +22,7 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::dto::response::ErrorResponse;
+use crate::endpoint::did_resolver;
 use crate::middleware::get_http_request_context;
 use crate::{build_info, ServerConfig};
 use crate::{
@@ -155,6 +156,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route("/api/did/v1/:id", patch(did::controller::update_did))
         .route("/api/did/v1", get(did::controller::get_did_list))
         .route("/api/did/v1", post(did::controller::post_did))
+        .route(
+            "/api/did-resolver/v1/:didvalue",
+            get(did_resolver::controller::resolve_did),
+        )
         .route(
             "/api/interaction/v1/handle-invitation",
             post(interaction::controller::handle_invitation),
@@ -309,6 +314,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::did::controller::post_did,
             endpoint::did::controller::update_did,
 
+            endpoint::did_resolver::controller::resolve_did,
+
             endpoint::history::controller::get_history_list,
 
             endpoint::key::controller::get_key,
@@ -444,13 +451,17 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::PresentationSubmissionMappingRestDTO,
                 endpoint::ssi::dto::PresentationSubmissionDescriptorRestDTO,
                 endpoint::ssi::dto::DurationSecondsRest,
-                endpoint::ssi::dto::DidWebResponseRestDTO,
-                endpoint::ssi::dto::DidWebVerificationMethodResponseRestDTO,
-                endpoint::ssi::dto::PublicKeyJwkResponseRestDTO,
                 endpoint::ssi::dto::JsonLDContextResponseRestDTO,
                 endpoint::ssi::dto::JsonLDContextRestDTO,
                 endpoint::ssi::dto::JsonLDEntityRestDTO,
                 endpoint::ssi::dto::JsonLDInlineEntityRestDTO,
+                endpoint::ssi::dto::DidDocumentRestDTO,
+                endpoint::ssi::dto::DidVerificationMethodRestDTO,
+                endpoint::ssi::dto::PublicKeyJwkRestDTO,
+                endpoint::ssi::dto::PublicKeyJwkEllipticDataRestDTO,
+                endpoint::ssi::dto::PublicKeyJwkRsaDataRestDTO,
+                endpoint::ssi::dto::PublicKeyJwkOctDataRestDTO,
+                endpoint::ssi::dto::PublicKeyJwkMlweDataRestDTO,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,
@@ -484,12 +495,18 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             )
         ),
         tags(
-            (name = "credential_schema_management", description = "Credential schema management"),
-            (name = "proof_schema_management", description = "Proof schema management"),
-            (name = "ssi", description = "SSI"),
             (name = "other", description = "Other utility endpoints"),
+            (name = "credential_management", description = "Credential management"),
+            (name = "credential_schema_management", description = "Credential schema management"),
+            (name = "did_management", description = "Did management"),
+            (name = "did_resolver", description = "Did resolution"),
+            (name = "history_management", description = "History management"),
             (name = "interaction", description = "Holder functionality"),
             (name = "key", description = "Key management"),
+            (name = "organisation_management", description = "Organisation management"),
+            (name = "proof_management", description = "Proof management"),
+            (name = "proof_schema_management", description = "Proof schema management"),
+            (name = "ssi", description = "SSI"),
         ),
         modifiers(&SecurityAddon)
     )]

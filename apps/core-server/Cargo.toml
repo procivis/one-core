@@ -57,6 +57,7 @@ wiremock.workspace    = true
 sql-data-provider     = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
 rand.workspace        = true
 rand_chacha.workspace = true
+indoc                 = { version = "2.0" }
 
 [lints]
 workspace = true

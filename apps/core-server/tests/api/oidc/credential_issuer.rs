@@ -8,7 +8,7 @@ async fn test_get_credential_issuer_metadata() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
+    let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let credential_schema =

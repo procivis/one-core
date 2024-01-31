@@ -1,18 +1,16 @@
 use std::collections::{HashMap, HashSet};
 
-use shared_types::DidId;
+use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{
-    dto::{
-        CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, DidWebResponseDTO,
-        GetDidListResponseDTO,
-    },
+    dto::{CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, GetDidListResponseDTO},
     mapper::did_from_did_request,
     validator::validate_deactivation_request,
     DidService,
 };
+use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::service::did::mapper::did_create_history_event;
 use crate::service::{did::mapper::map_key_to_verification_method, error::MissingProviderError};
 use crate::{
@@ -39,10 +37,7 @@ impl DidService {
     /// # Arguments
     ///
     /// * `id` - Did uuid
-    pub async fn get_did_web_document(
-        &self,
-        id: &DidId,
-    ) -> Result<DidWebResponseDTO, ServiceError> {
+    pub async fn get_did_web_document(&self, id: &DidId) -> Result<DidDocumentDTO, ServiceError> {
         let did = self
             .did_repository
             .get_did(
@@ -95,7 +90,7 @@ impl DidService {
                         map_key_to_verification_method(
                             index,
                             &did.did,
-                            key_algorithm.bytes_to_jwk(&value.public_key)?.try_into()?,
+                            key_algorithm.bytes_to_jwk(&value.public_key)?,
                         )?,
                     ))
                 })
@@ -264,5 +259,9 @@ impl DidService {
         self.did_repository.update_did(update_did).await?;
 
         Ok(())
+    }
+
+    pub async fn resolve_did(&self, did: &DidValue) -> Result<DidDocumentDTO, ServiceError> {
+        self.did_method_provider.resolve(did).await
     }
 }

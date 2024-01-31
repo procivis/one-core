@@ -31,6 +31,10 @@ mod api_interaction_tests;
 #[path = "api/did/mod.rs"]
 mod api_did_tests;
 
+//DID-RESOLVER
+#[path = "api/did_resolver/mod.rs"]
+mod api_did_resolver_tests;
+
 //KEY
 #[path = "api/key/mod.rs"]
 mod api_key_tests;

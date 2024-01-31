@@ -20,7 +20,7 @@ use crate::{
 async fn test_presentation_submit_endpoint_for_procivis_temp() {
     // GIVEN
     let mock_server = MockServer::start().await;
-    let config = fixtures::create_config(mock_server.uri());
+    let config = fixtures::create_config(mock_server.uri(), None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let issuer_did = fixtures::create_did(&db_conn, &organisation, None).await;
@@ -154,7 +154,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc() {
     let mock_server = MockServer::start().await;
-    let config = fixtures::create_config(mock_server.uri());
+    let config = fixtures::create_config(mock_server.uri(), None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let issuer_did = fixtures::create_did(&db_conn, &organisation, None).await;
