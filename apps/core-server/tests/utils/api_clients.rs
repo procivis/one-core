@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use self::credential_schemas::CredentialSchemasApi;
 use self::credentials::CredentialsApi;
+use self::did_resolvers::DidResolversApi;
 use self::dids::DidsApi;
 use self::histories::HistoriesApi;
 use self::interactions::InteractionsApi;
@@ -16,6 +17,7 @@ use self::ssi::SSIApi;
 
 pub mod credential_schemas;
 pub mod credentials;
+pub mod did_resolvers;
 pub mod dids;
 pub mod histories;
 pub mod interactions;
@@ -118,6 +120,7 @@ pub struct Client {
     pub credential_schemas: CredentialSchemasApi,
     pub dids: DidsApi,
     pub histories: HistoriesApi,
+    pub did_resolvers: DidResolversApi,
     pub keys: KeysApi,
     pub proof_schemas: ProofSchemasApi,
     pub proofs: ProofsApi,
@@ -135,6 +138,7 @@ impl Client {
             credential_schemas: CredentialSchemasApi::new(client.clone()),
             dids: DidsApi::new(client.clone()),
             histories: HistoriesApi::new(client.clone()),
+            did_resolvers: DidResolversApi::new(client.clone()),
             keys: KeysApi::new(client.clone()),
             proof_schemas: ProofSchemasApi::new(client.clone()),
             proofs: ProofsApi::new(client.clone()),

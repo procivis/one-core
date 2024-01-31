@@ -6,7 +6,7 @@ use utoipa::ToSchema;
 
 use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
 use crate::router::AppState;
-use one_core::service::error::ServiceError;
+use one_core::service::error::{MissingProviderError, ServiceError};
 
 #[derive(utoipa::IntoResponses)]
 pub enum ErrorResponse {
@@ -35,6 +35,9 @@ impl ErrorResponse {
         let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
         match error {
             ServiceError::EntityNotFound(_) => Self::NotFound(response),
+            ServiceError::MissingProvider(MissingProviderError::DidMethod(_)) => {
+                Self::NotFound(response)
+            }
             ServiceError::Validation(_) | ServiceError::BusinessLogic(_) => {
                 Self::BadRequest(response)
             }

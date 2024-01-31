@@ -45,7 +45,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
 async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
     // GIVEN
     let mock_server = MockServer::start().await;
-    let config = fixtures::create_config(mock_server.uri());
+    let config = fixtures::create_config(mock_server.uri(), None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let organisation2 = fixtures::create_organisation(&db_conn).await;

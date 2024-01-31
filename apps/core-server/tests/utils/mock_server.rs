@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
-use wiremock::http::Method::Post;
+use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -20,7 +20,7 @@ impl MockServer {
     }
 
     pub async fn ssi_reject(&self) {
-        Mock::given(method(Post))
+        Mock::given(method(Method::Post))
             .and(path("/ssi/temporary-issuer/v1/reject"))
             .respond_with(ResponseTemplate::new(200))
             .expect(1)
@@ -29,7 +29,7 @@ impl MockServer {
     }
 
     pub async fn ssi_issuance(&self, protocol: &str, credential_id: impl Display) {
-        Mock::given(method(Post))
+        Mock::given(method(Method::Post))
             .and(path("/ssi/temporary-issuer/v1/connect"))
             .and(query_param("protocol", protocol))
             .and(query_param("credential", credential_id.to_string()))
@@ -76,6 +76,26 @@ impl MockServer {
                     "role": "ISSUER",
                 }
             )))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn universal_resolving(&self, did: &str, document: serde_json::Value) {
+        Mock::given(method(Method::Get))
+            .and(path(format!("/1.0/identifiers/{did}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "didDocument": document,
+            })))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn fail_universal_resolving(&self, did: &str) {
+        Mock::given(method(Method::Get))
+            .and(path(format!("/1.0/identifiers/{did}")))
+            .respond_with(ResponseTemplate::new(500))
             .expect(1)
             .mount(&self.mock)
             .await;

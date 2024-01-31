@@ -5,6 +5,13 @@ use crate::{
     serialize::front_time,
 };
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
+use one_core::provider::did_method::dto::DidDocumentDTO;
+use one_core::provider::did_method::dto::DidVerificationMethodDTO;
+use one_core::provider::did_method::dto::PublicKeyJwkDTO;
+use one_core::provider::did_method::dto::PublicKeyJwkEllipticDataDTO;
+use one_core::provider::did_method::dto::PublicKeyJwkMlweDataDTO;
+use one_core::provider::did_method::dto::PublicKeyJwkOctDataDTO;
+use one_core::provider::did_method::dto::PublicKeyJwkRsaDataDTO;
 use one_core::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferCredentialDTO,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
@@ -19,7 +26,6 @@ use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
 };
 use one_core::service::{
-    did::dto::{DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO},
     oidc::dto::{
         OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
         OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
@@ -144,43 +150,81 @@ pub struct OpenID4VCIProofRequestRestDTO {
     pub jwt: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[from(DidWebResponseDTO)]
-pub struct DidWebResponseRestDTO {
+#[from(DidDocumentDTO)]
+pub struct DidDocumentRestDTO {
     #[serde(rename = "@context")]
-    pub context: Vec<String>,
+    pub context: serde_json::Value,
     pub id: DidValue,
     #[from(with_fn = convert_inner)]
-    pub verification_method: Vec<DidWebVerificationMethodResponseRestDTO>,
-    pub authentication: Vec<String>,
-    pub assertion_method: Vec<String>,
-    pub key_agreement: Vec<String>,
-    pub capability_invocation: Vec<String>,
-    pub capability_delegation: Vec<String>,
+    pub verification_method: Vec<DidVerificationMethodRestDTO>,
+    pub authentication: Option<Vec<String>>,
+    pub assertion_method: Option<Vec<String>>,
+    pub key_agreement: Option<Vec<String>>,
+    pub capability_invocation: Option<Vec<String>>,
+    pub capability_delegation: Option<Vec<String>>,
+
+    #[serde(flatten)]
+    pub rest: serde_json::Value,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[from(DidWebVerificationMethodResponseDTO)]
-pub struct DidWebVerificationMethodResponseRestDTO {
+#[from(DidVerificationMethodDTO)]
+pub struct DidVerificationMethodRestDTO {
     pub id: String,
     pub r#type: String,
-    pub controller: DidValue,
-    pub public_key_jwk: PublicKeyJwkResponseRestDTO,
+    pub controller: String,
+    pub public_key_jwk: PublicKeyJwkRestDTO,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[from(PublicKeyJwkResponseDTO)]
-pub struct PublicKeyJwkResponseRestDTO {
-    pub kty: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub crv: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub alg: Option<String>,
+#[serde(tag = "kty")]
+#[from(PublicKeyJwkDTO)]
+pub enum PublicKeyJwkRestDTO {
+    #[serde(rename = "EC")]
+    Ec(PublicKeyJwkEllipticDataRestDTO),
+    #[serde(rename = "RSA")]
+    Rsa(PublicKeyJwkRsaDataRestDTO),
+    #[serde(rename = "OKP")]
+    Okp(PublicKeyJwkEllipticDataRestDTO),
+    #[serde(rename = "oct")]
+    Oct(PublicKeyJwkOctDataRestDTO),
+    #[serde(rename = "MLWE")]
+    Mlwe(PublicKeyJwkMlweDataRestDTO),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[from(PublicKeyJwkMlweDataDTO)]
+pub struct PublicKeyJwkMlweDataRestDTO {
+    pub r#use: Option<String>,
+    pub alg: String,
     pub x: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[from(PublicKeyJwkOctDataDTO)]
+pub struct PublicKeyJwkOctDataRestDTO {
+    pub r#use: Option<String>,
+    pub k: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[from(PublicKeyJwkRsaDataDTO)]
+pub struct PublicKeyJwkRsaDataRestDTO {
+    pub r#use: Option<String>,
+    pub e: String,
+    pub n: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[from(PublicKeyJwkEllipticDataDTO)]
+pub struct PublicKeyJwkEllipticDataRestDTO {
+    pub r#use: Option<String>,
+    pub crv: String,
+    pub x: String,
     pub y: Option<String>,
 }
 

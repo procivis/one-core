@@ -41,15 +41,37 @@ pub fn unwrap_or_random(op: Option<String>) -> String {
     })
 }
 
-pub fn create_config(core_base_url: impl Into<String>) -> AppConfig<ServerConfig> {
+pub fn create_config(
+    core_base_url: impl Into<String>,
+    mock_url: Option<String>,
+) -> AppConfig<ServerConfig> {
+    let ion_config = mock_url.map(|mock_url| {
+        indoc::formatdoc! {"
+            did:
+                ION:
+                    display: \"did.ion\"
+                    order: 9
+                    disabled: true
+                    type: \"UNIVERSAL_RESOLVER\"
+                    params:
+                        public:
+                            resolverUrl: {mock_url}
+        "}
+    });
+
     let root = std::env!("CARGO_MANIFEST_DIR");
 
-    let mut app_config: AppConfig<ServerConfig> = core_config::AppConfig::from_files(&[
+    let configs = [
         format!("{}/../../config/config.yml", root),
         format!("{}/../../config/config-procivis-base.yml", root),
         format!("{}/../../config/config-local.yml", root),
-    ])
-    .unwrap();
+    ]
+    .into_iter()
+    .map(|path| std::fs::read_to_string(path).unwrap())
+    .chain(ion_config);
+
+    let mut app_config: AppConfig<ServerConfig> =
+        core_config::AppConfig::from_yaml_str_configs(configs.collect()).unwrap();
 
     app_config.app = ServerConfig {
         database_url: "sqlite::memory:".to_string(),

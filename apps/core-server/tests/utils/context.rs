@@ -25,9 +25,11 @@ impl TestContext {
         let stdout_log = tracing_subscriber::fmt::layer().with_test_writer();
         let _ = tracing_subscriber::registry().with(stdout_log).try_init();
 
+        let server_mock = MockServer::new().await;
+
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let base_url = format!("http://{}", listener.local_addr().unwrap());
-        let config = fixtures::create_config(&base_url);
+        let config = fixtures::create_config(&base_url, Some(server_mock.uri()));
         let db = fixtures::create_db(&config).await;
         let config_clone = config.clone();
         let _handle = tokio::spawn({
@@ -38,7 +40,7 @@ impl TestContext {
         Self {
             db: DbClient::new(db),
             api: Client::new(base_url, "test".into()),
-            server_mock: MockServer::new().await,
+            server_mock,
             config,
             _handle,
         }

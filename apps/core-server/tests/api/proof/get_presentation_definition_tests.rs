@@ -38,7 +38,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
+    let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
@@ -120,7 +120,7 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
+    let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
@@ -203,7 +203,7 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
+    let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
@@ -434,7 +434,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
+    let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
@@ -516,7 +516,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
+    let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
@@ -595,7 +595,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url);
+    let config = fixtures::create_config(&base_url, None);
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;

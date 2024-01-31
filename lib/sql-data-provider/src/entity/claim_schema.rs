@@ -19,8 +19,7 @@ pub struct Model {
     pub created_date: OffsetDateTime,
     #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
-    #[try_into(infallible)]
-    #[try_into(rename = "data_type")]
+    #[try_into(infallible, rename = "data_type")]
     pub datatype: String,
 }
 

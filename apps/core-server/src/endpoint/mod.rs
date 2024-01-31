@@ -5,6 +5,7 @@ pub mod config;
 pub mod credential;
 pub mod credential_schema;
 pub mod did;
+pub mod did_resolver;
 pub mod history;
 pub mod interaction;
 pub mod key;

@@ -5,10 +5,7 @@ use time::OffsetDateTime;
 use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::provider::did_method::dto::PublicKeyJwkDTO;
-use crate::service::did::dto::{
-    DidWebResponseDTO, DidWebVerificationMethodResponseDTO, PublicKeyJwkResponseDTO,
-};
+use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO};
 use crate::{
     model::{
         did::{Did, GetDidList, KeyRole, RelatedKey},
@@ -115,35 +112,38 @@ pub(super) fn did_from_did_request(
 pub(super) fn map_did_model_to_did_web_response(
     did: &Did,
     keys: &[RelatedKey],
-    grouped_key: &HashMap<KeyId, DidWebVerificationMethodResponseDTO>,
-) -> Result<DidWebResponseDTO, ServiceError> {
-    Ok(DidWebResponseDTO {
-        context: vec![
-            "https://www.w3.org/ns/did/v1".to_string(),
-            "https://w3id.org/security/suites/jws-2020/v1".to_string(),
-        ],
+    grouped_key: &HashMap<KeyId, DidVerificationMethodDTO>,
+) -> Result<DidDocumentDTO, ServiceError> {
+    Ok(DidDocumentDTO {
+        context: serde_json::json!([
+            "https://www.w3.org/ns/did/v1",
+            "https://w3id.org/security/suites/jws-2020/v1",
+        ]),
         id: did.did.clone(),
         verification_method: grouped_key.values().cloned().collect(),
-        authentication: get_key_id_by_role(KeyRole::Authentication, keys, grouped_key)?,
-        assertion_method: get_key_id_by_role(KeyRole::AssertionMethod, keys, grouped_key)?,
-        key_agreement: get_key_id_by_role(KeyRole::KeyAgreement, keys, grouped_key)?,
+        authentication: get_key_id_by_role(KeyRole::Authentication, keys, grouped_key)?.into(),
+        assertion_method: get_key_id_by_role(KeyRole::AssertionMethod, keys, grouped_key)?.into(),
+        key_agreement: get_key_id_by_role(KeyRole::KeyAgreement, keys, grouped_key)?.into(),
         capability_invocation: get_key_id_by_role(
             KeyRole::CapabilityInvocation,
             keys,
             grouped_key,
-        )?,
+        )?
+        .into(),
         capability_delegation: get_key_id_by_role(
             KeyRole::CapabilityDelegation,
             keys,
             grouped_key,
-        )?,
+        )?
+        .into(),
+        rest: Default::default(),
     })
 }
 
 pub(super) fn get_key_id_by_role(
     role: KeyRole,
     keys: &[RelatedKey],
-    group: &HashMap<KeyId, DidWebVerificationMethodResponseDTO>,
+    group: &HashMap<KeyId, DidVerificationMethodDTO>,
 ) -> Result<Vec<String>, ServiceError> {
     keys.iter()
         .filter(|key| key.role == role)
@@ -160,46 +160,14 @@ pub(super) fn get_key_id_by_role(
 pub(super) fn map_key_to_verification_method(
     index: usize,
     did: &DidValue,
-    public_key_jwk: PublicKeyJwkResponseDTO,
-) -> Result<DidWebVerificationMethodResponseDTO, ServiceError> {
-    Ok(DidWebVerificationMethodResponseDTO {
+    public_key_jwk: PublicKeyJwkDTO,
+) -> Result<DidVerificationMethodDTO, ServiceError> {
+    Ok(DidVerificationMethodDTO {
         id: format!("{}#key-{}", did, index),
         r#type: "JsonWebKey2020".to_string(),
-        controller: did.clone(),
+        controller: did.as_str().to_string(),
         public_key_jwk,
     })
-}
-
-impl TryFrom<PublicKeyJwkDTO> for PublicKeyJwkResponseDTO {
-    type Error = ServiceError;
-
-    fn try_from(value: PublicKeyJwkDTO) -> Result<Self, Self::Error> {
-        match value {
-            PublicKeyJwkDTO::Ec(data) => Ok(PublicKeyJwkResponseDTO {
-                kty: "EC".to_string(),
-                crv: Some(data.crv),
-                x: data.x,
-                y: data.y,
-                ..Default::default()
-            }),
-            PublicKeyJwkDTO::Okp(data) => Ok(PublicKeyJwkResponseDTO {
-                kty: "OKP".to_string(),
-                crv: Some(data.crv),
-                x: data.x,
-                y: data.y,
-                ..Default::default()
-            }),
-            PublicKeyJwkDTO::Mlwe(data) => Ok(PublicKeyJwkResponseDTO {
-                kty: "MLWE".to_string(),
-                alg: Some(data.alg),
-                x: data.x,
-                ..Default::default()
-            }),
-            _ => Err(ServiceError::MappingError(
-                "Only EC, OKP and MLWE did algorithms are supported.".to_string(),
-            )),
-        }
-    }
 }
 
 pub(super) fn did_create_history_event(did: Did) -> History {
