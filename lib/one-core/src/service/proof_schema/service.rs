@@ -49,6 +49,11 @@ impl ProofSchemaService {
             )
             .await?
             .ok_or(EntityNotFoundError::ProofSchema(*id))?;
+
+        if result.deleted_at.is_some() {
+            return Err(EntityNotFoundError::ProofSchema(*id).into());
+        }
+
         result.try_into()
     }
 

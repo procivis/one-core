@@ -108,6 +108,37 @@ async fn test_get_credential_schema_success() {
 }
 
 #[tokio::test]
+async fn test_get_credential_schema_deleted() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let history_repository = MockHistoryRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+    let schema = CredentialSchema {
+        deleted_at: Some(OffsetDateTime::now_utc()),
+        ..generic_credential_schema()
+    };
+    {
+        let clone = schema.clone();
+        repository
+            .expect_get_credential_schema()
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
+
+    let result = service.get_credential_schema(&schema.id).await;
+
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))
+    )));
+}
+
+#[tokio::test]
 async fn test_get_credential_schema_fail() {
     let mut repository = MockCredentialSchemaRepository::default();
     let history_repository = MockHistoryRepository::default();

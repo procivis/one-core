@@ -131,6 +131,10 @@ impl CredentialSchemaService {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
+        if schema.deleted_at.is_some() {
+            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+        }
+
         schema.try_into()
     }
 

@@ -216,6 +216,10 @@ impl CredentialService {
 
         let credential = credential.ok_or(EntityNotFoundError::Credential(*credential_id))?;
 
+        if credential.deleted_at.is_some() {
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
+        }
+
         CredentialDetailResponseDTO::try_from(credential)
             .map_err(|err| ServiceError::ResponseMapping(err.to_string()))
     }
