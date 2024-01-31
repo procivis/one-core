@@ -95,10 +95,13 @@ impl IntoFilterCondition for HistoryFilterValue {
                 .eq(did_id)
                 .or(credential::Column::HolderDidId.eq(did_id))
                 .or(proof::Column::VerifierDidId.eq(did_id))
-                .or(history::Column::EntityId.eq(did_id))
+                .or(history::Column::EntityId
+                    .eq(did_id)
+                    .and(history::Column::EntityType.eq(history::HistoryEntityType::Did)))
                 .into_condition(),
             HistoryFilterValue::CredentialId(credential_id) => history::Column::EntityId
                 .eq(credential_id.to_string())
+                .and(history::Column::EntityType.eq(history::HistoryEntityType::Credential))
                 .or(history::Column::EntityId.in_subquery(
                     Query::select()
                         .expr(proof_claim::Column::ProofId.into_expr())
@@ -115,6 +118,10 @@ impl IntoFilterCondition for HistoryFilterValue {
             HistoryFilterValue::CredentialSchemaId(credential_schema_id) => {
                 history::Column::EntityId
                     .eq(credential_schema_id.to_string())
+                    .and(
+                        history::Column::EntityType
+                            .eq(history::HistoryEntityType::CredentialSchema),
+                    )
                     .or(history::Column::EntityId.in_subquery(
                         Query::select()
                             .expr(proof_claim::Column::ProofId.into_expr())
