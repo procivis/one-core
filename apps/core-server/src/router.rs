@@ -396,6 +396,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::history::dto::HistoryResponseRestDTO,
                 endpoint::history::dto::HistoryAction,
                 endpoint::history::dto::HistoryEntityType,
+                endpoint::history::dto::HistorySearchEnumRest,
 
                 endpoint::key::dto::KeyRequestRestDTO,
                 endpoint::key::dto::KeyResponseRestDTO,

@@ -23,6 +23,15 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
         let credential_schema_id = value
             .credential_schema_id
             .map(HistoryFilterValue::CredentialSchemaId);
+
+        let search_query = if let Some(search_text) = value.search_text {
+            value
+                .search_type
+                .map(|search_type| HistoryFilterValue::SearchQuery(search_text, search_type.into()))
+        } else {
+            None
+        };
+
         let organisation_id =
             HistoryFilterValue::OrganisationId(value.organisation_id.into()).condition();
 
@@ -35,5 +44,6 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             & did_id
             & credential_id
             & credential_schema_id
+            & search_query
     }
 }

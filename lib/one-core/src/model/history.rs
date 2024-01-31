@@ -62,7 +62,19 @@ pub enum HistoryFilterValue {
     DidId(DidId),
     CredentialId(CredentialId),
     CredentialSchemaId(CredentialSchemaId),
+    SearchQuery(String, HistorySearchEnum),
     OrganisationId(OrganisationId),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum HistorySearchEnum {
+    ClaimName,
+    ClaimValue,
+    CredentialSchemaName,
+    IssuerDid,
+    IssuerName,
+    VerifierDid,
+    VerifierName,
 }
 
 impl ListFilterValue for HistoryFilterValue {}

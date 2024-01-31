@@ -4,11 +4,12 @@ use one_core::{
     model::{
         credential::CredentialStateEnum,
         history::{
-            History, HistoryAction, HistoryEntityType, HistoryFilterValue, HistoryListQuery,
+            GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
+            HistoryListQuery, HistorySearchEnum,
         },
         list_filter::ListFilterCondition,
         list_query::ListPagination,
-        organisation::Organisation,
+        organisation::{Organisation, OrganisationId},
     },
     repository::history_repository::HistoryRepository,
 };
@@ -43,7 +44,12 @@ struct TestSetupWithCredentialsSchemaAndProof {
     pub provider: HistoryProvider,
     pub organisation: Organisation,
     pub credential_schema_id: String,
+    pub credential_schema_name: &'static str,
     pub did_id: DidId,
+    pub did_name: &'static str,
+    pub did_value: &'static str,
+    pub claim_schema_name: &'static str,
+    pub claim_value: &'static str,
     pub credential_id: String,
 }
 
@@ -65,11 +71,12 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     .await
     .unwrap();
 
+    let credential_schema_name = "schema";
     let credential_schema_id = insert_credential_schema_to_database(
         &db,
         None,
         &organisation.id.to_string(),
-        "schema",
+        credential_schema_name,
         "JWT",
         "NONE",
     )
@@ -85,11 +92,13 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     .await
     .unwrap();
 
+    let did_name = "issuer";
+    let did_value = "did:key:123";
     let did_id = insert_did_key(
         &db,
-        "issuer",
+        did_name,
         Uuid::new_v4(),
-        "did:key:123".parse().unwrap(),
+        did_value.parse().unwrap(),
         "KEY",
         &organisation.id.to_string(),
     )
@@ -125,17 +134,19 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     .await
     .unwrap();
 
+    let claim_schema_name = "test";
     let claim_schema: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(Uuid::new_v4(), "test", false, 0, "STRING")];
+        vec![(Uuid::new_v4(), claim_schema_name, false, 0, "STRING")];
     insert_many_claims_schema_to_database(&db, &credential_schema_id.to_string(), &claim_schema)
         .await
         .unwrap();
 
+    let claim_value = "claim_value";
     let claims: Vec<(Uuid, Uuid, &str, Vec<u8>)> = vec![(
         Uuid::new_v4(),
         claim_schema[0].0.to_owned(),
         &credential_id,
-        vec![],
+        claim_value.as_bytes().to_vec(),
     )];
     insert_many_claims_to_database(&db, claims.as_slice())
         .await
@@ -188,9 +199,38 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         provider,
         organisation,
         credential_schema_id,
+        credential_schema_name,
         did_id,
+        did_name,
+        did_value,
+        claim_schema_name,
+        claim_value,
         credential_id,
     }
+}
+
+fn history_list_query_with_filter(
+    organisation_id: OrganisationId,
+    value: HistoryFilterValue,
+) -> HistoryListQuery {
+    HistoryListQuery {
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 999,
+        }),
+        sorting: None,
+        filtering: Some(ListFilterCondition::And(vec![
+            ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation_id)),
+            ListFilterCondition::Value(value),
+        ])),
+    }
+}
+
+fn assert_result(expected_count: i32, result: GetHistoryList) {
+    let expected_pages = if expected_count > 0 { 1 } else { 0 };
+    assert_eq!(expected_pages, result.total_pages);
+    assert_eq!(expected_count as u64, result.total_items);
+    assert_eq!(expected_count as usize, result.values.len());
 }
 
 #[tokio::test]
@@ -255,9 +295,7 @@ async fn test_get_history_list_simple() {
         .await
         .unwrap();
 
-    assert_eq!(1, result.total_pages);
-    assert_eq!(count as u64, result.total_items);
-    assert_eq!(count as usize, result.values.len());
+    assert_result(count as i32, result);
 }
 
 #[tokio::test]
@@ -343,26 +381,15 @@ async fn test_get_history_list_schema_joins_credentials() {
     }
 
     let result = provider
-        .get_history_list(HistoryListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 999,
-            }),
-            sorting: None,
-            filtering: Some(ListFilterCondition::And(vec![
-                ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation.id)),
-                ListFilterCondition::Value(HistoryFilterValue::CredentialSchemaId(
-                    Uuid::parse_str(&credential_schema_id).unwrap(),
-                )),
-            ])),
-        })
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::CredentialSchemaId(Uuid::parse_str(&credential_schema_id).unwrap()),
+        ))
         .await
         .unwrap();
 
     let expected_count = credentials_count + /* credential schema event */ 1;
-    assert_eq!(1, result.total_pages);
-    assert_eq!(expected_count as u64, result.total_items);
-    assert_eq!(expected_count as usize, result.values.len());
+    assert_result(expected_count, result);
 }
 
 #[tokio::test]
@@ -376,19 +403,10 @@ async fn test_get_history_list_joins_schema_credential_claim_and_proof() {
     } = setup_with_credential_schema_and_proof().await;
 
     let result = provider
-        .get_history_list(HistoryListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 999,
-            }),
-            sorting: None,
-            filtering: Some(ListFilterCondition::And(vec![
-                ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation.id)),
-                ListFilterCondition::Value(HistoryFilterValue::CredentialSchemaId(
-                    Uuid::parse_str(&credential_schema_id).unwrap(),
-                )),
-            ])),
-        })
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::CredentialSchemaId(Uuid::parse_str(&credential_schema_id).unwrap()),
+        ))
         .await
         .unwrap();
 
@@ -398,26 +416,15 @@ async fn test_get_history_list_joins_schema_credential_claim_and_proof() {
     assert_eq!(expected_count as usize, result.values.len());
 
     let result = provider
-        .get_history_list(HistoryListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 999,
-            }),
-            sorting: None,
-            filtering: Some(ListFilterCondition::And(vec![
-                ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation.id)),
-                ListFilterCondition::Value(HistoryFilterValue::CredentialId(
-                    Uuid::parse_str(&credential_id).unwrap(),
-                )),
-            ])),
-        })
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::CredentialId(Uuid::parse_str(&credential_id).unwrap()),
+        ))
         .await
         .unwrap();
 
     let expected_count = /* create(credential, proof) */ 2;
-    assert_eq!(1, result.total_pages);
-    assert_eq!(expected_count as u64, result.total_items);
-    assert_eq!(expected_count as usize, result.values.len());
+    assert_result(expected_count, result);
 }
 
 #[tokio::test]
@@ -431,65 +438,124 @@ async fn test_get_history_list_entity_of_another_type_should_not_get_fetched() {
     } = setup_with_credential_schema_and_proof().await;
 
     let should_be_empty = provider
-        .get_history_list(HistoryListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 999,
-            }),
-            sorting: None,
-            filtering: Some(ListFilterCondition::And(vec![
-                ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation.id)),
-                ListFilterCondition::Value(HistoryFilterValue::DidId(
-                    Uuid::parse_str(&credential_schema_id).unwrap().into(),
-                )),
-            ])),
-        })
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::DidId(Uuid::parse_str(&credential_schema_id).unwrap().into()),
+        ))
         .await
         .unwrap();
-
-    assert_eq!(0, should_be_empty.total_pages);
-    assert_eq!(0, should_be_empty.total_items);
-    assert_eq!(0, should_be_empty.values.len());
+    assert_result(0, should_be_empty);
 
     let should_be_empty = provider
-        .get_history_list(HistoryListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 999,
-            }),
-            sorting: None,
-            filtering: Some(ListFilterCondition::And(vec![
-                ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation.id)),
-                ListFilterCondition::Value(HistoryFilterValue::CredentialId(
-                    did_id.to_owned().into(),
-                )),
-            ])),
-        })
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::CredentialId(did_id.to_owned().into()),
+        ))
         .await
         .unwrap();
-
-    assert_eq!(0, should_be_empty.total_pages);
-    assert_eq!(0, should_be_empty.total_items);
-    assert_eq!(0, should_be_empty.values.len());
+    assert_result(0, should_be_empty);
 
     let should_be_empty = provider
-        .get_history_list(HistoryListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 999,
-            }),
-            sorting: None,
-            filtering: Some(ListFilterCondition::And(vec![
-                ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation.id)),
-                ListFilterCondition::Value(HistoryFilterValue::CredentialSchemaId(
-                    did_id.to_owned().into(),
-                )),
-            ])),
-        })
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::CredentialSchemaId(did_id.to_owned().into()),
+        ))
         .await
         .unwrap();
+    assert_result(0, should_be_empty);
+}
 
-    assert_eq!(0, should_be_empty.total_pages);
-    assert_eq!(0, should_be_empty.total_items);
-    assert_eq!(0, should_be_empty.values.len());
+#[tokio::test]
+async fn test_get_history_list_search_query() {
+    let TestSetupWithCredentialsSchemaAndProof {
+        provider,
+        organisation,
+        credential_schema_name,
+        did_name,
+        did_value,
+        claim_schema_name,
+        claim_value,
+        ..
+    } = setup_with_credential_schema_and_proof().await;
+
+    let search_by_credential_schema_name = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(
+                credential_schema_name.to_string(),
+                HistorySearchEnum::CredentialSchemaName,
+            ),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        3, /* create schema, credential, proof */
+        search_by_credential_schema_name,
+    );
+
+    let search_by_issuer_did_name = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(did_name.to_string(), HistorySearchEnum::IssuerName),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        2, /* create did, credential */
+        search_by_issuer_did_name,
+    );
+
+    let search_by_verifier_did_name = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(did_name.to_string(), HistorySearchEnum::VerifierName),
+        ))
+        .await
+        .unwrap();
+    assert_result(2 /* create did, proof */, search_by_verifier_did_name);
+
+    let search_by_issuer_did_value = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(did_value.to_string(), HistorySearchEnum::IssuerDid),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        2, /* create did, credential */
+        search_by_issuer_did_value,
+    );
+
+    let search_by_verifier_did_value = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(did_value.to_string(), HistorySearchEnum::VerifierDid),
+        ))
+        .await
+        .unwrap();
+    assert_result(2 /* create did, proof */, search_by_verifier_did_value);
+
+    let search_by_claim_value = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(claim_value.to_string(), HistorySearchEnum::ClaimValue),
+        ))
+        .await
+        .unwrap();
+    assert_result(2 /* create credential, proof */, search_by_claim_value);
+
+    let search_by_claim_schema_name = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(
+                claim_schema_name.to_string(),
+                HistorySearchEnum::ClaimName,
+            ),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        2, /* create credential, proof */
+        search_by_claim_schema_name,
+    );
 }
