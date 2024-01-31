@@ -10,7 +10,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::serialize::front_time;
+use crate::serialize::{front_time, front_time_option};
 
 use crate::dto::common::GetListQueryParams;
 
@@ -22,6 +22,12 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
+    #[serde(
+        serialize_with = "front_time_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub deleted_at: Option<OffsetDateTime>,
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,

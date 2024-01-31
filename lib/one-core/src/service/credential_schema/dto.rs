@@ -1,43 +1,32 @@
-use std::str::FromStr;
-
 use serde::Deserialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use dto_mapper::{From, TryFrom};
+use dto_mapper::From;
 
-use crate::{
-    model::{
-        claim_schema::ClaimSchemaId,
-        common::{GetListQueryParams, GetListResponse},
-        credential_schema::{
-            CredentialFormat, CredentialSchema, CredentialSchemaId, RevocationMethod,
-            SortableCredentialSchemaColumn,
-        },
-        organisation::OrganisationId,
+use crate::model::{
+    claim_schema::ClaimSchemaId,
+    common::{GetListQueryParams, GetListResponse},
+    credential_schema::{
+        CredentialFormat, CredentialSchema, CredentialSchemaId, RevocationMethod,
+        SortableCredentialSchemaColumn,
     },
-    provider::transport_protocol::dto::ProofCredentialSchema,
-    service::error::ServiceError,
+    organisation::OrganisationId,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, From, TryFrom)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, From)]
 #[from(CredentialSchema)]
-#[try_from(T = ProofCredentialSchema, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaListItemResponseDTO {
-    #[try_from(with_fn_ref = "uuid::Uuid::from_str")]
     pub id: CredentialSchemaId,
-    #[try_from(infallible)]
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
-    #[try_from(infallible)]
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
-    #[try_from(infallible)]
+    #[serde(skip)]
+    pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
-    #[try_from(infallible)]
     pub format: CredentialFormat,
-    #[try_from(infallible)]
     pub revocation_method: RevocationMethod,
 }
 
