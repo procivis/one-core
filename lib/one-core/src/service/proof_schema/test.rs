@@ -51,20 +51,7 @@ fn setup_service(
 async fn test_get_proof_schema_exists() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
-    let proof_schema = ProofSchema {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        deleted_at: None,
-        name: "name".to_string(),
-        expire_duration: 0,
-        claim_schemas: Some(vec![]),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
-    };
+    let proof_schema = generic_proof_schema();
     {
         let res_clone = proof_schema.clone();
         proof_schema_repository
@@ -98,6 +85,35 @@ async fn test_get_proof_schema_exists() {
     assert_eq!(result.id, proof_schema.id);
     assert_eq!(result.expire_duration, 0);
     assert_eq!(result.name, proof_schema.name);
+}
+
+#[tokio::test]
+async fn test_get_proof_schema_deleted() {
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    let proof_schema = ProofSchema {
+        deleted_at: Some(OffsetDateTime::now_utc()),
+        ..generic_proof_schema()
+    };
+    {
+        let res_clone = proof_schema.clone();
+        proof_schema_repository
+            .expect_get_proof_schema()
+            .returning(move |_id, _relations| Ok(Some(res_clone.clone())));
+    }
+
+    let service = setup_service(
+        proof_schema_repository,
+        MockClaimSchemaRepository::default(),
+        MockOrganisationRepository::default(),
+    );
+
+    let result = service.get_proof_schema(&proof_schema.id).await;
+
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::EntityNotFound(EntityNotFoundError::ProofSchema(_))
+    )));
 }
 
 #[tokio::test]
@@ -334,20 +350,7 @@ async fn test_create_proof_schema_success() {
     let create_request_clone = create_request.clone();
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
-    let proof_schema = ProofSchema {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        deleted_at: None,
-        name: "name".to_string(),
-        expire_duration: 0,
-        claim_schemas: Some(vec![]),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
-    };
+    let proof_schema = generic_proof_schema();
 
     proof_schema_repository
         .expect_get_proof_schema_list()
@@ -400,20 +403,7 @@ async fn test_create_proof_schema_unique_name_error() {
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
-    let proof_schema = ProofSchema {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        deleted_at: None,
-        name: "name".to_string(),
-        expire_duration: 0,
-        claim_schemas: Some(vec![]),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
-    };
+    let proof_schema = generic_proof_schema();
 
     proof_schema_repository
         .expect_get_proof_schema_list()
@@ -455,20 +445,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
-    let proof_schema = ProofSchema {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        deleted_at: None,
-        name: "name".to_string(),
-        expire_duration: 0,
-        claim_schemas: Some(vec![]),
-        organisation: Some(Organisation {
-            id: Uuid::new_v4(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-        }),
-    };
+    let proof_schema = generic_proof_schema();
 
     proof_schema_repository
         .expect_get_proof_schema_list()
@@ -584,4 +561,21 @@ async fn test_create_proof_schema_duplicit_claims() {
             ValidationError::ProofSchemaDuplicitClaim
         ))
     ));
+}
+
+fn generic_proof_schema() -> ProofSchema {
+    ProofSchema {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        deleted_at: None,
+        name: "name".to_string(),
+        expire_duration: 0,
+        claim_schemas: Some(vec![]),
+        organisation: Some(Organisation {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        }),
+    }
 }

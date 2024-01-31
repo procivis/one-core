@@ -376,6 +376,43 @@ async fn test_get_credential_success() {
 }
 
 #[tokio::test]
+async fn test_get_credential_deleted() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let credential = Credential {
+        deleted_at: Some(OffsetDateTime::now_utc()),
+        ..generic_credential()
+    };
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.get_credential(&credential.id).await;
+
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::EntityNotFound(EntityNotFoundError::Credential(_))
+    )));
+}
+
+#[tokio::test]
 async fn test_get_revoked_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
