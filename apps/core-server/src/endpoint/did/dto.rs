@@ -2,7 +2,7 @@ use crate::{
     dto::common::ListQueryParamsRest, endpoint::key::dto::KeyListItemResponseRestDTO,
     mapper::MapperError, serialize::front_time,
 };
-use dto_mapper::iterable_try_into;
+use dto_mapper::try_convert_inner;
 use dto_mapper::{From, Into, TryFrom};
 use one_core::service::did::dto::{
     CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO, DidResponseDTO,
@@ -81,15 +81,15 @@ pub struct DidResponseRestDTO {
 #[try_from(T = DidResponseKeysDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
 pub struct DidResponseKeysRestDTO {
-    #[try_from(with_fn = iterable_try_into)]
+    #[try_from(with_fn = try_convert_inner)]
     pub authentication: Vec<KeyListItemResponseRestDTO>,
-    #[try_from(with_fn = iterable_try_into)]
+    #[try_from(with_fn = try_convert_inner)]
     pub assertion: Vec<KeyListItemResponseRestDTO>,
-    #[try_from(with_fn = iterable_try_into)]
+    #[try_from(with_fn = try_convert_inner)]
     pub key_agreement: Vec<KeyListItemResponseRestDTO>,
-    #[try_from(with_fn = iterable_try_into)]
+    #[try_from(with_fn = try_convert_inner)]
     pub capability_invocation: Vec<KeyListItemResponseRestDTO>,
-    #[try_from(with_fn = iterable_try_into)]
+    #[try_from(with_fn = try_convert_inner)]
     pub capability_delegation: Vec<KeyListItemResponseRestDTO>,
 }
 

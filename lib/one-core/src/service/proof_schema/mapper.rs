@@ -13,7 +13,7 @@ use crate::{
     },
     service::error::ServiceError,
 };
-use dto_mapper::iterable_try_into;
+use dto_mapper::try_convert_inner;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -33,7 +33,7 @@ impl TryFrom<ProofSchema> for GetProofSchemaResponseDTO {
                 ))?
                 .id,
             expire_duration: value.expire_duration,
-            claim_schemas: iterable_try_into(value.claim_schemas.ok_or(
+            claim_schemas: try_convert_inner(value.claim_schemas.ok_or(
                 ServiceError::MappingError("claim_schemas is None".to_string()),
             )?)?,
         })

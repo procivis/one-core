@@ -5,7 +5,7 @@ use crate::{
         history::dto::{GetHistoryListResponseDTO, HistoryResponseDTO},
     },
 };
-use dto_mapper::iterable_try_into;
+use dto_mapper::try_convert_inner;
 
 impl TryFrom<History> for HistoryResponseDTO {
     type Error = ServiceError;
@@ -31,7 +31,7 @@ impl TryFrom<GetHistoryList> for GetHistoryListResponseDTO {
 
     fn try_from(value: GetHistoryList) -> Result<Self, Self::Error> {
         Ok(Self {
-            values: iterable_try_into(value.values)?,
+            values: try_convert_inner(value.values)?,
             total_pages: value.total_pages,
             total_items: value.total_items,
         })

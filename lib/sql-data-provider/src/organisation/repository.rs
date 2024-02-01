@@ -1,7 +1,7 @@
 use super::OrganisationProvider;
 use crate::{entity::organisation, mapper::to_data_layer_error};
 use autometrics::autometrics;
-use dto_mapper::iterable_try_into;
+use dto_mapper::try_convert_inner;
 use one_core::{
     model::organisation::{Organisation, OrganisationId, OrganisationRelations},
     repository::{error::DataLayerError, organisation_repository::OrganisationRepository},
@@ -48,6 +48,6 @@ impl OrganisationRepository for OrganisationProvider {
             .await
             .map_err(to_data_layer_error)?;
 
-        iterable_try_into(organisations)
+        try_convert_inner(organisations)
     }
 }

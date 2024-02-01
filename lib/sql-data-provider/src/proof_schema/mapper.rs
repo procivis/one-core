@@ -4,7 +4,7 @@ use crate::{
     list_query::GetEntityColumn,
 };
 use anyhow::anyhow;
-use dto_mapper::iterable_try_into;
+use dto_mapper::try_convert_inner;
 use migration::SimpleExpr;
 use one_core::{
     model::proof_schema::{
@@ -52,7 +52,7 @@ pub(crate) fn create_list_response(
     items_count: u64,
 ) -> Result<GetProofSchemaList, DataLayerError> {
     Ok(GetProofSchemaList {
-        values: iterable_try_into(schemas)?,
+        values: try_convert_inner(schemas)?,
         total_pages: calculate_pages_count(items_count, limit),
         total_items: items_count,
     })

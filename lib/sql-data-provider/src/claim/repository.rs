@@ -1,7 +1,7 @@
 use super::ClaimProvider;
 use crate::{entity::claim, mapper::to_data_layer_error};
 use autometrics::autometrics;
-use dto_mapper::iterable_try_into;
+use dto_mapper::try_convert_inner;
 use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
@@ -69,7 +69,7 @@ impl ClaimRepository for ClaimProvider {
                 .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
                 .await?;
 
-            let claims: Vec<Claim> = iterable_try_into(models)?;
+            let claims: Vec<Claim> = try_convert_inner(models)?;
 
             Ok(claims
                 .into_iter()
@@ -80,7 +80,7 @@ impl ClaimRepository for ClaimProvider {
                 })
                 .collect())
         } else {
-            iterable_try_into(models)
+            try_convert_inner(models)
         }
     }
 }

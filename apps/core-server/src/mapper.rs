@@ -1,5 +1,5 @@
 use crate::dto::common::{GetListQueryParams, GetListResponseRestDTO};
-use dto_mapper::{convert_inner, iterable_try_into};
+use dto_mapper::{convert_inner, try_convert_inner};
 use one_core::model::common::GetListResponse;
 use serde::Serialize;
 use std::fmt;
@@ -33,7 +33,7 @@ where
     MapperError: From<T::Error>,
 {
     Ok(GetListResponseRestDTO {
-        values: iterable_try_into(value.values)?,
+        values: try_convert_inner(value.values)?,
         total_pages: value.total_pages,
         total_items: value.total_items,
     })
