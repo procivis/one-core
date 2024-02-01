@@ -221,6 +221,14 @@ fn search_query_did_filter_condition(
             Query::select()
                 .expr(did::Column::Id.into_expr())
                 .from(did::Entity)
+                .inner_join(
+                    did_id_column.entity_name(),
+                    Expr::col(ColumnRef::TableColumn(
+                        did_id_column.entity_name(),
+                        did_id_column.into_iden(),
+                    ))
+                    .eq(Expr::col((did::Entity, did::Column::Id))),
+                )
                 .cond_where(condition)
                 .to_owned(),
         ))
