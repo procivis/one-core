@@ -107,7 +107,7 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                         Expr::col((claim_schema::Entity, claim_schema::Column::Id))
                             .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
                     )
-                    .cond_where(claim_schema::Column::Key.like(search_text.to_owned()))
+                    .cond_where(claim_schema::Column::Key.contains(search_text.to_owned()))
                     .to_owned(),
             )
             .or(history::Column::EntityId.in_subquery(
@@ -134,7 +134,7 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                         ))
                         .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
                     )
-                    .cond_where(claim_schema::Column::Key.like(search_text))
+                    .cond_where(claim_schema::Column::Key.contains(search_text))
                     .to_owned(),
             ))
             .into_condition(),
@@ -143,7 +143,7 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                 Query::select()
                     .expr(claim::Column::CredentialId.into_expr())
                     .from(claim::Entity)
-                    .cond_where(claim::Column::Value.like(search_text.to_owned()))
+                    .cond_where(claim::Column::Value.contains(search_text.to_owned()))
                     .to_owned(),
             )
             .or(history::Column::EntityId.in_subquery(
@@ -165,32 +165,32 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                         ))
                         .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
                     )
-                    .cond_where(claim::Column::Value.like(search_text))
+                    .cond_where(claim::Column::Value.contains(search_text))
                     .to_owned(),
             ))
             .into_condition(),
         HistorySearchEnum::CredentialSchemaName => credential_schema_name_search_condition(
-            credential_schema::Column::Name.like(search_text),
+            credential_schema::Column::Name.contains(search_text),
         ),
         HistorySearchEnum::IssuerDid => search_query_did_filter_condition(
             credential::Column::Id,
             credential::Column::IssuerDidId,
-            did::Column::Did.like(search_text),
+            did::Column::Did.contains(search_text),
         ),
         HistorySearchEnum::IssuerName => search_query_did_filter_condition(
             credential::Column::Id,
             credential::Column::IssuerDidId,
-            did::Column::Name.like(search_text),
+            did::Column::Name.contains(search_text),
         ),
         HistorySearchEnum::VerifierDid => search_query_did_filter_condition(
             proof::Column::Id,
             proof::Column::VerifierDidId,
-            did::Column::Did.like(search_text),
+            did::Column::Did.contains(search_text),
         ),
         HistorySearchEnum::VerifierName => search_query_did_filter_condition(
             proof::Column::Id,
             proof::Column::VerifierDidId,
-            did::Column::Name.like(search_text),
+            did::Column::Name.contains(search_text),
         ),
     }
 }
