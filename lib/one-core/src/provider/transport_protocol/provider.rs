@@ -1,3 +1,4 @@
+use super::mapper::credential_accepted_history_event;
 use super::{dto::InvitationType, TransportProtocol};
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::model::claim::ClaimRelations;
@@ -15,6 +16,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::mapper::get_issued_credential_update;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::service::error::{
     EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -44,6 +46,7 @@ pub(crate) struct TransportProtocolProviderImpl {
     protocols: HashMap<String, Arc<dyn TransportProtocol>>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
 }
@@ -55,6 +58,7 @@ impl TransportProtocolProviderImpl {
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        history_repository: Arc<dyn HistoryRepository>,
     ) -> Self {
         Self {
             protocols,
@@ -62,6 +66,7 @@ impl TransportProtocolProviderImpl {
             credential_repository,
             revocation_method_provider,
             key_provider,
+            history_repository,
         }
     }
 }
@@ -170,7 +175,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .get_formatter(&format)
             .ok_or(ValidationError::InvalidFormatter(format.to_string()))?
             .format_credentials(
-                &credential.try_into()?,
+                &credential.clone().try_into()?,
                 credential_status,
                 &holder_did.did,
                 &key.key.key_type,
@@ -187,6 +192,11 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
                 &key.key,
             ))
             .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(credential_accepted_history_event(credential))
+            .await;
 
         Ok(SubmitIssuerResponse {
             credential: token,

@@ -4,7 +4,7 @@ use crate::{
     provider::transport_protocol::provider::TransportProtocolProvider,
     repository::{
         credential_repository::CredentialRepository, did_repository::DidRepository,
-        proof_repository::ProofRepository,
+        history_repository::HistoryRepository, proof_repository::ProofRepository,
     },
 };
 use std::sync::Arc;
@@ -22,6 +22,7 @@ pub struct SSIHolderService {
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     did_repository: Arc<dyn DidRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn TransportProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
@@ -33,6 +34,7 @@ impl SSIHolderService {
         credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         did_repository: Arc<dyn DidRepository>,
+        history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn TransportProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
@@ -41,6 +43,7 @@ impl SSIHolderService {
             credential_repository,
             proof_repository,
             did_repository,
+            history_repository,
             formatter_provider,
             protocol_provider,
             config,

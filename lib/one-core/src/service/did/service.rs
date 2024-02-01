@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::{
     dto::{CreateDidRequestDTO, DidPatchRequestDTO, DidResponseDTO, GetDidListResponseDTO},
-    mapper::did_from_did_request,
+    mapper::{did_deactivated_history_event, did_from_did_request},
     validator::validate_deactivation_request,
     DidService,
 };
@@ -257,6 +257,11 @@ impl DidService {
             deactivated: request.deactivated,
         };
         self.did_repository.update_did(update_did).await?;
+
+        let _ = self
+            .history_repository
+            .create_history(did_deactivated_history_event(did))
+            .await;
 
         Ok(())
     }

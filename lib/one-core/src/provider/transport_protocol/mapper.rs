@@ -1,6 +1,7 @@
 use crate::model::{
     credential::{CredentialId, CredentialState, CredentialStateEnum, UpdateCredentialRequest},
     did::Did,
+    history::{History, HistoryAction, HistoryEntityType},
     interaction::Interaction,
     key::Key,
     proof::{self, Proof, ProofId, ProofStateEnum},
@@ -201,4 +202,15 @@ pub fn create_presentation_definition_field(
         required: Some(field.required),
         key_map,
     })
+}
+
+pub(super) fn credential_accepted_history_event(credential: Credential) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Accepted,
+        entity_id: credential.id.into(),
+        entity_type: HistoryEntityType::Credential,
+        organisation: credential.schema.and_then(|s| s.organisation),
+    }
 }

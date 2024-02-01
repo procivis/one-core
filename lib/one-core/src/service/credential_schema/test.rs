@@ -194,18 +194,24 @@ async fn test_get_credential_schema_list_success() {
 #[tokio::test]
 async fn test_delete_credential_schema() {
     let mut repository = MockCredentialSchemaRepository::default();
-    let history_repository = MockHistoryRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
     let schema_id = Uuid::new_v4();
 
-    {
-        repository
-            .expect_delete_credential_schema()
-            .times(1)
-            .with(eq(schema_id.to_owned()))
-            .returning(move |_| Ok(()));
-    }
+    repository
+        .expect_get_credential_schema()
+        .returning(|_, _| Ok(Some(generic_credential_schema())));
+
+    repository
+        .expect_delete_credential_schema()
+        .times(1)
+        .with(eq(schema_id.to_owned()))
+        .returning(move |_| Ok(()));
+
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let service = setup_service(
         repository,

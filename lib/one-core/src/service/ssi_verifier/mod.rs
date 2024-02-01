@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     config::core_config,
     provider::{
@@ -7,10 +9,9 @@ use crate::{
     },
     repository::{
         credential_repository::CredentialRepository, did_repository::DidRepository,
-        proof_repository::ProofRepository,
+        history_repository::HistoryRepository, proof_repository::ProofRepository,
     },
 };
-use std::sync::Arc;
 
 pub mod dto;
 pub mod service;
@@ -31,6 +32,7 @@ pub struct SSIVerifierService {
     did_method_provider: Arc<dyn DidMethodProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    history_repository: Arc<dyn HistoryRepository>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -44,6 +46,7 @@ impl SSIVerifierService {
         did_method_provider: Arc<dyn DidMethodProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        history_repository: Arc<dyn HistoryRepository>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
@@ -54,6 +57,7 @@ impl SSIVerifierService {
             did_method_provider,
             revocation_method_provider,
             key_algorithm_provider,
+            history_repository,
             config,
         }
     }

@@ -28,7 +28,7 @@ use crate::{
     },
     repository::{
         credential_repository::MockCredentialRepository, did_repository::MockDidRepository,
-        mock::proof_repository::MockProofRepository,
+        history_repository::MockHistoryRepository, mock::proof_repository::MockProofRepository,
     },
     service::{
         ssi_verifier::SSIVerifierService,
@@ -484,6 +484,7 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
         did_method_provider: Arc::new(did_method_provider),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        history_repository: Arc::new(MockHistoryRepository::new()),
         config: Arc::new(generic_config().core),
     }
 }

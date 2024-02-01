@@ -10,6 +10,7 @@ use crate::{
     },
     repository::{
         error::DataLayerError,
+        history_repository::MockHistoryRepository,
         mock::{
             claim_schema_repository::MockClaimSchemaRepository,
             organisation_repository::MockOrganisationRepository,
@@ -33,10 +34,16 @@ fn setup_service(
     claim_schema_repository: MockClaimSchemaRepository,
     organisation_repository: MockOrganisationRepository,
 ) -> ProofSchemaService {
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
         claim_schema_repository: Arc::new(claim_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
+        history_repository: Arc::new(history_repository),
     }
 }
 
@@ -204,6 +211,21 @@ async fn test_get_proof_schema_list_failure() {
 async fn test_delete_proof_schema_success() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
 
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .returning(|_, _| {
+            Ok(Some(ProofSchema {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "name".to_string(),
+                expire_duration: 0,
+                claim_schemas: None,
+                organisation: None,
+            }))
+        });
+
     let proof_schema_id = Uuid::new_v4();
     proof_schema_repository
         .expect_delete_proof_schema()
@@ -229,6 +251,22 @@ async fn test_delete_proof_schema_success() {
 #[tokio::test]
 async fn test_delete_proof_schema_failure() {
     let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .returning(|_, _| {
+            Ok(Some(ProofSchema {
+                id: Uuid::new_v4(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "name".to_string(),
+                expire_duration: 0,
+                claim_schemas: None,
+                organisation: None,
+            }))
+        });
+
     proof_schema_repository
         .expect_delete_proof_schema()
         .times(1)

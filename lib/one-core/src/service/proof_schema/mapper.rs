@@ -1,7 +1,9 @@
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
+    ProofSchemaId,
 };
 use crate::model::common::ExactColumn;
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 use crate::{
     model::{
@@ -86,5 +88,30 @@ pub fn proof_schema_from_create_request(
         claim_schemas: Some(claim_schemas),
         organisation: Some(organisation),
         deleted_at: None,
+    }
+}
+
+pub(super) fn proof_schema_created_history_event(
+    id: ProofSchemaId,
+    organisation: Organisation,
+) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Created,
+        entity_id: id.into(),
+        entity_type: HistoryEntityType::ProofSchema,
+        organisation: Some(organisation),
+    }
+}
+
+pub(super) fn proof_schema_deleted_history_event(proof_schema: ProofSchema) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Deleted,
+        entity_id: proof_schema.id.into(),
+        entity_type: HistoryEntityType::ProofSchema,
+        organisation: proof_schema.organisation,
     }
 }

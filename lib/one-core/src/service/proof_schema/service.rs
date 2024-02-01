@@ -3,7 +3,10 @@ use super::{
         CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaQueryDTO,
         GetProofSchemaResponseDTO, ProofSchemaId,
     },
-    mapper::proof_schema_from_create_request,
+    mapper::{
+        proof_schema_created_history_event, proof_schema_deleted_history_event,
+        proof_schema_from_create_request,
+    },
     validator::{proof_schema_name_already_exists, validate_create_request},
     ProofSchemaService,
 };
@@ -116,12 +119,19 @@ impl ProofSchemaService {
 
         let now = OffsetDateTime::now_utc();
         let proof_schema =
-            proof_schema_from_create_request(request, now, claim_schemas, organisation);
+            proof_schema_from_create_request(request, now, claim_schemas, organisation.clone());
 
-        self.proof_schema_repository
+        let id = self
+            .proof_schema_repository
             .create_proof_schema(proof_schema)
-            .await
-            .map_err(ServiceError::from)
+            .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(proof_schema_created_history_event(id, organisation))
+            .await;
+
+        Ok(id)
     }
 
     /// Removes a proof schema
@@ -130,6 +140,20 @@ impl ProofSchemaService {
     ///
     /// * `request` - data
     pub async fn delete_proof_schema(&self, id: &ProofSchemaId) -> Result<(), ServiceError> {
+        let proof_schema = self
+            .proof_schema_repository
+            .get_proof_schema(
+                id,
+                &ProofSchemaRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(BusinessLogicError::MissingProofSchema {
+                proof_schema_id: *id,
+            })?;
+
         let now = OffsetDateTime::now_utc();
         self.proof_schema_repository
             .delete_proof_schema(id, now)
@@ -138,6 +162,13 @@ impl ProofSchemaService {
                 // proof schema not found or already deleted
                 DataLayerError::RecordNotUpdated => EntityNotFoundError::ProofSchema(*id).into(),
                 error => ServiceError::from(error),
-            })
+            })?;
+
+        let _ = self
+            .history_repository
+            .create_history(proof_schema_deleted_history_event(proof_schema))
+            .await;
+
+        Ok(())
     }
 }

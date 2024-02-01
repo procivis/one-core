@@ -31,9 +31,11 @@ use crate::{
         },
         transport_protocol::dto::PresentationDefinitionResponseDTO,
     },
-    repository::credential_repository::MockCredentialRepository,
     repository::did_repository::MockDidRepository,
     repository::mock::proof_repository::MockProofRepository,
+    repository::{
+        credential_repository::MockCredentialRepository, history_repository::MockHistoryRepository,
+    },
     service::{
         error::{BusinessLogicError, ServiceError},
         ssi_holder::{
@@ -112,9 +114,15 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .once()
         .return_once(move |_| Some(Arc::new(transport_protocol_mock)));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
         protocol_provider: Arc::new(protocol_provider),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -333,11 +341,17 @@ async fn test_submit_proof_succeeds() {
         .once()
         .return_once(move |_| Some(Arc::new(transport_protocol)));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         protocol_provider: Arc::new(protocol_provider),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -537,11 +551,17 @@ async fn test_submit_proof_repeating_claims() {
         .once()
         .returning(|_, _| Ok(()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         protocol_provider: Arc::new(protocol_provider),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -571,6 +591,11 @@ async fn test_submit_proof_repeating_claims() {
 
 #[tokio::test]
 async fn test_accept_credential() {
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -602,6 +627,7 @@ async fn test_accept_credential() {
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         protocol_provider: Arc::new(protocol_provider),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -611,6 +637,11 @@ async fn test_accept_credential() {
 
 #[tokio::test]
 async fn test_reject_credential() {
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -636,6 +667,7 @@ async fn test_reject_credential() {
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         protocol_provider: Arc::new(protocol_provider),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -648,6 +680,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         proof_repository: Arc::new(MockProofRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
+        history_repository: Arc::new(MockHistoryRepository::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
         config: Arc::new(generic_config().core),

@@ -204,11 +204,17 @@ async fn test_delete_credential_success() {
         .expect_delete_credential()
         .returning(|_| Ok(()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -477,11 +483,17 @@ async fn test_share_credential_success() {
             .returning(move |_| Ok(()));
     }
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
+        history_repository,
         config: generic_config().core,
         protocol_provider,
         ..Default::default()
@@ -946,6 +958,10 @@ async fn test_check_revocation_already_revoked() {
             .expect_get_credential()
             .returning(move |_, _| Ok(Some(credential_clone.clone())));
     }
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let service = setup_service(Repositories {
         credential_repository,
@@ -953,6 +969,7 @@ async fn test_check_revocation_already_revoked() {
         did_repository,
         revocation_method_provider,
         formatter_provider,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1054,11 +1071,17 @@ async fn test_check_revocation_being_revoked() {
         })
         .returning(|_| Ok(()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
+        history_repository,
         formatter_provider,
         config: generic_config().core,
         ..Default::default()
