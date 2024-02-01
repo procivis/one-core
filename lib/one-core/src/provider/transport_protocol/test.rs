@@ -29,7 +29,9 @@ use crate::{
         },
         transport_protocol::provider::{TransportProtocolProvider, TransportProtocolProviderImpl},
     },
-    repository::credential_repository::MockCredentialRepository,
+    repository::{
+        credential_repository::MockCredentialRepository, history_repository::MockHistoryRepository,
+    },
 };
 
 #[tokio::test]
@@ -143,6 +145,11 @@ async fn test_issuer_submit_succeeds() {
             }),
         },
     );
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let service = TransportProtocolProviderImpl::new(
         Default::default(),
@@ -150,6 +157,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(credential_repository),
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
+        Arc::new(history_repository),
     );
 
     service.issue_credential(&credential_id).await.unwrap();

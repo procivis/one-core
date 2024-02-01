@@ -104,6 +104,25 @@ pub(super) fn from_create_request(
     })
 }
 
+pub(super) fn schema_create_history_event(schema: CredentialSchema) -> History {
+    history_event(schema, HistoryAction::Created)
+}
+
+pub(super) fn schema_delete_history_event(schema: CredentialSchema) -> History {
+    history_event(schema, HistoryAction::Deleted)
+}
+
+fn history_event(schema: CredentialSchema, action: HistoryAction) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action,
+        entity_id: schema.id.into(),
+        entity_type: HistoryEntityType::CredentialSchema,
+        organisation: schema.organisation,
+    }
+}
+
 fn from_jwt_request_claim_schema(
     claim_schema: CredentialClaimSchemaRequestDTO,
     now: OffsetDateTime,
@@ -117,16 +136,5 @@ fn from_jwt_request_claim_schema(
             last_modified: now,
         },
         required: claim_schema.required,
-    }
-}
-
-pub(super) fn schema_create_history_event(schema: CredentialSchema) -> History {
-    History {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Created,
-        entity_id: schema.id.into(),
-        entity_type: HistoryEntityType::CredentialSchema,
-        organisation: schema.organisation,
     }
 }

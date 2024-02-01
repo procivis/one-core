@@ -14,6 +14,7 @@ use crate::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaId, CredentialSchemaRelations},
         did::DidRelations,
+        interaction::InteractionRelations,
         organisation::OrganisationRelations,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
@@ -155,7 +156,13 @@ impl SSIVerifierService {
         validate_config_entity_presence(&self.config)?;
 
         let proof = self
-            .get_proof_with_state(proof_id, ProofRelations::default())
+            .get_proof_with_state(
+                proof_id,
+                ProofRelations {
+                    interaction: Some(InteractionRelations::default()),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
@@ -170,8 +177,9 @@ impl SSIVerifierService {
                     state: ProofStateEnum::Rejected,
                 },
             )
-            .await
-            .map_err(ServiceError::from)
+            .await?;
+
+        Ok(())
     }
 
     // ======= PRIVATE METHODS
@@ -405,7 +413,7 @@ mod tests {
         },
         repository::{
             credential_repository::MockCredentialRepository, did_repository::MockDidRepository,
-            mock::proof_repository::MockProofRepository,
+            history_repository::MockHistoryRepository, mock::proof_repository::MockProofRepository,
         },
         service::test_utilities::generic_config,
     };
@@ -433,6 +441,7 @@ mod tests {
             credential_repository: Arc::new(MockCredentialRepository::new()),
             revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
             key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+            history_repository: Arc::new(MockHistoryRepository::new()),
             config: Arc::new(generic_config().core),
         };
 

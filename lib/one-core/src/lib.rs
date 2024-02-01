@@ -165,6 +165,7 @@ impl OneCore {
             data_provider.get_credential_repository(),
             revocation_method_provider.clone(),
             key_provider.clone(),
+            data_provider.get_history_repository(),
         ));
 
         Ok(OneCore {
@@ -231,6 +232,7 @@ impl OneCore {
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_claim_schema_repository(),
                 data_provider.get_organisation_repository(),
+                data_provider.get_history_repository(),
             ),
             proof_service: ProofService::new(
                 data_provider.get_credential_repository(),
@@ -249,6 +251,7 @@ impl OneCore {
                 did_method_provider,
                 revocation_method_provider,
                 key_algorithm_provider,
+                data_provider.get_history_repository(),
                 config.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
@@ -263,6 +266,7 @@ impl OneCore {
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_did_repository(),
+                data_provider.get_history_repository(),
                 formatter_provider,
                 protocol_provider,
                 config.clone(),

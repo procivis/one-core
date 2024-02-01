@@ -1,5 +1,11 @@
 use super::{
     dto::{InvitationResponseDTO, PresentationSubmitRequestDTO},
+    mapper::{
+        credential_accepted_history_event, credential_offered_history_event,
+        credential_pending_history_event, credential_rejected_history_event,
+        proof_accepted_history_event, proof_pending_history_event, proof_rejected_history_event,
+        proof_requested_history_event,
+    },
     SSIHolderService,
 };
 use crate::{
@@ -70,15 +76,35 @@ impl SSIHolderService {
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
                 for credential in credentials.iter() {
+                    let _ = self
+                        .history_repository
+                        .create_history(credential_offered_history_event(credential))
+                        .await;
+
                     self.credential_repository
                         .create_credential(credential.to_owned())
                         .await?;
+
+                    let _ = self
+                        .history_repository
+                        .create_history(credential_pending_history_event(credential))
+                        .await;
                 }
             }
             InvitationResponseDTO::ProofRequest { proof, .. } => {
+                let _ = self
+                    .history_repository
+                    .create_history(proof_requested_history_event(proof))
+                    .await;
+
                 self.proof_repository
-                    .create_proof(proof.as_ref().to_owned())
+                    .create_proof(*proof.to_owned())
                     .await?;
+
+                let _ = self
+                    .history_repository
+                    .create_history(proof_pending_history_event(proof))
+                    .await;
             }
         }
 
@@ -98,6 +124,10 @@ impl SSIHolderService {
                 &ProofRelations {
                     state: Some(ProofStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
+                    holder_did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
@@ -127,8 +157,14 @@ impl SSIHolderService {
                     state: ProofStateEnum::Rejected,
                 },
             )
-            .await
-            .map_err(ServiceError::from)
+            .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(proof_rejected_history_event(&proof))
+            .await;
+
+        Ok(())
     }
 
     pub async fn submit_proof(
@@ -146,7 +182,7 @@ impl SSIHolderService {
                     interaction: Some(InteractionRelations::default()),
                     holder_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
-                        ..Default::default()
+                        organisation: Some(OrganisationRelations::default()),
                     }),
                     ..Default::default()
                 },
@@ -298,7 +334,14 @@ impl SSIHolderService {
             )
             .await?;
 
-        submit_result.map_err(ServiceError::from)
+        if submit_result.is_ok() {
+            let _ = self
+                .history_repository
+                .create_history(proof_accepted_history_event(&proof))
+                .await;
+        }
+
+        Ok(submit_result?)
     }
 
     pub async fn accept_credential(
@@ -320,7 +363,7 @@ impl SSIHolderService {
                     }),
                     holder_did: Some(DidRelations {
                         keys: Some(KeyRelations::default()),
-                        ..Default::default()
+                        organisation: Some(OrganisationRelations::default()),
                     }),
                     issuer_did: Some(DidRelations::default()),
                     ..Default::default()
@@ -358,6 +401,11 @@ impl SSIHolderService {
                     ..Default::default()
                 })
                 .await?;
+
+            let _ = self
+                .history_repository
+                .create_history(credential_accepted_history_event(&credential))
+                .await;
         }
 
         Ok(())
@@ -376,6 +424,10 @@ impl SSIHolderService {
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
+                    holder_did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
@@ -409,6 +461,11 @@ impl SSIHolderService {
                     ..Default::default()
                 })
                 .await?;
+
+            let _ = self
+                .history_repository
+                .create_history(credential_rejected_history_event(&credential))
+                .await;
         }
 
         Ok(())

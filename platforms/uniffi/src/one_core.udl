@@ -240,6 +240,7 @@ enum HistoryActionBindingEnum {
     "Rejected",
     "Requested",
     "Revoked",
+    "Pending"
 };
 
 enum HistoryEntityTypeBindingEnum {

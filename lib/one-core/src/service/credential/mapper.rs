@@ -11,6 +11,7 @@ use crate::{
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::Did,
         history::{History, HistoryAction, HistoryEntityType},
+        organisation::Organisation,
     },
     service::{
         credential::dto::{
@@ -214,7 +215,7 @@ pub(super) fn claims_from_create_request(
         .collect::<Result<Vec<_>, _>>()
 }
 
-pub(super) fn credential_create_history_event(
+pub(super) fn credential_created_history_event(
     credential: Credential,
 ) -> Result<History, ServiceError> {
     Ok(History {
@@ -230,4 +231,29 @@ pub(super) fn credential_create_history_event(
             ))?
             .organisation,
     })
+}
+
+pub(super) fn credential_offered_history_event(credential: Credential) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Offered,
+        entity_id: credential.id.into(),
+        entity_type: HistoryEntityType::Credential,
+        organisation: credential.schema.and_then(|c| c.organisation),
+    }
+}
+
+pub(super) fn credential_revoked_history_event(
+    id: CredentialId,
+    organisation: Option<Organisation>,
+) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Revoked,
+        entity_id: id.into(),
+        entity_type: HistoryEntityType::Credential,
+        organisation,
+    }
 }

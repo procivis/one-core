@@ -326,6 +326,7 @@ pub enum HistoryActionBindingEnum {
     Rejected,
     Requested,
     Revoked,
+    Pending,
 }
 
 #[derive(From, Into)]

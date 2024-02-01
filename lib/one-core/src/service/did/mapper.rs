@@ -171,10 +171,18 @@ pub(super) fn map_key_to_verification_method(
 }
 
 pub(super) fn did_create_history_event(did: Did) -> History {
+    history_event(did, HistoryAction::Created)
+}
+
+pub(super) fn did_deactivated_history_event(did: Did) -> History {
+    history_event(did, HistoryAction::Deactivated)
+}
+
+fn history_event(did: Did, action: HistoryAction) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Created,
+        action,
         entity_id: did.id.into(),
         entity_type: HistoryEntityType::Did,
         organisation: did.organisation,

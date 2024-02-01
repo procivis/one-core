@@ -15,9 +15,11 @@ use crate::{
             mapper::{from_create_request, schema_create_history_event},
             CredentialSchemaService,
         },
-        error::{EntityNotFoundError, ServiceError},
+        error::{BusinessLogicError, EntityNotFoundError, ServiceError},
     },
 };
+
+use super::mapper::schema_delete_history_event;
 
 impl CredentialSchemaService {
     /// Creates a credential according to request
@@ -72,6 +74,21 @@ impl CredentialSchemaService {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<(), ServiceError> {
+        let schema = self
+            .credential_schema_repository
+            .get_credential_schema(
+                credential_schema_id,
+                &CredentialSchemaRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+
+        let Some(credential_schema) = schema else {
+            return Err(BusinessLogicError::MissingCredentialSchema.into());
+        };
+
         self.credential_schema_repository
             .delete_credential_schema(credential_schema_id)
             .await
@@ -80,7 +97,14 @@ impl CredentialSchemaService {
                     EntityNotFoundError::CredentialSchema(*credential_schema_id).into()
                 }
                 error => ServiceError::from(error),
-            })
+            })?;
+
+        let _ = self
+            .history_repository
+            .create_history(schema_delete_history_event(credential_schema))
+            .await;
+
+        Ok(())
     }
 
     /// Returns details of a credential schema

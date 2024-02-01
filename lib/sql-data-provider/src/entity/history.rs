@@ -63,6 +63,8 @@ pub enum HistoryAction {
     Requested,
     #[sea_orm(string_value = "REVOKED")]
     Revoked,
+    #[sea_orm(string_value = "PENDING")]
+    Pending,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

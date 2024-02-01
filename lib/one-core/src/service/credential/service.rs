@@ -29,13 +29,15 @@ use crate::{
                 GetCredentialQueryDTO,
             },
             mapper::{
-                claims_from_create_request, credential_create_history_event, from_create_request,
+                claims_from_create_request, credential_created_history_event, from_create_request,
             },
             CredentialService,
         },
         error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
     },
 };
+
+use super::mapper::{credential_offered_history_event, credential_revoked_history_event};
 
 impl CredentialService {
     /// Creates a credential according to request
@@ -112,7 +114,7 @@ impl CredentialService {
 
         let _ = self
             .history_repository
-            .create_history(credential_create_history_event(credential)?)
+            .create_history(credential_created_history_event(credential)?)
             .await;
 
         Ok(result)
@@ -254,7 +256,10 @@ impl CredentialService {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
-                    schema: Some(CredentialSchemaRelations::default()),
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
@@ -297,6 +302,14 @@ impl CredentialService {
             })
             .await?;
 
+        let _ = self
+            .history_repository
+            .create_history(credential_revoked_history_event(
+                *credential_id,
+                credential.schema.and_then(|c| c.organisation),
+            ))
+            .await;
+
         Ok(())
     }
 
@@ -317,7 +330,10 @@ impl CredentialService {
                     &credential_id,
                     &CredentialRelations {
                         state: Some(CredentialStateRelations::default()),
-                        schema: Some(CredentialSchemaRelations::default()),
+                        schema: Some(CredentialSchemaRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            ..Default::default()
+                        }),
                         issuer_did: Some(DidRelations::default()),
                         ..Default::default()
                     },
@@ -437,6 +453,14 @@ impl CredentialService {
                         ..Default::default()
                     })
                     .await?;
+
+                let _ = self
+                    .history_repository
+                    .create_history(credential_revoked_history_event(
+                        credential_id,
+                        credential_schema.organisation,
+                    ))
+                    .await;
             }
         }
 
@@ -494,6 +518,11 @@ impl CredentialService {
 
         let url = transport.share_credential(&credential).await?;
 
+        let _ = self
+            .history_repository
+            .create_history(credential_offered_history_event(credential))
+            .await;
+
         Ok(EntityShareResponseDTO { url })
     }
 
@@ -510,6 +539,10 @@ impl CredentialService {
                 id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
