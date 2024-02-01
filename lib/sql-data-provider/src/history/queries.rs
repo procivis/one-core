@@ -169,8 +169,7 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                     .to_owned(),
             ))
             .into_condition(),
-        HistorySearchEnum::CredentialSchemaName => credential_schema_filter_condition(
-            credential_schema::Column::Name.like(search_text.to_owned()),
+        HistorySearchEnum::CredentialSchemaName => credential_schema_name_search_condition(
             credential_schema::Column::Name.like(search_text),
         ),
         HistorySearchEnum::IssuerDid => search_query_did_filter_condition(
@@ -230,6 +229,56 @@ fn search_query_did_filter_condition(
                     .eq(Expr::col((did::Entity, did::Column::Id))),
                 )
                 .cond_where(condition)
+                .to_owned(),
+        ))
+        .into_condition()
+}
+
+fn credential_schema_name_search_condition(
+    credential_schema_match_condition: SimpleExpr,
+) -> Condition {
+    history::Column::EntityId
+        .in_subquery(
+            Query::select()
+                .expr(proof_claim::Column::ProofId.into_expr())
+                .from(proof_claim::Entity)
+                .inner_join(
+                    claim::Entity,
+                    Expr::col((proof_claim::Entity, proof_claim::Column::ClaimId))
+                        .eq(Expr::col((claim::Entity, claim::Column::Id))),
+                )
+                .inner_join(
+                    credential::Entity,
+                    Expr::col((claim::Entity, claim::Column::CredentialId))
+                        .eq(Expr::col((credential::Entity, credential::Column::Id))),
+                )
+                .inner_join(
+                    credential_schema::Entity,
+                    Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(
+                        Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
+                    ),
+                )
+                .cond_where(credential_schema_match_condition.to_owned())
+                .to_owned(),
+        )
+        .or(history::Column::EntityId.in_subquery(
+            Query::select()
+                .expr(credential::Column::Id.into_expr())
+                .from(credential::Entity)
+                .inner_join(
+                    credential_schema::Entity,
+                    Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(
+                        Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
+                    ),
+                )
+                .cond_where(credential_schema_match_condition.to_owned())
+                .to_owned(),
+        ))
+        .or(history::Column::EntityId.in_subquery(
+            Query::select()
+                .expr(credential_schema::Column::Id.into_expr())
+                .from(credential_schema::Entity)
+                .cond_where(credential_schema_match_condition)
                 .to_owned(),
         ))
         .into_condition()
@@ -337,12 +386,6 @@ fn history_filter_value_to_relation_def(value: &HistoryFilterValue) -> Vec<Relat
                 join_relation_def(history::Column::EntityId, credential::Column::Id),
                 join_relation_def(history::Column::EntityId, proof::Column::Id),
             ]
-        }
-        HistoryFilterValue::SearchQuery(_, HistorySearchEnum::CredentialSchemaName) => {
-            vec![join_relation_def(
-                history::Column::EntityId,
-                credential_schema::Column::Id,
-            )]
         }
         _ => vec![],
     }
