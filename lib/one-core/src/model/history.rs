@@ -68,6 +68,7 @@ pub enum HistoryFilterValue {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HistorySearchEnum {
+    All,
     ClaimName,
     ClaimValue,
     CredentialSchemaName,

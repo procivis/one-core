@@ -295,7 +295,7 @@ enum HistorySearchEnumBindingEnum {
 
 dictionary HistorySearchBindingDTO {
   string text;
-  HistorySearchEnumBindingEnum type;
+  HistorySearchEnumBindingEnum? type;
 };
 
 interface OneCoreBinding {

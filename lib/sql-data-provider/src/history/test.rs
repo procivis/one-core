@@ -559,3 +559,104 @@ async fn test_get_history_list_search_query() {
         search_by_claim_schema_name,
     );
 }
+
+#[tokio::test]
+async fn test_get_history_list_search_all_query() {
+    let TestSetupWithCredentialsSchemaAndProof {
+        provider,
+        organisation,
+        credential_schema_name,
+        did_name,
+        did_value,
+        claim_schema_name,
+        claim_value,
+        ..
+    } = setup_with_credential_schema_and_proof().await;
+
+    let search_for_credential_schema_name = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(
+                credential_schema_name.to_string(),
+                HistorySearchEnum::All,
+            ),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        3, /* create schema, credential, proof */
+        search_for_credential_schema_name,
+    );
+
+    let search_for_issuer_did_name = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(did_name.to_string(), HistorySearchEnum::All),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        3, /* create did, credential, proof */
+        search_for_issuer_did_name,
+    );
+
+    let search_for_verifier_did_name = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(did_name.to_string(), HistorySearchEnum::All),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        3, /* create did, credential, proof */
+        search_for_verifier_did_name,
+    );
+
+    let search_for_issuer_did_value = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(did_value.to_string(), HistorySearchEnum::All),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        3, /* create did, credential, proof */
+        search_for_issuer_did_value,
+    );
+
+    let search_for_verifier_did_value = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(did_value.to_string(), HistorySearchEnum::All),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        3, /* create did, credential, proof */
+        search_for_verifier_did_value,
+    );
+
+    let search_for_claim_value = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(claim_value.to_string(), HistorySearchEnum::All),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        2, /* create credential, proof */
+        search_for_claim_value,
+    );
+
+    let search_for_claim_schema_name = provider
+        .get_history_list(history_list_query_with_filter(
+            organisation.id,
+            HistoryFilterValue::SearchQuery(claim_schema_name.to_string(), HistorySearchEnum::All),
+        ))
+        .await
+        .unwrap();
+    assert_result(
+        2, /* create credential, proof */
+        search_for_claim_schema_name,
+    );
+}

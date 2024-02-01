@@ -395,5 +395,5 @@ pub enum HistorySearchEnumBindingEnum {
 
 pub struct HistorySearchBindingDTO {
     pub text: String,
-    pub r#type: HistorySearchEnumBindingEnum,
+    pub r#type: Option<HistorySearchEnumBindingEnum>,
 }
