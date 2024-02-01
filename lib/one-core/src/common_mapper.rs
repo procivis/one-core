@@ -12,7 +12,7 @@ use crate::model::organisation::Organisation;
 use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
 use crate::{model::common::GetListResponse, service::error::ServiceError};
-use dto_mapper::{convert_inner, iterable_try_into};
+use dto_mapper::{convert_inner, try_convert_inner};
 use serde::{Deserialize, Deserializer};
 use shared_types::{DidId, DidValue};
 use time::{Duration, OffsetDateTime};
@@ -30,7 +30,7 @@ pub fn list_response_try_into<T, F: TryInto<T>>(
     input: GetListResponse<F>,
 ) -> Result<GetListResponse<T>, F::Error> {
     Ok(GetListResponse::<T> {
-        values: iterable_try_into(input.values)?,
+        values: try_convert_inner(input.values)?,
         total_pages: input.total_pages,
         total_items: input.total_items,
     })

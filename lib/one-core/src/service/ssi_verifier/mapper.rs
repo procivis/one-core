@@ -1,4 +1,4 @@
-use dto_mapper::iterable_try_into;
+use dto_mapper::try_convert_inner;
 
 use crate::{
     model::{
@@ -16,7 +16,7 @@ pub fn proof_verifier_to_connect_verifier_response(
     verifier_did: Did,
 ) -> Result<ConnectVerifierResponseDTO, ServiceError> {
     Ok(ConnectVerifierResponseDTO {
-        claims: iterable_try_into(proof_schema.claim_schemas.ok_or(
+        claims: try_convert_inner(proof_schema.claim_schemas.ok_or(
             ServiceError::MappingError("claim_schemas is None".to_string()),
         )?)?,
         redirect_uri,

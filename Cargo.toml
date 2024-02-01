@@ -20,7 +20,7 @@ members = [
 anyhow             = { version = "1.0" }
 axum               = { version = "0.7", features = ["macros"] }
 ct-codecs          = { version = "1.1" }
-dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.4" }
+dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.5" }
 wiremock           = { version = "0.5" }
 mockall            = { version = "0.12" }
 reqwest            = { version = "0.11", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
