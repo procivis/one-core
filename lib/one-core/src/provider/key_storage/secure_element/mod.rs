@@ -11,7 +11,7 @@ use crate::{
 #[cfg_attr(test, mockall::automock)]
 pub trait NativeKeyStorage: Send + Sync {
     fn generate_key(&self, key_alias: String) -> Result<GeneratedKey, ServiceError>;
-    fn sign(&self, key_reference: &[u8], message: Vec<u8>) -> Result<Vec<u8>, SignerError>;
+    fn sign(&self, key_reference: &[u8], message: &[u8]) -> Result<Vec<u8>, SignerError>;
 }
 
 pub struct SecureElementKeyProvider {
@@ -39,9 +39,8 @@ impl KeyStorage for SecureElementKeyProvider {
         self.native_storage.generate_key(key_alias)
     }
 
-    async fn sign(&self, key: &Key, message: &str) -> Result<Vec<u8>, SignerError> {
-        self.native_storage
-            .sign(&key.key_reference, message.bytes().collect())
+    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        self.native_storage.sign(&key.key_reference, message)
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {

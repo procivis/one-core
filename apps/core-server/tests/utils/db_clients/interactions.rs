@@ -15,9 +15,9 @@ impl InteractionsDB {
         Self { repository }
     }
 
-    pub async fn create(&self, host: &str, data: &[u8]) -> Interaction {
+    pub async fn create(&self, id: Option<Uuid>, host: &str, data: &[u8]) -> Interaction {
         let interaction = Interaction {
-            id: Uuid::new_v4(),
+            id: id.unwrap_or_else(Uuid::new_v4),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             host: Some(Url::parse(host).unwrap()),

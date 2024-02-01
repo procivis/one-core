@@ -73,7 +73,7 @@ async fn test_sign_success() {
                 key_type: "ES256".to_string(),
                 organisation: None,
             },
-            "message",
+            "message".as_bytes(),
         )
         .await
         .unwrap();

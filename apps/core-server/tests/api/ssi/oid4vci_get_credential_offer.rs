@@ -20,7 +20,7 @@ async fn test_get_credential_offer_success() {
     let interaction = context
         .db
         .interactions
-        .create("http://test.com", "NONE".as_bytes())
+        .create(None, "http://test.com", "NONE".as_bytes())
         .await;
 
     let credential = context

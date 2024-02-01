@@ -57,6 +57,48 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
+    pub async fn create_ld_with_claims(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+        revocation_method: &str,
+        new_claim_schemas: &[(Uuid, &str, bool, &str)],
+    ) -> CredentialSchema {
+        let claim_schemas = new_claim_schemas
+            .iter()
+            .map(|(id, name, required, data_type)| CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: id.to_owned(),
+                    key: name.to_string(),
+                    data_type: data_type.to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                },
+                required: *required,
+            })
+            .collect();
+
+        let credential_schema = CredentialSchema {
+            id: Uuid::new_v4(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: name.to_owned(),
+            organisation: Some(organisation.clone()),
+            deleted_at: None,
+            format: "JSON_LD_CLASSIC".to_string(),
+            revocation_method: revocation_method.to_owned(),
+            claim_schemas: Some(claim_schemas),
+        };
+
+        let id = self
+            .repository
+            .create_credential_schema(credential_schema.clone())
+            .await
+            .unwrap();
+
+        self.get(&id).await
+    }
+
     pub async fn get(&self, credential_schema_id: &CredentialSchemaId) -> CredentialSchema {
         self.repository
             .get_credential_schema(

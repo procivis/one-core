@@ -233,6 +233,8 @@ pub(crate) fn create_open_id_for_vp_formats(
     };
     formats.insert("jwt_vp_json".to_owned(), algorithms.clone());
     formats.insert("jwt_vc_json".to_owned(), algorithms.clone());
+    formats.insert("ldp_vp".to_owned(), algorithms.clone());
+    formats.insert("ldp_vc".to_owned(), algorithms.clone());
     formats.insert("vc+sd-jwt".to_owned(), algorithms);
     Ok(formats)
 }
@@ -353,6 +355,7 @@ pub(super) fn create_claims_from_credential_definition(
 pub(super) fn create_presentation_submission(
     interaction_data: &OpenID4VPInteractionData,
     credential_presentations: Vec<PresentedCredential>,
+    format: &str,
 ) -> Result<PresentationSubmissionMappingDTO, TransportProtocolError> {
     Ok(PresentationSubmissionMappingDTO {
         id: Uuid::new_v4().to_string(),
@@ -363,7 +366,7 @@ pub(super) fn create_presentation_submission(
             .map(|(index, presented_credential)| {
                 Ok(PresentationSubmissionDescriptorDTO {
                     id: presented_credential.request.id,
-                    format: "jwt_vp_json".to_string(),
+                    format: format.to_owned(),
                     path: "$".to_string(),
                     path_nested: Some(NestedPresentationSubmissionDescriptorDTO {
                         format: map_core_to_oidc_format(

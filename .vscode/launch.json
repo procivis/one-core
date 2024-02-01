@@ -21,6 +21,8 @@
             "envFile": "./dev.env",
             "args": [
                 "--config",
+                "config/config-procivis-base.yml",
+                "--config",
                 "config/config-local.yml",
             ],
             "cwd": "${workspaceFolder}"
@@ -47,6 +49,8 @@
                 "ONE_app__coreBaseUrl": "http://0.0.0.0:3001"
             },
             "args": [
+                "--config",
+                "config/config-procivis-base.yml",
                 "--config",
                 "config/config-local.yml",
             ],

@@ -181,14 +181,16 @@ async fn test_extract_credentials() {
 
     verify_mock
         .expect_verify()
-        .withf(move |issuer_did_value, algorithm, token, signature| {
-            assert_eq!("Issuer DID", issuer_did_value.as_ref().unwrap().as_str());
-            assert_eq!("algorithm", algorithm);
-            assert_eq!(jwt_token, token);
-            assert_eq!(vec![65u8, 66, 67], signature);
-            true
-        })
-        .return_once(|_, _, _, _| Ok(()));
+        .withf(
+            move |issuer_did_value, _key_id, algorithm, token, signature| {
+                assert_eq!("Issuer DID", issuer_did_value.as_ref().unwrap().as_str());
+                assert_eq!("algorithm", algorithm);
+                assert_eq!(jwt_token.as_bytes(), token);
+                assert_eq!(vec![65u8, 66, 67], signature);
+                true
+            },
+        )
+        .return_once(|_, _, _, _, _| Ok(()));
 
     let result = sd_formatter
         .extract_credentials(&token, Box::new(verify_mock))
@@ -197,7 +199,7 @@ async fn test_extract_credentials() {
     let credentials = result.unwrap();
 
     assert_eq!(credentials.issuer_did, Some("Issuer DID".parse().unwrap()));
-    assert_eq!(credentials.subject, Some("holder_did".to_string()));
+    assert_eq!(credentials.subject, Some("holder_did".parse().unwrap()));
 
     assert_eq!(credentials.status.as_ref().unwrap().id, "STATUS_ID");
     assert_eq!(credentials.status.as_ref().unwrap().r#type, "TYPE");
@@ -251,14 +253,16 @@ async fn test_extract_presentation() {
 
     verify_mock
         .expect_verify()
-        .withf(move |issuer_did_value, algorithm, token, signature| {
-            assert_eq!("holder_did", issuer_did_value.as_ref().unwrap().as_str());
-            assert_eq!("algorithm", algorithm);
-            assert_eq!(jwt_token, token);
-            assert_eq!(vec![65u8, 66, 67], signature);
-            true
-        })
-        .return_once(|_, _, _, _| Ok(()));
+        .withf(
+            move |issuer_did_value, _key_id, algorithm, token, signature| {
+                assert_eq!("holder_did", issuer_did_value.as_ref().unwrap().as_str());
+                assert_eq!("algorithm", algorithm);
+                assert_eq!(jwt_token.as_bytes(), token);
+                assert_eq!(vec![65u8, 66, 67], signature);
+                true
+            },
+        )
+        .return_once(|_, _, _, _, _| Ok(()));
 
     let result = sd_formatter
         .extract_presentation(&presentation_token, Box::new(verify_mock))

@@ -13,4 +13,10 @@ impl Hasher for SHA256 {
 
         Base64UrlSafeNoPadding::encode_to_string(result).map_err(|_| HasherError::CouldNotHash)
     }
+
+    fn hash(&self, input: &[u8]) -> Result<Vec<u8>, HasherError> {
+        let mut hasher = Sha256::new();
+        hasher.update(input);
+        Ok(hasher.finalize().to_vec())
+    }
 }

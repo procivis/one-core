@@ -11,7 +11,7 @@ pub struct PKCS11KeyProvider {}
 
 #[async_trait::async_trait]
 impl KeyStorage for PKCS11KeyProvider {
-    async fn sign(&self, _key: &Key, _message: &str) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, _key: &Key, _message: &[u8]) -> Result<Vec<u8>, SignerError> {
         todo!()
     }
 

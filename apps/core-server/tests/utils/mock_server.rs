@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
+use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
@@ -76,7 +77,6 @@ impl MockServer {
                     "role": "ISSUER",
                 }
             )))
-            .expect(1)
             .mount(&self.mock)
             .await;
     }
@@ -97,6 +97,42 @@ impl MockServer {
             .and(path(format!("/1.0/identifiers/{did}")))
             .respond_with(ResponseTemplate::new(500))
             .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn json_ld_context(&self, schema_id: &Uuid, schema_name_pascal: &str) {
+        Mock::given(method(Method::Get))
+            .and(path(format!("/ssi/context/v1/{schema_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+                {
+                    "@context": {
+                        "@version": 1.1,
+                        "@protected": true,
+                        "id": "@id",
+                        "type": "@type",
+                        format!("{schema_name_pascal}Credential"): {
+                            "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Credential", self.mock.uri()),
+                            "@context": {
+                                "@version": 1.1,
+                                "@protected": true,
+                                "id": "@id",
+                                "type": "@type"
+                            }
+                        },
+                        format!("{schema_name_pascal}Subject"): {
+                            "@id": format!("{}/ssi/context/v1/{schema_id}#{schema_name_pascal}Subject", self.mock.uri()),
+                            "@context": {
+                                "@version": 1.1,
+                                "@protected": true,
+                                "id": "@id",
+                                "type": "@type",
+                                "Key": format!("{}/ssi/context/v1/{schema_id}#Key", self.mock.uri())
+                            }
+                        }
+                    }
+                }
+            )))
             .mount(&self.mock)
             .await;
     }

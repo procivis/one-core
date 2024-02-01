@@ -12,6 +12,7 @@ pub fn map_core_to_oidc_format(format: &str) -> Result<String, FormatError> {
     match format {
         "JWT" => Ok("jwt_vc_json".to_string()),
         "SDJWT" => Ok("vc+sd-jwt".to_string()),
+        "JSON_LD_CLASSIC" => Ok("ldp_vc".to_string()),
         _ => Err(FormatError::MappingError(
             "Credential format is invalid!".to_string(),
         )),
@@ -22,6 +23,7 @@ pub fn map_from_oidc_format_to_core(format: &str) -> Result<String, ServiceError
     match format {
         "jwt_vc_json" => Ok("JWT".to_string()),
         "vc+sd-jwt" => Ok("SDJWT".to_string()),
+        "ldp_vc" => Ok("JSON_LD_CLASSIC".to_string()),
         _ => Err(ServiceError::OpenID4VCError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         )),
@@ -31,6 +33,7 @@ pub fn map_from_oidc_format_to_core(format: &str) -> Result<String, ServiceError
 pub fn map_from_oidc_vp_format_to_core(format: &str) -> Result<String, ServiceError> {
     match format {
         "jwt_vp_json" => Ok("JWT".to_string()),
+        "ldp_vp" => Ok("JSON_LD_CLASSIC".to_string()),
         _ => Err(ServiceError::OpenID4VCError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         )),

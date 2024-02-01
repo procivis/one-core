@@ -53,7 +53,10 @@ impl From<Jwt<VC>> for DetailCredential {
                 Ok(v) => v,
                 Err(err) => match err {},
             }),
-            subject: jwt.payload.subject,
+            subject: jwt.payload.subject.map(|v| match v.parse() {
+                Ok(v) => v,
+                Err(err) => match err {},
+            }),
             claims: jwt.payload.custom.vc.credential_subject,
             status: jwt.payload.custom.vc.credential_status,
         }

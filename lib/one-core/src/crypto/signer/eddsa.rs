@@ -5,7 +5,7 @@ pub struct EDDSASigner {}
 impl Signer for EDDSASigner {
     fn sign(
         &self,
-        input: &str,
+        input: &[u8],
         public_key: &[u8],
         private_key: &[u8],
     ) -> Result<Vec<u8>, SignerError> {
@@ -19,7 +19,7 @@ impl Signer for EDDSASigner {
         Ok(ed25519_kp.sk.sign(input, None).to_vec())
     }
 
-    fn verify(&self, input: &str, signature: &[u8], public_key: &[u8]) -> Result<(), SignerError> {
+    fn verify(&self, input: &[u8], signature: &[u8], public_key: &[u8]) -> Result<(), SignerError> {
         let ed25519_pk = ed25519_compact::PublicKey::from_slice(public_key)
             .map_err(|_| SignerError::CouldNotExtractKeyPair)?;
 

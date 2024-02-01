@@ -205,7 +205,7 @@ pub(super) async fn validate_credential(
         Some(did) => did,
     };
 
-    if claim_subject != holder_did.as_str() {
+    if claim_subject != holder_did {
         return Err(ServiceError::ValidationError(
             "Holder DID doesn't match.".to_owned(),
         ));

@@ -171,7 +171,7 @@ async fn test_azure_vault_sign() {
                 key_type: "".to_string(),
                 organisation: None,
             },
-            "message_to_sign",
+            "message_to_sign".as_bytes(),
         )
         .await
         .unwrap();

@@ -40,6 +40,7 @@ async fn test_get_proof_success() {
         .db
         .proofs
         .create(
+            None,
             &did,
             None,
             Some(&proof_schema),
@@ -115,6 +116,7 @@ async fn test_get_proof_with_credentials() {
         .db
         .proofs
         .create(
+            None,
             &did,
             None,
             Some(&proof_schema),
@@ -162,6 +164,7 @@ async fn test_get_proof_as_holder_success() {
         .db
         .proofs
         .create(
+            None,
             &verifier_did,
             Some(&holder_did),
             None, // Proof schema is empty on holder side

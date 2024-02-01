@@ -96,7 +96,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         })
     }
 
-    async fn sign(&self, key: &Key, message: &str) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         let key_reference = String::from_utf8(key.key_reference.to_owned())
             .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
         let url = Url::parse(&format!("{key_reference}/sign?api-version=7.4"))

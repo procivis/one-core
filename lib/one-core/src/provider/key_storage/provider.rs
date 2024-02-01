@@ -47,7 +47,7 @@ struct SignatureProviderImpl {
 
 #[async_trait::async_trait]
 impl SignatureProvider for SignatureProviderImpl {
-    async fn sign(&self, message: &str) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         self.storage.sign(&self.key, message).await
     }
 }

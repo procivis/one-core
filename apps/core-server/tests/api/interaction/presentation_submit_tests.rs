@@ -243,6 +243,12 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
                         "jwt_vc_json":{
                             "alg":["EdDSA"]
                         },
+                        "ldp_vp":{
+                            "alg":["EdDSA"]
+                        },
+                        "ldp_vc":{
+                            "alg":["EdDSA"]
+                        },
                         "vc+sd-jwt":{
                             "alg":["EdDSA"]
                         }
@@ -296,7 +302,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         .and(body_string_contains("vp_token"))
         .and(body_string_contains("descriptor_map"))
         .and(body_string_contains("input_0"))
-        .and(body_string_contains("jwt_vp_json"))
+        .and(body_string_contains("jwt_vp_json")) // As we use jwt as credential input. Temporary.
         .and(body_string_contains("verifiableCredential"))
         .respond_with(ResponseTemplate::new(200))
         .expect(1)

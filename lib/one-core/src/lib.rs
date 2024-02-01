@@ -102,12 +102,6 @@ impl OneCore {
             HashMap::from_iter(signers),
         ));
 
-        let credential_formatters =
-            credential_formatters_from_config(&mut core_config.format, crypto.clone())?;
-
-        let formatter_provider =
-            Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
-
         let key_algorithms = key_algorithms_from_config(&core_config.key_algorithm)?;
         let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
             key_algorithms.to_owned(),
@@ -127,6 +121,16 @@ impl OneCore {
             core_base_url.clone(),
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
+
+        let credential_formatters = credential_formatters_from_config(
+            &mut core_config.format,
+            crypto.clone(),
+            core_base_url.clone(),
+            did_method_provider.clone(),
+        )?;
+
+        let formatter_provider =
+            Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
 
         let config = Arc::new(core_config);
 

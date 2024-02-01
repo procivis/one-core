@@ -31,8 +31,9 @@ impl TokenVerifier for SkipVerification {
     async fn verify<'a>(
         &self,
         _issuer_did_value: Option<DidValue>,
+        _issuer_key_id: Option<&'a str>,
         _algorithm: &'a str,
-        _token: &'a str,
+        _token: &'a [u8],
         _signature: &'a [u8],
     ) -> Result<(), SignerError> {
         Ok(())
@@ -44,12 +45,13 @@ impl TokenVerifier for Box<dyn TokenVerifier> {
     async fn verify<'a>(
         &self,
         issuer_did_value: Option<DidValue>,
+        issuer_key_id: Option<&'a str>,
         algorithm: &'a str,
-        token: &'a str,
+        token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
         self.as_ref()
-            .verify(issuer_did_value, algorithm, token, signature)
+            .verify(issuer_did_value, issuer_key_id, algorithm, token, signature)
             .await
     }
 }
@@ -100,8 +102,9 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
                     Ok(x) => x,
                     Err(err) => match err {},
                 }),
+                None,
                 &header.algorithm,
-                &jwt,
+                jwt.as_bytes(),
                 &signature,
             )
             .await
@@ -124,7 +127,7 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
         );
 
         let signature = auth_fn
-            .sign(&token)
+            .sign(token.as_bytes())
             .await
             .map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
 

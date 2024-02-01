@@ -51,7 +51,6 @@ use crate::service::oidc::{
 };
 use crate::util::key_verification::KeyVerification;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
-use shared_types::DidValue;
 use std::collections::HashMap;
 use std::ops::Add;
 use std::str::FromStr;
@@ -618,14 +617,17 @@ impl OIDCService {
             )
             .await?;
 
-            let holder_did = DidValue::from_str(credential.subject.as_ref().ok_or(
-                ServiceError::MappingError("credential subject is missing".to_string()),
-            )?)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+            let holder_did = credential
+                .subject
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "credential subject is missing".to_string(),
+                ))
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
             let holder_did = get_or_create_did(
                 &*self.did_repository,
                 &proof_schema.organisation,
-                &holder_did,
+                holder_did,
             )
             .await?;
 

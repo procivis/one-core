@@ -427,7 +427,7 @@ pub struct JsonLDContextResponseRestDTO {
 #[from(JsonLDContextDTO)]
 pub struct JsonLDContextRestDTO {
     #[serde(rename = "@version")]
-    pub version: String,
+    pub version: f64,
     #[serde(rename = "@protected")]
     pub protected: bool,
     pub id: String,

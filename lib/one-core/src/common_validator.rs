@@ -59,6 +59,10 @@ pub(crate) fn validate_issuance_time(
     issued_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
+    if issued_at.is_none() {
+        return Ok(());
+    }
+
     let now = OffsetDateTime::now_utc();
     let issued = issued_at.ok_or(ServiceError::ValidationError(
         "Missing issuance date".to_owned(),
@@ -75,6 +79,10 @@ pub(crate) fn validate_expiration_time(
     expires_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
+    if expires_at.is_none() {
+        return Ok(());
+    }
+
     let now = OffsetDateTime::now_utc();
     let expires = expires_at.ok_or(ServiceError::ValidationError(
         "Missing expiration date".to_owned(),
@@ -117,6 +125,9 @@ mod tests {
         let now_plus_minute = OffsetDateTime::now_utc().add(Duration::from_secs(60));
         let issued_in_future = validate_issuance_time(&Some(now_plus_minute), leeway);
         assert!(issued_in_future.is_err());
+
+        let missing_date = validate_issuance_time(&None, leeway);
+        assert!(missing_date.is_ok());
     }
 
     #[test]
@@ -129,5 +140,8 @@ mod tests {
         let now_minus_minute = OffsetDateTime::now_utc().sub(Duration::from_secs(60));
         let issued_in_future = validate_expiration_time(&Some(now_minus_minute), leeway);
         assert!(issued_in_future.is_err());
+
+        let missing_date = validate_expiration_time(&None, leeway);
+        assert!(missing_date.is_ok());
     }
 }

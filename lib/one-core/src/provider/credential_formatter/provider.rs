@@ -7,6 +7,7 @@ use crate::provider::credential_formatter::json_ld_formatter::JsonLdFormatter;
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
+use crate::provider::did_method::provider::DidMethodProvider;
 
 use super::CredentialFormatter;
 
@@ -34,6 +35,8 @@ impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
 pub(crate) fn credential_formatters_from_config(
     config: &mut FormatConfig,
     crypto: Arc<dyn CryptoProvider>,
+    core_base_url: Option<String>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter>>, ConfigError> {
     let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
 
@@ -47,7 +50,15 @@ pub(crate) fn credential_formatters_from_config(
                 let params = config.get(name)?;
                 Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
             }
-            FormatType::JsonLd => Arc::new(JsonLdFormatter::new()) as _,
+            FormatType::JsonLdClassic => {
+                let params = config.get(name)?;
+                Arc::new(JsonLdFormatter::new(
+                    params,
+                    crypto.clone(),
+                    core_base_url.clone(),
+                    did_method_provider.clone(),
+                )) as _
+            }
             FormatType::Mdoc => Arc::new(MdocFormatter::new()) as _,
         };
         formatters.insert(name.to_owned(), formatter);
