@@ -17,19 +17,13 @@ use super::{
 };
 
 impl<FilterRest, SortableColumnRest, SortableColumn, Filter: ListFilterValue>
-    TryFrom<ListQueryParamsRest<FilterRest, SortableColumnRest>>
-    for ListQuery<SortableColumn, Filter>
+    From<ListQueryParamsRest<FilterRest, SortableColumnRest>> for ListQuery<SortableColumn, Filter>
 where
-    FilterRest: IntoParams + TryInto<ListFilterCondition<Filter>>,
+    FilterRest: IntoParams + Into<ListFilterCondition<Filter>>,
     SortableColumnRest: for<'a> ToSchema<'a> + Into<SortableColumn>,
-    ServiceError: From<<FilterRest as TryInto<ListFilterCondition<Filter>>>::Error>,
 {
-    type Error = ServiceError;
-
-    fn try_from(
-        value: ListQueryParamsRest<FilterRest, SortableColumnRest>,
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
+    fn from(value: ListQueryParamsRest<FilterRest, SortableColumnRest>) -> Self {
+        Self {
             pagination: Some(ListPagination {
                 page: value.page,
                 page_size: value.page_size,
@@ -38,8 +32,8 @@ where
                 column: column.into(),
                 direction: convert_inner(value.sort_direction),
             }),
-            filtering: Some(value.filter.try_into()?),
-        })
+            filtering: Some(value.filter.into()),
+        }
     }
 }
 

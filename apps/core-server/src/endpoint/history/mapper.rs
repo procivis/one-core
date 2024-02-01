@@ -2,14 +2,11 @@ use one_core::model::{
     history::HistoryFilterValue,
     list_filter::{ListFilterCondition, ListFilterValue},
 };
-use one_core::service::error::{BusinessLogicError, ServiceError};
 
 use crate::endpoint::history::dto::HistoryFilterQueryParamsRest;
 
-impl TryFrom<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterValue> {
-    type Error = ServiceError;
-
-    fn try_from(value: HistoryFilterQueryParamsRest) -> Result<Self, Self::Error> {
+impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterValue> {
+    fn from(value: HistoryFilterQueryParamsRest) -> Self {
         let entity_type = value
             .entity_type
             .map(|value| HistoryFilterValue::EntityType(value.into()));
@@ -27,14 +24,6 @@ impl TryFrom<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilter
             .credential_schema_id
             .map(HistoryFilterValue::CredentialSchemaId);
 
-        let has_specified_only_one_of_search_params =
-            value.search_type.is_some() ^ value.search_text.is_some();
-        if has_specified_only_one_of_search_params {
-            return Err(ServiceError::BusinessLogic(
-                BusinessLogicError::GeneralInputValidationError,
-            ));
-        }
-
         let search_query = if let Some(search_text) = value.search_text {
             value
                 .search_type
@@ -46,7 +35,7 @@ impl TryFrom<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilter
         let organisation_id =
             HistoryFilterValue::OrganisationId(value.organisation_id.into()).condition();
 
-        Ok(organisation_id
+        organisation_id
             & entity_type
             & entity_id
             & action
@@ -55,6 +44,6 @@ impl TryFrom<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilter
             & did_id
             & credential_id
             & credential_schema_id
-            & search_query)
+            & search_query
     }
 }

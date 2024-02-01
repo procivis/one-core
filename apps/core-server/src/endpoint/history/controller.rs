@@ -31,14 +31,11 @@ pub(crate) async fn get_history_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetHistoryQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetHistoryListResponseRestDTO> {
-    match query.try_into() {
-        Ok(query) => {
-            let result = state.core.history_service.get_history_list(query).await;
+    let result = state
+        .core
+        .history_service
+        .get_history_list(query.into())
+        .await;
 
-            OkOrErrorResponse::from_result(result, state, "getting history list")
-        }
-        Err(error) => {
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
-        }
-    }
+    OkOrErrorResponse::from_result(result, state, "getting history list")
 }
