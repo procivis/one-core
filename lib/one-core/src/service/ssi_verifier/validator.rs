@@ -112,11 +112,14 @@ pub(super) async fn validate_proof(
 
     for credential in presentation.credentials {
         // Workaround credential format detection
-        let format = if credential.contains('~') {
+        let format = if credential.starts_with('{') {
+            "JSON_LD_CLASSIC"
+        } else if credential.contains('~') {
             "SDJWT"
         } else {
             "JWT"
         };
+
         let credential_formatter = formatter_provider
             .get_formatter(format)
             .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
@@ -170,7 +173,7 @@ pub(super) async fn validate_proof(
             Some(did) => did,
         };
 
-        if claim_subject != holder_did.did.as_str() {
+        if *claim_subject != holder_did.did {
             return Err(ServiceError::ValidationError(
                 "Holder DID doesn't match.".to_owned(),
             ));

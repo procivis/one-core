@@ -43,8 +43,9 @@ pub trait TokenVerifier: Send + Sync {
     async fn verify<'a>(
         &self,
         issuer_did_value: Option<DidValue>,
+        issuer_key_id: Option<&'a str>,
         algorithm: &'a str,
-        token: &'a str,
+        token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError>;
 }
@@ -52,7 +53,7 @@ pub trait TokenVerifier: Send + Sync {
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait SignatureProvider: Send + Sync {
-    async fn sign(&self, message: &str) -> Result<Vec<u8>, SignerError>;
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -103,11 +104,11 @@ pub trait CredentialFormatter: Send + Sync {
 
 #[cfg(test)]
 #[derive(Clone)]
-pub(crate) struct MockAuth<F: Fn(&str) -> Vec<u8> + Send + Sync>(pub F);
+pub(crate) struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
 #[cfg(test)]
 #[async_trait::async_trait]
-impl<F: Fn(&str) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
-    async fn sign(&self, message: &str) -> Result<Vec<u8>, SignerError> {
+impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         Ok(self.0(message))
     }
 }

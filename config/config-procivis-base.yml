@@ -13,11 +13,10 @@ format:
     params:
       public:
         leeway: 60
-  JSON_LD:
-    type: "JSON_LD"
-    display: "format.jsonld"
+  JSON_LD_CLASSIC:
+    type: "JSON_LD_CLASSIC"
+    display: "format.jsonld_classic"
     order: 2
-    disabled: true
     params: null
   MDOC:
     type: "MDOC"

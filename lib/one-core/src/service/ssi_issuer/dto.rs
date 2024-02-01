@@ -13,7 +13,7 @@ pub struct JsonLDContextResponseDTO {
 
 #[derive(Clone, Debug)]
 pub struct JsonLDContextDTO {
-    pub version: String,
+    pub version: f64,
     pub protected: bool,
     pub id: String,
     pub r#type: String,

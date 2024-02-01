@@ -22,8 +22,9 @@ impl TokenVerifier for KeyVerification {
     async fn verify<'a>(
         &self,
         issuer_did_value: Option<DidValue>,
+        issuer_key_id: Option<&'a str>,
         algorithm: &'a str,
-        token: &'a str,
+        token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
         let did_document = self
@@ -44,12 +45,16 @@ impl TokenVerifier for KeyVerification {
         }
         .ok_or(SignerError::MissingKey)?;
 
-        let method_id = key_id_list.first().ok_or(SignerError::MissingKey)?;
+        let method_id = if let Some(issuer_key_id) = issuer_key_id {
+            issuer_key_id
+        } else {
+            key_id_list.first().ok_or(SignerError::MissingKey)?
+        };
 
         let method = did_document
             .verification_method
             .iter()
-            .find(|method| &method.id == method_id)
+            .find(|method| method.id == method_id)
             .ok_or(SignerError::MissingKey)?;
 
         let alg = self
@@ -132,7 +137,7 @@ mod test {
         signer
             .expect_verify()
             .with(
-                eq("token"),
+                eq("token".as_bytes()),
                 eq(b"signature".as_slice()),
                 eq(b"public_key".as_slice()),
             )
@@ -177,8 +182,9 @@ mod test {
         let result = verification
             .verify(
                 Some("issuer_did_value".parse().unwrap()),
+                None,
                 "ES256",
-                "token",
+                "token".as_bytes(),
                 b"signature",
             )
             .await;
@@ -204,8 +210,9 @@ mod test {
         let result = verification
             .verify(
                 Some("issuer_did_value".parse().unwrap()),
+                None,
                 "EDDSA",
-                "token",
+                "token".as_bytes(),
                 b"signature",
             )
             .await;
@@ -263,8 +270,9 @@ mod test {
         let result = verification
             .verify(
                 Some("issuer_did_value".parse().unwrap()),
+                None,
                 "ES256",
-                "token",
+                "token".as_bytes(),
                 b"signature",
             )
             .await;

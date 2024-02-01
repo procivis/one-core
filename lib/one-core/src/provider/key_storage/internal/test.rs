@@ -119,5 +119,5 @@ async fn test_internal_sign_with_encryption() {
         organisation: None,
     };
 
-    provider.sign(&key, "message").await.unwrap();
+    provider.sign(&key, "message".as_bytes()).await.unwrap();
 }

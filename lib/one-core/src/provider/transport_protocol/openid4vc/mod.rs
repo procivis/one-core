@@ -202,10 +202,22 @@ impl TransportProtocol for OpenID4VC {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
 
+        let tokens: Vec<String> = credential_presentations
+            .iter()
+            .map(|presented_credential| presented_credential.presentation.to_owned())
+            .collect();
+
+        // temporary support for JWK presentation issuance.
+        let (format, oidc_format) = if tokens.iter().any(|t| t.starts_with('{')) {
+            ("JSON_LD_CLASSIC", "ldp_vp")
+        } else {
+            ("JWT", "jwt_vp_json")
+        };
+
         let presentation_formatter = self
             .formatter_provider
-            .get_formatter("JWT")
-            .ok_or_else(|| TransportProtocolError::Failed("JWT formatter not found".to_string()))?;
+            .get_formatter(format)
+            .ok_or_else(|| TransportProtocolError::Failed("Formatter not found".to_string()))?;
 
         let holder_did = proof
             .holder_did
@@ -229,13 +241,11 @@ impl TransportProtocol for OpenID4VC {
             .get_signature_provider(&key.key)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
-        let tokens: Vec<String> = credential_presentations
-            .iter()
-            .map(|presented_credential| presented_credential.presentation.to_owned())
-            .collect();
-
-        let presentation_submission =
-            create_presentation_submission(&interaction_data, credential_presentations)?;
+        let presentation_submission = create_presentation_submission(
+            &interaction_data,
+            credential_presentations,
+            oidc_format,
+        )?;
 
         let vp_token = presentation_formatter
             .format_presentation(

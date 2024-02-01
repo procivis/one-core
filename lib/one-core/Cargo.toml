@@ -42,6 +42,9 @@ p256.workspace             = true
 fmap.workspace             = true
 pqc_dilithium              = { version = "0.2.0", git = "https://github.com/kibernetikos/dilithium", rev = "b7106801cf" }
 convert_case               = { version = "0.6" }
+sophia_jsonld              = { version = "0.8.0", features = ["http_client"] }
+sophia_api                 = "0.8.0"
+sophia_c14n                = "0.8.0"
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

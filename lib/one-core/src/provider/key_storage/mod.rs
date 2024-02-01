@@ -35,7 +35,7 @@ pub struct GeneratedKey {
 #[async_trait::async_trait]
 pub trait KeyStorage: Send + Sync {
     async fn generate(&self, key_id: &KeyId, key_type: &str) -> Result<GeneratedKey, ServiceError>;
-    async fn sign(&self, key: &Key, message: &str) -> Result<Vec<u8>, SignerError>;
+    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError>;
     fn get_capabilities(&self) -> KeyStorageCapabilities;
 }
 

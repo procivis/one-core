@@ -42,7 +42,7 @@ impl ES256Signer {
 impl Signer for ES256Signer {
     fn sign(
         &self,
-        input: &str,
+        input: &[u8],
         public_key: &[u8],
         private_key: &[u8],
     ) -> Result<Vec<u8>, SignerError> {
@@ -54,17 +54,17 @@ impl Signer for ES256Signer {
         if pk.to_encoded_point(true).as_bytes() != public_key {
             return Err(SignerError::CouldNotExtractKeyPair);
         }
-        let signature: Signature = sk.sign(input.as_bytes());
+        let signature: Signature = sk.sign(input);
         Ok(signature.to_vec())
     }
 
-    fn verify(&self, input: &str, signature: &[u8], public_key: &[u8]) -> Result<(), SignerError> {
+    fn verify(&self, input: &[u8], signature: &[u8], public_key: &[u8]) -> Result<(), SignerError> {
         let vk = Self::from_bytes(public_key)?;
 
         let signature =
             Signature::try_from(signature).map_err(|_| SignerError::InvalidSignature)?;
 
-        vk.verify(input.as_bytes(), &signature)
+        vk.verify(input, &signature)
             .map_err(|err| SignerError::CouldNotVerify(format!("couldn't verify: {err}")))
     }
 }

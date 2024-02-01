@@ -33,14 +33,14 @@ pub(super) fn create_generate_key_request() -> AzureHsmGenerateKeyRequest {
 }
 
 pub(super) fn create_sign_request(
-    value: &str,
+    value: &[u8],
     crypto: Arc<dyn CryptoProvider>,
 ) -> Result<AzureHsmSignRequest, SignerError> {
     let hasher = crypto
         .get_hasher("sha-256")
         .map_err(SignerError::CryptoError)?;
     let value = hasher
-        .hash_base64(value.as_bytes())
+        .hash_base64(value)
         .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
 
     Ok(AzureHsmSignRequest {

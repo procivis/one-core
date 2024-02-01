@@ -42,7 +42,7 @@ impl InternalKeyProvider {
 
 #[async_trait::async_trait]
 impl KeyStorage for InternalKeyProvider {
-    async fn sign(&self, key: &Key, message: &str) -> Result<Vec<u8>, SignerError> {
+    async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         let signer = self
             .key_algorithm_provider
             .get_signer(&key.key_type)

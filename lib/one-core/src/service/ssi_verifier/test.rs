@@ -364,7 +364,7 @@ async fn test_submit_proof_succeeds() {
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned()),
-                subject: Some(holder_did.to_string()),
+                subject: Some(holder_did.to_owned()),
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([

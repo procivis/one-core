@@ -1,3 +1,4 @@
+use one_core::model::claim::Claim;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -30,6 +31,27 @@ impl InteractionsApi {
 
         self.client
             .post("/api/interaction/v1/issuance-reject", body)
+            .await
+    }
+
+    pub async fn presentation_submit(
+        &self,
+        interaction_id: Uuid,
+        credential_id: Uuid,
+        claims_id: Vec<Claim>,
+    ) -> Response {
+        let body = json!({
+          "interactionId": interaction_id,
+          "submitCredentials": {
+            "input_0": {
+              "credentialId": credential_id,
+              "submitClaims": claims_id.into_iter().map(|claim| claim.id.to_string()).collect::<Vec<String>>(),
+            }
+          }
+        });
+
+        self.client
+            .post("/api/interaction/v1/presentation-submit", body)
             .await
     }
 }

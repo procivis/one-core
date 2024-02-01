@@ -122,7 +122,10 @@ impl CredentialFormatter for SDJWTFormatter {
                 Ok(v) => v,
                 Err(err) => match err {},
             }),
-            subject: jwt.payload.subject,
+            subject: jwt.payload.subject.map(|v| match v.parse() {
+                Ok(v) => v,
+                Err(err) => match err {},
+            }),
             claims: CredentialSubject {
                 values: HashMap::from_iter(
                     deserialized_disclosures

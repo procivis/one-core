@@ -9,9 +9,9 @@ pub mod es256;
 pub trait Signer: Send + Sync {
     fn sign(
         &self,
-        input: &str,
+        input: &[u8],
         public_key: &[u8],
         private_key: &[u8],
     ) -> Result<Vec<u8>, SignerError>;
-    fn verify(&self, input: &str, signature: &[u8], public_key: &[u8]) -> Result<(), SignerError>;
+    fn verify(&self, input: &[u8], signature: &[u8], public_key: &[u8]) -> Result<(), SignerError>;
 }

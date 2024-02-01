@@ -26,6 +26,12 @@ impl SSIApi {
         self.client.post(&url, body).await
     }
 
+    pub async fn temporary_submit(&self, credential_id: impl Display) -> Response {
+        let url = format!("/ssi/temporary-issuer/v1/submit?credentialId={credential_id}");
+
+        self.client.post(&url, None).await
+    }
+
     pub async fn get_credential_offer(
         &self,
         credential_schema_id: impl Into<Uuid>,

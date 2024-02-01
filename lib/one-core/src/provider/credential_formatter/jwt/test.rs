@@ -34,8 +34,9 @@ impl TokenVerifier for TestVerify {
     async fn verify<'a>(
         &self,
         issuer_did_value: Option<DidValue>,
+        _issuer_key_id: Option<&'a str>,
         algorithm: &'a str,
-        token: &'a str,
+        token: &'a [u8],
         signature: &'a [u8],
     ) -> Result<(), SignerError> {
         assert_eq!(
@@ -43,7 +44,7 @@ impl TokenVerifier for TestVerify {
             self.issuer_did_value
         );
         assert_eq!(algorithm, self.algorithm);
-        assert_eq!(token, self.token);
+        assert_eq!(token, self.token.as_bytes());
 
         if signature == self.signature {
             Ok(())
@@ -86,9 +87,9 @@ async fn test_tokenize() {
 
     let reference_token_moved = reference_token.clone();
 
-    let auth_fn = MockAuth(move |data: &str| {
+    let auth_fn = MockAuth(move |data: &[u8]| {
         let jwt = extract_jwt_part(reference_token_moved.clone());
-        assert_eq!(data, jwt);
+        assert_eq!(data, jwt.as_bytes());
 
         vec![1u8, 2, 3]
     });
