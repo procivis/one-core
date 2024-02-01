@@ -72,6 +72,13 @@ impl OneCoreBinding {
                 ));
             }
 
+            if let Some(value) = query.search {
+                conditions.push(ListFilterCondition::Value(HistoryFilterValue::SearchQuery(
+                    value.text,
+                    value.r#type.into(),
+                )));
+            }
+
             Ok(core
                 .history_service
                 .get_history_list(HistoryListQuery {

@@ -10,7 +10,7 @@ use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
     model::{
         did::DidType,
-        history::{HistoryAction, HistoryEntityType},
+        history::{HistoryAction, HistoryEntityType, HistorySearchEnum},
     },
     provider::{
         key_storage::GeneratedKey,
@@ -369,6 +369,7 @@ pub struct HistoryListQueryBindingDTO {
     pub did_id: Option<String>,
     pub credential_id: Option<String>,
     pub credential_schema_id: Option<String>,
+    pub search: Option<HistorySearchBindingDTO>,
 }
 
 #[derive(From)]
@@ -378,4 +379,21 @@ pub struct HistoryListBindingDTO {
     pub values: Vec<HistoryListItemBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
+}
+
+#[derive(Into)]
+#[into(HistorySearchEnum)]
+pub enum HistorySearchEnumBindingEnum {
+    ClaimName,
+    ClaimValue,
+    CredentialSchemaName,
+    IssuerDid,
+    IssuerName,
+    VerifierDid,
+    VerifierName,
+}
+
+pub struct HistorySearchBindingDTO {
+    pub text: String,
+    pub r#type: HistorySearchEnumBindingEnum,
 }

@@ -274,12 +274,28 @@ dictionary HistoryListQueryBindingDTO {
   string? did_id;
   string? credential_id;
   string? credential_schema_id;
+  HistorySearchBindingDTO? search;
 };
 
 dictionary HistoryListBindingDTO {
   sequence<HistoryListItemBindingDTO> values;
   u64 total_pages;
   u64 total_items;
+};
+
+enum HistorySearchEnumBindingEnum {
+    "ClaimName",
+    "ClaimValue",
+    "CredentialSchemaName",
+    "IssuerDid",
+    "IssuerName",
+    "VerifierDid",
+    "VerifierName"
+};
+
+dictionary HistorySearchBindingDTO {
+  string text;
+  HistorySearchEnumBindingEnum type;
 };
 
 interface OneCoreBinding {
