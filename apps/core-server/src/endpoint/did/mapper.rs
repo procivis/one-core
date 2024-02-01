@@ -3,7 +3,7 @@ use one_core::model::{
     did::DidFilterValue,
     list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
 };
-use one_core::service::did::dto::CreateDidRequestDTO;
+use one_core::service::{did::dto::CreateDidRequestDTO, error::ServiceError};
 
 impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
     fn from(value: CreateDidRequestRestDTO) -> Self {
@@ -18,8 +18,10 @@ impl From<CreateDidRequestRestDTO> for CreateDidRequestDTO {
     }
 }
 
-impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
-    fn from(value: DidFilterQueryParamsRest) -> Self {
+impl TryFrom<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
+    type Error = ServiceError;
+
+    fn try_from(value: DidFilterQueryParamsRest) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
         let get_string_match_type = |column| {
             if exact.contains(&column) {
@@ -54,6 +56,6 @@ impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
 
         let deactivated = value.deactivated.map(DidFilterValue::deactivated);
 
-        organisation_id & r#type & (name | did_value) & deactivated
+        Ok(organisation_id & r#type & (name | did_value) & deactivated)
     }
 }

@@ -1,14 +1,16 @@
 use one_core::{
     model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
-    service::credential::dto::CredentialFilterValue,
+    service::{credential::dto::CredentialFilterValue, error::ServiceError},
 };
 
 use crate::dto::common::ExactColumn;
 
 use super::dto::CredentialsFilterQueryParamsRest;
 
-impl From<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFilterValue> {
-    fn from(value: CredentialsFilterQueryParamsRest) -> Self {
+impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFilterValue> {
+    type Error = ServiceError;
+
+    fn try_from(value: CredentialsFilterQueryParamsRest) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
         let get_string_match_type = |column| {
             if exact.contains(&column) {
@@ -32,6 +34,6 @@ impl From<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFi
             .role
             .map(|role| CredentialFilterValue::Role(role.into()));
 
-        organisation_id & name & role
+        Ok(organisation_id & name & role)
     }
 }

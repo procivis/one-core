@@ -71,8 +71,15 @@ pub(crate) async fn get_did_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetDidQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetDidsResponseRestDTO> {
-    let result = state.core.did_service.get_did_list(query.into()).await;
-    OkOrErrorResponse::from_result(result, state, "getting dids")
+    match query.try_into() {
+        Ok(query) => {
+            let result = state.core.did_service.get_did_list(query).await;
+            OkOrErrorResponse::from_result(result, state, "getting dids")
+        }
+        Err(error) => {
+            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+        }
+    }
 }
 
 #[utoipa::path(
