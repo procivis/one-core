@@ -51,3 +51,6 @@ autometrics        = { version = "1.0", features = ["prometheus-0_13"] }
 [workspace.lints.clippy]
 redundant_clone = "warn"
 dbg_macro       = "warn"
+
+[patch.crates-io]
+json-ld = { git = "https://github.com/strozynskiw/json-ld-rustls", rev = "cfab4c341b4c2514aa3c5799a0494c5b399692a6" }
