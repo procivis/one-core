@@ -97,7 +97,7 @@ impl IntoFilterCondition for HistoryFilterValue {
 
 fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> Condition {
     match search_type {
-        HistorySearchEnum::All => search_all_condition(&search_text),
+        HistorySearchEnum::All => search_all_condition(search_text),
         HistorySearchEnum::ClaimName => history::Column::EntityId
             .in_subquery(
                 Query::select()
@@ -411,214 +411,18 @@ fn join_relation_def(
     }
 }
 
-fn search_all_condition(search_text: &String) -> Condition {
-    history::Column::EntityId
-        .in_subquery(
-            Query::select()
-                .expr(claim::Column::CredentialId.into_expr())
-                .from(claim::Entity)
-                .inner_join(
-                    claim_schema::Entity,
-                    Expr::col((claim_schema::Entity, claim_schema::Column::Id))
-                        .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
-                )
-                .cond_where(claim_schema::Column::Key.contains(search_text.to_owned()))
-                .to_owned(),
-        )
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(proof::Column::Id.into_expr())
-                .from(claim::Entity)
-                .inner_join(
-                    claim_schema::Entity,
-                    Expr::col((claim_schema::Entity, claim_schema::Column::Id))
-                        .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
-                )
-                .inner_join(
-                    proof_schema_claim_schema::Entity,
-                    Expr::col((claim::Entity, claim::Column::ClaimSchemaId)).eq(Expr::col((
-                        proof_schema_claim_schema::Entity,
-                        proof_schema_claim_schema::Column::ClaimSchemaId,
-                    ))),
-                )
-                .inner_join(
-                    proof::Entity,
-                    Expr::col((
-                        proof_schema_claim_schema::Entity,
-                        proof_schema_claim_schema::Column::ProofSchemaId,
-                    ))
-                    .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
-                )
-                .cond_where(claim_schema::Column::Key.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(claim::Column::CredentialId.into_expr())
-                .from(claim::Entity)
-                .cond_where(claim::Column::Value.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(proof::Column::Id.into_expr())
-                .from(claim::Entity)
-                .inner_join(
-                    proof_schema_claim_schema::Entity,
-                    Expr::col((claim::Entity, claim::Column::ClaimSchemaId)).eq(Expr::col((
-                        proof_schema_claim_schema::Entity,
-                        proof_schema_claim_schema::Column::ClaimSchemaId,
-                    ))),
-                )
-                .inner_join(
-                    proof::Entity,
-                    Expr::col((
-                        proof_schema_claim_schema::Entity,
-                        proof_schema_claim_schema::Column::ProofSchemaId,
-                    ))
-                    .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
-                )
-                .cond_where(claim::Column::Value.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(proof_claim::Column::ProofId.into_expr())
-                .from(proof_claim::Entity)
-                .inner_join(
-                    claim::Entity,
-                    Expr::col((proof_claim::Entity, proof_claim::Column::ClaimId))
-                        .eq(Expr::col((claim::Entity, claim::Column::Id))),
-                )
-                .inner_join(
-                    credential::Entity,
-                    Expr::col((claim::Entity, claim::Column::CredentialId))
-                        .eq(Expr::col((credential::Entity, credential::Column::Id))),
-                )
-                .inner_join(
-                    credential_schema::Entity,
-                    Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(
-                        Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
-                    ),
-                )
-                .cond_where(credential_schema::Column::Name.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(credential::Column::Id.into_expr())
-                .from(credential::Entity)
-                .inner_join(
-                    credential_schema::Entity,
-                    Expr::col((credential::Entity, credential::Column::CredentialSchemaId)).eq(
-                        Expr::col((credential_schema::Entity, credential_schema::Column::Id)),
-                    ),
-                )
-                .cond_where(credential_schema::Column::Name.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(credential_schema::Column::Id.into_expr())
-                .from(credential_schema::Entity)
-                .cond_where(credential_schema::Column::Name.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(credential::Column::Id.into_expr())
-                .from(credential::Entity)
-                .inner_join(
-                    did::Entity,
-                    Expr::col((credential::Entity, credential::Column::IssuerDidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(did::Column::Did.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(did::Column::Id.into_expr())
-                .from(did::Entity)
-                .inner_join(
-                    credential::Entity,
-                    Expr::col((credential::Entity, credential::Column::IssuerDidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(did::Column::Did.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(credential::Column::Id.into_expr())
-                .from(credential::Entity)
-                .inner_join(
-                    did::Entity,
-                    Expr::col((credential::Entity, credential::Column::IssuerDidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(did::Column::Name.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(did::Column::Id.into_expr())
-                .from(did::Entity)
-                .inner_join(
-                    credential::Entity,
-                    Expr::col((credential::Entity, credential::Column::IssuerDidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(did::Column::Name.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(proof::Column::Id.into_expr())
-                .from(proof::Entity)
-                .inner_join(
-                    did::Entity,
-                    Expr::col((proof::Entity, proof::Column::VerifierDidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(did::Column::Did.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(did::Column::Id.into_expr())
-                .from(did::Entity)
-                .inner_join(
-                    proof::Entity,
-                    Expr::col((proof::Entity, proof::Column::VerifierDidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(did::Column::Did.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(proof::Column::Id.into_expr())
-                .from(proof::Entity)
-                .inner_join(
-                    did::Entity,
-                    Expr::col((proof::Entity, proof::Column::VerifierDidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(did::Column::Name.contains(search_text.to_owned()))
-                .to_owned(),
-        ))
-        .or(history::Column::EntityId.in_subquery(
-            Query::select()
-                .expr(did::Column::Id.into_expr())
-                .from(did::Entity)
-                .inner_join(
-                    proof::Entity,
-                    Expr::col((proof::Entity, proof::Column::VerifierDidId))
-                        .eq(Expr::col((did::Entity, did::Column::Id))),
-                )
-                .cond_where(did::Column::Name.contains(search_text))
-                .to_owned(),
-        ))
-        .into_condition()
+fn search_all_condition(search_text: String) -> Condition {
+    [
+        HistorySearchEnum::ClaimName,
+        HistorySearchEnum::ClaimValue,
+        HistorySearchEnum::CredentialSchemaName,
+        HistorySearchEnum::IssuerDid,
+        HistorySearchEnum::IssuerName,
+        HistorySearchEnum::VerifierDid,
+        HistorySearchEnum::VerifierName,
+    ]
+    .into_iter()
+    .fold(Condition::any(), |cond, entry| {
+        cond.add(search_query_filter(search_text.to_owned(), entry))
+    })
 }
