@@ -7,10 +7,10 @@ ARG USER=rust
 WORKDIR /app/
 
 RUN apt-get update && \
-    apt-get install -y openssl && \
+    apt-get install -y openssl ca-certificates && \
     apt-get clean && \
-    groupadd -g $GID $USER && \
-    useradd -r -u $UID -g $USER $USER
+    groupadd -g "$GID" "$USER" && \
+    useradd -r -u "$UID" -g "$USER" "$USER"
 
 COPY --chmod=555 target/release/core-server /app/
 COPY --chmod=444 config /app/config
