@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::body::Body;
+use axum::extract::DefaultBodyLimit;
 use axum::http::{Request, Response};
 use axum::middleware;
 use axum::response::IntoResponse;
@@ -79,7 +80,8 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route(
             "/api/credential/v1",
             get(credential::controller::get_credential_list)
-                .post(credential::controller::post_credential),
+                .post(credential::controller::post_credential)
+                .layer(DefaultBodyLimit::disable()),
         )
         .route(
             "/api/credential/v1/:id",
