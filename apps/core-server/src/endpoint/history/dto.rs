@@ -81,6 +81,8 @@ pub struct HistoryFilterQueryParamsRest {
     pub did_id: Option<DidId>,
     pub credential_id: Option<Uuid>,
     pub credential_schema_id: Option<Uuid>,
+    pub search_text: Option<String>,
+    pub search_type: Option<HistorySearchEnumRest>,
     pub organisation_id: OrganisationId,
 }
 
@@ -89,4 +91,17 @@ where
     D: Deserializer<'de>,
 {
     Ok(Some(time::serde::rfc3339::deserialize(deserializer)?))
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into)]
+#[into("one_core::model::history::HistorySearchEnum")]
+#[serde(rename_all = "camelCase")]
+pub enum HistorySearchEnumRest {
+    ClaimName,
+    ClaimValue,
+    CredentialSchemaName,
+    IssuerDid,
+    IssuerName,
+    VerifierDid,
+    VerifierName,
 }

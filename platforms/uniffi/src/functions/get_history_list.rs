@@ -1,11 +1,13 @@
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
+use one_core::model::history::HistorySearchEnum;
 use one_core::model::{
     history::{HistoryFilterValue, HistoryListQuery},
     list_filter::ListFilterCondition,
     list_query::ListPagination,
 };
 
+use crate::dto::HistorySearchBindingDTO;
 use crate::{
     dto::{HistoryListBindingDTO, HistoryListQueryBindingDTO},
     error::BindingError,
@@ -72,6 +74,12 @@ impl OneCoreBinding {
                 ));
             }
 
+            if let Some(value) = query.search {
+                conditions.push(ListFilterCondition::Value(search_query_to_filter_value(
+                    value,
+                )));
+            }
+
             Ok(core
                 .history_service
                 .get_history_list(HistoryListQuery {
@@ -90,4 +98,11 @@ impl OneCoreBinding {
 
 fn deserialize_timestamp(value: &str) -> Result<OffsetDateTime, time::error::Parse> {
     OffsetDateTime::parse(value, &Rfc3339)
+}
+
+fn search_query_to_filter_value(value: HistorySearchBindingDTO) -> HistoryFilterValue {
+    match value.r#type {
+        Some(search_type) => HistoryFilterValue::SearchQuery(value.text, search_type.into()),
+        None => HistoryFilterValue::SearchQuery(value.text, HistorySearchEnum::All),
+    }
 }

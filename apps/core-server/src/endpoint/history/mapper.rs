@@ -1,9 +1,9 @@
 use one_core::model::{
-    history::HistoryFilterValue,
+    history::{HistoryFilterValue, HistorySearchEnum},
     list_filter::{ListFilterCondition, ListFilterValue},
 };
 
-use crate::endpoint::history::dto::HistoryFilterQueryParamsRest;
+use crate::endpoint::history::dto::{HistoryFilterQueryParamsRest, HistorySearchEnumRest};
 
 impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterValue> {
     fn from(value: HistoryFilterQueryParamsRest) -> Self {
@@ -23,6 +23,9 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
         let credential_schema_id = value
             .credential_schema_id
             .map(HistoryFilterValue::CredentialSchemaId);
+        let search_query = value
+            .search_text
+            .map(|search_text| search_query_to_filter_value(search_text, value.search_type));
         let organisation_id =
             HistoryFilterValue::OrganisationId(value.organisation_id.into()).condition();
 
@@ -35,5 +38,17 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             & did_id
             & credential_id
             & credential_schema_id
+            & search_query
+    }
+}
+
+fn search_query_to_filter_value(
+    search_text: String,
+    search_type: Option<HistorySearchEnumRest>,
+) -> HistoryFilterValue {
+    if let Some(value) = search_type {
+        HistoryFilterValue::SearchQuery(search_text, value.into())
+    } else {
+        HistoryFilterValue::SearchQuery(search_text, HistorySearchEnum::All)
     }
 }
