@@ -2061,8 +2061,7 @@ dependencies = [
 [[package]]
 name = "json-ld"
 version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2346062cec5e4bd2bec44378543e1e567becc6d9cf2907c468115f0f065ea0e6"
+source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "futures",
@@ -2080,8 +2079,7 @@ dependencies = [
 [[package]]
 name = "json-ld-compaction"
 version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43cd4b98ee8c3be2b7cf67fd3f3225a58201c0e8fd1d9c8dec04578d853003b7"
+source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "derivative",
@@ -2102,8 +2100,7 @@ dependencies = [
 [[package]]
 name = "json-ld-context-processing"
 version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d7c15151cc0478f0c5742a188897553ecfa9011d0eb6bf639507bd3006de9df"
+source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "futures",
@@ -2119,8 +2116,7 @@ dependencies = [
 [[package]]
 name = "json-ld-core"
 version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9eea3cb55f5fd5f79b43226b50a24319b51a4eac06114c9bda4e0aa99f7697f2"
+source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "bytes",
  "contextual",
@@ -2150,8 +2146,7 @@ dependencies = [
 [[package]]
 name = "json-ld-expansion"
 version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a292441a2258065cea9579976613976af672cf9dd56cf9e2a3bb1731a6242bf"
+source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "derivative",
@@ -2171,8 +2166,7 @@ dependencies = [
 [[package]]
 name = "json-ld-syntax"
 version = "0.15.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66b08d81018338bcf3e9ed4d4604c31c8c3a07e688dc8abfa424e63c5aba5d4c"
+source = "git+https://github.com/strozynskiw/json-ld-rustls?rev=cfab4c341b4c2514aa3c5799a0494c5b399692a6#cfab4c341b4c2514aa3c5799a0494c5b399692a6"
 dependencies = [
  "contextual",
  "decoded-char",
