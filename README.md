@@ -114,7 +114,7 @@ docker build -t one-core -f docker/Dockerfile .
 
 ```shell
 docker run --init -p 3000:3000 -it --rm \
-  -e RUST_BACKTRACE=1 -e RUST_BACKTRACE=full \
+  -e RUST_BACKTRACE=full \
   -e ONE_app__databaseUrl=mysql://core:886eOqVMmlHsayu6Vyxw@host.docker.internal/core \
   one-core --config config/config-procivis-base.yml --config config/config-local.yml
 ```
@@ -123,7 +123,7 @@ docker run --init -p 3000:3000 -it --rm \
 
 ```shell
 docker run --init -p 3000:3000 -it --rm \
-  -e RUST_BACKTRACE=1 -e RUST_BACKTRACE=full \
+  -e RUST_BACKTRACE=full \
   -e ONE_app__databaseUrl=mysql://core:886eOqVMmlHsayu6Vyxw@172.17.0.1/core \
   one-core --config config/config-procivis-base.yml --config config/config-local.yml
 ```
