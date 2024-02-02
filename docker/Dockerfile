@@ -7,7 +7,7 @@ ARG USER=rust
 WORKDIR /app/
 
 RUN apt-get update && \
-    apt-get install -y openssl ca-certificates && \
+    apt-get install -y ca-certificates && \
     apt-get clean && \
     groupadd -g "$GID" "$USER" && \
     useradd -r -u "$UID" -g "$USER" "$USER"
