@@ -20,6 +20,7 @@ impl CredentialsApi {
         transport: impl Into<String>,
         issuer_did: impl Into<Uuid>,
         claim_id: impl Into<Uuid>,
+        value: impl Into<String>,
     ) -> Response {
         let body = json!({
           "credentialSchemaId": credential_schema_id.into(),
@@ -28,7 +29,7 @@ impl CredentialsApi {
           "claimValues": [
                 {
                     "claimId": claim_id.into(),
-                    "value": "some value"
+                    "value": value.into(),
                 }
             ]
         });

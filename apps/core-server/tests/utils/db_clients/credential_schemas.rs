@@ -57,6 +57,44 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
+    pub async fn create_with_picture_claim(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+    ) -> CredentialSchema {
+        let claim_schema = ClaimSchema {
+            id: Uuid::new_v4(),
+            key: "firstName".to_string(),
+            data_type: "PICTURE".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schemas = vec![CredentialSchemaClaim {
+            schema: claim_schema.to_owned(),
+            required: true,
+        }];
+
+        let credential_schema = CredentialSchema {
+            id: Uuid::new_v4(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: name.to_owned(),
+            organisation: Some(organisation.clone()),
+            deleted_at: None,
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_owned(),
+            claim_schemas: Some(claim_schemas),
+        };
+
+        let id = self
+            .repository
+            .create_credential_schema(credential_schema.clone())
+            .await
+            .unwrap();
+
+        self.get(&id).await
+    }
+
     pub async fn create_ld_with_claims(
         &self,
         name: &str,
