@@ -7,7 +7,7 @@ use one_core::{
 };
 use shared_types::HistoryId;
 
-use super::mapper::{create_list_response, SelectWithFilterJoins};
+use super::{mapper::create_list_response, queries::SelectWithFilterJoins};
 
 use crate::{
     entity::history, history::HistoryProvider, list_query_generic::SelectWithListQuery,
