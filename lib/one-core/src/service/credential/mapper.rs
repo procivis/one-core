@@ -73,6 +73,7 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
         Ok(Self {
             id: value.id,
             created_date: value.created_date,
+            deleted_at: value.deleted_at,
             last_modified: value.last_modified,
             name: value.name,
             format: value.format,

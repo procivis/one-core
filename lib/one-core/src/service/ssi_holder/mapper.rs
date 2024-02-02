@@ -26,7 +26,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             name: value.name,
             format: value.format,
             revocation_method: value.revocation_method,
-            deleted_at: None,
+            deleted_at: value.deleted_at,
             claim_schemas: None,
             organisation: None, // response organisation is intentionally ignored (holder sets its local organisation)
         }

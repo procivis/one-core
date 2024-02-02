@@ -63,6 +63,8 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
+    #[serde(skip)]
+    pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,

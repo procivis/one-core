@@ -33,6 +33,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
         schema: DetailCredentialSchemaResponseDTO {
             id,
             created_date: get_dummy_date(),
+            deleted_at: None,
             last_modified: get_dummy_date(),
             name: "Credential schema name".to_string(),
             format: "Credential schema format".to_string(),

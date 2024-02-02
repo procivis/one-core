@@ -94,6 +94,12 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
+    #[serde(
+        serialize_with = "front_time_option",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: String,
     pub revocation_method: String,
