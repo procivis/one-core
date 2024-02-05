@@ -1,7 +1,7 @@
 image:
-  tag: "v1.0.1"
+  tag: "v1.0.19-hotfix-3"
 
-baseUrl: "https://core.procivis-one.com"
+baseUrl: "https://core.test.procivis-one.com"
 
 sentry:
   env: "test"
