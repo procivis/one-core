@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub mod bbs;
 pub mod eddsa;
 pub mod es256;
 pub mod ml_dsa;
 pub mod provider;
 
+use bbs::BBS;
 use eddsa::Eddsa;
 use es256::Es256;
 use ml_dsa::MlDsa;
@@ -46,20 +48,20 @@ pub fn key_algorithms_from_config(
     let mut key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
     for (name, field) in config.iter() {
-        let key_algorithm = match &field.r#type {
+        let key_algorithm: Arc<dyn KeyAlgorithm> = match &field.r#type {
             KeyAlgorithmType::Eddsa => {
                 let params = config.get(name)?;
-                Arc::new(Eddsa::new(params)) as _
+                Arc::new(Eddsa::new(params))
             }
             KeyAlgorithmType::Es256 => {
                 let params = config.get(name)?;
-                Arc::new(Es256::new(params)) as _
+                Arc::new(Es256::new(params))
             }
             KeyAlgorithmType::Ecdsa => continue,
-            KeyAlgorithmType::BbsPlus => continue,
+            KeyAlgorithmType::BbsPlus => Arc::new(BBS),
             KeyAlgorithmType::MlDsa => {
                 let params = config.get(name)?;
-                Arc::new(MlDsa::new(params)) as _
+                Arc::new(MlDsa::new(params))
             }
         };
         key_algorithms.insert(name.to_owned(), key_algorithm);
