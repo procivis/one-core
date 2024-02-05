@@ -9,6 +9,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::credential::CredentialRelations;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::service::test_utilities::generic_config;
 use crate::{
@@ -49,6 +50,7 @@ struct Repositories {
     pub did_repository: MockDidRepository,
     pub interaction_repository: MockInteractionRepository,
     pub credential_repository: MockCredentialRepository,
+    pub history_repository: MockHistoryRepository,
     pub protocol_provider: MockTransportProtocolProvider,
     pub config: CoreConfig,
 }
@@ -59,6 +61,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.proof_schema_repository),
         Arc::new(repositories.did_repository),
+        Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.config),
@@ -644,6 +647,10 @@ async fn test_share_proof_created_success() {
                     && relations
                         == &ProofRelations {
                             state: Some(ProofStateRelations::default()),
+                            schema: Some(ProofSchemaRelations {
+                                organisation: Some(Default::default()),
+                                ..Default::default()
+                            }),
                             ..Default::default()
                         }
             })
@@ -657,9 +664,15 @@ async fn test_share_proof_created_success() {
         .withf(move |id, state| id == &proof_id && state.state == ProofStateEnum::Pending)
         .returning(|_, _| Ok(()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = setup_service(Repositories {
         proof_repository,
         protocol_provider,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -702,15 +715,25 @@ async fn test_share_proof_pending_success() {
                     && relations
                         == &ProofRelations {
                             state: Some(ProofStateRelations::default()),
+                            schema: Some(ProofSchemaRelations {
+                                organisation: Some(Default::default()),
+                                ..Default::default()
+                            }),
                             ..Default::default()
                         }
             })
             .returning(move |_, _| Ok(Some(res_clone.to_owned())));
     }
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = setup_service(Repositories {
         proof_repository,
         protocol_provider,
+        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
