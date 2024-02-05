@@ -235,7 +235,13 @@ impl DidService {
     ) -> Result<(), ServiceError> {
         let did = self
             .did_repository
-            .get_did(id, &DidRelations::default())
+            .get_did(
+                id,
+                &DidRelations {
+                    organisation: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         let Some(did) = did else {
