@@ -38,9 +38,9 @@ impl ErrorResponse {
             ServiceError::MissingProvider(MissingProviderError::DidMethod(_)) => {
                 Self::NotFound(response)
             }
-            ServiceError::Validation(_) | ServiceError::BusinessLogic(_) => {
-                Self::BadRequest(response)
-            }
+            ServiceError::Validation(_)
+            | ServiceError::BusinessLogic(_)
+            | ServiceError::ConfigValidationError(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),
         }
     }
