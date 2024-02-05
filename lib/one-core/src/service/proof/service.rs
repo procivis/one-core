@@ -3,7 +3,10 @@ use super::{
         CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
         ProofId,
     },
-    mapper::{get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request},
+    mapper::{
+        get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
+        proof_requested_history_event,
+    },
     ProofService,
 };
 use crate::{
@@ -15,6 +18,7 @@ use crate::{
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
         interaction::InteractionRelations,
+        organisation::OrganisationRelations,
         proof::ProofClaimRelations,
         proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
@@ -261,6 +265,11 @@ impl ProofService {
 
         let url = transport.share_proof(&proof).await?;
 
+        let _ = self
+            .history_repository
+            .create_history(proof_requested_history_event(proof))
+            .await;
+
         Ok(EntityShareResponseDTO { url })
     }
 
@@ -277,6 +286,10 @@ impl ProofService {
                 id,
                 &ProofRelations {
                     state: Some(ProofStateRelations::default()),
+                    schema: Some(ProofSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )

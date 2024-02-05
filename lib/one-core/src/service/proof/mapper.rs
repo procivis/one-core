@@ -7,6 +7,7 @@ use crate::{
         claim_schema::ClaimSchema,
         credential_schema::CredentialSchema,
         did::Did,
+        history::{History, HistoryAction, HistoryEntityType},
         proof::{self, Proof, ProofStateEnum},
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
@@ -236,5 +237,16 @@ impl TryFrom<ProofClaimSchema> for ProofSchemaClaim {
                 organisation: None,
             }),
         })
+    }
+}
+
+pub(super) fn proof_requested_history_event(proof: Proof) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Requested,
+        entity_id: proof.id.into(),
+        entity_type: HistoryEntityType::Proof,
+        organisation: proof.schema.and_then(|s| s.organisation),
     }
 }
