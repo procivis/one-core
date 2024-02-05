@@ -46,7 +46,7 @@ impl CredentialSchemaService {
             .await?;
 
         let Some(organisation) = organisation else {
-            return Err(EntityNotFoundError::Organisation(request.organisation_id).into());
+            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
         let credential_schema = from_create_request(request, organisation)?;

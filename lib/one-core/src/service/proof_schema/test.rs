@@ -297,8 +297,8 @@ async fn test_delete_proof_schema_failure() {
     let result = service.delete_proof_schema(&Uuid::new_v4()).await;
     assert!(matches!(
         result,
-        Err(ServiceError::EntityNotFound(
-            EntityNotFoundError::ProofSchema(_)
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::MissingProofSchema { .. }
         ))
     ));
 }
