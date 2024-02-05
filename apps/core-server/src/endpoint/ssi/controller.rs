@@ -28,7 +28,7 @@ use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use one_core::model::credential::CredentialId;
 use one_core::model::credential_schema::CredentialSchemaId;
-use one_core::service::error::{EntityNotFoundError, ServiceError};
+use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::DidId;
 use uuid::Uuid;
 
@@ -420,7 +420,7 @@ pub(crate) async fn oidc_verifier_direct_post(
             tracing::error!("Config validation error: {error}");
             StatusCode::NOT_FOUND.into_response()
         }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::ProofForInteraction(_))) => {
+        Err(ServiceError::BusinessLogic(BusinessLogicError::MissingProofForInteraction(_))) => {
             tracing::error!("Missing interaction or proof");
             (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()
         }

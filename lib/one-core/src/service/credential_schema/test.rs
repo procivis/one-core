@@ -509,6 +509,6 @@ async fn test_create_credential_schema_fail_missing_organisation() {
 
     assert!(result.is_err_and(|e| matches!(
         e,
-        ServiceError::EntityNotFound(EntityNotFoundError::Organisation(_))
+        ServiceError::BusinessLogic(BusinessLogicError::MissingOrganisation(_))
     )));
 }

@@ -119,7 +119,7 @@ impl ProofSchemaService {
             .await?;
 
         let Some(organisation) = organisation else {
-            return Err(EntityNotFoundError::Organisation(request.organisation_id).into());
+            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
         let now = OffsetDateTime::now_utc();
@@ -165,7 +165,10 @@ impl ProofSchemaService {
             .await
             .map_err(|error| match error {
                 // proof schema not found or already deleted
-                DataLayerError::RecordNotUpdated => EntityNotFoundError::ProofSchema(*id).into(),
+                DataLayerError::RecordNotUpdated => BusinessLogicError::MissingProofSchema {
+                    proof_schema_id: *id,
+                }
+                .into(),
                 error => ServiceError::from(error),
             })?;
 

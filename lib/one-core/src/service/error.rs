@@ -109,9 +109,6 @@ pub enum EntityNotFoundError {
     #[error("Proof `{0}` not found")]
     Proof(ProofId),
 
-    #[error("Proof for interaction `{0}` not found")]
-    ProofForInteraction(InteractionId),
-
     #[error("Organisation `{0}` not found")]
     Organisation(OrganisationId),
 
@@ -195,6 +192,12 @@ pub enum BusinessLogicError {
 
     #[error("General input validation error")]
     GeneralInputValidationError,
+
+    #[error("Missing organisation: {0}")]
+    MissingOrganisation(OrganisationId),
+
+    #[error("Missing proof for interaction `{0}`")]
+    MissingProofForInteraction(InteractionId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -487,6 +490,12 @@ pub enum ErrorCode {
 
     #[strum(to_string = "General input validation error")]
     BR_0084,
+
+    #[strum(to_string = "Missing organisation")]
+    BR_0088,
+
+    #[strum(to_string = "Missing proof for provided interaction")]
+    BR_0094,
 }
 
 impl From<FormatError> for ServiceError {
@@ -537,9 +546,7 @@ impl EntityNotFoundError {
             EntityNotFoundError::Did(_) => ErrorCode::BR_0024,
             EntityNotFoundError::RevocationList(_) => ErrorCode::BR_0034,
             EntityNotFoundError::ProofSchema(_) => ErrorCode::BR_0014,
-            EntityNotFoundError::Proof(_) | EntityNotFoundError::ProofForInteraction(_) => {
-                ErrorCode::BR_0012
-            }
+            EntityNotFoundError::Proof(_) => ErrorCode::BR_0012,
             EntityNotFoundError::Organisation(_) => ErrorCode::BR_0022,
             EntityNotFoundError::Key(_) => ErrorCode::BR_0037,
             EntityNotFoundError::CredentialSchema(_) => ErrorCode::BR_0006,
@@ -573,6 +580,8 @@ impl BusinessLogicError {
             BusinessLogicError::DidDeactivation(error) => error.error_code(),
             BusinessLogicError::KeyAlreadyExists => ErrorCode::BR_0066,
             BusinessLogicError::GeneralInputValidationError => ErrorCode::BR_0084,
+            BusinessLogicError::MissingOrganisation(_) => ErrorCode::BR_0088,
+            BusinessLogicError::MissingProofForInteraction(_) => ErrorCode::BR_0094,
         }
     }
 }

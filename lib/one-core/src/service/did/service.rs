@@ -203,7 +203,7 @@ impl DidService {
             .await?;
 
         let Some(organisation) = organisation else {
-            return Err(EntityNotFoundError::Organisation(request.organisation_id).into());
+            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
         let did = did_from_did_request(new_did_id, request, organisation, did_value, key, now);

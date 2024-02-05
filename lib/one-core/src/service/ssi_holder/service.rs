@@ -134,7 +134,7 @@ impl SSIHolderService {
             .await?;
 
         let Some(proof) = proof else {
-            return Err(EntityNotFoundError::ProofForInteraction(*interaction_id).into());
+            return Err(BusinessLogicError::MissingProofForInteraction(*interaction_id).into());
         };
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
@@ -190,7 +190,9 @@ impl SSIHolderService {
             .await?;
 
         let Some(proof) = proof else {
-            return Err(EntityNotFoundError::ProofForInteraction(submission.interaction_id).into());
+            return Err(
+                BusinessLogicError::MissingProofForInteraction(submission.interaction_id).into(),
+            );
         };
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
