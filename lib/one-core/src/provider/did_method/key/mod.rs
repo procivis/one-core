@@ -57,6 +57,7 @@ impl super::DidMethod for KeyDidMethod {
         let key_type = match decoded.type_ {
             helpers::DidKeyType::Eddsa => "EDDSA",
             helpers::DidKeyType::Ecdsa => "ES256",
+            helpers::DidKeyType::Bbs => "BBS_PLUS",
         };
 
         let jwk = self
@@ -82,7 +83,11 @@ impl super::DidMethod for KeyDidMethod {
     fn get_capabilities(&self) -> DidCapabilities {
         DidCapabilities {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
-            key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
+            key_algorithms: vec![
+                "ES256".to_string(),
+                "EDDSA".to_string(),
+                "BBS_PLUS".to_string(),
+            ],
         }
     }
 }

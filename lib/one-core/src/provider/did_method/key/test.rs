@@ -215,6 +215,91 @@ async fn test_did_key_resolve_details_es256() {
 }
 
 #[tokio::test]
+async fn test_did_key_resolve_details_bbs() {
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    key_algorithm
+        .expect_bytes_to_jwk()
+        .with(predicate::eq(vec![
+            130, 59, 60, 150, 203, 83, 130, 132, 224, 92, 193, 122, 65, 119, 114, 135, 121, 188,
+            147, 104, 177, 197, 68, 70, 96, 179, 26, 99, 41, 85, 43, 252, 116, 23, 193, 225, 19,
+            204, 228, 209, 133, 162, 25, 93, 194, 31, 10, 80, 17, 173, 172, 31, 131, 193, 100, 182,
+            152, 10, 127, 44, 123, 237, 92, 150, 96, 142, 68, 59, 10, 197, 182, 240, 220, 155, 63,
+            2, 91, 184, 58, 105, 21, 246, 9, 155, 38, 204, 181, 96, 93, 171, 183, 181, 113, 206,
+            206, 146
+        ]))
+        .once()
+        .returning(|_| {
+            Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+                r#use: None,
+                crv: "Bls12381G2".to_string(),
+                x: "Ajs8lstTgoTgXMF6QXdyh3m8k2ixxURGYLMaYylVK_x0F8HhE8zk0YWiGV3CHwpQEa2sH4PBZLaYCn8se-1clmCORDsKxbbw3Js_Alu4OmkV9gmbJsy1YF2rt7Vxzs6S".to_owned(),
+                y: Some("BVkkrVEib-P_FMPHNtqxJymP3pV-H8fCdvPkoWInpFfM9tViyqD8JAmwDf64zU2hBV_vvCQ632ScAooEExXuz1IeQH9D2o-uY_dAjZ37YHuRMEyzh8Tq-90JHQvicOqx".to_owned()),
+            }))
+        });
+
+    let provider = setup_provider(key_algorithm, "BBS_PLUS", KeyAlgorithmType::BbsPlus);
+
+    let result = provider
+        .resolve(
+            &"did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo"
+                .parse()
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(result,
+    DidDocumentDTO {
+        context: json!([
+            "https://www.w3.org/ns/did/v1",
+            "https://w3id.org/security/suites/jws-2020/v1",
+        ]),
+        id: DidValue::from_str("did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo").unwrap(),
+        verification_method: vec![
+            DidVerificationMethodDTO {
+                id: "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
+                r#type: "JsonWebKey2020".to_owned(),
+                controller: "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
+                public_key_jwk: PublicKeyJwkDTO::Okp(
+                    PublicKeyJwkEllipticDataDTO {
+                        r#use: None,
+                        crv: "Bls12381G2".to_string(),
+                        x: "Ajs8lstTgoTgXMF6QXdyh3m8k2ixxURGYLMaYylVK_x0F8HhE8zk0YWiGV3CHwpQEa2sH4PBZLaYCn8se-1clmCORDsKxbbw3Js_Alu4OmkV9gmbJsy1YF2rt7Vxzs6S".to_owned(),
+                        y: Some("BVkkrVEib-P_FMPHNtqxJymP3pV-H8fCdvPkoWInpFfM9tViyqD8JAmwDf64zU2hBV_vvCQ632ScAooEExXuz1IeQH9D2o-uY_dAjZ37YHuRMEyzh8Tq-90JHQvicOqx".to_owned()),
+                    },
+                ),
+            },
+        ],
+        authentication: Some(
+            vec![
+                "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
+            ],
+        ),
+        assertion_method: Some(
+            vec![
+                "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
+            ],
+        ),
+        key_agreement: Some(
+            vec![
+                "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
+            ],
+        ),
+        capability_invocation: Some(
+            vec![
+                "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
+            ],
+        ),
+        capability_delegation: Some(
+            vec![
+                "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
+            ],
+        ),
+        rest: Default::default(),
+    });
+}
+
+#[tokio::test]
 async fn test_create_did_success() {
     let key_id = Uuid::new_v4();
 
