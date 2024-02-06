@@ -351,9 +351,8 @@ impl JsonLdClassic {
     where
         T: Serialize,
     {
-        let transformed_document = self.canonize_any(object).await?;
-
-        let transformed_proof_config = self.canonize_any(proof).await?;
+        let (transformed_document, transformed_proof_config) =
+            tokio::try_join!(self.canonize_any(object), self.canonize_any(proof))?;
 
         let hashing_function = "sha-256";
         let hasher = self.crypto.get_hasher(hashing_function).map_err(|_| {
@@ -429,10 +428,10 @@ impl JsonLdClassic {
             .collect_quads()
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
-        self.canonize_dataset(dataset).await
+        self.canonize_dataset(dataset)
     }
 
-    async fn canonize_dataset(&self, dataset: LdDataset) -> Result<String, FormatterError> {
+    fn canonize_dataset(&self, dataset: LdDataset) -> Result<String, FormatterError> {
         let mut buf = Vec::<u8>::new();
         rdfc10::normalize(&dataset, &mut buf)
             .map_err(|e| FormatterError::CouldNotFormat(format!("Normalization error: `{}`", e)))?;
