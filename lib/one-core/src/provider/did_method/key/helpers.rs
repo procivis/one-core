@@ -9,6 +9,7 @@ use crate::provider::did_method::{
 pub(super) enum DidKeyType {
     Eddsa,
     Ecdsa,
+    Bbs,
 }
 
 pub(super) struct DecodedDidKey {
@@ -27,6 +28,8 @@ pub(super) fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError
         DidKeyType::Eddsa
     } else if tail.starts_with("zDn") {
         DidKeyType::Ecdsa
+    } else if tail.starts_with("zUC7") {
+        DidKeyType::Bbs
     } else {
         return Err(DidMethodError::ResolutionError(
             "Unsupported key algorithm".to_string(),
@@ -37,6 +40,7 @@ pub(super) fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError
         DidMethodError::ResolutionError(format!("Invalid did key multibase suffix: {err}"))
     })?;
 
+    // currently all supported key algorithms have a multicodec prefix 2 bytes long
     let decoded_without_multibase_prefix = decoded[2..].into();
 
     Ok(DecodedDidKey {
