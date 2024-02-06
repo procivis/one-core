@@ -50,7 +50,7 @@ impl CredentialFormatter for JsonLdFormatter {
     async fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,
-        _credential_status: Option<CredentialStatus>,
+        credential_status: Option<CredentialStatus>,
         holder_did: &DidValue,
         _algorithm: &str,
         additional_context: Vec<String>,
@@ -84,6 +84,7 @@ impl CredentialFormatter for JsonLdFormatter {
             issuer: issuer_did.clone(),
             issuance_date,
             credential_subject,
+            credential_status,
             proof: None,
         };
 
@@ -136,7 +137,7 @@ impl CredentialFormatter for JsonLdFormatter {
             issuer_did: Some(credential.issuer),
             subject: Some(credential.credential_subject.id),
             claims,
-            status: None,
+            status: credential.credential_status,
         })
     }
 
