@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
+use crate::provider::credential_formatter::model::CredentialStatus;
+
 // #[derive(Debug, Serialize, Deserialize)]
 // The main credential
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -17,6 +19,8 @@ pub struct LdCredential {
     #[serde(with = "time::serde::rfc3339")]
     pub issuance_date: OffsetDateTime,
     pub credential_subject: LdCredentialSubject,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_status: Option<CredentialStatus>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proof: Option<LdProof>,
 }
