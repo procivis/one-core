@@ -12,7 +12,6 @@ use std::vec;
 
 use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld_formatter::model::LdCredential;
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential,
 };
@@ -22,19 +21,17 @@ use async_trait::async_trait;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use self::model::*;
-
+use super::json_ld::model::*;
 use super::model::{CredentialPresentation, Presentation};
 use super::{AuthenticationFn, CredentialFormatter, FormatterCapabilities, VerificationFn};
 
 use sophia_c14n::rdfc10;
 use sophia_jsonld::parser::JsonLdParser;
-pub mod model;
 
 type LdDataset = std::collections::HashSet<Spog<SimpleTerm<'static>>>;
 
 #[allow(dead_code)]
-pub struct JsonLdFormatter {
+pub struct JsonLdClassic {
     pub base_url: Option<String>,
     pub crypto: Arc<dyn CryptoProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
@@ -46,7 +43,7 @@ pub struct JsonLdFormatter {
 pub struct Params {}
 
 #[async_trait]
-impl CredentialFormatter for JsonLdFormatter {
+impl CredentialFormatter for JsonLdClassic {
     async fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,
@@ -232,11 +229,14 @@ impl CredentialFormatter for JsonLdFormatter {
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
-        FormatterCapabilities::default()
+        FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_owned()],
+            features: vec![],
+        }
     }
 }
 
-impl JsonLdFormatter {
+impl JsonLdClassic {
     #[allow(clippy::new_without_default)]
     pub fn new(
         params: Params,

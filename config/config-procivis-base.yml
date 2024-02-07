@@ -18,10 +18,16 @@ format:
     display: "format.jsonld_classic"
     order: 2
     params: null
+  JSON_LD_BBSPLUS:
+    type: "JSON_LD_BBSPLUS"
+    display: "format.jsonld_bbsplus"
+    disabled: true
+    order: 3
+    params: null
   MDOC:
     type: "MDOC"
     display: "format.mdoc"
-    order: 3
+    order: 4
     disabled: true
     params: null
 exchange:

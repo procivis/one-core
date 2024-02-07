@@ -146,6 +146,9 @@ pub enum FormatType {
     #[serde(rename = "JSON_LD_CLASSIC")]
     #[strum(serialize = "JSON_LD_CLASSIC")]
     JsonLdClassic,
+    #[serde(rename = "JSON_LD_BBSPLUS")]
+    #[strum(serialize = "JSON_LD_BBSPLUS")]
+    JsonLdBbsplus,
     #[serde(rename = "MDOC")]
     #[strum(serialize = "MDOC")]
     Mdoc,

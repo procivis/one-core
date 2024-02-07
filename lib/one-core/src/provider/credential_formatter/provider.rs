@@ -3,12 +3,14 @@ use std::{collections::HashMap, sync::Arc};
 use crate::config::core_config::{FormatConfig, FormatType};
 use crate::config::{ConfigError, ConfigParsingError};
 use crate::crypto::CryptoProvider;
-use crate::provider::credential_formatter::json_ld_formatter::JsonLdFormatter;
+
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 
+use super::json_ld_bbsplus::JsonLdBbsplus;
+use super::json_ld_classic::JsonLdClassic;
 use super::CredentialFormatter;
 
 #[cfg_attr(test, mockall::automock)]
@@ -52,12 +54,16 @@ pub(crate) fn credential_formatters_from_config(
             }
             FormatType::JsonLdClassic => {
                 let params = config.get(name)?;
-                Arc::new(JsonLdFormatter::new(
+                Arc::new(JsonLdClassic::new(
                     params,
                     crypto.clone(),
                     core_base_url.clone(),
                     did_method_provider.clone(),
                 )) as _
+            }
+            FormatType::JsonLdBbsplus => {
+                let params = config.get(name)?;
+                Arc::new(JsonLdBbsplus::new(params)) as _
             }
             FormatType::Mdoc => Arc::new(MdocFormatter::new()) as _,
         };
