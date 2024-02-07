@@ -71,6 +71,7 @@ impl super::DidMethod for JWKDidMethod {
             key_algorithms: vec![
                 "ES256".to_string(),
                 "EDDSA".to_string(),
+                "BBS_PLUS".to_string(),
                 "DILITHIUM".to_string(),
             ],
         }
