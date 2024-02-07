@@ -11,7 +11,9 @@ use crate::model::credential::{Credential, CredentialRole, CredentialState, Cred
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
+use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -28,6 +30,11 @@ use crate::service::oidc::dto::{
     OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO,
 };
 use crate::service::oidc::mapper::vec_last_position_from_token_path;
+use crate::service::oidc::model::{
+    OpenID4VPInteractionContent, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPPresentationDefinitionInputDescriptor,
+};
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::generic_config;
 
@@ -870,4 +877,73 @@ fn test_vec_last_position_from_token_path() {
     );
     assert_eq!(vec_last_position_from_token_path("$").unwrap(), 0);
     assert!(vec_last_position_from_token_path("$[ABC]").is_err());
+}
+
+#[tokio::test]
+async fn test_oidc_verifier_presentation_definition_success() {
+    let mut proof_repository = MockProofRepository::default();
+
+    let proof_id = Uuid::new_v4();
+
+    let interaction_data = serde_json::to_vec(&OpenID4VPInteractionContent {
+        nonce: "nonce".to_string(),
+        presentation_definition: OpenID4VPPresentationDefinition {
+            id: Uuid::new_v4(),
+            input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
+                id: "123".to_string(),
+                constraints: OpenID4VPPresentationDefinitionConstraint {
+                    fields: vec![OpenID4VPPresentationDefinitionConstraintField {
+                        id: Uuid::new_v4(),
+                        path: vec!["123".to_string()],
+                        optional: false,
+                    }],
+                },
+            }],
+        },
+    })
+    .unwrap();
+
+    {
+        proof_repository
+            .expect_get_proof()
+            .once()
+            .return_once(move |_, _| {
+                Ok(Some(Proof {
+                    id: proof_id.to_owned(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    issuance_date: get_dummy_date(),
+                    transport: "OPENID4VC".to_string(),
+                    redirect_uri: None,
+                    state: Some(vec![ProofState {
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        state: ProofStateEnum::Requested,
+                    }]),
+                    schema: None,
+                    claims: None,
+                    verifier_did: None,
+                    holder_did: None,
+                    interaction: Some(Interaction {
+                        id: Uuid::new_v4(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        host: None,
+                        data: Some(interaction_data),
+                    }),
+                }))
+            });
+    }
+
+    let service = setup_service(Mocks {
+        proof_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .oidc_verifier_presentation_definition(proof_id)
+        .await;
+
+    assert!(result.is_ok());
 }

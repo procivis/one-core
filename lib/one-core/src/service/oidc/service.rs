@@ -32,14 +32,15 @@ use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
 };
 use crate::service::oidc::mapper::{
-    interaction_data_to_dto, parse_access_token, vec_last_position_from_token_path,
+    interaction_data_to_dto, parse_access_token, parse_interaction_content,
+    vec_last_position_from_token_path,
 };
-use crate::service::oidc::model::OpenID4VPInteractionContent;
+use crate::service::oidc::model::OpenID4VPPresentationDefinition;
 use crate::service::oidc::validator::{
     throw_if_credential_request_invalid, throw_if_interaction_created_date,
     throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
     throw_if_token_request_invalid, validate_claims, validate_config_entity_presence,
-    validate_credential, validate_presentation,
+    validate_credential, validate_presentation, validate_transport_type,
 };
 use crate::service::oidc::{
     dto::{
@@ -402,6 +403,40 @@ impl OIDCService {
         }
     }
 
+    pub async fn oidc_verifier_presentation_definition(
+        &self,
+        id: ProofId,
+    ) -> Result<OpenID4VPPresentationDefinition, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+
+        let proof = self
+            .proof_repository
+            .get_proof(
+                &id,
+                &ProofRelations {
+                    interaction: Some(InteractionRelations::default()),
+                    state: Some(ProofStateRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
+
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        validate_transport_type(&self.config, &proof.transport)?;
+
+        let interaction = proof
+            .interaction
+            .as_ref()
+            .ok_or(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            ))?;
+
+        let interaction_data = parse_interaction_content(interaction.data.as_ref())?;
+
+        Ok(interaction_data.presentation_definition)
+    }
+
     async fn process_proof_submission(
         &self,
         submission: OpenID4VPDirectPostRequestDTO,
@@ -414,15 +449,7 @@ impl OIDCService {
                 OpenID4VCIError::InvalidRequest,
             ))?;
 
-        let interaction_data: OpenID4VPInteractionContent =
-            if let Some(interaction_data) = interaction.data.as_ref() {
-                serde_json::from_slice(interaction_data)
-                    .map_err(|e| ServiceError::MappingError(e.to_string()))
-            } else {
-                Err(ServiceError::MappingError(
-                    "Interaction data is missing or incorrect".to_string(),
-                ))
-            }?;
+        let interaction_data = parse_interaction_content(interaction.data.as_ref())?;
 
         let presentation_submission = &submission.presentation_submission;
 

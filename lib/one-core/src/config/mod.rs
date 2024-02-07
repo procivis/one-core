@@ -42,6 +42,8 @@ pub enum ConfigValidationError {
         key: String,
         source: serde_json::Error,
     },
+    #[error("entity has invalid type, expected: `{0}`, actual: `{1}`")]
+    InvalidType(String, String),
     #[error("Datatype validation error: `{0}`")]
     DatatypeValidation(#[from] DatatypeValidationError),
 }

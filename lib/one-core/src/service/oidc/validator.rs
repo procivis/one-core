@@ -284,3 +284,19 @@ pub(super) fn validate_config_entity_presence(
         Ok(())
     }
 }
+
+pub(super) fn validate_transport_type(
+    config: &CoreConfig,
+    transport: &str,
+) -> Result<(), ConfigValidationError> {
+    let transport_type = config.exchange.get_fields(transport)?.r#type;
+
+    if transport_type != ExchangeType::OpenId4Vc {
+        Err(ConfigValidationError::InvalidType(
+            ExchangeType::OpenId4Vc.to_string(),
+            transport.to_string(),
+        ))
+    } else {
+        Ok(())
+    }
+}

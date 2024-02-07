@@ -1,11 +1,14 @@
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::service::error::ServiceError;
-use crate::service::oidc::dto::{
-    DurationSeconds, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError, OpenID4VCIInteractionDataDTO,
-    OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCITokenResponseDTO,
+use crate::service::oidc::{
+    dto::{
+        DurationSeconds, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
+        OpenID4VCIInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenResponseDTO,
+    },
+    model::OpenID4VPInteractionContent,
 };
 use crate::util::oidc::map_core_to_oidc_format;
 use std::str::FromStr;
@@ -117,5 +120,18 @@ pub(crate) fn vec_last_position_from_token_path(path: &str) -> Result<usize, Ser
         }
     } else {
         Ok(0)
+    }
+}
+
+pub(super) fn parse_interaction_content(
+    data: Option<&Vec<u8>>,
+) -> Result<OpenID4VPInteractionContent, ServiceError> {
+    if let Some(interaction_data) = data {
+        serde_json::from_slice(interaction_data)
+            .map_err(|e| ServiceError::MappingError(e.to_string()))
+    } else {
+        Err(ServiceError::MappingError(
+            "Interaction data is missing or incorrect".to_string(),
+        ))
     }
 }
