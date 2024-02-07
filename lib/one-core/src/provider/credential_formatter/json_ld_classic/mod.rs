@@ -49,7 +49,7 @@ impl CredentialFormatter for JsonLdClassic {
         credential: &CredentialDetailResponseDTO,
         credential_status: Option<CredentialStatus>,
         holder_did: &DidValue,
-        _algorithm: &str,
+        algorithm: &str,
         additional_context: Vec<String>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
@@ -85,7 +85,9 @@ impl CredentialFormatter for JsonLdClassic {
             proof: None,
         };
 
-        let mut proof = self.prepare_proof(&issuer_did, "assertionMethod").await?;
+        let mut proof = self
+            .prepare_proof(&issuer_did, "assertionMethod", algorithm)
+            .await?;
 
         let proof_hash = self.prepare_proof_hash(&credential, &proof).await?;
 
@@ -149,7 +151,7 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         tokens: &[String],
         holder_did: &DidValue,
-        _algorithm: &str,
+        algorithm: &str,
         auth_fn: AuthenticationFn,
         nonce: Option<String>,
     ) -> Result<String, FormatterError> {
@@ -178,7 +180,9 @@ impl CredentialFormatter for JsonLdClassic {
             proof: None,
         };
 
-        let mut proof = self.prepare_proof(holder_did, "authentication").await?;
+        let mut proof = self
+            .prepare_proof(holder_did, "authentication", algorithm)
+            .await?;
 
         let proof_hash = self.prepare_proof_hash(&presentation, &proof).await?;
 
@@ -230,7 +234,7 @@ impl CredentialFormatter for JsonLdClassic {
 
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_owned()],
+            signing_key_algorithms: vec!["EDDSA".to_owned(), "ES256".to_owned()],
             features: vec![],
         }
     }
@@ -256,10 +260,21 @@ impl JsonLdClassic {
         &self,
         isuser_did: &DidValue,
         proof_purpose: &str,
+        algorithm: &str,
     ) -> Result<LdProof, FormatterError> {
         let context = vec!["https://w3id.org/security/data-integrity/v2".to_string()];
         let r#type = "DataIntegrityProof".to_owned();
-        let cryptosuite = "eddsa-rdfc-2022".to_string(); // For EDDSA Only!
+
+        let cryptosuite = match algorithm {
+            "EDDSA" => "eddsa-rdfc-2022",
+            "ES256" => "ecdsa-rdfc-2019",
+            _ => {
+                return Err(FormatterError::CouldNotFormat(format!(
+                    "Unsupported algorithm: {algorithm}"
+                )))
+            }
+        }
+        .to_string();
 
         let did_resolved = self
             .did_method_provider
@@ -275,18 +290,16 @@ impl JsonLdClassic {
             ))?
             .first()
             .ok_or(FormatterError::CouldNotFormat(
-                "Missing assertion methgod".to_owned(),
+                "Missing assertion method".to_owned(),
             ))?
             .clone();
-
-        let verification_method = key_id;
 
         Ok(LdProof {
             context,
             r#type,
             created: OffsetDateTime::now_utc(),
             cryptosuite,
-            verification_method,
+            verification_method: key_id,
             proof_purpose: proof_purpose.to_owned(),
             proof_value: None,
             nonce: None,
@@ -390,17 +403,28 @@ impl JsonLdClassic {
         proof_value_bs58: &str,
         issuer_did: &DidValue,
         key_id: &str,
+        cryptosuite: &str,
         verification_fn: VerificationFn,
     ) -> Result<(), FormatterError> {
         let signature = bs58::decode(proof_value_bs58)
             .into_vec()
             .map_err(|_| FormatterError::CouldNotVerify("Hash decoding error".to_owned()))?;
 
+        let algorithm = match cryptosuite {
+            "eddsa-rdfc-2022" => "EDDSA",
+            "ecdsa-rdfc-2019" => "ES256",
+            _ => {
+                return Err(FormatterError::CouldNotVerify(format!(
+                    "Unsupported cryptosuite: {cryptosuite}"
+                )))
+            }
+        };
+
         verification_fn
             .verify(
                 Some(issuer_did.clone()),
                 Some(key_id),
-                "EDDSA", // Fixed for now
+                algorithm,
                 proof_hash,
                 &signature,
             )
@@ -467,6 +491,7 @@ impl JsonLdClassic {
             &proof_value,
             issuer_did,
             key_id,
+            &proof.cryptosuite,
             verification_fn,
         )
         .await?;
@@ -500,6 +525,7 @@ impl JsonLdClassic {
             &proof_value,
             issuer_did,
             key_id,
+            &proof.cryptosuite,
             verification_fn,
         )
         .await?;
