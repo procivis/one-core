@@ -14,10 +14,9 @@ use crate::repository::proof_repository::ProofRepository;
 
 pub mod dto;
 pub mod mapper;
+pub mod model;
 pub mod service;
 pub mod validator;
-
-mod model;
 
 #[derive(Clone)]
 pub struct OIDCService {

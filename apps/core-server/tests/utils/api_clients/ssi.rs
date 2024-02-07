@@ -50,4 +50,12 @@ impl SSIApi {
         let url = format!("/ssi/context/v1/{}", credential_schema_id.into());
         self.client.get(&url).await
     }
+
+    pub async fn get_oidc_verifier_presentation_definition(
+        &self,
+        proof_id: impl Display,
+    ) -> Response {
+        let url = format!("/ssi/oidc-verifier/v1/{proof_id}/presentation-definition");
+        self.client.get(&url).await
+    }
 }

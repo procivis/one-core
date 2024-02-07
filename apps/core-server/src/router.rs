@@ -210,6 +210,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(ssi::controller::oidc_verifier_direct_post),
         )
         .route(
+            "/ssi/oidc-verifier/v1/:id/presentation-definition",
+            get(ssi::controller::oidc_verifier_presentation_definition),
+        )
+        .route(
             "/ssi/revocation/v1/list/:id",
             get(ssi::controller::get_revocation_list_by_id),
         )
@@ -350,6 +354,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::oidc_create_token,
             endpoint::ssi::controller::oidc_create_credential,
             endpoint::ssi::controller::oidc_verifier_direct_post,
+            endpoint::ssi::controller::oidc_verifier_presentation_definition,
             endpoint::ssi::controller::get_json_ld_context,
 
             endpoint::interaction::controller::handle_invitation,
@@ -450,6 +455,10 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::OpenID4VCICredentialValueDetailsRestDTO,
                 endpoint::ssi::dto::OpenID4VPDirectPostRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VPDirectPostResponseRestDTO,
+                endpoint::ssi::dto::OpenID4VPPresentationDefinitionResponseRestDTO,
+                endpoint::ssi::dto::OpenID4VPPresentationDefinitionInputDescriptorRestDTO,
+                endpoint::ssi::dto::OpenID4VPPresentationDefinitionConstraintRestDTO,
+                endpoint::ssi::dto::OpenID4VPPresentationDefinitionConstraintFieldRestDTO,
                 endpoint::ssi::dto::NestedPresentationSubmissionDescriptorRestDTO,
                 endpoint::ssi::dto::PresentationSubmissionMappingRestDTO,
                 endpoint::ssi::dto::PresentationSubmissionDescriptorRestDTO,

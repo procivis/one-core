@@ -32,7 +32,13 @@ async fn test_opeind4vc_jsondl_flow() {
     let credential_schema = server_context
         .db
         .credential_schemas
-        .create_ld_with_claims("Test", &server_organisation, "NONE", &new_claim_schemas)
+        .create_with_claims(
+            "Test",
+            &server_organisation,
+            "NONE",
+            &new_claim_schemas,
+            "JSON_LD_CLASSIC",
+        )
         .await;
 
     let credential = server_context
@@ -121,7 +127,13 @@ async fn test_opeind4vc_jsondl_flow() {
     let holder_credential_schema = holder_context
         .db
         .credential_schemas
-        .create_ld_with_claims("Test", &holder_organisation, "NONE", &new_claim_schemas)
+        .create_with_claims(
+            "Test",
+            &holder_organisation,
+            "NONE",
+            &new_claim_schemas,
+            "JSON_LD_CLASSIC",
+        )
         .await;
 
     let holder_credential = holder_context

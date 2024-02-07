@@ -95,12 +95,13 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
-    pub async fn create_ld_with_claims(
+    pub async fn create_with_claims(
         &self,
         name: &str,
         organisation: &Organisation,
         revocation_method: &str,
         new_claim_schemas: &[(Uuid, &str, bool, &str)],
+        format: &str,
     ) -> CredentialSchema {
         let claim_schemas = new_claim_schemas
             .iter()
@@ -123,7 +124,7 @@ impl CredentialSchemasDB {
             name: name.to_owned(),
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: "JSON_LD_CLASSIC".to_string(),
+            format: format.to_string(),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
         };

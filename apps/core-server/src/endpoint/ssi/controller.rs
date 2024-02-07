@@ -2,14 +2,14 @@ use super::dto::{
     ConnectRequestRestDTO, ConnectVerifierResponseRestDTO, IssuerResponseRestDTO,
     JsonLDContextResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
-    PostSsiIssuerConnectQueryParams, PostSsiIssuerSubmitQueryParams,
-    PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
+    OpenID4VPPresentationDefinitionResponseRestDTO, PostSsiIssuerConnectQueryParams,
+    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::ssi::dto::{
     DidDocumentRestDTO, OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
-    OpenID4VCICredentialResponseRestDTO, OpenID4VCIErrorResponseRestDTO,
+    OpenID4VCICredentialResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO,
 };
@@ -424,6 +424,61 @@ pub(crate) async fn oidc_verifier_direct_post(
             tracing::error!("Missing interaction or proof");
             (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()
         }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/oidc-verifier/v1/{id}/presentation-definition",
+    params(
+        ("id" = Uuid, Path, description = "Proof id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = OpenID4VPPresentationDefinitionResponseRestDTO),
+        (status = 400, description = "OIDC Verifier errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 404, description = "Proof does not exist"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn oidc_verifier_presentation_definition(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .oidc_service
+        .oidc_verifier_presentation_definition(id)
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(OpenID4VPPresentationDefinitionResponseRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
+            )
+                .into_response()
+        }
+        Err(ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { .. })) => (
+            StatusCode::BAD_REQUEST,
+            Json(OpenID4VCIErrorResponseRestDTO {
+                error: OpenID4VCIErrorRestEnum::InvalidRequest,
+            }),
+        )
+            .into_response(),
+        Err(ServiceError::EntityNotFound(_)) => StatusCode::NOT_FOUND.into_response(),
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()

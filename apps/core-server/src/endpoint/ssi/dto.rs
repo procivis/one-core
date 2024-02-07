@@ -26,14 +26,21 @@ use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
 };
 use one_core::service::{
-    oidc::dto::{
-        OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
-        OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
-        OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-        OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-        OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO,
-        OpenID4VCITokenResponseDTO,
+    oidc::{
+        dto::{
+            OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
+            OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
+            OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+            OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+            OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProofRequestDTO,
+            OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+        },
+        model::{
+            OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+            OpenID4VPPresentationDefinitionConstraintField,
+            OpenID4VPPresentationDefinitionInputDescriptor,
+        },
     },
     ssi_issuer::dto::IssuerResponseDTO,
     ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
@@ -452,4 +459,35 @@ pub struct JsonLDInlineEntityRestDTO {
     pub context: JsonLDContextRestDTO,
     #[serde(rename = "@id")]
     pub id: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPPresentationDefinition)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenID4VPPresentationDefinitionResponseRestDTO {
+    pub id: Uuid,
+    #[from(with_fn = convert_inner)]
+    pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptorRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPPresentationDefinitionInputDescriptor)]
+pub struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
+    pub id: String,
+    pub constraints: OpenID4VPPresentationDefinitionConstraintRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPPresentationDefinitionConstraint)]
+pub struct OpenID4VPPresentationDefinitionConstraintRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub fields: Vec<OpenID4VPPresentationDefinitionConstraintFieldRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPPresentationDefinitionConstraintField)]
+pub struct OpenID4VPPresentationDefinitionConstraintFieldRestDTO {
+    pub id: Uuid,
+    pub path: Vec<String>,
+    pub optional: bool,
 }
