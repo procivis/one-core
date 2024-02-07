@@ -6,7 +6,6 @@ use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::model::CredentialStatus;
 
-// #[derive(Debug, Serialize, Deserialize)]
 // The main credential
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

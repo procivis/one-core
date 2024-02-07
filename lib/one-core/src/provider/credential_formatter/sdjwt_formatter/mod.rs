@@ -183,6 +183,11 @@ impl CredentialFormatter for SDJWTFormatter {
 
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
+            signing_key_algorithms: vec![
+                "EDDSA".to_owned(),
+                "ES256".to_owned(),
+                "DILITHIUM".to_owned(),
+            ],
             features: vec!["SELECTIVE_DISCLOSURE".to_string()],
         }
     }

@@ -7,7 +7,9 @@ pub mod jwt;
 pub mod jwt_formatter;
 pub mod sdjwt_formatter;
 
-pub mod json_ld_formatter;
+pub mod json_ld;
+pub mod json_ld_bbsplus;
+pub mod json_ld_classic;
 pub mod mdoc_formatter;
 pub mod status_list_2021_jwt_formatter;
 
@@ -33,7 +35,9 @@ pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
 
 #[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FormatterCapabilities {
+    pub signing_key_algorithms: Vec<String>,
     pub features: Vec<String>,
 }
 
