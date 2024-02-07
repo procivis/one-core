@@ -171,7 +171,6 @@ keyAlgorithm:
   BBS_PLUS:
     display: "keyAlgorithm.bbs_plus"
     order: 2
-    disabled: true
     type: "BBS_PLUS"
     params: null
   ES256:
