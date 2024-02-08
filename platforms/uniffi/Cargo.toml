@@ -1,5 +1,5 @@
 [package]
-name = "one-core-uniffi"
+name    = "one-core-uniffi"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -12,16 +12,16 @@ crate-type = ["cdylib", "staticlib"]
 strict = []
 
 [dependencies]
-one-core = { version = "0.1.0", path = "../../lib/one-core" }
-sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider" }
+one-core             = { version = "0.1.0", path = "../../lib/one-core" }
+sql-data-provider    = { version = "0.1.0", path = "../../lib/sql-data-provider" }
 dto_mapper.workspace = true
-uniffi.workspace = true
+uniffi.workspace     = true
 serde_json.workspace = true
-time.workspace = true
-tokio.workspace = true
-uuid.workspace = true
-url.workspace = true
-thiserror.workspace = true
+time.workspace       = true
+tokio.workspace      = true
+uuid.workspace       = true
+url.workspace        = true
+thiserror.workspace  = true
 
 [build-dependencies]
 uniffi = { workspace = true, features = ["build"] }

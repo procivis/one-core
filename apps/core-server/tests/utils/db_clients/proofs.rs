@@ -58,9 +58,9 @@ impl ProofsDB {
             interaction: interaction.cloned(),
         };
 
-        self.repository.create_proof(proof.clone()).await.unwrap();
+        let proof_id = self.repository.create_proof(proof.clone()).await.unwrap();
 
-        proof
+        self.get(&proof_id).await
     }
 
     pub async fn set_proof_claims(&self, id: &ProofId, claims: Vec<Claim>) {
@@ -90,7 +90,7 @@ impl ProofsDB {
                     }),
                     holder_did: Some(DidRelations::default()),
                     verifier_did: Some(DidRelations::default()),
-                    ..Default::default()
+                    interaction: Some(Default::default()),
                 },
             )
             .await

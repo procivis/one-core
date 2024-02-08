@@ -58,4 +58,9 @@ impl SSIApi {
         let url = format!("/ssi/oidc-verifier/v1/{proof_id}/presentation-definition");
         self.client.get(&url).await
     }
+
+    pub async fn get_client_metadata(&self, proof_id: impl Into<Uuid>) -> Response {
+        let url = format!("/ssi/oidc-verifier/v1/{}/client-metadata", proof_id.into());
+        self.client.get(&url).await
+    }
 }

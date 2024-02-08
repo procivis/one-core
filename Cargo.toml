@@ -37,7 +37,7 @@ uuid               = { version = "1.7", features = ["v4", "serde"] }
 validator          = { version = "0.16", features = ["derive"] }
 uniffi             = { version = "0.26", features = ["cli"] }
 thiserror          = { version = "1.0" }
-tokio              = { version = "1.35" }
+tokio              = { version = "1.36" }
 url                = { version = "2.5", features = ["serde"] }
 utoipa             = { version = "4.2", default-features = false }
 sea-orm            = { version = "0.12", default-features = false }
