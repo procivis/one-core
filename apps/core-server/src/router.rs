@@ -214,6 +214,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::oidc_verifier_presentation_definition),
         )
         .route(
+            "/ssi/oidc-verifier/v1/:id/client-metadata",
+            get(ssi::controller::oidc_client_metadata),
+        )
+        .route(
             "/ssi/revocation/v1/list/:id",
             get(ssi::controller::get_revocation_list_by_id),
         )
@@ -355,6 +359,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::oidc_create_credential,
             endpoint::ssi::controller::oidc_verifier_direct_post,
             endpoint::ssi::controller::oidc_verifier_presentation_definition,
+            endpoint::ssi::controller::oidc_client_metadata,
             endpoint::ssi::controller::get_json_ld_context,
 
             endpoint::interaction::controller::handle_invitation,
@@ -467,6 +472,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::JsonLDContextRestDTO,
                 endpoint::ssi::dto::JsonLDEntityRestDTO,
                 endpoint::ssi::dto::JsonLDInlineEntityRestDTO,
+                endpoint::ssi::dto::OpenID4VPFormatRestDTO,
+                endpoint::ssi::dto::OpenID4VPClientMetadataResponseRestDTO,
                 endpoint::ssi::dto::DidDocumentRestDTO,
                 endpoint::ssi::dto::DidVerificationMethodRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkRestDTO,

@@ -119,7 +119,7 @@ pub(super) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
     serde_json::to_vec(&dto).map_err(TransportProtocolError::JsonError)
 }
 
-pub(super) fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>(
+pub fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>(
     interaction: Option<&Interaction>,
 ) -> Result<DataDTO, TransportProtocolError> {
     let data = interaction

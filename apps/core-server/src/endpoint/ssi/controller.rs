@@ -1,9 +1,10 @@
 use super::dto::{
     ConnectRequestRestDTO, ConnectVerifierResponseRestDTO, IssuerResponseRestDTO,
     JsonLDContextResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
-    OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
-    OpenID4VPPresentationDefinitionResponseRestDTO, PostSsiIssuerConnectQueryParams,
-    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
+    OpenID4VPClientMetadataResponseRestDTO, OpenID4VPDirectPostRequestRestDTO,
+    OpenID4VPDirectPostResponseRestDTO, OpenID4VPPresentationDefinitionResponseRestDTO,
+    PostSsiIssuerConnectQueryParams, PostSsiIssuerSubmitQueryParams,
+    PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
@@ -478,6 +479,64 @@ pub(crate) async fn oidc_verifier_presentation_definition(
             }),
         )
             .into_response(),
+        Err(ServiceError::EntityNotFound(_)) => StatusCode::NOT_FOUND.into_response(),
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/oidc-verifier/v1/{id}/client-metadata",
+    params(
+        ("id" = Uuid, Path, description = "Proof id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = OpenID4VPClientMetadataResponseRestDTO),
+        (status = 400, description = "OIDC Verifier errors", body = OpenID4VCIErrorResponseRestDTO),
+        (status = 404, description = "Proof does not exist"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn oidc_client_metadata(
+    state: State<AppState>,
+    WithRejection(Path(proof_id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .oidc_service
+        .oidc_get_client_metadata(proof_id)
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(OpenID4VPClientMetadataResponseRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
+            )
+                .into_response()
+        }
+        Err(error @ ServiceError::BusinessLogic(BusinessLogicError::InvalidProofState { .. })) => {
+            tracing::error!("BAD_REQUEST validation error: {error}");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(OpenID4VCIErrorResponseRestDTO {
+                    error: OpenID4VCIErrorRestEnum::InvalidRequest,
+                }),
+            )
+                .into_response()
+        }
         Err(ServiceError::EntityNotFound(_)) => StatusCode::NOT_FOUND.into_response(),
         Err(e) => {
             tracing::error!("Error: {:?}", e);

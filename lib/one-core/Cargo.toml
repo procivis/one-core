@@ -26,14 +26,14 @@ mockall                    = { workspace = true, optional = true }
 rand.workspace             = true
 rand_chacha.workspace      = true
 sha2                       = { version = "0.10" }
-ed25519-compact            = { version = "2.0" }
+ed25519-compact            = { version = "2.1" }
 bit-vec                    = { version = "0.6" }
 flate2                     = { version = "1.0" }
 regex                      = { version = "1.10" }
 url.workspace              = true
 figment                    = { version = "0.10", default-features = false }
 bs58                       = { version = "0.5" }
-strum_macros               = { version = "0.25" }
+strum_macros               = { version = "0.26" }
 cocoon                     = { version = "0.4" }
 tokio-util                 = { version = "0.7", features = ["compat"] }
 shared-types               = { version = "0.1.0", path = "../shared-types" }
@@ -43,11 +43,10 @@ fmap.workspace             = true
 pqc_dilithium              = { version = "0.2.0", git = "https://github.com/kibernetikos/dilithium", rev = "b7106801cf" }
 convert_case               = { version = "0.6" }
 sophia_jsonld              = { version = "0.8.0", features = ["http_client"] }
-sophia_api                 = "0.8.0"
-sophia_c14n                = "0.8.0"
+sophia_api                 = { version = "0.8" }
+sophia_c14n                = { version = "0.8" }
 pairing_crypto             = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
-blstrs                     = "0.7"
-
+blstrs                     = { version = "0.7" }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

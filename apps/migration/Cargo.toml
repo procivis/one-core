@@ -1,5 +1,5 @@
 [package]
-name = "migration"
+name    = "migration"
 version = "0.1.0"
 edition = "2021"
 publish = false
@@ -9,24 +9,18 @@ name = "migration"
 path = "src/lib.rs"
 
 [[bin]]
-name = "migration"
-path = "src/main.rs"
+name              = "migration"
+path              = "src/main.rs"
 required-features = ["cli", "mysql"]
 
 [dependencies]
-sea-orm-migration = { version = "0.12", default_features = false, features = [
-    "runtime-tokio-rustls",
-    "sqlx-sqlite",
-] }
-tokio = { workspace = true, features = [
-    "macros",
-    "rt-multi-thread",
-], optional = true }
+sea-orm-migration = { version = "0.12", default_features = false, features = ["runtime-tokio-rustls", "sqlx-sqlite"] }
+tokio             = { workspace = true, features = ["macros", "rt-multi-thread"], optional = true }
 
 [features]
 default = ["cli", "mysql"]
-cli = ["sea-orm-migration/cli", "tokio"]
-mysql = ["sea-orm-migration/sqlx-mysql"]
+cli     = ["sea-orm-migration/cli", "tokio"]
+mysql   = ["sea-orm-migration/sqlx-mysql"]
 
 [lints]
 workspace = true

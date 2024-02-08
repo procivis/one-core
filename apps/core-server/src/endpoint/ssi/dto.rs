@@ -15,7 +15,7 @@ use one_core::provider::did_method::dto::PublicKeyJwkRsaDataDTO;
 use one_core::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferCredentialDTO,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
-    OpenID4VCIGrant, OpenID4VCIGrants,
+    OpenID4VCIGrant, OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPFormat,
 };
 use one_core::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
@@ -490,4 +490,18 @@ pub struct OpenID4VPPresentationDefinitionConstraintFieldRestDTO {
     pub id: Uuid,
     pub path: Vec<String>,
     pub optional: bool,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPFormat)]
+pub struct OpenID4VPFormatRestDTO {
+    pub alg: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPClientMetadata)]
+pub struct OpenID4VPClientMetadataResponseRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub vp_formats: HashMap<String, OpenID4VPFormatRestDTO>,
+    pub client_id_scheme: String,
 }
