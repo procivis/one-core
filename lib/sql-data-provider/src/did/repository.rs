@@ -1,7 +1,6 @@
 use std::{collections::HashMap, str::FromStr};
 
 use autometrics::autometrics;
-use migration::JoinType;
 use one_core::model::{
     did::{Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest},
     key::{Key, KeyId},
@@ -121,7 +120,7 @@ impl DidRepository for DidProvider {
     async fn get_did_list(&self, query_params: DidListQuery) -> Result<GetDidList, DataLayerError> {
         let query = did::Entity::find()
             .distinct()
-            .with_filter_join(&query_params, JoinType::InnerJoin)
+            .with_filter_join(&query_params)
             .with_list_query(&query_params)
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);

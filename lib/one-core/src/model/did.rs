@@ -9,7 +9,7 @@ use super::{
     list_query::ListQuery,
     organisation::{Organisation, OrganisationId, OrganisationRelations},
 };
-use strum_macros::{Display, EnumString};
+
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DidType {
@@ -23,17 +23,12 @@ impl DidType {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, EnumString, Display)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum KeyRole {
-    #[strum(serialize = "AUTHENTICATION")]
     Authentication,
-    #[strum(serialize = "ASSERTION_METHOD")]
     AssertionMethod,
-    #[strum(serialize = "KEY_AGREEMENT")]
     KeyAgreement,
-    #[strum(serialize = "CAPABILITY_INVOCATION")]
     CapabilityInvocation,
-    #[strum(serialize = "CAPABILITY_DELEGATION")]
     CapabilityDelegation,
 }
 

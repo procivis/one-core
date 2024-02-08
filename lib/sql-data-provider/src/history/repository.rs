@@ -1,5 +1,5 @@
 use autometrics::autometrics;
-use sea_orm::{ActiveModelTrait, EntityTrait, JoinType, PaginatorTrait, QueryOrder};
+use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder};
 
 use one_core::{
     model::history::{GetHistoryList, History, HistoryListQuery},
@@ -32,7 +32,7 @@ impl HistoryRepository for HistoryProvider {
     ) -> Result<GetHistoryList, DataLayerError> {
         let query = history::Entity::find()
             .with_list_query(&query_params)
-            .with_filter_join(&query_params, JoinType::LeftJoin)
+            .with_filter_join(&query_params)
             .order_by_desc(history::Column::CreatedDate)
             .order_by_desc(history::Column::Id);
 

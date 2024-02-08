@@ -4,11 +4,10 @@ use one_core::model::{
     list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
     list_query::ListQuery,
 };
-use sea_orm::sea_query::{ConditionType, IntoTableRef};
 use sea_orm::{
     query::*,
     sea_query::{IntoCondition, SimpleExpr},
-    ColumnTrait, EntityTrait, IntoIdentity, QueryOrder, QuerySelect, RelationDef, RelationType,
+    ColumnTrait, EntityTrait, QueryOrder, QuerySelect, RelationDef,
 };
 
 pub trait IntoSortingColumn {
@@ -21,8 +20,13 @@ pub trait IntoFilterCondition: Clone + ListFilterValue {
     fn get_condition(self) -> Condition;
 }
 
+pub struct JoinRelation {
+    pub join_type: JoinType,
+    pub relation_def: RelationDef,
+}
+
 pub trait IntoJoinCondition: Clone + ListFilterValue {
-    fn get_join(self) -> Vec<RelationDef>;
+    fn get_join(self) -> Vec<JoinRelation>;
 }
 
 pub trait SelectWithFilterJoin<SortableColumn, JoinValue>
@@ -31,11 +35,7 @@ where
     JoinValue: IntoJoinCondition,
 {
     /// applies all `query` declared constraits (Joining, sorting and pagination) on the query
-    fn with_filter_join(
-        self,
-        query: &ListQuery<SortableColumn, JoinValue>,
-        join_type: JoinType,
-    ) -> Self;
+    fn with_filter_join(self, query: &ListQuery<SortableColumn, JoinValue>) -> Self;
 }
 
 impl<T, SortableColumn, JoinValue> SelectWithFilterJoin<SortableColumn, JoinValue> for Select<T>
@@ -44,24 +44,26 @@ where
     SortableColumn: IntoSortingColumn,
     JoinValue: IntoJoinCondition,
 {
-    fn with_filter_join(
-        self,
-        query: &ListQuery<SortableColumn, JoinValue>,
-        join_type: JoinType,
-    ) -> Select<T> {
+    fn with_filter_join(self, query: &ListQuery<SortableColumn, JoinValue>) -> Select<T> {
         let mut result = self;
 
         if let Some(filter) = &query.filtering {
-            let relation_defs = get_join_condition(filter);
-            let mut relation_defs_unique = vec![];
-            for relation in relation_defs {
-                if !relation_defs_unique.iter().any(|r: &RelationDef| {
-                    r.to_tbl == relation.to_tbl && r.from_tbl == relation.from_tbl
+            let mut unique_relations: Vec<JoinRelation> = vec![];
+            for relation in get_join_condition(filter) {
+                if !unique_relations.iter().any(|r| {
+                    r.join_type == relation.join_type
+                        && r.relation_def.to_tbl == relation.relation_def.to_tbl
+                        && r.relation_def.from_tbl == relation.relation_def.from_tbl
                 }) {
-                    relation_defs_unique.push(relation);
+                    unique_relations.push(relation);
                 }
             }
-            for relation_def in relation_defs_unique {
+
+            for JoinRelation {
+                join_type,
+                relation_def,
+            } in unique_relations
+            {
                 result = result.join(join_type, relation_def);
             }
         }
@@ -73,7 +75,7 @@ where
 // helpers
 fn get_join_condition<JoinValue: IntoJoinCondition>(
     filter: &ListFilterCondition<JoinValue>,
-) -> Vec<RelationDef> {
+) -> Vec<JoinRelation> {
     let mut result = vec![];
     match filter {
         ListFilterCondition::Value(v) => {
@@ -92,25 +94,6 @@ fn get_join_condition<JoinValue: IntoJoinCondition>(
     }
 
     result
-}
-
-pub fn join_relation_def(
-    from: impl ColumnTrait + IntoIdentity + Clone,
-    to: impl ColumnTrait + IntoIdentity + Clone,
-) -> RelationDef {
-    RelationDef {
-        rel_type: RelationType::HasMany,
-        from_tbl: from.to_owned().entity_name().into_table_ref(),
-        to_tbl: to.to_owned().entity_name().into_table_ref(),
-        from_col: from.into_identity(),
-        to_col: to.into_identity(),
-        is_owner: false,
-        on_delete: None,
-        on_update: None,
-        on_condition: None,
-        fk_name: None,
-        condition_type: ConditionType::Any,
-    }
 }
 
 pub trait SelectWithListQuery<SortableColumn, FilterValue>

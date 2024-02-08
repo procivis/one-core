@@ -3,17 +3,22 @@ use one_core::{
     model::did::{Did, DidFilterValue, GetDidList, SortableDidColumn},
     repository::error::DataLayerError,
 };
-use sea_orm::sea_query::IntoCondition;
-use sea_orm::{sea_query::SimpleExpr, ColumnTrait, IntoSimpleExpr, RelationDef, Set};
+use sea_orm::{
+    sea_query::{IntoCondition, SimpleExpr},
+    ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set,
+};
 
-use crate::entity::{key, key_did};
-use crate::list_query_generic::{join_relation_def, IntoJoinCondition};
+use crate::list_query_generic::IntoJoinCondition;
 use crate::{
     common::calculate_pages_count,
     entity::{self, did},
     list_query_generic::{
         get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
     },
+};
+use crate::{
+    entity::{key, key_did},
+    list_query_generic::JoinRelation,
 };
 
 impl From<entity::did::Model> for Did {
@@ -73,8 +78,8 @@ impl IntoFilterCondition for DidFilterValue {
                 .is_in(
                     key_roles
                         .into_iter()
-                        .map(|k| k.to_string())
-                        .collect::<Vec<String>>(),
+                        .map(key_did::KeyRole::from)
+                        .collect::<Vec<_>>(),
                 )
                 .into_condition(),
         }
@@ -82,16 +87,25 @@ impl IntoFilterCondition for DidFilterValue {
 }
 
 impl IntoJoinCondition for DidFilterValue {
-    fn get_join(self) -> Vec<RelationDef> {
+    fn get_join(self) -> Vec<JoinRelation> {
         match self {
             DidFilterValue::KeyAlgorithms(_) => {
                 vec![
-                    join_relation_def(did::Column::Id, key_did::Column::DidId),
-                    join_relation_def(key_did::Column::KeyId, key::Column::Id),
+                    JoinRelation {
+                        join_type: JoinType::InnerJoin,
+                        relation_def: did::Relation::KeyDid.def(),
+                    },
+                    JoinRelation {
+                        join_type: JoinType::InnerJoin,
+                        relation_def: key_did::Relation::Key.def(),
+                    },
                 ]
             }
             DidFilterValue::KeyRoles(_) => {
-                vec![join_relation_def(did::Column::Id, key_did::Column::DidId)]
+                vec![JoinRelation {
+                    join_type: JoinType::InnerJoin,
+                    relation_def: did::Relation::KeyDid.def(),
+                }]
             }
             _ => vec![],
         }

@@ -30,6 +30,20 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organisation,
+
+    // event related entities
+    #[sea_orm(
+        belongs_to = "super::credential::Entity",
+        from = "Column::EntityId",
+        to = "super::credential::Column::Id"
+    )]
+    MentionedCredential,
+    #[sea_orm(
+        belongs_to = "super::proof::Entity",
+        from = "Column::EntityId",
+        to = "super::proof::Column::Id"
+    )]
+    MentionedProof,
 }
 
 impl Related<super::organisation::Entity> for Entity {
