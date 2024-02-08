@@ -134,6 +134,17 @@ pub enum ExactDidFilterColumnRestEnum {
     Did,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[into("one_core::model::did::KeyRole")]
+pub enum KeyRoleRestEnum {
+    Authentication,
+    AssertionMethod,
+    KeyAgreement,
+    CapabilityInvocation,
+    CapabilityDelegation,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum Boolean {
@@ -159,6 +170,10 @@ pub struct DidFilterQueryParamsRest {
     pub organisation_id: Uuid,
     #[param(inline)]
     pub deactivated: Option<Boolean>,
+    #[param(inline, rename = "keyAlgorithms[]")]
+    pub key_algorithms: Option<Vec<String>>,
+    #[param(inline, rename = "keyRoles[]")]
+    pub key_roles: Option<Vec<KeyRoleRestEnum>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

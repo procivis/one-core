@@ -4,10 +4,11 @@ use one_core::model::{
     list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
     list_query::ListQuery,
 };
+use sea_orm::sea_query::{ConditionType, IntoTableRef};
 use sea_orm::{
     query::*,
     sea_query::{IntoCondition, SimpleExpr},
-    ColumnTrait, EntityTrait, QueryOrder, QuerySelect,
+    ColumnTrait, EntityTrait, IntoIdentity, QueryOrder, QuerySelect, RelationDef, RelationType,
 };
 
 pub trait IntoSortingColumn {
@@ -18,6 +19,98 @@ pub trait IntoSortingColumn {
 pub trait IntoFilterCondition: Clone + ListFilterValue {
     /// converts single query field into a sea-orm condition
     fn get_condition(self) -> Condition;
+}
+
+pub trait IntoJoinCondition: Clone + ListFilterValue {
+    fn get_join(self) -> Vec<RelationDef>;
+}
+
+pub trait SelectWithFilterJoin<SortableColumn, JoinValue>
+where
+    SortableColumn: IntoSortingColumn,
+    JoinValue: IntoJoinCondition,
+{
+    /// applies all `query` declared constraits (Joining, sorting and pagination) on the query
+    fn with_filter_join(
+        self,
+        query: &ListQuery<SortableColumn, JoinValue>,
+        join_type: JoinType,
+    ) -> Self;
+}
+
+impl<T, SortableColumn, JoinValue> SelectWithFilterJoin<SortableColumn, JoinValue> for Select<T>
+where
+    T: EntityTrait,
+    SortableColumn: IntoSortingColumn,
+    JoinValue: IntoJoinCondition,
+{
+    fn with_filter_join(
+        self,
+        query: &ListQuery<SortableColumn, JoinValue>,
+        join_type: JoinType,
+    ) -> Select<T> {
+        let mut result = self;
+
+        if let Some(filter) = &query.filtering {
+            let relation_defs = get_join_condition(filter);
+            let mut relation_defs_unique = vec![];
+            for relation in relation_defs {
+                if !relation_defs_unique.iter().any(|r: &RelationDef| {
+                    r.to_tbl == relation.to_tbl && r.from_tbl == relation.from_tbl
+                }) {
+                    relation_defs_unique.push(relation);
+                }
+            }
+            for relation_def in relation_defs_unique {
+                result = result.join(join_type, relation_def);
+            }
+        }
+
+        result
+    }
+}
+
+// helpers
+fn get_join_condition<JoinValue: IntoJoinCondition>(
+    filter: &ListFilterCondition<JoinValue>,
+) -> Vec<RelationDef> {
+    let mut result = vec![];
+    match filter {
+        ListFilterCondition::Value(v) => {
+            result.append(&mut v.to_owned().get_join());
+        }
+        ListFilterCondition::And(filter_list) => {
+            for value in filter_list {
+                result.append(&mut get_join_condition(value));
+            }
+        }
+        ListFilterCondition::Or(filter_list) => {
+            for value in filter_list {
+                result.append(&mut get_join_condition(value));
+            }
+        }
+    }
+
+    result
+}
+
+pub fn join_relation_def(
+    from: impl ColumnTrait + IntoIdentity + Clone,
+    to: impl ColumnTrait + IntoIdentity + Clone,
+) -> RelationDef {
+    RelationDef {
+        rel_type: RelationType::HasMany,
+        from_tbl: from.to_owned().entity_name().into_table_ref(),
+        to_tbl: to.to_owned().entity_name().into_table_ref(),
+        from_col: from.into_identity(),
+        to_col: to.into_identity(),
+        is_owner: false,
+        on_delete: None,
+        on_update: None,
+        on_condition: None,
+        fk_name: None,
+        condition_type: ConditionType::Any,
+    }
 }
 
 pub trait SelectWithListQuery<SortableColumn, FilterValue>

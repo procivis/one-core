@@ -1,5 +1,5 @@
 use autometrics::autometrics;
-use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder};
+use sea_orm::{ActiveModelTrait, EntityTrait, JoinType, PaginatorTrait, QueryOrder};
 
 use one_core::{
     model::history::{GetHistoryList, History, HistoryListQuery},
@@ -7,8 +7,8 @@ use one_core::{
 };
 use shared_types::HistoryId;
 
-use super::{mapper::create_list_response, queries::SelectWithFilterJoins};
-
+use super::mapper::create_list_response;
+use crate::list_query_generic::SelectWithFilterJoin;
 use crate::{
     entity::history, history::HistoryProvider, list_query_generic::SelectWithListQuery,
     mapper::to_data_layer_error,
@@ -32,7 +32,7 @@ impl HistoryRepository for HistoryProvider {
     ) -> Result<GetHistoryList, DataLayerError> {
         let query = history::Entity::find()
             .with_list_query(&query_params)
-            .with_filter_joins(&query_params)
+            .with_filter_join(&query_params, JoinType::LeftJoin)
             .order_by_desc(history::Column::CreatedDate)
             .order_by_desc(history::Column::Id);
 

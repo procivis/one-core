@@ -1,25 +1,26 @@
 use std::{collections::HashMap, str::FromStr};
 
 use autometrics::autometrics;
+use migration::JoinType;
 use one_core::model::{
     did::{Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest},
     key::{Key, KeyId},
 };
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set, Unchanged,
 };
 use shared_types::{DidId, DidValue};
 use uuid::Uuid;
 
 use super::{mapper::create_list_response, DidProvider};
+use crate::list_query_generic::SelectWithFilterJoin;
 use crate::{
     entity::{did, key_did},
     list_query_generic::SelectWithListQuery,
     mapper::to_data_layer_error,
 };
-
 impl DidProvider {
     async fn resolve_relations(
         &self,
@@ -119,6 +120,8 @@ impl DidRepository for DidProvider {
 
     async fn get_did_list(&self, query_params: DidListQuery) -> Result<GetDidList, DataLayerError> {
         let query = did::Entity::find()
+            .distinct()
+            .with_filter_join(&query_params, JoinType::InnerJoin)
             .with_list_query(&query_params)
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);

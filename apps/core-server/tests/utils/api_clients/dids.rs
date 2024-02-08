@@ -55,8 +55,18 @@ impl DidsApi {
         page_size: u64,
         organisation_id: &impl Display,
         deactivated: bool,
+        key_algorithms: Option<String>,
+        key_roles: Option<String>,
     ) -> Response {
-        let url = format!("/api/did/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}&deactivated={deactivated}");
+        let mut url = format!("/api/did/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}&deactivated={deactivated}");
+        if key_algorithms.is_some() {
+            let key_algorithms = key_algorithms.unwrap();
+            url.push_str(&format!("&keyAlgorithms[]={key_algorithms}"));
+        }
+        if key_roles.is_some() {
+            let key_roles = key_roles.unwrap();
+            url.push_str(&format!("&keyRoles[]={key_roles}"));
+        }
         self.client.get(&url).await
     }
 
