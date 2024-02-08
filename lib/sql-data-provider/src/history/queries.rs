@@ -2,13 +2,9 @@ use sea_orm::{
     sea_query::{
         ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
     },
-    ColumnTrait, IntoSimpleExpr, RelationDef,
+    ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait,
 };
 
-use crate::list_query_generic::IntoJoinCondition;
-use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
-
-use crate::list_query_generic::join_relation_def;
 use crate::{
     entity::{
         claim, claim_schema, credential, credential_schema, did, history, proof, proof_claim,
@@ -16,9 +12,10 @@ use crate::{
     },
     list_query_generic::{
         get_equals_condition, get_greater_than_condition, get_lesser_than_condition,
-        IntoFilterCondition, IntoSortingColumn,
+        IntoFilterCondition, IntoJoinCondition, IntoSortingColumn, JoinRelation,
     },
 };
+use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
 
 impl IntoSortingColumn for SortableHistoryColumn {
     fn get_column(&self) -> SimpleExpr {
@@ -327,12 +324,18 @@ fn credential_schema_filter_condition(
 }
 
 impl IntoJoinCondition for HistoryFilterValue {
-    fn get_join(self) -> Vec<RelationDef> {
+    fn get_join(self) -> Vec<JoinRelation> {
         match self {
             HistoryFilterValue::DidId(_) => {
                 vec![
-                    join_relation_def(history::Column::EntityId, credential::Column::Id),
-                    join_relation_def(history::Column::EntityId, proof::Column::Id),
+                    JoinRelation {
+                        join_type: JoinType::LeftJoin,
+                        relation_def: history::Relation::MentionedCredential.def(),
+                    },
+                    JoinRelation {
+                        join_type: JoinType::LeftJoin,
+                        relation_def: history::Relation::MentionedProof.def(),
+                    },
                 ]
             }
             _ => vec![],
