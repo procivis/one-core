@@ -31,10 +31,14 @@ impl IntoSortingColumn for SortableHistoryColumn {
 impl IntoFilterCondition for HistoryFilterValue {
     fn get_condition(self) -> sea_orm::Condition {
         match self {
-            HistoryFilterValue::EntityType(entity_type) => get_equals_condition(
-                history::Column::EntityType,
-                history::HistoryEntityType::from(entity_type),
-            ),
+            HistoryFilterValue::EntityTypes(entity_types) => history::Column::EntityType
+                .is_in(
+                    entity_types
+                        .into_iter()
+                        .map(history::HistoryEntityType::from)
+                        .collect::<Vec<_>>(),
+                )
+                .into_condition(),
             HistoryFilterValue::EntityId(entity_id) => {
                 get_equals_condition(history::Column::EntityId, entity_id)
             }

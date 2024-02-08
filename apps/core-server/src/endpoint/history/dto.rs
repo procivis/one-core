@@ -69,7 +69,8 @@ pub enum SortableHistoryColumnRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryFilterQueryParamsRest {
-    pub entity_type: Option<HistoryEntityType>,
+    #[param(inline, rename = "entityTypes[]")]
+    pub entity_types: Option<Vec<HistoryEntityType>>,
     pub entity_id: Option<EntityId>,
     pub action: Option<HistoryAction>,
     #[serde(default, deserialize_with = "deserialize_timestamp")]

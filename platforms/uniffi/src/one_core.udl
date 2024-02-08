@@ -268,7 +268,7 @@ dictionary HistoryListQueryBindingDTO {
   string organisation_id;
   string? entity_id;
   HistoryActionBindingEnum? action;
-  HistoryEntityTypeBindingEnum? entity_type;
+  sequence<HistoryEntityTypeBindingEnum>? entity_types;
   string? created_date_from;
   string? created_date_to;
   string? did_id;

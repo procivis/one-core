@@ -863,7 +863,9 @@ async fn handle_credential_invitation(
                     )
                     .await
                     .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
-                    .unwrap();
+                    .ok_or(TransportProtocolError::Failed(
+                        "Credential schema error".to_string(),
+                    ))?;
 
                 let claim_schemas = credential_schema.claim_schemas.as_ref().ok_or(
                     TransportProtocolError::Failed(

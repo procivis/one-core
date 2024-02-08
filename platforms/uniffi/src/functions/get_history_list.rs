@@ -34,9 +34,12 @@ impl OneCoreBinding {
                     into_uuid(&value)?.into(),
                 )));
             }
-            if let Some(value) = query.entity_type {
-                conditions.push(ListFilterCondition::Value(HistoryFilterValue::EntityType(
-                    value.into(),
+            if let Some(value) = query.entity_types {
+                conditions.push(ListFilterCondition::Value(HistoryFilterValue::EntityTypes(
+                    value
+                        .into_iter()
+                        .map(|entity_type| entity_type.into())
+                        .collect(),
                 )));
             }
             if let Some(value) = query.action {

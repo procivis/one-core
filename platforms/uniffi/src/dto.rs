@@ -362,7 +362,7 @@ pub struct HistoryListQueryBindingDTO {
     pub page_size: u32,
     pub organisation_id: String,
     pub entity_id: Option<String>,
-    pub entity_type: Option<HistoryEntityTypeBindingEnum>,
+    pub entity_types: Option<Vec<HistoryEntityTypeBindingEnum>>,
     pub action: Option<HistoryActionBindingEnum>,
     pub created_date_from: Option<String>,
     pub created_date_to: Option<String>,

@@ -432,7 +432,9 @@ async fn handle_credential_invitation(
             )
             .await
             .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
-            .unwrap(),
+            .ok_or(TransportProtocolError::Failed(
+                "Credential schema error".to_string(),
+            ))?,
         None => {
             let mut credential_schema = credential_schema;
             credential_schema.organisation = Some(organisation.to_owned());

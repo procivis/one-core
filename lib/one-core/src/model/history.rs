@@ -54,7 +54,7 @@ pub enum SortableHistoryColumn {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HistoryFilterValue {
-    EntityType(HistoryEntityType),
+    EntityTypes(Vec<HistoryEntityType>),
     EntityId(EntityId),
     Action(HistoryAction),
     CreatedDateFrom(OffsetDateTime),
