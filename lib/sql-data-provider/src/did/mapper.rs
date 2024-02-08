@@ -3,8 +3,11 @@ use one_core::{
     model::did::{Did, DidFilterValue, GetDidList, SortableDidColumn},
     repository::error::DataLayerError,
 };
-use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
+use sea_orm::sea_query::IntoCondition;
+use sea_orm::{sea_query::SimpleExpr, ColumnTrait, IntoSimpleExpr, RelationDef, Set};
 
+use crate::entity::{key, key_did};
+use crate::list_query_generic::{join_relation_def, IntoJoinCondition};
 use crate::{
     common::calculate_pages_count,
     entity::{self, did},
@@ -63,6 +66,34 @@ impl IntoFilterCondition for DidFilterValue {
             DidFilterValue::Deactivated(is_deactivated) => {
                 get_equals_condition(did::Column::Deactivated, is_deactivated)
             }
+            DidFilterValue::KeyAlgorithms(key_algorithms) => {
+                key::Column::KeyType.is_in(key_algorithms).into_condition()
+            }
+            DidFilterValue::KeyRoles(key_roles) => key_did::Column::Role
+                .is_in(
+                    key_roles
+                        .into_iter()
+                        .map(|k| k.to_string())
+                        .collect::<Vec<String>>(),
+                )
+                .into_condition(),
+        }
+    }
+}
+
+impl IntoJoinCondition for DidFilterValue {
+    fn get_join(self) -> Vec<RelationDef> {
+        match self {
+            DidFilterValue::KeyAlgorithms(_) => {
+                vec![
+                    join_relation_def(did::Column::Id, key_did::Column::DidId),
+                    join_relation_def(key_did::Column::KeyId, key::Column::Id),
+                ]
+            }
+            DidFilterValue::KeyRoles(_) => {
+                vec![join_relation_def(did::Column::Id, key_did::Column::DidId)]
+            }
+            _ => vec![],
         }
     }
 }

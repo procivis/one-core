@@ -11,7 +11,6 @@ pub struct StringMatch {
     pub r#match: StringMatchType,
     pub value: String,
 }
-
 pub trait ListFilterValue {
     fn condition(self) -> ListFilterCondition<Self>
     where

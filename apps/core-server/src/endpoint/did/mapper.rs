@@ -54,6 +54,16 @@ impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
 
         let deactivated = value.deactivated.map(DidFilterValue::deactivated);
 
-        organisation_id & r#type & (name | did_value) & deactivated
+        let key_algorithms = value.key_algorithms.map(|values| {
+            DidFilterValue::KeyAlgorithms(
+                values.into_iter().filter(|key| !key.is_empty()).collect(),
+            )
+        });
+
+        let key_roles = value.key_roles.map(|values| {
+            DidFilterValue::KeyRoles(values.into_iter().map(|key_role| key_role.into()).collect())
+        });
+
+        organisation_id & r#type & (name | did_value) & deactivated & key_algorithms & key_roles
     }
 }

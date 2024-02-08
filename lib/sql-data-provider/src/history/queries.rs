@@ -1,18 +1,14 @@
 use sea_orm::{
     sea_query::{
-        ColumnRef, Condition, ConditionType, Expr, IntoCondition, IntoIden, IntoTableRef, JoinType,
-        Query, SimpleExpr,
+        ColumnRef, Condition, Expr, IntoCondition, IntoIden, IntoTableRef, Query, SimpleExpr,
     },
-    ColumnTrait, EntityTrait, IntoIdentity, IntoSimpleExpr, QuerySelect, RelationDef, RelationType,
-    Select,
+    ColumnTrait, IntoSimpleExpr, RelationDef,
 };
 
-use one_core::model::{
-    history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn},
-    list_filter::ListFilterCondition,
-    list_query::ListQuery,
-};
+use crate::list_query_generic::IntoJoinCondition;
+use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
 
+use crate::list_query_generic::join_relation_def;
 use crate::{
     entity::{
         claim, claim_schema, credential, credential_schema, did, history, proof, proof_claim,
@@ -330,84 +326,17 @@ fn credential_schema_filter_condition(
         .into_condition()
 }
 
-pub trait SelectWithFilterJoins<SortableColumn>
-where
-    SortableColumn: IntoSortingColumn,
-{
-    fn with_filter_joins(self, query: &ListQuery<SortableColumn, HistoryFilterValue>) -> Self;
-}
-
-impl<T, SortableColumn> SelectWithFilterJoins<SortableColumn> for Select<T>
-where
-    T: EntityTrait,
-    SortableColumn: IntoSortingColumn,
-{
-    fn with_filter_joins(self, query: &ListQuery<SortableColumn, HistoryFilterValue>) -> Select<T> {
-        let mut result = self;
-
-        if let Some(filter) = &query.filtering {
-            let relation_defs = filter_to_list_of_relation_defs(filter);
-            for relation_def in relation_defs {
-                result = result.join(JoinType::LeftJoin, relation_def);
+impl IntoJoinCondition for HistoryFilterValue {
+    fn get_join(self) -> Vec<RelationDef> {
+        match self {
+            HistoryFilterValue::DidId(_) => {
+                vec![
+                    join_relation_def(history::Column::EntityId, credential::Column::Id),
+                    join_relation_def(history::Column::EntityId, proof::Column::Id),
+                ]
             }
+            _ => vec![],
         }
-
-        result
-    }
-}
-
-fn filter_to_list_of_relation_defs(
-    filter: &ListFilterCondition<HistoryFilterValue>,
-) -> Vec<RelationDef> {
-    let mut result = vec![];
-
-    match filter {
-        ListFilterCondition::Value(v) => {
-            result.append(&mut history_filter_value_to_relation_def(v));
-        }
-        ListFilterCondition::And(filter_list) => {
-            for value in filter_list {
-                result.append(&mut filter_to_list_of_relation_defs(value));
-            }
-        }
-        ListFilterCondition::Or(filter_list) => {
-            for value in filter_list {
-                result.append(&mut filter_to_list_of_relation_defs(value));
-            }
-        }
-    }
-
-    result
-}
-
-fn history_filter_value_to_relation_def(value: &HistoryFilterValue) -> Vec<RelationDef> {
-    match value {
-        HistoryFilterValue::DidId(_) => {
-            vec![
-                join_relation_def(history::Column::EntityId, credential::Column::Id),
-                join_relation_def(history::Column::EntityId, proof::Column::Id),
-            ]
-        }
-        _ => vec![],
-    }
-}
-
-fn join_relation_def(
-    from: impl ColumnTrait + IntoIdentity + Clone,
-    to: impl ColumnTrait + IntoIdentity + Clone,
-) -> RelationDef {
-    RelationDef {
-        rel_type: RelationType::HasMany,
-        from_tbl: from.to_owned().entity_name().into_table_ref(),
-        to_tbl: to.to_owned().entity_name().into_table_ref(),
-        from_col: from.into_identity(),
-        to_col: to.into_identity(),
-        is_owner: false,
-        on_delete: None,
-        on_update: None,
-        on_condition: None,
-        fk_name: None,
-        condition_type: ConditionType::Any,
     }
 }
 
