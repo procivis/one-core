@@ -31,7 +31,7 @@ async fn test_get_history_list_simple() {
     let resp = context
         .api
         .histories
-        .list(0, 10, &organisation.id, None)
+        .list(0, 10, &organisation.id, None, None)
         .await;
 
     // THEN
@@ -130,7 +130,7 @@ async fn test_get_history_list_schema_joins_credentials() {
     let resp = context
         .api
         .histories
-        .list(0, 999, &organisation.id, Some(schema.id))
+        .list(0, 999, &organisation.id, Some(schema.id), None)
         .await;
 
     // THEN
@@ -140,4 +140,71 @@ async fn test_get_history_list_schema_joins_credentials() {
     let values = resp["values"].as_array().unwrap();
     let expected_count = credentials_count + /* credential schema */ 1;
     assert_eq!(expected_count, values.len());
+}
+
+#[tokio::test]
+async fn test_get_history_filter_by_entity_types() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Accepted),
+                entity_id: Some(Uuid::new_v4().into()),
+                entity_type: Some(HistoryEntityType::Credential),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Accepted),
+                entity_id: Some(Uuid::new_v4().into()),
+                entity_type: Some(HistoryEntityType::Did),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Accepted),
+                entity_id: Some(Uuid::new_v4().into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .histories
+        .list(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some(vec!["CREDENTIAL".to_string(), "PROOF".to_string()]),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(2, values.len());
 }

@@ -19,15 +19,25 @@ impl HistoriesApi {
         page_size: u64,
         organisation_id: &impl Display,
         credential_schema_id: Option<CredentialSchemaId>,
+        entity_types: Option<Vec<String>>,
     ) -> Response {
         let schema_param = match credential_schema_id {
             None => "".to_string(),
             Some(value) => format!("&credentialSchemaId={value}"),
         };
 
-        let url = format!(
+        let mut url = format!(
             "/api/history/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}{schema_param}"
         );
+        if entity_types.is_some() {
+            let entity_types_as_string = entity_types
+                .unwrap()
+                .into_iter()
+                .map(|e| format!("entityTypes[]={e}"))
+                .collect::<Vec<String>>()
+                .join("&");
+            url.push_str(&format!("&{entity_types_as_string}"));
+        }
         self.client.get(&url).await
     }
 }

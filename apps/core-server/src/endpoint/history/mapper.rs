@@ -7,9 +7,14 @@ use crate::endpoint::history::dto::{HistoryFilterQueryParamsRest, HistorySearchE
 
 impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterValue> {
     fn from(value: HistoryFilterQueryParamsRest) -> Self {
-        let entity_type = value
-            .entity_type
-            .map(|value| HistoryFilterValue::EntityType(value.into()));
+        let entity_types = value.entity_types.map(|values| {
+            HistoryFilterValue::EntityTypes(
+                values
+                    .into_iter()
+                    .map(|entity_type| entity_type.into())
+                    .collect(),
+            )
+        });
         let entity_id = value.entity_id.map(HistoryFilterValue::EntityId);
         let action = value
             .action
@@ -30,7 +35,7 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             HistoryFilterValue::OrganisationId(value.organisation_id.into()).condition();
 
         organisation_id
-            & entity_type
+            & entity_types
             & entity_id
             & action
             & created_date_from
