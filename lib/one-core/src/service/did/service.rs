@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Deref,
+};
 
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
@@ -21,7 +24,7 @@ use crate::{
         organisation::OrganisationRelations,
     },
     service::{
-        did::validator::validate_request_only_one_key_of_each_type,
+        did::validator::validate_request_amount_of_keys,
         error::{ServiceError, ValidationError},
     },
 };
@@ -140,16 +143,16 @@ impl DidService {
     /// # Arguments
     ///
     /// * `request` - did data
-    /// * `did_methods` -
     pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, ServiceError> {
         validate_did_method(&request.did_method, &self.config.did)?;
-        validate_request_only_one_key_of_each_type(request.keys.to_owned())?;
 
         let did_method_key = &request.did_method;
         let did_method = self
             .did_method_provider
             .get_did_method(did_method_key)
             .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))?;
+
+        validate_request_amount_of_keys(did_method.deref(), request.keys.to_owned())?;
 
         let keys = request.keys.to_owned();
 
@@ -168,7 +171,7 @@ impl DidService {
             .into_iter()
             .collect::<Vec<_>>()
             .first()
-            .ok_or(ValidationError::DidMissingKey)?
+            .ok_or(ValidationError::DidInvalidKeyNumber)?
             .to_owned();
         let key = self
             .key_repository

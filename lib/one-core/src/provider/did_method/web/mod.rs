@@ -1,18 +1,26 @@
-use super::dto::DidDocumentDTO;
+use super::dto::{AmountOfKeys, DidDocumentDTO, Keys};
 use super::{DidCapabilities, DidMethodError, Operation};
 use crate::model::key::Key;
 
 use async_trait::async_trait;
+use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 use url::Url;
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Params {
+    #[serde(default)]
+    keys: Keys,
+}
 
 pub struct WebDidMethod {
     pub did_base_string: Option<String>,
     pub client: reqwest::Client,
+    pub params: Params,
 }
 
 impl WebDidMethod {
-    pub fn new(base_url: &Option<String>) -> Result<Self, DidMethodError> {
+    pub fn new(base_url: &Option<String>, params: Params) -> Result<Self, DidMethodError> {
         let did_base_string = if let Some(base_url) = base_url {
             let url =
                 Url::parse(base_url).map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
@@ -36,6 +44,7 @@ impl WebDidMethod {
         Ok(Self {
             did_base_string,
             client: reqwest::Client::new(),
+            params,
         })
     }
 }
@@ -91,6 +100,10 @@ impl super::DidMethod for WebDidMethod {
                 "DILITHIUM".to_string(),
             ],
         }
+    }
+
+    fn validate_keys(&self, keys: AmountOfKeys) -> bool {
+        self.params.keys.validate_keys(keys)
     }
 }
 

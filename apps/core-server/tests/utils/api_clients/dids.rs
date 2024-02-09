@@ -17,28 +17,17 @@ impl DidsApi {
     pub async fn create(
         &self,
         organisation_id: impl Into<Uuid>,
-        key_id: impl Into<Uuid>,
+        keys: &[Uuid],
         method: &str,
         name: &str,
     ) -> Response {
-        let key_id = key_id.into();
         let body = json!({
           "keys": {
-            "assertion": [
-              key_id
-            ],
-            "authentication": [
-              key_id
-            ],
-            "capabilityDelegation": [
-              key_id
-            ],
-            "capabilityInvocation": [
-              key_id
-            ],
-            "keyAgreement": [
-              key_id
-            ]
+            "assertion": keys,
+            "authentication": keys,
+            "capabilityDelegation": keys,
+            "capabilityInvocation": keys,
+            "keyAgreement": keys,
           },
           "method": method,
           "name": name,

@@ -16,7 +16,7 @@ use crate::provider::did_method::x509::X509Method;
 
 use super::key_algorithm::provider::KeyAlgorithmProvider;
 
-use self::dto::DidDocumentDTO;
+use self::dto::{AmountOfKeys, DidDocumentDTO};
 use self::universal::UniversalDidMethod;
 
 pub mod common;
@@ -71,6 +71,7 @@ pub trait DidMethod: Send + Sync {
     fn update(&self) -> Result<(), DidMethodError>;
     fn can_be_deactivated(&self) -> bool;
     fn get_capabilities(&self) -> DidCapabilities;
+    fn validate_keys(&self, keys: AmountOfKeys) -> bool;
 }
 
 pub fn did_method_providers_from_config(
@@ -86,7 +87,8 @@ pub fn did_method_providers_from_config(
                 Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as _
             }
             core_config::DidType::Web => {
-                let did_web = WebDidMethod::new(&base_url).map_err(|_| {
+                let params = did_config.get(name)?;
+                let did_web = WebDidMethod::new(&base_url, params).map_err(|_| {
                     ConfigError::Validation(ConfigValidationError::KeyNotFound(
                         "Base url".to_string(),
                     ))

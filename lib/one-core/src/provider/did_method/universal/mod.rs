@@ -4,7 +4,7 @@ use shared_types::{DidId, DidValue};
 
 use crate::model::key::Key;
 
-use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError, Operation};
+use super::{dto::DidDocumentDTO, AmountOfKeys, DidCapabilities, DidMethodError, Operation};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,6 +90,10 @@ impl super::DidMethod for UniversalDidMethod {
             operations: vec![Operation::RESOLVE],
             key_algorithms: vec![],
         }
+    }
+
+    fn validate_keys(&self, _keys: AmountOfKeys) -> bool {
+        unimplemented!()
     }
 }
 

@@ -83,7 +83,26 @@ did:
     type: "WEB"
     display: "did.web"
     order: 1
-    params: null
+    params:
+      public:
+        keys:
+          min: 1
+          max: 5
+          authentication:
+            min: 0
+            max: 2
+          assertionMethod:
+            min: 1
+            max: 2
+          keyAgreement:
+            min: 1
+            max: 1
+          capabilityInvocation:
+            min: 1
+            max: 1
+          capabilityDelegation:
+            min: 1
+            max: 1
   JWK:
     type: "JWK"
     display: "did.jwk"

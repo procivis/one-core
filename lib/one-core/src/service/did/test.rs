@@ -114,7 +114,7 @@ async fn test_get_did_exists() {
         let did_clone = did.clone();
         repository
             .expect_get_did()
-            .times(1)
+            .once()
             .with(
                 eq(did.id.to_owned()),
                 eq(DidRelations {
@@ -149,7 +149,7 @@ async fn test_get_did_missing() {
     let mut repository = MockDidRepository::default();
     repository
         .expect_get_did()
-        .times(1)
+        .once()
         .returning(|_, _| Ok(None));
 
     let service = setup_service(
@@ -192,16 +192,13 @@ async fn test_get_did_list() {
     let mut repository = MockDidRepository::default();
     {
         let did_clone = did.clone();
-        repository
-            .expect_get_did_list()
-            .times(1)
-            .returning(move |_| {
-                Ok(GetDidList {
-                    values: vec![did_clone.clone()],
-                    total_pages: 1,
-                    total_items: 1,
-                })
-            });
+        repository.expect_get_did_list().once().returning(move |_| {
+            Ok(GetDidList {
+                values: vec![did_clone.clone()],
+                total_pages: 1,
+                total_items: 1,
+            })
+        });
     }
 
     let service = setup_service(
@@ -255,7 +252,7 @@ async fn test_create_did_success() {
     let mut key_repository = MockKeyRepository::default();
     key_repository
         .expect_get_key()
-        .times(1)
+        .once()
         .returning(move |_, _| {
             Ok(Some(Key {
                 id: key_id,
@@ -271,6 +268,8 @@ async fn test_create_did_success() {
         });
 
     let mut did_method = MockDidMethod::default();
+    did_method.expect_validate_keys().once().returning(|_| true);
+
     did_method
         .expect_create()
         .once()
@@ -278,7 +277,7 @@ async fn test_create_did_success() {
 
     did_method
         .expect_get_capabilities()
-        .times(1)
+        .once()
         .returning(|| DidCapabilities {
             operations: vec![],
             key_algorithms: vec!["".to_owned()],
@@ -306,7 +305,7 @@ async fn test_create_did_success() {
     let mut history_repository = MockHistoryRepository::default();
     history_repository
         .expect_create_history()
-        .times(1)
+        .once()
         .returning(|history| Ok(history.id));
 
     let service = setup_service(
@@ -344,7 +343,7 @@ async fn test_create_did_value_already_exists() {
     let mut key_repository = MockKeyRepository::default();
     key_repository
         .expect_get_key()
-        .times(1)
+        .once()
         .returning(move |_, _| {
             Ok(Some(Key {
                 id: key_id,
@@ -360,14 +359,16 @@ async fn test_create_did_value_already_exists() {
         });
 
     let mut did_method = MockDidMethod::default();
+    did_method.expect_validate_keys().once().returning(|_| true);
+
     did_method
         .expect_create()
-        .times(1)
+        .once()
         .returning(|_, _, _| Ok(DidValue::from_str("value").unwrap()));
 
     did_method
         .expect_get_capabilities()
-        .times(1)
+        .once()
         .returning(|| DidCapabilities {
             operations: vec![],
             key_algorithms: vec!["".to_owned()],
@@ -411,7 +412,7 @@ async fn test_create_did_value_already_exists() {
 }
 
 #[tokio::test]
-async fn test_create_did_value_invalid_did_method() {
+async fn test_create_did_value_no_keys() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
         organisation_id: Uuid::new_v4(),
@@ -427,12 +428,15 @@ async fn test_create_did_value_invalid_did_method() {
         params: None,
     };
 
+    let mut did_method = MockDidMethod::default();
+    did_method.expect_validate_keys().once().returning(|_| true);
+
     let service = setup_service(
         MockDidRepository::default(),
         MockHistoryRepository::default(),
         MockKeyRepository::default(),
         MockOrganisationRepository::default(),
-        MockDidMethod::default(),
+        did_method,
         MockKeyAlgorithmProvider::default(),
         get_did_config(),
     );
@@ -440,6 +444,50 @@ async fn test_create_did_value_invalid_did_method() {
     let result = service.create_did(create_request).await;
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(ValidationError::DidMissingKey))
+        Err(ServiceError::Validation(
+            ValidationError::DidInvalidKeyNumber
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
+    let create_request = CreateDidRequestDTO {
+        name: "name".to_string(),
+        organisation_id: Uuid::new_v4(),
+        did_type: DidType::Local,
+        did_method: "KEY".to_string(),
+        keys: CreateDidRequestKeysDTO {
+            authentication: vec![Uuid::new_v4(), Uuid::new_v4()],
+            assertion: vec![],
+            key_agreement: vec![],
+            capability_invocation: vec![],
+            capability_delegation: vec![],
+        },
+        params: None,
+    };
+
+    let mut did_method = MockDidMethod::default();
+    did_method
+        .expect_validate_keys()
+        .once()
+        .returning(|_| false);
+
+    let service = setup_service(
+        MockDidRepository::default(),
+        MockHistoryRepository::default(),
+        MockKeyRepository::default(),
+        MockOrganisationRepository::default(),
+        did_method,
+        MockKeyAlgorithmProvider::default(),
+        get_did_config(),
+    );
+
+    let result = service.create_did(create_request).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::DidInvalidKeyNumber
+        ))
     ));
 }

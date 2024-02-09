@@ -2,7 +2,8 @@ use crate::config::core_config::{Fields, KeyAlgorithmConfig, KeyAlgorithmType};
 use crate::crypto::MockCryptoProvider;
 use crate::model::key::Key;
 use crate::provider::did_method::dto::{
-    DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
+    AmountOfKeys, DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO,
+    PublicKeyJwkEllipticDataDTO,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::{provider::DidMethodProviderImpl, DidMethod};
@@ -327,4 +328,88 @@ async fn test_create_did_success() {
         .create(&DidId::from(Uuid::new_v4()), &None, &Some(key))
         .await;
     result.unwrap();
+}
+
+#[test]
+fn test_validate_keys() {
+    let did_method = setup_provider(
+        MockKeyAlgorithm::default(),
+        "EDDSA",
+        KeyAlgorithmType::Eddsa,
+    )
+    .get_did_method("KEY")
+    .unwrap();
+
+    let keys = AmountOfKeys {
+        global: 1,
+        authentication: 1,
+        assertion: 1,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_no_keys() {
+    let did_method = setup_provider(
+        MockKeyAlgorithm::default(),
+        "EDDSA",
+        KeyAlgorithmType::Eddsa,
+    )
+    .get_did_method("KEY")
+    .unwrap();
+
+    let keys = AmountOfKeys {
+        global: 0,
+        authentication: 0,
+        assertion: 0,
+        key_agreement: 0,
+        capability_invocation: 0,
+        capability_delegation: 0,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_too_much_keys() {
+    let did_method = setup_provider(
+        MockKeyAlgorithm::default(),
+        "EDDSA",
+        KeyAlgorithmType::Eddsa,
+    )
+    .get_did_method("KEY")
+    .unwrap();
+
+    let keys = AmountOfKeys {
+        global: 2,
+        authentication: 1,
+        assertion: 1,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_missing_key() {
+    let did_method = setup_provider(
+        MockKeyAlgorithm::default(),
+        "EDDSA",
+        KeyAlgorithmType::Eddsa,
+    )
+    .get_did_method("KEY")
+    .unwrap();
+
+    let keys = AmountOfKeys {
+        global: 1,
+        authentication: 1,
+        assertion: 0,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(!did_method.validate_keys(keys));
 }

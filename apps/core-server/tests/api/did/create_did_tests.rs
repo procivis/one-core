@@ -19,7 +19,7 @@ async fn test_create_did_key_es256_success() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key.id, "KEY", "test")
+        .create(organisation.id, &[key.id], "KEY", "test")
         .await;
 
     // THEN
@@ -53,7 +53,7 @@ async fn test_create_did_key_dilithium_failure_incapable() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key.id, "KEY", "test")
+        .create(organisation.id, &[key.id], "KEY", "test")
         .await;
 
     // THEN
@@ -74,7 +74,7 @@ async fn test_create_did_key_eddsa_success() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key.id, "KEY", "test")
+        .create(organisation.id, &[key.id], "KEY", "test")
         .await;
 
     // THEN
@@ -92,6 +92,34 @@ async fn test_create_did_key_eddsa_success() {
 }
 
 #[tokio::test]
+async fn test_fail_to_create_did_key_to_much_keys() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let key1 = context
+        .db
+        .keys
+        .create(&organisation, es256_testing_params())
+        .await;
+    let key2 = context
+        .db
+        .keys
+        .create(&organisation, es256_testing_params())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .dids
+        .create(organisation.id, &[key1.id, key2.id], "KEY", "test")
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0030");
+}
+
+#[tokio::test]
 async fn test_create_did_web_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
@@ -105,7 +133,7 @@ async fn test_create_did_web_success() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key.id, "WEB", "test")
+        .create(organisation.id, &[key.id], "WEB", "test")
         .await;
 
     // THEN
@@ -136,7 +164,7 @@ async fn test_create_did_jwk_success() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key.id, "JWK", "test")
+        .create(organisation.id, &[key.id], "JWK", "test")
         .await;
 
     // THEN
@@ -159,7 +187,7 @@ async fn test_create_did_with_same_name_in_different_organisations() {
     let (context, _, did) = TestContext::new_with_did().await;
 
     let organisation1 = context.db.organisations.create().await;
-    let key1 = context
+    let key = context
         .db
         .keys
         .create(&organisation1, eddsa_testing_params())
@@ -169,7 +197,7 @@ async fn test_create_did_with_same_name_in_different_organisations() {
     let resp = context
         .api
         .dids
-        .create(organisation1.id, key1.id, "JWK", &did.name)
+        .create(organisation1.id, &[key.id], "JWK", &did.name)
         .await;
 
     // THEN
@@ -195,7 +223,7 @@ async fn test_fail_to_create_did_with_same_name_in_same_organisation() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key1.id, "JWK", "test")
+        .create(organisation.id, &[key1.id], "JWK", "test")
         .await;
     assert_eq!(resp.status(), 201);
 
@@ -203,7 +231,7 @@ async fn test_fail_to_create_did_with_same_name_in_same_organisation() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key2.id, "JWK", "test")
+        .create(organisation.id, &[key2.id], "JWK", "test")
         .await;
 
     // THEN
@@ -224,7 +252,7 @@ async fn test_fail_to_create_did_with_same_value_in_same_organisation() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key.id, "JWK", "test 1")
+        .create(organisation.id, &[key.id], "JWK", "test 1")
         .await;
     assert_eq!(resp.status(), 201);
 
@@ -232,7 +260,7 @@ async fn test_fail_to_create_did_with_same_value_in_same_organisation() {
     let resp = context
         .api
         .dids
-        .create(organisation.id, key.id, "JWK", "test 2")
+        .create(organisation.id, &[key.id], "JWK", "test 2")
         .await;
 
     // THEN
@@ -255,13 +283,13 @@ async fn test_create_did_with_same_value_in_different_organisations() {
     let resp1 = context
         .api
         .dids
-        .create(organisation1.id, key1.id, "JWK", "test 1")
+        .create(organisation1.id, &[key1.id], "JWK", "test 1")
         .await;
 
     let resp2 = context
         .api
         .dids
-        .create(organisation.id, key1.id, "JWK", "test 2")
+        .create(organisation.id, &[key1.id], "JWK", "test 2")
         .await;
 
     // THEN

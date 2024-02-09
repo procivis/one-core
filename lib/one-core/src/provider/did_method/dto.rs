@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{de::Error, Deserialize, Serialize};
 use shared_types::DidValue;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -94,4 +94,92 @@ pub struct PublicKeyJwkEllipticDataDTO {
     pub x: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub y: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MinMax<const N: usize> {
+    pub min: usize,
+    pub max: usize,
+}
+
+impl<const N: usize> MinMax<N> {
+    fn contains(&self, number: usize) -> bool {
+        (&self.min..=&self.max).contains(&&number)
+    }
+}
+
+impl<const N: usize> Default for MinMax<N> {
+    fn default() -> Self {
+        Self { min: 1, max: 1 }
+    }
+}
+
+impl<'a, const N: usize> Deserialize<'a> for MinMax<N> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        #[derive(Deserialize)]
+        struct Proxy {
+            min: usize,
+            max: usize,
+        }
+
+        let val = Proxy::deserialize(deserializer)?;
+
+        if val.min < N {
+            return Err(Error::custom(format!("`min` cannot be smaller then {N}")));
+        }
+
+        if val.max < val.min {
+            return Err(Error::custom("`max` cannot be smaller then `min`"));
+        }
+
+        Ok(MinMax {
+            min: val.min,
+            max: val.max,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Keys {
+    #[serde(default, flatten)]
+    pub global: MinMax<1>,
+    #[serde(default)]
+    pub authentication: MinMax<0>,
+    #[serde(default)]
+    pub assertion_method: MinMax<0>,
+    #[serde(default)]
+    pub key_agreement: MinMax<0>,
+    #[serde(default)]
+    pub capability_invocation: MinMax<0>,
+    #[serde(default)]
+    pub capability_delegation: MinMax<0>,
+}
+
+impl Keys {
+    pub fn validate_keys(&self, keys: AmountOfKeys) -> bool {
+        self.global.contains(keys.global)
+            && self.authentication.contains(keys.authentication)
+            && self.assertion_method.contains(keys.assertion)
+            && self.key_agreement.contains(keys.key_agreement)
+            && self
+                .capability_invocation
+                .contains(keys.capability_invocation)
+            && self
+                .capability_delegation
+                .contains(keys.capability_delegation)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AmountOfKeys {
+    pub global: usize,
+    pub authentication: usize,
+    pub assertion: usize,
+    pub key_agreement: usize,
+    pub capability_invocation: usize,
+    pub capability_delegation: usize,
 }

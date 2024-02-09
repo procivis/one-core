@@ -9,8 +9,11 @@ use wiremock::{
 };
 
 use crate::provider::did_method::{
-    dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkRsaDataDTO},
-    web::{did_value_to_url, fetch_did_web_document, WebDidMethod},
+    dto::{
+        AmountOfKeys, Keys, MinMax, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
+        PublicKeyJwkRsaDataDTO,
+    },
+    web::{did_value_to_url, fetch_did_web_document, Params, WebDidMethod},
     DidMethod, DidMethodError,
 };
 
@@ -83,7 +86,7 @@ static JSON_DATA: &str = r#"
 async fn test_did_web_create() {
     let base_url = "https://test-domain.com".to_string();
 
-    let did_web_method = WebDidMethod::new(&Some(base_url)).unwrap();
+    let did_web_method = WebDidMethod::new(&Some(base_url), Default::default()).unwrap();
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
@@ -99,7 +102,7 @@ async fn test_did_web_create() {
 async fn test_did_web_create_with_port() {
     let base_url = "https://test-domain.com:54812".to_string();
 
-    let did_web_method = WebDidMethod::new(&Some(base_url)).unwrap();
+    let did_web_method = WebDidMethod::new(&Some(base_url), Default::default()).unwrap();
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
@@ -113,7 +116,7 @@ async fn test_did_web_create_with_port() {
 
 #[tokio::test]
 async fn test_did_web_create_fail_no_base_url() {
-    let did_web_method = WebDidMethod::new(&None).unwrap();
+    let did_web_method = WebDidMethod::new(&None, Default::default()).unwrap();
 
     let id = DidId::from(Uuid::from_str("2389ba3f-81d5-4931-9222-c23ec721deb7").unwrap());
 
@@ -238,4 +241,168 @@ async fn test_did_web_fetch() {
                 .to_string(),
         },),
     );
+}
+
+#[test]
+fn test_validate_default_keys() {
+    let did_method = WebDidMethod::new(&None, Default::default()).unwrap();
+    let keys = AmountOfKeys {
+        global: 1,
+        authentication: 1,
+        assertion: 1,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_default_keys_no_keys() {
+    let did_method = WebDidMethod::new(&None, Default::default()).unwrap();
+    let keys = AmountOfKeys {
+        global: 0,
+        authentication: 0,
+        assertion: 0,
+        key_agreement: 0,
+        capability_invocation: 0,
+        capability_delegation: 0,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_default_keys_too_much_keys() {
+    let did_method = WebDidMethod::new(&None, Default::default()).unwrap();
+    let keys = AmountOfKeys {
+        global: 2,
+        authentication: 1,
+        assertion: 1,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_default_keys_missing_key() {
+    let did_method = WebDidMethod::new(&None, Default::default()).unwrap();
+    let keys = AmountOfKeys {
+        global: 1,
+        authentication: 1,
+        assertion: 0,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys() {
+    let did_method = WebDidMethod::new(
+        &None,
+        Params {
+            keys: Keys {
+                global: MinMax { min: 2, max: 3 },
+                authentication: MinMax { min: 2, max: 3 },
+                assertion_method: MinMax { min: 2, max: 3 },
+                key_agreement: MinMax { min: 2, max: 3 },
+                capability_invocation: MinMax { min: 2, max: 3 },
+                capability_delegation: MinMax { min: 2, max: 3 },
+            },
+        },
+    )
+    .unwrap();
+    let keys = AmountOfKeys {
+        global: 2,
+        authentication: 3,
+        assertion: 3,
+        key_agreement: 2,
+        capability_invocation: 2,
+        capability_delegation: 2,
+    };
+    assert!(did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_no_keys() {
+    let did_method = WebDidMethod::new(
+        &None,
+        Params {
+            keys: Keys {
+                global: MinMax { min: 2, max: 3 },
+                authentication: MinMax { min: 2, max: 3 },
+                assertion_method: MinMax { min: 2, max: 3 },
+                key_agreement: MinMax { min: 2, max: 3 },
+                capability_invocation: MinMax { min: 2, max: 3 },
+                capability_delegation: MinMax { min: 2, max: 3 },
+            },
+        },
+    )
+    .unwrap();
+    let keys = AmountOfKeys {
+        global: 0,
+        authentication: 0,
+        assertion: 0,
+        key_agreement: 0,
+        capability_invocation: 0,
+        capability_delegation: 0,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_too_much_keys() {
+    let did_method = WebDidMethod::new(
+        &None,
+        Params {
+            keys: Keys {
+                global: MinMax { min: 2, max: 3 },
+                authentication: MinMax { min: 2, max: 3 },
+                assertion_method: MinMax { min: 2, max: 3 },
+                key_agreement: MinMax { min: 2, max: 3 },
+                capability_invocation: MinMax { min: 2, max: 3 },
+                capability_delegation: MinMax { min: 2, max: 3 },
+            },
+        },
+    )
+    .unwrap();
+    let keys = AmountOfKeys {
+        global: 5,
+        authentication: 2,
+        assertion: 2,
+        key_agreement: 2,
+        capability_invocation: 2,
+        capability_delegation: 2,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_missing_key() {
+    let did_method = WebDidMethod::new(
+        &None,
+        Params {
+            keys: Keys {
+                global: MinMax { min: 2, max: 3 },
+                authentication: MinMax { min: 2, max: 3 },
+                assertion_method: MinMax { min: 2, max: 3 },
+                key_agreement: MinMax { min: 2, max: 3 },
+                capability_invocation: MinMax { min: 2, max: 3 },
+                capability_delegation: MinMax { min: 2, max: 3 },
+            },
+        },
+    )
+    .unwrap();
+    let keys = AmountOfKeys {
+        global: 2,
+        authentication: 2,
+        assertion: 0,
+        key_agreement: 2,
+        capability_invocation: 2,
+        capability_delegation: 2,
+    };
+    assert!(!did_method.validate_keys(keys));
 }
