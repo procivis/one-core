@@ -26,7 +26,7 @@ impl CredentialSchemasApi {
           "format": "JWT",
           "name": name,
           "organisationId": organisation_id.into(),
-          "revocationMethod": "STATUSLIST2021"
+          "revocationMethod": "BITSTRINGSTATUSLIST"
         });
 
         self.client.post("/api/credential-schema/v1", body).await

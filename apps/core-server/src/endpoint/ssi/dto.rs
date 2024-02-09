@@ -363,6 +363,7 @@ pub struct PostSsiIssuerRejectQueryParams {
 }
 
 #[derive(Clone, Debug, Deserialize, IntoParams, Serialize)]
+#[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerSubmitQueryParams {
     pub credential_id: Uuid,

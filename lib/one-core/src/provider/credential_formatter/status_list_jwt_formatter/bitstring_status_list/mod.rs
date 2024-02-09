@@ -1,14 +1,18 @@
-use self::model::{ContentType, CredentialSubject, StatusPurpose, SubjectType, VCContent, VC};
-use super::{error::FormatterError, jwt::model::JWTPayload, AuthenticationFn, VerificationFn};
-use crate::{model::did::Did, provider::credential_formatter::jwt::Jwt};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
+use self::model::{ContentType, CredentialSubject, StatusPurpose, SubjectType, VCContent, VC};
+use crate::provider::credential_formatter::Context;
+use crate::provider::credential_formatter::{
+    error::FormatterError, jwt::model::JWTPayload, AuthenticationFn, VerificationFn,
+};
+use crate::{model::did::Did, provider::credential_formatter::jwt::Jwt};
+
 mod model;
 
-pub struct StatusList2021JWTFormatter {}
+pub struct BitstringStatusListJwtFormatter {}
 
-impl StatusList2021JWTFormatter {
+impl BitstringStatusListJwtFormatter {
     pub async fn format_status_list(
         revocation_list_url: String,
         issuer_did: &Did,
@@ -19,20 +23,17 @@ impl StatusList2021JWTFormatter {
         let subject = format!("{}#list", revocation_list_url);
         let vc = VC {
             vc: VCContent {
-                context: vec![
-                    "https://www.w3.org/2018/credentials/v1".to_string(),
-                    "https://w3id.org/vc/status-list/2021/v1".to_string(),
-                ],
+                context: vec![Context::CredentialsV1, Context::BitstringStatusList],
                 id: revocation_list_url.to_owned(),
                 r#type: vec![
                     ContentType::VerifiableCredential,
-                    ContentType::StatusList2021Credential,
+                    ContentType::BitstringStatusListCredential,
                 ],
                 issuer: issuer_did.did.to_owned(),
                 issued: OffsetDateTime::now_utc(),
                 credential_subject: CredentialSubject {
                     id: subject.to_owned(),
-                    r#type: SubjectType::StatusList2021,
+                    r#type: SubjectType::BitstringStatusList,
                     status_purpose: StatusPurpose::Revocation,
                     encoded_list,
                 },

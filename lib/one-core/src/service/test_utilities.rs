@@ -57,10 +57,10 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 order: 0
                 type: 'NONE'
                 params: null
-            STATUSLIST2021:
+            BITSTRINGSTATUSLIST:
                 display: 'display'
                 order: 1
-                type: 'STATUSLIST2021'
+                type: 'BITSTRINGSTATUSLIST'
                 params: null
         did:
             KEY:

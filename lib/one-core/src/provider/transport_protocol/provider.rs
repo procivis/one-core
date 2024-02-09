@@ -147,14 +147,10 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .ok_or(MissingProviderError::RevocationMethod(
                 credential_schema.revocation_method.clone(),
             ))?;
-        let (credential_status, additional_context) =
-            match revocation_method.add_issued_credential(&credential).await? {
-                None => (None, vec![]),
-                Some(revocation_info) => (
-                    Some(revocation_info.credential_status),
-                    revocation_info.additional_vc_contexts,
-                ),
-            };
+        let credential_status = revocation_method
+            .add_issued_credential(&credential)
+            .await?
+            .map(|revocation_info| revocation_info.credential_status);
 
         let keys = issuer_did
             .keys
@@ -179,7 +175,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
                 credential_status,
                 &holder_did.did,
                 &key.key.key_type,
-                additional_context,
+                vec![],
                 vec![],
                 auth_fn,
             )

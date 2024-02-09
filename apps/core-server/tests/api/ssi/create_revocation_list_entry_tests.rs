@@ -43,7 +43,8 @@ async fn test_add_credential_to_list() {
     )
     .await;
     let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "STATUSLIST2021").await;
+        fixtures::create_credential_schema(&db_conn, "test", &organisation, "BITSTRINGSTATUSLIST")
+            .await;
     let credential = fixtures::create_credential(
         &db_conn,
         &credential_schema,

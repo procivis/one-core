@@ -21,7 +21,7 @@ use super::{
     error::FormatterError,
     jwt::model::JWTPayload,
     model::{CredentialPresentation, CredentialStatus, DetailCredential, Presentation},
-    AuthenticationFn, CredentialFormatter, FormatterCapabilities, VerificationFn,
+    AuthenticationFn, Context, CredentialFormatter, FormatterCapabilities, VerificationFn,
 };
 
 pub struct JWTFormatter {
@@ -165,7 +165,7 @@ impl CredentialFormatter for JWTFormatter {
 fn format_payload(credentials: &[String]) -> VP {
     VP {
         vp: VPContent {
-            context: vec!["https://www.w3.org/2018/credentials/v1".to_owned()],
+            context: vec![Context::CredentialsV1.to_string()],
             r#type: vec!["VerifiablePresentation".to_owned()],
             verifiable_credential: credentials.to_vec(),
         },

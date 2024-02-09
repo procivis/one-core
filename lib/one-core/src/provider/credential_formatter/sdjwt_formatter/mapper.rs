@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     crypto::{hasher::Hasher, CryptoProvider},
     provider::credential_formatter::{
-        jwt::mapper::string_to_b64url_string, CredentialStatus, FormatterError,
+        jwt::mapper::string_to_b64url_string, Context, CredentialStatus, FormatterError,
     },
     service::credential::dto::DetailCredentialClaimResponseDTO,
 };
@@ -42,7 +42,7 @@ pub(super) fn vc_from_credential(
 
     hashed_claims.sort_unstable();
 
-    let context = vec!["https://www.w3.org/2018/credentials/v1".to_owned()]
+    let context = vec![Context::CredentialsV1.to_string()]
         .into_iter()
         .chain(additional_context)
         .collect();

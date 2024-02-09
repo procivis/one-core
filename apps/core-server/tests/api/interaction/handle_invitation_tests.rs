@@ -76,7 +76,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
                             "lastModified": "2023-11-08T15:46:14.997Z",
                             "name": "detox-e2e-revocable-12a4212d-9b28-4bb0-9640-23c938f8a8b1",
                             "organisationId": "2476ebaa-0108-413d-aa72-c2a6babd423f",
-                            "revocationMethod": "STATUSLIST2021"
+                            "revocationMethod": "BITSTRINGSTATUSLIST"
                         },
                     }
                 ],

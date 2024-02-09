@@ -94,7 +94,6 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .return_once(|_| {
             Ok(Some(CredentialRevocationInfo {
-                additional_vc_contexts: vec![],
                 credential_status: CredentialStatus {
                     id: Uuid::new_v4().to_string(),
                     r#type: "type".to_string(),
