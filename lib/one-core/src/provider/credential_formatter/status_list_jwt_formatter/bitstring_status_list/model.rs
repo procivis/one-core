@@ -1,45 +1,23 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use time::OffsetDateTime;
 
-fn into_timestamp<S>(dt: &OffsetDateTime, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let formatted = format!(
-        "{}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-        dt.year(),
-        dt.month() as i32,
-        dt.day(),
-        dt.hour(),
-        dt.minute(),
-        dt.second()
-    );
-    formatted.serialize(s)
-}
-
-fn from_timestamp<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    use serde::de::Error;
-
-    String::deserialize(deserializer).and_then(|string| {
-        OffsetDateTime::parse(&string, &Rfc3339).map_err(|err| Error::custom(err.to_string()))
-    })
-}
+use crate::provider::credential_formatter::{
+    status_list_jwt_formatter::common::{from_timestamp, into_timestamp},
+    Context,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ContentType {
     VerifiableCredential,
-    StatusList2021Credential,
+    BitstringStatusListCredential,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VCContent {
     #[serde(rename = "@context")]
-    pub context: Vec<String>,
+    pub context: Vec<Context>,
     pub id: String,
     pub r#type: Vec<ContentType>,
     pub issuer: DidValue,
@@ -56,7 +34,7 @@ pub enum StatusPurpose {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum SubjectType {
-    StatusList2021,
+    BitstringStatusList,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

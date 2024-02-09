@@ -198,6 +198,11 @@ pub enum BusinessLogicError {
 
     #[error("Missing proof for interaction `{0}`")]
     MissingProofForInteraction(InteractionId),
+
+    #[error(
+        "StatusList2021 revocation method not supported for credential issuance and revocation"
+    )]
+    StatusList2021NotSupported,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -496,6 +501,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Missing proof for provided interaction")]
     BR_0094,
+
+    #[strum(to_string = "StatusList2021 not supported for credential issuance and revocation")]
+    BR_0095,
 }
 
 impl From<FormatError> for ServiceError {
@@ -582,6 +590,7 @@ impl BusinessLogicError {
             BusinessLogicError::GeneralInputValidationError => ErrorCode::BR_0084,
             BusinessLogicError::MissingOrganisation(_) => ErrorCode::BR_0088,
             BusinessLogicError::MissingProofForInteraction(_) => ErrorCode::BR_0094,
+            BusinessLogicError::StatusList2021NotSupported => ErrorCode::BR_0095,
         }
     }
 }

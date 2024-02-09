@@ -190,12 +190,12 @@ pub enum RevocationType {
     #[serde(rename = "NONE")]
     #[strum(serialize = "NONE")]
     None,
-    #[serde(rename = "STATUSLIST2021")]
-    #[strum(serialize = "STATUSLIST2021")]
-    StatusList2021,
     #[serde(rename = "LVVC")]
     #[strum(serialize = "LVVC")]
     Lvvc,
+    #[serde(rename = "BITSTRINGSTATUSLIST")]
+    #[strum(serialize = "BITSTRINGSTATUSLIST")]
+    BitstringStatusList,
 }
 
 pub type DidConfig = ConfigBlock<DidType>;

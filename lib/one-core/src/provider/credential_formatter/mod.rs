@@ -11,7 +11,7 @@ pub mod json_ld;
 pub mod json_ld_bbsplus;
 pub mod json_ld_classic;
 pub mod mdoc_formatter;
-pub mod status_list_2021_jwt_formatter;
+pub mod status_list_jwt_formatter;
 
 pub(crate) mod provider;
 
@@ -19,8 +19,9 @@ pub(crate) mod provider;
 pub(crate) mod test_utilities;
 
 use async_trait::async_trait;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
+use strum::Display;
 
 use crate::{
     crypto::signer::error::SignerError, service::credential::dto::CredentialDetailResponseDTO,
@@ -39,6 +40,21 @@ pub type VerificationFn = Box<dyn TokenVerifier>;
 pub struct FormatterCapabilities {
     pub signing_key_algorithms: Vec<String>,
     pub features: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Display)]
+pub enum Context {
+    #[serde(rename = "https://www.w3.org/2018/credentials/v1")]
+    #[strum(to_string = "https://www.w3.org/2018/credentials/v1")]
+    CredentialsV1,
+
+    #[serde(rename = "https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld")]
+    #[strum(to_string = "https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld")]
+    BitstringStatusList,
+
+    #[serde(rename = "https://w3id.org/security/data-integrity/v2")]
+    #[strum(to_string = "https://w3id.org/security/data-integrity/v2")]
+    DataIntegrityV2,
 }
 
 #[cfg_attr(test, mockall::automock)]

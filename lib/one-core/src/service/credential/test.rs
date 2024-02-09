@@ -256,7 +256,7 @@ async fn test_delete_credential_incorrect_state() {
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let mut credential = generic_credential();
-    credential.schema.as_mut().unwrap().revocation_method = "STATUSLIST2021".to_string();
+    credential.schema.as_mut().unwrap().revocation_method = "BITSTRINGSTATUSLIST".to_string();
     credential.state = Some(vec![CredentialState {
         created_date: OffsetDateTime::now_utc(),
         state: CredentialStateEnum::Accepted,

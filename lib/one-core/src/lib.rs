@@ -42,9 +42,7 @@ use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{key_algorithms_from_config, KeyAlgorithm};
-use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::RevocationMethodProviderImpl;
-use crate::provider::revocation::status_list_2021::StatusList2021;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::transport_protocol::transport_protocol_providers_from_config;
 use crate::service::credential_schema::CredentialSchemaService;
@@ -135,22 +133,20 @@ impl OneCore {
             Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
 
         let config = Arc::new(core_config);
+        let client = reqwest::Client::new();
 
-        let revocation_methods: Vec<(String, Arc<dyn RevocationMethod>)> = vec![
-            ("NONE".to_string(), Arc::new(NoneRevocation {})),
-            (
-                "STATUSLIST2021".to_string(),
-                Arc::new(StatusList2021 {
-                    core_base_url: core_base_url.clone(),
-                    credential_repository: data_provider.get_credential_repository(),
-                    revocation_list_repository: data_provider.get_revocation_list_repository(),
-                    key_provider: key_provider.clone(),
-                    key_algorithm_provider: key_algorithm_provider.clone(),
-                    did_method_provider: did_method_provider.clone(),
-                    client: reqwest::Client::new(),
-                }),
-            ),
-        ];
+        let revocation_methods: Vec<(String, Arc<dyn RevocationMethod>)> =
+            crate::provider::revocation::provider::from_config(
+                &config.revocation,
+                core_base_url.clone(),
+                data_provider.get_credential_repository(),
+                data_provider.get_revocation_list_repository(),
+                key_provider.clone(),
+                key_algorithm_provider.clone(),
+                did_method_provider.clone(),
+                client,
+            );
+
         let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
             revocation_methods.to_owned(),
         ));

@@ -68,10 +68,10 @@ rusty_fork_test! {
                     order: 0
                     type: 'NONE'
                     params: null
-                STATUSLIST2021:
+                BITSTRINGSTATUSLIST:
                     display: 'display'
                     order: 1
-                    type: 'STATUSLIST2021'
+                    type: 'BITSTRINGSTATUSLIST'
                     params: null
             did:
                 KEY:

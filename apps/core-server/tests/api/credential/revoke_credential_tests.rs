@@ -32,7 +32,7 @@ async fn test_revoke_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "STATUSLIST2021")
+        .create("test", &organisation, "BITSTRINGSTATUSLIST")
         .await;
     let credential = context
         .db

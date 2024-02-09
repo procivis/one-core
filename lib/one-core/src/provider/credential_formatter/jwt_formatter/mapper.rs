@@ -4,6 +4,7 @@ use crate::{
     provider::credential_formatter::{
         jwt::Jwt,
         model::{CredentialStatus, CredentialSubject, DetailCredential},
+        Context,
     },
     service::credential::dto::CredentialDetailResponseDTO,
 };
@@ -22,7 +23,7 @@ pub(super) fn format_vc(
         .map(|c| (c.schema.key.clone(), c.value.clone()))
         .collect();
 
-    let context = vec!["https://www.w3.org/2018/credentials/v1".to_owned()]
+    let context = vec![Context::CredentialsV1.to_string()]
         .into_iter()
         .chain(additional_context)
         .collect();

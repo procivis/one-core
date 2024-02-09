@@ -62,16 +62,17 @@ revocation:
     order: 0
     type: "NONE"
     params: null
-  STATUSLIST2021:
-    display: "revocation.statuslist"
-    order: 1
-    type: "STATUSLIST2021"
-    params: null
   LVVC:
     display: "revocation.lvvc"
     order: 2
     disabled: true
     type: "LVVC"
+    params: null
+  BITSTRINGSTATUSLIST:
+    display: "revocation.bitStringStatusList"
+    order: 1
+    disabled: false
+    type: "BITSTRINGSTATUSLIST"
     params: null
 did:
   KEY:

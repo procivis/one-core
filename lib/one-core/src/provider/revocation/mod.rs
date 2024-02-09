@@ -4,12 +4,12 @@ use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::service::error::ServiceError;
 
+pub mod bitstring_status_list;
 pub mod none;
 pub mod provider;
 pub mod status_list_2021;
 
 pub struct CredentialRevocationInfo {
-    pub additional_vc_contexts: Vec<String>,
     pub credential_status: CredentialStatus,
 }
 

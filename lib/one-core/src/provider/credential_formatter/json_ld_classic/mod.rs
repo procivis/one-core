@@ -23,7 +23,9 @@ use time::OffsetDateTime;
 
 use super::json_ld::model::*;
 use super::model::{CredentialPresentation, Presentation};
-use super::{AuthenticationFn, CredentialFormatter, FormatterCapabilities, VerificationFn};
+use super::{
+    AuthenticationFn, Context, CredentialFormatter, FormatterCapabilities, VerificationFn,
+};
 
 use sophia_c14n::rdfc10;
 use sophia_jsonld::parser::JsonLdParser;
@@ -262,7 +264,7 @@ impl JsonLdClassic {
         proof_purpose: &str,
         algorithm: &str,
     ) -> Result<LdProof, FormatterError> {
-        let context = vec!["https://w3id.org/security/data-integrity/v2".to_string()];
+        let context = vec![Context::DataIntegrityV2.to_string()];
         let r#type = "DataIntegrityProof".to_owned();
 
         let cryptosuite = match algorithm {
@@ -310,8 +312,8 @@ impl JsonLdClassic {
 
     fn prepare_context(&self, additional_context: Vec<String>) -> Vec<String> {
         let mut context = vec![
-            "https://www.w3.org/2018/credentials/v1".to_string(),
-            "https://w3id.org/security/data-integrity/v2".to_string(),
+            Context::CredentialsV1.to_string(),
+            Context::DataIntegrityV2.to_string(),
         ];
 
         context.extend(additional_context);
