@@ -220,8 +220,8 @@ pub enum ValidationError {
     #[error("Unsupported key type: {key_type}")]
     UnsupportedKeyType { key_type: String },
 
-    #[error("DID: Missing key")]
-    DidMissingKey,
+    #[error("DID: Invalid key number")]
+    DidInvalidKeyNumber,
 
     #[error("Credential schema: Missing claims")]
     CredentialSchemaMissingClaims,
@@ -377,7 +377,7 @@ pub enum ErrorCode {
     #[strum(to_string = "DID cannot be deactivated ")]
     BR_0029,
 
-    #[strum(to_string = "DID missing key")]
+    #[strum(to_string = "DID invalid key number")]
     BR_0030,
 
     #[strum(to_string = "Missing DID method")]
@@ -591,7 +591,7 @@ impl ValidationError {
         match self {
             ValidationError::InvalidExchangeType { .. } => ErrorCode::BR_0052,
             ValidationError::UnsupportedKeyType { .. } => ErrorCode::BR_0053,
-            ValidationError::DidMissingKey => ErrorCode::BR_0030,
+            ValidationError::DidInvalidKeyNumber => ErrorCode::BR_0030,
             ValidationError::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
             ValidationError::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
             ValidationError::ProofSchemaMissingClaims => ErrorCode::BR_0016,

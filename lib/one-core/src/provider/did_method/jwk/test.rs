@@ -7,7 +7,7 @@ use crate::{
     model::key::Key,
     provider::{
         did_method::{
-            dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO},
+            dto::{AmountOfKeys, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO},
             jwk::JWKDidMethod,
             DidMethod, DidMethodError, Operation,
         },
@@ -238,4 +238,60 @@ fn test_get_capabilities() {
         vec![Operation::RESOLVE, Operation::CREATE],
         provider.get_capabilities().operations
     );
+}
+
+#[test]
+fn test_validate_keys() {
+    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let keys = AmountOfKeys {
+        global: 1,
+        authentication: 1,
+        assertion: 1,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_no_keys() {
+    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let keys = AmountOfKeys {
+        global: 0,
+        authentication: 0,
+        assertion: 0,
+        key_agreement: 0,
+        capability_invocation: 0,
+        capability_delegation: 0,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_too_much_keys() {
+    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let keys = AmountOfKeys {
+        global: 2,
+        authentication: 1,
+        assertion: 1,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(!did_method.validate_keys(keys));
+}
+
+#[test]
+fn test_validate_keys_missing_key() {
+    let did_method = JWKDidMethod::new(Arc::new(MockKeyAlgorithmProvider::default()));
+    let keys = AmountOfKeys {
+        global: 1,
+        authentication: 1,
+        assertion: 0,
+        key_agreement: 1,
+        capability_invocation: 1,
+        capability_delegation: 1,
+    };
+    assert!(!did_method.validate_keys(keys));
 }

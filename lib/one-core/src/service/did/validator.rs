@@ -1,43 +1,40 @@
 use std::collections::HashSet;
 
-use crate::model::did::Did;
-use crate::provider::did_method::DidMethod;
-use crate::service::error::BusinessLogicError;
-use crate::{
-    model::key::KeyId,
-    service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError},
-};
-
 use super::DidDeactivationError;
+use crate::model::did::Did;
+use crate::provider::did_method::dto::AmountOfKeys;
+use crate::provider::did_method::DidMethod;
+use crate::service::error::{BusinessLogicError, ValidationError};
+use crate::service::{did::dto::CreateDidRequestKeysDTO, error::ServiceError};
+use std::hash::Hash;
 
-pub(super) fn validate_request_only_one_key_of_each_type(
+fn count_uniq<T: Eq + Hash>(vec: impl IntoIterator<Item = T>) -> usize {
+    vec.into_iter().collect::<HashSet<_>>().len()
+}
+
+pub(super) fn validate_request_amount_of_keys(
+    did_method: &dyn DidMethod,
     keys: CreateDidRequestKeysDTO,
 ) -> Result<(), ServiceError> {
-    if keys.authentication.len() > 1
-        || keys.assertion.len() > 1
-        || keys.key_agreement.len() > 1
-        || keys.capability_invocation.len() > 1
-        || keys.capability_delegation.len() > 1
-    {
-        return Err(ServiceError::ValidationError(
-            "Each key type must contain maximum one key".to_string(),
-        ));
-    }
+    let keys = AmountOfKeys {
+        global: count_uniq(
+            keys.authentication
+                .iter()
+                .chain(&keys.assertion)
+                .chain(&keys.key_agreement)
+                .chain(&keys.capability_invocation)
+                .chain(&keys.capability_delegation),
+        ),
+        authentication: count_uniq(&keys.authentication),
+        assertion: count_uniq(&keys.assertion),
+        key_agreement: count_uniq(&keys.key_agreement),
+        capability_invocation: count_uniq(&keys.capability_invocation),
+        capability_delegation: count_uniq(&keys.capability_delegation),
+    };
 
-    let key_ids = HashSet::<KeyId>::from_iter(
-        [
-            keys.authentication,
-            keys.assertion,
-            keys.key_agreement,
-            keys.capability_invocation,
-            keys.capability_delegation,
-        ]
-        .concat(),
-    );
-
-    if key_ids.len() > 1 {
-        Err(ServiceError::ValidationError(
-            "Only one unique key can be used".to_string(),
+    if !did_method.validate_keys(keys) {
+        Err(ServiceError::Validation(
+            ValidationError::DidInvalidKeyNumber,
         ))
     } else {
         Ok(())

@@ -1,12 +1,14 @@
 mod helpers;
 
 use self::helpers::{decode_did, generate_document};
+use super::{
+    dto::{DidDocumentDTO, Keys},
+    AmountOfKeys, DidCapabilities, DidMethodError, Operation,
+};
+use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
-
-use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError, Operation};
-use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 
 pub struct KeyDidMethod {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -89,6 +91,10 @@ impl super::DidMethod for KeyDidMethod {
                 "BBS_PLUS".to_string(),
             ],
         }
+    }
+
+    fn validate_keys(&self, keys: AmountOfKeys) -> bool {
+        Keys::default().validate_keys(keys)
     }
 }
 

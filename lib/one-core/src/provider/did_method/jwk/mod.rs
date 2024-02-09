@@ -1,8 +1,10 @@
 use self::helpers::{encode_to_did, extract_jwk, generate_document};
-
-use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError, Operation};
+use super::{
+    dto::{AmountOfKeys, DidDocumentDTO},
+    DidCapabilities, DidMethodError, Operation,
+};
+use crate::provider::did_method::dto::Keys;
 use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
-
 use async_trait::async_trait;
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
@@ -75,6 +77,10 @@ impl super::DidMethod for JWKDidMethod {
                 "DILITHIUM".to_string(),
             ],
         }
+    }
+
+    fn validate_keys(&self, keys: AmountOfKeys) -> bool {
+        Keys::default().validate_keys(keys)
     }
 }
 

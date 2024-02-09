@@ -1,4 +1,4 @@
-use super::{dto::DidDocumentDTO, DidCapabilities, DidMethodError, Operation};
+use super::{dto::DidDocumentDTO, AmountOfKeys, DidCapabilities, DidMethodError, Operation};
 use crate::model::key::Key;
 
 use async_trait::async_trait;
@@ -49,5 +49,9 @@ impl super::DidMethod for X509Method {
             operations: vec![Operation::RESOLVE, Operation::CREATE],
             key_algorithms: vec!["ES256".to_string(), "EDDSA".to_string()],
         }
+    }
+
+    fn validate_keys(&self, _keys: AmountOfKeys) -> bool {
+        todo!()
     }
 }
