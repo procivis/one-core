@@ -1,6 +1,12 @@
 use core_server::router::start_server;
-use one_core::model::proof::ProofStateEnum;
+use one_core::{
+    model::proof::ProofStateEnum,
+    provider::transport_protocol::openid4vc::dto::{
+        OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
+    },
+};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -368,6 +374,100 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         .api
         .interactions
         .handle_invitation(did.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+}
+
+#[tokio::test]
+async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
+    let mock_server = MockServer::start().await;
+    let (context, _, did) = TestContext::new_with_did().await;
+
+    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        vp_formats: HashMap::from([(
+            "jwt_vp_json".to_string(),
+            OpenID4VPFormat {
+                alg: vec!["EdDSA".to_string()],
+            },
+        )]),
+        client_id_scheme: "redirect_uri".to_string(),
+    })
+    .unwrap();
+    let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
+        id: Default::default(),
+        input_descriptors: vec![],
+    })
+    .unwrap();
+    let nonce = Uuid::new_v4().to_string();
+    let callback_url = "http://127.0.0.1/callback";
+    let client_metadata_uri = format!("{}/client-metadata", mock_server.uri());
+    let presentation_definition_uri = format!("{}/presentation-definition", mock_server.uri());
+    let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition_uri={}"
+                                    , nonce, callback_url, client_metadata_uri, callback_url, presentation_definition_uri)).unwrap().to_string();
+
+    Mock::given(method(Get))
+        .and(path("/client-metadata"))
+        .respond_with(ResponseTemplate::new(200).set_body_raw(client_metadata, "application/json"))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Get))
+        .and(path("/presentation-definition"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(presentation_definition, "application/json"),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(did.id, &query)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+}
+
+#[tokio::test]
+async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
+    let (context, _, did) = TestContext::new_with_did().await;
+
+    let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        vp_formats: HashMap::from([(
+            "jwt_vp_json".to_string(),
+            OpenID4VPFormat {
+                alg: vec!["EdDSA".to_string()],
+            },
+        )]),
+        client_id_scheme: "redirect_uri".to_string(),
+    })
+    .unwrap();
+    let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
+        id: Default::default(),
+        input_descriptors: vec![],
+    })
+    .unwrap();
+    let nonce = Uuid::new_v4().to_string();
+    let callback_url = "http://127.0.0.1/callback";
+    let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+                                    , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap().to_string();
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(did.id, &query)
         .await;
 
     // THEN

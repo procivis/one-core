@@ -496,6 +496,12 @@ pub enum ErrorCode {
     #[strum(to_string = "General input validation error")]
     BR_0084,
 
+    #[strum(to_string = "Invalid handle invitation received")]
+    BR_0085,
+
+    #[strum(to_string = "Cannot fetch credential offer or presentation definition")]
+    BR_0086,
+
     #[strum(to_string = "Missing organisation")]
     BR_0088,
 
@@ -529,7 +535,7 @@ impl ServiceError {
             ServiceError::Repository(error) => error.error_code(),
             ServiceError::MissingProvider(error) => error.error_code(),
             ServiceError::ResponseMapping(_) => ErrorCode::BR_0055,
-            ServiceError::TransportProtocolError(_) => ErrorCode::BR_0062,
+            ServiceError::TransportProtocolError(error) => error.error_code(),
             ServiceError::CryptoError(_) => ErrorCode::BR_0050,
             ServiceError::FormatterError(_) => ErrorCode::BR_0058,
             ServiceError::KeyStorageError(_) => ErrorCode::BR_0039,
@@ -610,6 +616,20 @@ impl ValidationError {
             ValidationError::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             ValidationError::InvalidKeyStorage(_) => ErrorCode::BR_0041,
             ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
+        }
+    }
+}
+
+impl TransportProtocolError {
+    pub fn error_code(&self) -> ErrorCode {
+        match self {
+            TransportProtocolError::Failed(_) => ErrorCode::BR_0062,
+            TransportProtocolError::HttpRequestError(_) => ErrorCode::BR_0086,
+            TransportProtocolError::HttpResponse(_) => ErrorCode::BR_0086,
+            TransportProtocolError::JsonError(_) => ErrorCode::BR_0062,
+            TransportProtocolError::OperationNotSupported => ErrorCode::BR_0062,
+            TransportProtocolError::MissingBaseUrl => ErrorCode::BR_0062,
+            TransportProtocolError::InvalidRequest(_) => ErrorCode::BR_0085,
         }
     }
 }

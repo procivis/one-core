@@ -96,7 +96,8 @@ mod validator;
 const CREDENTIAL_OFFER_URL_SCHEME: &str = "openid-credential-offer";
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
-const PRESENTATION_DEFINITION_QUERY_PARAM_KEY: &str = "presentation_definition";
+const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
+const PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY: &str = "presentation_definition_uri";
 
 pub(crate) struct OpenID4VC {
     client: reqwest::Client,
@@ -119,6 +120,9 @@ pub(crate) struct OpenID4VCParams {
     pub(crate) pre_authorized_code_expires_in: u64,
     pub(crate) token_expires_in: u64,
     pub(crate) credential_offer_by_value: Option<bool>,
+    pub(crate) client_metadata_by_value: Option<bool>,
+    pub(crate) presentation_definition_by_value: Option<bool>,
+    pub(crate) allow_insecure_http_transport: Option<bool>,
 }
 
 impl OpenID4VC {
@@ -164,7 +168,9 @@ impl TransportProtocol for OpenID4VC {
             return Some(InvitationType::CredentialIssuance);
         }
 
-        if query_has_key(PRESENTATION_DEFINITION_QUERY_PARAM_KEY) {
+        if query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
+            || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)
+        {
             return Some(InvitationType::ProofRequest);
         }
 
@@ -186,7 +192,17 @@ impl TransportProtocol for OpenID4VC {
             InvitationType::CredentialIssuance => {
                 handle_credential_invitation(self, url, own_did).await
             }
-            InvitationType::ProofRequest => handle_proof_invitation(url, self, own_did).await,
+            InvitationType::ProofRequest => {
+                handle_proof_invitation(
+                    url,
+                    self,
+                    own_did,
+                    self.params
+                        .allow_insecure_http_transport
+                        .is_some_and(|value| value),
+                )
+                .await
+            }
         }
     }
 
@@ -597,6 +613,12 @@ impl TransportProtocol for OpenID4VC {
             interaction_id,
             interaction_content.nonce,
             proof,
+            self.params
+                .client_metadata_by_value
+                .is_some_and(|value| value),
+            self.params
+                .presentation_definition_by_value
+                .is_some_and(|value| value),
         )?;
 
         Ok(format!("openid4vp://?{encoded_offer}"))
@@ -608,10 +630,17 @@ impl TransportProtocol for OpenID4VC {
     ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
+        let presentation_definition =
+            interaction_data
+                .presentation_definition
+                .ok_or(TransportProtocolError::Failed(
+                    "presentation_definition is None".to_string(),
+                ))?;
+
         let mut requested_claims = vec![];
 
         let mut credential_groups: Vec<CredentialGroup> = vec![];
-        for input_descriptor in interaction_data.presentation_definition.input_descriptors {
+        for input_descriptor in presentation_definition.input_descriptors {
             let mut requested_claims_for_input = vec![];
             for field in input_descriptor.constraints.fields {
                 let field_name = get_claim_name_by_json_path(&field.path)?;
@@ -1100,17 +1129,93 @@ async fn get_discovery_and_issuer_metadata(
     Ok((oicd_discovery?, issuer_metadata?))
 }
 
+async fn interaction_data_from_query(
+    query: &str,
+    client: &reqwest::Client,
+    allow_insecure_http_transport: bool,
+) -> Result<OpenID4VPInteractionData, TransportProtocolError> {
+    let mut interaction_data: OpenID4VPInteractionData = serde_qs::from_str(query)
+        .map_err(|e| TransportProtocolError::InvalidRequest(e.to_string()))?;
+
+    if interaction_data.client_metadata.is_some() && interaction_data.client_metadata_uri.is_some()
+    {
+        return Err(TransportProtocolError::InvalidRequest(
+            "client_metadata and client_metadata_uri cannot be set together".to_string(),
+        ));
+    }
+
+    if interaction_data.presentation_definition.is_some()
+        && interaction_data.presentation_definition_uri.is_some()
+    {
+        return Err(TransportProtocolError::InvalidRequest(
+            "presentation_definition and presentation_definition_uri cannot be set together"
+                .to_string(),
+        ));
+    }
+
+    if let Some(client_metadata_uri) = &interaction_data.client_metadata_uri {
+        if !allow_insecure_http_transport && client_metadata_uri.scheme() != "https" {
+            return Err(TransportProtocolError::InvalidRequest(
+                "client_metadata_uri must use HTTPS scheme".to_string(),
+            ));
+        }
+
+        let client_metadata = client
+            .get(client_metadata_uri.to_owned())
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .json()
+            .await
+            .map_err(|error| {
+                TransportProtocolError::Failed(format!("Failed decoding client metadata: {error}"))
+            })?;
+
+        interaction_data.client_metadata = Some(client_metadata);
+    }
+
+    if let Some(presentation_definition_uri) = &interaction_data.presentation_definition_uri {
+        if !allow_insecure_http_transport && presentation_definition_uri.scheme() != "https" {
+            return Err(TransportProtocolError::InvalidRequest(
+                "presentation_definition_uri must use HTTPS scheme".to_string(),
+            ));
+        }
+
+        let presentation_definition = client
+            .get(presentation_definition_uri.to_owned())
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .json()
+            .await
+            .map_err(|error| {
+                TransportProtocolError::Failed(format!(
+                    "Failed decoding presentation definition: {error}"
+                ))
+            })?;
+
+        interaction_data.presentation_definition = Some(presentation_definition);
+    }
+
+    Ok(interaction_data)
+}
+
 async fn handle_proof_invitation(
     url: Url,
     deps: &OpenID4VC,
     holder_did: Did,
+    allow_insecure_http_transport: bool,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
     let query = url.query().ok_or(TransportProtocolError::InvalidRequest(
         "Query cannot be empty".to_string(),
     ))?;
 
-    let interaction_data: OpenID4VPInteractionData = serde_qs::from_str(query)
-        .map_err(|e| TransportProtocolError::InvalidRequest(e.to_string()))?;
+    let interaction_data =
+        interaction_data_from_query(query, &deps.client, allow_insecure_http_transport).await?;
     validate_interaction_data(&interaction_data)?;
     let data = serialize_interaction_data(&interaction_data)?;
 

@@ -22,17 +22,21 @@ pub(super) fn validate_interaction_data(
         "response_mode",
     )?;
 
-    if interaction_data.client_metadata.client_id_scheme != interaction_data.client_id_scheme {
+    let client_metadata =
+        interaction_data
+            .client_metadata
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "client_metadata is None".to_string(),
+            ))?;
+
+    if client_metadata.client_id_scheme != interaction_data.client_id_scheme {
         return Err(TransportProtocolError::InvalidRequest(
             "client_metadata.client_id_scheme must match client_scheme".to_string(),
         ));
     }
 
-    match interaction_data
-        .client_metadata
-        .vp_formats
-        .get("jwt_vp_json")
-    {
+    match client_metadata.vp_formats.get("jwt_vp_json") {
         None => Err(TransportProtocolError::InvalidRequest(
             "client_metadata.vp_formats must contain 'jwt_vp_json'".to_string(),
         )),

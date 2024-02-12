@@ -58,6 +58,16 @@ pub fn create_config(
                             resolverUrl: {mock_url}
         "}
     });
+    let allow_insecure_http = Some(
+        indoc::indoc! {"
+        exchange:
+            OPENID4VC:
+                params:
+                    public:
+                        allowInsecureHttpTransport: true
+    "}
+        .to_string(),
+    );
 
     let root = std::env!("CARGO_MANIFEST_DIR");
 
@@ -68,7 +78,8 @@ pub fn create_config(
     ]
     .into_iter()
     .map(|path| std::fs::read_to_string(path).unwrap())
-    .chain(ion_config);
+    .chain(ion_config)
+    .chain(allow_insecure_http);
 
     let mut app_config: AppConfig<ServerConfig> =
         core_config::AppConfig::from_yaml_str_configs(configs.collect()).unwrap();

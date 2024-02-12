@@ -106,12 +106,16 @@ pub struct OpenID4VPInteractionData {
     pub nonce: String,
     pub client_id_scheme: String,
     pub client_id: Url,
+    #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub client_metadata: OpenID4VPClientMetadata,
+    pub client_metadata: Option<OpenID4VPClientMetadata>,
+    pub client_metadata_uri: Option<Url>,
     pub response_mode: String,
     pub response_uri: Url,
+    #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]
-    pub presentation_definition: OpenID4VPPresentationDefinition,
+    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
+    pub presentation_definition_uri: Option<Url>,
 
     #[serde(skip_serializing)]
     pub redirect_uri: Option<String>,
