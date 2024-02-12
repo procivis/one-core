@@ -45,6 +45,8 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     interaction_id: InteractionId,
     nonce: String,
     proof: Proof,
+    client_metadata_by_value: bool,
+    presentation_definition_by_value: bool,
 ) -> Result<String, TransportProtocolError> {
     let client_metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata()?)
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
@@ -52,19 +54,43 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
         &create_open_id_for_vp_presentation_definition(interaction_id, &proof)?,
     )
     .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-    let callback_url = format!("{}/ssi/oidc-verifier/v1/response", get_url(base_url)?);
-    let encoded_params = serde_urlencoded::to_string([
-        ("response_type", "vp_token"),
-        ("state", &interaction_id.to_string()),
-        ("nonce", &nonce),
-        ("client_id_scheme", "redirect_uri"),
-        ("client_id", &callback_url),
-        ("client_metadata", &client_metadata),
-        ("response_mode", "direct_post"),
-        ("response_uri", &callback_url),
-        ("presentation_definition", &presentation_definition),
-    ])
-    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    let base_url = get_url(base_url)?;
+    let callback_url = format!("{}/ssi/oidc-verifier/v1/response", base_url);
+
+    let mut params: Vec<(&str, String)> = vec![
+        ("response_type", "vp_token".to_string()),
+        ("state", interaction_id.to_string()),
+        ("nonce", nonce),
+        ("client_id_scheme", "redirect_uri".to_string()),
+        ("client_id", callback_url.to_owned()),
+        ("response_mode", "direct_post".to_string()),
+        ("response_uri", callback_url),
+    ];
+
+    match client_metadata_by_value {
+        true => params.push(("client_metadata", client_metadata)),
+        false => params.push((
+            "client_metadata_uri",
+            format!(
+                "{}/ssi/oidc-verifier/v1/{}/client-metadata",
+                base_url, proof.id
+            ),
+        )),
+    }
+
+    match presentation_definition_by_value {
+        true => params.push(("presentation_definition", presentation_definition)),
+        false => params.push((
+            "presentation_definition_uri",
+            format!(
+                "{}/ssi/oidc-verifier/v1/{}/presentation-definition",
+                base_url, proof.id
+            ),
+        )),
+    }
+
+    let encoded_params = serde_urlencoded::to_string(params)
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
     Ok(encoded_params)
 }
@@ -357,9 +383,17 @@ pub(super) fn create_presentation_submission(
     credential_presentations: Vec<PresentedCredential>,
     format: &str,
 ) -> Result<PresentationSubmissionMappingDTO, TransportProtocolError> {
+    let presentation_definition_id = &interaction_data
+        .presentation_definition
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "presentation_definition is None".to_string(),
+        ))?
+        .id;
+
     Ok(PresentationSubmissionMappingDTO {
         id: Uuid::new_v4().to_string(),
-        definition_id: interaction_data.presentation_definition.id.to_string(),
+        definition_id: presentation_definition_id.to_string(),
         descriptor_map: credential_presentations
             .into_iter()
             .enumerate()

@@ -5,6 +5,11 @@ use mockall::{predicate, Sequence};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
+use wiremock::{
+    http::Method,
+    matchers::{method, path},
+    Mock, MockServer, ResponseTemplate,
+};
 
 use crate::{
     crypto::MockCryptoProvider,
@@ -72,6 +77,9 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: None,
+            client_metadata_by_value: None,
+            presentation_definition_by_value: None,
+            allow_insecure_http_transport: Some(true),
         }),
     )
 }
@@ -325,6 +333,9 @@ async fn test_generate_share_credentials_offer_by_value() {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: Some(true),
+            client_metadata_by_value: None,
+            presentation_definition_by_value: None,
+            allow_insecure_http_transport: Some(true),
         }),
         ..Default::default()
     });
@@ -412,7 +423,7 @@ async fn test_handle_invitation_proof_success() {
 
     interaction_repository
         .expect_create_interaction()
-        .once()
+        .times(2)
         .in_sequence(&mut seq)
         .returning(move |request| Ok(request.id));
 
@@ -448,6 +459,38 @@ async fn test_handle_invitation_proof_success() {
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
+
+    let mock_server = MockServer::start().await;
+
+    let client_metadata_uri = format!("{}/client_metadata_uri", mock_server.uri());
+    let presentation_definition_uri = format!("{}/presentation_definition_uri", mock_server.uri());
+
+    Mock::given(method(Method::Get))
+        .and(path("/client_metadata_uri"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_raw(client_metadata.to_owned(), "application/json"),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::Get))
+        .and(path("/presentation_definition_uri"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_raw(presentation_definition.to_owned(), "application/json"),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let url_using_uri_instead_of_values = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition_uri={}"
+                                                              , nonce, callback_url, client_metadata_uri, callback_url, presentation_definition_uri)).unwrap();
+
+    let result = protocol
+        .handle_invitation(url_using_uri_instead_of_values, generic_holder_did())
+        .await
+        .unwrap();
+    assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
 }
 
 #[tokio::test]
@@ -456,6 +499,7 @@ async fn test_handle_invitation_proof_failed() {
         ..Default::default()
     });
 
+    let client_metadata_uri = "https://127.0.0.1/client_metadata_uri";
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
@@ -466,6 +510,7 @@ async fn test_handle_invitation_proof_failed() {
         client_id_scheme: "redirect_uri".to_string(),
     })
     .unwrap();
+    let presentation_definition_uri = "https://127.0.0.1/presentation_definition_uri";
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
         id: Default::default(),
         input_descriptors: vec![],
@@ -526,6 +571,58 @@ async fn test_handle_invitation_proof_failed() {
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let both_client_metadata_and_uri_specified = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+                                                                     , nonce, callback_url, client_metadata, client_metadata_uri, callback_url, presentation_definition)).unwrap();
+    let result = protocol
+        .handle_invitation(both_client_metadata_and_uri_specified, generic_holder_did())
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let both_presentation_definition_and_uri_specified = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}&presentation_definition_uri={}"
+                                                                             , nonce, callback_url, client_metadata, callback_url, presentation_definition, presentation_definition_uri)).unwrap();
+    let result = protocol
+        .handle_invitation(
+            both_presentation_definition_and_uri_specified,
+            generic_holder_did(),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let protocol_https_only = setup_protocol(TestInputs {
+        params: Some(OpenID4VCParams {
+            pre_authorized_code_expires_in: 10,
+            token_expires_in: 10,
+            credential_offer_by_value: None,
+            client_metadata_by_value: None,
+            presentation_definition_by_value: None,
+            allow_insecure_http_transport: None,
+        }),
+        ..Default::default()
+    });
+
+    let invalid_client_metadata_uri = "http://127.0.0.1/client_metadata_uri";
+    let client_metadata_uri_is_not_https = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
+                                                               , nonce, callback_url, invalid_client_metadata_uri, callback_url, presentation_definition)).unwrap();
+    let result = protocol_https_only
+        .handle_invitation(client_metadata_uri_is_not_https, generic_holder_did())
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+
+    let invalid_presentation_definition_uri = "http://127.0.0.1/presentation_definition_uri";
+    let presentation_definition_uri_is_not_https = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition_uri={}"
+                                                                       , nonce, callback_url, client_metadata, callback_url, invalid_presentation_definition_uri)).unwrap();
+    let result = protocol_https_only
+        .handle_invitation(
+            presentation_definition_uri_is_not_https,
+            generic_holder_did(),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
 }
 
 #[test]
@@ -552,6 +649,14 @@ fn test_serialize_and_deserialize_interaction_data() {
     let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                     , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap().query().unwrap().to_string();
     let data: OpenID4VPInteractionData = serde_qs::from_str(&query).unwrap();
+    let json = serde_json::to_string(&data).unwrap();
+    let _data_from_json: OpenID4VPInteractionData = serde_json::from_str(&json).unwrap();
+
+    let presentation_definition_uri = "https://127.0.0.1/presentation-definition";
+    let query_with_presentation_definition_uri = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition_uri={}"
+                                                                     , nonce, callback_url, client_metadata, callback_url, presentation_definition_uri)).unwrap().query().unwrap().to_string();
+    let data: OpenID4VPInteractionData =
+        serde_qs::from_str(&query_with_presentation_definition_uri).unwrap();
     let json = serde_json::to_string(&data).unwrap();
     let _data_from_json: OpenID4VPInteractionData = serde_json::from_str(&json).unwrap();
 }

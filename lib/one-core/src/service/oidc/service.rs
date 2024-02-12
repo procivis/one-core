@@ -104,7 +104,11 @@ impl OIDCService {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
 
-        Ok(interaction_data.client_metadata)
+        interaction_data
+            .client_metadata
+            .ok_or(ServiceError::MappingError(
+                "client_metadata is None".to_string(),
+            ))
     }
 
     pub async fn oidc_service_discovery(
