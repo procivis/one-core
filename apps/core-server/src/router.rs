@@ -207,7 +207,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route(
             "/ssi/oidc-verifier/v1/response",
-            post(ssi::controller::oidc_verifier_direct_post),
+            post(ssi::controller::oidc_verifier_direct_post).layer(DefaultBodyLimit::disable()),
         )
         .route(
             "/ssi/oidc-verifier/v1/:id/presentation-definition",
