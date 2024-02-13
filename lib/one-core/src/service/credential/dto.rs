@@ -11,6 +11,7 @@ use crate::{
         common::GetListResponse,
         credential::{CredentialId, SortableCredentialColumn},
         credential_schema::{CredentialFormat, CredentialSchemaId, RevocationMethod},
+        key::KeyId,
         list_filter::{ListFilterValue, StringMatch},
         list_query::ListQuery,
         organisation::OrganisationId,
@@ -117,6 +118,7 @@ pub type GetCredentialQueryDTO = ListQuery<SortableCredentialColumn, CredentialF
 pub struct CreateCredentialRequestDTO {
     pub credential_schema_id: Uuid,
     pub issuer_did: DidId,
+    pub issuer_key: Option<KeyId>,
     pub transport: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub redirect_uri: Option<String>,

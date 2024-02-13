@@ -15,7 +15,7 @@ use crate::{
             CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
-        did::{DidRelations, DidType},
+        did::{DidRelations, DidType, KeyRole},
         key::KeyRelations,
         organisation::OrganisationRelations,
     },
@@ -33,7 +33,10 @@ use crate::{
             },
             CredentialService,
         },
-        error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
+        error::{
+            BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+            ValidationError,
+        },
     },
 };
 
@@ -50,12 +53,17 @@ impl CredentialService {
         &self,
         request: CreateCredentialRequestDTO,
     ) -> Result<CredentialId, ServiceError> {
-        let issuer_did = self
+        let Some(issuer_did) = self
             .did_repository
-            .get_did(&request.issuer_did, &DidRelations::default())
-            .await?;
-
-        let Some(issuer_did) = issuer_did else {
+            .get_did(
+                &request.issuer_did,
+                &DidRelations {
+                    keys: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
             return Err(EntityNotFoundError::Did(request.issuer_did).into());
         };
 
@@ -70,18 +78,17 @@ impl CredentialService {
             return Err(BusinessLogicError::DidIsDeactivated(issuer_did.id).into());
         }
 
-        let schema = self
+        let Some(schema) = self
             .credential_schema_repository
             .get_credential_schema(
                 &request.credential_schema_id,
                 &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
+                    claim_schemas: Some(Default::default()),
+                    organisation: Some(Default::default()),
                 },
             )
-            .await?;
-
-        let Some(schema) = schema else {
+            .await?
+        else {
             return Err(EntityNotFoundError::CredentialSchema(request.credential_schema_id).into());
         };
 
@@ -105,7 +112,44 @@ impl CredentialService {
             request.claim_values.clone(),
             &claim_schemas,
         )?;
-        let credential = from_create_request(request, credential_id, claims, issuer_did, schema);
+
+        let key = match request.issuer_key {
+            Some(key_id) => {
+                let entry = issuer_did
+                    .keys
+                    .as_ref()
+                    .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
+                    .iter()
+                    .find(|entry| entry.key.id == key_id)
+                    .ok_or(ServiceError::Validation(ValidationError::InvalidKey(
+                        "key not found".into(),
+                    )))?;
+
+                if entry.role != KeyRole::AssertionMethod {
+                    return Err(ServiceError::Validation(ValidationError::InvalidKey(
+                        "invalid key role".into(),
+                    )));
+                }
+
+                entry
+            }
+            None => issuer_did
+                .keys
+                .as_ref()
+                .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
+                .iter()
+                .find(|entry| entry.role == KeyRole::AssertionMethod)
+                .ok_or_else(|| {
+                    ServiceError::Validation(ValidationError::InvalidKey(
+                        "no assertion keys found in did".to_string(),
+                    ))
+                })?,
+        }
+        .key
+        .clone();
+
+        let credential =
+            from_create_request(request, credential_id, claims, issuer_did, schema, key);
 
         let result = self
             .credential_repository

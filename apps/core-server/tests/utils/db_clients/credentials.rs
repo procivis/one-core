@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
 use one_core::model::claim::{Claim, ClaimRelations};
-use one_core::model::claim_schema::ClaimSchemaRelations;
 use one_core::model::credential::{
     Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
-    CredentialStateEnum, CredentialStateRelations,
+    CredentialStateEnum,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use one_core::model::did::{Did, DidRelations};
-use one_core::model::interaction::InteractionRelations;
-use one_core::model::organisation::OrganisationRelations;
+use one_core::model::did::Did;
 use one_core::repository::credential_repository::CredentialRepository;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -30,19 +27,19 @@ impl CredentialsDB {
             .get_credential(
                 credential_id,
                 &CredentialRelations {
-                    state: Some(CredentialStateRelations {}),
+                    state: Some(Default::default()),
                     claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations {}),
+                        schema: Some(Default::default()),
                     }),
                     schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(ClaimSchemaRelations {}),
-                        organisation: Some(OrganisationRelations {}),
+                        claim_schemas: Some(Default::default()),
+                        organisation: Some(Default::default()),
                     }),
-                    holder_did: Some(DidRelations::default()),
-                    interaction: Some(InteractionRelations {}),
+                    holder_did: Some(Default::default()),
+                    interaction: Some(Default::default()),
                     revocation_list: None,
                     issuer_did: None,
-                    key: None,
+                    key: Some(Default::default()),
                 },
             )
             .await
