@@ -114,25 +114,16 @@ impl CredentialService {
         )?;
 
         let key = match request.issuer_key {
-            Some(key_id) => {
-                let entry = issuer_did
-                    .keys
-                    .as_ref()
-                    .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
-                    .iter()
-                    .find(|entry| entry.key.id == key_id)
-                    .ok_or(ServiceError::Validation(ValidationError::InvalidKey(
-                        "key not found".into(),
-                    )))?;
-
-                if entry.role != KeyRole::AssertionMethod {
-                    return Err(ServiceError::Validation(ValidationError::InvalidKey(
-                        "invalid key role".into(),
-                    )));
-                }
-
-                entry
-            }
+            Some(key_id) => issuer_did
+                .keys
+                .as_ref()
+                .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
+                .iter()
+                .filter(|entry| entry.role == KeyRole::AssertionMethod)
+                .find(|entry| entry.key.id == key_id)
+                .ok_or(ServiceError::Validation(ValidationError::InvalidKey(
+                    "key not found or has wrong role".into(),
+                )))?,
             None => issuer_did
                 .keys
                 .as_ref()

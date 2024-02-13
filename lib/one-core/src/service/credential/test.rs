@@ -1221,6 +1221,105 @@ async fn test_create_credentials_key_with_issuer_key() {
 }
 
 #[tokio::test]
+async fn test_create_credentials_key_with_issuer_key_and_repeating_key() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let mut history_repository = MockHistoryRepository::default();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let credential = generic_credential();
+    let key_id = Uuid::new_v4();
+    let issuer_did = Did {
+        keys: Some(vec![
+            RelatedKey {
+                role: KeyRole::KeyAgreement,
+                key: Key {
+                    id: key_id,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    public_key: vec![],
+                    name: "key_name".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            },
+            RelatedKey {
+                role: KeyRole::AssertionMethod,
+                key: Key {
+                    id: key_id,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    public_key: vec![],
+                    name: "key_name".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            },
+        ]),
+        ..credential.issuer_did.clone().unwrap()
+    };
+    let credential_schema = credential.schema.clone().unwrap();
+
+    did_repository.expect_get_did().times(1).returning({
+        let issuer_did = issuer_did.clone();
+        move |_, _| Ok(Some(issuer_did.clone()))
+    });
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .times(1)
+        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+
+    credential_repository
+        .expect_create_credential()
+        .times(1)
+        .returning({
+            let credential = credential.clone();
+            move |_| Ok(credential.id)
+        });
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        history_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+            issuer_key: Some(key_id),
+            transport: "PROCIVIS_TEMPORARY".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: credential.claims.as_ref().unwrap()[0]
+                    .schema
+                    .as_ref()
+                    .unwrap()
+                    .id
+                    .to_owned(),
+                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+            }],
+            redirect_uri: None,
+        })
+        .await;
+
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
 async fn test_fail_to_create_credentials_no_assertion_key() {
     let credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
