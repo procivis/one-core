@@ -1,16 +1,17 @@
 use core_server::router::start_server;
 use core_server::ServerConfig;
-use one_core::config::core_config::AppConfig;
-use one_core::model::did::Did;
+use one_core::model::did::{Did, KeyRole};
 use one_core::model::organisation::Organisation;
+use one_core::{config::core_config::AppConfig, model::did::RelatedKey};
 use tokio::task::JoinHandle;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use super::api_clients::Client;
+use super::db_clients::keys::es256_testing_params;
 use super::db_clients::DbClient;
 use super::mock_server::MockServer;
-use crate::fixtures;
+use crate::fixtures::{self, TestingDidParams};
 
 pub struct TestContext {
     pub db: DbClient,
@@ -54,10 +55,24 @@ impl TestContext {
 
     pub async fn new_with_did() -> (Self, Organisation, Did) {
         let (context, organisation) = Self::new_with_organisation().await;
+        let key = context
+            .db
+            .keys
+            .create(&organisation, es256_testing_params())
+            .await;
         let did = context
             .db
             .dids
-            .create(&organisation, Default::default())
+            .create(
+                &organisation,
+                TestingDidParams {
+                    keys: Some(vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key,
+                    }]),
+                    ..Default::default()
+                },
+            )
             .await;
         (context, organisation, did)
     }

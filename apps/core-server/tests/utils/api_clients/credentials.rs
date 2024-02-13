@@ -21,11 +21,13 @@ impl CredentialsApi {
         issuer_did: impl Into<Uuid>,
         claim_id: impl Into<Uuid>,
         value: impl Into<String>,
+        issuer_key: impl Into<Option<Uuid>>,
     ) -> Response {
         let body = json!({
           "credentialSchemaId": credential_schema_id.into(),
           "transport": transport.into(),
           "issuerDid": issuer_did.into(),
+          "issuerKey": issuer_key.into(),
           "claimValues": [
                 {
                     "claimId": claim_id.into(),

@@ -219,6 +219,9 @@ pub enum ValidationError {
     #[error("Invalid key algorithm: {0}")]
     InvalidKeyAlgorithm(String),
 
+    #[error("Invalid key: {0}")]
+    InvalidKey(String),
+
     #[error("Invalid key storage type: {0}")]
     InvalidKeyStorage(String),
 
@@ -510,6 +513,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "StatusList2021 not supported for credential issuance and revocation")]
     BR_0095,
+
+    #[strum(to_string = "Invalid key")]
+    BR_0096,
 }
 
 impl From<FormatError> for ServiceError {
@@ -614,6 +620,7 @@ impl ValidationError {
             ValidationError::ProofSchemaDuplicitClaim => ErrorCode::BR_0018,
             ValidationError::InvalidFormatter(_) => ErrorCode::BR_0056,
             ValidationError::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
+            ValidationError::InvalidKey(_) => ErrorCode::BR_0096,
             ValidationError::InvalidKeyStorage(_) => ErrorCode::BR_0041,
             ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
         }

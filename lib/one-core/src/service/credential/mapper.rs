@@ -11,6 +11,7 @@ use crate::{
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::Did,
         history::{History, HistoryAction, HistoryEntityType},
+        key::Key,
         organisation::Organisation,
     },
     service::{
@@ -162,6 +163,7 @@ pub(super) fn from_create_request(
     claims: Vec<Claim>,
     issuer_did: Did,
     schema: CredentialSchema,
+    key: Key,
 ) -> Credential {
     let now = OffsetDateTime::now_utc();
 
@@ -183,7 +185,7 @@ pub(super) fn from_create_request(
         schema: Some(schema),
         interaction: None,
         revocation_list: None,
-        key: None,
+        key: Some(key),
         redirect_uri: request.redirect_uri,
         role: CredentialRole::Issuer,
     }
