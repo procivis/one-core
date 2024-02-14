@@ -1,6 +1,6 @@
 use serde_json::json;
 use wiremock::{
-    http::Method::Post,
+    http::Method,
     matchers::{method, path, query_param},
     Mock, MockServer, ResponseTemplate,
 };
@@ -42,7 +42,7 @@ async fn test_issuance_accept_procivis_temp() {
     )
     .await;
 
-    Mock::given(method(Post))
+    Mock::given(method(Method::POST))
         .and(path("/ssi/temporary-issuer/v1/submit"))
         .and(query_param("credentialId", credential.id.to_string()))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
@@ -140,7 +140,7 @@ async fn test_issuance_accept_openid4vc() {
     )
     .await;
 
-    Mock::given(method(Post))
+    Mock::given(method(Method::POST))
         .and(path("/credential"))
         //.and(query_param("credentialId", credential.id.to_string()))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({

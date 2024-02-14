@@ -2,7 +2,7 @@ use core_server::router::start_server;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use wiremock::{
-    http::Method::Post,
+    http::Method,
     matchers::{method, path, query_param},
     Mock, MockServer, ResponseTemplate,
 };
@@ -37,7 +37,7 @@ async fn test_presentation_reject_endpoint_for_procivis_temp() {
     )
     .await;
 
-    Mock::given(method(Post))
+    Mock::given(method(Method::POST))
         .and(path("/ssi/temporary-verifier/v1/reject"))
         .and(query_param("proof", proof.id.to_string()))
         .respond_with(ResponseTemplate::new(200))

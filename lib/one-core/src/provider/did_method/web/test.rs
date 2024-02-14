@@ -165,7 +165,7 @@ async fn test_did_web_value_extract() {
 async fn test_did_web_fetch() {
     let mock_server = MockServer::start().await;
 
-    Mock::given(method(Method::Get))
+    Mock::given(method(Method::GET))
         .and(path(
             "/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json",
         ))

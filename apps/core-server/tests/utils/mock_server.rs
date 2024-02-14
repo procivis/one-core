@@ -21,7 +21,7 @@ impl MockServer {
     }
 
     pub async fn ssi_reject(&self) {
-        Mock::given(method(Method::Post))
+        Mock::given(method(Method::POST))
             .and(path("/ssi/temporary-issuer/v1/reject"))
             .respond_with(ResponseTemplate::new(200))
             .expect(1)
@@ -30,7 +30,7 @@ impl MockServer {
     }
 
     pub async fn ssi_issuance(&self, protocol: &str, credential_id: impl Display) {
-        Mock::given(method(Method::Post))
+        Mock::given(method(Method::POST))
             .and(path("/ssi/temporary-issuer/v1/connect"))
             .and(query_param("protocol", protocol))
             .and(query_param("credential", credential_id.to_string()))
@@ -82,7 +82,7 @@ impl MockServer {
     }
 
     pub async fn universal_resolving(&self, did: &str, document: serde_json::Value) {
-        Mock::given(method(Method::Get))
+        Mock::given(method(Method::GET))
             .and(path(format!("/1.0/identifiers/{did}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "didDocument": document,
@@ -93,7 +93,7 @@ impl MockServer {
     }
 
     pub async fn fail_universal_resolving(&self, did: &str) {
-        Mock::given(method(Method::Get))
+        Mock::given(method(Method::GET))
             .and(path(format!("/1.0/identifiers/{did}")))
             .respond_with(ResponseTemplate::new(500))
             .expect(1)
@@ -102,7 +102,7 @@ impl MockServer {
     }
 
     pub async fn json_ld_context(&self, schema_id: &Uuid, schema_name_pascal: &str) {
-        Mock::given(method(Method::Get))
+        Mock::given(method(Method::GET))
             .and(path(format!("/ssi/context/v1/{schema_id}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {

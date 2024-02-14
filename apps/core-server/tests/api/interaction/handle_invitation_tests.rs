@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-use wiremock::http::Method::{Get, Post};
+use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -60,7 +60,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
 
     let proof_id = Uuid::new_v4();
 
-    Mock::given(method(Post))
+    Mock::given(method(Method::POST))
         .and(path("/ssi/temporary-verifier/v1/connect"))
         .and(query_param("protocol", "PROCIVIS_TEMPORARY"))
         .and(query_param("proof", proof_id.to_string()))
@@ -169,7 +169,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         }
     });
 
-    Mock::given(method(Get))
+    Mock::given(method(Method::GET))
         .and(path(format!(
             "/ssi/oidc-issuer/v1/{credential_id}/.well-known/openid-credential-issuer"
         )))
@@ -195,7 +195,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 
     let token_endpoint = format!("{credential_issuer}/token");
 
-    Mock::given(method(Get))
+    Mock::given(method(Method::GET))
         .and(path(format!(
             "/ssi/oidc-issuer/v1/{credential_id}/.well-known/openid-configuration"
         )))
@@ -221,7 +221,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         .mount(&mock_server)
         .await;
 
-    Mock::given(method(Post))
+    Mock::given(method(Method::POST))
     .and(path(format!("/ssi/oidc-issuer/v1/{credential_id}/token")))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!(
         {
@@ -289,7 +289,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         }
     });
 
-    Mock::given(method(Get))
+    Mock::given(method(Method::GET))
         .and(path(format!(
             "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
         )))
@@ -315,7 +315,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
 
     let token_endpoint = format!("{credential_issuer}/token");
 
-    Mock::given(method(Get))
+    Mock::given(method(Method::GET))
         .and(path(format!(
             "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-configuration"
         )))
@@ -341,7 +341,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         .mount(&mock_server)
         .await;
 
-    Mock::given(method(Post))
+    Mock::given(method(Method::POST))
     .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!(
         {
@@ -353,7 +353,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
     .expect(1)
     .mount(&mock_server).await;
 
-    Mock::given(method(Get))
+    Mock::given(method(Method::GET))
         .and(path(format!(
             "/ssi/oidc-issuer/v1/{credential_schema_id}/offer/{credential_id}"
         )))
@@ -410,13 +410,13 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let query = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition_uri={}"
                                     , nonce, callback_url, client_metadata_uri, callback_url, presentation_definition_uri)).unwrap().to_string();
 
-    Mock::given(method(Get))
+    Mock::given(method(Method::GET))
         .and(path("/client-metadata"))
         .respond_with(ResponseTemplate::new(200).set_body_raw(client_metadata, "application/json"))
         .expect(1)
         .mount(&mock_server)
         .await;
-    Mock::given(method(Get))
+    Mock::given(method(Method::GET))
         .and(path("/presentation-definition"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(presentation_definition, "application/json"),
