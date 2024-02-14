@@ -1,4 +1,5 @@
 use strum_macros::EnumString;
+use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SortDirection {
@@ -26,6 +27,7 @@ pub struct GetListQueryParams<SortableColumn> {
     pub name: Option<String>,
     pub organisation_id: String,
     pub exact: Option<Vec<ExactColumn>>,
+    pub ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Clone, Debug)]

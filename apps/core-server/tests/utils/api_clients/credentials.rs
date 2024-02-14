@@ -46,6 +46,7 @@ impl CredentialsApi {
         organisation_id: &impl Display,
         role: Option<&str>,
         name: Option<&str>,
+        ids: Option<&[Uuid]>,
     ) -> Response {
         let mut url = format!(
             "/api/credential/v1?page={page}&pageSize={size}&organisationId={organisation_id}"
@@ -56,6 +57,12 @@ impl CredentialsApi {
         if let Some(name) = name {
             url += &format!("&name={name}")
         }
+        if let Some(ids) = ids {
+            for id in ids {
+                url += &format!("&ids[]={id}")
+            }
+        }
+
         self.client.get(&url).await
     }
 

@@ -135,6 +135,8 @@ pub struct CredentialsFilterQueryParamsRest {
     pub role: Option<CredentialRoleRestEnum>,
     #[param(inline, rename = "exact[]")]
     pub exact: Option<Vec<ExactColumn>>,
+    #[param(inline, rename = "ids[]")]
+    pub ids: Option<Vec<Uuid>>,
 }
 
 pub type GetCredentialQuery =

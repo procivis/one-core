@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::context::TestContext;
@@ -33,7 +36,7 @@ async fn test_get_list_credential_success() {
     let resp = context
         .api
         .credentials
-        .list(0, 8, &organisation.id, None, None)
+        .list(0, 8, &organisation.id, None, None, None)
         .await;
 
     // THEN
@@ -88,7 +91,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
     let resp = context
         .api
         .credentials
-        .list(0, 8, &organisation.id, None, None)
+        .list(0, 8, &organisation.id, None, None, None)
         .await;
 
     // THEN
@@ -136,7 +139,7 @@ async fn test_get_list_credential_filter_by_role() {
         let resp = context
             .api
             .credentials
-            .list(0, 10, &organisation.id, Some(role), None)
+            .list(0, 10, &organisation.id, Some(role), None, None)
             .await;
 
         // THEN
@@ -163,7 +166,7 @@ async fn test_fail_to_get_list_credential_filter_by_invalid_role() {
     let resp = context
         .api
         .credentials
-        .list(0, 10, &organisation.id, Some("foo"), None)
+        .list(0, 10, &organisation.id, Some("foo"), None, None)
         .await;
 
     // THEN
@@ -214,7 +217,7 @@ async fn test_get_list_credential_filter_by_name() {
     let resp = context
         .api
         .credentials
-        .list(0, 10, &organisation.id, None, Some("test 1"))
+        .list(0, 10, &organisation.id, None, Some("test 1"), None)
         .await;
 
     // THEN
@@ -225,4 +228,62 @@ async fn test_get_list_credential_filter_by_name() {
     assert_eq!(credentials["totalPages"], 1);
     assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
     credentials["values"][0]["id"].assert_eq(&credential.id);
+}
+
+#[tokio::test]
+async fn test_get_list_credential_filter_by_ids() {
+    // GIVEN
+    let (context, organisation, did) = TestContext::new_with_did().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE")
+        .await;
+
+    let mut credentials = vec![];
+
+    for _ in 1..=5 {
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &did,
+                "PROCIVIS_TEMPORARY",
+                TestingCredentialParams::default(),
+            )
+            .await;
+
+        credentials.push(credential.id);
+    }
+
+    // WHEN
+    let credentials = &credentials[..3];
+    let resp = context
+        .api
+        .credentials
+        .list(0, 10, &organisation.id, None, None, Some(credentials))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let json_resp = resp.json_value().await;
+
+    assert_eq!(json_resp["totalItems"], 3);
+    assert_eq!(json_resp["totalPages"], 1);
+
+    let expected_credentials: HashSet<_> =
+        HashSet::from_iter(credentials.iter().map(ToOwned::to_owned));
+
+    let credentials: HashSet<Uuid> = json_resp["values"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v["id"].parse())
+        .collect();
+
+    assert_eq!(credentials.len(), 3);
+
+    assert_eq!(expected_credentials, credentials);
 }

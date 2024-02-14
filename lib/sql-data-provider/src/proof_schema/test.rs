@@ -551,6 +551,7 @@ async fn test_get_proof_schema_list_empty() {
             sort_direction: None,
             name: None,
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
 
@@ -589,6 +590,7 @@ async fn test_get_proof_schema_list_deleted() {
             sort_direction: None,
             name: None,
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
 
@@ -659,6 +661,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             name: None,
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
 
@@ -680,6 +683,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             name: None,
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
     assert_eq!(result.unwrap().values[0].id, schema1_id);
@@ -694,6 +698,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             name: None,
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
     assert_eq!(result.unwrap().values[0].id, schema2_id);
@@ -708,6 +713,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             name: None,
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
     assert_eq!(result.unwrap().values[0].id, schema1_id);
@@ -723,6 +729,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             name: Some("schema-1".to_string()),
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
 
@@ -743,6 +750,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             name: Some("schema".to_string()),
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
 
@@ -762,6 +770,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             name: Some("nothing".to_string()),
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
 
@@ -782,6 +791,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             name: None,
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
 
@@ -802,6 +812,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             name: None,
             organisation_id: organisation_id.to_string(),
+            ids: None,
         })
         .await;
 

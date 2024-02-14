@@ -55,6 +55,7 @@ impl dyn CredentialSchemaRepository {
                 exact: Some(vec![ExactColumn::Name]),
                 sort: None,
                 sort_direction: None,
+                ids: None,
             })
             .await?;
 

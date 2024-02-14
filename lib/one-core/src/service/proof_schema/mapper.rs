@@ -70,6 +70,7 @@ pub fn create_unique_name_check_request(
         exact: Some(vec![ExactColumn::Name]),
         name: Some(name.to_string()),
         organisation_id: organisation_id.to_string(),
+        ids: None,
     })
 }
 

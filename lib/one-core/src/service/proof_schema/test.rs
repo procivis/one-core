@@ -179,6 +179,7 @@ async fn test_get_proof_schema_list_success() {
         exact: None,
         name: None,
         organisation_id: Uuid::new_v4().to_string(),
+        ids: None,
     };
     let result = service.get_proof_schema_list(query).await;
 
@@ -214,6 +215,7 @@ async fn test_get_proof_schema_list_failure() {
         exact: None,
         name: None,
         organisation_id: Uuid::new_v4().to_string(),
+        ids: None,
     };
     let result = service.get_proof_schema_list(query).await;
 

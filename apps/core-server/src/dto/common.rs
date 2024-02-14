@@ -52,6 +52,9 @@ pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
     // It is required to rename fields in swagger which are of type vector to <name>[]
     #[param(rename = "exact[]", value_type = Option::<Vec::<String>>)]
     pub exact: Option<Vec<ExactColumn>>,
+
+    #[param(inline, rename = "ids[]")]
+    pub ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Clone, Deserialize, Debug)]

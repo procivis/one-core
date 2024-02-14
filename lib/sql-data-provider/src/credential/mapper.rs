@@ -1,3 +1,4 @@
+use migration::IntoCondition;
 use one_core::{
     model::{
         credential::{Credential, CredentialId, CredentialState, SortableCredentialColumn},
@@ -10,7 +11,7 @@ use one_core::{
     repository::error::DataLayerError,
     service::credential::dto::CredentialFilterValue,
 };
-use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
+use sea_orm::{sea_query::SimpleExpr, ColumnTrait, IntoSimpleExpr, Set};
 use shared_types::{DidId, DidValue};
 use std::str::FromStr;
 use uuid::Uuid;
@@ -45,6 +46,10 @@ impl IntoFilterCondition for CredentialFilterValue {
                 organisation_id.to_string(),
             ),
             Self::Role(role) => get_equals_condition(credential::Column::Role, role.as_ref()),
+            Self::CredentialIds(ids) => {
+                let ids = ids.iter().map(Uuid::to_string);
+                credential::Column::Id.is_in(ids).into_condition()
+            }
         }
     }
 }

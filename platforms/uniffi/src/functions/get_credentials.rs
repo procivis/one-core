@@ -14,13 +14,30 @@ impl OneCoreBinding {
     ) -> Result<CredentialListBindingDTO, BindingError> {
         self.block_on(async {
             let core = self.use_core().await?;
-            let condition =
-                CredentialFilterValue::OrganisationId(into_uuid(&query.organisation_id)?)
-                    .condition()
-                    & query
-                        .role
-                        .clone()
-                        .map(|role| CredentialFilterValue::Role(role.into()));
+
+            let condition = {
+                let organisation =
+                    CredentialFilterValue::OrganisationId(into_uuid(&query.organisation_id)?)
+                        .condition();
+
+                let role = query
+                    .role
+                    .map(|role| CredentialFilterValue::Role(role.into()));
+
+                let ids = match query.ids {
+                    Some(ids) => {
+                        let ids = ids
+                            .iter()
+                            .map(|id| into_uuid(id))
+                            .collect::<Result<Vec<_>, _>>()?;
+                        Some(CredentialFilterValue::CredentialIds(ids))
+                    }
+                    None => None,
+                };
+
+                organisation & role & ids
+            };
+
             Ok(core
                 .credential_service
                 .get_credential_list(GetCredentialQueryDTO {

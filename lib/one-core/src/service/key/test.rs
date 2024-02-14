@@ -186,6 +186,7 @@ async fn test_get_key_list() {
         name: Some("NAME".to_owned()),
         organisation_id: org_id.to_string(),
         exact: None,
+        ids: None,
     };
 
     let result = service.get_key_list(query).await;

@@ -107,6 +107,7 @@ pub enum CredentialFilterValue {
     Name(StringMatch),
     OrganisationId(OrganisationId),
     Role(CredentialRole),
+    CredentialIds(Vec<CredentialId>),
 }
 
 impl ListFilterValue for CredentialFilterValue {}

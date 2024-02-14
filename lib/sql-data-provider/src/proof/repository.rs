@@ -321,6 +321,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
         )
         // apply query params
         .with_list_query(query_params, &Some(vec![proof_schema::Column::Name]))
+        .with_ids(query_params, &proof::Column::Id)
         .with_organisation_id(query_params, &proof_schema::Column::OrganisationId)
         // fallback ordering
         .order_by_desc(proof::Column::CreatedDate)
