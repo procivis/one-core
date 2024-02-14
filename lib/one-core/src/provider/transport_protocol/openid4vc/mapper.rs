@@ -48,7 +48,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     client_metadata_by_value: bool,
     presentation_definition_by_value: bool,
 ) -> Result<String, TransportProtocolError> {
-    let client_metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata()?)
+    let client_metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata())
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
     let presentation_definition = serde_json::to_string(
         &create_open_id_for_vp_presentation_definition(interaction_id, &proof)?,
@@ -243,16 +243,14 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     })
 }
 
-pub(crate) fn create_open_id_for_vp_client_metadata(
-) -> Result<OpenID4VPClientMetadata, TransportProtocolError> {
-    Ok(OpenID4VPClientMetadata {
-        vp_formats: create_open_id_for_vp_formats()?,
+pub fn create_open_id_for_vp_client_metadata() -> OpenID4VPClientMetadata {
+    OpenID4VPClientMetadata {
+        vp_formats: create_open_id_for_vp_formats(),
         client_id_scheme: "redirect_uri".to_string(),
-    })
+    }
 }
 // TODO: This method needs to be refactored as soon as we have a new config value access and remove the static values from this method
-pub(crate) fn create_open_id_for_vp_formats(
-) -> Result<HashMap<String, OpenID4VPFormat>, TransportProtocolError> {
+pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat> {
     let mut formats = HashMap::new();
     let algorithms = OpenID4VPFormat {
         alg: vec!["EdDSA".to_owned()],
@@ -262,7 +260,7 @@ pub(crate) fn create_open_id_for_vp_formats(
     formats.insert("ldp_vp".to_owned(), algorithms.clone());
     formats.insert("ldp_vc".to_owned(), algorithms.clone());
     formats.insert("vc+sd-jwt".to_owned(), algorithms);
-    Ok(formats)
+    formats
 }
 
 fn get_url(base_url: Option<String>) -> Result<String, TransportProtocolError> {

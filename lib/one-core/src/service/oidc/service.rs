@@ -25,11 +25,12 @@ use crate::model::proof_schema::{
 };
 
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::transport_protocol::deserialize_interaction_data;
 use crate::provider::transport_protocol::openid4vc::dto::{
-    OpenID4VCICredentialOfferDTO, OpenID4VPClientMetadata, OpenID4VPInteractionData,
+    OpenID4VCICredentialOfferDTO, OpenID4VPClientMetadata,
 };
-use crate::provider::transport_protocol::openid4vc::mapper::create_credential_offer;
+use crate::provider::transport_protocol::openid4vc::mapper::{
+    create_credential_offer, create_open_id_for_vp_client_metadata,
+};
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
@@ -91,7 +92,6 @@ impl OIDCService {
                 &id,
                 &ProofRelations {
                     state: Some(Default::default()),
-                    interaction: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -101,14 +101,7 @@ impl OIDCService {
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_transport_type(&self.config, &proof.transport)?;
 
-        let interaction_data: OpenID4VPInteractionData =
-            deserialize_interaction_data(proof.interaction.as_ref())?;
-
-        interaction_data
-            .client_metadata
-            .ok_or(ServiceError::MappingError(
-                "client_metadata is None".to_string(),
-            ))
+        Ok(create_open_id_for_vp_client_metadata())
     }
 
     pub async fn oidc_service_discovery(
