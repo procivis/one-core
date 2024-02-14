@@ -465,7 +465,7 @@ async fn test_handle_invitation_proof_success() {
     let client_metadata_uri = format!("{}/client_metadata_uri", mock_server.uri());
     let presentation_definition_uri = format!("{}/presentation_definition_uri", mock_server.uri());
 
-    Mock::given(method(Method::Get))
+    Mock::given(method(Method::GET))
         .and(path("/client_metadata_uri"))
         .respond_with(
             ResponseTemplate::new(200).set_body_raw(client_metadata.to_owned(), "application/json"),
@@ -473,7 +473,7 @@ async fn test_handle_invitation_proof_success() {
         .expect(1)
         .mount(&mock_server)
         .await;
-    Mock::given(method(Method::Get))
+    Mock::given(method(Method::GET))
         .and(path("/presentation_definition_uri"))
         .respond_with(
             ResponseTemplate::new(200)

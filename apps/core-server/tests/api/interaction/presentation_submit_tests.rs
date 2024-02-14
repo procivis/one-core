@@ -6,7 +6,7 @@ use one_core::model::{
 };
 use serde_json::json;
 use wiremock::{
-    http::Method::Post,
+    http::Method,
     matchers::{body_string_contains, method, path, query_param},
     Mock, MockServer, ResponseTemplate,
 };
@@ -99,7 +99,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
     )
     .await;
 
-    Mock::given(method(Post))
+    Mock::given(method(Method::POST))
         .and(path("/ssi/temporary-verifier/v1/submit"))
         .and(query_param("proof", proof.id.to_string()))
         .respond_with(ResponseTemplate::new(200))
@@ -294,7 +294,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
     )
     .await;
 
-    Mock::given(method(Post))
+    Mock::given(method(Method::POST))
         .and(path("/ssi/oidc-verifier/v1/response".to_owned()))
         // Just sample query params as they are too dynamic and contain random ids
         .and(body_string_contains("state"))

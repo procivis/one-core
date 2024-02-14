@@ -38,7 +38,7 @@ async fn get_token_mock(mock_server: &MockServer, expires_in: i64, expect: u64) 
         access_token: "mock_access_token".to_string(),
     };
 
-    wiremock::Mock::given(method(Method::Post))
+    wiremock::Mock::given(method(Method::POST))
         .and(path(
             "/00000000-0000-0000-0000-000000000000/oauth2/v2.0/token",
         ))
@@ -59,7 +59,7 @@ async fn get_token_mock(mock_server: &MockServer, expires_in: i64, expect: u64) 
 }
 
 async fn generate_key_mock(mock_server: &MockServer, expect: u64) {
-    Mock::given(method(Method::Post))
+    Mock::given(method(Method::POST))
     .and(path_regex(r"/keys/.*/create"))
     .and(header("content-type", "application/json"))
     .and(body_json(json!({
