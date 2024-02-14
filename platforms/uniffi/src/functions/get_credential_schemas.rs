@@ -20,6 +20,7 @@ impl OneCoreBinding {
                     name: None,
                     organisation_id: query.organisation_id,
                     exact: None,
+                    ids: None,
                 })
                 .await?
                 .into())

@@ -146,6 +146,7 @@ dictionary CredentialListQueryBindingDTO {
   u32 page_size;
   string organisation_id;
   CredentialRoleBindingDTO? role;
+  sequence<string>? ids;
 };
 
 dictionary CredentialListBindingDTO {

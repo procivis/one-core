@@ -26,6 +26,13 @@ where
         query_params: &GetListQueryParams<SortableColumn>,
         column: &FilterColumn,
     ) -> Self;
+
+    /// If provided query using a list of ids
+    fn with_ids(
+        self,
+        query_params: &GetListQueryParams<SortableColumn>,
+        column: &FilterColumn,
+    ) -> Self;
 }
 
 impl<T, SortableColumn, FilterColumn> SelectWithListQuery<SortableColumn, FilterColumn>
@@ -101,6 +108,19 @@ where
         let conditions = Condition::all().add(column.eq(&query_params.organisation_id));
         self.filter(conditions)
     }
+
+    fn with_ids(
+        self,
+        query_params: &GetListQueryParams<SortableColumn>,
+        column: &FilterColumn,
+    ) -> Self {
+        let ids = query_params.ids.as_ref();
+
+        self.apply_if(ids, |query, ids| {
+            let ids = ids.iter().map(|id| id.to_string());
+            query.filter(column.is_in(ids))
+        })
+    }
 }
 
 #[cfg(test)]
@@ -117,5 +137,6 @@ pub fn from_pagination<T: GetEntityColumn>(
         sort_direction: None,
         name: None,
         organisation_id,
+        ids: None,
     }
 }

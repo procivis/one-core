@@ -32,6 +32,8 @@ impl From<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFi
             .role
             .map(|role| CredentialFilterValue::Role(role.into()));
 
-        organisation_id & name & role
+        let credential_ids = value.ids.map(CredentialFilterValue::CredentialIds);
+
+        organisation_id & name & role & credential_ids
     }
 }

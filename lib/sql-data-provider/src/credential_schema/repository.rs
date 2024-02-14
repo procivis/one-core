@@ -185,6 +185,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let query = credential_schema::Entity::find()
             .filter(credential_schema::Column::DeletedAt.is_null())
             .with_organisation_id(&query_params, &credential_schema::Column::OrganisationId)
+            .with_ids(&query_params, &credential_schema::Column::Id)
             .with_list_query(
                 &query_params,
                 &Some(vec![

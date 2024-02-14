@@ -120,6 +120,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         let query = crate::entity::proof_schema::Entity::find()
             .filter(proof_schema::Column::DeletedAt.is_null())
             .with_organisation_id(&query_params, &proof_schema::Column::OrganisationId)
+            .with_ids(&query_params, &proof_schema::Column::Id)
             .with_list_query(&query_params, &Some(vec![proof_schema::Column::Name]))
             .order_by_desc(proof_schema::Column::CreatedDate)
             .order_by_desc(proof_schema::Column::Id);

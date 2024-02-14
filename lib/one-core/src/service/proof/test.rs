@@ -425,6 +425,7 @@ async fn test_get_proof_list_success() {
             exact: None,
             name: None,
             organisation_id: Uuid::new_v4().to_string(),
+            ids: None,
         })
         .await;
     assert!(result.is_ok());

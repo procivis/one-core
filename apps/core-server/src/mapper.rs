@@ -53,6 +53,7 @@ where
             name: value.name,
             exact: Some(convert_inner(value.exact.unwrap_or_default())),
             organisation_id: value.organisation_id,
+            ids: value.ids,
         }
     }
 }

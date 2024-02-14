@@ -175,6 +175,7 @@ async fn test_get_key_list_success() {
         name: None,
         organisation_id: organisation.id.to_string(),
         exact: None,
+        ids: None,
     };
 
     let result = provider.get_key_list(query_params).await;

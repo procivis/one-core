@@ -95,6 +95,7 @@ impl KeyRepository for KeyProvider {
 
         let query = key::Entity::find()
             .with_organisation_id(&query_params, &key::Column::OrganisationId)
+            .with_ids(&query_params, &key::Column::Id)
             .with_list_query(&query_params, &Some(vec![key::Column::Name]))
             .order_by_desc(key::Column::CreatedDate)
             .order_by_desc(key::Column::Id);

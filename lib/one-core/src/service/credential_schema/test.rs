@@ -210,6 +210,7 @@ async fn test_get_credential_schema_list_success() {
             exact: None,
             name: None,
             organisation_id: "".to_string(),
+            ids: None,
         })
         .await;
 
