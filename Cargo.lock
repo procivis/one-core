@@ -1667,6 +1667,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "half"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
+
+[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2805,6 +2811,7 @@ dependencies = [
  "figment",
  "flate2",
  "fmap",
+ "hmac 0.12.1",
  "indoc",
  "mockall",
  "p256",
@@ -2816,6 +2823,7 @@ dependencies = [
  "reqwest",
  "rusty-fork",
  "serde",
+ "serde_cbor",
  "serde_json",
  "serde_qs 0.12.0",
  "serde_urlencoded",
@@ -4097,6 +4105,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "870026e60fa08c69f064aa766c10f10b1d62db9ccd4d0abb206472bee0ce3b32"
 dependencies = [
  "serde_derive",
+]
+
+[[package]]
+name = "serde_cbor"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bef2ebfde456fb76bbcf9f59315333decc4fda0b2b44b420243c11e0f5ec1f5"
+dependencies = [
+ "half",
+ "serde",
 ]
 
 [[package]]

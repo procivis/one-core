@@ -6,8 +6,15 @@ use pairing_crypto::bbs::{
     },
     BbsSignRequest, BbsVerifyRequest,
 };
+use serde::{Deserialize, Serialize};
 
 pub struct BBSSigner {}
+
+#[derive(Serialize, Deserialize)]
+pub struct BbsInput {
+    pub header: Vec<u8>,
+    pub messages: Vec<Vec<u8>>,
+}
 
 impl Signer for BBSSigner {
     fn sign(
@@ -21,13 +28,22 @@ impl Signer for BBSSigner {
         let public_key = PublicKey::from_vec(&public_key.to_vec())
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
+        // Here we accept BbsInput if serialization succeeded or try to use the input
+        // just as plain key. The latter is used for e.g. revocation lists signature.
+        let input: BbsInput = if let Ok(parsed_input) = serde_json::from_slice(input) {
+            parsed_input
+        } else {
+            BbsInput {
+                header: input.to_owned(),
+                messages: vec![],
+            }
+        };
+
         let signature = sign(&BbsSignRequest {
             secret_key: &secret_key.to_bytes(),
             public_key: &public_key.to_octets(),
-            header: None,
-
-            // TODO: BBS signs an array of messages, proabably a serialization will need to be added in the interface to support JSON-LD
-            messages: Some(&[input.to_vec()]),
+            header: Some(input.header),
+            messages: Some(&input.messages),
         })
         .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
 
@@ -38,10 +54,12 @@ impl Signer for BBSSigner {
         let public_key = PublicKey::from_vec(&public_key.to_vec())
             .map_err(|e| SignerError::CouldNotExtractPublicKey(e.to_string()))?;
 
+        // TODO: deserialize input for JSONLD or just status list.
+
         let result = verify(&BbsVerifyRequest {
             public_key: &public_key.to_octets(),
-            header: None,
-            messages: Some(&[input.to_vec()]), // TODO: similar issue here
+            header: Some(input.to_vec()),
+            messages: None,
             signature: signature
                 .try_into()
                 .map_err(|_| SignerError::InvalidSignature)?,

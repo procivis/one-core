@@ -26,6 +26,7 @@ url                   = { workspace = true }
 shared-types          = { version = "0.1.0", path = "../shared-types", features = ["sea-orm"] }
 autometrics.workspace = true
 
+
 [dev-dependencies]
 mockall.workspace = true
 one-core          = { version = "0.1.0", path = "../../lib/one-core", features = ["mock"] }

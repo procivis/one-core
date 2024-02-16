@@ -127,7 +127,9 @@ impl MockServer {
                                 "@protected": true,
                                 "id": "@id",
                                 "type": "@type",
-                                "Key": format!("{}/ssi/context/v1/{schema_id}#Key", self.mock.uri())
+                                "Key": format!("{}/ssi/context/v1/{schema_id}#Key", self.mock.uri()),
+                                "Name": format!("{}/ssi/context/v1/{schema_id}#Name", self.mock.uri()),
+                                "Address": format!("{}/ssi/context/v1/{schema_id}#Address", self.mock.uri())
                             }
                         }
                     }

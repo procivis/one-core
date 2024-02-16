@@ -1,9 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use rand::distributions::{Alphanumeric, DistString};
-use rand::{RngCore, SeedableRng};
+use rand::distributions::{Alphanumeric, DistString, Uniform};
+use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
 
 use self::error::CryptoProviderError;
 use self::{hasher::Hasher, signer::Signer};
@@ -11,6 +14,8 @@ use self::{hasher::Hasher, signer::Signer};
 pub mod error;
 pub mod hasher;
 pub mod signer;
+
+type HmacSha256 = Hmac<Sha256>;
 
 #[cfg(test)]
 mod test;
@@ -24,6 +29,10 @@ pub trait CryptoProvider: Send + Sync {
     fn generate_salt_base64(&self) -> String;
 
     fn generate_alphanumeric(&self, length: usize) -> String;
+
+    fn generate_bytes(&self, length: usize) -> Vec<u8>;
+
+    fn create_hmac(&self, key: &[u8], message: &[u8]) -> Option<Vec<u8>>;
 }
 
 #[derive(Clone)]
@@ -69,5 +78,21 @@ impl CryptoProvider for CryptoProviderImpl {
 
     fn generate_alphanumeric(&self, length: usize) -> String {
         Alphanumeric.sample_string(&mut rand::thread_rng(), length)
+    }
+
+    fn generate_bytes(&self, length: usize) -> Vec<u8> {
+        let byte_range = Uniform::new_inclusive(0, 255);
+        let data: Vec<u8> = rand::thread_rng()
+            .sample_iter(byte_range)
+            .take(length)
+            .collect();
+        data
+    }
+
+    fn create_hmac(&self, key: &[u8], message: &[u8]) -> Option<Vec<u8>> {
+        let mut mac = HmacSha256::new_from_slice(key).ok()?;
+        mac.update(message);
+        let result = mac.finalize();
+        Some(result.into_bytes().to_vec())
     }
 }
