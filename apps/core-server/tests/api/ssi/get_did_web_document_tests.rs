@@ -33,7 +33,7 @@ async fn test_get_did_web_document_es256_success() {
                 },
                 RelatedKey {
                     role: KeyRole::AssertionMethod,
-                    key,
+                    key: key.clone(),
                 },
             ]),
             ..Default::default()
@@ -51,8 +51,10 @@ async fn test_get_did_web_document_es256_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp: Value = resp.json().await.unwrap();
+
+    let assertion_method = resp["assertionMethod"][0].as_str().unwrap();
     assert_eq!(
-        resp["assertionMethod"][0].as_str().unwrap(),
+        assertion_method,
         resp["verificationMethod"][0]["id"].as_str().unwrap()
     );
     assert_eq!(
@@ -79,6 +81,21 @@ async fn test_get_did_web_document_es256_success() {
             .unwrap(),
         "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA"
     );
+
+    let parts: Vec<&str> = assertion_method.split(':').collect();
+    assert_eq!(3, parts.len());
+    assert_eq!("did", parts[0]);
+    assert_eq!("test", parts[1]);
+
+    let parts: Vec<&str> = parts[2].split('#').collect();
+    assert_eq!(2, parts.len());
+
+    let did_id = parts[0];
+    assert_eq!(did_id, did.id.to_string());
+
+    let key_id = parts[1];
+    let expected_key_id = format!("key-{}", key.id);
+    assert_eq!(expected_key_id, key_id);
 }
 
 #[tokio::test]

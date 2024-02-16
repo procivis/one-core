@@ -80,8 +80,7 @@ impl DidService {
             keys,
             &grouped_key
                 .iter()
-                .enumerate()
-                .map(|(index, (key, value))| {
+                .map(|(key, value)| {
                     let key_algorithm = self
                         .key_algorithm_provider
                         .get_key_algorithm(&value.key_type)
@@ -91,8 +90,7 @@ impl DidService {
                     Ok((
                         key.to_owned(),
                         map_key_to_verification_method(
-                            index,
-                            &did.did,
+                            &did,
                             key_algorithm.bytes_to_jwk(&value.public_key)?,
                         )?,
                     ))

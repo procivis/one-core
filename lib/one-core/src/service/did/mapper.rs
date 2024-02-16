@@ -12,7 +12,10 @@ use crate::{
         key::{Key, KeyId},
         organisation::Organisation,
     },
-    service::{error::ServiceError, key::dto::KeyListItemResponseDTO},
+    service::{
+        error::{ServiceError, ValidationError},
+        key::dto::KeyListItemResponseDTO,
+    },
 };
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -158,14 +161,22 @@ pub(super) fn get_key_id_by_role(
 }
 
 pub(super) fn map_key_to_verification_method(
-    index: usize,
-    did: &DidValue,
+    did: &Did,
     public_key_jwk: PublicKeyJwkDTO,
 ) -> Result<DidVerificationMethodDTO, ServiceError> {
+    let assertion_method_key = did
+        .keys
+        .as_ref()
+        .ok_or(ServiceError::MappingError("did.keys is None".to_string()))?
+        .iter()
+        .find(|key| key.role == KeyRole::AssertionMethod)
+        .ok_or(ValidationError::InvalidKey(
+            "No associated ASSERTION_METHOD keys within did".to_string(),
+        ))?;
     Ok(DidVerificationMethodDTO {
-        id: format!("{}#key-{}", did, index),
+        id: format!("{}#key-{}", did.did, assertion_method_key.key.id),
         r#type: "JsonWebKey2020".to_string(),
-        controller: did.as_str().to_string(),
+        controller: did.did.as_str().to_string(),
         public_key_jwk,
     })
 }
