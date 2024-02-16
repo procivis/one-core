@@ -21,7 +21,6 @@ format:
   JSON_LD_BBSPLUS:
     type: "JSON_LD_BBSPLUS"
     display: "format.jsonld_bbsplus"
-    disabled: true
     order: 3
     params: null
   MDOC:

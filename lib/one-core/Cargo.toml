@@ -47,6 +47,8 @@ sophia_api                 = { version = "0.8" }
 sophia_c14n                = { version = "0.8" }
 pairing_crypto             = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
 blstrs                     = { version = "0.7" }
+hmac                       = { version = "0.12" }
+serde_cbor                 = { version = "0.11" }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

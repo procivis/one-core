@@ -8,6 +8,7 @@ use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
 use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 use super::json_ld_bbsplus::JsonLdBbsplus;
 use super::json_ld_classic::JsonLdClassic;
@@ -39,6 +40,7 @@ pub(crate) fn credential_formatters_from_config(
     crypto: Arc<dyn CryptoProvider>,
     core_base_url: Option<String>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter>>, ConfigError> {
     let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
 
@@ -63,7 +65,13 @@ pub(crate) fn credential_formatters_from_config(
             }
             FormatType::JsonLdBbsplus => {
                 let params = config.get(name)?;
-                Arc::new(JsonLdBbsplus::new(params)) as _
+                Arc::new(JsonLdBbsplus::new(
+                    params,
+                    crypto.clone(),
+                    core_base_url.clone(),
+                    did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
+                )) as _
             }
             FormatType::Mdoc => Arc::new(MdocFormatter::new()) as _,
         };

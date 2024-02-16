@@ -127,6 +127,7 @@ impl OneCore {
             crypto.clone(),
             core_base_url.clone(),
             did_method_provider.clone(),
+            key_algorithm_provider.clone(),
         )?;
 
         let formatter_provider =
