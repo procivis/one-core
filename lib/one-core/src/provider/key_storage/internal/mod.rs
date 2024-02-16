@@ -80,6 +80,7 @@ impl KeyStorage for InternalKeyProvider {
                 "ES256".to_string(),
                 "EDDSA".to_string(),
                 "DILITHIUM".to_string(),
+                "BBS_PLUS".to_string(),
             ],
             security: vec!["SOFTWARE".to_string()],
         }
