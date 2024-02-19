@@ -464,7 +464,6 @@ pub struct JsonLDInlineEntityRestDTO {
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinition)]
-#[serde(rename_all = "camelCase")]
 pub struct OpenID4VPPresentationDefinitionResponseRestDTO {
     pub id: Uuid,
     #[from(with_fn = convert_inner)]
