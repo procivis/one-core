@@ -7,3 +7,11 @@ app:
   traceJson: false
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error"
   hideErrorResponseCause: false
+exchange:
+  OPENID4VC:
+    display: "exchange.openid"
+    order: 1
+    type: "OPENID4VC"
+    params:
+      public:
+        allowInsecureHttpTransport: true

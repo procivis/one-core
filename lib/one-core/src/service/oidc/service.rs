@@ -450,7 +450,7 @@ impl OIDCService {
             .await?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_transport_type(&self.config, &proof.transport)?;
 
         let interaction = proof

@@ -113,7 +113,7 @@ async fn test_get_presentation_definition_success() {
             &verifier_did,
             None,
             Some(&proof_schema),
-            ProofStateEnum::Requested,
+            ProofStateEnum::Pending,
             "OPENID4VC",
             Some(&interaction),
         )
@@ -131,7 +131,7 @@ async fn test_get_presentation_definition_success() {
 
     let expected = json!({
         "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
-        "inputDescriptors": [{
+        "input_descriptors": [{
             "id": "input_0",
             "constraints": {
                 "fields": [

@@ -918,7 +918,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                     state: Some(vec![ProofState {
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
-                        state: ProofStateEnum::Requested,
+                        state: ProofStateEnum::Pending,
                     }]),
                     schema: None,
                     claims: None,
