@@ -176,7 +176,7 @@ impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
 
         Ok(Self {
             authentication: convert(request.authentication)?,
-            assertion: convert(request.assertion)?,
+            assertion_method: convert(request.assertion_method)?,
             key_agreement: convert(request.key_agreement)?,
             capability_invocation: convert(request.capability_invocation)?,
             capability_delegation: convert(request.capability_delegation)?,

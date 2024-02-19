@@ -246,7 +246,7 @@ fn test_validate_keys() {
     let keys = AmountOfKeys {
         global: 1,
         authentication: 1,
-        assertion: 1,
+        assertion_method: 1,
         key_agreement: 1,
         capability_invocation: 1,
         capability_delegation: 1,
@@ -260,7 +260,7 @@ fn test_validate_keys_no_keys() {
     let keys = AmountOfKeys {
         global: 0,
         authentication: 0,
-        assertion: 0,
+        assertion_method: 0,
         key_agreement: 0,
         capability_invocation: 0,
         capability_delegation: 0,
@@ -274,7 +274,7 @@ fn test_validate_keys_too_much_keys() {
     let keys = AmountOfKeys {
         global: 2,
         authentication: 1,
-        assertion: 1,
+        assertion_method: 1,
         key_agreement: 1,
         capability_invocation: 1,
         capability_delegation: 1,
@@ -288,7 +288,7 @@ fn test_validate_keys_missing_key() {
     let keys = AmountOfKeys {
         global: 1,
         authentication: 1,
-        assertion: 0,
+        assertion_method: 0,
         key_agreement: 1,
         capability_invocation: 1,
         capability_delegation: 1,

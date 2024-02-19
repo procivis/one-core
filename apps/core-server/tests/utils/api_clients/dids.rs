@@ -23,7 +23,7 @@ impl DidsApi {
     ) -> Response {
         let body = json!({
           "keys": {
-            "assertion": keys,
+            "assertionMethod": keys,
             "authentication": keys,
             "capabilityDelegation": keys,
             "capabilityInvocation": keys,

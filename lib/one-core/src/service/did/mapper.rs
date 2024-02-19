@@ -48,7 +48,7 @@ impl TryFrom<Did> for DidResponseDTO {
             did_method: value.did_method,
             keys: DidResponseKeysDTO {
                 authentication: filter_keys(KeyRole::Authentication),
-                assertion: filter_keys(KeyRole::AssertionMethod),
+                assertion_method: filter_keys(KeyRole::AssertionMethod),
                 key_agreement: filter_keys(KeyRole::KeyAgreement),
                 capability_invocation: filter_keys(KeyRole::CapabilityInvocation),
                 capability_delegation: filter_keys(KeyRole::CapabilityDelegation),
@@ -87,7 +87,7 @@ pub(super) fn did_from_did_request(
     };
 
     add_keys(request.keys.authentication, KeyRole::Authentication);
-    add_keys(request.keys.assertion, KeyRole::AssertionMethod);
+    add_keys(request.keys.assertion_method, KeyRole::AssertionMethod);
     add_keys(request.keys.key_agreement, KeyRole::KeyAgreement);
     add_keys(
         request.keys.capability_invocation,

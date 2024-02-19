@@ -30,7 +30,7 @@ pub struct DidResponseDTO {
 #[derive(Clone, Debug)]
 pub struct DidResponseKeysDTO {
     pub authentication: Vec<KeyListItemResponseDTO>,
-    pub assertion: Vec<KeyListItemResponseDTO>,
+    pub assertion_method: Vec<KeyListItemResponseDTO>,
     pub key_agreement: Vec<KeyListItemResponseDTO>,
     pub capability_invocation: Vec<KeyListItemResponseDTO>,
     pub capability_delegation: Vec<KeyListItemResponseDTO>,
@@ -70,7 +70,7 @@ pub struct CreateDidRequestDTO {
 #[derive(Clone, Debug)]
 pub struct CreateDidRequestKeysDTO {
     pub authentication: Vec<KeyId>,
-    pub assertion: Vec<KeyId>,
+    pub assertion_method: Vec<KeyId>,
     pub key_agreement: Vec<KeyId>,
     pub capability_invocation: Vec<KeyId>,
     pub capability_delegation: Vec<KeyId>,
