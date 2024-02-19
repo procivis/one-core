@@ -9,7 +9,7 @@ use crate::{fixtures::TestingCredentialParams, utils::context::TestContext};
 #[tokio::test]
 async fn test_get_credential_offer_success() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
 
     let credential_schema = context
         .db

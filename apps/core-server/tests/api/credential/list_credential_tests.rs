@@ -11,7 +11,7 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_list_credential_success() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -51,7 +51,7 @@ async fn test_get_list_credential_success() {
 #[tokio::test]
 async fn test_get_list_credential_deleted_credentials_are_not_returned() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -106,7 +106,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_role() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -176,7 +176,7 @@ async fn test_fail_to_get_list_credential_filter_by_invalid_role() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_name() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema1 = context
         .db
         .credential_schemas
@@ -233,7 +233,7 @@ async fn test_get_list_credential_filter_by_name() {
 #[tokio::test]
 async fn test_get_list_credential_filter_by_ids() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
         .credential_schemas

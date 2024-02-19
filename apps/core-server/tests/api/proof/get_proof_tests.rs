@@ -1,6 +1,13 @@
-use one_core::model::{credential::CredentialStateEnum, proof::ProofStateEnum};
+use one_core::model::{
+    credential::CredentialStateEnum,
+    did::{KeyRole, RelatedKey},
+    proof::ProofStateEnum,
+};
 
-use crate::utils::{context::TestContext, field_match::FieldHelpers};
+use crate::{
+    fixtures::TestingDidParams,
+    utils::{context::TestContext, field_match::FieldHelpers},
+};
 
 #[tokio::test]
 async fn test_get_proof_success() {
@@ -30,10 +37,25 @@ async fn test_get_proof_success() {
         )
         .await;
 
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
     let did = context
         .db
         .dids
-        .create(&organisation, Default::default())
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
         .await;
 
     let proof = context
@@ -47,6 +69,7 @@ async fn test_get_proof_success() {
             ProofStateEnum::Created,
             "OPENID4VC",
             None,
+            verifier_key,
         )
         .await;
 
@@ -94,10 +117,25 @@ async fn test_get_proof_with_credentials() {
         )
         .await;
 
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
     let did = context
         .db
         .dids
-        .create(&organisation, Default::default())
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
         .await;
 
     let credential = context
@@ -123,6 +161,7 @@ async fn test_get_proof_with_credentials() {
             ProofStateEnum::Created,
             "OPENID4VC",
             None,
+            verifier_key,
         )
         .await;
 
@@ -149,10 +188,25 @@ async fn test_get_proof_as_holder_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
 
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
     let verifier_did = context
         .db
         .dids
-        .create(&organisation, Default::default())
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
         .await;
     let holder_did = context
         .db
@@ -171,6 +225,7 @@ async fn test_get_proof_as_holder_success() {
             ProofStateEnum::Created,
             "OPENID4VC",
             None,
+            verifier_key,
         )
         .await;
 

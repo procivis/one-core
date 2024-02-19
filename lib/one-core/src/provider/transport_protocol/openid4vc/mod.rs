@@ -1238,6 +1238,7 @@ async fn handle_proof_invitation(
         holder_did,
         interaction,
         now,
+        None,
     );
 
     Ok(InvitationResponseDTO::ProofRequest {

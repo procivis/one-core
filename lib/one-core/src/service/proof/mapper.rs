@@ -1,6 +1,7 @@
 use super::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
 };
+use crate::model::key::Key;
 use crate::{
     model::{
         claim::Claim,
@@ -188,6 +189,7 @@ pub fn proof_from_create_request(
     now: OffsetDateTime,
     schema: ProofSchema,
     verifier_did: Did,
+    verifier_key: Option<Key>,
 ) -> Proof {
     Proof {
         id: Uuid::new_v4(),
@@ -205,6 +207,7 @@ pub fn proof_from_create_request(
         claims: None,
         verifier_did: Some(verifier_did),
         holder_did: None,
+        verifier_key,
         interaction: None,
     }
 }

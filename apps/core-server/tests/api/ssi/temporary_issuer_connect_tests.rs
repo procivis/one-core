@@ -8,7 +8,7 @@ use crate::{
 #[tokio::test]
 async fn test_temporary_issuer_connect_success() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
 
     let credential_schema = context
         .db

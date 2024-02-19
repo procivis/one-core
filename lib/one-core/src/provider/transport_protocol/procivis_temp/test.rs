@@ -77,6 +77,7 @@ fn generate_proof(redirect_uri: Option<String>) -> Proof {
         claims: None,
         verifier_did: None,
         holder_did: None,
+        verifier_key: None,
         interaction: None,
     }
 }

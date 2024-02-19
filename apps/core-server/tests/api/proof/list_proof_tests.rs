@@ -1,20 +1,41 @@
 use std::collections::HashSet;
 
-use one_core::model::proof::ProofStateEnum;
+use one_core::model::{
+    did::{KeyRole, RelatedKey},
+    proof::ProofStateEnum,
+};
 use serde_json::Value;
 use uuid::Uuid;
 
-use crate::utils::{context::TestContext, field_match::FieldHelpers};
+use crate::{
+    fixtures::TestingDidParams,
+    utils::{context::TestContext, field_match::FieldHelpers},
+};
 
 #[tokio::test]
 async fn test_list_proof_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
 
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
     let verifier_did = context
         .db
         .dids
-        .create(&organisation, Default::default())
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
         .await;
 
     let credential_schema = context
@@ -54,6 +75,7 @@ async fn test_list_proof_success() {
                 ProofStateEnum::Requested,
                 "OPENID4VC",
                 None,
+                verifier_key.to_owned(),
             )
             .await;
 
@@ -77,10 +99,25 @@ async fn test_list_proofs_by_ids() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
 
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
     let verifier_did = context
         .db
         .dids
-        .create(&organisation, Default::default())
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
         .await;
 
     let credential_schema = context
@@ -120,6 +157,7 @@ async fn test_list_proofs_by_ids() {
                 ProofStateEnum::Requested,
                 "OPENID4VC",
                 None,
+                verifier_key.to_owned(),
             )
             .await;
 

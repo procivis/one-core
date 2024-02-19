@@ -10,6 +10,9 @@ mod m20240129_112026_add_unique_index_on_credential_schema_name_organisation_del
 mod m20240129_115447_add_unique_index_on_proof_schema_name_organisation_deleted_at;
 mod m20240130_105023_add_history;
 mod m20240130_153529_add_pending_variant_to_history_action_enum_in_history_table;
+mod m20240209_144950_add_verifier_key_id_to_proof;
+
+pub(crate) mod m20240209_144950_models;
 
 pub struct Migrator;
 
@@ -27,6 +30,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240129_115447_add_unique_index_on_proof_schema_name_organisation_deleted_at::Migration),
             Box::new(m20240130_105023_add_history::Migration),
             Box::new(m20240130_153529_add_pending_variant_to_history_action_enum_in_history_table::Migration),
+            Box::new(m20240209_144950_add_verifier_key_id_to_proof::Migration),
         ]
     }
 }

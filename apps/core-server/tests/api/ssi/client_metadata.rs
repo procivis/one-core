@@ -5,7 +5,7 @@ use uuid::Uuid;
 #[tokio::test]
 async fn test_get_client_metadata() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did().await;
 
     let credential_schema = context
         .db
@@ -41,6 +41,7 @@ async fn test_get_client_metadata() {
             ProofStateEnum::Pending,
             "OPENID4VC",
             None,
+            key,
         )
         .await;
 
@@ -90,7 +91,7 @@ async fn test_fail_to_get_client_metadata_unknown_proof_id() {
 #[tokio::test]
 async fn test_fail_to_get_client_metadata_wrong_transport_protocol() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did().await;
 
     let credential_schema = context
         .db
@@ -126,6 +127,7 @@ async fn test_fail_to_get_client_metadata_wrong_transport_protocol() {
             ProofStateEnum::Pending,
             "PROCIVIS_TEMPORARY",
             None,
+            key,
         )
         .await;
 
@@ -139,7 +141,7 @@ async fn test_fail_to_get_client_metadata_wrong_transport_protocol() {
 #[tokio::test]
 async fn test_fail_to_get_client_metadata_wrong_proof_state() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, key) = TestContext::new_with_did().await;
 
     let credential_schema = context
         .db
@@ -175,6 +177,7 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
             ProofStateEnum::Rejected,
             "OPENID4VC",
             None,
+            key,
         )
         .await;
 

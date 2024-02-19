@@ -118,6 +118,7 @@ impl DataLayer {
             proof_schema_repository: proof_schema_repository.clone(),
             did_repository: did_repository.clone(),
             interaction_repository: interaction_repository.clone(),
+            key_repository: key_repository.clone(),
         });
 
         Self {

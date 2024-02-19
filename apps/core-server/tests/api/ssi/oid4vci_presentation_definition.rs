@@ -4,8 +4,9 @@ use uuid::Uuid;
 use one_core::model::proof::ProofStateEnum;
 
 use crate::{fixtures::TestingDidParams, utils::context::TestContext};
-use one_core::model::did::Did;
+use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::interaction::Interaction;
+use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof_schema::ProofSchema;
 
@@ -17,6 +18,7 @@ pub struct TestContextWithOID4VCIData {
     pub proof_schema: ProofSchema,
     pub verifier_did: Did,
     pub interaction: Interaction,
+    pub verifier_key: Key,
 }
 
 async fn new_test_data() -> TestContextWithOID4VCIData {
@@ -67,10 +69,24 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         .proof_schemas
         .create("Schema1", &organisation, &new_claim_schemas)
         .await;
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
     let verifier_did = context
         .db
         .dids
-        .create(&organisation, TestingDidParams::default())
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
         .await;
     let interaction = context
         .db
@@ -90,6 +106,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         proof_schema,
         verifier_did,
         interaction,
+        verifier_key,
     }
 }
 
@@ -102,6 +119,7 @@ async fn test_get_presentation_definition_success() {
         proof_schema,
         verifier_did,
         interaction,
+        verifier_key,
         ..
     } = new_test_data().await;
 
@@ -116,6 +134,7 @@ async fn test_get_presentation_definition_success() {
             ProofStateEnum::Pending,
             "OPENID4VC",
             Some(&interaction),
+            verifier_key,
         )
         .await;
 
@@ -176,6 +195,7 @@ async fn test_get_presentation_definition_failed_wrong_transport_type() {
         proof_schema,
         verifier_did,
         interaction,
+        verifier_key,
         ..
     } = new_test_data().await;
 
@@ -190,6 +210,7 @@ async fn test_get_presentation_definition_failed_wrong_transport_type() {
             ProofStateEnum::Requested,
             "PROCIVIS_TEMPORARY",
             Some(&interaction),
+            verifier_key,
         )
         .await;
 
@@ -212,6 +233,7 @@ async fn test_get_presentation_definition_failed_wrong_state() {
         proof_schema,
         verifier_did,
         interaction,
+        verifier_key,
         ..
     } = new_test_data().await;
 
@@ -226,6 +248,7 @@ async fn test_get_presentation_definition_failed_wrong_state() {
             ProofStateEnum::Accepted,
             "OPENID4VC",
             Some(&interaction),
+            verifier_key,
         )
         .await;
 

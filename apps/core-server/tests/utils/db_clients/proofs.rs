@@ -7,6 +7,7 @@ use one_core::{
         credential_schema::CredentialSchemaRelations,
         did::{Did, DidRelations},
         interaction::Interaction,
+        key::{Key, KeyRelations},
         organisation::OrganisationRelations,
         proof::{
             Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
@@ -38,6 +39,7 @@ impl ProofsDB {
         state: ProofStateEnum,
         transport: &str,
         interaction: Option<&Interaction>,
+        verifier_key: Key,
     ) -> Proof {
         let proof = Proof {
             id: id.unwrap_or_else(Uuid::new_v4),
@@ -55,6 +57,7 @@ impl ProofsDB {
             schema: proof_schema.cloned(),
             verifier_did: Some(verifier_did.to_owned()),
             holder_did: holder_did.cloned(),
+            verifier_key: Some(verifier_key),
             interaction: interaction.cloned(),
         };
 
@@ -91,6 +94,7 @@ impl ProofsDB {
                     holder_did: Some(DidRelations::default()),
                     verifier_did: Some(DidRelations::default()),
                     interaction: Some(Default::default()),
+                    verifier_key: Some(KeyRelations::default()),
                 },
             )
             .await

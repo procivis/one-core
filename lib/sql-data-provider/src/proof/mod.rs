@@ -1,7 +1,7 @@
 use one_core::repository::{
     claim_repository::ClaimRepository, credential_repository::CredentialRepository,
     did_repository::DidRepository, interaction_repository::InteractionRepository,
-    proof_schema_repository::ProofSchemaRepository,
+    key_repository::KeyRepository, proof_schema_repository::ProofSchemaRepository,
 };
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
@@ -17,6 +17,7 @@ pub(crate) struct ProofProvider {
     pub did_repository: Arc<dyn DidRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub credential_repository: Arc<dyn CredentialRepository>,
+    pub key_repository: Arc<dyn KeyRepository>,
 }
 
 #[cfg(test)]

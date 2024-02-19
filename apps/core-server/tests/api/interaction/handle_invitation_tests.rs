@@ -21,7 +21,7 @@ use crate::utils::{self};
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
     // GIVEN
-    let (context, _, did) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
     let credential_id = Uuid::new_v4();
 
     context
@@ -140,7 +140,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value() {
     let mock_server = MockServer::start().await;
-    let (context, _, did) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let credential_id = "90eb3e0f-cc34-4994-8093-0bdb3983ef21";
     let credential_issuer = format!("{}/ssi/oidc-issuer/v1/{credential_id}", mock_server.uri());
@@ -256,7 +256,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_reference() {
     let mock_server = MockServer::start().await;
-    let (context, _, did) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let credential_id = Uuid::new_v4();
     let credential_schema_id = Uuid::new_v4();
@@ -386,7 +386,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let mock_server = MockServer::start().await;
-    let (context, _, did) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
         vp_formats: HashMap::from([(
@@ -431,7 +431,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
         .interactions
         .handle_invitation(did.id, &query)
         .await;
-
     // THEN
     assert_eq!(resp.status(), 200);
 
@@ -441,7 +440,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
-    let (context, _, did) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
         vp_formats: HashMap::from([(

@@ -11,27 +11,26 @@ use super::{
 };
 use crate::{
     common_mapper::list_response_try_into,
+    common_validator::throw_if_latest_proof_state_not_eq,
     config::validator::exchange::validate_exchange_type,
     model::{
         claim::ClaimRelations,
         common::EntityShareResponseDTO,
+        credential::CredentialRelations,
         credential_schema::CredentialSchemaRelations,
-        did::DidRelations,
+        did::{DidRelations, KeyRole},
         interaction::InteractionRelations,
+        key::KeyRelations,
         organisation::OrganisationRelations,
         proof::ProofClaimRelations,
         proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
-    service::error::ServiceError,
-};
-use crate::{
-    common_validator::throw_if_latest_proof_state_not_eq, service::error::BusinessLogicError,
-};
-use crate::{model::credential::CredentialRelations, service::error::EntityNotFoundError};
-use crate::{
     provider::transport_protocol::dto::PresentationDefinitionResponseDTO,
-    service::error::MissingProviderError,
+    service::error::{
+        BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+        ValidationError,
+    },
 };
 use time::OffsetDateTime;
 
@@ -77,6 +76,7 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         ..Default::default()
                     }),
+                    verifier_key: None,
                     interaction: Some(Default::default()),
                 },
             )
@@ -187,7 +187,13 @@ impl ProofService {
 
         let verifier_did = self
             .did_repository
-            .get_did(&request.verifier_did_id, &DidRelations::default())
+            .get_did(
+                &request.verifier_did_id,
+                &DidRelations {
+                    keys: Some(KeyRelations::default()),
+                    organisation: None,
+                },
+            )
             .await?;
 
         let Some(verifier_did) = verifier_did else {
@@ -205,12 +211,32 @@ impl ProofService {
             .into());
         }
 
+        let Some(keys) = &verifier_did.keys.as_ref() else {
+            return Err(ServiceError::MappingError("keys is None".to_string()));
+        };
+
+        let verifier_key = if let Some(verifier_key) = request.verifier_key.as_ref() {
+            keys.iter()
+                .find(|key| key.role == KeyRole::AssertionMethod && key.key.id == *verifier_key)
+                .ok_or(ValidationError::InvalidKey(
+                    "Key is not associated with ASSERTION_METHOD with verifier_did".to_string(),
+                ))?
+        } else {
+            keys.iter()
+                .find(|key| key.role == KeyRole::AssertionMethod)
+                .ok_or(ValidationError::InvalidKey(
+                    "No associated ASSERTION_METHOD keys within verifier_did".to_string(),
+                ))?
+        }
+        .to_owned();
+
         self.proof_repository
             .create_proof(proof_from_create_request(
                 request,
                 now,
                 proof_schema,
                 verifier_did,
+                Some(verifier_key.key),
             ))
             .await
             .map_err(ServiceError::from)
