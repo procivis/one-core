@@ -132,7 +132,7 @@ impl CredentialService {
                 .find(|entry| entry.role == KeyRole::AssertionMethod)
                 .ok_or_else(|| {
                     ServiceError::Validation(ValidationError::InvalidKey(
-                        "no assertion keys found in did".to_string(),
+                        "no assertion method keys found in did".to_string(),
                     ))
                 })?,
         }

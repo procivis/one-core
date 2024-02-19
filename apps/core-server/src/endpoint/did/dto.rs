@@ -84,7 +84,7 @@ pub struct DidResponseKeysRestDTO {
     #[try_from(with_fn = try_convert_inner)]
     pub authentication: Vec<KeyListItemResponseRestDTO>,
     #[try_from(with_fn = try_convert_inner)]
-    pub assertion: Vec<KeyListItemResponseRestDTO>,
+    pub assertion_method: Vec<KeyListItemResponseRestDTO>,
     #[try_from(with_fn = try_convert_inner)]
     pub key_agreement: Vec<KeyListItemResponseRestDTO>,
     #[try_from(with_fn = try_convert_inner)]
@@ -109,7 +109,7 @@ pub struct CreateDidRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestKeysRestDTO {
     pub authentication: Vec<Uuid>,
-    pub assertion: Vec<Uuid>,
+    pub assertion_method: Vec<Uuid>,
     pub key_agreement: Vec<Uuid>,
     pub capability_invocation: Vec<Uuid>,
     pub capability_delegation: Vec<Uuid>,

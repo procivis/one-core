@@ -249,7 +249,7 @@ fn test_validate_default_keys() {
     let keys = AmountOfKeys {
         global: 1,
         authentication: 1,
-        assertion: 1,
+        assertion_method: 1,
         key_agreement: 1,
         capability_invocation: 1,
         capability_delegation: 1,
@@ -263,7 +263,7 @@ fn test_validate_default_keys_no_keys() {
     let keys = AmountOfKeys {
         global: 0,
         authentication: 0,
-        assertion: 0,
+        assertion_method: 0,
         key_agreement: 0,
         capability_invocation: 0,
         capability_delegation: 0,
@@ -277,7 +277,7 @@ fn test_validate_default_keys_too_much_keys() {
     let keys = AmountOfKeys {
         global: 2,
         authentication: 1,
-        assertion: 1,
+        assertion_method: 1,
         key_agreement: 1,
         capability_invocation: 1,
         capability_delegation: 1,
@@ -291,7 +291,7 @@ fn test_validate_default_keys_missing_key() {
     let keys = AmountOfKeys {
         global: 1,
         authentication: 1,
-        assertion: 0,
+        assertion_method: 0,
         key_agreement: 1,
         capability_invocation: 1,
         capability_delegation: 1,
@@ -318,7 +318,7 @@ fn test_validate_keys() {
     let keys = AmountOfKeys {
         global: 2,
         authentication: 3,
-        assertion: 3,
+        assertion_method: 3,
         key_agreement: 2,
         capability_invocation: 2,
         capability_delegation: 2,
@@ -345,7 +345,7 @@ fn test_validate_keys_no_keys() {
     let keys = AmountOfKeys {
         global: 0,
         authentication: 0,
-        assertion: 0,
+        assertion_method: 0,
         key_agreement: 0,
         capability_invocation: 0,
         capability_delegation: 0,
@@ -372,7 +372,7 @@ fn test_validate_keys_too_much_keys() {
     let keys = AmountOfKeys {
         global: 5,
         authentication: 2,
-        assertion: 2,
+        assertion_method: 2,
         key_agreement: 2,
         capability_invocation: 2,
         capability_delegation: 2,
@@ -399,7 +399,7 @@ fn test_validate_keys_missing_key() {
     let keys = AmountOfKeys {
         global: 2,
         authentication: 2,
-        assertion: 0,
+        assertion_method: 0,
         key_agreement: 2,
         capability_invocation: 2,
         capability_delegation: 2,

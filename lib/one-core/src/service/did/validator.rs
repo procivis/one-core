@@ -20,13 +20,13 @@ pub(super) fn validate_request_amount_of_keys(
         global: count_uniq(
             keys.authentication
                 .iter()
-                .chain(&keys.assertion)
+                .chain(&keys.assertion_method)
                 .chain(&keys.key_agreement)
                 .chain(&keys.capability_invocation)
                 .chain(&keys.capability_delegation),
         ),
         authentication: count_uniq(&keys.authentication),
-        assertion: count_uniq(&keys.assertion),
+        assertion_method: count_uniq(&keys.assertion_method),
         key_agreement: count_uniq(&keys.key_agreement),
         capability_invocation: count_uniq(&keys.capability_invocation),
         capability_delegation: count_uniq(&keys.capability_delegation),

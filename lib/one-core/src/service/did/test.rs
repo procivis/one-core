@@ -141,7 +141,7 @@ async fn test_get_did_exists() {
     let result = result.unwrap();
     assert_eq!(result.id, did.id);
     assert_eq!(result.keys.authentication.len(), 1);
-    assert!(result.keys.assertion.is_empty());
+    assert!(result.keys.assertion_method.is_empty());
 }
 
 #[tokio::test]
@@ -241,7 +241,7 @@ async fn test_create_did_success() {
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![key_id],
-            assertion: vec![],
+            assertion_method: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],
             capability_delegation: vec![],
@@ -332,7 +332,7 @@ async fn test_create_did_value_already_exists() {
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![key_id],
-            assertion: vec![],
+            assertion_method: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],
             capability_delegation: vec![],
@@ -420,7 +420,7 @@ async fn test_create_did_value_no_keys() {
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![],
-            assertion: vec![],
+            assertion_method: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],
             capability_delegation: vec![],
@@ -459,7 +459,7 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
             authentication: vec![Uuid::new_v4(), Uuid::new_v4()],
-            assertion: vec![],
+            assertion_method: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],
             capability_delegation: vec![],
