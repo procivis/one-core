@@ -165,6 +165,7 @@ pub async fn insert_proof_request_to_database(
     verifier_did_id: DidId,
     holder_did_id: Option<DidId>,
     proof_schema_id: &str,
+    verifier_key_id: String,
     interaction_id: Option<String>,
 ) -> Result<String, DbErr> {
     let proof = proof::ActiveModel {
@@ -177,6 +178,7 @@ pub async fn insert_proof_request_to_database(
         verifier_did_id: Set(Some(verifier_did_id)),
         holder_did_id: Set(holder_did_id),
         proof_schema_id: Set(Some(proof_schema_id.to_string())),
+        verifier_key_id: Set(Some(verifier_key_id)),
         interaction_id: Set(interaction_id),
     }
     .insert(database)

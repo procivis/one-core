@@ -7,10 +7,13 @@ use uuid::Uuid;
 use super::ProofService;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::CredentialRelations;
+use crate::model::did::{KeyRole, RelatedKey};
+use crate::model::key::Key;
+use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError};
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ValidationError};
 use crate::service::test_utilities::generic_config;
 use crate::{
     model::{
@@ -100,6 +103,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             deactivated: false,
         }),
         holder_did: None,
+        verifier_key: None,
         interaction: None,
     }
 }
@@ -179,6 +183,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             keys: None,
             deactivated: false,
         }),
+        verifier_key: None,
         interaction: None,
     };
 
@@ -276,6 +281,7 @@ async fn test_get_proof_exists() {
             deactivated: false,
         }),
         holder_did: None,
+        verifier_key: None,
         interaction: None,
     };
     {
@@ -316,6 +322,7 @@ async fn test_get_proof_exists() {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
+                    verifier_key: None,
                     interaction: Some(InteractionRelations::default()),
                 }),
             )
@@ -395,6 +402,7 @@ async fn test_get_proof_list_success() {
             deactivated: false,
         }),
         holder_did: None,
+        verifier_key: None,
         interaction: None,
     };
     {
@@ -438,13 +446,105 @@ async fn test_get_proof_list_success() {
 }
 
 #[tokio::test]
-async fn test_create_proof() {
+async fn test_create_proof_without_related_key() {
     let transport = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
         transport: transport.to_owned(),
         redirect_uri: None,
+        verifier_key: None,
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .times(1)
+        .withf(move |id, _| &request.proof_schema_id == id)
+        .returning(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                claim_schemas: None,
+                organisation: None,
+            }))
+        });
+
+    let verifier_key_id = Uuid::new_v4();
+
+    let request_clone = request.clone();
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .times(1)
+        .withf(move |id, _| &request_clone.verifier_did_id == id)
+        .returning(move |id, _| {
+            Ok(Some(Did {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: Key {
+                        id: verifier_key_id.to_owned(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        public_key: vec![],
+                        name: "key".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
+                deactivated: false,
+            }))
+        });
+
+    let proof_id = ProofId::new_v4();
+    let mut proof_repository = MockProofRepository::default();
+    proof_repository
+        .expect_create_proof()
+        .times(1)
+        .withf(move |proof| proof.transport == transport)
+        .returning(move |_| Ok(proof_id));
+
+    let interaction_repository = MockInteractionRepository::default();
+    let credential_repository = MockCredentialRepository::default();
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        proof_repository,
+        did_repository,
+        proof_schema_repository,
+        interaction_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request.to_owned()).await;
+    assert_eq!(result.unwrap(), proof_id);
+}
+
+#[tokio::test]
+async fn test_create_proof_with_related_key() {
+    let transport = "PROCIVIS_TEMPORARY".to_string();
+    let verifier_key_id = Uuid::new_v4();
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4(),
+        verifier_did_id: Uuid::new_v4().into(),
+        transport: transport.to_owned(),
+        redirect_uri: None,
+        verifier_key: Some(verifier_key_id),
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -471,7 +571,7 @@ async fn test_create_proof() {
         .expect_get_did()
         .times(1)
         .withf(move |id, _| &request_clone.verifier_did_id == id)
-        .returning(|id, _| {
+        .returning(move |id, _| {
             Ok(Some(Did {
                 id: id.to_owned(),
                 created_date: OffsetDateTime::now_utc(),
@@ -481,7 +581,20 @@ async fn test_create_proof() {
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 organisation: None,
-                keys: None,
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: Key {
+                        id: verifier_key_id.to_owned(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        public_key: vec![],
+                        name: "key".to_string(),
+                        key_reference: vec![],
+                        storage_type: "INTERNAL".to_string(),
+                        key_type: "EDDSA".to_string(),
+                        organisation: None,
+                    },
+                }]),
                 deactivated: false,
             }))
         });
@@ -512,6 +625,75 @@ async fn test_create_proof() {
 }
 
 #[tokio::test]
+async fn test_create_proof_failed_no_key_with_assertion_method_role() {
+    let transport = "PROCIVIS_TEMPORARY".to_string();
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4(),
+        verifier_did_id: Uuid::new_v4().into(),
+        transport: transport.to_owned(),
+        redirect_uri: None,
+        verifier_key: None,
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .times(1)
+        .withf(move |id, _| &request.proof_schema_id == id)
+        .returning(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                claim_schemas: None,
+                organisation: None,
+            }))
+        });
+
+    let request_clone = request.clone();
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .times(1)
+        .withf(move |id, _| &request_clone.verifier_did_id == id)
+        .returning(move |id, _| {
+            Ok(Some(Did {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "did".to_string(),
+                did: "did".parse().unwrap(),
+                did_type: DidType::Local,
+                did_method: "KEY".to_string(),
+                organisation: None,
+                keys: Some(vec![]),
+                deactivated: false,
+            }))
+        });
+
+    let interaction_repository = MockInteractionRepository::default();
+    let credential_repository = MockCredentialRepository::default();
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        did_repository,
+        proof_schema_repository,
+        interaction_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request.to_owned()).await;
+    assert!(matches!(
+        result.unwrap_err(),
+        ServiceError::Validation(ValidationError::InvalidKey(_))
+    ));
+}
+
+#[tokio::test]
 async fn test_create_proof_did_deactivated_error() {
     let transport = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
@@ -519,6 +701,7 @@ async fn test_create_proof_did_deactivated_error() {
         verifier_did_id: Uuid::new_v4().into(),
         transport: transport.to_owned(),
         redirect_uri: None,
+        verifier_key: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -608,6 +791,7 @@ async fn test_create_proof_schema_deleted() {
             verifier_did_id: Uuid::new_v4().into(),
             transport: "PROCIVIS_TEMPORARY".to_string(),
             redirect_uri: None,
+            verifier_key: None,
         })
         .await;
     assert2::assert!(

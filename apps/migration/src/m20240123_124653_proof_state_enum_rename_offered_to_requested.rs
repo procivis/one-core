@@ -3,7 +3,7 @@ use sea_orm_migration::{prelude::*, sea_query::extension::postgres::Type};
 use crate::m20240110_000001_initial::{ProofRequestStateEnum, ProofState};
 
 #[derive(Iden)]
-enum ProofRequestState {
+pub(crate) enum ProofRequestState {
     #[iden = "CREATED"]
     Created,
 

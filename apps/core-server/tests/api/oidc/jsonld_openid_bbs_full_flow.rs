@@ -34,7 +34,7 @@ async fn test_opeind4vc_jsondl_flow(
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
 
-    let (server_did, holder_did) = prepare_dids(
+    let (server_did, holder_did, local_key) = prepare_dids(
         &server_context,
         &server_organisation,
         issuer_bbs_key.to_owned(),
@@ -138,6 +138,7 @@ async fn test_opeind4vc_jsondl_flow(
             ProofStateEnum::Pending,
             "OPENID4VC",
             Some(&interaction),
+            local_key,
         )
         .await;
 
@@ -155,7 +156,7 @@ async fn prepare_dids(
     organisation: &Organisation,
     local_key_params: TestKey,
     remote_key_params: TestKey,
-) -> (Did, Did) {
+) -> (Did, Did, Key) {
     let local_key = context
         .db
         .keys
@@ -184,7 +185,7 @@ async fn prepare_dids(
             },
         )
         .await;
-    (local_did, remote_did)
+    (local_did, remote_did, local_key)
 }
 
 fn key_to_did_params(key: Option<&Key>, multibase: &str) -> TestingDidParams {

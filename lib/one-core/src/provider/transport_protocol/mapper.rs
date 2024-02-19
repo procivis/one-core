@@ -56,6 +56,7 @@ pub fn interaction_from_handle_invitation(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn proof_from_handle_invitation(
     proof_id: &ProofId,
     protocol: &str,
@@ -64,6 +65,7 @@ pub fn proof_from_handle_invitation(
     holder_did: Did,
     interaction: Interaction,
     now: OffsetDateTime,
+    verifier_key: Option<Key>,
 ) -> Proof {
     Proof {
         id: proof_id.to_owned(),
@@ -82,6 +84,7 @@ pub fn proof_from_handle_invitation(
         verifier_did,
         holder_did: Some(holder_did),
         interaction: Some(interaction),
+        verifier_key,
     }
 }
 

@@ -924,6 +924,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                     claims: None,
                     verifier_did: None,
                     holder_did: None,
+                    verifier_key: None,
                     interaction: Some(Interaction {
                         id: Uuid::new_v4(),
                         created_date: get_dummy_date(),

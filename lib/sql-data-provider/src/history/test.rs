@@ -15,7 +15,7 @@ use one_core::{
 };
 use shared_types::DidId;
 
-use crate::{history::HistoryProvider, test_utilities::*};
+use crate::{entity::key_did::KeyRole, history::HistoryProvider, test_utilities::*};
 
 struct TestSetup {
     pub provider: HistoryProvider,
@@ -114,6 +114,30 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     .await
     .unwrap();
 
+    let key_id = insert_key_to_database(
+        &db,
+        "ED25519".to_string(),
+        vec![],
+        vec![],
+        None,
+        &organisation.id.to_string(),
+    )
+    .await
+    .unwrap();
+    insert_history(
+        &db,
+        HistoryAction::Created.into(),
+        Uuid::parse_str(&key_id).unwrap().into(),
+        HistoryEntityType::Key.into(),
+        organisation.id.to_owned().into(),
+    )
+    .await
+    .unwrap();
+
+    insert_key_did(&db, &did_id.to_string(), &key_id, KeyRole::AssertionMethod)
+        .await
+        .unwrap();
+
     let credential_id = insert_credential(
         &db,
         &credential_schema_id,
@@ -175,9 +199,16 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     .unwrap();
 
     let proof_id = Uuid::parse_str(
-        &insert_proof_request_to_database(&db, did_id, None, &proof_schema_id.to_string(), None)
-            .await
-            .unwrap(),
+        &insert_proof_request_to_database(
+            &db,
+            did_id,
+            None,
+            &proof_schema_id.to_string(),
+            key_id,
+            None,
+        )
+        .await
+        .unwrap(),
     )
     .unwrap();
     let proof_claim: Vec<(Uuid, Uuid)> = vec![(proof_id.to_owned(), claims[0].0.to_owned())];

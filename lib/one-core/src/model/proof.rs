@@ -4,14 +4,13 @@ use uuid::Uuid;
 
 use shared_types::DidId;
 
-use crate::model::interaction::InteractionId;
-
 use super::{
     claim::{Claim, ClaimRelations},
     common::{GetListQueryParams, GetListResponse},
     credential::{Credential, CredentialRelations},
     did::{Did, DidRelations},
-    interaction::{Interaction, InteractionRelations},
+    interaction::{Interaction, InteractionId, InteractionRelations},
+    key::{Key, KeyRelations},
     proof_schema::{ProofSchema, ProofSchemaRelations},
 };
 
@@ -32,6 +31,7 @@ pub struct Proof {
     pub claims: Option<Vec<ProofClaim>>,
     pub verifier_did: Option<Did>,
     pub holder_did: Option<Did>, // empty either because relation not specified or not set in database
+    pub verifier_key: Option<Key>,
     pub interaction: Option<Interaction>,
 }
 
@@ -78,6 +78,7 @@ pub struct ProofRelations {
     pub claims: Option<ProofClaimRelations>,
     pub verifier_did: Option<DidRelations>,
     pub holder_did: Option<DidRelations>,
+    pub verifier_key: Option<KeyRelations>,
     pub interaction: Option<InteractionRelations>,
 }
 

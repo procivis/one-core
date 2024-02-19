@@ -568,6 +568,7 @@ pub async fn create_proof(
         schema: proof_schema.cloned(),
         verifier_did: Some(verifier_did.to_owned()),
         holder_did: holder_did.cloned(),
+        verifier_key: None,
         interaction: interaction.cloned(),
     };
 
@@ -632,6 +633,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                 }),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
+                verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations {}),
             },
         )

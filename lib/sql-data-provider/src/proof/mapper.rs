@@ -81,6 +81,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             claims: None,
             verifier_did,
             holder_did: None,
+            verifier_key: None,
             interaction: None,
         })
     }
@@ -104,14 +105,17 @@ impl TryFrom<proof::Model> for Proof {
             claims: None,
             verifier_did: None,
             holder_did: None,
+            verifier_key: None,
             interaction: None,
         })
     }
 }
 
-impl From<Proof> for proof::ActiveModel {
-    fn from(value: Proof) -> Self {
-        Self {
+impl TryFrom<Proof> for proof::ActiveModel {
+    type Error = DataLayerError;
+
+    fn try_from(value: Proof) -> Result<Self, Self::Error> {
+        Ok(Self {
             id: Set(value.id.to_string()),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
@@ -121,10 +125,11 @@ impl From<Proof> for proof::ActiveModel {
             verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
             holder_did_id: Set(value.holder_did.map(|did| did.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id.to_string())),
+            verifier_key_id: Set(value.verifier_key.map(|key| key.id.to_string())),
             interaction_id: Set(value
                 .interaction
                 .map(|interaction| interaction.id.to_string())),
-        }
+        })
     }
 }
 

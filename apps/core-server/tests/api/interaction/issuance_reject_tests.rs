@@ -7,7 +7,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_issuance_reject_procivis_temp() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -59,7 +59,7 @@ async fn test_issuance_reject_procivis_temp() {
 #[tokio::test]
 async fn test_issuance_reject_openid4vc() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let holder_did = context
         .db
         .dids

@@ -1,6 +1,7 @@
 use core_server::router::start_server;
 use core_server::ServerConfig;
 use one_core::model::did::{Did, KeyRole};
+use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::{config::core_config::AppConfig, model::did::RelatedKey};
 use tokio::task::JoinHandle;
@@ -53,7 +54,7 @@ impl TestContext {
         (context, organisation)
     }
 
-    pub async fn new_with_did() -> (Self, Organisation, Did) {
+    pub async fn new_with_did() -> (Self, Organisation, Did, Key) {
         let (context, organisation) = Self::new_with_organisation().await;
         let key = context
             .db
@@ -68,12 +69,12 @@ impl TestContext {
                 TestingDidParams {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
-                        key,
+                        key: key.to_owned(),
                     }]),
                     ..Default::default()
                 },
             )
             .await;
-        (context, organisation, did)
+        (context, organisation, did, key)
     }
 }

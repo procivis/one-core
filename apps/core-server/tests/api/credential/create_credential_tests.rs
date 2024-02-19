@@ -10,7 +10,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 #[tokio::test]
 async fn test_create_credential_success() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -180,7 +180,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
 #[tokio::test]
 async fn test_fail_to_create_credential_unknown_key_id() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
         .credential_schemas
@@ -211,7 +211,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 #[tokio::test]
 async fn test_create_credential_with_big_picture_success() {
     // GIVEN
-    let (context, organisation, did) = TestContext::new_with_did().await;
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
     let credential_schema = context
         .db
         .credential_schemas

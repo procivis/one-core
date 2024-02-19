@@ -197,6 +197,7 @@ pub fn dummy_proof() -> Proof {
         claims: None,
         verifier_did: None,
         holder_did: None,
+        verifier_key: None,
         interaction: None,
     }
 }

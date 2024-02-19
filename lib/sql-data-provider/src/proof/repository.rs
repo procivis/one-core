@@ -33,7 +33,7 @@ use uuid::Uuid;
 #[async_trait::async_trait]
 impl ProofRepository for ProofProvider {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {
-        let proof: proof::ActiveModel = request.clone().into();
+        let proof: proof::ActiveModel = request.clone().try_into()?;
         proof
             .insert(&self.db)
             .await
@@ -450,6 +450,22 @@ impl ProofProvider {
                 })?;
 
             proof.interaction = Some(interaction);
+        }
+
+        if let (Some(verifier_key_relations), Some(verifier_key_id)) =
+            (&relations.verifier_key, proof_model.verifier_key_id)
+        {
+            let verifier_key_id = Uuid::from_str(&verifier_key_id)?;
+            let verifier_key = self
+                .key_repository
+                .get_key(&verifier_key_id, verifier_key_relations)
+                .await?
+                .ok_or(DataLayerError::MissingRequiredRelation {
+                    relation: "proof-verifierkey",
+                    id: verifier_key_id.to_string(),
+                })?;
+
+            proof.verifier_key = Some(verifier_key);
         }
 
         Ok(proof)

@@ -184,7 +184,7 @@ async fn test_create_did_jwk_success() {
 #[tokio::test]
 async fn test_create_did_with_same_name_in_different_organisations() {
     // GIVEN
-    let (context, _, did) = TestContext::new_with_did().await;
+    let (context, _, did, _) = TestContext::new_with_did().await;
 
     let organisation1 = context.db.organisations.create().await;
     let key = context

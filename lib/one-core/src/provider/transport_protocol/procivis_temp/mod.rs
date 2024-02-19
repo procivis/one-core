@@ -607,6 +607,16 @@ async fn handle_proof_invitation(
         }
     };
 
+    let verifier_key = verifier_did
+        .keys
+        .as_ref()
+        .map(|vec| {
+            vec.iter()
+                .find(|f| f.role == KeyRole::AssertionMethod)
+                .map(|key| key.key.to_owned())
+        })
+        .and_then(|key| key);
+
     let data = serde_json::to_string(&proof_request.claims)
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
         .as_bytes()
@@ -632,6 +642,7 @@ async fn handle_proof_invitation(
         holder_did.to_owned(),
         interaction,
         now,
+        verifier_key,
     );
 
     Ok(InvitationResponseDTO::ProofRequest {

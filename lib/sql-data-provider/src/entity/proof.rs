@@ -17,6 +17,7 @@ pub struct Model {
     pub verifier_did_id: Option<DidId>,
     pub holder_did_id: Option<DidId>,
     pub proof_schema_id: Option<String>,
+    pub verifier_key_id: Option<String>,
     pub interaction_id: Option<String>,
 }
 
@@ -60,6 +61,14 @@ pub enum Relation {
     ProofSchema,
     #[sea_orm(has_many = "super::proof_state::Entity")]
     ProofState,
+    #[sea_orm(
+        belongs_to = "super::key::Entity",
+        from = "Column::VerifierKeyId",
+        to = "super::key::Column::Id",
+        on_update = "Restrict",
+        on_delete = "Restrict"
+    )]
+    VerifierKey,
 }
 
 impl Related<super::interaction::Entity> for Entity {

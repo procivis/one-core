@@ -24,6 +24,7 @@ pub struct CreateProofRequestDTO {
     pub verifier_did_id: DidId,
     pub transport: String,
     pub redirect_uri: Option<String>,
+    pub verifier_key: Option<Uuid>,
 }
 
 #[derive(Clone, Debug)]

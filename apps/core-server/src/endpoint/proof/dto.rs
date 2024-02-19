@@ -48,6 +48,7 @@ pub struct CreateProofRequestRestDTO {
     pub verifier_did: DidId,
     pub transport: String,
     pub redirect_uri: Option<String>,
+    pub verifier_key: Option<Uuid>,
 }
 
 // list endpoint

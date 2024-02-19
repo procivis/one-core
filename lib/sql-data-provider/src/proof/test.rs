@@ -8,6 +8,7 @@ use one_core::{
         credential::{Credential, CredentialRelations, CredentialRole, CredentialStateEnum},
         did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
+        key::{Key, KeyId, KeyRelations},
         organisation::OrganisationId,
         proof::{
             Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
@@ -22,7 +23,10 @@ use one_core::{
         did_repository::{DidRepository, MockDidRepository},
         interaction_repository::InteractionRepository,
         interaction_repository::MockInteractionRepository,
-        mock::proof_schema_repository::MockProofSchemaRepository,
+        key_repository::KeyRepository,
+        mock::{
+            key_repository::MockKeyRepository, proof_schema_repository::MockProofSchemaRepository,
+        },
         proof_repository::ProofRepository,
         proof_schema_repository::ProofSchemaRepository,
     },
@@ -35,7 +39,9 @@ use uuid::Uuid;
 use super::ProofProvider;
 use crate::{
     entity::{
-        claim, credential, proof_claim,
+        claim, credential,
+        key_did::KeyRole,
+        proof_claim,
         proof_state::{self, ProofRequestState},
     },
     list_query::from_pagination,
@@ -50,6 +56,7 @@ struct TestSetup {
     pub did_id: DidId,
     pub claim_schema_ids: Vec<ClaimSchemaId>,
     pub interaction_id: InteractionId,
+    pub key_id: KeyId,
 }
 
 async fn setup(
@@ -58,6 +65,7 @@ async fn setup(
     claim_repository: Arc<dyn ClaimRepository>,
     did_repository: Arc<dyn DidRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    key_repository: Arc<dyn KeyRepository>,
 ) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
@@ -116,6 +124,28 @@ async fn setup(
     .await
     .unwrap();
 
+    let key_id = Uuid::parse_str(
+        &insert_key_to_database(
+            &db,
+            "ED25519".to_string(),
+            vec![],
+            vec![],
+            None,
+            &organisation_id.to_string(),
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+    insert_key_did(
+        &db,
+        &did_id.to_string(),
+        &key_id.to_string(),
+        KeyRole::AssertionMethod,
+    )
+    .await
+    .unwrap();
+
     let interaction_id =
         Uuid::parse_str(&insert_interaction(&db, "host", &[1, 2, 3]).await.unwrap()).unwrap();
 
@@ -127,6 +157,7 @@ async fn setup(
             credential_repository,
             did_repository,
             interaction_repository,
+            key_repository,
         }),
         db,
         organisation_id,
@@ -134,6 +165,7 @@ async fn setup(
         did_id: *did_id,
         claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.0).collect(),
         interaction_id,
+        key_id,
     }
 }
 
@@ -146,6 +178,7 @@ struct TestSetupWithProof {
     pub db: DatabaseConnection,
     pub claim_schema_ids: Vec<ClaimSchemaId>,
     pub interaction_id: InteractionId,
+    pub key_id: KeyId,
 }
 
 async fn setup_with_proof(
@@ -154,6 +187,7 @@ async fn setup_with_proof(
     claim_repository: Arc<dyn ClaimRepository>,
     did_repository: Arc<dyn DidRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
+    key_repository: Arc<dyn KeyRepository>,
 ) -> TestSetupWithProof {
     let TestSetup {
         repository,
@@ -163,6 +197,7 @@ async fn setup_with_proof(
         organisation_id,
         claim_schema_ids,
         interaction_id,
+        key_id,
         ..
     } = setup(
         credential_repository,
@@ -170,6 +205,7 @@ async fn setup_with_proof(
         claim_repository,
         did_repository,
         interaction_repository,
+        key_repository,
     )
     .await;
 
@@ -179,6 +215,7 @@ async fn setup_with_proof(
             did_id,
             None,
             &proof_schema_id.to_string(),
+            key_id.to_string(),
             Some(interaction_id.to_string()),
         )
         .await
@@ -203,6 +240,7 @@ async fn setup_with_proof(
         db,
         claim_schema_ids,
         interaction_id,
+        key_id,
     }
 }
 
@@ -226,6 +264,10 @@ fn get_interaction_repository_mock() -> Arc<dyn InteractionRepository> {
     Arc::from(MockInteractionRepository::default())
 }
 
+fn get_key_repository_mock() -> Arc<dyn KeyRepository> {
+    Arc::from(MockKeyRepository::default())
+}
+
 #[tokio::test]
 async fn test_create_proof_success() {
     let TestSetup {
@@ -233,6 +275,7 @@ async fn test_create_proof_success() {
         db,
         proof_schema_id,
         did_id,
+        key_id,
         ..
     } = setup(
         get_credential_repository_mock(),
@@ -240,6 +283,7 @@ async fn test_create_proof_success() {
         get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
+        get_key_repository_mock(),
     )
     .await;
 
@@ -280,12 +324,22 @@ async fn test_create_proof_success() {
             deactivated: false,
         }),
         holder_did: None,
+        verifier_key: Some(Key {
+            id: key_id,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            public_key: vec![],
+            name: "".to_string(),
+            key_reference: vec![],
+            storage_type: "".to_string(),
+            key_type: "".to_string(),
+            organisation: None,
+        }),
         interaction: None,
     };
 
-    let result = repository.create_proof(proof).await;
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), proof_id);
+    let result = repository.create_proof(proof).await.unwrap();
+    assert_eq!(result, proof_id);
 
     assert_eq!(
         crate::entity::proof::Entity::find()
@@ -318,6 +372,7 @@ async fn test_get_proof_list() {
         get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
+        get_key_repository_mock(),
     )
     .await;
 
@@ -342,6 +397,7 @@ async fn test_get_proof_missing() {
         get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
+        get_key_repository_mock(),
     )
     .await;
 
@@ -363,6 +419,7 @@ async fn test_get_proof_no_relations() {
         get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
+        get_key_repository_mock(),
     )
     .await;
 
@@ -469,6 +526,24 @@ async fn test_get_proof_with_relations() {
             }))
         });
 
+    let mut key_repository = MockKeyRepository::default();
+    key_repository
+        .expect_get_key()
+        .once()
+        .returning(|key_id, _| {
+            Ok(Some(Key {
+                id: key_id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                public_key: vec![],
+                name: "".to_string(),
+                key_reference: vec![],
+                storage_type: "".to_string(),
+                key_type: "".to_string(),
+                organisation: None,
+            }))
+        });
+
     let TestSetupWithProof {
         repository,
         proof_id,
@@ -478,6 +553,7 @@ async fn test_get_proof_with_relations() {
         claim_schema_ids,
         db,
         organisation_id,
+        key_id,
         ..
     } = setup_with_proof(
         Arc::from(credential_repository),
@@ -485,6 +561,7 @@ async fn test_get_proof_with_relations() {
         Arc::from(claim_repository),
         Arc::from(did_repository),
         Arc::from(interaction_repository),
+        Arc::from(key_repository),
     )
     .await;
 
@@ -554,6 +631,7 @@ async fn test_get_proof_with_relations() {
                 schema: Some(ProofSchemaRelations::default()),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
+                verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations::default()),
             },
         )
@@ -566,6 +644,7 @@ async fn test_get_proof_with_relations() {
     assert_eq!(proof.verifier_did.unwrap().id, did_id);
     assert!(proof.holder_did.is_none());
     assert_eq!(proof.interaction.unwrap().id, interaction_id);
+    assert_eq!(proof.verifier_key.unwrap().id, key_id);
 
     let claims = proof.claims.unwrap();
     assert_eq!(claims.len(), 1);
@@ -581,6 +660,7 @@ async fn test_get_proof_by_interaction_id_missing() {
         get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
+        get_key_repository_mock(),
     )
     .await;
 
@@ -639,6 +719,24 @@ async fn test_get_proof_by_interaction_id_success() {
         }))
     });
 
+    let mut key_repository = MockKeyRepository::default();
+    key_repository
+        .expect_get_key()
+        .once()
+        .returning(|key_id, _| {
+            Ok(Some(Key {
+                id: key_id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                public_key: vec![],
+                name: "".to_string(),
+                key_reference: vec![],
+                storage_type: "".to_string(),
+                key_type: "".to_string(),
+                organisation: None,
+            }))
+        });
+
     let TestSetupWithProof {
         repository,
         proof_id,
@@ -650,6 +748,7 @@ async fn test_get_proof_by_interaction_id_success() {
         get_claim_repository_mock(),
         Arc::from(did_repository),
         Arc::from(interaction_repository),
+        Arc::from(key_repository),
     )
     .await;
 
@@ -662,6 +761,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 schema: Some(ProofSchemaRelations::default()),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),
+                verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations::default()),
             },
         )
@@ -686,6 +786,7 @@ async fn test_set_proof_state() {
         get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
+        get_key_repository_mock(),
     )
     .await;
 
@@ -724,6 +825,7 @@ async fn test_set_proof_holder_did() {
         get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
+        get_key_repository_mock(),
     )
     .await;
 
@@ -782,6 +884,7 @@ async fn test_set_proof_claims_success() {
         get_claim_repository_mock(),
         get_did_repository_mock(),
         get_interaction_repository_mock(),
+        get_key_repository_mock(),
     )
     .await;
 
