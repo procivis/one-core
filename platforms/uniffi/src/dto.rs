@@ -279,7 +279,7 @@ pub struct DidRequestBindingDTO {
 
 pub struct DidRequestKeysBindingDTO {
     pub authentication: Vec<String>,
-    pub assertion: Vec<String>,
+    pub assertion_method: Vec<String>,
     pub key_agreement: Vec<String>,
     pub capability_invocation: Vec<String>,
     pub capability_delegation: Vec<String>,

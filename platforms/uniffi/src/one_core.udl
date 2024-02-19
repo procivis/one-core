@@ -209,7 +209,7 @@ enum DidTypeBindingEnum {
 
 dictionary DidRequestKeysBindingDTO {
   sequence<string> authentication;
-  sequence<string> assertion;
+  sequence<string> assertion_method;
   sequence<string> key_agreement;
   sequence<string> capability_invocation;
   sequence<string> capability_delegation;

@@ -157,7 +157,7 @@ impl DidService {
         let key_ids = HashSet::<KeyId>::from_iter(
             [
                 keys.authentication,
-                keys.assertion,
+                keys.assertion_method,
                 keys.key_agreement,
                 keys.capability_invocation,
                 keys.capability_delegation,

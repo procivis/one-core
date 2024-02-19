@@ -163,7 +163,7 @@ impl Keys {
     pub fn validate_keys(&self, keys: AmountOfKeys) -> bool {
         self.global.contains(keys.global)
             && self.authentication.contains(keys.authentication)
-            && self.assertion_method.contains(keys.assertion)
+            && self.assertion_method.contains(keys.assertion_method)
             && self.key_agreement.contains(keys.key_agreement)
             && self
                 .capability_invocation
@@ -178,7 +178,7 @@ impl Keys {
 pub struct AmountOfKeys {
     pub global: usize,
     pub authentication: usize,
-    pub assertion: usize,
+    pub assertion_method: usize,
     pub key_agreement: usize,
     pub capability_invocation: usize,
     pub capability_delegation: usize,
