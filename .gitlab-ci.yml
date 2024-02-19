@@ -1,4 +1,4 @@
-image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.74.0-0.2
+image: registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.76.0-0.1
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -18,7 +18,6 @@ variables:
   # - PGP_PRIVATE_KEY: helm-secrets
   # - DEPENDENCY_TRACK_BASE_URL: Base url for SBOM scanning
   # - DEPENDENCY_TRACK_API_KEY: Api key for api access
-
 
 workflow:
   rules:
@@ -154,7 +153,6 @@ tests:
       coverage_report:
         coverage_format: cobertura
         path: cobertura.xml
-
 
 linter:clippy:
   stage: test
@@ -391,7 +389,6 @@ dependency_track:upload-bom:
         "bom": "${file_content}"
       }
       EOF
-
 
 .dTrack_metrics: &dTrack_metrics
   - base_url=${DEPENDENCY_TRACK_BASE_URL}/api/v1/project/lookup
