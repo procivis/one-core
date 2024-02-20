@@ -58,7 +58,7 @@ pub struct OneCore {
     pub key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
     pub key_providers: HashMap<String, Arc<dyn KeyStorage>>,
     pub transport_protocols: HashMap<String, Arc<dyn TransportProtocol>>,
-    pub revocation_methods: Vec<(String, Arc<dyn RevocationMethod>)>,
+    pub revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
     pub organisation_service: OrganisationService,
     pub did_service: DidService,
     pub credential_service: CredentialService,
@@ -136,17 +136,16 @@ impl OneCore {
         let config = Arc::new(core_config);
         let client = reqwest::Client::new();
 
-        let revocation_methods: Vec<(String, Arc<dyn RevocationMethod>)> =
-            crate::provider::revocation::provider::from_config(
-                &config.revocation,
-                core_base_url.clone(),
-                data_provider.get_credential_repository(),
-                data_provider.get_revocation_list_repository(),
-                key_provider.clone(),
-                key_algorithm_provider.clone(),
-                did_method_provider.clone(),
-                client,
-            );
+        let revocation_methods = crate::provider::revocation::provider::from_config(
+            &config.revocation,
+            core_base_url.clone(),
+            data_provider.get_credential_repository(),
+            data_provider.get_revocation_list_repository(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+            did_method_provider.clone(),
+            client,
+        )?;
 
         let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
             revocation_methods.to_owned(),
