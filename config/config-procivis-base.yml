@@ -64,9 +64,10 @@ revocation:
   LVVC:
     display: "revocation.lvvc"
     order: 2
-    disabled: true
     type: "LVVC"
-    params: null
+    params:
+      private:
+        credentialExpiry: 3600 # this should be time after which a new LVVC from the issuer needs to be issued
   BITSTRINGSTATUSLIST:
     display: "revocation.bitStringStatusList"
     order: 1

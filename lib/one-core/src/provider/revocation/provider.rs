@@ -1,10 +1,13 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    config::core_config::{RevocationConfig, RevocationType},
+    config::{
+        core_config::{RevocationConfig, RevocationType},
+        ConfigError,
+    },
     provider::{
         did_method::provider::DidMethodProvider, key_algorithm::provider::KeyAlgorithmProvider,
-        key_storage::provider::KeyProvider, revocation::RevocationMethod,
+        key_storage::provider::KeyProvider,
     },
     repository::{
         credential_repository::CredentialRepository,
@@ -13,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    bitstring_status_list::BitstringStatusList, none::NoneRevocation,
-    status_list_2021::StatusList2021,
+    bitstring_status_list::BitstringStatusList, lvvc::Lvvc, none::NoneRevocation,
+    status_list_2021::StatusList2021, RevocationMethod,
 };
 
 #[cfg_attr(test, mockall::automock)]
@@ -35,10 +38,8 @@ pub(crate) struct RevocationMethodProviderImpl {
 }
 
 impl RevocationMethodProviderImpl {
-    pub fn new(formatters: Vec<(String, Arc<dyn RevocationMethod>)>) -> Self {
-        Self {
-            revocation_methods: formatters.into_iter().collect(),
-        }
+    pub fn new(revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>) -> Self {
+        Self { revocation_methods }
     }
 }
 
@@ -73,8 +74,8 @@ pub fn from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     client: reqwest::Client,
-) -> Vec<(String, Arc<dyn RevocationMethod>)> {
-    let mut providers = vec![];
+) -> Result<HashMap<String, Arc<dyn RevocationMethod>>, ConfigError> {
+    let mut providers = HashMap::new();
 
     for (key, fields) in config.iter() {
         if fields.disabled() {
@@ -92,21 +93,26 @@ pub fn from_config(
                 did_method_provider: did_method_provider.clone(),
                 client: client.clone(),
             }) as _,
-            RevocationType::Lvvc => unreachable!(),
+            RevocationType::Lvvc => {
+                ({
+                    let params = config.get(key)?;
+                    Arc::new(Lvvc::new(params))
+                }) as _
+            }
         };
 
-        providers.push((key.to_string(), revocation_method))
+        providers.insert(key.to_string(), revocation_method);
     }
 
     // we keep `STATUSLIST2021` only for validation
-    providers.push((
+    providers.insert(
         "STATUSLIST2021".to_string(),
         Arc::new(StatusList2021 {
             key_algorithm_provider,
             did_method_provider,
             client,
         }) as _,
-    ));
+    );
 
-    providers
+    Ok(providers)
 }
