@@ -12,12 +12,14 @@ use eddsa::Eddsa;
 use es256::Es256;
 use ml_dsa::MlDsa;
 
-use crate::config::{
-    core_config::{KeyAlgorithmConfig, KeyAlgorithmType},
-    ConfigValidationError,
+use crate::{
+    config::{
+        core_config::{KeyAlgorithmConfig, KeyAlgorithmType},
+        ConfigValidationError,
+    },
+    crypto::signer::error::SignerError,
+    service::error::ServiceError,
 };
-
-use crate::service::error::ServiceError;
 
 use super::did_method::dto::PublicKeyJwkDTO;
 
@@ -32,7 +34,7 @@ pub trait KeyAlgorithm: Send + Sync {
     fn get_signer_algorithm_id(&self) -> String;
 
     /// base58-btc representation of the public key (following did:key spec)
-    fn get_multibase(&self, public_key: &[u8]) -> String;
+    fn get_multibase(&self, public_key: &[u8]) -> Result<String, SignerError>;
 
     /// generate a new in-memory key-pair
     fn generate_key_pair(&self) -> GeneratedKey;

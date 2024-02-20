@@ -320,7 +320,7 @@ async fn test_create_did_success() {
     key_algorithm
         .expect_get_multibase()
         .times(1)
-        .returning(|_| "MULTIBASE".to_string());
+        .returning(|_| Ok("MULTIBASE".to_string()));
 
     let provider = setup_provider(key_algorithm, "EDDSA", KeyAlgorithmType::Eddsa);
     let did_method = provider.get_did_method("KEY").unwrap();

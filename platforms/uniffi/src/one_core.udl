@@ -5,7 +5,7 @@ namespace one_core {
 
 [Error]
 enum BindingError {
-  "AlreadyExists", "NotFound", "NotSupported", "ValidationError", "ConfigValidationError", "Uninitialized", "Unknown"
+  "AlreadyExists", "DbErr", "NotFound", "NotSupported", "ValidationError", "ConfigValidationError", "Uninitialized", "Unknown"
 };
 
 [Error]

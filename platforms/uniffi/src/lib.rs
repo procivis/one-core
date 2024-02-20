@@ -15,6 +15,7 @@ mod utils;
 
 use binding::OneCoreBinding;
 use dto::*;
+
 uniffi::include_scaffolding!("one_core");
 
 fn initialize_core(
@@ -34,11 +35,13 @@ fn initialize_core(
         .map_err(|e| BindingError::Unknown(e.to_string()))?;
 
     let db_path = format!("{data_dir_path}/one_core_db.sqlite");
-    let core = runtime.block_on(async {
+    let core: Result<one_core::OneCore, BindingError> = runtime.block_on(async {
         let db_url = format!("sqlite:{db_path}?mode=rwc");
-        let db_conn = sql_data_provider::db_conn(db_url).await;
+        let db_conn = sql_data_provider::db_conn(db_url)
+            .await
+            .map_err(|e| BindingError::DbErr(e.to_string()))?;
 
-        one_core::OneCore::new(
+        Ok(one_core::OneCore::new(
             Arc::new(DataLayer::build(db_conn)),
             placeholder_config.core,
             None,
@@ -46,7 +49,7 @@ fn initialize_core(
                 Arc::new(NativeKeyStorageWrapper(storage))
                     as Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>
             }),
-        )
-    })?;
-    Ok(Arc::new(OneCoreBinding::new(core, db_path, runtime)))
+        )?)
+    });
+    Ok(Arc::new(OneCoreBinding::new(core?, db_path, runtime)))
 }

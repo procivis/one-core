@@ -9,6 +9,8 @@ use thiserror::Error;
 pub enum BindingError {
     #[error("Already exists: `{0}`")]
     AlreadyExists(String),
+    #[error("Database error: `{0}`")]
+    DbErr(String),
     #[error("Not found: `{0}`")]
     NotFound(String),
     #[error("Not supported: `{0}`")]

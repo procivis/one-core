@@ -41,7 +41,9 @@ impl super::DidMethod for KeyDidMethod {
             .key_algorithm_provider
             .get_key_algorithm(&key.key_type)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?;
-        let multibase = key_algorithm.get_multibase(&key.public_key);
+        let multibase = key_algorithm
+            .get_multibase(&key.public_key)
+            .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
         // todo(mite): add constructor for this
         let did_value: DidValue = match format!("did:key:{}", multibase).parse() {
             Ok(v) => v,

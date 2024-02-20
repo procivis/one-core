@@ -2,6 +2,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use ed25519_compact::{KeyPair, PublicKey};
 use serde::Deserialize;
 
+use crate::crypto::signer::error::SignerError;
 use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::key_algorithm::GeneratedKey;
 use crate::service::error::ServiceError;
@@ -37,11 +38,11 @@ impl KeyAlgorithm for Eddsa {
         "Ed25519".to_string()
     }
 
-    fn get_multibase(&self, public_key: &[u8]) -> String {
+    fn get_multibase(&self, public_key: &[u8]) -> Result<String, SignerError> {
         let codec = &[0xed, 0x1];
         let key = PublicKey::from_slice(public_key).unwrap();
         let data = [codec, key.as_ref()].concat();
-        format!("z{}", bs58::encode(data).into_string())
+        Ok(format!("z{}", bs58::encode(data).into_string()))
     }
 
     fn generate_key_pair(&self) -> GeneratedKey {

@@ -101,7 +101,9 @@ pub fn create_config(
 }
 
 pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
-    sql_data_provider::db_conn(&config.app.database_url).await
+    sql_data_provider::db_conn(&config.app.database_url)
+        .await
+        .unwrap()
 }
 
 pub async fn create_organisation(db_conn: &DbConn) -> Organisation {

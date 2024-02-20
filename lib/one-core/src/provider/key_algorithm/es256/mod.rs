@@ -2,12 +2,14 @@ use elliptic_curve::{generic_array::GenericArray, sec1::EncodedPoint};
 use serde::Deserialize;
 
 use super::KeyAlgorithm;
+use crate::crypto::signer::error::SignerError;
 use crate::crypto::signer::es256::ES256Signer;
 use crate::provider::did_method::dto::PublicKeyJwkEllipticDataDTO;
 use crate::provider::{did_method::dto::PublicKeyJwkDTO, key_algorithm::GeneratedKey};
 use crate::service::error::ServiceError;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use p256::elliptic_curve::sec1::ToEncodedPoint;
+
 pub struct Es256;
 
 #[cfg(test)]
@@ -37,11 +39,11 @@ impl KeyAlgorithm for Es256 {
         "ES256".to_string()
     }
 
-    fn get_multibase(&self, public_key: &[u8]) -> String {
+    fn get_multibase(&self, public_key: &[u8]) -> Result<String, SignerError> {
         let codec = &[0x80, 0x24];
-        let key = ES256Signer::to_bytes(public_key).unwrap();
+        let key = ES256Signer::to_bytes(public_key)?;
         let data = [codec, key.as_slice()].concat();
-        format!("z{}", bs58::encode(data).into_string())
+        Ok(format!("z{}", bs58::encode(data).into_string()))
     }
 
     fn generate_key_pair(&self) -> GeneratedKey {
