@@ -1,9 +1,11 @@
 use super::dto::{AmountOfKeys, DidDocumentDTO, Keys};
 use super::{DidCapabilities, DidMethodError, Operation};
+use crate::config::core_config::{self, DidType, Fields};
 use crate::model::key::Key;
 
 use async_trait::async_trait;
 use serde::Deserialize;
+use serde_json::json;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
@@ -104,6 +106,19 @@ impl super::DidMethod for WebDidMethod {
 
     fn validate_keys(&self, keys: AmountOfKeys) -> bool {
         self.params.keys.validate_keys(keys)
+    }
+
+    fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType> {
+        Fields {
+            capabilities: Some(json!(self.get_capabilities())),
+            params: Some(core_config::Params {
+                public: Some(json!({
+                    "keys": self.params.keys,
+                })),
+                private: None,
+            }),
+            ..fields.clone()
+        }
     }
 }
 

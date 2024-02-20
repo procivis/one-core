@@ -6,8 +6,8 @@ use serde::Serialize;
 use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
-use crate::config::core_config::{self, DidConfig};
-use crate::config::{ConfigError, ConfigParsingError, ConfigValidationError};
+use crate::config::core_config::{self, DidConfig, DidType, Fields};
+use crate::config::{ConfigError, ConfigValidationError};
 use crate::model::key::Key;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
@@ -72,6 +72,7 @@ pub trait DidMethod: Send + Sync {
     fn can_be_deactivated(&self) -> bool;
     fn get_capabilities(&self) -> DidCapabilities;
     fn validate_keys(&self, keys: AmountOfKeys) -> bool;
+    fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType>;
 }
 
 pub fn did_method_providers_from_config(
@@ -109,9 +110,7 @@ pub fn did_method_providers_from_config(
 
     for (key, value) in did_config.iter_mut() {
         if let Some(entity) = providers.get(key) {
-            let json = serde_json::to_value(entity.get_capabilities())
-                .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;
-            value.capabilities = Some(json);
+            *value = entity.visit_config_fields(value);
         }
     }
 

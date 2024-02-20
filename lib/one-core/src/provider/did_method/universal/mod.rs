@@ -1,8 +1,12 @@
 use async_trait::async_trait;
 use serde::Deserialize;
+use serde_json::json;
 use shared_types::{DidId, DidValue};
 
-use crate::model::key::Key;
+use crate::{
+    config::core_config::{DidType, Fields},
+    model::key::Key,
+};
 
 use super::{dto::DidDocumentDTO, AmountOfKeys, DidCapabilities, DidMethodError, Operation};
 
@@ -94,6 +98,13 @@ impl super::DidMethod for UniversalDidMethod {
 
     fn validate_keys(&self, _keys: AmountOfKeys) -> bool {
         unimplemented!()
+    }
+
+    fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType> {
+        Fields {
+            capabilities: Some(json!(self.get_capabilities())),
+            ..fields.clone()
+        }
     }
 }
 

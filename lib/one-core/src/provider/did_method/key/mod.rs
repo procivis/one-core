@@ -5,8 +5,13 @@ use super::{
     dto::{DidDocumentDTO, Keys},
     AmountOfKeys, DidCapabilities, DidMethodError, Operation,
 };
-use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
+use crate::{
+    config::core_config::{DidType, Fields, Params},
+    model::key::Key,
+    provider::key_algorithm::provider::KeyAlgorithmProvider,
+};
 use async_trait::async_trait;
+use serde_json::json;
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
 
@@ -97,6 +102,19 @@ impl super::DidMethod for KeyDidMethod {
 
     fn validate_keys(&self, keys: AmountOfKeys) -> bool {
         Keys::default().validate_keys(keys)
+    }
+
+    fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType> {
+        Fields {
+            capabilities: Some(json!(self.get_capabilities())),
+            params: Some(Params {
+                public: Some(json!({
+                    "keys": Keys::default(),
+                })),
+                private: None,
+            }),
+            ..fields.clone()
+        }
     }
 }
 
