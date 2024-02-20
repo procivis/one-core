@@ -96,7 +96,7 @@ pub struct PublicKeyJwkEllipticDataDTO {
     pub y: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MinMax<const N: usize> {
     pub min: usize,
     pub max: usize,
@@ -142,7 +142,7 @@ impl<'a, const N: usize> Deserialize<'a> for MinMax<N> {
     }
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Keys {
     #[serde(default, flatten)]

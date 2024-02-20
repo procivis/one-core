@@ -3,6 +3,7 @@ use std::sync::OnceLock;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
+use self::config::ConfigApi;
 use self::credential_schemas::CredentialSchemasApi;
 use self::credentials::CredentialsApi;
 use self::did_resolvers::DidResolversApi;
@@ -15,6 +16,7 @@ use self::proof_schemas::ProofSchemasApi;
 use self::proofs::ProofsApi;
 use self::ssi::SSIApi;
 
+pub mod config;
 pub mod credential_schemas;
 pub mod credentials;
 pub mod did_resolvers;
@@ -125,6 +127,7 @@ pub struct Client {
     pub proof_schemas: ProofSchemasApi,
     pub proofs: ProofsApi,
     pub ssi: SSIApi,
+    pub config: ConfigApi,
 }
 
 impl Client {
@@ -142,7 +145,8 @@ impl Client {
             keys: KeysApi::new(client.clone()),
             proof_schemas: ProofSchemasApi::new(client.clone()),
             proofs: ProofsApi::new(client.clone()),
-            ssi: SSIApi::new(client),
+            ssi: SSIApi::new(client.clone()),
+            config: ConfigApi::new(client),
         }
     }
 }

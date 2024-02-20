@@ -6,6 +6,9 @@ mod utils;
 #[path = "api/organisation/mod.rs"]
 mod api_organisation_tests;
 
+#[path = "api/config/mod.rs"]
+mod config;
+
 #[path = "api/credential_schema/mod.rs"]
 mod api_credential_schema_tests;
 

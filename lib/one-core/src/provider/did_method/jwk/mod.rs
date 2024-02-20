@@ -3,9 +3,13 @@ use super::{
     dto::{AmountOfKeys, DidDocumentDTO},
     DidCapabilities, DidMethodError, Operation,
 };
-use crate::provider::did_method::dto::Keys;
+use crate::{
+    config::core_config::{DidType, Fields, Params},
+    provider::did_method::dto::Keys,
+};
 use crate::{model::key::Key, provider::key_algorithm::provider::KeyAlgorithmProvider};
 use async_trait::async_trait;
+use serde_json::json;
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
 
@@ -81,6 +85,19 @@ impl super::DidMethod for JWKDidMethod {
 
     fn validate_keys(&self, keys: AmountOfKeys) -> bool {
         Keys::default().validate_keys(keys)
+    }
+
+    fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType> {
+        Fields {
+            capabilities: Some(json!(self.get_capabilities())),
+            params: Some(Params {
+                public: Some(json!({
+                    "keys": Keys::default(),
+                })),
+                private: None,
+            }),
+            ..fields.clone()
+        }
     }
 }
 

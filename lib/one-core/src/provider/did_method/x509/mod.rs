@@ -1,7 +1,11 @@
 use super::{dto::DidDocumentDTO, AmountOfKeys, DidCapabilities, DidMethodError, Operation};
-use crate::model::key::Key;
+use crate::{
+    config::core_config::{DidType, Fields},
+    model::key::Key,
+};
 
 use async_trait::async_trait;
+use serde_json::json;
 use shared_types::{DidId, DidValue};
 
 pub struct X509Method {}
@@ -53,5 +57,12 @@ impl super::DidMethod for X509Method {
 
     fn validate_keys(&self, _keys: AmountOfKeys) -> bool {
         todo!()
+    }
+
+    fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType> {
+        Fields {
+            capabilities: Some(json!(self.get_capabilities())),
+            ..fields.clone()
+        }
     }
 }
