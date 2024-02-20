@@ -43,9 +43,11 @@ fn main() {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .unwrap()
+        .expect("Unable to create tokio runtime")
         .block_on(async {
-            let db_conn = sql_data_provider::db_conn(&app_config.app.database_url).await;
+            let db_conn = sql_data_provider::db_conn(&app_config.app.database_url)
+                .await
+                .expect("Unable to establish database connection");
 
             start_server(listener, app_config, db_conn).await
         })

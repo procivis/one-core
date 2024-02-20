@@ -17,7 +17,7 @@ use one_core::repository::{
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
-use sea_orm::{ConnectOptions, DatabaseConnection};
+use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
 
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
@@ -180,14 +180,12 @@ impl DataRepository for DataLayer {
 }
 
 /// Connects to the database and runs the pending migrations (until we externalize them)
-pub async fn db_conn(database_url: impl Into<ConnectOptions>) -> DatabaseConnection {
-    let db = sea_orm::Database::connect(database_url)
-        .await
-        .expect("Database Connected");
+pub async fn db_conn(database_url: impl Into<ConnectOptions>) -> Result<DatabaseConnection, DbErr> {
+    let db = sea_orm::Database::connect(database_url).await?;
 
-    Migrator::up(&db, None).await.unwrap();
+    Migrator::up(&db, None).await?;
 
-    db
+    Ok(db)
 }
 
 #[cfg(any(test, feature = "test_utils"))]

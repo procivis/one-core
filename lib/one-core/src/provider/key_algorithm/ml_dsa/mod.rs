@@ -2,6 +2,7 @@ use pqc_dilithium::Keypair;
 use serde::Deserialize;
 
 use super::KeyAlgorithm;
+use crate::crypto::signer::error::SignerError;
 use crate::provider::did_method::dto::PublicKeyJwkMlweDataDTO;
 use crate::provider::{did_method::dto::PublicKeyJwkDTO, key_algorithm::GeneratedKey};
 use crate::service::error::ServiceError;
@@ -36,7 +37,7 @@ impl KeyAlgorithm for MlDsa {
         "CRYDI3".to_string()
     }
 
-    fn get_multibase(&self, _public_key: &[u8]) -> String {
+    fn get_multibase(&self, _public_key: &[u8]) -> Result<String, SignerError> {
         // TODO ONE-1452
         unimplemented!()
     }
