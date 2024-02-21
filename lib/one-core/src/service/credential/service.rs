@@ -255,8 +255,21 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         }
 
-        CredentialDetailResponseDTO::try_from(credential)
-            .map_err(|err| ServiceError::ResponseMapping(err.to_string()))
+        let mut response = CredentialDetailResponseDTO::try_from(credential)
+            .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
+
+        if response.schema.revocation_method == "LVVC" {
+            let latest_lvvc = self
+                .lvvc_repository
+                .get_latest_by_credential_id(credential_id.to_owned())
+                .await?;
+
+            if let Some(latest_lvvc) = latest_lvvc {
+                response.lvvc_issuance_date = Some(latest_lvvc.created_date);
+            }
+        }
+
+        Ok(response)
     }
 
     /// Returns list of credentials according to query

@@ -1,4 +1,5 @@
 use super::CredentialService;
+use crate::repository::lvvc_repository::MockLvvcRepository;
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -56,6 +57,7 @@ struct Repositories {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockTransportProtocolProvider,
     pub config: CoreConfig,
+    pub lvvc_repository: MockLvvcRepository,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {
@@ -68,6 +70,7 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.config),
+        Arc::new(repositories.lvvc_repository),
     )
 }
 

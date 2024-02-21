@@ -189,6 +189,7 @@ impl OneCore {
                 formatter_provider.clone(),
                 protocol_provider.clone(),
                 config.clone(),
+                data_provider.get_lvvc_repository(),
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
