@@ -37,11 +37,13 @@ impl super::DidMethod for KeyDidMethod {
         &self,
         _id: &DidId,
         _params: &Option<serde_json::Value>,
-        key: &Option<Key>,
+        keys: &[Key],
     ) -> Result<DidValue, DidMethodError> {
-        let key = key
-            .as_ref()
-            .ok_or(DidMethodError::CouldNotCreate("Missing key".to_string()))?;
+        let key = match keys {
+            [key] => key,
+            [] => return Err(DidMethodError::CouldNotCreate("Missing key".to_string())),
+            _ => return Err(DidMethodError::CouldNotCreate("Too much keys".to_string())),
+        };
         let key_algorithm = self
             .key_algorithm_provider
             .get_key_algorithm(&key.key_type)

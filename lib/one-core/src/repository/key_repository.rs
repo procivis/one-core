@@ -9,5 +9,6 @@ pub trait KeyRepository: Send + Sync {
         id: &KeyId,
         relations: &KeyRelations,
     ) -> Result<Option<Key>, DataLayerError>;
+    async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError>;
     async fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError>;
 }

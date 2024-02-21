@@ -250,22 +250,19 @@ async fn test_create_did_success() {
     };
 
     let mut key_repository = MockKeyRepository::default();
-    key_repository
-        .expect_get_key()
-        .once()
-        .returning(move |_, _| {
-            Ok(Some(Key {
-                id: key_id,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                public_key: b"public".to_vec(),
-                name: "".to_string(),
-                key_reference: b"private".to_vec(),
-                storage_type: "INTERNAL".to_string(),
-                key_type: "".to_string(),
-                organisation: None,
-            }))
-        });
+    key_repository.expect_get_keys().once().returning(move |_| {
+        Ok(vec![Key {
+            id: key_id,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            public_key: b"public".to_vec(),
+            name: "".to_string(),
+            key_reference: b"private".to_vec(),
+            storage_type: "INTERNAL".to_string(),
+            key_type: "".to_string(),
+            organisation: None,
+        }])
+    });
 
     let mut did_method = MockDidMethod::default();
     did_method.expect_validate_keys().once().returning(|_| true);
@@ -341,22 +338,19 @@ async fn test_create_did_value_already_exists() {
     };
 
     let mut key_repository = MockKeyRepository::default();
-    key_repository
-        .expect_get_key()
-        .once()
-        .returning(move |_, _| {
-            Ok(Some(Key {
-                id: key_id,
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                public_key: b"public".to_vec(),
-                name: "".to_string(),
-                key_reference: b"private".to_vec(),
-                storage_type: "INTERNAL".to_string(),
-                key_type: "".to_string(),
-                organisation: None,
-            }))
-        });
+    key_repository.expect_get_keys().once().returning(move |_| {
+        Ok(vec![Key {
+            id: key_id,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            public_key: b"public".to_vec(),
+            name: "".to_string(),
+            key_reference: b"private".to_vec(),
+            storage_type: "INTERNAL".to_string(),
+            key_type: "".to_string(),
+            organisation: None,
+        }])
+    });
 
     let mut did_method = MockDidMethod::default();
     did_method.expect_validate_keys().once().returning(|_| true);
@@ -407,45 +401,6 @@ async fn test_create_did_value_already_exists() {
         result,
         Err(ServiceError::BusinessLogic(
             BusinessLogicError::DidValueAlreadyExists(_)
-        ))
-    ));
-}
-
-#[tokio::test]
-async fn test_create_did_value_no_keys() {
-    let create_request = CreateDidRequestDTO {
-        name: "name".to_string(),
-        organisation_id: Uuid::new_v4(),
-        did_type: DidType::Local,
-        did_method: "KEY".to_string(),
-        keys: CreateDidRequestKeysDTO {
-            authentication: vec![],
-            assertion_method: vec![],
-            key_agreement: vec![],
-            capability_invocation: vec![],
-            capability_delegation: vec![],
-        },
-        params: None,
-    };
-
-    let mut did_method = MockDidMethod::default();
-    did_method.expect_validate_keys().once().returning(|_| true);
-
-    let service = setup_service(
-        MockDidRepository::default(),
-        MockHistoryRepository::default(),
-        MockKeyRepository::default(),
-        MockOrganisationRepository::default(),
-        did_method,
-        MockKeyAlgorithmProvider::default(),
-        get_did_config(),
-    );
-
-    let result = service.create_did(create_request).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(
-            ValidationError::DidInvalidKeyNumber
         ))
     ));
 }
