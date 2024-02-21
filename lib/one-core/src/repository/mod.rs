@@ -9,6 +9,7 @@ pub mod did_repository;
 pub mod history_repository;
 pub mod interaction_repository;
 pub mod key_repository;
+pub mod lvvc_repository;
 pub mod organisation_repository;
 pub mod proof_repository;
 pub mod proof_schema_repository;
@@ -29,7 +30,7 @@ use proof_repository::ProofRepository;
 use proof_schema_repository::ProofSchemaRepository;
 use revocation_list_repository::RevocationListRepository;
 
-use self::interaction_repository::InteractionRepository;
+use self::{interaction_repository::InteractionRepository, lvvc_repository::LvvcRepository};
 
 pub trait DataRepository {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository>;
@@ -44,6 +45,7 @@ pub trait DataRepository {
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository>;
     fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository>;
     fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository>;
+    fn get_lvvc_repository(&self) -> Arc<dyn LvvcRepository>;
 }
 
 #[cfg(any(test, feature = "mock"))]

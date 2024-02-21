@@ -11,6 +11,7 @@ pub mod history;
 pub mod interaction;
 pub mod key;
 pub mod key_did;
+pub mod lvvc;
 pub mod organisation;
 pub mod proof;
 pub mod proof_claim;
