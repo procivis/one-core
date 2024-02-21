@@ -11,6 +11,7 @@ mod m20240129_115447_add_unique_index_on_proof_schema_name_organisation_deleted_
 mod m20240130_105023_add_history;
 mod m20240130_153529_add_pending_variant_to_history_action_enum_in_history_table;
 mod m20240209_144950_add_verifier_key_id_to_proof;
+mod m20240220_082229_add_lvvc_table;
 
 pub(crate) mod m20240209_144950_models;
 
@@ -31,6 +32,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240130_105023_add_history::Migration),
             Box::new(m20240130_153529_add_pending_variant_to_history_action_enum_in_history_table::Migration),
             Box::new(m20240209_144950_add_verifier_key_id_to_proof::Migration),
+            Box::new(m20240220_082229_add_lvvc_table::Migration),
         ]
     }
 }

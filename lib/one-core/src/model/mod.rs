@@ -9,6 +9,7 @@ pub mod interaction;
 pub mod key;
 pub mod list_filter;
 pub mod list_query;
+pub mod lvvc;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;

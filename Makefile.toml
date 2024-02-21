@@ -86,6 +86,10 @@ env     = { "DATABASE_URL" = "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core" 
 command = "cargo"
 args    = ["run", "-p", "migration", "--", "down", "-n1"]
 
+[tasks.generate_migration]
+command = "sea-orm-cli"
+args    = ["migrate", "generate", "${@}", "-d", "./apps/migration/"]
+
 [tasks.dbtempent]
 command = "sea-orm-cli"
 args = [
