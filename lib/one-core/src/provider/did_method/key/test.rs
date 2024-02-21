@@ -325,7 +325,7 @@ async fn test_create_did_success() {
     let provider = setup_provider(key_algorithm, "EDDSA", KeyAlgorithmType::Eddsa);
     let did_method = provider.get_did_method("KEY").unwrap();
     let result = did_method
-        .create(&DidId::from(Uuid::new_v4()), &None, &Some(key))
+        .create(&DidId::from(Uuid::new_v4()), &None, &vec![key])
         .await;
     result.unwrap();
 }

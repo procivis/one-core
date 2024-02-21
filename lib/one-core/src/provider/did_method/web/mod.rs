@@ -61,7 +61,7 @@ impl super::DidMethod for WebDidMethod {
         &self,
         id: &DidId,
         _params: &Option<serde_json::Value>,
-        _key: &Option<Key>,
+        _key: &[Key],
     ) -> Result<DidValue, DidMethodError> {
         let did_base_string =
             self.did_base_string

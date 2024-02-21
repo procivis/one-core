@@ -209,7 +209,7 @@ async fn test_create_did_jwk_success() {
         .create(
             &Uuid::new_v4().into(),
             &None,
-            &Some(Key {
+            &vec![Key {
                 id: Uuid::new_v4(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -219,7 +219,7 @@ async fn test_create_did_jwk_success() {
                 storage_type: "test".to_owned(),
                 key_type: "key_type".to_owned(),
                 organisation: None,
-            }),
+            }],
         )
         .await
         .unwrap();

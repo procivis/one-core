@@ -14,6 +14,7 @@ mock! {
         pub fn create_key(&self, request: Key) -> Result<KeyId, DataLayerError>;
         pub fn get_key(&self, id: &KeyId, relations: &KeyRelations) -> Result<Option<Key>, DataLayerError>;
         pub fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError>;
+        pub fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError>;
     }
 }
 
@@ -33,5 +34,9 @@ impl crate::repository::key_repository::KeyRepository for MockKeyRepository {
 
     async fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError> {
         self.get_key_list(query_params)
+    }
+
+    async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError> {
+        self.get_keys(ids)
     }
 }

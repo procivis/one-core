@@ -63,7 +63,7 @@ pub trait DidMethod: Send + Sync {
         &self,
         id: &DidId,
         params: &Option<serde_json::Value>,
-        key: &Option<Key>,
+        keys: &[Key],
     ) -> Result<DidValue, DidMethodError>;
 
     fn check_authorization(&self) -> bool;

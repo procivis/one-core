@@ -6,6 +6,7 @@ use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDid
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO};
+use crate::service::error::EntityNotFoundError;
 use crate::{
     model::{
         did::{Did, GetDidList, KeyRole, RelatedKey},
@@ -73,32 +74,37 @@ pub(super) fn did_from_did_request(
     request: CreateDidRequestDTO,
     organisation: Organisation,
     did_value: DidValue,
-    key: Key,
+    found_keys: Vec<Key>,
     now: OffsetDateTime,
-) -> Did {
+) -> Result<Did, EntityNotFoundError> {
     let mut keys: Vec<RelatedKey> = vec![];
     let mut add_keys = |key_ids: Vec<KeyId>, role: KeyRole| {
-        for _ in key_ids {
+        for key_id in key_ids {
             keys.push(RelatedKey {
                 role: role.to_owned(),
-                key: key.to_owned(),
+                key: found_keys
+                    .iter()
+                    .find(|key| key.id == key_id)
+                    .ok_or(EntityNotFoundError::Key(key_id))?
+                    .clone(),
             });
         }
+        Ok(())
     };
 
-    add_keys(request.keys.authentication, KeyRole::Authentication);
-    add_keys(request.keys.assertion_method, KeyRole::AssertionMethod);
-    add_keys(request.keys.key_agreement, KeyRole::KeyAgreement);
+    add_keys(request.keys.authentication, KeyRole::Authentication)?;
+    add_keys(request.keys.assertion_method, KeyRole::AssertionMethod)?;
+    add_keys(request.keys.key_agreement, KeyRole::KeyAgreement)?;
     add_keys(
         request.keys.capability_invocation,
         KeyRole::CapabilityInvocation,
-    );
+    )?;
     add_keys(
         request.keys.capability_delegation,
         KeyRole::CapabilityDelegation,
-    );
+    )?;
 
-    Did {
+    Ok(Did {
         id: did_id,
         created_date: now,
         last_modified: now,
@@ -109,7 +115,7 @@ pub(super) fn did_from_did_request(
         did_method: request.did_method,
         keys: Some(keys),
         deactivated: false,
-    }
+    })
 }
 
 pub(super) fn map_did_model_to_did_web_response(
