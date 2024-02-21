@@ -46,7 +46,7 @@ impl super::DidMethod for UniversalDidMethod {
         &self,
         _id: &DidId,
         _params: &Option<serde_json::Value>,
-        _key: &Option<Key>,
+        _keys: &[Key],
     ) -> Result<DidValue, DidMethodError> {
         Err(DidMethodError::NotSupported)
     }

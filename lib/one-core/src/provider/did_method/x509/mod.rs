@@ -27,7 +27,7 @@ impl super::DidMethod for X509Method {
         &self,
         _id: &DidId,
         _params: &Option<serde_json::Value>,
-        _key: &Option<Key>,
+        _keys: &[Key],
     ) -> Result<DidValue, DidMethodError> {
         todo!()
     }

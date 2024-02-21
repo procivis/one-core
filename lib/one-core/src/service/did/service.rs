@@ -23,10 +23,7 @@ use crate::{
         key::{KeyId, KeyRelations},
         organisation::OrganisationRelations,
     },
-    service::{
-        did::validator::validate_request_amount_of_keys,
-        error::{ServiceError, ValidationError},
-    },
+    service::{did::validator::validate_request_amount_of_keys, error::ServiceError},
 };
 use crate::{model::key::Key, service::error::EntityNotFoundError};
 use crate::{
@@ -165,49 +162,38 @@ impl DidService {
             .concat(),
         );
 
-        let key_id = key_ids
-            .into_iter()
-            .collect::<Vec<_>>()
-            .first()
-            .ok_or(ValidationError::DidInvalidKeyNumber)?
-            .to_owned();
-        let key = self
-            .key_repository
-            .get_key(&key_id, &KeyRelations::default())
-            .await?;
-
-        let Some(key) = key else {
-            return Err(EntityNotFoundError::Key(key_id).into());
-        };
+        let key_ids = key_ids.into_iter().collect::<Vec<_>>();
+        let keys = self.key_repository.get_keys(&key_ids).await?;
 
         let new_did_id = DidId::from(Uuid::new_v4());
 
-        if !did_method
-            .get_capabilities()
-            .key_algorithms
-            .contains(&key.key_type)
-        {
-            return Err(BusinessLogicError::DidMethodIncapableKeyAlgorithm {
-                key_algorithm: key.key_type.to_owned(),
+        for key in &keys {
+            if !did_method
+                .get_capabilities()
+                .key_algorithms
+                .contains(&key.key_type)
+            {
+                return Err(BusinessLogicError::DidMethodIncapableKeyAlgorithm {
+                    key_algorithm: key.key_type.to_owned(),
+                }
+                .into());
             }
-            .into());
         }
 
         let did_value = did_method
-            .create(&new_did_id, &request.params, &Some(key.clone()))
+            .create(&new_did_id, &request.params, &keys)
             .await?;
 
         let now = OffsetDateTime::now_utc();
-        let organisation = self
+        let Some(organisation) = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
-
-        let Some(organisation) = organisation else {
+            .await?
+        else {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let did = did_from_did_request(new_did_id, request, organisation, did_value, key, now);
+        let did = did_from_did_request(new_did_id, request, organisation, did_value, keys, now)?;
         let did_value = did.did.clone();
 
         let did_id = self

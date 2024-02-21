@@ -8,7 +8,9 @@ use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyId, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
-use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder, Set};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
+};
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -88,6 +90,21 @@ impl KeyRepository for KeyProvider {
         let key = from_model_and_relations(key, organisation)?;
 
         Ok(Some(key))
+    }
+
+    async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError> {
+        let keys = key::Entity::find()
+            .filter(key::Column::Id.is_in(ids.iter().map(ToString::to_string)))
+            .all(&self.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Error while fetching keys. Error: {}", e.to_string());
+                DataLayerError::Db(e.into())
+            })?;
+
+        keys.into_iter()
+            .map(|key| from_model_and_relations(key, None))
+            .collect()
     }
 
     async fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError> {

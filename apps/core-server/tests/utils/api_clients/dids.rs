@@ -17,17 +17,17 @@ impl DidsApi {
     pub async fn create(
         &self,
         organisation_id: impl Into<Uuid>,
-        keys: &[Uuid],
+        keys: DidKeys,
         method: &str,
         name: &str,
     ) -> Response {
         let body = json!({
           "keys": {
-            "assertionMethod": keys,
-            "authentication": keys,
-            "capabilityDelegation": keys,
-            "capabilityInvocation": keys,
-            "keyAgreement": keys,
+            "assertionMethod": keys.assertion_method,
+            "authentication": keys.authentication,
+            "capabilityDelegation": keys.capability_delegation,
+            "capabilityInvocation": keys.capability_invocation,
+            "keyAgreement": keys.key_agreement,
           },
           "method": method,
           "name": name,
@@ -70,5 +70,35 @@ impl DidsApi {
             "deactivated": true,
         });
         self.client.patch(&url, body).await
+    }
+}
+
+pub struct DidKeys {
+    pub assertion_method: Vec<Uuid>,
+    pub authentication: Vec<Uuid>,
+    pub capability_delegation: Vec<Uuid>,
+    pub capability_invocation: Vec<Uuid>,
+    pub key_agreement: Vec<Uuid>,
+}
+
+impl DidKeys {
+    pub fn single(key: Uuid) -> Self {
+        Self {
+            assertion_method: vec![key],
+            authentication: vec![key],
+            capability_delegation: vec![key],
+            capability_invocation: vec![key],
+            key_agreement: vec![key],
+        }
+    }
+
+    pub fn all(keys: Vec<Uuid>) -> Self {
+        Self {
+            assertion_method: keys.clone(),
+            authentication: keys.clone(),
+            capability_delegation: keys.clone(),
+            capability_invocation: keys.clone(),
+            key_agreement: keys,
+        }
     }
 }
