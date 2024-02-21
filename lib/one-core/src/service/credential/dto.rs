@@ -54,6 +54,8 @@ pub struct CredentialDetailResponseDTO {
     pub claims: Vec<DetailCredentialClaimResponseDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub lvvc_issuance_date: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]

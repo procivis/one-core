@@ -76,5 +76,6 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
         ],
         redirect_uri: None,
         role: CredentialRole::Holder,
+        lvvc_issuance_date: None,
     }
 }

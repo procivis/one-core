@@ -39,3 +39,42 @@ async fn test_get_credential_success() {
     assert_eq!(resp["state"], "CREATED");
     assert_eq!(resp["role"], "ISSUER");
 }
+
+#[tokio::test]
+async fn test_get_credential_with_lvvc_success() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "LVVC")
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &did,
+            "PROCIVIS_TEMPORARY",
+            TestingCredentialParams::default(),
+        )
+        .await;
+
+    context.db.lvvcs.create(None, vec![], credential.id).await;
+
+    // WHEN
+    let resp = context.api.credentials.get(&credential.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["id"].assert_eq(&credential.id);
+    resp["schema"]["organisationId"].assert_eq(&organisation.id);
+    assert_eq!(resp["schema"]["name"], "test");
+    assert!(resp["revocationDate"].is_null());
+    assert!(!resp["lvvcIssuanceDate"].is_null());
+    assert_eq!(resp["state"], "CREATED");
+    assert_eq!(resp["role"], "ISSUER");
+}

@@ -1,3 +1,4 @@
+use crate::utils::db_clients::lvvcs::LvvcsDB;
 use one_core::repository::DataRepository;
 use sql_data_provider::{DataLayer, DbConn};
 
@@ -18,6 +19,7 @@ pub mod dids;
 pub mod histories;
 pub mod interactions;
 pub mod keys;
+mod lvvcs;
 pub mod organisations;
 pub mod proof_schemas;
 pub mod proofs;
@@ -34,6 +36,7 @@ pub struct DbClient {
     pub proof_schemas: ProofSchemasDB,
     pub proofs: ProofsDB,
     pub interactions: InteractionsDB,
+    pub lvvcs: LvvcsDB,
 }
 
 impl DbClient {
@@ -50,6 +53,7 @@ impl DbClient {
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),
             proofs: ProofsDB::new(layer.get_proof_repository()),
             interactions: InteractionsDB::new(layer.get_interaction_repository()),
+            lvvcs: LvvcsDB::new(layer.get_lvvc_repository()),
         }
     }
 }

@@ -64,6 +64,7 @@ impl MockServer {
                     },
                     "lastModified": "2023-11-09T08:39:16.548Z",
                     "revocationDate": null,
+                    "lvvcIssuanceDate": null,
                     "schema": {
                         "createdDate": "2023-11-08T15:46:14.997Z",
                         "format": "SDJWT",
