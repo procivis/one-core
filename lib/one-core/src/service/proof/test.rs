@@ -493,7 +493,7 @@ async fn test_create_proof_without_related_key() {
                 did_method: "KEY".to_string(),
                 organisation: None,
                 keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
+                    role: KeyRole::Authentication,
                     key: Key {
                         id: verifier_key_id.to_owned(),
                         created_date: get_dummy_date(),
@@ -582,7 +582,7 @@ async fn test_create_proof_with_related_key() {
                 did_method: "KEY".to_string(),
                 organisation: None,
                 keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
+                    role: KeyRole::Authentication,
                     key: Key {
                         id: verifier_key_id.to_owned(),
                         created_date: get_dummy_date(),
