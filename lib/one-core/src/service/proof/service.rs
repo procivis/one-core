@@ -217,15 +217,15 @@ impl ProofService {
 
         let verifier_key = if let Some(verifier_key) = request.verifier_key.as_ref() {
             keys.iter()
-                .find(|key| key.role == KeyRole::AssertionMethod && key.key.id == *verifier_key)
+                .find(|key| key.role == KeyRole::Authentication && key.key.id == *verifier_key)
                 .ok_or(ValidationError::InvalidKey(
-                    "Key is not associated with ASSERTION_METHOD with verifier_did".to_string(),
+                    "Key is not associated with AUTHENTICATION with verifier_did".to_string(),
                 ))?
         } else {
             keys.iter()
-                .find(|key| key.role == KeyRole::AssertionMethod)
+                .find(|key| key.role == KeyRole::Authentication)
                 .ok_or(ValidationError::InvalidKey(
-                    "No associated ASSERTION_METHOD keys within verifier_did".to_string(),
+                    "No associated AUTHENTICATION keys within verifier_did".to_string(),
                 ))?
         }
         .to_owned();

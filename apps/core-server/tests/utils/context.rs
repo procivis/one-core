@@ -67,10 +67,16 @@ impl TestContext {
             .create(
                 &organisation,
                 TestingDidParams {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: key.to_owned(),
-                    }]),
+                    keys: Some(vec![
+                        RelatedKey {
+                            role: KeyRole::AssertionMethod,
+                            key: key.to_owned(),
+                        },
+                        RelatedKey {
+                            role: KeyRole::Authentication,
+                            key: key.to_owned(),
+                        },
+                    ]),
                     ..Default::default()
                 },
             )
