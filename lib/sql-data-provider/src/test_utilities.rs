@@ -216,7 +216,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
         organisation_id: Set(organisation_id.to_owned()),
-
+        validity_constraint: Set(None),
         deleted_at: Set(deleted_at),
     }
     .insert(database)
@@ -249,7 +249,7 @@ pub async fn insert_proof_schema_to_database(
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
         organisation_id: Set(organisation_id.to_owned()),
-
+        validity_constraint: Set(None),
         deleted_at: Set(deleted_at),
     }
     .insert(database)

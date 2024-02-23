@@ -27,6 +27,7 @@ impl ProofSchemasApi {
           ],
           "expireDuration": 0,
           "name": name,
+          "validityConstraint": 10,
           "organisationId": organisation_id.into(),
         });
 

@@ -47,6 +47,9 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             claims: convert_inner(value.claims),
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
+            lvvc_issuance_date: value
+                .lvvc_issuance_date
+                .map(|lvvc_issuance_date| lvvc_issuance_date.format_timestamp()),
         }
     }
 }

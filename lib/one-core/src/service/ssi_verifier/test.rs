@@ -499,6 +499,7 @@ fn dummy_proof_schema() -> ProofSchema {
         expire_duration: 100,
         claim_schemas: None,
         organisation: None,
+        validity_constraint: None,
     }
 }
 

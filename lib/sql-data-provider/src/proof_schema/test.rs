@@ -139,6 +139,7 @@ async fn test_create_proof_schema_invalid_params() {
             expire_duration: 0,
             claim_schemas: None,
             organisation: None,
+            validity_constraint: None,
         })
         .await;
 
@@ -165,6 +166,7 @@ async fn test_create_proof_schema_already_exists() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
+            validity_constraint: None,
             name: "test".to_string(),
             expire_duration: 0,
             claim_schemas: Some(vec![ProofSchemaClaim {
@@ -231,6 +233,7 @@ async fn test_create_proof_schema_success() {
             deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
+            validity_constraint: None,
             claim_schemas: Some(vec![ProofSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schemas[0].0,
@@ -621,6 +624,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(date_now),
             last_modified: Set(date_now),
+            validity_constraint: Set(None),
             name: Set("schema-1".to_string()),
             expire_duration: Set(Default::default()),
             organisation_id: Set(organisation_id.to_string()),
@@ -639,6 +643,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(date_later),
             last_modified: Set(date_later),
+            validity_constraint: Set(None),
             name: Set("schema-2".to_string()),
             expire_duration: Set(Default::default()),
             organisation_id: Set(organisation_id.to_string()),

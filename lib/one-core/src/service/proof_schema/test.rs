@@ -150,6 +150,7 @@ async fn test_get_proof_schema_list_success() {
         expire_duration: 0,
         claim_schemas: None,
         organisation: None,
+        validity_constraint: None,
     };
     {
         let res_clone = proof_schema.clone();
@@ -241,6 +242,7 @@ async fn test_delete_proof_schema_success() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
+                validity_constraint: None,
             }))
         });
 
@@ -282,6 +284,7 @@ async fn test_delete_proof_schema_failure() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
+                validity_constraint: None,
             }))
         });
 
@@ -347,6 +350,7 @@ async fn test_create_proof_schema_success() {
             id: claim_schema_id,
             required: true,
         }],
+        validity_constraint: None,
     };
 
     let create_request_clone = create_request.clone();
@@ -401,6 +405,7 @@ async fn test_create_proof_schema_unique_name_error() {
             id: claim_schema_id,
             required: true,
         }],
+        validity_constraint: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -475,6 +480,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 id: claim_schema_id,
                 required: true,
             }],
+            validity_constraint: None,
         })
         .await;
 
@@ -500,6 +506,7 @@ async fn test_create_proof_schema_no_claims() {
             expire_duration: 0,
             organisation_id: Uuid::new_v4(),
             claim_schemas: vec![],
+            validity_constraint: None,
         })
         .await;
     assert!(matches!(
@@ -527,6 +534,7 @@ async fn test_create_proof_schema_no_required_claims() {
                 id: Uuid::new_v4(),
                 required: false,
             }],
+            validity_constraint: None,
         })
         .await;
     assert!(matches!(
@@ -555,6 +563,7 @@ async fn test_create_proof_schema_duplicit_claims() {
             expire_duration: 0,
             organisation_id: Uuid::new_v4(),
             claim_schemas: vec![claim_schema.clone(), claim_schema],
+            validity_constraint: None,
         })
         .await;
     assert!(matches!(
@@ -579,5 +588,6 @@ fn generic_proof_schema() -> ProofSchema {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
         }),
+        validity_constraint: None,
     }
 }

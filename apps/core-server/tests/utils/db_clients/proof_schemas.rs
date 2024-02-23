@@ -55,6 +55,7 @@ impl ProofSchemasDB {
             deleted_at: None,
             claim_schemas: Some(claim_schemas),
             expire_duration: 0,
+            validity_constraint: None,
         };
 
         let id = self

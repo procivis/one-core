@@ -70,4 +70,5 @@ async fn test_get_proof_schema_success() {
         claim_schema.data_type
     );
     assert!(claim_schema_item["required"].as_bool().unwrap());
+    assert_eq!(resp["validityConstraint"].as_i64().unwrap(), 10);
 }

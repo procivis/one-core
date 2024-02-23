@@ -32,6 +32,7 @@ pub struct GetProofSchemaResponseDTO {
     pub organisation_id: OrganisationId,
     pub expire_duration: u32,
     pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
+    pub validity_constraint: Option<i64>,
 }
 
 #[derive(Clone, Debug, From)]
@@ -43,6 +44,7 @@ pub struct GetProofSchemaListItemDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub expire_duration: u32,
+    pub validity_constraint: Option<i64>,
 }
 
 pub type GetProofSchemaListResponseDTO = GetListResponse<GetProofSchemaListItemDTO>;
@@ -58,6 +60,7 @@ pub struct CreateProofSchemaClaimRequestDTO {
 pub struct CreateProofSchemaRequestDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
+    pub validity_constraint: Option<i64>,
     pub expire_duration: u32,
     pub claim_schemas: Vec<CreateProofSchemaClaimRequestDTO>,
 }

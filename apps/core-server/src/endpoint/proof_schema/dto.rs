@@ -25,6 +25,7 @@ pub struct CreateProofSchemaRequestRestDTO {
     pub name: String,
     pub organisation_id: Uuid,
     pub expire_duration: u32,
+    pub validity_constraint: Option<i64>,
     #[into(with_fn = convert_inner)]
     #[validate(length(min = 1))]
     pub claim_schemas: Vec<ClaimProofSchemaRequestRestDTO>,
@@ -68,6 +69,7 @@ pub struct GetProofSchemaListItemResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub expire_duration: u32,
+    pub validity_constraint: Option<i64>,
 }
 
 // detail endpoint
@@ -84,6 +86,7 @@ pub struct GetProofSchemaResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub expire_duration: u32,
+    pub validity_constraint: Option<i64>,
     pub organisation_id: Uuid,
     #[from(with_fn = convert_inner)]
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
