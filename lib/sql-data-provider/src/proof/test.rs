@@ -308,6 +308,7 @@ async fn test_create_proof_success() {
             name: "proof schema".to_string(),
             expire_duration: 0,
             claim_schemas: None,
+            validity_constraint: None,
             organisation: None,
         }),
         claims: None,
@@ -448,6 +449,7 @@ async fn test_get_proof_with_relations() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
+                validity_constraint: None,
             }))
         });
 
@@ -685,6 +687,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 name: "proof schema".to_string(),
                 expire_duration: 0,
                 claim_schemas: None,
+                validity_constraint: None,
                 organisation: None,
             }))
         });

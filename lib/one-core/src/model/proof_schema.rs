@@ -18,7 +18,7 @@ pub struct ProofSchema {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub expire_duration: u32,
-
+    pub validity_constraint: Option<i64>,
     // Relations
     pub claim_schemas: Option<Vec<ProofSchemaClaim>>,
     pub organisation: Option<Organisation>,

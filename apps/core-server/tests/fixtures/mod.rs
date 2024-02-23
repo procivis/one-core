@@ -396,6 +396,7 @@ pub async fn create_proof_schema(
         deleted_at: None,
         claim_schemas: Some(claim_schemas),
         expire_duration: 0,
+        validity_constraint: Some(10),
     };
 
     data_layer

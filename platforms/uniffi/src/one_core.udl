@@ -97,6 +97,7 @@ dictionary CredentialDetailBindingDTO {
   CredentialSchemaBindingDTO schema;
   string? redirect_uri;
   CredentialRoleBindingDTO role;
+  string? lvvc_issuance_date;
 };
 
 dictionary ProofRequestClaimBindingDTO {

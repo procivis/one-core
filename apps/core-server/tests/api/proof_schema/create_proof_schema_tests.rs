@@ -28,6 +28,7 @@ async fn test_create_proof_schema_success() {
     assert_eq!(proof_schema.name, "proof-schema-name");
     assert_eq!(proof_schema.expire_duration, 0);
     assert_eq!(proof_schema.claim_schemas.unwrap().len(), 1);
+    assert_eq!(proof_schema.validity_constraint, Some(10));
 }
 
 #[tokio::test]

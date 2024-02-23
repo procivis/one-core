@@ -26,6 +26,7 @@ impl TryFrom<ProofSchema> for GetProofSchemaResponseDTO {
             created_date: value.created_date,
             last_modified: value.last_modified,
             name: value.name,
+            validity_constraint: value.validity_constraint,
             organisation_id: value
                 .organisation
                 .ok_or(ServiceError::MappingError(
@@ -89,6 +90,7 @@ pub fn proof_schema_from_create_request(
         claim_schemas: Some(claim_schemas),
         organisation: Some(organisation),
         deleted_at: None,
+        validity_constraint: request.validity_constraint,
     }
 }
 

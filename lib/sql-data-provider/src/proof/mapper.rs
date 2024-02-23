@@ -77,6 +77,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 expire_duration: value.expire_duration,
                 claim_schemas: None,
                 organisation: None,
+                validity_constraint: value.schema_validity_constraint,
             }),
             claims: None,
             verifier_did,

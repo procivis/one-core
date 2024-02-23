@@ -99,6 +99,7 @@ fn construct_proof_with_state() -> Proof {
         }]),
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
+            validity_constraint: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,

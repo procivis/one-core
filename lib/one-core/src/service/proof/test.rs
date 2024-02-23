@@ -131,6 +131,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             last_modified: OffsetDateTime::now_utc(),
             name: "proof schema".to_string(),
             expire_duration: 0,
+            validity_constraint: None,
             claim_schemas: Some(vec![ProofSchemaClaim {
                 schema: ClaimSchema {
                     id: Uuid::new_v4(),
@@ -235,6 +236,7 @@ async fn test_get_proof_exists() {
         redirect_uri: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
+            validity_constraint: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
@@ -380,6 +382,7 @@ async fn test_get_proof_list_success() {
         }]),
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
+            validity_constraint: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
@@ -464,6 +467,7 @@ async fn test_create_proof_without_related_key() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -555,6 +559,7 @@ async fn test_create_proof_with_related_key() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -643,6 +648,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -712,6 +718,7 @@ async fn test_create_proof_did_deactivated_error() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
@@ -769,6 +776,7 @@ async fn test_create_proof_schema_deleted() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
+                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: Some(OffsetDateTime::now_utc()),

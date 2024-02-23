@@ -121,6 +121,7 @@ pub struct CredentialDetailBindingDTO {
     pub claims: Vec<ClaimBindingDTO>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRoleBindingDTO,
+    pub lvvc_issuance_date: Option<String>,
 }
 
 pub struct CredentialListItemBindingDTO {
