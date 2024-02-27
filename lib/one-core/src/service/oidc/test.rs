@@ -12,6 +12,7 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -892,6 +893,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
                 id: "123".to_string(),
                 constraints: OpenID4VPPresentationDefinitionConstraint {
+                    validity_credential_nbf: None,
                     fields: vec![OpenID4VPPresentationDefinitionConstraintField {
                         id: Uuid::new_v4(),
                         path: vec!["123".to_string()],
@@ -904,6 +906,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
     .unwrap();
 
     {
+        let now = OffsetDateTime::now_utc();
         proof_repository
             .expect_get_proof()
             .once()
@@ -920,7 +923,17 @@ async fn test_oidc_verifier_presentation_definition_success() {
                         last_modified: get_dummy_date(),
                         state: ProofStateEnum::Pending,
                     }]),
-                    schema: None,
+                    schema: Some(ProofSchema {
+                        id: Default::default(),
+                        created_date: now,
+                        last_modified: now,
+                        deleted_at: None,
+                        name: "test".to_string(),
+                        expire_duration: 0,
+                        validity_constraint: Some(100),
+                        claim_schemas: None,
+                        organisation: None,
+                    }),
                     claims: None,
                     verifier_did: None,
                     holder_did: None,

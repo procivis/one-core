@@ -31,6 +31,7 @@ use crate::provider::transport_protocol::openid4vc::dto::{
 use crate::provider::transport_protocol::openid4vc::mapper::{
     create_credential_offer, create_open_id_for_vp_client_metadata,
 };
+use crate::service::error::ServiceError::MappingError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
@@ -57,9 +58,9 @@ use crate::service::oidc::{
 use crate::util::key_verification::KeyVerification;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use std::collections::HashMap;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 use std::str::FromStr;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::dto::{
@@ -443,6 +444,7 @@ impl OIDCService {
                 &id,
                 &ProofRelations {
                     interaction: Some(InteractionRelations::default()),
+                    schema: Some(ProofSchemaRelations::default()),
                     state: Some(ProofStateRelations::default()),
                     ..Default::default()
                 },
@@ -460,7 +462,23 @@ impl OIDCService {
                 OpenID4VCIError::InvalidRequest,
             ))?;
 
-        let interaction_data = parse_interaction_content(interaction.data.as_ref())?;
+        let mut interaction_data = parse_interaction_content(interaction.data.as_ref())?;
+
+        let proof_schema = proof
+            .schema
+            .as_ref()
+            .ok_or(MappingError("Proof schema not found".to_string()))?;
+        if let Some(validity_constraint) = proof_schema.validity_constraint {
+            let now = OffsetDateTime::now_utc();
+            interaction_data
+                .presentation_definition
+                .input_descriptors
+                .iter_mut()
+                .for_each(|input_descriptor| {
+                    input_descriptor.constraints.validity_credential_nbf =
+                        Some(now.sub(Duration::seconds(validity_constraint)));
+                });
+        }
 
         Ok(interaction_data.presentation_definition)
     }
