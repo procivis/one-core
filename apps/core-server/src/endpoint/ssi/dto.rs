@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::serialize::front_time_option;
 use crate::{
     endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
     serialize::front_time,
@@ -482,6 +483,9 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
 pub struct OpenID4VPPresentationDefinitionConstraintRestDTO {
     #[from(with_fn = convert_inner)]
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintFieldRestDTO>,
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

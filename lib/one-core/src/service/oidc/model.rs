@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{common_mapper::deserialize_with_serde_json, model::claim_schema::ClaimSchemaId};
@@ -26,6 +27,7 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptor {
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
+    pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]

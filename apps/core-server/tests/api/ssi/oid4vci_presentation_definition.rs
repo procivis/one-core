@@ -164,7 +164,8 @@ async fn test_get_presentation_definition_success() {
                         "path": ["$.credentialSubject.cat2"],
                         "optional": false
                     }
-                ]
+                ],
+                "validity_credential_nbf": null
             }
         }]
     });
