@@ -1,11 +1,12 @@
 use dto_mapper::convert_inner;
+use shared_types::KeyId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
     model::{
         history::{History, HistoryAction, HistoryEntityType},
-        key::{GetKeyList, Key, KeyId},
+        key::{GetKeyList, Key},
         organisation::Organisation,
     },
     provider::key_storage::GeneratedKey,
@@ -50,7 +51,7 @@ impl TryFrom<Key> for KeyResponseDTO {
             .id;
 
         Ok(Self {
-            id: value.id,
+            id: value.id.into(),
             created_date: value.created_date,
             last_modified: value.last_modified,
             organisation_id,
@@ -77,7 +78,7 @@ pub(super) fn key_create_history_event(key: Key) -> History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Created,
-        entity_id: key.id.into(),
+        entity_id: Some(key.id.into()),
         entity_type: HistoryEntityType::Key,
         organisation: key.organisation,
     }

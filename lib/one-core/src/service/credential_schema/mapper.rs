@@ -118,7 +118,7 @@ fn history_event(schema: CredentialSchema, action: HistoryAction) -> History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action,
-        entity_id: schema.id.into(),
+        entity_id: Some(schema.id.into()),
         entity_type: HistoryEntityType::CredentialSchema,
         organisation: schema.organisation,
     }

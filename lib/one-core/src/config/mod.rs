@@ -19,10 +19,6 @@ pub enum ConfigError {
 pub enum ConfigParsingError {
     #[error("file error: {0}")]
     File(#[from] std::io::Error),
-    #[error("json error: {0}")]
-    Json(#[from] serde_json::Error),
-    #[error("yaml error: {0}")]
-    Yaml(#[from] serde_yaml::Error),
     #[error("Parsing error: {0}")]
     GeneralParsingError(String),
 }

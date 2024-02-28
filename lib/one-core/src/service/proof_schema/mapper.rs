@@ -102,7 +102,7 @@ pub(super) fn proof_schema_created_history_event(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Created,
-        entity_id: id.into(),
+        entity_id: Some(id.into()),
         entity_type: HistoryEntityType::ProofSchema,
         organisation: Some(organisation),
     }
@@ -113,7 +113,7 @@ pub(super) fn proof_schema_deleted_history_event(proof_schema: ProofSchema) -> H
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Deleted,
-        entity_id: proof_schema.id.into(),
+        entity_id: Some(proof_schema.id.into()),
         entity_type: HistoryEntityType::ProofSchema,
         organisation: proof_schema.organisation,
     }

@@ -1,5 +1,5 @@
 use crate::{
-    dto::HandleInvitationResponseBindingEnum, error::BindingError, utils::into_uuid, OneCoreBinding,
+    dto::HandleInvitationResponseBindingEnum, error::BindingError, utils::into_id, OneCoreBinding,
 };
 use url::Url;
 
@@ -12,7 +12,7 @@ impl OneCoreBinding {
         let url = Url::parse(&url).map_err(|e| BindingError::ValidationError(e.to_string()))?;
 
         self.block_on(async {
-            let did_id = into_uuid(&did_id)?.into();
+            let did_id = into_id(&did_id)?;
 
             let core = self.use_core().await?;
             let invitation_response = core

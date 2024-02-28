@@ -13,8 +13,8 @@ use crate::{
         claim::ClaimRelations,
         claim_schema::ClaimSchemaRelations,
         credential::{
-            CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
-            CredentialStateRelations, UpdateCredentialRequest,
+            CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
+            UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
         did::DidRelations,
@@ -26,7 +26,7 @@ use crate::{
     },
 };
 use convert_case::{Case, Casing};
-use shared_types::DidValue;
+use shared_types::{CredentialId, DidValue};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -90,7 +90,11 @@ impl SSIIssuerService {
                     created_date: now,
                     state: new_state.clone(),
                 }),
-                ..Default::default()
+                credential: None,
+                issuer_did_id: None,
+                interaction: None,
+                key: None,
+                redirect_uri: None,
             })
             .await?;
 
@@ -156,7 +160,12 @@ impl SSIIssuerService {
                     created_date: OffsetDateTime::now_utc(),
                     state: CredentialStateEnum::Rejected,
                 }),
-                ..Default::default()
+                credential: None,
+                holder_did_id: None,
+                issuer_did_id: None,
+                interaction: None,
+                key: None,
+                redirect_uri: None,
             })
             .await?;
 

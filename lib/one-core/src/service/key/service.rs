@@ -1,8 +1,8 @@
+use shared_types::KeyId;
+use uuid::Uuid;
+
 use crate::{
-    model::{
-        key::{KeyId, KeyRelations},
-        organisation::OrganisationRelations,
-    },
+    model::{key::KeyRelations, organisation::OrganisationRelations},
     repository::error::DataLayerError,
     service::{
         error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
@@ -67,7 +67,7 @@ impl KeyService {
                 request.storage_type.clone(),
             ))?;
 
-        let key_id = KeyId::new_v4();
+        let key_id = Uuid::new_v4().into();
         let key = provider.generate(&key_id, &request.key_type).await?;
 
         let key_entity = from_create_request(key_id, request, organisation, key);

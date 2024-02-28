@@ -47,7 +47,7 @@ fn setup_service(
 fn generic_key(name: &str, organisation_id: Uuid) -> Key {
     let now = OffsetDateTime::now_utc();
     Key {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         public_key: vec![],

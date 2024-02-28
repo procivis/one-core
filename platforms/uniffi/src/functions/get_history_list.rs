@@ -11,7 +11,7 @@ use crate::dto::HistorySearchBindingDTO;
 use crate::{
     dto::{HistoryListBindingDTO, HistoryListQueryBindingDTO},
     error::BindingError,
-    utils::into_uuid,
+    utils::into_id,
     OneCoreBinding,
 };
 
@@ -23,7 +23,7 @@ impl OneCoreBinding {
         self.block_on(async {
             let core = self.use_core().await?;
 
-            let organisation_id = into_uuid(&query.organisation_id)?;
+            let organisation_id = into_id(&query.organisation_id)?;
 
             let mut conditions = vec![ListFilterCondition::Value(
                 HistoryFilterValue::OrganisationId(organisation_id),
@@ -31,7 +31,7 @@ impl OneCoreBinding {
 
             if let Some(value) = query.entity_id {
                 conditions.push(ListFilterCondition::Value(HistoryFilterValue::EntityId(
-                    into_uuid(&value)?.into(),
+                    into_id(&value)?,
                 )));
             }
             if let Some(value) = query.entity_types {
@@ -49,7 +49,7 @@ impl OneCoreBinding {
             }
             if let Some(value) = query.did_id {
                 conditions.push(ListFilterCondition::Value(HistoryFilterValue::DidId(
-                    into_uuid(&value)?.into(),
+                    into_id(&value)?,
                 )));
             }
             if let Some(value) = query.created_date_from {
@@ -68,12 +68,12 @@ impl OneCoreBinding {
             }
             if let Some(value) = query.credential_id {
                 conditions.push(ListFilterCondition::Value(
-                    HistoryFilterValue::CredentialId(into_uuid(&value)?),
+                    HistoryFilterValue::CredentialId(into_id(&value)?),
                 ));
             }
             if let Some(value) = query.credential_schema_id {
                 conditions.push(ListFilterCondition::Value(
-                    HistoryFilterValue::CredentialSchemaId(into_uuid(&value)?),
+                    HistoryFilterValue::CredentialSchemaId(into_id(&value)?),
                 ));
             }
 

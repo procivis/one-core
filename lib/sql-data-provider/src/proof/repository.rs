@@ -455,7 +455,6 @@ impl ProofProvider {
         if let (Some(verifier_key_relations), Some(verifier_key_id)) =
             (&relations.verifier_key, proof_model.verifier_key_id)
         {
-            let verifier_key_id = Uuid::from_str(&verifier_key_id)?;
             let verifier_key = self
                 .key_repository
                 .get_key(&verifier_key_id, verifier_key_relations)

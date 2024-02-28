@@ -4,7 +4,7 @@ use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
-    CredentialId, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
+    CredentialRelations, CredentialStateEnum, CredentialStateRelations,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
@@ -20,6 +20,7 @@ use crate::repository::history_repository::HistoryRepository;
 use crate::service::error::{
     EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use shared_types::CredentialId;
 use std::{collections::HashMap, sync::Arc};
 use url::Url;
 

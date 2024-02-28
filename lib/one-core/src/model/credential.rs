@@ -1,7 +1,6 @@
-use shared_types::DidId;
+use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::Display;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::service::credential::dto::CredentialFilterValue;
 
@@ -11,12 +10,10 @@ use super::{
     credential_schema::{CredentialSchema, CredentialSchemaRelations},
     did::{Did, DidRelations},
     interaction::{Interaction, InteractionId, InteractionRelations},
-    key::{Key, KeyId, KeyRelations},
+    key::{Key, KeyRelations},
     list_query::ListQuery,
     revocation_list::{RevocationList, RevocationListRelations},
 };
-
-pub type CredentialId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Credential {
@@ -83,7 +80,7 @@ pub enum SortableCredentialColumn {
 pub type GetCredentialList = GetListResponse<Credential>;
 pub type GetCredentialQuery = ListQuery<SortableCredentialColumn, CredentialFilterValue>;
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateCredentialRequest {
     pub id: CredentialId,
 

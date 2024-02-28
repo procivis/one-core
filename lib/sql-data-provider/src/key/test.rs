@@ -1,12 +1,14 @@
 use super::KeyProvider;
+use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, Set};
+use shared_types::KeyId;
 use std::sync::Arc;
 
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::key;
-use one_core::model::key::{GetKeyQuery, KeyId, KeyRelations};
+use one_core::model::key::{GetKeyQuery, KeyRelations};
 use one_core::{
     model::{key::Key, organisation::Organisation},
     repository::{
@@ -38,9 +40,9 @@ async fn setup() -> TestSetup {
         last_modified: now,
     };
 
-    let key_id = Uuid::new_v4();
+    let key_id = Uuid::new_v4().into();
     key::ActiveModel {
-        id: Set(key_id.to_string()),
+        id: Set(key_id),
         created_date: Set(now),
         last_modified: Set(now),
         name: Set("test".to_string()),
@@ -49,6 +51,7 @@ async fn setup() -> TestSetup {
         storage_type: Set("test".to_string()),
         key_type: Set("test".to_string()),
         organisation_id: Set(organisation_id.to_string()),
+        deleted_at: NotSet,
     }
     .insert(&db)
     .await
@@ -64,7 +67,7 @@ async fn setup() -> TestSetup {
 struct TestListSetup {
     pub db: sea_orm::DatabaseConnection,
     pub organisation: Organisation,
-    pub ids: Vec<Uuid>,
+    pub ids: Vec<KeyId>,
 }
 
 async fn setup_list() -> TestListSetup {
@@ -75,9 +78,9 @@ async fn setup_list() -> TestListSetup {
     } = setup().await;
 
     let now = OffsetDateTime::now_utc();
-    let key2_id = Uuid::new_v4();
+    let key2_id = Uuid::new_v4().into();
     key::ActiveModel {
-        id: Set(key2_id.to_string()),
+        id: Set(key2_id),
         created_date: Set(now),
         last_modified: Set(now),
         name: Set("test2".to_string()),
@@ -86,6 +89,7 @@ async fn setup_list() -> TestListSetup {
         storage_type: Set("test2".to_string()),
         key_type: Set("test2".to_string()),
         organisation_id: Set(organisation.id.to_string()),
+        deleted_at: NotSet,
     }
     .insert(&db)
     .await
@@ -113,10 +117,10 @@ async fn test_create_key_success() {
 
     let now = OffsetDateTime::now_utc();
 
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4().into();
     let result = provider
         .create_key(Key {
-            id: id.to_owned(),
+            id,
             created_date: now,
             last_modified: now,
             public_key: vec![],

@@ -412,7 +412,7 @@ async fn test_submit_proof_succeeds() {
             let claims = request.claims.as_ref().unwrap();
             claims.len() == 1 && claims[0].value == "required_key_value"
         })
-        .return_once(|_| Ok(Uuid::new_v4()));
+        .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let service = SSIVerifierService {
         proof_repository: Arc::new(proof_repository),

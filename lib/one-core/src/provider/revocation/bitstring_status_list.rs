@@ -1,4 +1,4 @@
-use shared_types::{DidId, DidValue};
+use shared_types::{CredentialId, DidId, DidValue};
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -6,10 +6,7 @@ use uuid::Uuid;
 
 use crate::model::did::KeyRole;
 use crate::model::{
-    credential::{
-        Credential, CredentialId, CredentialRelations, CredentialStateEnum,
-        CredentialStateRelations,
-    },
+    credential::{Credential, CredentialRelations, CredentialStateEnum, CredentialStateRelations},
     did::Did,
     revocation_list::{RevocationList, RevocationListId, RevocationListRelations},
 };

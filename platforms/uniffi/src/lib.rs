@@ -42,7 +42,7 @@ fn initialize_core(
             .map_err(|e| BindingError::DbErr(e.to_string()))?;
 
         Ok(one_core::OneCore::new(
-            Arc::new(DataLayer::build(db_conn)),
+            |exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)),
             placeholder_config.core,
             None,
             native_key_storage.map(|storage| {

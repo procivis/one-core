@@ -1,13 +1,12 @@
 use dto_mapper::convert_inner;
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
     model::{
         claim::Claim,
-        credential::{
-            Credential, CredentialId, CredentialRole, CredentialState, CredentialStateEnum,
-        },
+        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::Did,
         history::{History, HistoryAction, HistoryEntityType},
@@ -226,7 +225,7 @@ pub(super) fn credential_created_history_event(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Issued,
-        entity_id: credential.id.into(),
+        entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
         organisation: credential
             .schema
@@ -242,7 +241,7 @@ pub(super) fn credential_offered_history_event(credential: Credential) -> Histor
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Offered,
-        entity_id: credential.id.into(),
+        entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
         organisation: credential.schema.and_then(|c| c.organisation),
     }
@@ -256,7 +255,7 @@ pub(super) fn credential_revoked_history_event(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Revoked,
-        entity_id: id.into(),
+        entity_id: Some(id.into()),
         entity_type: HistoryEntityType::Credential,
         organisation,
     }

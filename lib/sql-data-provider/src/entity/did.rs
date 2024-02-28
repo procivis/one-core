@@ -13,6 +13,7 @@ pub struct Model {
     pub did: DidValue,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     #[sea_orm(column_name = "type")]
     pub type_field: DidType,
@@ -58,12 +59,11 @@ impl Related<super::key::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ModelDidType)]
 #[into(ModelDidType)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum DidType {
-    #[default]
     #[sea_orm(string_value = "REMOTE")]
     Remote,
     #[sea_orm(string_value = "LOCAL")]

@@ -1,10 +1,11 @@
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
-use crate::model::key::{Key, KeyId};
+use crate::model::key::Key;
 use crate::provider::key_storage::{GeneratedKey, KeyStorage};
 use crate::service::error::{ServiceError, ValidationError};
 use mockall::predicate::eq;
 use std::sync::Arc;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 fn get_params() -> Params {
     Params {
@@ -16,7 +17,7 @@ fn get_params() -> Params {
 async fn test_generate_success() {
     let mut native_storage = MockNativeKeyStorage::default();
 
-    let key_id = KeyId::new_v4();
+    let key_id = Uuid::new_v4();
     native_storage
         .expect_generate_key()
         .once()
@@ -30,7 +31,7 @@ async fn test_generate_success() {
 
     let provider = SecureElementKeyProvider::new(Arc::new(native_storage), get_params());
 
-    let result = provider.generate(&key_id, "ES256").await.unwrap();
+    let result = provider.generate(&key_id.into(), "ES256").await.unwrap();
     assert_eq!(result.public_key, b"public_key");
     assert_eq!(result.key_reference, b"key_reference");
 }
@@ -40,7 +41,7 @@ async fn test_generate_invalid_key_type() {
     let provider =
         SecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()), get_params());
 
-    let result = provider.generate(&KeyId::new_v4(), "invalid").await;
+    let result = provider.generate(&Uuid::new_v4().into(), "invalid").await;
     assert!(matches!(
         result,
         Err(ServiceError::Validation(
@@ -63,7 +64,7 @@ async fn test_sign_success() {
     let result = provider
         .sign(
             &Key {
-                id: KeyId::new_v4(),
+                id: Uuid::new_v4().into(),
                 key_reference: b"key_reference".to_vec(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),

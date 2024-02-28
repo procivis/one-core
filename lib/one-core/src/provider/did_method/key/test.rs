@@ -305,7 +305,7 @@ async fn test_create_did_success() {
     let key_id = Uuid::new_v4();
 
     let key = Key {
-        id: key_id,
+        id: key_id.into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         public_key: vec![],

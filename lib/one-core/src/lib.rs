@@ -17,6 +17,7 @@ use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::key_storage::secure_element::NativeKeyStorage;
 use provider::transport_protocol::{provider::TransportProtocolProviderImpl, TransportProtocol};
 use repository::DataRepository;
+use service::backup::BackupService;
 use service::{
     config::ConfigService, credential::CredentialService, did::DidService,
     organisation::OrganisationService, proof::ProofService, proof_schema::ProofSchemaService,
@@ -60,6 +61,7 @@ pub struct OneCore {
     pub transport_protocols: HashMap<String, Arc<dyn TransportProtocol>>,
     pub revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
     pub organisation_service: OrganisationService,
+    pub backup_service: BackupService,
     pub did_service: DidService,
     pub credential_service: CredentialService,
     pub credential_schema_service: CredentialSchemaService,
@@ -79,7 +81,7 @@ pub struct OneCore {
 
 impl OneCore {
     pub fn new(
-        data_provider: Arc<dyn DataRepository>,
+        data_provider_creator: impl FnOnce(Vec<String>) -> Arc<dyn DataRepository>,
         mut core_config: CoreConfig,
         core_base_url: Option<String>,
         secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
@@ -136,6 +138,14 @@ impl OneCore {
         let config = Arc::new(core_config);
         let client = reqwest::Client::new();
 
+        let exportable_storages = key_providers
+            .iter()
+            .filter(|(_, value)| value.get_capabilities().exportable)
+            .map(|(key, _)| key.clone())
+            .collect();
+
+        let data_provider = data_provider_creator(exportable_storages);
+
         let revocation_methods = crate::provider::revocation::provider::from_config(
             &config.revocation,
             core_base_url.clone(),
@@ -176,6 +186,11 @@ impl OneCore {
             key_providers,
             transport_protocols,
             revocation_methods,
+            backup_service: BackupService::new(
+                data_provider.get_backup_repository(),
+                data_provider.get_history_repository(),
+                data_provider.get_organisation_repository(),
+            ),
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),

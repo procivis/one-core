@@ -1,5 +1,5 @@
 use crate::model::{
-    credential::{CredentialId, CredentialState, CredentialStateEnum, UpdateCredentialRequest},
+    credential::{CredentialState, CredentialStateEnum, UpdateCredentialRequest},
     did::Did,
     history::{History, HistoryAction, HistoryEntityType},
     interaction::Interaction,
@@ -21,6 +21,7 @@ use crate::provider::transport_protocol::dto::{
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -38,7 +39,10 @@ pub(super) fn get_issued_credential_update(
             state: CredentialStateEnum::Accepted,
         }),
         key: Some(key.id),
-        ..Default::default()
+        holder_did_id: None,
+        issuer_did_id: None,
+        interaction: None,
+        redirect_uri: None,
     }
 }
 
@@ -212,7 +216,7 @@ pub(super) fn credential_accepted_history_event(credential: Credential) -> Histo
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Accepted,
-        entity_id: credential.id.into(),
+        entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
         organisation: credential.schema.and_then(|s| s.organisation),
     }

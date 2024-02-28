@@ -7,7 +7,8 @@ use crate::{
         DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
         ProofRequestBindingDTO,
     },
-    utils::{into_uuid, TimestampFormat},
+    utils::{into_id, TimestampFormat},
+    HistoryListItemBindingDTO,
 };
 use dto_mapper::convert_inner;
 use one_core::service::{
@@ -17,11 +18,13 @@ use one_core::service::{
     },
     did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
     error::ServiceError,
+    history::dto::HistoryResponseDTO,
     key::dto::KeyRequestDTO,
     proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
     ssi_holder::dto::InvitationResponseDTO,
 };
 use serde_json::json;
+use shared_types::KeyId;
 use uuid::Uuid;
 
 pub(crate) fn serialize_config_entity(
@@ -173,8 +176,8 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
 impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
     type Error = ServiceError;
     fn try_from(request: DidRequestKeysBindingDTO) -> Result<Self, Self::Error> {
-        let convert = |ids: Vec<String>| -> Result<Vec<Uuid>, Self::Error> {
-            ids.iter().map(|id| into_uuid(id)).collect()
+        let convert = |ids: Vec<String>| -> Result<Vec<KeyId>, Self::Error> {
+            ids.iter().map(|id| into_id(id)).collect()
         };
 
         Ok(Self {
@@ -184,5 +187,18 @@ impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
             capability_invocation: convert(request.capability_invocation)?,
             capability_delegation: convert(request.capability_delegation)?,
         })
+    }
+}
+
+impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
+    fn from(value: HistoryResponseDTO) -> Self {
+        Self {
+            id: value.id.to_string(),
+            created_date: value.created_date.format_timestamp(),
+            action: value.action.into(),
+            entity_id: value.entity_id.map(|id| id.to_string()),
+            entity_type: value.entity_type.into(),
+            organisation_id: value.organisation_id.to_string(),
+        }
     }
 }

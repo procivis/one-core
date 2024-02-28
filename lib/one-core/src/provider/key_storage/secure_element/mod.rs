@@ -1,9 +1,10 @@
 use serde::Deserialize;
+use shared_types::KeyId;
 use std::sync::Arc;
 
 use crate::{
     crypto::signer::error::SignerError,
-    model::key::{Key, KeyId},
+    model::key::Key,
     provider::key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities},
     service::error::{ServiceError, ValidationError},
 };
@@ -47,6 +48,7 @@ impl KeyStorage for SecureElementKeyProvider {
         KeyStorageCapabilities {
             algorithms: vec!["ES256".to_string()],
             security: vec!["HARDWARE".to_string()],
+            exportable: false,
         }
     }
 }

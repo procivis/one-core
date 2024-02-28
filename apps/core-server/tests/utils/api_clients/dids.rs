@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
+use shared_types::KeyId;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -74,15 +75,15 @@ impl DidsApi {
 }
 
 pub struct DidKeys {
-    pub assertion_method: Vec<Uuid>,
-    pub authentication: Vec<Uuid>,
-    pub capability_delegation: Vec<Uuid>,
-    pub capability_invocation: Vec<Uuid>,
-    pub key_agreement: Vec<Uuid>,
+    pub assertion_method: Vec<KeyId>,
+    pub authentication: Vec<KeyId>,
+    pub capability_delegation: Vec<KeyId>,
+    pub capability_invocation: Vec<KeyId>,
+    pub key_agreement: Vec<KeyId>,
 }
 
 impl DidKeys {
-    pub fn single(key: Uuid) -> Self {
+    pub fn single(key: KeyId) -> Self {
         Self {
             assertion_method: vec![key],
             authentication: vec![key],
@@ -92,7 +93,7 @@ impl DidKeys {
         }
     }
 
-    pub fn all(keys: Vec<Uuid>) -> Self {
+    pub fn all(keys: Vec<KeyId>) -> Self {
         Self {
             assertion_method: keys.clone(),
             authentication: keys.clone(),

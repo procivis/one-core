@@ -19,7 +19,7 @@ use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialState, GetCredentialList,
+            Credential, CredentialRelations, CredentialState, GetCredentialList,
             GetCredentialQuery, UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
@@ -38,7 +38,7 @@ use sea_orm::{
     FromQueryResult, JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
     Select, Set, SqlErr, Unchanged,
 };
-use shared_types::DidId;
+use shared_types::{CredentialId, DidId};
 use std::{str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -76,7 +76,7 @@ async fn get_claims(
     let ids: Vec<ClaimId> = claim::Entity::find()
         .select_only()
         .columns([claim::Column::Id])
-        .filter(claim::Column::CredentialId.eq(&credential.id))
+        .filter(claim::Column::CredentialId.eq(credential.id))
         .join(JoinType::InnerJoin, claim::Relation::ClaimSchema.def())
         .join(
             JoinType::InnerJoin,
@@ -118,7 +118,7 @@ impl CredentialProvider {
             None => None,
             Some(_) => {
                 let credential_states = credential_state::Entity::find()
-                    .filter(credential_state::Column::CredentialId.eq(&credential.id))
+                    .filter(credential_state::Column::CredentialId.eq(credential.id))
                     .order_by_desc(credential_state::Column::CreatedDate)
                     .all(&self.db)
                     .await
@@ -201,10 +201,9 @@ impl CredentialProvider {
             match &credential.key_id {
                 None => None,
                 Some(key_id) => {
-                    let key_id = Uuid::from_str(key_id)?;
                     let key = self
                         .key_repository
-                        .get_key(&key_id, key_relations)
+                        .get_key(key_id, key_relations)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "credential-key",
@@ -227,7 +226,7 @@ impl CredentialProvider {
             revocation_list,
             interaction,
             key,
-            ..credential.try_into()?
+            ..credential.into()
         })
     }
 
@@ -371,9 +370,7 @@ impl CredentialRepository for CredentialProvider {
         let key_id = request.key.as_ref().map(|key| key.id);
 
         if claims.iter().any(|claim| claim.credential_id != request.id) {
-            return Err(DataLayerError::Db(anyhow::anyhow!(
-                "Claim credential-id mismatch!",
-            )));
+            return Err(anyhow::anyhow!("Claim credential-id mismatch!").into());
         }
 
         request_to_active_model(
@@ -401,7 +398,12 @@ impl CredentialRepository for CredentialProvider {
                 self.update_credential(UpdateCredentialRequest {
                     id: request.id.to_owned(),
                     state: Some(state),
-                    ..Default::default()
+                    credential: None,
+                    holder_did_id: None,
+                    issuer_did_id: None,
+                    interaction: None,
+                    key: None,
+                    redirect_uri: None,
                 })
                 .await?;
             }
@@ -414,7 +416,7 @@ impl CredentialRepository for CredentialProvider {
         let now = OffsetDateTime::now_utc();
 
         let credential = credential::ActiveModel {
-            id: Unchanged(id.to_string()),
+            id: Unchanged(*id),
             deleted_at: Set(Some(now)),
             ..Default::default()
         };
@@ -435,7 +437,7 @@ impl CredentialRepository for CredentialProvider {
         id: &CredentialId,
         relations: &CredentialRelations,
     ) -> Result<Option<Credential>, DataLayerError> {
-        let credential = credential::Entity::find_by_id(id.to_string())
+        let credential = credential::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
@@ -471,10 +473,8 @@ impl CredentialRepository for CredentialProvider {
         issuer_did_id: &DidId,
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError> {
-        let issuer_did_id = issuer_did_id.to_string();
-
         let credentials = credential::Entity::find()
-            .filter(credential::Column::IssuerDidId.eq(&issuer_did_id))
+            .filter(credential::Column::IssuerDidId.eq(issuer_did_id))
             .order_by_asc(credential::Column::CreatedDate)
             .all(&self.db)
             .await
@@ -541,7 +541,7 @@ impl CredentialRepository for CredentialProvider {
 
         let key_id = match request.key {
             None => Unchanged(Default::default()),
-            Some(key_id) => Set(Some(key_id.to_string())),
+            Some(key_id) => Set(Some(key_id)),
         };
 
         let redirect_uri = match request.redirect_uri {
@@ -550,7 +550,7 @@ impl CredentialRepository for CredentialProvider {
         };
 
         let update_model = credential::ActiveModel {
-            id: Unchanged(id.to_string()),
+            id: Unchanged(*id),
             last_modified: Set(OffsetDateTime::now_utc()),
             holder_did_id,
             issuer_did_id,
@@ -562,7 +562,7 @@ impl CredentialRepository for CredentialProvider {
         };
 
         if let Some(state) = request.state {
-            credential_state::Entity::insert(get_credential_state_active_model(id, state))
+            credential_state::Entity::insert(get_credential_state_active_model(*id, state))
                 .exec(&self.db)
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;

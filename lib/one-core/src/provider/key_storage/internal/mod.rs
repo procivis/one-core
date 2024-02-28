@@ -4,11 +4,11 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
+use shared_types::KeyId;
 use std::sync::Arc;
 
 use crate::crypto::signer::error::SignerError;
 use crate::model::key::Key;
-use crate::model::key::KeyId;
 use crate::service::error::ValidationError;
 use crate::{
     provider::{
@@ -83,6 +83,7 @@ impl KeyStorage for InternalKeyProvider {
                 "BBS_PLUS".to_string(),
             ],
             security: vec!["SOFTWARE".to_string()],
+            exportable: true,
         }
     }
 }

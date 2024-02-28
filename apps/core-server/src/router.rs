@@ -45,7 +45,7 @@ pub async fn start_server(listener: TcpListener, config: AppConfig<ServerConfig>
     listener.set_nonblocking(true).unwrap();
 
     let core = OneCore::new(
-        Arc::new(DataLayer::build(db_conn)),
+        |exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)),
         config.core,
         Some(config.app.core_base_url.to_owned()),
         None,

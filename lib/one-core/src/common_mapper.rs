@@ -3,9 +3,7 @@ use std::iter::IntoIterator;
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential::{
-    Credential, CredentialId, CredentialRole, CredentialState, CredentialStateEnum,
-};
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::organisation::Organisation;
@@ -118,7 +116,7 @@ pub fn extracted_credential_to_model(
     holder_did: Did,
 ) -> Credential {
     let now = OffsetDateTime::now_utc();
-    let credential_id = CredentialId::new_v4();
+    let credential_id = Uuid::new_v4().into();
     Credential {
         id: credential_id,
         created_date: now,

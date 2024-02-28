@@ -2,17 +2,18 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde::Serialize;
-
-use crate::config::core_config::{KeyStorageConfig, KeyStorageType};
-use crate::config::{ConfigError, ConfigParsingError, ConfigValidationError};
-use crate::crypto::{signer::error::SignerError, CryptoProvider};
-use crate::model::key::{Key, KeyId};
-use crate::provider::key_storage::azure_vault::AzureVaultKeyProvider;
-use crate::provider::key_storage::pkcs11::PKCS11KeyProvider;
-use crate::{provider::key_storage::internal::InternalKeyProvider, service::error::ServiceError};
+use serde_json::json;
 
 use self::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
 use super::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::config::core_config::{KeyStorageConfig, KeyStorageType};
+use crate::config::{ConfigError, ConfigValidationError};
+use crate::crypto::{signer::error::SignerError, CryptoProvider};
+use crate::model::key::Key;
+use crate::provider::key_storage::azure_vault::AzureVaultKeyProvider;
+use crate::provider::key_storage::pkcs11::PKCS11KeyProvider;
+use crate::{provider::key_storage::internal::InternalKeyProvider, service::error::ServiceError};
+use shared_types::KeyId;
 
 pub mod azure_vault;
 pub mod internal;
@@ -24,6 +25,7 @@ pub mod secure_element;
 pub struct KeyStorageCapabilities {
     pub algorithms: Vec<String>,
     pub security: Vec<String>,
+    pub exportable: bool,
 }
 
 pub struct GeneratedKey {
@@ -75,14 +77,12 @@ pub fn key_providers_from_config(
                 }
             }
         };
-        providers.insert(field.r#type.to_string(), provider);
+        providers.insert(name.to_owned(), provider);
     }
 
     for (key, value) in config.iter_mut() {
         if let Some(entity) = providers.get(&key.to_string()) {
-            let json = serde_json::to_value(entity.get_capabilities())
-                .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;
-            value.capabilities = Some(json);
+            value.capabilities = Some(json!(entity.get_capabilities()));
         }
     }
 

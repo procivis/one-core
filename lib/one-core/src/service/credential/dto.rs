@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use shared_types::DidId;
+use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::AsRefStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -9,9 +9,8 @@ use dto_mapper::From;
 use crate::{
     model::{
         common::GetListResponse,
-        credential::{CredentialId, SortableCredentialColumn},
+        credential::SortableCredentialColumn,
         credential_schema::{CredentialFormat, CredentialSchemaId, RevocationMethod},
-        key::KeyId,
         list_filter::{ListFilterValue, StringMatch},
         list_query::ListQuery,
         organisation::OrganisationId,

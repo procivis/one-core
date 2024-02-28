@@ -248,7 +248,7 @@ pub(super) fn proof_requested_history_event(proof: Proof) -> History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Requested,
-        entity_id: proof.id.into(),
+        entity_id: Some(proof.id.into()),
         entity_type: HistoryEntityType::Proof,
         organisation: proof.schema.and_then(|s| s.organisation),
     }

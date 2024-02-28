@@ -24,7 +24,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
     let id = Uuid::from_str("9a414a60-9e6b-4757-8011-9aa870ef4788").unwrap();
 
     CredentialDetailResponseDTO {
-        id,
+        id: id.into(),
         created_date: get_dummy_date(),
         issuance_date: get_dummy_date(),
         revocation_date: None,

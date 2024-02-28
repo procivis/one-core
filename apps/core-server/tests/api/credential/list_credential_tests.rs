@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::fixtures::TestingCredentialParams;
 use crate::utils::context::TestContext;
@@ -276,7 +276,7 @@ async fn test_get_list_credential_filter_by_ids() {
     let expected_credentials: HashSet<_> =
         HashSet::from_iter(credentials.iter().map(ToOwned::to_owned));
 
-    let credentials: HashSet<Uuid> = json_resp["values"]
+    let credentials: HashSet<CredentialId> = json_resp["values"]
         .as_array()
         .unwrap()
         .iter()

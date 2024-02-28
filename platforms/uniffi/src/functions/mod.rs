@@ -1,4 +1,6 @@
+mod backup_info;
 mod check_revocation;
+mod create_backup;
 mod create_did;
 mod create_organisation;
 mod delete_credential;

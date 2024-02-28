@@ -1,6 +1,6 @@
-use dto_mapper::{From, Into};
+use dto_mapper::{convert_inner, From, Into};
 use serde::{Deserialize, Deserializer, Serialize};
-use shared_types::{DidId, EntityId, HistoryId, OrganisationId};
+use shared_types::{CredentialId, DidId, EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -21,7 +21,8 @@ pub struct HistoryResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
     pub action: HistoryAction,
-    pub entity_id: Uuid,
+    #[from(with_fn = convert_inner)]
+    pub entity_id: Option<Uuid>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: Uuid,
 }
@@ -55,6 +56,7 @@ pub enum HistoryEntityType {
     Proof,
     ProofSchema,
     Organisation,
+    Backup,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
@@ -80,7 +82,7 @@ pub struct HistoryFilterQueryParamsRest {
     #[param(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub created_date_to: Option<OffsetDateTime>,
     pub did_id: Option<DidId>,
-    pub credential_id: Option<Uuid>,
+    pub credential_id: Option<CredentialId>,
     pub credential_schema_id: Option<Uuid>,
     pub search_text: Option<String>,
     pub search_type: Option<HistorySearchEnumRest>,

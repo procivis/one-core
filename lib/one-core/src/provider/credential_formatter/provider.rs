@@ -1,7 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
+use serde_json::json;
+
 use crate::config::core_config::{FormatConfig, FormatType};
-use crate::config::{ConfigError, ConfigParsingError};
+use crate::config::ConfigError;
 use crate::crypto::CryptoProvider;
 
 use crate::provider::credential_formatter::jwt_formatter::JWTFormatter;
@@ -80,9 +82,7 @@ pub(crate) fn credential_formatters_from_config(
 
     for (key, value) in config.iter_mut() {
         if let Some(entity) = formatters.get(key) {
-            let json = serde_json::to_value(entity.get_capabilities())
-                .map_err(|e| ConfigError::Parsing(ConfigParsingError::Json(e)))?;
-            value.capabilities = Some(json);
+            value.capabilities = Some(json!(entity.get_capabilities()));
         }
     }
 

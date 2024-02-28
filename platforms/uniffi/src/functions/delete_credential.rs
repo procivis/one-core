@@ -1,4 +1,4 @@
-use crate::{error::BindingError, utils::into_uuid, OneCoreBinding};
+use crate::{error::BindingError, utils::into_id, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn delete_credential(&self, credential_id: String) -> Result<(), BindingError> {
@@ -6,7 +6,7 @@ impl OneCoreBinding {
             let core = self.use_core().await?;
             Ok(core
                 .credential_service
-                .delete_credential(&into_uuid(&credential_id)?)
+                .delete_credential(&into_id(&credential_id)?)
                 .await?)
         })
     }

@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::credential::{
-    Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
-    CredentialStateEnum,
+    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::did::Did;
 use one_core::repository::credential_repository::CredentialRepository;
+use shared_types::CredentialId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -55,7 +55,7 @@ impl CredentialsDB {
         transport: &str,
         params: TestingCredentialParams<'_>,
     ) -> Credential {
-        let credential_id = Uuid::new_v4();
+        let credential_id = Uuid::new_v4().into();
         let claims = credential_schema
             .claim_schemas
             .as_ref()

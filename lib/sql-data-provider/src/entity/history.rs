@@ -14,7 +14,7 @@ pub struct Model {
     pub id: HistoryId,
     pub created_date: OffsetDateTime,
     pub action: HistoryAction,
-    pub entity_id: EntityId,
+    pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
 
     pub organisation_id: OrganisationId,
@@ -100,4 +100,6 @@ pub enum HistoryEntityType {
     ProofSchema,
     #[sea_orm(string_value = "ORGANISATION")]
     Organisation,
+    #[sea_orm(string_value = "BACKUP")]
+    Backup,
 }

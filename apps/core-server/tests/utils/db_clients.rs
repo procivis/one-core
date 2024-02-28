@@ -41,7 +41,7 @@ pub struct DbClient {
 
 impl DbClient {
     pub fn new(db: DbConn) -> Self {
-        let layer = DataLayer::build(db);
+        let layer = DataLayer::build(db, vec![]);
         Self {
             organisations: OrganisationsDB::new(layer.get_organisation_repository()),
             dids: DidsDB::new(layer.get_did_repository()),

@@ -27,10 +27,9 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
-use one_core::model::credential::CredentialId;
 use one_core::model::credential_schema::CredentialSchemaId;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use shared_types::DidId;
+use shared_types::{CredentialId, DidId};
 use uuid::Uuid;
 
 #[utoipa::path(

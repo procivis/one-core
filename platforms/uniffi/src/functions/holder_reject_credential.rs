@@ -1,4 +1,4 @@
-use crate::{error::BindingError, utils::into_uuid, OneCoreBinding};
+use crate::{error::BindingError, utils::into_id, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn holder_reject_credential(&self, interaction_id: String) -> Result<(), BindingError> {
@@ -6,7 +6,7 @@ impl OneCoreBinding {
             let core = self.use_core().await?;
             Ok(core
                 .ssi_holder_service
-                .reject_credential(&into_uuid(&interaction_id)?)
+                .reject_credential(&into_id(&interaction_id)?)
                 .await?)
         })
     }

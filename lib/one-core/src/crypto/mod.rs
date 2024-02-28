@@ -11,8 +11,10 @@ use sha2::Sha256;
 use self::error::CryptoProviderError;
 use self::{hasher::Hasher, signer::Signer};
 
+pub mod encryption;
 pub mod error;
 pub mod hasher;
+pub mod password;
 pub mod signer;
 
 type HmacSha256 = Hmac<Sha256>;

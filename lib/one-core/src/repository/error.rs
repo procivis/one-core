@@ -17,7 +17,7 @@ pub enum DataLayerError {
     MappingError,
 
     #[error("Database error: {0}")]
-    Db(anyhow::Error),
+    Db(#[from] anyhow::Error),
 
     #[error("Missing required relation {relation} for {id}")]
     MissingRequiredRelation { relation: &'static str, id: String },

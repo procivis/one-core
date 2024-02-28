@@ -8,7 +8,7 @@ use one_core::{
         credential::{Credential, CredentialRelations, CredentialRole, CredentialStateEnum},
         did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
-        key::{Key, KeyId, KeyRelations},
+        key::{Key, KeyRelations},
         organisation::OrganisationId,
         proof::{
             Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
@@ -32,7 +32,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
-use shared_types::DidId;
+use shared_types::{DidId, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -113,7 +113,7 @@ async fn setup(
     )
     .unwrap();
 
-    let did_id = &insert_did_key(
+    let did_id = insert_did_key(
         &db,
         "verifier",
         Uuid::new_v4(),
@@ -124,27 +124,20 @@ async fn setup(
     .await
     .unwrap();
 
-    let key_id = Uuid::parse_str(
-        &insert_key_to_database(
-            &db,
-            "ED25519".to_string(),
-            vec![],
-            vec![],
-            None,
-            &organisation_id.to_string(),
-        )
-        .await
-        .unwrap(),
-    )
-    .unwrap();
-    insert_key_did(
+    let key_id = insert_key_to_database(
         &db,
-        &did_id.to_string(),
-        &key_id.to_string(),
-        KeyRole::AssertionMethod,
+        "ED25519".to_string(),
+        vec![],
+        vec![],
+        None,
+        &organisation_id.to_string(),
     )
     .await
     .unwrap();
+
+    insert_key_did(&db, did_id, key_id, KeyRole::AssertionMethod)
+        .await
+        .unwrap();
 
     let interaction_id =
         Uuid::parse_str(&insert_interaction(&db, "host", &[1, 2, 3]).await.unwrap()).unwrap();
@@ -162,7 +155,7 @@ async fn setup(
         db,
         organisation_id,
         proof_schema_id,
-        did_id: *did_id,
+        did_id,
         claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.0).collect(),
         interaction_id,
         key_id,
@@ -215,7 +208,7 @@ async fn setup_with_proof(
             did_id,
             None,
             &proof_schema_id.to_string(),
-            key_id.to_string(),
+            key_id,
             Some(interaction_id.to_string()),
         )
         .await
@@ -483,7 +476,7 @@ async fn test_get_proof_with_relations() {
         }))
     });
 
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
     let claim_id = Uuid::new_v4();
     let mut claim_repository = MockClaimRepository::default();
     claim_repository
@@ -582,7 +575,7 @@ async fn test_get_proof_with_relations() {
     .unwrap();
 
     credential::ActiveModel {
-        id: Set(credential_id.to_string()),
+        id: Set(credential_id),
         credential_schema_id: Set(credential_schema_id.to_string()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
@@ -604,7 +597,7 @@ async fn test_get_proof_with_relations() {
 
     claim::ActiveModel {
         id: Set(claim_id.to_string()),
-        credential_id: Set(credential_id.to_string()),
+        credential_id: Set(credential_id),
         claim_schema_id: Set(claim_schema_ids[0].to_string()),
         value: Set("value".as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),
@@ -905,18 +898,15 @@ async fn test_set_proof_claims_success() {
     )
     .unwrap();
 
-    let credential_id = Uuid::parse_str(
-        &insert_credential(
-            &db,
-            &credential_schema_id.to_string(),
-            CredentialStateEnum::Created,
-            "PROCIVIS_TEMPORARY",
-            did_id,
-            None,
-        )
-        .await
-        .unwrap(),
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema_id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did_id,
+        None,
     )
+    .await
     .unwrap();
 
     let claim = Claim {
@@ -931,7 +921,7 @@ async fn test_set_proof_claims_success() {
     // necessary to pass db consistency checks
     claim::ActiveModel {
         id: Set(claim.id.to_string()),
-        credential_id: Set(credential_id.to_string()),
+        credential_id: Set(credential_id),
         claim_schema_id: Set(claim_schema_ids[0].to_string()),
         value: Set("value".into()),
         created_date: Set(get_dummy_date()),

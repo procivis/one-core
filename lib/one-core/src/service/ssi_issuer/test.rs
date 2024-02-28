@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    model::credential::{Credential, CredentialId, CredentialState, CredentialStateEnum},
+    model::credential::{Credential, CredentialState, CredentialStateEnum},
     provider::transport_protocol::provider::MockTransportProtocolProvider,
     repository::did_repository::MockDidRepository,
     repository::{
@@ -19,7 +20,7 @@ use crate::{
 
 #[tokio::test]
 async fn test_issuer_connect_succeeds() {
-    let credential_id: CredentialId = Uuid::new_v4();
+    let credential_id: CredentialId = Uuid::new_v4().into();
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -58,7 +59,7 @@ async fn test_issuer_connect_succeeds() {
 
 #[tokio::test]
 async fn test_issuer_reject_succeeds() {
-    let credential_id: CredentialId = Uuid::new_v4();
+    let credential_id: CredentialId = Uuid::new_v4().into();
 
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository

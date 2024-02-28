@@ -39,7 +39,7 @@ impl Related<super::proof::Entity> for Entity {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ProofStateEnum)]
 #[into(ProofStateEnum)]
 #[sea_orm(
@@ -48,7 +48,6 @@ impl Related<super::proof::Entity> for Entity {
     enum_name = "proof_request_state_enum"
 )]
 pub enum ProofRequestState {
-    #[default]
     #[sea_orm(string_value = "CREATED")]
     Created,
     #[sea_orm(string_value = "PENDING")]

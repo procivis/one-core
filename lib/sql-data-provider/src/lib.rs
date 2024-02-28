@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
+use backup::BackupProvider;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
 use interaction::InteractionProvider;
 use lvvc::LvvcProvider;
 use migration::{Migrator, MigratorTrait};
+use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::lvvc_repository::LvvcRepository;
 use one_core::repository::{
     claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
@@ -35,6 +37,7 @@ mod list_query;
 mod list_query_generic;
 
 // New implementations
+pub mod backup;
 pub mod claim;
 pub mod claim_schema;
 pub mod credential;
@@ -70,10 +73,11 @@ pub struct DataLayer {
     interaction_repository: Arc<dyn InteractionRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     lvvc_repository: Arc<dyn LvvcRepository>,
+    backup_repository: Arc<dyn BackupRepository>,
 }
 
 impl DataLayer {
-    pub fn build(db: DbConn) -> Self {
+    pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
         let interaction_repository = Arc::new(InteractionProvider { db: db.clone() });
 
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
@@ -137,6 +141,7 @@ impl DataLayer {
         });
 
         let lvvc_repository = Arc::new(LvvcProvider::new(db.clone()));
+        let backup_repository = Arc::new(BackupProvider::new(db.clone(), exportable_storages));
 
         Self {
             organisation_repository,
@@ -153,6 +158,7 @@ impl DataLayer {
             interaction_repository,
             revocation_list_repository,
             lvvc_repository,
+            backup_repository,
         }
     }
 }
@@ -197,6 +203,9 @@ impl DataRepository for DataLayer {
     }
     fn get_lvvc_repository(&self) -> Arc<dyn LvvcRepository> {
         self.lvvc_repository.clone()
+    }
+    fn get_backup_repository(&self) -> Arc<dyn BackupRepository> {
+        self.backup_repository.clone()
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    dto::PresentationDefinitionBindingDTO, error::BindingError, utils::into_uuid, OneCoreBinding,
+    dto::PresentationDefinitionBindingDTO, error::BindingError, utils::into_id, OneCoreBinding,
 };
 
 impl OneCoreBinding {
@@ -11,7 +11,7 @@ impl OneCoreBinding {
             let core = self.use_core().await?;
             Ok(core
                 .proof_service
-                .get_proof_presentation_definition(&into_uuid(&proof_id)?)
+                .get_proof_presentation_definition(&into_id(&proof_id)?)
                 .await?
                 .into())
         })

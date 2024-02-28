@@ -1,9 +1,9 @@
-use shared_types::{DidId, EntityId, HistoryId};
+use shared_types::{CredentialId, DidId, EntityId, HistoryId};
 use time::OffsetDateTime;
 
 use crate::model::{
-    common::GetListResponse, credential::CredentialId, credential_schema::CredentialSchemaId,
-    list_filter::ListFilterValue, list_query::ListQuery,
+    common::GetListResponse, credential_schema::CredentialSchemaId, list_filter::ListFilterValue,
+    list_query::ListQuery,
 };
 
 use super::organisation::{Organisation, OrganisationId};
@@ -13,7 +13,7 @@ pub struct History {
     pub id: HistoryId,
     pub created_date: OffsetDateTime,
     pub action: HistoryAction,
-    pub entity_id: EntityId,
+    pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
 
     // Relations
@@ -43,6 +43,7 @@ pub enum HistoryEntityType {
     Proof,
     ProofSchema,
     Organisation,
+    Backup,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

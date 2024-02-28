@@ -85,6 +85,27 @@ dictionary CredentialListItemBindingDTO {
   CredentialRoleBindingDTO role;
 };
 
+dictionary KeyListItemBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  bytes public_key;
+  string key_type;
+  string storage_type;
+};
+
+dictionary DidListItemBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  string did;
+  DidTypeBindingEnum did_type;
+  string did_method;
+  boolean deactivated;
+};
+
 dictionary CredentialDetailBindingDTO {
   string id;
   string created_date;
@@ -233,33 +254,34 @@ dictionary CredentialRevocationCheckResponseBindingDTO {
 };
 
 enum HistoryActionBindingEnum {
-    "Accepted",
-    "Created",
-    "Deactivated",
-    "Deleted",
-    "Issued",
-    "Offered",
-    "Rejected",
-    "Requested",
-    "Revoked",
-    "Pending"
+  "Accepted",
+  "Created",
+  "Deactivated",
+  "Deleted",
+  "Issued",
+  "Offered",
+  "Rejected",
+  "Requested",
+  "Revoked",
+  "Pending"
 };
 
 enum HistoryEntityTypeBindingEnum {
-    "Key",
-    "Did",
-    "Credential",
-    "CredentialSchema",
-    "Proof",
-    "ProofSchema",
-    "Organisation"
+  "Key",
+  "Did",
+  "Credential",
+  "CredentialSchema",
+  "Proof",
+  "ProofSchema",
+  "Organisation",
+  "Backup",
 };
 
 dictionary HistoryListItemBindingDTO {
   string created_date;
   string id;
   HistoryActionBindingEnum action;
-  string entity_id;
+  string? entity_id;
   HistoryEntityTypeBindingEnum entity_type;
   string organisation_id;
 };
@@ -286,18 +308,32 @@ dictionary HistoryListBindingDTO {
 };
 
 enum HistorySearchEnumBindingEnum {
-    "ClaimName",
-    "ClaimValue",
-    "CredentialSchemaName",
-    "IssuerDid",
-    "IssuerName",
-    "VerifierDid",
-    "VerifierName"
+  "ClaimName",
+  "ClaimValue",
+  "CredentialSchemaName",
+  "IssuerDid",
+  "IssuerName",
+  "VerifierDid",
+  "VerifierName"
 };
 
 dictionary HistorySearchBindingDTO {
   string text;
   HistorySearchEnumBindingEnum? type;
+};
+
+dictionary BackupCreateBindingDTO {
+  string file;
+  UnexportableEntitiesBindingDTO unexportable;
+};
+
+dictionary UnexportableEntitiesBindingDTO {
+  sequence<CredentialDetailBindingDTO> credentials;
+  sequence<KeyListItemBindingDTO> keys;
+  sequence<DidListItemBindingDTO> dids;
+  u64 total_credentials;
+  u64 total_keys;
+  u64 total_dids;
 };
 
 interface OneCoreBinding {
@@ -350,7 +386,13 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   sequence<CredentialRevocationCheckResponseBindingDTO> check_revocation(sequence<string> credential_ids);
-  
+
+  [Throws=BindingError]
+  BackupCreateBindingDTO create_backup(string password, string output_path);
+
+  [Throws=BindingError]
+  UnexportableEntitiesBindingDTO backup_info();
+
   [Throws=BindingError]
   HistoryListBindingDTO get_history_list(HistoryListQueryBindingDTO query);
 

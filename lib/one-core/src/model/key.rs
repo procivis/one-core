@@ -1,10 +1,8 @@
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use shared_types::KeyId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::common::{GetListQueryParams, GetListResponse};
-
-pub type KeyId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Key {

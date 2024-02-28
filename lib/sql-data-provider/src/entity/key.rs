@@ -1,15 +1,17 @@
 use sea_orm::entity::prelude::*;
+use shared_types::KeyId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "key")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: KeyId,
 
     pub created_date: OffsetDateTime,
 
     pub last_modified: OffsetDateTime,
+    pub deleted_at: Option<OffsetDateTime>,
 
     pub name: String,
 

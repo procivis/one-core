@@ -225,7 +225,7 @@ async fn test_submit_proof_succeeds() {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: Key {
-                            id: Uuid::new_v4(),
+                            id: Uuid::new_v4().into(),
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
                             public_key: b"public_key".to_vec(),
@@ -263,7 +263,7 @@ async fn test_submit_proof_succeeds() {
         .once()
         .returning(|_, _| Ok(()));
 
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credential()
@@ -375,7 +375,7 @@ async fn test_submit_proof_succeeds() {
 async fn test_submit_proof_repeating_claims() {
     let interaction_id = Uuid::new_v4();
     let proof_id = Uuid::new_v4();
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
     let claim_id = Uuid::new_v4();
     let protocol = "protocol";
 
@@ -396,7 +396,7 @@ async fn test_submit_proof_repeating_claims() {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: Key {
-                            id: Uuid::new_v4(),
+                            id: Uuid::new_v4().into(),
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
                             public_key: b"public_key".to_vec(),
@@ -689,7 +689,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
 
 fn dummy_credential() -> Credential {
     Credential {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),

@@ -1,10 +1,9 @@
 use crate::{
-    model::key::{
-        GetKeyList, GetKeyQuery, KeyRelations, {Key, KeyId},
-    },
+    model::key::{GetKeyList, GetKeyQuery, Key, KeyRelations},
     repository::error::DataLayerError,
 };
 use mockall::*;
+use shared_types::KeyId;
 
 #[derive(Default)]
 struct KeyRepository;

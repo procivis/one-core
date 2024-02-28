@@ -1,10 +1,11 @@
 use one_core::{
-    model::{credential::CredentialId, lvvc::Lvvc},
+    model::lvvc::Lvvc,
     repository::{error::DataLayerError, lvvc_repository::LvvcRepository},
 };
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder,
 };
+use shared_types::CredentialId;
 
 use crate::entity::lvvc;
 
@@ -27,7 +28,7 @@ impl LvvcRepository for LvvcProvider {
         credential_id: CredentialId,
     ) -> Result<Option<Lvvc>, DataLayerError> {
         let model = lvvc::Entity::find()
-            .filter(lvvc::Column::CredentialId.eq(credential_id.to_string()))
+            .filter(lvvc::Column::CredentialId.eq(credential_id))
             .order_by_desc(lvvc::Column::CreatedDate)
             .one(&self.db_conn)
             .await
@@ -41,7 +42,7 @@ impl LvvcRepository for LvvcProvider {
         credential_id: CredentialId,
     ) -> Result<Vec<Lvvc>, DataLayerError> {
         let model = lvvc::Entity::find()
-            .filter(lvvc::Column::CredentialId.eq(credential_id.to_string()))
+            .filter(lvvc::Column::CredentialId.eq(credential_id))
             .all(&self.db_conn)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;

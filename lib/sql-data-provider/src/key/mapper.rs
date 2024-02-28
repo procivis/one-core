@@ -1,6 +1,4 @@
-use std::str::FromStr;
-use uuid::Uuid;
-
+use dto_mapper::convert_inner;
 use migration::SimpleExpr;
 use sea_orm::IntoSimpleExpr;
 
@@ -8,18 +6,15 @@ use crate::entity;
 use one_core::model::key::Key;
 use one_core::model::key::{GetKeyList, SortableKeyColumn};
 use one_core::model::organisation::Organisation;
-use one_core::repository::error::DataLayerError;
 
 use crate::{common::calculate_pages_count, list_query::GetEntityColumn};
 
 pub(super) fn from_model_and_relations(
     value: entity::key::Model,
     organisation: Option<Organisation>,
-) -> Result<Key, DataLayerError> {
-    let id = Uuid::from_str(&value.id)?;
-
-    Ok(Key {
-        id,
+) -> Key {
+    Key {
+        id: value.id,
         created_date: value.created_date,
         last_modified: value.last_modified,
         public_key: value.public_key,
@@ -28,7 +23,7 @@ pub(super) fn from_model_and_relations(
         storage_type: value.storage_type,
         key_type: value.key_type,
         organisation,
-    })
+    }
 }
 
 impl GetEntityColumn for SortableKeyColumn {
@@ -49,23 +44,16 @@ pub(crate) fn create_list_response(
     items_count: u64,
 ) -> GetKeyList {
     GetKeyList {
-        values: keys
-            .into_iter()
-            .filter_map(|item| item.try_into().ok())
-            .collect(),
+        values: convert_inner(keys),
         total_pages: calculate_pages_count(items_count, limit),
         total_items: items_count,
     }
 }
 
-impl TryFrom<entity::key::Model> for Key {
-    type Error = DataLayerError;
-
-    fn try_from(value: entity::key::Model) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id)?;
-
-        Ok(Self {
-            id,
+impl From<entity::key::Model> for Key {
+    fn from(value: entity::key::Model) -> Self {
+        Self {
+            id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
             public_key: value.public_key,
@@ -74,6 +62,6 @@ impl TryFrom<entity::key::Model> for Key {
             storage_type: value.storage_type,
             key_type: value.key_type,
             organisation: None,
-        })
+        }
     }
 }

@@ -1,6 +1,6 @@
 use super::InternalKeyProvider;
 use crate::crypto::signer::MockSigner;
-use crate::model::key::{Key, KeyId};
+use crate::model::key::Key;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::{GeneratedKey, MockKeyAlgorithm};
 use crate::provider::key_storage::internal::Params;
@@ -33,7 +33,7 @@ async fn test_internal_generate() {
         Params { encryption: None },
     );
 
-    let result = provider.generate(&KeyId::new_v4(), "").await.unwrap();
+    let result = provider.generate(&Uuid::new_v4().into(), "").await.unwrap();
     assert_eq!(3, result.key_reference.len());
 }
 
@@ -63,7 +63,7 @@ async fn test_internal_generate_with_encryption() {
         },
     );
 
-    let result = provider.generate(&KeyId::new_v4(), "").await.unwrap();
+    let result = provider.generate(&Uuid::new_v4().into(), "").await.unwrap();
     assert_eq!(result.key_reference.len(), 39);
 }
 
@@ -105,10 +105,10 @@ async fn test_internal_sign_with_encryption() {
         },
     );
 
-    let generated_key = provider.generate(&KeyId::new_v4(), "").await.unwrap();
+    let generated_key = provider.generate(&Uuid::new_v4().into(), "").await.unwrap();
 
     let key = Key {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         public_key: generated_key.public_key,

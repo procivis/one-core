@@ -210,7 +210,7 @@ async fn test_create_did_jwk_success() {
             &Uuid::new_v4().into(),
             &None,
             &vec![Key {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 public_key: b"public".into(),

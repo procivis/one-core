@@ -1,5 +1,5 @@
 use crate::{
-    error::BindingError, utils::into_uuid, CredentialListBindingDTO, CredentialListQueryBindingDTO,
+    error::BindingError, utils::into_id, CredentialListBindingDTO, CredentialListQueryBindingDTO,
     OneCoreBinding,
 };
 use one_core::{
@@ -17,7 +17,7 @@ impl OneCoreBinding {
 
             let condition = {
                 let organisation =
-                    CredentialFilterValue::OrganisationId(into_uuid(&query.organisation_id)?)
+                    CredentialFilterValue::OrganisationId(into_id(&query.organisation_id)?)
                         .condition();
 
                 let role = query
@@ -28,7 +28,7 @@ impl OneCoreBinding {
                     Some(ids) => {
                         let ids = ids
                             .iter()
-                            .map(|id| into_uuid(id))
+                            .map(|id| into_id(id))
                             .collect::<Result<Vec<_>, _>>()?;
                         Some(CredentialFilterValue::CredentialIds(ids))
                     }

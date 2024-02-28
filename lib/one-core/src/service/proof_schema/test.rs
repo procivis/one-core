@@ -200,7 +200,7 @@ async fn test_get_proof_schema_list_failure() {
     proof_schema_repository
         .expect_get_proof_schema_list()
         .times(1)
-        .returning(|_| Err(DataLayerError::Db(anyhow::anyhow!("test"))));
+        .returning(|_| Err(anyhow::anyhow!("test").into()));
 
     let service = setup_service(
         proof_schema_repository,

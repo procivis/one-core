@@ -17,6 +17,8 @@ use one_core::service::credential::dto::CredentialStateEnum;
 use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
 use one_core::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use serde::{Deserialize, Serialize};
+use shared_types::CredentialId;
+use shared_types::KeyId;
 use time::OffsetDateTime;
 use utoipa::IntoParams;
 use utoipa::ToSchema;
@@ -139,7 +141,7 @@ pub struct CredentialsFilterQueryParamsRest {
     #[param(inline, rename = "exact[]")]
     pub exact: Option<Vec<ExactColumn>>,
     #[param(inline, rename = "ids[]")]
-    pub ids: Option<Vec<Uuid>>,
+    pub ids: Option<Vec<CredentialId>>,
 }
 
 pub type GetCredentialQuery =
@@ -162,7 +164,7 @@ pub enum SortableCredentialColumnRestEnum {
 pub struct CreateCredentialRequestRestDTO {
     pub credential_schema_id: Uuid,
     pub issuer_did: Uuid,
-    pub issuer_key: Option<Uuid>,
+    pub issuer_key: Option<KeyId>,
     pub transport: String,
     #[into(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
@@ -181,7 +183,7 @@ pub struct CredentialRequestClaimRestDTO {
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialRevocationCheckRequestRestDTO {
-    pub credential_ids: Vec<Uuid>,
+    pub credential_ids: Vec<CredentialId>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

@@ -1,17 +1,20 @@
 use dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
+use serde::Deserialize;
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 
 use one_core::model::credential::CredentialState as ModelCredentialState;
 use one_core::model::credential::CredentialStateEnum as ModelCredentialStateEnum;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Into)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Into, Deserialize)]
 #[into(ModelCredentialState)]
 #[sea_orm(table_name = "credential_state")]
 pub struct Model {
     #[into(skip)]
     #[sea_orm(primary_key, auto_increment = false)]
-    pub credential_id: String,
+    pub credential_id: CredentialId,
+    #[serde(with = "time::serde::rfc3339")]
     #[sea_orm(primary_key, auto_increment = false)]
     pub created_date: OffsetDateTime,
 
@@ -38,12 +41,14 @@ impl Related<super::credential::Entity> for Entity {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From, Deserialize,
+)]
 #[from(ModelCredentialStateEnum)]
 #[into(ModelCredentialStateEnum)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum CredentialState {
-    #[default]
     #[sea_orm(string_value = "CREATED")]
     Created,
     #[sea_orm(string_value = "PENDING")]

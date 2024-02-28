@@ -1,7 +1,12 @@
+use std::collections::HashSet;
+use std::fmt::Debug;
+use std::hash::Hash;
+
 use one_core::model::credential::{CredentialState, CredentialStateEnum};
 use one_core::model::interaction::InteractionId;
+use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
-use shared_types::{DidId, DidValue, EntityId, HistoryId, OrganisationId};
+use shared_types::{CredentialId, DidId, DidValue, EntityId, HistoryId, KeyId, OrganisationId};
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -31,11 +36,11 @@ pub async fn insert_credential(
     protocol: &str,
     did_id: DidId,
     deleted_at: Option<OffsetDateTime>,
-) -> Result<String, DbErr> {
+) -> Result<CredentialId, DbErr> {
     let now = OffsetDateTime::now_utc();
 
     let credential = credential::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(Uuid::new_v4().into()),
         credential_schema_id: Set(credential_schema_id.to_string()),
         created_date: Set(now),
         last_modified: Set(now),
@@ -55,7 +60,7 @@ pub async fn insert_credential(
     .await?;
 
     credential_state::ActiveModel {
-        credential_id: Set(credential.id.to_owned()),
+        credential_id: Set(credential.id),
         created_date: Set(now),
         state: Set(state.into()),
     }
@@ -67,11 +72,11 @@ pub async fn insert_credential(
 
 pub async fn insert_credential_state_to_database(
     database: &DatabaseConnection,
-    credential_id: &str,
+    credential_id: CredentialId,
     state: CredentialState,
 ) -> Result<(), DbErr> {
     credential_state::ActiveModel {
-        credential_id: Set(credential_id.to_owned()),
+        credential_id: Set(credential_id),
         created_date: Set(state.created_date),
         state: Set(state.state.into()),
     }
@@ -106,14 +111,14 @@ pub async fn insert_credential_schema_to_database(
 
 pub async fn insert_many_claims_to_database(
     database: &DatabaseConnection,
-    claims: &[(Uuid, Uuid, &str, Vec<u8>)],
+    claims: &[(Uuid, Uuid, CredentialId, Vec<u8>)],
 ) -> Result<(), DbErr> {
     let models =
         claims.iter().map(
             |(id, claim_schema_id, credential_id, value)| claim::ActiveModel {
                 id: Set(id.to_string()),
                 claim_schema_id: Set(claim_schema_id.to_string()),
-                credential_id: Set(credential_id.to_string()),
+                credential_id: Set(*credential_id),
                 value: Set(value.to_owned()),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
@@ -165,7 +170,7 @@ pub async fn insert_proof_request_to_database(
     verifier_did_id: DidId,
     holder_did_id: Option<DidId>,
     proof_schema_id: &str,
-    verifier_key_id: String,
+    verifier_key_id: KeyId,
     interaction_id: Option<String>,
 ) -> Result<String, DbErr> {
     let proof = proof::ActiveModel {
@@ -296,14 +301,14 @@ pub async fn insert_key_to_database(
     key_reference: Vec<u8>,
     did_id: Option<DidId>,
     organisation_id: &str,
-) -> Result<String, DbErr> {
+) -> Result<KeyId, DbErr> {
     let id = did_id
         .as_ref()
-        .map(ToString::to_string)
-        .unwrap_or_else(|| Uuid::new_v4().to_string());
+        .map(|id| (*id).into())
+        .unwrap_or_else(Uuid::new_v4);
 
     let key = key::ActiveModel {
-        id: Set(id),
+        id: Set(id.into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         name: Set("test_key".to_string()),
@@ -312,6 +317,7 @@ pub async fn insert_key_to_database(
         storage_type: Set("INTERNAL".to_string()),
         key_type: Set(key_type),
         organisation_id: Set(organisation_id.to_string()),
+        deleted_at: NotSet,
     }
     .insert(database)
     .await?;
@@ -328,7 +334,7 @@ pub async fn get_proof_schema_with_id(
 
 pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: &str) -> DataLayer {
     let db_conn = db_conn(database_url).await.unwrap();
-    DataLayer::build(db_conn)
+    DataLayer::build(db_conn, vec![])
 }
 
 pub async fn insert_did_key(
@@ -375,6 +381,7 @@ pub async fn insert_did(
         method: Set(method.into()),
         organisation_id: Set(organisation_id.to_owned()),
         deactivated: Set(deactivated.into().unwrap_or_default()),
+        deleted_at: NotSet,
     }
     .insert(database)
     .await?;
@@ -384,13 +391,13 @@ pub async fn insert_did(
 
 pub async fn insert_key_did(
     database: &DatabaseConnection,
-    did_id: &str,
-    key_id: &str,
+    did_id: DidId,
+    key_id: KeyId,
     role: KeyRole,
 ) -> Result<(), DbErr> {
     key_did::ActiveModel {
-        did_id: Set(did_id.to_string()),
-        key_id: Set(key_id.to_string()),
+        did_id: Set(did_id),
+        key_id: Set(key_id),
         role: Set(role),
     }
     .insert(database)
@@ -450,7 +457,7 @@ pub async fn insert_history(
         id: Set(Uuid::new_v4().into()),
         created_date: Set(now),
         action: Set(action),
-        entity_id: Set(entity_id),
+        entity_id: Set(Some(entity_id)),
         entity_type: Set(entity_type),
         organisation_id: Set(organisation_id),
     }
@@ -458,6 +465,16 @@ pub async fn insert_history(
     .await?;
 
     Ok(model.id)
+}
+
+pub fn assert_eq_unordered<T: Hash + Eq + Debug, K: Into<T>>(
+    left: impl IntoIterator<Item = T>,
+    right: impl IntoIterator<Item = K>,
+) {
+    assert_eq!(
+        left.into_iter().collect::<HashSet<_>>(),
+        right.into_iter().map(Into::into).collect::<HashSet<_>>(),
+    );
 }
 
 #[test]

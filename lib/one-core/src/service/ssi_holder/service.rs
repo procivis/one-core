@@ -400,7 +400,11 @@ impl SSIHolderService {
                         state: CredentialStateEnum::Accepted,
                     }),
                     credential: Some(issuer_response.credential.bytes().collect()),
-                    ..Default::default()
+                    holder_did_id: None,
+                    issuer_did_id: None,
+                    interaction: None,
+                    key: None,
+                    redirect_uri: None,
                 })
                 .await?;
 
@@ -460,7 +464,12 @@ impl SSIHolderService {
                         created_date: OffsetDateTime::now_utc(),
                         state: CredentialStateEnum::Rejected,
                     }),
-                    ..Default::default()
+                    credential: None,
+                    holder_did_id: None,
+                    issuer_did_id: None,
+                    interaction: None,
+                    key: None,
+                    redirect_uri: None,
                 })
                 .await?;
 

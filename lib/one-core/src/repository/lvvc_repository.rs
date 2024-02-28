@@ -1,7 +1,6 @@
-use crate::model::credential::CredentialId;
-use crate::model::lvvc::Lvvc;
-
 use super::error::DataLayerError;
+use crate::model::lvvc::Lvvc;
+use shared_types::CredentialId;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
