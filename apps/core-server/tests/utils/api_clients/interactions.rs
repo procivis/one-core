@@ -1,5 +1,6 @@
 use one_core::model::claim::Claim;
 use serde_json::json;
+use shared_types::CredentialId;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -37,7 +38,7 @@ impl InteractionsApi {
     pub async fn presentation_submit(
         &self,
         interaction_id: Uuid,
-        credential_id: Uuid,
+        credential_id: CredentialId,
         claims_id: Vec<Claim>,
     ) -> Response {
         let body = json!({

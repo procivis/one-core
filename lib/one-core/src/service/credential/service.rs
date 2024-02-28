@@ -1,4 +1,6 @@
+use shared_types::CredentialId;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::{
     common_mapper::list_response_try_into,
@@ -11,8 +13,8 @@ use crate::{
         claim_schema::ClaimSchemaRelations,
         common::EntityShareResponseDTO,
         credential::{
-            self, Credential, CredentialId, CredentialRelations, CredentialState,
-            CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
+            self, Credential, CredentialRelations, CredentialState, CredentialStateEnum,
+            CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
         did::{DidRelations, DidType, KeyRole},
@@ -106,7 +108,7 @@ impl CredentialService {
             &self.config,
         )?;
 
-        let credential_id = CredentialId::new_v4();
+        let credential_id = Uuid::new_v4().into();
         let claims = claims_from_create_request(
             credential_id,
             request.claim_values.clone(),
@@ -350,7 +352,12 @@ impl CredentialService {
                     created_date: now,
                     state: CredentialStateEnum::Revoked,
                 }),
-                ..Default::default()
+                credential: None,
+                holder_did_id: None,
+                issuer_did_id: None,
+                interaction: None,
+                key: None,
+                redirect_uri: None,
             })
             .await?;
 
@@ -502,7 +509,12 @@ impl CredentialService {
                             created_date: OffsetDateTime::now_utc(),
                             state: CredentialStateEnum::Revoked,
                         }),
-                        ..Default::default()
+                        credential: None,
+                        holder_did_id: None,
+                        issuer_did_id: None,
+                        interaction: None,
+                        key: None,
+                        redirect_uri: None,
                     })
                     .await?;
 
@@ -541,7 +553,12 @@ impl CredentialService {
                             created_date: now,
                             state: credential::CredentialStateEnum::Pending,
                         }),
-                        ..Default::default()
+                        credential: None,
+                        holder_did_id: None,
+                        issuer_did_id: None,
+                        interaction: None,
+                        key: None,
+                        redirect_uri: None,
                     })
                     .await?;
             }

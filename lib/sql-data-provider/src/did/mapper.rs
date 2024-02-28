@@ -5,6 +5,7 @@ use one_core::{
 };
 use sea_orm::{
     sea_query::{IntoCondition, SimpleExpr},
+    ActiveValue::NotSet,
     ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set,
 };
 
@@ -140,6 +141,7 @@ impl TryFrom<Did> for did::ActiveModel {
             method: Set(value.did_method),
             organisation_id: Set(organisation.id.to_string()),
             deactivated: Set(value.deactivated),
+            deleted_at: NotSet,
         })
     }
 }

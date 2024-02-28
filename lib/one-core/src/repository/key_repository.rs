@@ -1,5 +1,7 @@
+use shared_types::KeyId;
+
 use super::error::DataLayerError;
-use crate::model::key::{GetKeyList, GetKeyQuery, Key, KeyId, KeyRelations};
+use crate::model::key::{GetKeyList, GetKeyQuery, Key, KeyRelations};
 
 #[async_trait::async_trait]
 pub trait KeyRepository: Send + Sync {

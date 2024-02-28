@@ -124,8 +124,14 @@ async fn test_azure_vault_generate() {
     generate_key_mock(&mock_server, 2).await;
 
     let vault = AzureVaultKeyProvider::new(get_params(mock_server.uri()), get_crypto(vec![]));
-    vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
-    vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
+    vault
+        .generate(&Uuid::new_v4().into(), "ES256")
+        .await
+        .unwrap();
+    vault
+        .generate(&Uuid::new_v4().into(), "ES256")
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -136,8 +142,14 @@ async fn test_azure_vault_generate_expired_key_causes_second_token_request() {
     generate_key_mock(&mock_server, 2).await;
 
     let vault = AzureVaultKeyProvider::new(get_params(mock_server.uri()), get_crypto(vec![]));
-    vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
-    vault.generate(&Uuid::new_v4(), "ES256").await.unwrap();
+    vault
+        .generate(&Uuid::new_v4().into(), "ES256")
+        .await
+        .unwrap();
+    vault
+        .generate(&Uuid::new_v4().into(), "ES256")
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -161,7 +173,7 @@ async fn test_azure_vault_sign() {
     let result = vault
         .sign(
             &Key {
-                id: Default::default(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 public_key: vec![],

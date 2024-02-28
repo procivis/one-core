@@ -9,19 +9,18 @@ use one_core::service::did::dto::{
     DidResponseKeysDTO,
 };
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from("one_core::model::did::DidType")]
 #[into("one_core::model::did::DidType")]
 pub enum DidType {
-    #[default]
     Remote,
     Local,
 }
@@ -108,11 +107,11 @@ pub struct CreateDidRequestRestDTO {
 #[into(CreateDidRequestKeysDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestKeysRestDTO {
-    pub authentication: Vec<Uuid>,
-    pub assertion_method: Vec<Uuid>,
-    pub key_agreement: Vec<Uuid>,
-    pub capability_invocation: Vec<Uuid>,
-    pub capability_delegation: Vec<Uuid>,
+    pub authentication: Vec<KeyId>,
+    pub assertion_method: Vec<KeyId>,
+    pub key_agreement: Vec<KeyId>,
+    pub capability_invocation: Vec<KeyId>,
+    pub capability_delegation: Vec<KeyId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

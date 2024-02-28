@@ -61,7 +61,7 @@ impl IntoFilterCondition for HistoryFilterValue {
                     .and(history::Column::EntityType.eq(history::HistoryEntityType::Did)))
                 .into_condition(),
             HistoryFilterValue::CredentialId(credential_id) => history::Column::EntityId
-                .eq(credential_id.to_string())
+                .eq(credential_id)
                 .and(history::Column::EntityType.eq(history::HistoryEntityType::Credential))
                 .or(history::Column::EntityId.in_subquery(
                     Query::select()
@@ -72,7 +72,7 @@ impl IntoFilterCondition for HistoryFilterValue {
                             Expr::col((proof_claim::Entity, proof_claim::Column::ClaimId))
                                 .eq(Expr::col((claim::Entity, claim::Column::Id))),
                         )
-                        .cond_where(claim::Column::CredentialId.eq(credential_id.to_string()))
+                        .cond_where(claim::Column::CredentialId.eq(credential_id))
                         .to_owned(),
                 ))
                 .into_condition(),

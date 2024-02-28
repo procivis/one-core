@@ -132,7 +132,7 @@ fn history_event(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action,
-        entity_id,
+        entity_id: entity_id.into(),
         entity_type,
         organisation,
     }

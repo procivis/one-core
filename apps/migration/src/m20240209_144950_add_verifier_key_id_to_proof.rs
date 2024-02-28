@@ -275,7 +275,7 @@ async fn get_verifier_key_id(
     Ok((verifier_did_id, verifier_key_id))
 }
 
-async fn drop_and_rename_tables(
+pub async fn drop_and_rename_tables(
     manager: &SchemaManager<'_>,
     tables: Vec<(TableRef, TableRef)>,
 ) -> Result<(), DbErr> {
@@ -290,7 +290,7 @@ async fn drop_and_rename_tables(
     Ok(())
 }
 
-async fn copy_data_to_new_tables(
+pub async fn copy_data_to_new_tables(
     db: &SchemaManagerConnection<'_>,
     tables: Vec<(&str, &str)>,
 ) -> Result<(), DbErr> {

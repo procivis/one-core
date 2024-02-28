@@ -1,11 +1,14 @@
 use crate::error::NativeKeyStorageError;
 use crate::mapper::serialize_config_entity;
-use crate::utils::TimestampFormat;
+use crate::utils::{into_id, TimestampFormat};
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into, TryInto};
+use one_core::service::backup::dto::{BackupCreateResponseDTO, UnexportableEntitiesResponseDTO};
 use one_core::service::credential::dto::CredentialRole;
 use one_core::service::credential_schema::dto::GetCredentialSchemaListResponseDTO;
+use one_core::service::did::dto::DidListItemResponseDTO;
 use one_core::service::error::ServiceError;
+use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
     model::{
@@ -27,11 +30,10 @@ use one_core::{
             CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
         },
         credential_schema::dto::CredentialSchemaListItemResponseDTO,
-        history::dto::{GetHistoryListResponseDTO, HistoryResponseDTO},
+        history::dto::GetHistoryListResponseDTO,
     },
 };
 use std::collections::HashMap;
-use std::str::FromStr;
 
 #[derive(From)]
 #[from(ConfigDTO)]
@@ -54,7 +56,7 @@ pub struct ConfigBindingDTO {
     pub key_storage: HashMap<String, String>,
 }
 
-#[derive(From)]
+#[derive(Debug, Clone, From)]
 #[from(CredentialStateEnum)]
 pub enum CredentialStateBindingEnum {
     Created,
@@ -68,7 +70,7 @@ pub enum CredentialStateBindingEnum {
 
 pub type VersionBindingDTO = one_core::Version;
 
-#[derive(Into, From, Clone)]
+#[derive(Debug, Clone, Into, From)]
 #[from(CredentialRole)]
 #[into(CredentialRole)]
 pub enum CredentialRoleBindingDTO {
@@ -109,6 +111,7 @@ pub struct CredentialListBindingDTO {
     pub total_items: u64,
 }
 
+#[derive(Debug, Clone)]
 pub struct CredentialDetailBindingDTO {
     pub id: String,
     pub created_date: String,
@@ -136,7 +139,39 @@ pub struct CredentialListItemBindingDTO {
     pub role: CredentialRoleBindingDTO,
 }
 
-#[derive(From)]
+#[derive(Debug, Clone, From)]
+#[from(KeyListItemResponseDTO)]
+pub struct KeyListItemBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    pub public_key: Vec<u8>,
+    pub key_type: String,
+    pub storage_type: String,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(DidListItemResponseDTO)]
+pub struct DidListItemBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub did: String,
+    pub did_type: DidTypeBindingEnum,
+    pub did_method: String,
+    pub deactivated: bool,
+}
+
+#[derive(Debug, Clone, From)]
 #[from(CredentialSchemaListItemResponseDTO)]
 pub struct CredentialSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
@@ -150,6 +185,7 @@ pub struct CredentialSchemaBindingDTO {
     pub revocation_method: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct ClaimBindingDTO {
     pub id: String,
     pub key: String,
@@ -190,7 +226,7 @@ pub struct ProofRequestClaimBindingDTO {
 #[derive(TryInto)]
 #[try_into(T = PresentationSubmitCredentialRequestDTO, Error = ServiceError)]
 pub struct PresentationSubmitCredentialRequestBindingDTO {
-    #[try_into(with_fn_ref = "uuid::Uuid::from_str")]
+    #[try_into(with_fn_ref = into_id)]
     pub credential_id: String,
     #[try_into(infallible)]
     pub submit_claims: Vec<String>,
@@ -262,8 +298,9 @@ pub struct KeyRequestBindingDTO {
     pub storage_params: HashMap<String, String>,
 }
 
-#[derive(Into)]
+#[derive(Debug, Clone, Into, From)]
 #[into(DidType)]
+#[from(DidType)]
 pub enum DidTypeBindingEnum {
     Local,
     Remote,
@@ -289,7 +326,7 @@ pub struct DidRequestKeysBindingDTO {
 #[derive(From)]
 #[from(CredentialRevocationCheckResponseDTO)]
 pub struct CredentialRevocationCheckResponseBindingDTO {
-    #[from(with_fn_ref = "uuid::Uuid::to_string")]
+    #[from(with_fn_ref = "ToString::to_string")]
     pub credential_id: String,
     pub status: CredentialStateBindingEnum,
     pub success: bool,
@@ -342,20 +379,15 @@ pub enum HistoryEntityTypeBindingEnum {
     Proof,
     ProofSchema,
     Organisation,
+    Backup,
 }
 
-#[derive(From)]
-#[from(HistoryResponseDTO)]
 pub struct HistoryListItemBindingDTO {
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub created_date: String,
-    #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
+    pub created_date: String,
     pub action: HistoryActionBindingEnum,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub entity_id: String,
+    pub entity_id: Option<String>,
     pub entity_type: HistoryEntityTypeBindingEnum,
-    #[from(with_fn_ref = "ToString::to_string")]
     pub organisation_id: String,
 }
 
@@ -398,4 +430,25 @@ pub enum HistorySearchEnumBindingEnum {
 pub struct HistorySearchBindingDTO {
     pub text: String,
     pub r#type: Option<HistorySearchEnumBindingEnum>,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(BackupCreateResponseDTO)]
+pub struct BackupCreateBindingDTO {
+    pub file: String,
+    pub unexportable: UnexportableEntitiesBindingDTO,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(UnexportableEntitiesResponseDTO)]
+pub struct UnexportableEntitiesBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub credentials: Vec<CredentialDetailBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub keys: Vec<KeyListItemBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub dids: Vec<DidListItemBindingDTO>,
+    pub total_credentials: u64,
+    pub total_keys: u64,
+    pub total_dids: u64,
 }

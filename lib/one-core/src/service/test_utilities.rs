@@ -12,6 +12,7 @@ use crate::{
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidType},
         interaction::Interaction,
+        key::Key,
         organisation::Organisation,
         proof::Proof,
     },
@@ -101,7 +102,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
 
 pub fn dummy_credential() -> Credential {
     let claim_schema_id = Uuid::new_v4();
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
 
     Credential {
         id: credential_id,
@@ -199,5 +200,27 @@ pub fn dummy_proof() -> Proof {
         holder_did: None,
         verifier_key: None,
         interaction: None,
+    }
+}
+
+pub fn dummy_key() -> Key {
+    Key {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        public_key: vec![],
+        name: "dummy".into(),
+        key_reference: vec![],
+        storage_type: "foo".into(),
+        key_type: "bar".into(),
+        organisation: None,
+    }
+}
+
+pub fn dummy_organisation() -> Organisation {
+    Organisation {
+        id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
     }
 }

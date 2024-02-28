@@ -347,7 +347,7 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
                                 "purpose": null,
                                 "required": true,
                                 "keyMap": {
-                                    credential_1.id: "first_f0"
+                                    credential_1.id.to_string(): "first_f0"
                                 }
                             }
                         ],
@@ -364,7 +364,7 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
                                 "purpose": null,
                                 "required": true,
                                 "keyMap": {
-                                    credential_2.id: "second_f0"
+                                    credential_2.id.to_string(): "second_f0"
                                 }
                             }
                         ],
@@ -784,7 +784,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                                 "purpose": null,
                                 "required": true,
                                 "keyMap": {
-                                    credential_1.id: "first_f0"
+                                    credential_1.id.to_string(): "first_f0"
                                 }
                             },
                             {
@@ -793,7 +793,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                                 "purpose": null,
                                 "required": false,
                                 "keyMap": {
-                                    credential_1.id: "first_f1"
+                                    credential_1.id.to_string(): "first_f1"
                                 }
                             }
                         ],
@@ -810,7 +810,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                                 "purpose": null,
                                 "required": true,
                                 "keyMap": {
-                                    credential_2.id: "second_f0"
+                                    credential_2.id.to_string(): "second_f0"
                                 }
                             },
                             {
@@ -819,7 +819,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                                 "purpose": null,
                                 "required": true,
                                 "keyMap": {
-                                    credential_2.id: "second_f1"
+                                    credential_2.id.to_string(): "second_f1"
                                 }
                             }
                         ],

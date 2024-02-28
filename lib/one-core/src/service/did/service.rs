@@ -3,7 +3,7 @@ use std::{
     ops::Deref,
 };
 
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -20,7 +20,7 @@ use crate::{
     config::validator::did::validate_did_method,
     model::{
         did::{DidListQuery, DidRelations, UpdateDidRequest},
-        key::{KeyId, KeyRelations},
+        key::KeyRelations,
         organisation::OrganisationRelations,
     },
     service::{did::validator::validate_request_amount_of_keys, error::ServiceError},

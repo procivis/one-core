@@ -13,6 +13,7 @@ use one_core::model::{
 use one_core::repository::mock::key_repository::MockKeyRepository;
 use one_core::repository::mock::organisation_repository::MockOrganisationRepository;
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
+use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use shared_types::{DidId, DidValue};
 use time::macros::datetime;
@@ -61,7 +62,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
             last_modified: get_dummy_date(),
         },
         key: Key {
-            id: Uuid::parse_str(&key_id).unwrap(),
+            id: key_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             public_key: vec![],
@@ -106,14 +107,9 @@ async fn setup_with_did(repositories: Repositories) -> TestSetupWithDid {
     .await
     .unwrap();
 
-    insert_key_did(
-        &db,
-        &did_id.to_string(),
-        &key.id.to_string(),
-        KeyRole::Authentication.into(),
-    )
-    .await
-    .unwrap();
+    insert_key_did(&db, *did_id, key.id, KeyRole::Authentication.into())
+        .await
+        .unwrap();
 
     TestSetupWithDid {
         provider,
@@ -588,6 +584,7 @@ async fn test_get_did_list_sorting() {
         method: Set("KEY".to_string()),
         organisation_id: Set(organisation.id.to_string()),
         deactivated: Set(false),
+        deleted_at: NotSet,
     }
     .insert(&db)
     .await
@@ -603,6 +600,7 @@ async fn test_get_did_list_sorting() {
         method: Set("KEY".to_string()),
         organisation_id: Set(organisation.id.to_string()),
         deactivated: Set(false),
+        deleted_at: NotSet,
     }
     .insert(&db)
     .await
@@ -772,6 +770,7 @@ async fn test_get_did_list_complex_filter_condition() {
         method: Set("KEY".to_string()),
         organisation_id: Set(organisation.id.to_string()),
         deactivated: Set(false),
+        deleted_at: NotSet,
     }
     .insert(&db)
     .await
@@ -787,6 +786,7 @@ async fn test_get_did_list_complex_filter_condition() {
         method: Set("KEY".to_string()),
         organisation_id: Set(organisation.id.to_string()),
         deactivated: Set(false),
+        deleted_at: NotSet,
     }
     .insert(&db)
     .await

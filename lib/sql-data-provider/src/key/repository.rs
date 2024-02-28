@@ -4,13 +4,15 @@ use crate::key::KeyProvider;
 use crate::list_query::SelectWithListQuery;
 use crate::mapper::to_data_layer_error;
 use autometrics::autometrics;
-use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyId, KeyRelations};
+use one_core::model::key::{GetKeyList, GetKeyQuery, Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::key_repository::KeyRepository;
+use sea_orm::ActiveValue::NotSet;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
 };
+use shared_types::KeyId;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -51,7 +53,7 @@ impl KeyRepository for KeyProvider {
             .to_string();
 
         key::ActiveModel {
-            id: Set(request.id.to_string()),
+            id: Set(request.id),
             created_date: Set(request.created_date),
             last_modified: Set(request.last_modified),
             name: Set(request.name),
@@ -60,6 +62,7 @@ impl KeyRepository for KeyProvider {
             storage_type: Set(request.storage_type),
             key_type: Set(request.key_type),
             organisation_id: Set(organisation_id),
+            deleted_at: NotSet,
         }
         .insert(&self.db)
         .await
@@ -73,7 +76,8 @@ impl KeyRepository for KeyProvider {
         id: &KeyId,
         relations: &KeyRelations,
     ) -> Result<Option<Key>, DataLayerError> {
-        let key = key::Entity::find_by_id(id.to_string())
+        let key = key::Entity::find_by_id(id)
+            .filter(key::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(|e| {
@@ -87,13 +91,14 @@ impl KeyRepository for KeyProvider {
 
         let organisation = self.get_organisation(&key, &relations.organisation).await?;
 
-        let key = from_model_and_relations(key, organisation)?;
+        let key = from_model_and_relations(key, organisation);
 
         Ok(Some(key))
     }
 
     async fn get_keys(&self, ids: &[KeyId]) -> Result<Vec<Key>, DataLayerError> {
         let keys = key::Entity::find()
+            .filter(key::Column::DeletedAt.is_null())
             .filter(key::Column::Id.is_in(ids.iter().map(ToString::to_string)))
             .all(&self.db)
             .await
@@ -102,15 +107,17 @@ impl KeyRepository for KeyProvider {
                 DataLayerError::Db(e.into())
             })?;
 
-        keys.into_iter()
+        Ok(keys
+            .into_iter()
             .map(|key| from_model_and_relations(key, None))
-            .collect()
+            .collect())
     }
 
     async fn get_key_list(&self, query_params: GetKeyQuery) -> Result<GetKeyList, DataLayerError> {
         let limit: u64 = query_params.page_size as u64;
 
         let query = key::Entity::find()
+            .filter(key::Column::DeletedAt.is_null())
             .with_organisation_id(&query_params, &key::Column::OrganisationId)
             .with_ids(&query_params, &key::Column::Id)
             .with_list_query(&query_params, &Some(vec![key::Column::Name]))

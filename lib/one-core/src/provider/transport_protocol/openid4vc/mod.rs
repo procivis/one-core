@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::json;
+use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -38,8 +39,8 @@ use crate::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
-            CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
+            Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
+            CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
@@ -459,7 +460,11 @@ impl TransportProtocol for OpenID4VC {
                 id: credential.id,
                 issuer_did_id: Some(issuer_did_id),
                 redirect_uri: Some(result.redirect_uri.to_owned()),
-                ..Default::default()
+                credential: None,
+                holder_did_id: None,
+                state: None,
+                interaction: None,
+                key: None,
             })
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
@@ -692,7 +697,12 @@ async fn update_credentials_interaction(
     let update = UpdateCredentialRequest {
         id: credential_id.to_owned(),
         interaction: Some(interaction_id.to_owned()),
-        ..Default::default()
+        credential: None,
+        holder_did_id: None,
+        issuer_did_id: None,
+        state: None,
+        key: None,
+        redirect_uri: None,
     };
 
     credential_repository
@@ -865,7 +875,7 @@ async fn handle_credential_invitation(
     .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id;
 
-    let credential_id = CredentialId::new_v4();
+    let credential_id = Uuid::new_v4().into();
     let organisation = holder_did
         .organisation
         .as_ref()

@@ -97,7 +97,7 @@ async fn test_get_did_exists() {
         keys: Some(vec![RelatedKey {
             role: KeyRole::Authentication,
             key: Key {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 public_key: vec![],
@@ -240,7 +240,7 @@ async fn test_create_did_success() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
-            authentication: vec![key_id],
+            authentication: vec![key_id.into()],
             assertion_method: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],
@@ -252,7 +252,7 @@ async fn test_create_did_success() {
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_keys().once().returning(move |_| {
         Ok(vec![Key {
-            id: key_id,
+            id: key_id.into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             public_key: b"public".to_vec(),
@@ -328,7 +328,7 @@ async fn test_create_did_value_already_exists() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
-            authentication: vec![key_id],
+            authentication: vec![key_id.into()],
             assertion_method: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],
@@ -340,7 +340,7 @@ async fn test_create_did_value_already_exists() {
     let mut key_repository = MockKeyRepository::default();
     key_repository.expect_get_keys().once().returning(move |_| {
         Ok(vec![Key {
-            id: key_id,
+            id: key_id.into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             public_key: b"public".to_vec(),
@@ -413,7 +413,7 @@ async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
-            authentication: vec![Uuid::new_v4(), Uuid::new_v4()],
+            authentication: vec![Uuid::new_v4().into(), Uuid::new_v4().into()],
             assertion_method: vec![],
             key_agreement: vec![],
             capability_invocation: vec![],

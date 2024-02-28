@@ -1,7 +1,6 @@
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use super::credential::CredentialId;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Lvvc {

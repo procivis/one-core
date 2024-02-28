@@ -90,7 +90,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
     };
 
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
     Credential {
         id: credential_id,
         created_date: now,
@@ -125,7 +125,7 @@ fn generic_credential() -> Credential {
             keys: Some(vec![RelatedKey {
                 role: KeyRole::AssertionMethod,
                 key: Key {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     public_key: vec![],
@@ -163,7 +163,7 @@ fn generic_credential_list_entity() -> Credential {
     let now = OffsetDateTime::now_utc();
 
     Credential {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         issuance_date: now,
         last_modified: now,
@@ -975,7 +975,7 @@ async fn test_check_revocation_non_revocable() {
     });
 
     let result = service
-        .check_revocation(vec![credential.id, Uuid::new_v4()])
+        .check_revocation(vec![credential.id, Uuid::new_v4().into()])
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -1033,7 +1033,7 @@ async fn test_check_revocation_already_revoked() {
     });
 
     let result = service
-        .check_revocation(vec![credential.id, Uuid::new_v4()])
+        .check_revocation(vec![credential.id, Uuid::new_v4().into()])
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -1242,7 +1242,7 @@ async fn test_create_credentials_key_with_issuer_key_and_repeating_key() {
             RelatedKey {
                 role: KeyRole::KeyAgreement,
                 key: Key {
-                    id: key_id,
+                    id: key_id.into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     public_key: vec![],
@@ -1256,7 +1256,7 @@ async fn test_create_credentials_key_with_issuer_key_and_repeating_key() {
             RelatedKey {
                 role: KeyRole::AssertionMethod,
                 key: Key {
-                    id: key_id,
+                    id: key_id.into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     public_key: vec![],
@@ -1304,7 +1304,7 @@ async fn test_create_credentials_key_with_issuer_key_and_repeating_key() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
-            issuer_key: Some(key_id),
+            issuer_key: Some(key_id.into()),
             transport: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
@@ -1336,7 +1336,7 @@ async fn test_fail_to_create_credentials_no_assertion_key() {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: Key {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 public_key: vec![],
@@ -1434,7 +1434,7 @@ async fn test_fail_to_create_credentials_unknown_key_id() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
-            issuer_key: Some(Uuid::new_v4()),
+            issuer_key: Some(Uuid::new_v4().into()),
             transport: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
@@ -1470,7 +1470,7 @@ async fn test_fail_to_create_credentials_key_id_points_to_wrong_key_type() {
         keys: Some(vec![RelatedKey {
             role: KeyRole::KeyAgreement,
             key: Key {
-                id: key_id,
+                id: key_id.into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 public_key: vec![],
@@ -1509,7 +1509,7 @@ async fn test_fail_to_create_credentials_key_id_points_to_wrong_key_type() {
         .create_credential(CreateCredentialRequestDTO {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
-            issuer_key: Some(key_id),
+            issuer_key: Some(key_id.into()),
             transport: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]

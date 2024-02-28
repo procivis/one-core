@@ -8,8 +8,8 @@ use crate::common_validator::{
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations};
 use crate::model::credential::{
-    CredentialId, CredentialRelations, CredentialState, CredentialStateEnum,
-    CredentialStateRelations, UpdateCredentialRequest,
+    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
+    UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaId, CredentialSchemaRelations,
@@ -57,6 +57,7 @@ use crate::service::oidc::{
 };
 use crate::util::key_verification::KeyVerification;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
+use shared_types::CredentialId;
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::str::FromStr;
@@ -289,7 +290,12 @@ impl OIDCService {
             .update_credential(UpdateCredentialRequest {
                 id: credential.id,
                 holder_did_id: Some(holder_did.id),
-                ..Default::default()
+                credential: None,
+                issuer_did_id: None,
+                state: None,
+                interaction: None,
+                key: None,
+                redirect_uri: None,
             })
             .await?;
 
@@ -366,7 +372,12 @@ impl OIDCService {
                         created_date: now,
                         state: CredentialStateEnum::Offered,
                     }),
-                    ..Default::default()
+                    credential: None,
+                    holder_did_id: None,
+                    issuer_did_id: None,
+                    interaction: None,
+                    key: None,
+                    redirect_uri: None,
                 })
                 .await?;
         }

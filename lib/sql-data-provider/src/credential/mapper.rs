@@ -1,18 +1,17 @@
 use migration::IntoCondition;
 use one_core::{
     model::{
-        credential::{Credential, CredentialId, CredentialState, SortableCredentialColumn},
+        credential::{Credential, CredentialState, SortableCredentialColumn},
         credential_schema::CredentialSchema,
         did::Did,
         interaction::InteractionId,
-        key::KeyId,
         revocation_list::RevocationListId,
     },
     repository::error::DataLayerError,
     service::credential::dto::CredentialFilterValue,
 };
 use sea_orm::{sea_query::SimpleExpr, ColumnTrait, IntoSimpleExpr, Set};
-use shared_types::{DidId, DidValue};
+use shared_types::{CredentialId, DidId, KeyId};
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -46,33 +45,26 @@ impl IntoFilterCondition for CredentialFilterValue {
                 organisation_id.to_string(),
             ),
             Self::Role(role) => get_equals_condition(credential::Column::Role, role.as_ref()),
-            Self::CredentialIds(ids) => {
-                let ids = ids.iter().map(Uuid::to_string);
-                credential::Column::Id.is_in(ids).into_condition()
-            }
+            Self::CredentialIds(ids) => credential::Column::Id.is_in(ids.iter()).into_condition(),
         }
     }
 }
 
 pub(super) fn get_credential_state_active_model(
-    id: &CredentialId,
+    id: CredentialId,
     state: CredentialState,
 ) -> credential_state::ActiveModel {
     credential_state::ActiveModel {
-        credential_id: Set(id.to_string()),
+        credential_id: Set(id),
         created_date: Set(state.created_date),
         state: Set(state.state.into()),
     }
 }
 
-impl TryFrom<entity::credential::Model> for Credential {
-    type Error = DataLayerError;
-
-    fn try_from(credential: entity::credential::Model) -> Result<Self, Self::Error> {
-        let credential_id = Uuid::from_str(&credential.id)?;
-
-        Ok(Self {
-            id: credential_id,
+impl From<entity::credential::Model> for Credential {
+    fn from(credential: entity::credential::Model) -> Self {
+        Self {
+            id: credential.id,
             created_date: credential.created_date,
             issuance_date: credential.issuance_date,
             last_modified: credential.last_modified,
@@ -89,7 +81,7 @@ impl TryFrom<entity::credential::Model> for Credential {
             interaction: None,
             revocation_list: None,
             key: None,
-        })
+        }
     }
 }
 
@@ -103,7 +95,7 @@ pub(super) fn request_to_active_model(
     key_id: Option<KeyId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
-        id: Set(request.id.to_string()),
+        id: Set(request.id),
         credential_schema_id: Set(schema.id.to_string()),
         created_date: Set(request.created_date),
         last_modified: Set(request.last_modified),
@@ -116,7 +108,7 @@ pub(super) fn request_to_active_model(
         holder_did_id: Set(holder_did_id),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
         revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
-        key_id: Set(key_id.map(|id| id.to_string())),
+        key_id: Set(key_id),
         role: Set(request.role.to_owned().into()),
     }
 }
@@ -139,39 +131,33 @@ pub(super) fn credential_list_model_to_repository_model(
 
     let issuer_did = match credential.issuer_did_id {
         None => None,
-        Some(issuer_did_id) => {
-            let issuer_did_id = Uuid::from_str(&issuer_did_id)?;
-            Some(Did {
-                id: DidId::from(issuer_did_id),
-                created_date: credential
-                    .issuer_did_created_date
-                    .ok_or(DataLayerError::MappingError)?,
-                last_modified: credential
-                    .issuer_did_last_modified
-                    .ok_or(DataLayerError::MappingError)?,
-                name: credential
-                    .issuer_did_name
-                    .ok_or(DataLayerError::MappingError)?,
-                did: DidValue::from_str(
-                    &credential
-                        .issuer_did_did
-                        .ok_or(DataLayerError::MappingError)?,
-                )
-                .map_err(|_| DataLayerError::MappingError)?,
-                did_type: credential
-                    .issuer_did_type_field
-                    .ok_or(DataLayerError::MappingError)?
-                    .into(),
-                did_method: credential
-                    .issuer_did_method
-                    .ok_or(DataLayerError::MappingError)?,
-                deactivated: credential
-                    .issuer_did_deactivated
-                    .ok_or(DataLayerError::MappingError)?,
-                keys: None,
-                organisation: None,
-            })
-        }
+        Some(issuer_did_id) => Some(Did {
+            id: issuer_did_id,
+            created_date: credential
+                .issuer_did_created_date
+                .ok_or(DataLayerError::MappingError)?,
+            last_modified: credential
+                .issuer_did_last_modified
+                .ok_or(DataLayerError::MappingError)?,
+            name: credential
+                .issuer_did_name
+                .ok_or(DataLayerError::MappingError)?,
+            did: credential
+                .issuer_did_did
+                .ok_or(DataLayerError::MappingError)?,
+            did_type: credential
+                .issuer_did_type_field
+                .ok_or(DataLayerError::MappingError)?
+                .into(),
+            did_method: credential
+                .issuer_did_method
+                .ok_or(DataLayerError::MappingError)?,
+            deactivated: credential
+                .issuer_did_deactivated
+                .ok_or(DataLayerError::MappingError)?,
+            keys: None,
+            organisation: None,
+        }),
     };
 
     let state = vec![CredentialState {
@@ -180,7 +166,7 @@ pub(super) fn credential_list_model_to_repository_model(
     }];
 
     Ok(Credential {
-        id: Uuid::from_str(&credential.id).map_err(|_| DataLayerError::MappingError)?,
+        id: credential.id,
         created_date: credential.created_date,
         issuance_date: credential.issuance_date,
         last_modified: credential.last_modified,

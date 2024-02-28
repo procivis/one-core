@@ -1,7 +1,9 @@
+use shared_types::KeyId;
+
 use crate::provider::key_storage::KeyStorageCapabilities;
 use crate::{
     crypto::signer::error::SignerError,
-    model::key::{Key, KeyId},
+    model::key::Key,
     provider::key_storage::{GeneratedKey, KeyStorage},
     service::error::ServiceError,
 };

@@ -3,14 +3,14 @@ use std::{collections::HashMap, str::FromStr};
 use autometrics::autometrics;
 use one_core::model::{
     did::{Did, DidListQuery, DidRelations, GetDidList, RelatedKey, UpdateDidRequest},
-    key::{Key, KeyId},
+    key::Key,
 };
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, Set, Unchanged,
 };
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, KeyId};
 use uuid::Uuid;
 
 use super::{mapper::create_list_response, DidProvider};
@@ -52,20 +52,20 @@ impl DidProvider {
             let mut related_keys: Vec<RelatedKey> = vec![];
             let mut key_map: HashMap<KeyId, Key> = HashMap::default();
             for key_did_model in key_dids {
-                let key_id = Uuid::from_str(&key_did_model.key_id)?;
-                let key = if let Some(key) = key_map.get(&key_id) {
+                let key_id = &key_did_model.key_id;
+                let key = if let Some(key) = key_map.get(key_id) {
                     key.to_owned()
                 } else {
                     let key = self
                         .key_repository
-                        .get_key(&key_id, key_relations)
+                        .get_key(key_id, key_relations)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
                             relation: "did-key",
                             id: key_id.to_string(),
                         })?;
 
-                    key_map.insert(key_id, key.to_owned());
+                    key_map.insert(*key_id, key.to_owned());
                     key
                 };
 
@@ -90,6 +90,7 @@ impl DidRepository for DidProvider {
         relations: &DidRelations,
     ) -> Result<Option<Did>, DataLayerError> {
         let did = did::Entity::find_by_id(id)
+            .filter(did::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
@@ -107,6 +108,7 @@ impl DidRepository for DidProvider {
     ) -> Result<Option<Did>, DataLayerError> {
         let did = did::Entity::find()
             .filter(did::Column::Did.eq(value))
+            .filter(did::Column::DeletedAt.is_null())
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
@@ -120,6 +122,7 @@ impl DidRepository for DidProvider {
     async fn get_did_list(&self, query_params: DidListQuery) -> Result<GetDidList, DataLayerError> {
         let query = did::Entity::find()
             .distinct()
+            .filter(did::Column::DeletedAt.is_null())
             .with_filter_join(&query_params)
             .with_list_query(&query_params)
             .order_by_desc(did::Column::CreatedDate)
@@ -155,8 +158,8 @@ impl DidRepository for DidProvider {
             key_did::Entity::insert_many(
                 keys.into_iter()
                     .map(|key| key_did::ActiveModel {
-                        did_id: Set(did.id.to_string()),
-                        key_id: Set(key.key.id.to_string()),
+                        did_id: Set(did.id),
+                        key_id: Set(key.key.id),
                         role: Set(key.role.into()),
                     })
                     .collect::<Vec<_>>(),

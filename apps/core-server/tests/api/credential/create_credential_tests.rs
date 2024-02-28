@@ -1,5 +1,6 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
+use shared_types::KeyId;
 use uuid::Uuid;
 
 use crate::fixtures::TestingDidParams;
@@ -198,7 +199,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             did.id,
             claim_id,
             "foo",
-            Uuid::new_v4(),
+            KeyId::from(Uuid::new_v4()),
         )
         .await;
 

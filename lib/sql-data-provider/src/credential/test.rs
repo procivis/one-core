@@ -7,8 +7,8 @@ use one_core::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential::{
-            Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
-            CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
+            Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
+            CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations},
         did::{Did, DidRelations},
@@ -32,6 +32,7 @@ use one_core::{
     service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO},
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
+use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -156,18 +157,15 @@ async fn setup_with_credential() -> TestSetupWithCredential {
         ..
     } = setup_empty().await;
 
-    let credential_id = Uuid::parse_str(
-        &insert_credential(
-            &db,
-            &credential_schema.id.to_string(),
-            CredentialStateEnum::Created,
-            "PROCIVIS_TEMPORARY",
-            did.id,
-            None,
-        )
-        .await
-        .unwrap(),
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
     )
+    .await
     .unwrap();
 
     TestSetupWithCredential {
@@ -204,7 +202,7 @@ async fn test_create_credential_success() {
         key_repository: Arc::new(MockKeyRepository::default()),
     };
 
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
     let claims = vec![
         Claim {
             id: ClaimId::new_v4(),
@@ -286,7 +284,7 @@ async fn test_create_credential_empty_claims() {
         key_repository: Arc::new(MockKeyRepository::default()),
     };
 
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
     let result = provider
         .create_credential(Credential {
             id: credential_id,
@@ -388,18 +386,15 @@ async fn test_delete_credential_success() {
         ..
     } = setup_empty().await;
 
-    let credential_id = Uuid::parse_str(
-        &insert_credential(
-            &db,
-            &credential_schema.id.to_string(),
-            CredentialStateEnum::Created,
-            "PROCIVIS_TEMPORARY",
-            did.id,
-            None,
-        )
-        .await
-        .unwrap(),
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
     )
+    .await
     .unwrap();
 
     let provider = CredentialProvider {
@@ -426,7 +421,7 @@ async fn test_delete_credential_success() {
 async fn test_delete_credential_failed_not_found() {
     let TestSetup { db, .. } = setup_empty().await;
 
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
 
     let provider = CredentialProvider {
         db: db.clone(),
@@ -512,7 +507,7 @@ async fn test_get_credential_list_success() {
     assert_eq!(2, credentials.total_items);
     assert_eq!(2, credentials.values.len());
 
-    let forbidden_uuid = Uuid::parse_str(&credential_three_id_should_not_be_returned).unwrap();
+    let forbidden_uuid = credential_three_id_should_not_be_returned;
     let forbidden_credential = credentials
         .values
         .iter()
@@ -543,7 +538,7 @@ async fn test_get_credential_list_success_verify_state_sorting() {
     let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
     insert_credential_state_to_database(
         &db,
-        &credential_id,
+        credential_id,
         CredentialState {
             created_date: later,
             state: CredentialStateEnum::Offered,
@@ -599,18 +594,15 @@ async fn test_get_credential_success() {
         ..
     } = setup_empty().await;
 
-    let credential_id = Uuid::parse_str(
-        &insert_credential(
-            &db,
-            &credential_schema.id.to_string(),
-            CredentialStateEnum::Created,
-            "PROCIVIS_TEMPORARY",
-            did.id,
-            None,
-        )
-        .await
-        .unwrap(),
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
     )
+    .await
     .unwrap();
 
     let claims = vec![
@@ -647,7 +639,7 @@ async fn test_get_credential_success() {
             .iter()
             .map(|claim| claim::ActiveModel {
                 id: Set(claim.id.to_string()),
-                credential_id: Set(credential_id.to_string()),
+                credential_id: Set(credential_id),
                 claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
                 value: Set(claim.value.to_owned().into()),
                 created_date: Set(get_dummy_date()),
@@ -759,7 +751,7 @@ async fn test_get_credential_fail_not_found() {
     };
 
     let credential = provider
-        .get_credential(&Uuid::new_v4(), &CredentialRelations::default())
+        .get_credential(&Uuid::new_v4().into(), &CredentialRelations::default())
         .await
         .unwrap();
 
@@ -779,18 +771,15 @@ async fn test_update_credential_success() {
         ..
     } = setup_empty().await;
 
-    let credential_id = Uuid::parse_str(
-        &insert_credential(
-            &db,
-            &credential_schema.id.to_string(),
-            CredentialStateEnum::Created,
-            "PROCIVIS_TEMPORARY",
-            did.id,
-            None,
-        )
-        .await
-        .unwrap(),
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
     )
+    .await
     .unwrap();
 
     let mut interaction_repository = MockInteractionRepository::default();
@@ -882,18 +871,15 @@ async fn test_get_credential_by_claim_id_success() {
     .await
     .unwrap();
 
-    let credential_id = Uuid::parse_str(
-        &insert_credential(
-            &db,
-            &credential_schema.id.to_string(),
-            CredentialStateEnum::Created,
-            "PROCIVIS_TEMPORARY",
-            did.id,
-            None,
-        )
-        .await
-        .unwrap(),
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
     )
+    .await
     .unwrap();
 
     let claim = Claim {
@@ -911,7 +897,7 @@ async fn test_get_credential_by_claim_id_success() {
 
     claim::ActiveModel {
         id: Set(claim.id.to_string()),
-        credential_id: Set(credential_id.to_string()),
+        credential_id: Set(credential_id),
         claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
         value: Set(claim.value.as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),

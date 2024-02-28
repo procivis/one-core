@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::{
     model::{
@@ -44,7 +45,7 @@ fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> Proci
 
 fn generate_credential(redirect_uri: Option<String>) -> Credential {
     Credential {
-        id: Default::default(),
+        id: Uuid::default().into(),
         created_date: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),

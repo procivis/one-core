@@ -1,5 +1,5 @@
 use dto_mapper::convert_inner;
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 
 use super::dto::{CreateDidRequestDTO, DidResponseDTO, DidResponseKeysDTO, GetDidListResponseDTO};
@@ -10,7 +10,7 @@ use crate::service::error::EntityNotFoundError;
 use crate::{
     model::{
         did::{Did, GetDidList, KeyRole, RelatedKey},
-        key::{Key, KeyId},
+        key::Key,
         organisation::Organisation,
     },
     service::{
@@ -200,7 +200,7 @@ fn history_event(did: Did, action: HistoryAction) -> History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action,
-        entity_id: did.id.into(),
+        entity_id: Some(did.id.into()),
         entity_type: HistoryEntityType::Did,
         organisation: did.organisation,
     }

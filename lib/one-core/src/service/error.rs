@@ -1,4 +1,5 @@
-use shared_types::{DidId, DidValue};
+use shared_types::CredentialId;
+use shared_types::{DidId, DidValue, KeyId};
 use strum_macros::Display;
 use thiserror::Error;
 use uuid::Uuid;
@@ -6,10 +7,9 @@ use uuid::Uuid;
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
 use crate::model::claim_schema::ClaimSchemaId;
-use crate::model::credential::{CredentialId, CredentialStateEnum};
+use crate::model::credential::CredentialStateEnum;
 use crate::model::credential_schema::CredentialSchemaId;
 use crate::model::interaction::InteractionId;
-use crate::model::key::KeyId;
 use crate::model::organisation::OrganisationId;
 use crate::model::proof::ProofId;
 use crate::model::proof::ProofStateEnum;
@@ -167,7 +167,7 @@ pub enum BusinessLogicError {
     ProofSchemaDeleted { proof_schema_id: Uuid },
 
     #[error("Missing credentials for credential: {credential_id}")]
-    MissingCredentialData { credential_id: Uuid },
+    MissingCredentialData { credential_id: CredentialId },
 
     #[error("Missing credential schema")]
     MissingCredentialSchema,
@@ -183,7 +183,7 @@ pub enum BusinessLogicError {
 
     #[error("Missing credential index on revocation list: {credential_id} for DID: {did}")]
     MissingCredentialIndexOnRevocationList {
-        credential_id: uuid::Uuid,
+        credential_id: CredentialId,
         did: DidId,
     },
 

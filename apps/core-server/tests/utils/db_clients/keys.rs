@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use one_core::model::key::{Key, KeyId, KeyRelations};
+use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::key_repository::KeyRepository;
+use shared_types::KeyId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -21,7 +22,7 @@ impl KeysDB {
         let now = OffsetDateTime::now_utc();
 
         let key = Key {
-            id: params.id.unwrap_or(Uuid::new_v4()),
+            id: params.id.unwrap_or(Uuid::new_v4().into()),
             created_date: params.created_date.unwrap_or(now),
             last_modified: params.last_modified.unwrap_or(now),
             public_key: params.public_key.unwrap_or_default(),

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::Deserialize;
+use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use tokio::sync::Mutex;
 use url::Url;
@@ -19,7 +20,7 @@ use crate::{
         signer::{error::SignerError, es256::ES256Signer},
         CryptoProvider,
     },
-    model::key::{Key, KeyId},
+    model::key::Key,
     provider::{
         key_storage::{
             azure_vault::dto::AzureHsmGetTokenResponse, GeneratedKey, KeyStorage,
@@ -132,6 +133,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         KeyStorageCapabilities {
             algorithms: vec!["ES256".to_string()],
             security: vec!["HARDWARE".to_string()],
+            exportable: false,
         }
     }
 }

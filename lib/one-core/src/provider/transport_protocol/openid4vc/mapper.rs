@@ -1,8 +1,8 @@
+use shared_types::CredentialId;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential::CredentialId;
 use crate::model::proof::ProofId;
 use crate::provider::transport_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,

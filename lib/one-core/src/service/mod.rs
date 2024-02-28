@@ -1,3 +1,4 @@
+pub mod backup;
 pub mod config;
 pub mod credential;
 pub mod credential_schema;

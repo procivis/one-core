@@ -1,8 +1,6 @@
-use crate::model::{
-    credential::{Credential, CredentialId},
-    interaction::InteractionId,
-    proof::Proof,
-};
+use shared_types::CredentialId;
+
+use crate::model::{credential::Credential, interaction::InteractionId, proof::Proof};
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]

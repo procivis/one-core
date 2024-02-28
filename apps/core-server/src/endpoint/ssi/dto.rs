@@ -48,6 +48,7 @@ use one_core::service::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{self, json::JsonString};
+use shared_types::CredentialId;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -336,7 +337,7 @@ pub struct ProofRequestClaimRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerConnectQueryParams {
     pub protocol: String,
-    pub credential: Uuid,
+    pub credential: CredentialId,
     pub redirect_uri: Option<String>,
 }
 
@@ -360,14 +361,14 @@ pub struct OpenID4VCICredentialResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, IntoParams, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerRejectQueryParams {
-    pub credential_id: Uuid,
+    pub credential_id: CredentialId,
 }
 
 #[derive(Clone, Debug, Deserialize, IntoParams, Serialize)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerSubmitQueryParams {
-    pub credential_id: Uuid,
+    pub credential_id: CredentialId,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

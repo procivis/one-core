@@ -1,5 +1,5 @@
 use crate::{
-    dto::CredentialRevocationCheckResponseBindingDTO, error::BindingError, utils::into_uuid,
+    dto::CredentialRevocationCheckResponseBindingDTO, error::BindingError, utils::into_id,
     OneCoreBinding,
 };
 use dto_mapper::convert_inner;
@@ -16,7 +16,7 @@ impl OneCoreBinding {
                     .check_revocation(
                         credential_ids
                             .iter()
-                            .map(|id| into_uuid(id))
+                            .map(|id| into_id(id))
                             .collect::<Result<Vec<_>, _>>()?,
                     )
                     .await?,

@@ -11,7 +11,7 @@ pub(super) fn create_organisation_history_event(organisation: Organisation) -> H
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Created,
-        entity_id: organisation.id.into(),
+        entity_id: Some(organisation.id.into()),
         entity_type: HistoryEntityType::Organisation,
         organisation: Some(organisation),
     }

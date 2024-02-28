@@ -4,6 +4,7 @@ use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
 use serde::{Deserialize, Serialize};
+use shared_types::CredentialId;
 use shared_types::DidId;
 use std::collections::HashMap;
 use url::Url;
@@ -22,7 +23,7 @@ pub struct HandleInvitationRequestRestDTO {
 pub struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
 
-    pub credential_ids: Option<Vec<Uuid>>,
+    pub credential_ids: Option<Vec<CredentialId>>,
     pub proof_id: Option<Uuid>,
 }
 

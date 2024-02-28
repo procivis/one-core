@@ -49,6 +49,13 @@ pairing_crypto             = { version = "0.4", git = "https://github.com/Iskand
 blstrs                     = { version = "0.7" }
 hmac                       = { version = "0.12" }
 serde_cbor                 = { version = "0.11" }
+chacha20poly1305           = { version = "0.10" }
+tempfile.workspace         = true
+zip                        = { version = "0.6" }
+pbkdf2                     = { version = "0.12", features = ["simple"] }
+futures.workspace          = true
+tracing.workspace          = true
+hex.workspace              = true
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

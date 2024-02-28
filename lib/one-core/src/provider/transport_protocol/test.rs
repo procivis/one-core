@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use serde_json::{json, Value};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -9,9 +10,7 @@ use crate::{
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
-        credential::{
-            Credential, CredentialId, CredentialRole, CredentialState, CredentialStateEnum,
-        },
+        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         did::{Did, DidType, KeyRole, RelatedKey},
         interaction::Interaction,
@@ -36,7 +35,7 @@ use crate::{
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
-    let credential_id: CredentialId = Uuid::new_v4();
+    let credential_id: CredentialId = Uuid::new_v4().into();
     let key_storage_type = "storage type";
     let key_type = "EDDSA";
     let algorithm = "algorithm";
@@ -61,7 +60,7 @@ async fn test_issuer_submit_succeeds() {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
                         key: Key {
-                            id: key_id,
+                            id: key_id.into(),
                             created_date: OffsetDateTime::now_utc(),
                             last_modified: OffsetDateTime::now_utc(),
                             public_key: b"public_key".to_vec(),
@@ -85,7 +84,7 @@ async fn test_issuer_submit_succeeds() {
     credential_repository
         .expect_update_credential()
         .once()
-        .withf(move |update_request| update_request.key == Some(key_id))
+        .withf(move |update_request| update_request.key == Some(key_id.into()))
         .return_once(|_| Ok(()));
 
     let mut revocation_method = MockRevocationMethod::new();
@@ -168,7 +167,7 @@ fn dummy_config() -> CoreConfig {
 
 fn dummy_credential() -> Credential {
     let claim_schema_id = Uuid::new_v4();
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
     Credential {
         id: credential_id,
         created_date: OffsetDateTime::now_utc(),

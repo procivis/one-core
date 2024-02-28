@@ -1,10 +1,11 @@
 use core_server::router::start_server;
 use reqwest::StatusCode;
 use serde_json::Value;
+use shared_types::KeyId;
 
 use crate::{
     fixtures::{self, TestingKeyParams},
-    utils,
+    utils::{self, field_match::FieldHelpers},
 };
 
 #[tokio::test]
@@ -67,8 +68,8 @@ async fn test_get_keys_ok() {
     let values = resp["values"].as_array().unwrap();
 
     assert_eq!(2, values.len());
-    let key1_id = values[0]["id"].as_str().unwrap().parse().unwrap();
-    let key2_name: String = values[1]["name"].as_str().unwrap().parse().unwrap();
+    let key1_id: KeyId = values[0]["id"].parse();
+    let key2_name = &values[1]["name"];
     assert_eq!(key1.id, key1_id);
-    assert_eq!(key2.name, key2_name);
+    assert_eq!(&key2.name, key2_name);
 }

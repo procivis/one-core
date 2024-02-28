@@ -20,16 +20,20 @@ serde_yaml            = { version = "0.9" }
 dto_mapper.workspace  = true
 time.workspace        = true
 tracing.workspace     = true
+serde_json.workspace  = true
+serde.workspace       = true
 uuid.workspace        = true
 tokio                 = { workspace = true, features = ["macros"] }
 url                   = { workspace = true }
 shared-types          = { version = "0.1.0", path = "../shared-types", features = ["sea-orm"] }
 autometrics.workspace = true
-
+hex.workspace         = true
 
 [dev-dependencies]
-mockall.workspace = true
-one-core          = { version = "0.1.0", path = "../../lib/one-core", features = ["mock"] }
+mockall.workspace  = true
+one-core           = { version = "0.1.0", path = "../../lib/one-core", features = ["mock"] }
+futures.workspace  = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

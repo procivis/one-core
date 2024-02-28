@@ -3,11 +3,11 @@
 /// # Examples
 /// ```
 ///   struct MyNewtype(String);
-///   // assumes that the  newtype wraps a String and will be stored in the database as a String.
+///   // assumes that the newtype wraps a String and will be stored in the database as a String.
 ///   impl_for_seaorm_newtype!(MyNewtype);
-///   
+///
 ///   struct MyNewtype(OtherType);
-///  // assumes that OtherType will be stored in the database as a String, so it must be convertible to a String and also implement FromStr.
+///   // assumes that OtherType will be stored in the database as a String, so it must be convertible to a String and also implement FromStr.
 ///   impl FromStr for MyNewtype { ... }
 ///   impl_for_seaorm_newtype!(MyNewtype);
 /// ```
@@ -89,7 +89,7 @@ macro_rules! impls_for_seaorm_newtype {
 }
 pub(crate) use impls_for_seaorm_newtype;
 
-/// Implements *FromStr*, *Display*, *From* and *Into* for a newtype that wraps an Uuid
+/// Implements [`std::str::FromStr`], [`std::fmt::Display`], [`std::convert::From`] and [`std::convert::Into`] for a newtype that wraps an Uuid
 macro_rules! impls_for_uuid_newtype {
     ($newtype: ty) => {
         impl std::str::FromStr for $newtype {
@@ -102,6 +102,12 @@ macro_rules! impls_for_uuid_newtype {
             }
         }
 
+        impl std::cmp::PartialEq<uuid::Uuid> for $newtype {
+            fn eq(&self, other: &uuid::Uuid) -> bool {
+                self.0.eq(other)
+            }
+        }
+
         $crate::macros::impl_display!($newtype);
         $crate::macros::impl_from!($newtype; uuid::Uuid);
         $crate::macros::impl_into!($newtype; uuid::Uuid);
@@ -109,19 +115,19 @@ macro_rules! impls_for_uuid_newtype {
 }
 pub(crate) use impls_for_uuid_newtype;
 
-/// Implements *Display* for a newtype, assuming that the inner type implements Display.
+/// Implements [`std::fmt::Display`] for a newtype, assuming that the inner type implements Display.
 macro_rules! impl_display {
     ($newtype: ty) => {
-        impl core::fmt::Display for $newtype {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                core::fmt::Display::fmt(&self.0, f)
+        impl std::fmt::Display for $newtype {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
             }
         }
     };
 }
 pub(crate) use impl_display;
 
-/// Implements *From*
+/// Implements [`std::convert::From`]
 macro_rules! impl_from {
     ($newtype: ty; $inner: ty) => {
         impl std::convert::From<$inner> for $newtype {
@@ -133,7 +139,7 @@ macro_rules! impl_from {
 }
 pub(crate) use impl_from;
 
-/// Implements *Into*
+/// Implements [`std::convert::Into`]
 macro_rules! impl_into {
     ($newtype: ty; $inner: ty) => {
         impl std::convert::From<$newtype> for $inner {

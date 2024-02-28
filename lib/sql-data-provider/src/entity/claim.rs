@@ -1,18 +1,23 @@
 use sea_orm::entity::prelude::*;
+use serde::Deserialize;
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize)]
 #[sea_orm(table_name = "claim")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
 
     pub claim_schema_id: String,
-    pub credential_id: String,
+    pub credential_id: CredentialId,
 
+    #[serde(with = "hex::serde")]
     #[sea_orm(column_type = "Binary(BlobSize::Long)")]
     pub value: Vec<u8>,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
 }
 

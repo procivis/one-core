@@ -4,7 +4,7 @@ use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
         claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
-        credential::{CredentialId, CredentialStateEnum},
+        credential::CredentialStateEnum,
     },
     repository::{
         claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
@@ -12,6 +12,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
+use shared_types::CredentialId;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -57,7 +58,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     )
     .unwrap();
 
-    let did_id = &insert_did_key(
+    let did_id = insert_did_key(
         &db,
         "issuer",
         Uuid::new_v4(),
@@ -68,18 +69,15 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     .await
     .unwrap();
 
-    let credential_id = Uuid::parse_str(
-        &insert_credential(
-            &db,
-            &credential_schema_id.to_string(),
-            CredentialStateEnum::Created,
-            "PROCIVIS_TEMPORARY",
-            did_id.to_owned(),
-            None,
-        )
-        .await
-        .unwrap(),
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema_id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did_id.to_owned(),
+        None,
     )
+    .await
     .unwrap();
 
     TestSetup {

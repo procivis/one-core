@@ -1,10 +1,8 @@
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::{
-    claim_schema::{ClaimSchema, ClaimSchemaRelations},
-    credential::CredentialId,
-};
+use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 
 pub type ClaimId = Uuid;
 

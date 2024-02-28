@@ -1,13 +1,11 @@
 use std::time::Duration;
 
 use one_core::{
-    model::{
-        credential::{CredentialId, CredentialStateEnum},
-        lvvc::Lvvc,
-    },
+    model::{credential::CredentialStateEnum, lvvc::Lvvc},
     repository::lvvc_repository::LvvcRepository,
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -147,7 +145,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
     .unwrap();
 
     // credential
-    let credential_id = test_utilities::insert_credential(
+    test_utilities::insert_credential(
         db_conn,
         &credential_schema_id,
         CredentialStateEnum::Created,
@@ -156,7 +154,5 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         None,
     )
     .await
-    .unwrap();
-
-    Uuid::try_parse(&credential_id).unwrap()
+    .unwrap()
 }

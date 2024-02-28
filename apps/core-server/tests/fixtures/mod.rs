@@ -5,15 +5,15 @@ use one_core::config::core_config::{self, AppConfig};
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
-    Credential, CredentialId, CredentialRelations, CredentialRole, CredentialState,
-    CredentialStateEnum, CredentialStateRelations,
+    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
+    CredentialStateRelations,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
-use one_core::model::key::{Key, KeyId, KeyRelations};
+use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{Proof, ProofClaimRelations, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
@@ -25,7 +25,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
-use shared_types::{DidId, DidValue};
+use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
 use time::OffsetDateTime;
 use url::Url;
@@ -107,7 +107,7 @@ pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
 }
 
 pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let organisation = Organisation {
         id: Uuid::new_v4(),
@@ -140,12 +140,12 @@ pub async fn create_key(
     organisation: &Organisation,
     params: Option<TestingKeyParams>,
 ) -> Key {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     let now = OffsetDateTime::now_utc();
     let params = params.unwrap_or_default();
 
     let key = Key {
-        id: params.id.unwrap_or(Uuid::new_v4()),
+        id: params.id.unwrap_or(Uuid::new_v4().into()),
         created_date: params.created_date.unwrap_or(now),
         last_modified: params.last_modified.unwrap_or(now),
         public_key: params.public_key.unwrap_or_default(),
@@ -218,7 +218,7 @@ pub async fn create_eddsa_key(db_conn: &DbConn, organisation: &Organisation) -> 
 }
 
 pub async fn get_key(db_conn: &DbConn, id: &KeyId) -> Key {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     data_layer
         .get_key_repository()
         .get_key(
@@ -250,7 +250,7 @@ pub async fn create_did(
     organisation: &Organisation,
     params: Option<TestingDidParams>,
 ) -> Did {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     let now = OffsetDateTime::now_utc();
     let params = params.unwrap_or_default();
 
@@ -285,7 +285,7 @@ pub async fn create_credential_schema(
     organisation: &Organisation,
     revocation_method: &str,
 ) -> CredentialSchema {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schema = ClaimSchema {
         id: Uuid::new_v4(),
@@ -327,7 +327,7 @@ pub async fn create_credential_schema_with_claims(
     revocation_method: &str,
     claims: &[(Uuid, &str, bool, &str)],
 ) -> CredentialSchema {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schemas = claims
         .iter()
@@ -370,7 +370,7 @@ pub async fn create_proof_schema(
     organisation: &Organisation,
     claims: &[(Uuid, &str, bool, &str)],
 ) -> ProofSchema {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schemas = claims
         .iter()
@@ -414,7 +414,7 @@ pub async fn create_interaction_with_id(
     host: &str,
     data: &[u8],
 ) -> Interaction {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let interaction = Interaction {
         id,
@@ -442,7 +442,7 @@ pub async fn create_revocation_list(
     issuer_did: &Did,
     credentials: Option<&[u8]>,
 ) -> RevocationList {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let revocation_list = RevocationList {
         id: Default::default(),
@@ -465,7 +465,7 @@ pub async fn get_revocation_list(
     db_conn: &DbConn,
     issuer_did: &Did,
 ) -> Result<RevocationList, DataLayerError> {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let res = data_layer
         .get_revocation_list_repository()
@@ -493,9 +493,9 @@ pub async fn create_credential(
     transport: &str,
     params: TestingCredentialParams<'_>,
 ) -> Credential {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
-    let credential_id = Uuid::new_v4();
+    let credential_id = Uuid::new_v4().into();
     let claims: Vec<Claim> = credential_schema
         .claim_schemas
         .as_ref()
@@ -553,7 +553,7 @@ pub async fn create_proof(
     transport: &str,
     interaction: Option<&Interaction>,
 ) -> Proof {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let proof = Proof {
         id: Uuid::new_v4(),
@@ -585,7 +585,7 @@ pub async fn create_proof(
 }
 
 pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> Credential {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     data_layer
         .get_credential_repository()
         .get_credential(
@@ -612,7 +612,7 @@ pub async fn get_credential(db_conn: &DbConn, credential_id: &CredentialId) -> C
 }
 
 pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
-    let data_layer = DataLayer::build(db_conn.to_owned());
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     data_layer
         .get_proof_repository()
         .get_proof(

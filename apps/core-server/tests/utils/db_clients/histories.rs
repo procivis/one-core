@@ -42,7 +42,7 @@ impl HistoriesDB {
             id: history_id.to_owned(),
             created_date: params.created_date.unwrap_or(now),
             action: params.action.unwrap_or(HistoryAction::Accepted),
-            entity_id: params.entity_id.unwrap_or(Uuid::new_v4().into()),
+            entity_id: Some(params.entity_id.unwrap_or(Uuid::new_v4().into())),
             entity_type: params.entity_type.unwrap_or(HistoryEntityType::Credential),
             organisation: Some(organisation.clone()),
         };

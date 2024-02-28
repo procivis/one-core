@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
+use shared_types::{CredentialId, KeyId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -21,7 +22,7 @@ impl CredentialsApi {
         issuer_did: impl Into<Uuid>,
         claim_id: impl Into<Uuid>,
         value: impl Into<String>,
-        issuer_key: impl Into<Option<Uuid>>,
+        issuer_key: impl Into<Option<KeyId>>,
     ) -> Response {
         let body = json!({
           "credentialSchemaId": credential_schema_id.into(),
@@ -46,7 +47,7 @@ impl CredentialsApi {
         organisation_id: &impl Display,
         role: Option<&str>,
         name: Option<&str>,
-        ids: Option<&[Uuid]>,
+        ids: Option<&[CredentialId]>,
     ) -> Response {
         let mut url = format!(
             "/api/credential/v1?page={page}&pageSize={size}&organisationId={organisation_id}"

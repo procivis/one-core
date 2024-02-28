@@ -1,6 +1,6 @@
 use dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::DidId;
+use shared_types::{CredentialId, DidId, KeyId};
 use time::OffsetDateTime;
 
 use one_core::model::credential::CredentialRole as ModelCredentialRole;
@@ -9,7 +9,7 @@ use one_core::model::credential::CredentialRole as ModelCredentialRole;
 #[sea_orm(table_name = "credential")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: CredentialId,
 
     pub credential_schema_id: String,
 
@@ -31,7 +31,7 @@ pub struct Model {
     pub holder_did_id: Option<DidId>,
     pub interaction_id: Option<String>,
     pub revocation_list_id: Option<String>,
-    pub key_id: Option<String>,
+    pub key_id: Option<KeyId>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
@@ -128,14 +128,13 @@ impl Related<super::revocation_list::Entity> for Entity {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
 #[from(ModelCredentialRole)]
 #[into(ModelCredentialRole)]
 #[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_kind_type")]
 pub enum CredentialRole {
     #[sea_orm(string_value = "HOLDER")]
     Holder,
-    #[default]
     #[sea_orm(string_value = "ISSUER")]
     Issuer,
     #[sea_orm(string_value = "VERIFIER")]

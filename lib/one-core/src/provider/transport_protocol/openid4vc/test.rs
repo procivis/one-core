@@ -152,7 +152,9 @@ fn generic_credential() -> Credential {
         last_modified: now,
     };
 
-    let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
+    let credential_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+        .unwrap()
+        .into();
     Credential {
         id: credential_id,
         created_date: now,

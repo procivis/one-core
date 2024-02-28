@@ -1,15 +1,15 @@
+use shared_types::CredentialId;
 use shared_types::DidId;
 
+use super::error::DataLayerError;
 use crate::model::{
     claim::ClaimId,
     credential::{
-        Credential, CredentialId, CredentialRelations, GetCredentialList, GetCredentialQuery,
+        Credential, CredentialRelations, GetCredentialList, GetCredentialQuery,
         UpdateCredentialRequest,
     },
     interaction::InteractionId,
 };
-
-use super::error::DataLayerError;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

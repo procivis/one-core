@@ -172,7 +172,7 @@ async fn test_get_organisation_list_failure() {
     organisation_repository
         .expect_get_organisation_list()
         .times(1)
-        .returning(|| Err(DataLayerError::Db(anyhow::anyhow!("TEST"))));
+        .returning(|| Err(anyhow::anyhow!("TEST").into()));
 
     let service = setup_service(organisation_repository, MockHistoryRepository::default());
     let result = service.get_organisation_list().await;

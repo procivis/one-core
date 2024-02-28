@@ -1,6 +1,7 @@
 pub mod error;
 
 // New traits
+pub mod backup_repository;
 pub mod claim_repository;
 pub mod claim_schema_repository;
 pub mod credential_repository;
@@ -18,19 +19,20 @@ pub mod revocation_list_repository;
 use std::sync::Arc;
 
 // New ones
+use backup_repository::BackupRepository;
 use claim_repository::ClaimRepository;
 use claim_schema_repository::ClaimSchemaRepository;
 use credential_repository::CredentialRepository;
 use credential_schema_repository::CredentialSchemaRepository;
 use did_repository::DidRepository;
 use history_repository::HistoryRepository;
+use interaction_repository::InteractionRepository;
 use key_repository::KeyRepository;
+use lvvc_repository::LvvcRepository;
 use organisation_repository::OrganisationRepository;
 use proof_repository::ProofRepository;
 use proof_schema_repository::ProofSchemaRepository;
 use revocation_list_repository::RevocationListRepository;
-
-use self::{interaction_repository::InteractionRepository, lvvc_repository::LvvcRepository};
 
 pub trait DataRepository {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository>;
@@ -46,6 +48,7 @@ pub trait DataRepository {
     fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository>;
     fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository>;
     fn get_lvvc_repository(&self) -> Arc<dyn LvvcRepository>;
+    fn get_backup_repository(&self) -> Arc<dyn BackupRepository>;
 }
 
 #[cfg(any(test, feature = "mock"))]
