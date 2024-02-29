@@ -22,7 +22,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Did::Table)
-                    .add_column(ColumnDef::new(DidNew::DeletedAt).custom(datetime))
+                    .add_column_if_not_exists(ColumnDef::new(DidNew::DeletedAt).custom(datetime))
                     .to_owned(),
             )
             .await?;
@@ -31,7 +31,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Key::Table)
-                    .add_column(ColumnDef::new(KeyNew::DeletedAt).custom(datetime))
+                    .add_column_if_not_exists(ColumnDef::new(KeyNew::DeletedAt).custom(datetime))
                     .to_owned(),
             )
             .await?;
@@ -70,7 +70,7 @@ impl MigrationTrait for Migration {
                     )
                     .foreign_key(
                         ForeignKey::create()
-                            .name("fk-History-OrganisationId")
+                            .name("fk-History-OrganisationId-new")
                             .from_tbl(HistoryNew::Table)
                             .from_col(HistoryNew::OrganisationId)
                             .to_tbl(Organisation::Table)
