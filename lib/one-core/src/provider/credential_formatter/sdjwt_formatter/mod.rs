@@ -96,6 +96,80 @@ impl CredentialFormatter for SDJWTFormatter {
         token: &str,
         verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
+        self.extract_credentials_internal(token, Some(verification))
+            .await
+    }
+
+    async fn peek(&self, token: &str) -> Result<DetailCredential, FormatterError> {
+        self.extract_credentials_internal(token, None).await
+    }
+
+    async fn format_presentation(
+        &self,
+        _credentials: &[String],
+        _holder_did: &DidValue,
+        _algorithm: &str,
+        _auth_fn: AuthenticationFn,
+        _nonce: Option<String>,
+    ) -> Result<String, FormatterError> {
+        // for presentation the JWT formatter is used
+        unreachable!()
+    }
+
+    async fn extract_presentation(
+        &self,
+        token: &str,
+        verification: VerificationFn,
+    ) -> Result<Presentation, FormatterError> {
+        // Build fails if verification fails
+        let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, Some(verification)).await?;
+
+        Ok(Presentation {
+            id: jwt.payload.jwt_id,
+            issued_at: jwt.payload.issued_at,
+            expires_at: jwt.payload.expires_at,
+            issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
+                Ok(v) => v,
+                Err(err) => match err {},
+            }),
+            nonce: jwt.payload.nonce,
+            credentials: jwt.payload.custom.vp.verifiable_credential,
+        })
+    }
+
+    async fn format_credential_presentation(
+        &self,
+        credential: CredentialPresentation,
+    ) -> Result<String, FormatterError> {
+        prepare_sd_presentation(credential)
+    }
+
+    fn get_leeway(&self) -> u64 {
+        self.params.leeway
+    }
+
+    fn get_capabilities(&self) -> FormatterCapabilities {
+        FormatterCapabilities {
+            signing_key_algorithms: vec![
+                "EDDSA".to_owned(),
+                "ES256".to_owned(),
+                "DILITHIUM".to_owned(),
+            ],
+            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
+        }
+    }
+}
+
+impl SDJWTFormatter {
+    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider>) -> Self {
+        Self { params, crypto }
+    }
+
+    async fn extract_credentials_internal(
+        &self,
+        token: &str,
+        verification: Option<VerificationFn>,
+    ) -> Result<DetailCredential, FormatterError> {
         let DecomposedToken {
             deserialized_disclosures,
             jwt,
@@ -135,67 +209,6 @@ impl CredentialFormatter for SDJWTFormatter {
             },
             status: jwt.payload.custom.vc.credential_status,
         })
-    }
-
-    async fn format_presentation(
-        &self,
-        _credentials: &[String],
-        _holder_did: &DidValue,
-        _algorithm: &str,
-        _auth_fn: AuthenticationFn,
-        _nonce: Option<String>,
-    ) -> Result<String, FormatterError> {
-        // for presentation the JWT formatter is used
-        unreachable!()
-    }
-
-    async fn extract_presentation(
-        &self,
-        token: &str,
-        verification: VerificationFn,
-    ) -> Result<Presentation, FormatterError> {
-        // Build fails if verification fails
-        let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, verification).await?;
-
-        Ok(Presentation {
-            id: jwt.payload.jwt_id,
-            issued_at: jwt.payload.issued_at,
-            expires_at: jwt.payload.expires_at,
-            issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
-                Ok(v) => v,
-                Err(err) => match err {},
-            }),
-            nonce: jwt.payload.nonce,
-            credentials: jwt.payload.custom.vp.verifiable_credential,
-        })
-    }
-
-    fn format_credential_presentation(
-        &self,
-        credential: CredentialPresentation,
-    ) -> Result<String, FormatterError> {
-        prepare_sd_presentation(credential)
-    }
-
-    fn get_leeway(&self) -> u64 {
-        self.params.leeway
-    }
-
-    fn get_capabilities(&self) -> FormatterCapabilities {
-        FormatterCapabilities {
-            signing_key_algorithms: vec![
-                "EDDSA".to_owned(),
-                "ES256".to_owned(),
-                "DILITHIUM".to_owned(),
-            ],
-            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
-        }
-    }
-}
-
-impl SDJWTFormatter {
-    pub fn new(params: Params, crypto: Arc<dyn CryptoProvider>) -> Self {
-        Self { params, crypto }
     }
 
     fn format_hashed_credential(

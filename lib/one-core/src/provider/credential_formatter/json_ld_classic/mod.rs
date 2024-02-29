@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use super::json_ld::{model::*, JsonLd};
+use super::json_ld::{self, model::*};
 use super::model::{CredentialPresentation, Presentation};
 use super::{
     AuthenticationFn, Context, CredentialFormatter, FormatterCapabilities, VerificationFn,
@@ -22,7 +22,6 @@ use super::{
 
 #[allow(dead_code)]
 pub struct JsonLdClassic {
-    json_ld: JsonLd,
     pub base_url: Option<String>,
     pub crypto: Arc<dyn CryptoProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
@@ -35,6 +34,10 @@ pub struct Params {}
 
 #[async_trait]
 impl CredentialFormatter for JsonLdClassic {
+    async fn peek(&self, credential: &str) -> Result<DetailCredential, FormatterError> {
+        self.extract_credentials_internal(credential, None).await
+    }
+
     async fn format_credentials(
         &self,
         credential: &CredentialDetailResponseDTO,
@@ -57,7 +60,8 @@ impl CredentialFormatter for JsonLdClassic {
             .await
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
-        let mut credential = self.json_ld.prepare_credential(
+        let mut credential = json_ld::prepare_credential(
+            &self.base_url,
             credential,
             credential_status,
             holder_did,
@@ -76,19 +80,17 @@ impl CredentialFormatter for JsonLdClassic {
             }
         };
 
-        let mut proof = self
-            .json_ld
-            .prepare_proof_config(
-                "assertionMethod",
-                cryptosuite,
-                vec![Context::DataIntegrityV2.to_string()],
-                &did_document,
-            )
-            .await?;
+        let mut proof = json_ld::prepare_proof_config(
+            "assertionMethod",
+            cryptosuite,
+            vec![Context::DataIntegrityV2.to_string()],
+            &did_document,
+        )
+        .await?;
 
-        let proof_hash = self.json_ld.prepare_proof_hash(&credential, &proof).await?;
+        let proof_hash = json_ld::prepare_proof_hash(&credential, &self.crypto, &proof).await?;
 
-        let signed_proof = self.json_ld.sign_proof_hash(&proof_hash, auth_fn).await?;
+        let signed_proof = json_ld::sign_proof_hash(&proof_hash, auth_fn).await?;
 
         proof.proof_value = Some(signed_proof);
         credential.proof = Some(proof);
@@ -99,46 +101,16 @@ impl CredentialFormatter for JsonLdClassic {
         Ok(resp)
     }
 
-    //This could later be optimized to operate od LdDataSource directly.
     async fn extract_credentials(
         &self,
         credential: &str,
         verification_fn: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        let credential: LdCredential = serde_json::from_str(credential)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
-
-        self.json_ld
-            .verify_credential_signature(credential.clone(), verification_fn)
-            .await?;
-
-        // We only take first subject now as one credential only contains one credential schema
-        let subject = credential
-            .credential_subject
-            .subject
-            .into_iter()
-            .next()
-            .ok_or(FormatterError::CouldNotExtractCredentials(
-                "Missing credential subject".to_string(),
-            ))?;
-
-        let claims = CredentialSubject {
-            values: subject.1.into_iter().collect(),
-        };
-
-        Ok(DetailCredential {
-            id: Some(credential.id),
-            issued_at: Some(credential.issuance_date),
-            expires_at: None,
-            invalid_before: None,
-            issuer_did: Some(credential.issuer),
-            subject: Some(credential.credential_subject.id),
-            claims,
-            status: credential.credential_status,
-        })
+        self.extract_credentials_internal(credential, Some(verification_fn))
+            .await
     }
 
-    fn format_credential_presentation(
+    async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
@@ -155,7 +127,7 @@ impl CredentialFormatter for JsonLdClassic {
     ) -> Result<String, FormatterError> {
         let issuance_date = OffsetDateTime::now_utc();
 
-        let context = self.json_ld.prepare_context(vec![]);
+        let context = json_ld::prepare_context(vec![]);
 
         // To support object or an array
         let verifiable_credential = if tokens.len() == 1 {
@@ -194,22 +166,17 @@ impl CredentialFormatter for JsonLdClassic {
             }
         };
 
-        let mut proof = self
-            .json_ld
-            .prepare_proof_config(
-                "authentication",
-                cryptosuite,
-                vec![Context::DataIntegrityV2.to_string()],
-                &did_document,
-            )
-            .await?;
+        let mut proof = json_ld::prepare_proof_config(
+            "authentication",
+            cryptosuite,
+            vec![Context::DataIntegrityV2.to_string()],
+            &did_document,
+        )
+        .await?;
 
-        let proof_hash = self
-            .json_ld
-            .prepare_proof_hash(&presentation, &proof)
-            .await?;
+        let proof_hash = json_ld::prepare_proof_hash(&presentation, &self.crypto, &proof).await?;
 
-        let signed_proof = self.json_ld.sign_proof_hash(&proof_hash, auth_fn).await?;
+        let signed_proof = json_ld::sign_proof_hash(&proof_hash, auth_fn).await?;
 
         proof.proof_value = Some(signed_proof);
         presentation.proof = Some(proof);
@@ -228,8 +195,7 @@ impl CredentialFormatter for JsonLdClassic {
         let presentation: LdPresentation = serde_json::from_str(json_ld)
             .map_err(|e| FormatterError::CouldNotExtractPresentation(e.to_string()))?;
 
-        self.json_ld
-            .verify_presentation_signature(presentation.clone(), verification_fn)
+        json_ld::verify_presentation_signature(presentation.clone(), verification_fn, &self.crypto)
             .await?;
 
         let credentials: Vec<String> = if presentation.verifiable_credential.starts_with('[') {
@@ -273,11 +239,49 @@ impl JsonLdClassic {
         did_method_provider: Arc<dyn DidMethodProvider>,
     ) -> Self {
         Self {
-            json_ld: JsonLd::new(crypto.clone(), base_url.clone()),
             params,
             crypto,
             base_url,
             did_method_provider,
         }
+    }
+
+    async fn extract_credentials_internal(
+        &self,
+        credential: &str,
+        verification_fn: Option<VerificationFn>,
+    ) -> Result<DetailCredential, FormatterError> {
+        let credential: LdCredential = serde_json::from_str(credential)
+            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+
+        if let Some(verification_fn) = verification_fn {
+            json_ld::verify_credential_signature(credential.clone(), verification_fn, &self.crypto)
+                .await?;
+        }
+
+        // We only take first subject now as one credential only contains one credential schema
+        let subject = credential
+            .credential_subject
+            .subject
+            .into_iter()
+            .next()
+            .ok_or(FormatterError::CouldNotExtractCredentials(
+                "Missing credential subject".to_string(),
+            ))?;
+
+        let claims = CredentialSubject {
+            values: subject.1.into_iter().collect(),
+        };
+
+        Ok(DetailCredential {
+            id: Some(credential.id),
+            issued_at: Some(credential.issuance_date),
+            expires_at: None,
+            invalid_before: None,
+            issuer_did: Some(credential.issuer),
+            subject: Some(credential.credential_subject.id),
+            claims,
+            status: credential.credential_status,
+        })
     }
 }

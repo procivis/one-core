@@ -26,9 +26,6 @@ use super::{
     mapper::interaction_from_handle_invitation,
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
 };
-use crate::provider::transport_protocol::dto::{
-    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
-};
 use crate::provider::transport_protocol::mapper::get_relevant_credentials;
 use crate::provider::transport_protocol::openid4vc::mapper::{
     get_claim_name_by_json_path, presentation_definition_from_interaction_data,
@@ -53,7 +50,7 @@ use crate::{
         proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
     },
     provider::{
-        credential_formatter::{jwt::SkipVerification, provider::CredentialFormatterProvider},
+        credential_formatter::provider::CredentialFormatterProvider,
         revocation::provider::RevocationMethodProvider,
     },
     provider::{
@@ -84,6 +81,12 @@ use crate::{
         oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core},
         proof_formatter::OpenID4VCIProofJWTFormatter,
     },
+};
+use crate::{
+    provider::transport_protocol::dto::{
+        CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
+    },
+    util::oidc::detect_correct_format,
 };
 
 #[cfg(test)]
@@ -359,7 +362,7 @@ impl TransportProtocol for OpenID4VC {
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let body = OpenID4VCICredential {
-            format,
+            format: format.clone(),
             credential_definition: OpenID4VCICredentialDefinition {
                 r#type: vec!["VerifiableCredential".to_string()],
                 credential_subject: None,
@@ -390,14 +393,17 @@ impl TransportProtocol for OpenID4VC {
         let result: OpenID4VCICredentialResponseDTO =
             serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?;
 
+        let format = detect_correct_format(schema, &result.credential)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
         // revocation method must be updated based on the issued credential (unknown in credential offer)
         let response_credential = self
             .formatter_provider
-            .get_formatter(&schema.format)
+            .get_formatter(&format)
             .ok_or_else(|| {
                 TransportProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?
-            .extract_credentials(&result.credential, Box::new(SkipVerification))
+            .peek(&result.credential)
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 

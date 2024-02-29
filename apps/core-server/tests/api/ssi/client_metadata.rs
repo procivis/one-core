@@ -57,19 +57,19 @@ async fn test_get_client_metadata() {
             "client_id_scheme": "redirect_uri",
             "vp_formats": {
                 "jwt_vc_json": {
-                    "alg": ["EdDSA"]
+                    "alg": ["EdDSA", "ES256"]
                 },
                 "jwt_vp_json": {
-                    "alg": ["EdDSA"]
+                    "alg": ["EdDSA", "ES256"]
                 },
                 "ldp_vc": {
-                    "alg": ["EdDSA"]
+                    "alg": ["EdDSA", "ES256", "BLS12-381G1-SHA256"]
                 },
                 "ldp_vp": {
-                    "alg": ["EdDSA"]
+                    "alg": ["EdDSA", "ES256"]
                 },
                 "vc+sd-jwt": {
-                    "alg": ["EdDSA"]
+                    "alg": ["EdDSA", "ES256"]
                 }
             }
         })

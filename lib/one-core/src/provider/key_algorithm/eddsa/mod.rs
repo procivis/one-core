@@ -40,7 +40,7 @@ impl KeyAlgorithm for Eddsa {
 
     fn get_multibase(&self, public_key: &[u8]) -> Result<String, SignerError> {
         let codec = &[0xed, 0x1];
-        let key = PublicKey::from_slice(public_key).unwrap();
+        let key = PublicKey::from_slice(public_key).map_err(|_| SignerError::MissingKey)?;
         let data = [codec, key.as_ref()].concat();
         Ok(format!("z{}", bs58::encode(data).into_string()))
     }

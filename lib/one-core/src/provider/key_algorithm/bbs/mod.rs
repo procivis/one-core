@@ -24,7 +24,8 @@ impl KeyAlgorithm for BBS {
     }
 
     fn generate_key_pair(&self) -> GeneratedKey {
-        let key_pair = KeyPair::random(&mut thread_rng(), b"").unwrap();
+        // There is not much to break hence default on failure should be good enough.
+        let key_pair = KeyPair::random(&mut thread_rng(), b"").unwrap_or_default();
         let private = key_pair.secret_key.to_bytes().to_vec();
         let public = key_pair.public_key.to_octets().to_vec();
         GeneratedKey { public, private }

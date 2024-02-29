@@ -61,7 +61,7 @@ impl BitstringStatusListJwtFormatter {
         issuer_did: &DidValue,
         verification: VerificationFn,
     ) -> Result<String, FormatterError> {
-        let jwt: Jwt<VC> = Jwt::build_from_token(status_list_token, verification).await?;
+        let jwt: Jwt<VC> = Jwt::build_from_token(status_list_token, Some(verification)).await?;
 
         let payload = jwt.payload;
         if !payload

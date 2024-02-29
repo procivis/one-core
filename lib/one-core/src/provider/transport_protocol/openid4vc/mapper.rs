@@ -253,12 +253,21 @@ pub fn create_open_id_for_vp_client_metadata() -> OpenID4VPClientMetadata {
 pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat> {
     let mut formats = HashMap::new();
     let algorithms = OpenID4VPFormat {
-        alg: vec!["EdDSA".to_owned()],
+        alg: vec!["EdDSA".to_owned(), "ES256".to_owned()],
     };
     formats.insert("jwt_vp_json".to_owned(), algorithms.clone());
     formats.insert("jwt_vc_json".to_owned(), algorithms.clone());
     formats.insert("ldp_vp".to_owned(), algorithms.clone());
-    formats.insert("ldp_vc".to_owned(), algorithms.clone());
+    formats.insert(
+        "ldp_vc".to_owned(),
+        OpenID4VPFormat {
+            alg: vec![
+                "EdDSA".to_owned(),
+                "ES256".to_owned(),
+                "BLS12-381G1-SHA256".to_owned(),
+            ],
+        },
+    );
     formats.insert("vc+sd-jwt".to_owned(), algorithms);
     formats
 }

@@ -97,10 +97,12 @@ pub trait CredentialFormatter: Send + Sync {
         verification: Box<dyn TokenVerifier>,
     ) -> Result<DetailCredential, FormatterError>;
 
-    fn format_credential_presentation(
+    async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError>;
+
+    async fn peek(&self, credential: &str) -> Result<DetailCredential, FormatterError>;
 
     async fn format_presentation(
         &self,

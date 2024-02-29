@@ -84,12 +84,18 @@ impl CredentialFormatter for JWTFormatter {
         verification: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VC> = Jwt::build_from_token(token, verification).await?;
+        let jwt: Jwt<VC> = Jwt::build_from_token(token, Some(verification)).await?;
 
         Ok(jwt.into())
     }
 
-    fn format_credential_presentation(
+    async fn peek(&self, token: &str) -> Result<DetailCredential, FormatterError> {
+        let jwt: Jwt<VC> = Jwt::build_from_token(token, None).await?;
+
+        Ok(jwt.into())
+    }
+
+    async fn format_credential_presentation(
         &self,
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
@@ -131,7 +137,7 @@ impl CredentialFormatter for JWTFormatter {
         verification: VerificationFn,
     ) -> Result<Presentation, FormatterError> {
         // Build fails if verification fails
-        let jwt: Jwt<VP> = Jwt::build_from_token(token, verification).await?;
+        let jwt: Jwt<VP> = Jwt::build_from_token(token, Some(verification)).await?;
 
         Ok(Presentation {
             id: jwt.payload.jwt_id,

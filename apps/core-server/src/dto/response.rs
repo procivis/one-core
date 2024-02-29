@@ -6,7 +6,10 @@ use utoipa::ToSchema;
 
 use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
 use crate::router::AppState;
-use one_core::service::error::{MissingProviderError, ServiceError};
+use one_core::{
+    provider::credential_formatter::error::FormatterError,
+    service::error::{MissingProviderError, ServiceError},
+};
 
 #[derive(utoipa::IntoResponses)]
 pub enum ErrorResponse {
@@ -40,6 +43,7 @@ impl ErrorResponse {
             }
             ServiceError::Validation(_)
             | ServiceError::BusinessLogic(_)
+            | ServiceError::FormatterError(FormatterError::BBSOnly)
             | ServiceError::ConfigValidationError(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),
         }
