@@ -23,9 +23,9 @@ pub mod secure_element;
 
 #[derive(Clone, Default, Serialize)]
 pub struct KeyStorageCapabilities {
+    pub features: Vec<String>,
     pub algorithms: Vec<String>,
     pub security: Vec<String>,
-    pub exportable: bool,
 }
 
 pub struct GeneratedKey {

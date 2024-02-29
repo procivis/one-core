@@ -140,7 +140,12 @@ impl OneCore {
 
         let exportable_storages = key_providers
             .iter()
-            .filter(|(_, value)| value.get_capabilities().exportable)
+            .filter(|(_, value)| {
+                value
+                    .get_capabilities()
+                    .features
+                    .contains(&"EXPORTABLE".to_string())
+            })
             .map(|(key, _)| key.clone())
             .collect();
 

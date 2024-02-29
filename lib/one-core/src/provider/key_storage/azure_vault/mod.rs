@@ -131,9 +131,9 @@ impl KeyStorage for AzureVaultKeyProvider {
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
+            features: vec!["EXPORTABLE".to_owned()],
             algorithms: vec!["ES256".to_string()],
             security: vec!["HARDWARE".to_string()],
-            exportable: false,
         }
     }
 }

@@ -48,7 +48,7 @@ impl KeyStorage for SecureElementKeyProvider {
         KeyStorageCapabilities {
             algorithms: vec!["ES256".to_string()],
             security: vec!["HARDWARE".to_string()],
-            exportable: false,
+            features: vec![],
         }
     }
 }
