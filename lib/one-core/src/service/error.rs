@@ -222,6 +222,9 @@ pub enum ValidationError {
     #[error("Invalid key: {0}")]
     InvalidKey(String),
 
+    #[error("BBS not supported")]
+    BBSNotSupported,
+
     #[error("Invalid key storage type: {0}")]
     InvalidKeyStorage(String),
 
@@ -508,6 +511,12 @@ pub enum ErrorCode {
     #[strum(to_string = "Missing organisation")]
     BR_0088,
 
+    #[strum(to_string = "JSON-LD: BBS key needed")]
+    BR_0090,
+
+    #[strum(to_string = "BBS key not supported")]
+    BR_0091,
+
     #[strum(to_string = "Missing proof for provided interaction")]
     BR_0094,
 
@@ -543,7 +552,7 @@ impl ServiceError {
             ServiceError::ResponseMapping(_) => ErrorCode::BR_0055,
             ServiceError::TransportProtocolError(error) => error.error_code(),
             ServiceError::CryptoError(_) => ErrorCode::BR_0050,
-            ServiceError::FormatterError(_) => ErrorCode::BR_0058,
+            ServiceError::FormatterError(error) => error.error_code(),
             ServiceError::KeyStorageError(_) => ErrorCode::BR_0039,
             ServiceError::MappingError(_) => ErrorCode::BR_0047,
             ServiceError::OpenID4VCError(_) => ErrorCode::BR_0048,
@@ -621,6 +630,7 @@ impl ValidationError {
             ValidationError::InvalidFormatter(_) => ErrorCode::BR_0056,
             ValidationError::InvalidKeyAlgorithm(_) => ErrorCode::BR_0043,
             ValidationError::InvalidKey(_) => ErrorCode::BR_0096,
+            ValidationError::BBSNotSupported => ErrorCode::BR_0091,
             ValidationError::InvalidKeyStorage(_) => ErrorCode::BR_0041,
             ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
         }
@@ -637,6 +647,27 @@ impl TransportProtocolError {
             TransportProtocolError::OperationNotSupported => ErrorCode::BR_0062,
             TransportProtocolError::MissingBaseUrl => ErrorCode::BR_0062,
             TransportProtocolError::InvalidRequest(_) => ErrorCode::BR_0085,
+        }
+    }
+}
+
+impl FormatterError {
+    pub fn error_code(&self) -> ErrorCode {
+        match self {
+            FormatterError::Failed(_) => ErrorCode::BR_0057,
+            FormatterError::CouldNotSign(_) => ErrorCode::BR_0057,
+            FormatterError::CouldNotVerify(_) => ErrorCode::BR_0057,
+            FormatterError::CouldNotFormat(_) => ErrorCode::BR_0057,
+            FormatterError::CouldNotExtractCredentials(_) => ErrorCode::BR_0057,
+            FormatterError::CouldNotExtractPresentation(_) => ErrorCode::BR_0057,
+            FormatterError::CouldNotExtractClaimsFromPresentation(_) => ErrorCode::BR_0057,
+            FormatterError::IncorrectSignature => ErrorCode::BR_0057,
+            FormatterError::MissingPart => ErrorCode::BR_0057,
+            FormatterError::MissingDisclosure => ErrorCode::BR_0057,
+            FormatterError::MissingIssuer => ErrorCode::BR_0057,
+            FormatterError::MissingClaim => ErrorCode::BR_0057,
+            FormatterError::BBSOnly => ErrorCode::BR_0090,
+            FormatterError::CryptoError(_) => ErrorCode::BR_0057,
         }
     }
 }

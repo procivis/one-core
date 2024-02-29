@@ -75,14 +75,14 @@ async fn test_transform_canonized() {
     );
 
     let bnode_ident_map = HashMap::from([
-        ("_:c14n0", "_:b2".to_owned()),
-        ("_:c14n1", "_:b1".to_owned()),
-        ("_:c14n2", "_:b4".to_owned()),
-        ("_:c14n3", "_:b7".to_owned()),
-        ("_:c14n4", "_:b5".to_owned()),
-        ("_:c14n5", "_:b3".to_owned()),
-        ("_:c14n6", "_:b6".to_owned()),
-        ("_:c14n7", "_:b0".to_owned()),
+        ("_:c14n0".to_owned(), "_:b2".to_owned()),
+        ("_:c14n1".to_owned(), "_:b1".to_owned()),
+        ("_:c14n2".to_owned(), "_:b4".to_owned()),
+        ("_:c14n3".to_owned(), "_:b7".to_owned()),
+        ("_:c14n4".to_owned(), "_:b5".to_owned()),
+        ("_:c14n5".to_owned(), "_:b3".to_owned()),
+        ("_:c14n6".to_owned(), "_:b6".to_owned()),
+        ("_:c14n7".to_owned(), "_:b0".to_owned()),
     ]);
 
     let result = ld_formatter
@@ -120,20 +120,13 @@ async fn test_transform_grouped() {
         Arc::new(key_algorithm_provider),
     );
 
-    let mandatory_pointers = [
-        "/issuer".to_owned(),
-        "/issuanceDate".to_owned(),
-        "/type".to_owned(),
-        "/credentialStatus".to_owned(),
-    ];
-
     let transformed_lines = &TRANSFORMED_OWN
         .lines()
         .map(|l| l.to_owned())
         .collect::<Vec<String>>();
 
     let result = ld_formatter
-        .create_grouped_transformation(transformed_lines, &mandatory_pointers)
+        .create_grouped_transformation(transformed_lines)
         .unwrap();
 
     for (i, index) in (1..=10).enumerate() {
@@ -148,8 +141,6 @@ async fn test_transform_grouped() {
             result.non_mandatory.value[i].entry
         )
     }
-
-    assert_eq!(result.mandatory_pointers, mandatory_pointers);
 }
 
 static CANONICAL: &str = "_:c14n0 <https://windsurf.grotto-networking.com/selective#boardName> \"CompFoil170\" .

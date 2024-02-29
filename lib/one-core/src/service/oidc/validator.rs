@@ -18,7 +18,10 @@ use crate::service::oidc::dto::{
     OpenID4VCITokenRequestDTO,
 };
 use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::{map_from_oidc_format_to_core, map_from_oidc_vp_format_to_core};
+use crate::util::oidc::{
+    map_from_oidc_format_to_core, map_from_oidc_format_to_core_real,
+    map_from_oidc_vp_format_to_core,
+};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
@@ -65,11 +68,15 @@ pub(crate) fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,
     request: &OpenID4VCICredentialRequestDTO,
 ) -> Result<(), ServiceError> {
-    if schema.format != map_from_oidc_format_to_core(&request.format)? {
+    if !schema
+        .format
+        .starts_with(&map_from_oidc_format_to_core(&request.format)?)
+    {
         return Err(ServiceError::OpenID4VCError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         ));
     }
+
     if !request
         .credential_definition
         .r#type
@@ -79,6 +86,7 @@ pub(crate) fn throw_if_credential_request_invalid(
             OpenID4VCIError::UnsupportedCredentialType,
         ));
     }
+
     Ok(())
 }
 
@@ -150,7 +158,7 @@ pub(super) async fn validate_credential(
     key_verification: Box<KeyVerification>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
 ) -> Result<DetailCredential, ServiceError> {
-    let format = map_from_oidc_format_to_core(oidc_format)?;
+    let format = map_from_oidc_format_to_core_real(oidc_format, credential_string)?;
     let formatter = formatter_provider
         .get_formatter(&format)
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;

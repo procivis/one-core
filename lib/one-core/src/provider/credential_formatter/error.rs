@@ -28,6 +28,8 @@ pub enum FormatterError {
     MissingIssuer,
     #[error("Missing claim")]
     MissingClaim,
+    #[error("Only BBS is allowed")]
+    BBSOnly,
     #[error("Crypto library error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
 }

@@ -34,6 +34,10 @@ impl CredentialFormatter for MdocFormatter {
         todo!()
     }
 
+    async fn peek(&self, _token: &str) -> Result<DetailCredential, FormatterError> {
+        todo!()
+    }
+
     async fn format_presentation(
         &self,
         _tokens: &[String],
@@ -53,7 +57,7 @@ impl CredentialFormatter for MdocFormatter {
         todo!()
     }
 
-    fn format_credential_presentation(
+    async fn format_credential_presentation(
         &self,
         _credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {

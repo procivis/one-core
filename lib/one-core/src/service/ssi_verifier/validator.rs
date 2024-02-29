@@ -13,7 +13,7 @@ use crate::{
         revocation::provider::RevocationMethodProvider,
     },
     service::error::{MissingProviderError, ServiceError},
-    util::key_verification::KeyVerification,
+    util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_real},
 };
 
 use std::{
@@ -113,15 +113,16 @@ pub(super) async fn validate_proof(
     for credential in presentation.credentials {
         // Workaround credential format detection
         let format = if credential.starts_with('{') {
-            "JSON_LD_CLASSIC"
+            map_from_oidc_format_to_core_real("ldp_vc", &credential)
+                .map_err(|_| ServiceError::Other("Credential format not resolved".to_owned()))?
         } else if credential.contains('~') {
-            "SDJWT"
+            "SDJWT".to_owned()
         } else {
-            "JWT"
+            "JWT".to_owned()
         };
 
         let credential_formatter = formatter_provider
-            .get_formatter(format)
+            .get_formatter(&format)
             .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 
         let credential = credential_formatter

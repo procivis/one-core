@@ -64,7 +64,7 @@ pub struct LdPresentation {
     pub r#type: String,
     #[serde(with = "time::serde::rfc3339")]
     pub issuance_date: OffsetDateTime,
-    pub verifiable_credential: String, // Can be a value, or vector. Decoded later.
+    pub verifiable_credential: String, // Could be a value, or vector. Decoded later.
     pub holder: DidValue,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub nonce: Option<String>,

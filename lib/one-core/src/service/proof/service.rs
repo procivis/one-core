@@ -230,6 +230,10 @@ impl ProofService {
         }
         .to_owned();
 
+        if verifier_key.key.key_type == "BBS_PLUS" {
+            return Err(ValidationError::BBSNotSupported.into());
+        }
+
         self.proof_repository
             .create_proof(proof_from_create_request(
                 request,

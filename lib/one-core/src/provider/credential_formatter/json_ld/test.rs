@@ -1,18 +1,9 @@
-use std::sync::Arc;
-
 use serde_json::json;
 
-use crate::{crypto::MockCryptoProvider, provider::credential_formatter::json_ld::JsonLd};
+use crate::provider::credential_formatter::json_ld;
 
 #[tokio::test]
 async fn test_canonize_any() {
-    let crypto = MockCryptoProvider::default();
-
-    let ld_formatter = JsonLd {
-        base_url: Some("base".to_owned()),
-        crypto: Arc::new(crypto),
-    };
-
     let json = json!(
         {
             "@context": [
@@ -65,7 +56,7 @@ async fn test_canonize_any() {
           }
     );
 
-    let result = ld_formatter.canonize_any(&json).await.unwrap();
+    let result = json_ld::canonize_any(&json).await.unwrap();
     assert_eq!(result, CANONICAL);
 }
 

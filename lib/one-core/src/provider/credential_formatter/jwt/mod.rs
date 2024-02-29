@@ -23,23 +23,6 @@ mod test;
 pub mod mapper;
 pub mod model;
 
-#[derive(Default)]
-pub struct SkipVerification;
-
-#[async_trait]
-impl TokenVerifier for SkipVerification {
-    async fn verify<'a>(
-        &self,
-        _issuer_did_value: Option<DidValue>,
-        _issuer_key_id: Option<&'a str>,
-        _algorithm: &'a str,
-        _token: &'a [u8],
-        _signature: &'a [u8],
-    ) -> Result<(), SignerError> {
-        Ok(())
-    }
-}
-
 #[async_trait]
 impl TokenVerifier for Box<dyn TokenVerifier> {
     async fn verify<'a>(
@@ -80,7 +63,7 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
 
     pub async fn build_from_token(
         token: &str,
-        verification: impl TokenVerifier,
+        verification: Option<Box<dyn TokenVerifier>>,
     ) -> Result<Jwt<Payload>, FormatterError> {
         let DecomposedToken {
             header,
@@ -96,19 +79,21 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
             string_to_b64url_string(&payload_json)?,
         );
 
-        verification
-            .verify(
-                payload.issuer.as_ref().map(|v| match v.parse() {
-                    Ok(x) => x,
-                    Err(err) => match err {},
-                }),
-                None,
-                &header.algorithm,
-                jwt.as_bytes(),
-                &signature,
-            )
-            .await
-            .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+        if let Some(verification) = verification {
+            verification
+                .verify(
+                    payload.issuer.as_ref().map(|v| match v.parse() {
+                        Ok(x) => x,
+                        Err(err) => match err {},
+                    }),
+                    None,
+                    &header.algorithm,
+                    jwt.as_bytes(),
+                    &signature,
+                )
+                .await
+                .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+        }
 
         let jwt = Jwt { header, payload };
 

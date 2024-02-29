@@ -1,4 +1,3 @@
-use crate::provider::credential_formatter::jwt::SkipVerification;
 use crate::provider::credential_formatter::AuthenticationFn;
 use crate::service::error::ServiceError;
 use crate::{
@@ -22,7 +21,7 @@ pub struct OpenID4VCIProofJWTFormatter {}
 impl OpenID4VCIProofJWTFormatter {
     pub async fn verify_proof(content: &str) -> Result<Jwt<ProofContent>, ServiceError> {
         // TODO: Later it will be necessary to verify with nonce
-        Ok(Jwt::build_from_token(content, SkipVerification).await?)
+        Ok(Jwt::build_from_token(content, None).await?)
     }
     pub async fn format_proof(
         issuer_url: String,

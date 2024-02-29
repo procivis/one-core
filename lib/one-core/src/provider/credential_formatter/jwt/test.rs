@@ -115,12 +115,12 @@ async fn test_build_from_token() {
     let jwt_part = extract_jwt_part(reference_token.clone());
     let jwt: Jwt<Payload> = Jwt::build_from_token(
         &reference_token,
-        TestVerify {
+        Some(Box::new(TestVerify {
             issuer_did_value: Some(String::from("DID")),
             algorithm: String::from("Algorithm1"),
             token: jwt_part,
             signature: vec![1, 2, 3],
-        },
+        })),
     )
     .await
     .unwrap();

@@ -925,7 +925,7 @@ async fn test_check_revocation_non_revocable() {
 
     let mut formatter = MockCredentialFormatter::default();
 
-    formatter.expect_extract_credentials().returning(|_, _| {
+    formatter.expect_peek().returning(|_| {
         Ok(DetailCredential {
             id: None,
             issued_at: None,
@@ -1064,7 +1064,7 @@ async fn test_check_revocation_being_revoked() {
 
     let mut revocation_method = MockRevocationMethod::default();
 
-    formatter.expect_extract_credentials().returning(|_, _| {
+    formatter.expect_peek().returning(|_| {
         Ok(DetailCredential {
             id: None,
             issued_at: None,

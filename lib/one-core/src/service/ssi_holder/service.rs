@@ -37,6 +37,7 @@ use crate::{
         error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
         ssi_validator::validate_config_entity_presence,
     },
+    util::oidc::detect_correct_format,
 };
 use shared_types::DidId;
 use time::OffsetDateTime;
@@ -289,10 +290,12 @@ impl SSIHolderService {
                 }
             }
 
-            let format = &credential_schema.format;
+            // Workaround credential format detection
+            let format = detect_correct_format(&credential_schema, credential_content)?;
+
             let formatter = self
                 .formatter_provider
-                .get_formatter(format)
+                .get_formatter(&format)
                 .ok_or(MissingProviderError::Formatter(format.to_string()))?;
 
             let credential_presentation = CredentialPresentation {
@@ -300,8 +303,9 @@ impl SSIHolderService {
                 disclosed_keys: submitted_keys,
             };
 
-            let formatted_credential_presentation =
-                formatter.format_credential_presentation(credential_presentation)?;
+            let formatted_credential_presentation = formatter
+                .format_credential_presentation(credential_presentation)
+                .await?;
 
             credential_presentations.push(PresentedCredential {
                 presentation: formatted_credential_presentation,

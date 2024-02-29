@@ -21,7 +21,6 @@ use crate::{
         key::KeyRelations,
         organisation::OrganisationRelations,
     },
-    provider::credential_formatter::jwt::SkipVerification,
     repository::error::DataLayerError,
     service::{
         credential::{
@@ -40,6 +39,7 @@ use crate::{
             ValidationError,
         },
     },
+    util::oidc::detect_correct_format,
 };
 
 use super::mapper::{credential_offered_history_event, credential_revoked_history_event};
@@ -417,19 +417,20 @@ impl CredentialService {
                 .schema
                 .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
+            let credential_str = String::from_utf8(credential.credential)
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+
+            // Workaround credential format detection
+            let format = detect_correct_format(&credential_schema, &credential_str)?;
+
             let credential_status = match current_state {
                 CredentialStateEnum::Accepted => {
                     let formatter = self
                         .formatter_provider
-                        .get_formatter(&credential_schema.format)
+                        .get_formatter(&format)
                         .ok_or(MissingProviderError::Formatter(credential_schema.format))?;
 
-                    let credential = String::from_utf8(credential.credential)
-                        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
-                    let credential = formatter
-                        .extract_credentials(&credential, Box::new(SkipVerification))
-                        .await?;
+                    let credential = formatter.peek(&credential_str).await?;
 
                     if let Some(status) = credential.status {
                         status
