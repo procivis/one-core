@@ -83,7 +83,7 @@ impl KeyStorage for InternalKeyProvider {
                 "BBS_PLUS".to_string(),
             ],
             security: vec!["SOFTWARE".to_string()],
-            exportable: true,
+            features: vec!["EXPORTABLE".to_string()],
         }
     }
 }
