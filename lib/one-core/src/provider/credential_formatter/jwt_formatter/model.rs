@@ -8,6 +8,8 @@ pub struct VCContent {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
     pub r#type: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub credential_subject: CredentialSubject,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credential_status: Option<CredentialStatus>,

@@ -6,17 +6,18 @@ use crate::{
         ConfigError,
     },
     provider::{
+        credential_formatter::provider::CredentialFormatterProvider,
         did_method::provider::DidMethodProvider, key_algorithm::provider::KeyAlgorithmProvider,
         key_storage::provider::KeyProvider,
     },
     repository::{
-        credential_repository::CredentialRepository,
+        credential_repository::CredentialRepository, lvvc_repository::LvvcRepository,
         revocation_list_repository::RevocationListRepository,
     },
 };
 
 use super::{
-    bitstring_status_list::BitstringStatusList, lvvc::Lvvc, none::NoneRevocation,
+    bitstring_status_list::BitstringStatusList, lvvc::LvvcProvider, none::NoneRevocation,
     status_list_2021::StatusList2021, RevocationMethod,
 };
 
@@ -65,14 +66,16 @@ impl RevocationMethodProvider for RevocationMethodProviderImpl {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn from_config(
+pub(crate) fn from_config(
     config: &RevocationConfig,
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
+    lvvc_repository: Arc<dyn LvvcRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     client: reqwest::Client,
 ) -> Result<HashMap<String, Arc<dyn RevocationMethod>>, ConfigError> {
     let mut providers = HashMap::new();
@@ -96,7 +99,15 @@ pub fn from_config(
             RevocationType::Lvvc => {
                 ({
                     let params = config.get(key)?;
-                    Arc::new(Lvvc::new(params))
+                    Arc::new(LvvcProvider::new(
+                        core_base_url.clone(),
+                        lvvc_repository.clone(),
+                        credential_formatter_provider.clone(),
+                        key_provider.clone(),
+                        key_algorithm_provider.clone(),
+                        did_method_provider.clone(),
+                        params,
+                    ))
                 }) as _
             }
         };

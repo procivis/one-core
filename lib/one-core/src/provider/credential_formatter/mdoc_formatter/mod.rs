@@ -1,13 +1,15 @@
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
 
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
-use crate::service::credential::dto::CredentialDetailResponseDTO;
 use async_trait::async_trait;
 use shared_types::DidValue;
 
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::DetailCredential;
+
 use super::model::{CredentialPresentation, Presentation};
-use super::{AuthenticationFn, CredentialFormatter, FormatterCapabilities, VerificationFn};
+use super::{
+    AuthenticationFn, CredentialData, CredentialFormatter, FormatterCapabilities, VerificationFn,
+};
 
 pub struct MdocFormatter {}
 
@@ -15,8 +17,7 @@ pub struct MdocFormatter {}
 impl CredentialFormatter for MdocFormatter {
     async fn format_credentials(
         &self,
-        _credential: &CredentialDetailResponseDTO,
-        _credential_status: Option<CredentialStatus>,
+        _credential: CredentialData,
         _holder_did: &DidValue,
         _algorithm: &str,
         _additional_context: Vec<String>,

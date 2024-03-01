@@ -32,6 +32,8 @@ pub enum FormatterError {
     BBSOnly,
     #[error("Crypto library error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
+    #[error("{formatter} formatter missing missing base url")]
+    MissingBaseUrl { formatter: &'static str },
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]

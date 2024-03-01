@@ -24,6 +24,10 @@ pub struct TestContext {
 
 impl TestContext {
     pub async fn new() -> Self {
+        Self::new_with_token("test").await
+    }
+
+    pub async fn new_with_token(token: &str) -> Self {
         let server_mock = MockServer::new().await;
         let stdout_log = tracing_subscriber::fmt::layer().with_test_writer();
         let _ = tracing_subscriber::registry().with(stdout_log).try_init();
@@ -41,7 +45,7 @@ impl TestContext {
 
         Self {
             db: DbClient::new(db),
-            api: Client::new(base_url.clone(), "test".into()),
+            api: Client::new(base_url.clone(), token.into()),
             server_mock,
             config,
             _handle,

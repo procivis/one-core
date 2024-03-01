@@ -63,4 +63,26 @@ impl SSIApi {
         let url = format!("/ssi/oidc-verifier/v1/{}/client-metadata", proof_id.into());
         self.client.get(&url).await
     }
+
+    pub async fn issuer_create_credential(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+        jwt: &str,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let url = format!("/ssi/oidc-issuer/v1/{credential_schema_id}/credential");
+
+        let body = json!({
+            "format": "jwt_vc_json",
+            "credential_definition": {
+                "type": ["VerifiableCredential"]
+            },
+            "proof": {
+                "proof_type": "jwt",
+                "jwt": jwt
+            },
+        });
+
+        self.client.post(&url, body).await
+    }
 }

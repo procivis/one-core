@@ -263,7 +263,7 @@ impl BitstringStatusList {
         Ok(CredentialStatus {
             id: format!("{}#{}", revocation_list_url, index_on_status_list),
             r#type: CREDENTIAL_STATUS_TYPE.to_string(),
-            status_purpose: "revocation".to_string(),
+            status_purpose: Some("revocation".to_string()),
             additional_fields: HashMap::from([
                 ("statusListCredential".to_string(), revocation_list_url),
                 (

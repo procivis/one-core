@@ -7,6 +7,8 @@ use crate::provider::credential_formatter::CredentialStatus;
 pub struct VCContent {
     #[serde(rename = "@context")]
     pub context: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     pub r#type: Vec<String>,
     pub credential_subject: SDCredentialSubject,
     #[serde(skip_serializing_if = "Option::is_none")]

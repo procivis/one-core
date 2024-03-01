@@ -1,48 +1,77 @@
-use core_server::router::start_server;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::{
     credential::CredentialStateEnum,
     did::{KeyRole, RelatedKey},
 };
 use serde_json::json;
+use shared_types::CredentialId;
 use time::{macros::format_description, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
-    fixtures::{self, TestingCredentialParams, TestingDidParams},
-    utils,
+    fixtures::{TestingCredentialParams, TestingDidParams},
+    utils::{context::TestContext, db_clients::keys::eddsa_testing_params},
 };
 
 #[tokio::test]
 async fn test_post_issuer_credential() {
-    // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
+    test_post_issuer_credential_with("NONE").await;
+}
 
-    let organisation = fixtures::create_organisation(&db_conn).await;
+#[tokio::test]
+async fn test_post_issuer_credential_with_bitstring_revocation_method() {
+    test_post_issuer_credential_with("BITSTRINGSTATUSLIST").await;
+}
 
-    let key = fixtures::create_eddsa_key(&db_conn, &organisation).await;
-    let issuer_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            did_method: Some("WEB".to_string()),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::AssertionMethod,
-                key,
-            }]),
-            ..Default::default()
-        }),
-    )
-    .await;
+#[tokio::test]
+async fn test_post_issuer_credential_with_lvvc_revocation_method() {
+    let (context, credential_id) = test_post_issuer_credential_with("LVVC").await;
 
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let lvvcs = context
+        .db
+        .lvvcs
+        .get_all_by_credential_id(credential_id)
+        .await;
 
+    assert_eq!(1, lvvcs.len());
+    assert_eq!(credential_id, lvvcs[0].linked_credential_id);
+}
+
+async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestContext, CredentialId) {
     let interaction_id = Uuid::new_v4();
     let access_token = format!("{interaction_id}.test");
+
+    let context = TestContext::new_with_token(&access_token).await;
+
+    let organisation = context.db.organisations.create().await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("schema-1", &organisation, revocation_method)
+        .await;
+
     let date_format =
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let data = serde_json::to_vec(&json!({
@@ -50,28 +79,28 @@ async fn test_post_issuer_credential() {
         "access_token": access_token,
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     })).unwrap();
-    let interaction =
-        fixtures::create_interaction_with_id(interaction_id, &db_conn, &base_url, &data).await;
-    fixtures::create_credential(
-        &db_conn,
-        &credential_schema,
-        CredentialStateEnum::Offered,
-        &issuer_did,
-        "OPENID4VC",
-        TestingCredentialParams {
-            interaction: Some(interaction),
-            ..Default::default()
-        },
-    )
-    .await;
 
-    // WHEN
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let base_url = &context.config.app.core_base_url;
+    let interaction = context
+        .db
+        .interactions
+        .create(Some(interaction_id), base_url, &data)
+        .await;
 
-    let url = format!(
-        "{base_url}/ssi/oidc-issuer/v1/{}/credential",
-        credential_schema.id
-    );
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let jwt = [
         r#"{"alg":"EDDSA","typ":"JWT","kid":"did:key:20927216-8144-474C-B249-0C048D2BFD51"}"#,
@@ -81,23 +110,13 @@ async fn test_post_issuer_credential() {
     .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
     .join(".");
 
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth(access_token)
-        .json(&json!({
-            "format": "jwt_vc_json",
-            "credential_definition": {
-                "type": ["VerifiableCredential"]
-            },
-            "proof": {
-                "proof_type": "jwt",
-                "jwt": jwt
-            },
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .ssi
+        .issuer_create_credential(credential_schema.id, &jwt)
+        .await;
 
-    // THEN
-    assert_eq!(resp.status(), 200);
+    assert_eq!(200, resp.status());
+
+    (context, credential.id)
 }

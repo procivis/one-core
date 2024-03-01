@@ -32,4 +32,11 @@ impl LvvcsDB {
 
         lvvc
     }
+
+    pub async fn get_all_by_credential_id(&self, credential_id: CredentialId) -> Vec<Lvvc> {
+        self.repository
+            .get_all_by_credential_id(credential_id)
+            .await
+            .unwrap()
+    }
 }

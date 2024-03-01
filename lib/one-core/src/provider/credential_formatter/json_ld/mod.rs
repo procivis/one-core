@@ -10,16 +10,11 @@ use sophia_jsonld::{
 };
 use time::OffsetDateTime;
 
-use crate::{
-    crypto::CryptoProvider, provider::did_method::dto::DidDocumentDTO,
-    service::credential::dto::CredentialDetailResponseDTO,
-};
+use crate::{crypto::CryptoProvider, provider::did_method::dto::DidDocumentDTO};
 
-use self::model::{Claims, LdCredential, LdCredentialSubject, LdPresentation, LdProof};
+use super::{error::FormatterError, AuthenticationFn, Context, CredentialData, VerificationFn};
 
-use super::{
-    error::FormatterError, model::CredentialStatus, AuthenticationFn, Context, VerificationFn,
-};
+use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
 
 pub mod model;
 
@@ -30,37 +25,42 @@ type LdDataset = std::collections::HashSet<Spog<SimpleTerm<'static>>>;
 
 pub(super) fn prepare_credential(
     base_url: &Option<String>,
-    credential: &CredentialDetailResponseDTO,
-    credential_status: Option<CredentialStatus>,
+    credential: CredentialData,
     holder_did: &DidValue,
-    issuer_did: &DidValue,
     additional_context: Vec<String>,
     additional_types: Vec<String>,
-) -> LdCredential {
+) -> Result<LdCredential, FormatterError> {
+    let credential_schema = credential.credential_schema.ok_or_else(|| {
+        FormatterError::Failed(
+            "JSON_LD formatter is missing credential schema information".to_string(),
+        )
+    })?;
+
     let issuance_date = OffsetDateTime::now_utc();
 
     let mut context = prepare_context(additional_context);
-
-    if let Some(url) = &base_url {
-        context.push(format!("{}/ssi/context/v1/{}", url, credential.schema.id));
+    if let Some(base_url) = base_url {
+        context.push(format!(
+            "{base_url}/ssi/context/v1/{}",
+            credential_schema.id
+        ));
     }
 
-    let ld_type = prepare_credential_type(credential, additional_types);
+    let ld_type = prepare_credential_type(&credential_schema.name, additional_types);
 
-    let id = format!("urn:uuid:{}", credential.id);
+    let credential_subject =
+        prepare_credential_subject(&credential_schema.name, credential.claims, holder_did);
 
-    let credential_subject = prepare_credential_subject(credential, holder_did);
-
-    LdCredential {
+    Ok(LdCredential {
         context,
-        id,
+        id: credential.id,
         r#type: ld_type,
-        issuer: issuer_did.clone(),
+        issuer: credential.issuer_did,
         issuance_date,
         credential_subject,
-        credential_status,
+        credential_status: credential.credential_status,
         proof: None,
-    }
+    })
 }
 
 pub fn get_crypto_suite(json_ld_str: &str) -> Option<String> {
@@ -116,14 +116,14 @@ pub(super) fn prepare_context(additional_context: Vec<String>) -> Vec<String> {
 }
 
 pub(super) fn prepare_credential_type(
-    credential: &CredentialDetailResponseDTO,
+    credential_schema_name: &str,
     additional_types: Vec<String>,
 ) -> Vec<String> {
-    let pascal_schema_name = credential.schema.name.to_case(Case::Pascal);
+    let credential_schema_name = credential_schema_name.to_case(Case::Pascal);
 
     let mut types = vec![
         "VerifiableCredential".to_string(),
-        format!("{}Subject", pascal_schema_name),
+        format!("{}Subject", credential_schema_name),
     ];
 
     types.extend(additional_types);
@@ -132,18 +132,16 @@ pub(super) fn prepare_credential_type(
 }
 
 pub(super) fn prepare_credential_subject(
-    credential: &CredentialDetailResponseDTO,
+    credential_schema_name: &str,
+    claims: Vec<(String, String)>,
     holder_did: &DidValue,
 ) -> LdCredentialSubject {
-    let pascal_schema_name = credential.schema.name.to_case(Case::Pascal);
-    let claims: Claims = credential
-        .claims
-        .iter()
-        .map(|claim| (claim.schema.key.clone(), claim.value.clone()))
-        .collect();
+    let credential_schema_name = credential_schema_name.to_case(Case::Pascal);
 
     let mut subject = HashMap::new();
-    subject.insert(format!("{}Subject", pascal_schema_name), claims);
+    let claims = HashMap::from_iter(claims);
+
+    subject.insert(format!("{}Subject", credential_schema_name), claims);
 
     LdCredentialSubject {
         id: holder_did.clone(),

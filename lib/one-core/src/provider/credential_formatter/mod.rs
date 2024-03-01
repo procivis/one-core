@@ -22,9 +22,12 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use strum::Display;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
 
 use crate::{
-    crypto::signer::error::SignerError, service::credential::dto::CredentialDetailResponseDTO,
+    crypto::signer::error::SignerError,
+    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
 };
 
 use self::{
@@ -34,6 +37,22 @@ use self::{
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
+
+pub struct CredentialData {
+    // URI
+    pub id: String,
+    pub issuance_date: OffsetDateTime,
+    pub valid_for: Duration,
+    pub claims: Vec<(String, String)>,
+    pub issuer_did: DidValue,
+    pub credential_schema: Option<CredentialSchemaData>,
+    pub credential_status: Option<CredentialStatus>,
+}
+
+pub struct CredentialSchemaData {
+    id: Uuid,
+    name: String,
+}
 
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -82,8 +101,7 @@ pub trait SignatureProvider: Send + Sync {
 pub trait CredentialFormatter: Send + Sync {
     async fn format_credentials(
         &self,
-        credential: &CredentialDetailResponseDTO,
-        credential_status: Option<CredentialStatus>,
+        credential: CredentialData,
         holder_did: &DidValue,
         algorithm: &str,
         additional_context: Vec<String>,
@@ -132,5 +150,40 @@ pub(crate) struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
 impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         Ok(self.0(message))
+    }
+}
+
+impl CredentialData {
+    pub fn from_credential_detail_response(
+        credential: CredentialDetailResponseDTO,
+        core_base_url: &str,
+        credential_status: Option<CredentialStatus>,
+    ) -> Result<Self, ServiceError> {
+        let id = format!("{core_base_url}/ssi/credential/v1/{}", credential.id);
+        let issuer_did = credential.issuer_did.map(|did| did.did).ok_or_else(|| {
+            ServiceError::MappingError(format!(
+                "Missing issuer DID in CredentialDetailResponseDTO for credential {id}"
+            ))
+        })?;
+
+        let issuance_date = OffsetDateTime::now_utc();
+        let valid_for = time::Duration::days(365 * 2);
+
+        Ok(Self {
+            id,
+            issuance_date,
+            valid_for,
+            claims: credential
+                .claims
+                .into_iter()
+                .map(|claim| (claim.schema.key, claim.value))
+                .collect(),
+            issuer_did,
+            credential_schema: Some(CredentialSchemaData {
+                id: credential.schema.id,
+                name: credential.schema.name,
+            }),
+            credential_status,
+        })
     }
 }

@@ -156,9 +156,11 @@ impl OneCore {
             core_base_url.clone(),
             data_provider.get_credential_repository(),
             data_provider.get_revocation_list_repository(),
+            data_provider.get_lvvc_repository(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
+            formatter_provider.clone(),
             client,
         )?;
 
@@ -183,6 +185,7 @@ impl OneCore {
             revocation_method_provider.clone(),
             key_provider.clone(),
             data_provider.get_history_repository(),
+            core_base_url.clone(),
         ));
 
         Ok(OneCore {

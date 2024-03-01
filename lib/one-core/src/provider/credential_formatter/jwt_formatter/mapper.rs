@@ -1,28 +1,20 @@
 use std::collections::HashMap;
 
-use crate::{
-    provider::credential_formatter::{
-        jwt::Jwt,
-        model::{CredentialStatus, CredentialSubject, DetailCredential},
-        Context,
-    },
-    service::credential::dto::CredentialDetailResponseDTO,
+use crate::provider::credential_formatter::{
+    jwt::Jwt,
+    model::{CredentialStatus, CredentialSubject, DetailCredential},
+    Context,
 };
 
 use super::model::{VCContent, VC};
 
 pub(super) fn format_vc(
-    credential: &CredentialDetailResponseDTO,
+    id: String,
+    claims: Vec<(String, String)>,
     credential_status: Option<CredentialStatus>,
     additional_context: Vec<String>,
     additional_types: Vec<String>,
 ) -> VC {
-    let claims: HashMap<String, String> = credential
-        .claims
-        .iter()
-        .map(|c| (c.schema.key.clone(), c.value.clone()))
-        .collect();
-
     let context = vec![Context::CredentialsV1.to_string()]
         .into_iter()
         .chain(additional_context)
@@ -37,7 +29,10 @@ pub(super) fn format_vc(
         vc: VCContent {
             context,
             r#type: types,
-            credential_subject: CredentialSubject { values: claims },
+            id: Some(id),
+            credential_subject: CredentialSubject {
+                values: HashMap::from_iter(claims),
+            },
             credential_status,
         },
     }

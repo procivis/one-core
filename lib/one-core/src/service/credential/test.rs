@@ -1078,7 +1078,7 @@ async fn test_check_revocation_being_revoked() {
             status: Some(CredentialStatus {
                 id: "id".to_string(),
                 r#type: "type".to_string(),
-                status_purpose: "purpose".to_string(),
+                status_purpose: Some("purpose".to_string()),
                 additional_fields: HashMap::default(),
             }),
         })
