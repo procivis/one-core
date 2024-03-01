@@ -310,6 +310,7 @@ impl CredentialService {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
+                    holder_did: Some(DidRelations::default()),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()

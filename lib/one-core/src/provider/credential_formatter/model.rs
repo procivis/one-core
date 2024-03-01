@@ -60,7 +60,7 @@ pub struct CredentialPresentation {
 pub struct CredentialStatus {
     pub id: String,
     pub r#type: String,
-    pub status_purpose: String,
+    pub status_purpose: Option<String>,
     #[serde(flatten)]
     pub additional_fields: HashMap<String, String>,
 }

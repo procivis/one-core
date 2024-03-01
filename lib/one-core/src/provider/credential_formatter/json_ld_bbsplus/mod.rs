@@ -5,16 +5,17 @@ use std::vec;
 
 use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::credential::dto::CredentialDetailResponseDTO;
 use async_trait::async_trait;
 use shared_types::DidValue;
 
 use super::json_ld::model::LdCredential;
 use super::model::{CredentialPresentation, Presentation};
-use super::{AuthenticationFn, CredentialFormatter, FormatterCapabilities, VerificationFn};
+use super::{
+    AuthenticationFn, CredentialData, CredentialFormatter, FormatterCapabilities, VerificationFn,
+};
 
 mod base_proof;
 mod derived_proof;
@@ -42,8 +43,7 @@ pub struct Params {}
 impl CredentialFormatter for JsonLdBbsplus {
     async fn format_credentials(
         &self,
-        credential: &CredentialDetailResponseDTO,
-        credential_status: Option<CredentialStatus>,
+        credential: CredentialData,
         holder_did: &DidValue,
         algorithm: &str,
         additional_context: Vec<String>,
@@ -52,7 +52,6 @@ impl CredentialFormatter for JsonLdBbsplus {
     ) -> Result<String, FormatterError> {
         self.format(
             credential,
-            credential_status,
             holder_did,
             algorithm,
             additional_context,

@@ -5,29 +5,25 @@ use crate::{
     provider::credential_formatter::{
         jwt::mapper::string_to_b64url_string, Context, CredentialStatus, FormatterError,
     },
-    service::credential::dto::DetailCredentialClaimResponseDTO,
 };
 
 use super::model::{SDCredentialSubject, Sdvc, VCContent};
 
 pub(super) fn claims_to_formatted_disclosure(
-    claims: &[DetailCredentialClaimResponseDTO],
+    claims: &[(String, String)],
     crypto: &Arc<dyn CryptoProvider>,
 ) -> Vec<String> {
     claims
         .iter()
-        .filter_map(|c| {
-            serde_json::to_string(&vec![
-                crypto.generate_salt_base64(),
-                c.schema.key.clone(),
-                c.value.clone(),
-            ])
-            .ok()
+        .filter_map(|(key, value)| {
+            let salt = crypto.generate_salt_base64();
+            serde_json::to_string(&[&salt, key, value]).ok()
         })
         .collect()
 }
 
 pub(super) fn vc_from_credential(
+    id: String,
     hasher: &Arc<dyn Hasher>,
     claims: &[String],
     credential_status: Option<CredentialStatus>,
@@ -56,6 +52,7 @@ pub(super) fn vc_from_credential(
         vc: VCContent {
             context,
             r#type: types,
+            id: Some(id),
             credential_subject: SDCredentialSubject {
                 claims: hashed_claims,
             },

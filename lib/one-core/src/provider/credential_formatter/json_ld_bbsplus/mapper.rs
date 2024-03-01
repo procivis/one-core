@@ -26,10 +26,11 @@ impl TryFrom<LdCredential> for DetailCredential {
     type Error = FormatterError;
 
     fn try_from(value: LdCredential) -> Result<Self, Self::Error> {
-        let id = value
-            .id
-            .strip_prefix("urn:uuid:")
-            .ok_or(FormatterError::Failed("Invalid id format".to_owned()))?;
+        // TODO: ask Wojciech if it makes sense to remove this check
+        // let id = value
+        //     .id
+        //     .strip_prefix("urn:uuid:")
+        //     .ok_or(FormatterError::Failed("Invalid id format".to_owned()))?;
 
         let mut claims: HashMap<String, String> = HashMap::new();
 
@@ -40,7 +41,7 @@ impl TryFrom<LdCredential> for DetailCredential {
         }
 
         Ok(Self {
-            id: Some(id.to_owned()),
+            id: Some(value.id),
             issued_at: Some(value.issuance_date),
             expires_at: None,
             invalid_before: None,

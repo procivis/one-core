@@ -2758,6 +2758,7 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "serde_urlencoded",
+ "serde_with",
  "serde_yaml",
  "sha2 0.10.8",
  "shadow-rs",

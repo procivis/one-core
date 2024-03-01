@@ -90,6 +90,9 @@ pub enum ServiceError {
 
     #[error("Response mapping error: {0}")]
     ResponseMapping(String),
+
+    #[error("Revocation error: {0}")]
+    Revocation(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -203,6 +206,9 @@ pub enum BusinessLogicError {
         "StatusList2021 revocation method not supported for credential issuance and revocation"
     )]
     StatusList2021NotSupported,
+
+    #[error("Credential already revoked")]
+    CredentialAlreadyRevoked,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -517,6 +523,9 @@ pub enum ErrorCode {
     #[strum(to_string = "BBS key not supported")]
     BR_0091,
 
+    #[strum(to_string = "Credential already revoked")]
+    BR_0092,
+
     #[strum(to_string = "Missing proof for provided interaction")]
     BR_0094,
 
@@ -525,6 +534,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Invalid key")]
     BR_0096,
+
+    #[strum(to_string = "Revocation error")]
+    BR_0101,
 }
 
 impl From<FormatError> for ServiceError {
@@ -564,6 +576,7 @@ impl ServiceError {
             ServiceError::KeyAlgorithmError(_) => ErrorCode::BR_0063,
             ServiceError::DidMethodError(_) => ErrorCode::BR_0064,
             ServiceError::ValidationError(_) | ServiceError::Other(_) => ErrorCode::BR_0000,
+            ServiceError::Revocation(_) => ErrorCode::BR_0101,
         }
     }
 }
@@ -612,6 +625,7 @@ impl BusinessLogicError {
             BusinessLogicError::MissingOrganisation(_) => ErrorCode::BR_0088,
             BusinessLogicError::MissingProofForInteraction(_) => ErrorCode::BR_0094,
             BusinessLogicError::StatusList2021NotSupported => ErrorCode::BR_0095,
+            BusinessLogicError::CredentialAlreadyRevoked => ErrorCode::BR_0092,
         }
     }
 }
@@ -654,20 +668,21 @@ impl TransportProtocolError {
 impl FormatterError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            FormatterError::Failed(_) => ErrorCode::BR_0057,
-            FormatterError::CouldNotSign(_) => ErrorCode::BR_0057,
-            FormatterError::CouldNotVerify(_) => ErrorCode::BR_0057,
-            FormatterError::CouldNotFormat(_) => ErrorCode::BR_0057,
-            FormatterError::CouldNotExtractCredentials(_) => ErrorCode::BR_0057,
-            FormatterError::CouldNotExtractPresentation(_) => ErrorCode::BR_0057,
-            FormatterError::CouldNotExtractClaimsFromPresentation(_) => ErrorCode::BR_0057,
-            FormatterError::IncorrectSignature => ErrorCode::BR_0057,
-            FormatterError::MissingPart => ErrorCode::BR_0057,
-            FormatterError::MissingDisclosure => ErrorCode::BR_0057,
-            FormatterError::MissingIssuer => ErrorCode::BR_0057,
-            FormatterError::MissingClaim => ErrorCode::BR_0057,
             FormatterError::BBSOnly => ErrorCode::BR_0090,
-            FormatterError::CryptoError(_) => ErrorCode::BR_0057,
+            FormatterError::Failed(_)
+            | FormatterError::CouldNotSign(_)
+            | FormatterError::CouldNotVerify(_)
+            | FormatterError::CouldNotFormat(_)
+            | FormatterError::CouldNotExtractCredentials(_)
+            | FormatterError::CouldNotExtractPresentation(_)
+            | FormatterError::CouldNotExtractClaimsFromPresentation(_)
+            | FormatterError::IncorrectSignature
+            | FormatterError::MissingPart
+            | FormatterError::MissingDisclosure
+            | FormatterError::MissingIssuer
+            | FormatterError::MissingClaim
+            | FormatterError::CryptoError(_)
+            | FormatterError::MissingBaseUrl { .. } => ErrorCode::BR_0057,
         }
     }
 }

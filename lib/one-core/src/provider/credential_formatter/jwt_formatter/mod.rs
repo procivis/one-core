@@ -10,18 +10,16 @@ mod test;
 mod mapper;
 mod model;
 
-use crate::{
-    provider::credential_formatter::{jwt::Jwt, jwt_formatter::mapper::format_vc},
-    service::credential::dto::CredentialDetailResponseDTO,
-};
+use crate::provider::credential_formatter::{jwt::Jwt, jwt_formatter::mapper::format_vc};
 
 use self::model::{VPContent, VC, VP};
 
 use super::{
     error::FormatterError,
     jwt::model::JWTPayload,
-    model::{CredentialPresentation, CredentialStatus, DetailCredential, Presentation},
-    AuthenticationFn, Context, CredentialFormatter, FormatterCapabilities, VerificationFn,
+    model::{CredentialPresentation, DetailCredential, Presentation},
+    AuthenticationFn, Context, CredentialData, CredentialFormatter, FormatterCapabilities,
+    VerificationFn,
 };
 
 pub struct JWTFormatter {
@@ -44,8 +42,7 @@ impl JWTFormatter {
 impl CredentialFormatter for JWTFormatter {
     async fn format_credentials(
         &self,
-        credential: &CredentialDetailResponseDTO,
-        credential_status: Option<CredentialStatus>,
+        credential: CredentialData,
         holder_did: &DidValue,
         algorithm: &str,
         additional_context: Vec<String>,
@@ -53,22 +50,23 @@ impl CredentialFormatter for JWTFormatter {
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
         let vc = format_vc(
-            credential,
-            credential_status,
+            credential.id.clone(),
+            credential.claims,
+            credential.credential_status,
             additional_context,
             additional_types,
         );
 
-        let now = OffsetDateTime::now_utc();
-        let valid_for = time::Duration::days(365 * 2);
+        let issued_at = credential.issuance_date;
+        let expires_at = issued_at.checked_add(credential.valid_for);
 
         let payload = JWTPayload {
-            issued_at: Some(now),
-            expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            issuer: credential.issuer_did.as_ref().map(|x| x.did.to_string()),
+            issued_at: Some(issued_at),
+            expires_at,
+            invalid_before: issued_at.checked_sub(Duration::seconds(self.get_leeway() as i64)),
+            issuer: Some(credential.issuer_did.to_string()),
             subject: Some(holder_did.to_string()),
-            jwt_id: Some(credential.id.to_string()),
+            jwt_id: Some(credential.id),
             custom: vc,
             nonce: None,
         };

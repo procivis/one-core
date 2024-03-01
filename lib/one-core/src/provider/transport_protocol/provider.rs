@@ -1,5 +1,8 @@
-use super::mapper::credential_accepted_history_event;
-use super::{dto::InvitationType, TransportProtocol};
+use std::{collections::HashMap, sync::Arc};
+
+use shared_types::CredentialId;
+use url::Url;
+
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -11,18 +14,21 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::CredentialData;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::mapper::get_issued_credential_update;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::error::{
     EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use shared_types::CredentialId;
-use std::{collections::HashMap, sync::Arc};
-use url::Url;
+
+use super::dto::InvitationType;
+use super::mapper::credential_accepted_history_event;
+use super::TransportProtocol;
 
 #[derive(Clone)]
 pub struct DetectedProtocol {
@@ -50,6 +56,7 @@ pub(crate) struct TransportProtocolProviderImpl {
     history_repository: Arc<dyn HistoryRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    core_base_url: Option<String>,
 }
 
 impl TransportProtocolProviderImpl {
@@ -60,6 +67,7 @@ impl TransportProtocolProviderImpl {
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         history_repository: Arc<dyn HistoryRepository>,
+        core_base_url: Option<String>,
     ) -> Self {
         Self {
             protocols,
@@ -68,6 +76,7 @@ impl TransportProtocolProviderImpl {
             revocation_method_provider,
             key_provider,
             history_repository,
+            core_base_url,
         }
     }
 }
@@ -167,13 +176,23 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
 
         let redirect_uri = credential.redirect_uri.to_owned();
 
+        let core_base_url = self.core_base_url.as_ref().ok_or(ServiceError::Other(
+            "Missing core_base_url for credential issuance".to_string(),
+        ))?;
+
+        let credential_detail = CredentialDetailResponseDTO::try_from(credential.clone())?;
+        let credential_data = CredentialData::from_credential_detail_response(
+            credential_detail,
+            core_base_url,
+            credential_status,
+        )?;
+
         let token: String = self
             .formatter_provider
             .get_formatter(&format)
             .ok_or(ValidationError::InvalidFormatter(format.to_string()))?
             .format_credentials(
-                &credential.clone().try_into()?,
-                credential_status,
+                credential_data,
                 &holder_did.did,
                 &key.key.key_type,
                 vec![],

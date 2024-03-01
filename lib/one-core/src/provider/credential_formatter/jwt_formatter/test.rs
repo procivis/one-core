@@ -13,7 +13,7 @@ use crate::provider::credential_formatter::{
     },
     model::{CredentialPresentation, CredentialStatus},
     test_utilities::test_credential_detail_response_dto,
-    CredentialFormatter, MockAuth, MockTokenVerifier,
+    CredentialData, CredentialFormatter, MockAuth, MockTokenVerifier,
 };
 
 #[tokio::test]
@@ -25,18 +25,23 @@ async fn test_format_credential() {
     };
 
     let credential_details = test_credential_detail_response_dto();
+    let credential_data = CredentialData::from_credential_detail_response(
+        credential_details,
+        "http://base_url",
+        Some(CredentialStatus {
+            id: "STATUS_ID".to_string(),
+            r#type: "TYPE".to_string(),
+            status_purpose: Some("PURPOSE".to_string()),
+            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
+        }),
+    )
+    .unwrap();
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = sd_formatter
         .format_credentials(
-            &credential_details,
-            Some(CredentialStatus {
-                id: "STATUS_ID".to_string(),
-                r#type: "TYPE".to_string(),
-                status_purpose: "PURPOSE".to_string(),
-                additional_fields: HashMap::from([("Field1".to_owned(), "Val1".to_owned())]),
-            }),
+            credential_data,
             &"holder_did".parse().unwrap(),
             "algorithm",
             vec!["Context1".to_string()],
@@ -89,20 +94,13 @@ async fn test_format_credential() {
     assert!(vc.context.contains(&String::from("Context1")));
     assert!(vc.r#type.contains(&String::from("Type1")));
 
-    assert_eq!(vc.credential_status.as_ref().unwrap().id, "STATUS_ID");
-    assert_eq!(vc.credential_status.as_ref().unwrap().r#type, "TYPE");
-    assert_eq!(
-        vc.credential_status.as_ref().unwrap().status_purpose,
-        "PURPOSE"
-    );
-    assert_eq!(
-        vc.credential_status
-            .as_ref()
-            .unwrap()
-            .additional_fields
-            .get("Field1"),
-        Some(&"Val1".to_string())
-    );
+    let credential_status = vc.credential_status.unwrap();
+    assert_eq!(&credential_status.id, "STATUS_ID");
+    assert_eq!(&credential_status.r#type, "TYPE");
+    assert_eq!(credential_status.status_purpose.as_deref(), Some("PURPOSE"));
+
+    let field1 = credential_status.additional_fields.get("Field1").unwrap();
+    assert_eq!(field1, "Val1");
 }
 
 #[tokio::test]
@@ -150,8 +148,13 @@ async fn test_extract_credentials() {
     assert_eq!(credentials.status.as_ref().unwrap().id, "STATUS_ID");
     assert_eq!(credentials.status.as_ref().unwrap().r#type, "TYPE");
     assert_eq!(
-        credentials.status.as_ref().unwrap().status_purpose,
-        "PURPOSE"
+        credentials
+            .status
+            .as_ref()
+            .unwrap()
+            .status_purpose
+            .as_deref(),
+        Some("PURPOSE")
     );
     assert_eq!(
         credentials

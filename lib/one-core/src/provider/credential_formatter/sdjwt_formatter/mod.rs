@@ -3,17 +3,17 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::crypto::CryptoProvider;
-use crate::provider::credential_formatter::sdjwt_formatter::model::{
-    DecomposedToken, Disclosure, Sdvc,
-};
-use crate::service::credential::dto::CredentialDetailResponseDTO;
 use async_trait::async_trait;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::Deserialize;
 use shared_types::DidValue;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
+
+use crate::crypto::CryptoProvider;
+use crate::provider::credential_formatter::sdjwt_formatter::model::{
+    DecomposedToken, Disclosure, Sdvc,
+};
 
 #[cfg(test)]
 mod test;
@@ -31,8 +31,8 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
-    AuthenticationFn, CredentialFormatter, CredentialStatus, DetailCredential,
-    FormatterCapabilities, FormatterError, Presentation, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential, FormatterCapabilities,
+    FormatterError, Presentation, VerificationFn,
 };
 
 pub struct SDJWTFormatter {
@@ -50,32 +50,33 @@ pub struct Params {
 impl CredentialFormatter for SDJWTFormatter {
     async fn format_credentials(
         &self,
-        credential: &CredentialDetailResponseDTO,
-        credential_status: Option<CredentialStatus>,
+        credential: CredentialData,
         holder_did: &DidValue,
         algorithm: &str,
         additional_context: Vec<String>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
+        let issuer = credential.issuer_did.to_string();
+        let id = credential.id.clone();
+
+        let issued_at = credential.issuance_date;
+        let expires_at = issued_at.checked_add(credential.valid_for);
+
         let (vc, disclosures) = self.format_hashed_credential(
             credential,
-            credential_status,
             "sha-256",
             additional_context,
             additional_types,
         )?;
 
-        let now = OffsetDateTime::now_utc();
-        let valid_for = time::Duration::days(365 * 2);
-
         let payload = JWTPayload {
-            issued_at: Some(now),
-            expires_at: now.checked_add(valid_for),
-            invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
+            issued_at: Some(issued_at),
+            expires_at,
+            invalid_before: issued_at.checked_sub(Duration::seconds(self.get_leeway() as i64)),
             subject: Some(holder_did.to_string()),
-            issuer: credential.issuer_did.as_ref().map(|x| x.did.to_string()),
-            jwt_id: Some(credential.id.to_string()),
+            issuer: Some(issuer),
+            jwt_id: Some(id),
             custom: vc,
             nonce: None,
         };
@@ -213,8 +214,7 @@ impl SDJWTFormatter {
 
     fn format_hashed_credential(
         &self,
-        credential: &CredentialDetailResponseDTO,
-        credential_status: Option<CredentialStatus>,
+        credential: CredentialData,
         algorithm: &str,
         additional_context: Vec<String>,
         additional_types: Vec<String>,
@@ -223,9 +223,10 @@ impl SDJWTFormatter {
         let hasher = self.crypto.get_hasher(algorithm)?;
 
         let vc = vc_from_credential(
+            credential.id,
             &hasher,
             &claims,
-            credential_status,
+            credential.credential_status,
             additional_context,
             additional_types,
             algorithm,

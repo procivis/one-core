@@ -1,17 +1,16 @@
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::vec;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use shared_types::DidValue;
+
 use crate::crypto::signer::bbs::BbsInput;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::BbsProofComponents;
 use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::{json_ld, CredentialData};
 use crate::provider::did_method::dto::{DidDocumentDTO, PublicKeyJwkDTO};
-use crate::service::credential::dto::CredentialDetailResponseDTO;
-use shared_types::DidValue;
 
 use super::model::{GroupedFormatDataDocument, HashData, CBOR_PREFIX_BASE};
 
@@ -21,8 +20,7 @@ use super::{mapper, AuthenticationFn, JsonLdBbsplus};
 impl JsonLdBbsplus {
     pub(super) async fn format(
         &self,
-        credential: &CredentialDetailResponseDTO,
-        credential_status: Option<CredentialStatus>,
+        credential: CredentialData,
         holder_did: &DidValue,
         algorithm: &str,
         additional_context: Vec<String>,
@@ -33,16 +31,12 @@ impl JsonLdBbsplus {
             return Err(FormatterError::BBSOnly);
         }
 
-        let issuer_did = credential
-            .issuer_did
-            .as_ref()
-            .map(|did| did.did.clone())
-            .ok_or(FormatterError::MissingIssuer)?;
+        let issuer_did = &credential.issuer_did;
 
         // We only do that to get public key here.
         let did_document = self
             .did_method_provider
-            .resolve(&issuer_did)
+            .resolve(issuer_did)
             .await
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
@@ -51,17 +45,15 @@ impl JsonLdBbsplus {
         // Those fields have to be presented by holder for verifier.
         // It's not the same as 'required claim' for issuance.
         // Here we add everything that is mandatory which is everything except CredentialSubject.
-        let mandatory_pointers = prepare_mandatory_pointers(&credential_status);
+        let mandatory_pointers = prepare_mandatory_pointers(&credential.credential_status);
 
         let mut ld_credential = json_ld::prepare_credential(
             &self.base_url,
             credential,
-            credential_status,
             holder_did,
-            &issuer_did,
             additional_context,
             additional_types,
-        );
+        )?;
 
         let hmac_key = self.crypto.generate_bytes(32);
 

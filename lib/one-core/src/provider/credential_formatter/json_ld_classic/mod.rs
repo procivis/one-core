@@ -1,23 +1,20 @@
-use serde::Deserialize;
-
 use std::sync::Arc;
 use std::vec;
 
-use crate::crypto::CryptoProvider;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential,
-};
-use crate::provider::did_method::provider::DidMethodProvider;
-use crate::service::credential::dto::CredentialDetailResponseDTO;
 use async_trait::async_trait;
+use serde::Deserialize;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
+use crate::crypto::CryptoProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+
+use super::error::FormatterError;
 use super::json_ld::{self, model::*};
-use super::model::{CredentialPresentation, Presentation};
+use super::model::{CredentialPresentation, CredentialSubject, DetailCredential, Presentation};
 use super::{
-    AuthenticationFn, Context, CredentialFormatter, FormatterCapabilities, VerificationFn,
+    AuthenticationFn, Context, CredentialData, CredentialFormatter, FormatterCapabilities,
+    VerificationFn,
 };
 
 #[allow(dead_code)]
@@ -40,35 +37,26 @@ impl CredentialFormatter for JsonLdClassic {
 
     async fn format_credentials(
         &self,
-        credential: &CredentialDetailResponseDTO,
-        credential_status: Option<CredentialStatus>,
+        credential: CredentialData,
         holder_did: &DidValue,
         algorithm: &str,
         additional_context: Vec<String>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
-        let issuer_did = credential
-            .issuer_did
-            .as_ref()
-            .map(|did| did.did.clone())
-            .ok_or(FormatterError::MissingIssuer)?;
-
         let did_document = self
             .did_method_provider
-            .resolve(&issuer_did)
+            .resolve(&credential.issuer_did)
             .await
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
         let mut credential = json_ld::prepare_credential(
             &self.base_url,
             credential,
-            credential_status,
             holder_did,
-            &issuer_did,
             additional_context,
             additional_types,
-        );
+        )?;
 
         let cryptosuite = match algorithm {
             "EDDSA" => "eddsa-rdfc-2022",

@@ -96,7 +96,7 @@ async fn test_issuer_submit_succeeds() {
                 credential_status: CredentialStatus {
                     id: Uuid::new_v4().to_string(),
                     r#type: "type".to_string(),
-                    status_purpose: "type".to_string(),
+                    status_purpose: Some("type".to_string()),
                     additional_fields: HashMap::new(),
                 },
             }))
@@ -112,7 +112,7 @@ async fn test_issuer_submit_succeeds() {
     formatter
         .expect_format_credentials()
         .once()
-        .returning(|_, _, _, _, _, _, _| Ok("token".to_string()));
+        .returning(|_, _, _, _, _, _| Ok("token".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
@@ -156,6 +156,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
         Arc::new(history_repository),
+        Some("base_url".to_string()),
     );
 
     service.issue_credential(&credential_id).await.unwrap();
