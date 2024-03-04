@@ -13,7 +13,7 @@ keyStorage:
     display: "keyStorage.azureKeyVault"
     type: "AZURE_VAULT"
     disabled: true
-    order: 2
+    order: 1
     params:
       private:
         oauthServiceUrl: "https://login.microsoftonline.com"
