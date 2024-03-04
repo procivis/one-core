@@ -1,4 +1,5 @@
 use super::CredentialService;
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::repository::lvvc_repository::MockLvvcRepository;
 use crate::{
     config::core_config::CoreConfig,
@@ -145,6 +146,7 @@ fn generic_credential() -> Credential {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -196,6 +198,7 @@ fn generic_credential_list_entity() -> Credential {
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: None,

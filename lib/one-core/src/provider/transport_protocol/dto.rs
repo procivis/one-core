@@ -1,3 +1,4 @@
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::{credential::Credential, credential_schema::CredentialSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use serde::{Deserialize, Serialize};
@@ -62,6 +63,7 @@ pub struct ProofCredentialSchema {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[derive(Clone, Debug)]

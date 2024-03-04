@@ -41,6 +41,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             revocation_method: value.revocation_method,
             organisation_id,
             claims: claim_schemas,
+            wallet_storage_type: value.wallet_storage_type,
         })
     }
 }
@@ -93,6 +94,7 @@ pub(super) fn from_create_request(
         last_modified: now,
         name: request.name,
         format: request.format,
+        wallet_storage_type: request.wallet_storage_type,
         revocation_method: request.revocation_method,
         claim_schemas: Some(
             request

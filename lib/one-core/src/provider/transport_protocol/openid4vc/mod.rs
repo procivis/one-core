@@ -1044,6 +1044,7 @@ async fn create_and_store_credential_schema(
         last_modified: now,
         name,
         format,
+        wallet_storage_type: None,
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(claim_schemas),
         organisation,

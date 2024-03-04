@@ -4,6 +4,7 @@ use tempfile::NamedTempFile;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::{
     model::{
         backup::{Metadata, UnexportableEntities},
@@ -60,6 +61,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 deleted_at: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 name: "name".into(),
                 format: "format".into(),
                 revocation_method: "revocation_method".into(),

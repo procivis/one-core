@@ -101,7 +101,7 @@ pub async fn insert_credential_schema_to_database(
         name: Set(name.to_owned()),
         revocation_method: Set(revocation_method.to_owned()),
         organisation_id: Set(organisation_id.to_owned()),
-
+        wallet_storage_type: Set(None),
         deleted_at: Set(deleted_at),
     }
     .insert(database)

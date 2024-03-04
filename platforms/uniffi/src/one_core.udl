@@ -53,6 +53,10 @@ enum CredentialStateBindingEnum {
   "Created", "Pending", "Offered", "Accepted", "Rejected", "Revoked", "Error"
 };
 
+enum WalletStorageTypeBindingEnum {
+  "Hardware", "Software"
+};
+
 dictionary CredentialSchemaBindingDTO {
   string id;
   string created_date;
@@ -60,6 +64,7 @@ dictionary CredentialSchemaBindingDTO {
   string name;
   string format;
   string revocation_method;
+  WalletStorageTypeBindingEnum? wallet_storage_type;
 };
 
 dictionary ClaimBindingDTO {

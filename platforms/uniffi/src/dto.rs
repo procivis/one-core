@@ -12,6 +12,7 @@ use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
     model::{
+        credential_schema::WalletStorageTypeEnum,
         did::DidType,
         history::{HistoryAction, HistoryEntityType, HistorySearchEnum},
     },
@@ -183,6 +184,15 @@ pub struct CredentialSchemaBindingDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+}
+
+#[derive(From, Clone, Debug)]
+#[from(WalletStorageTypeEnum)]
+pub enum WalletStorageTypeBindingEnum {
+    Hardware,
+    Software,
 }
 
 #[derive(Debug, Clone)]

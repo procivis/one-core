@@ -1,4 +1,7 @@
+use dto_mapper::{From, Into};
+use one_core::model::credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum;
 use sea_orm::entity::prelude::*;
+use serde::Deserialize;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -12,8 +15,27 @@ pub struct Model {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
+    pub wallet_storage_type: Option<WalletStorageType>,
 
     pub organisation_id: String,
+}
+
+#[derive(
+    Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From, Deserialize,
+)]
+#[from(ModelWalletStorageTypeEnum)]
+#[into(ModelWalletStorageTypeEnum)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "wallet_storage_type"
+)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum WalletStorageType {
+    #[sea_orm(string_value = "HARDWARE")]
+    Hardware,
+    #[sea_orm(string_value = "SOFTWARE")]
+    Software,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

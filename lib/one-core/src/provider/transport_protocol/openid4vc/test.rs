@@ -11,6 +11,7 @@ use wiremock::{
     Mock, MockServer, ResponseTemplate,
 };
 
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::{
     crypto::MockCryptoProvider,
     model::{
@@ -119,6 +120,7 @@ fn construct_proof_with_state() -> Proof {
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
                     revocation_method: "NONE".to_string(),
@@ -196,6 +198,7 @@ fn generic_credential() -> Credential {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
             deleted_at: None,
             created_date: now,
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             last_modified: now,
             name: "schema".to_string(),
             format: "JWT".to_string(),

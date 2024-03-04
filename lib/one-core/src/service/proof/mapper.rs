@@ -234,6 +234,7 @@ impl TryFrom<ProofClaimSchema> for ProofSchemaClaim {
                 created_date: value.credential_schema.created_date,
                 last_modified: value.credential_schema.last_modified,
                 name: value.credential_schema.name,
+                wallet_storage_type: value.credential_schema.wallet_storage_type,
                 format: value.credential_schema.format,
                 revocation_method: value.credential_schema.revocation_method,
                 claim_schemas: None,

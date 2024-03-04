@@ -16,6 +16,7 @@ mod m20240220_082229_add_lvvc_table;
 pub(crate) mod m20240209_144950_models;
 mod m20240223_094129_validity_constraint_in_proof_schema;
 mod m20240223_103849_add_backup_columns;
+mod m20240229_134129_wallet_storage_type_credential_schema;
 
 pub struct Migrator;
 
@@ -37,6 +38,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240220_082229_add_lvvc_table::Migration),
             Box::new(m20240223_094129_validity_constraint_in_proof_schema::Migration),
             Box::new(m20240223_103849_add_backup_columns::Migration),
+            Box::new(m20240229_134129_wallet_storage_type_credential_schema::Migration),
         ]
     }
 }
