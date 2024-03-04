@@ -9,7 +9,9 @@ use crate::provider::credential_formatter::{
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::revocation::{CredentialRevocationInfo, RevocationMethod};
+use crate::provider::revocation::{
+    CredentialRevocationInfo, RevocationMethod, RevocationMethodCapabilities,
+};
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::bitstring::extract_bitstring_index;
@@ -27,6 +29,12 @@ const CREDENTIAL_STATUS_TYPE: &str = "StatusList2021Entry";
 impl RevocationMethod for StatusList2021 {
     fn get_status_type(&self) -> String {
         CREDENTIAL_STATUS_TYPE.to_string()
+    }
+
+    fn get_capabilities(&self) -> RevocationMethodCapabilities {
+        RevocationMethodCapabilities {
+            operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
+        }
     }
 
     async fn add_issued_credential(

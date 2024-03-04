@@ -1,3 +1,4 @@
+use serde::Serialize;
 use shared_types::DidValue;
 
 use crate::model::credential::Credential;
@@ -9,6 +10,11 @@ pub mod lvvc;
 pub mod none;
 pub mod provider;
 pub mod status_list_2021;
+
+#[derive(Clone, Default, Serialize)]
+pub struct RevocationMethodCapabilities {
+    pub operations: Vec<String>,
+}
 
 pub struct CredentialRevocationInfo {
     pub credential_status: CredentialStatus,
@@ -33,4 +39,6 @@ pub trait RevocationMethod: Send + Sync {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
     ) -> Result<bool, ServiceError>;
+
+    fn get_capabilities(&self) -> RevocationMethodCapabilities;
 }

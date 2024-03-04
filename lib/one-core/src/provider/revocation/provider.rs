@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
+use serde_json::json;
+
 use crate::{
     config::{
         core_config::{RevocationConfig, RevocationType},
@@ -67,7 +69,7 @@ impl RevocationMethodProvider for RevocationMethodProviderImpl {
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn from_config(
-    config: &RevocationConfig,
+    config: &mut RevocationConfig,
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
@@ -78,7 +80,7 @@ pub(crate) fn from_config(
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     client: reqwest::Client,
 ) -> Result<HashMap<String, Arc<dyn RevocationMethod>>, ConfigError> {
-    let mut providers = HashMap::new();
+    let mut providers: HashMap<String, Arc<dyn RevocationMethod>> = HashMap::new();
 
     for (key, fields) in config.iter() {
         if fields.disabled() {
@@ -113,6 +115,12 @@ pub(crate) fn from_config(
         };
 
         providers.insert(key.to_string(), revocation_method);
+    }
+
+    for (key, value) in config.iter_mut() {
+        if let Some(entity) = providers.get(&key.to_string()) {
+            value.capabilities = Some(json!(entity.get_capabilities()));
+        }
     }
 
     // we keep `STATUSLIST2021` only for validation

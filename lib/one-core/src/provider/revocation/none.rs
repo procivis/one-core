@@ -5,7 +5,7 @@ use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::revocation::RevocationMethod;
 use crate::service::error::ServiceError;
 
-use super::CredentialRevocationInfo;
+use super::{CredentialRevocationInfo, RevocationMethodCapabilities};
 
 pub struct NoneRevocation {}
 
@@ -13,6 +13,10 @@ pub struct NoneRevocation {}
 impl RevocationMethod for NoneRevocation {
     fn get_status_type(&self) -> String {
         "NONE".to_string()
+    }
+
+    fn get_capabilities(&self) -> RevocationMethodCapabilities {
+        RevocationMethodCapabilities { operations: vec![] }
     }
 
     async fn add_issued_credential(
