@@ -61,19 +61,19 @@ revocation:
     order: 0
     type: "NONE"
     params: null
-  LVVC:
-    display: "revocation.lvvc"
-    order: 2
-    type: "LVVC"
-    params:
-      private:
-        credentialExpiry: 3600 # this should be time after which a new LVVC from the issuer needs to be issued
   BITSTRINGSTATUSLIST:
     display: "revocation.bitStringStatusList"
     order: 1
     disabled: false
     type: "BITSTRINGSTATUSLIST"
     params: null
+  LVVC:
+    display: "revocation.lvvc"
+    order: 2
+    type: "LVVC"
+    params:
+      private:
+        credentialExpiry: 3600
 did:
   KEY:
     display: "did.key"
@@ -90,11 +90,11 @@ did:
           min: 1
           max: 5
           authentication:
-            min: 0
-            max: 2
+            min: 1
+            max: 5
           assertionMethod:
             min: 1
-            max: 2
+            max: 5
           keyAgreement:
             min: 1
             max: 1
@@ -170,7 +170,9 @@ datatype:
       public:
         min: 0
         max: 9999
-        error: "datatype.count_error"
+        error:
+          de: "Bitte wählen Sie eine Zahl zwischen 0 und 9999"
+          en: "Please provide a number between 0 and 9999"
   BIRTH_DATE:
     display: "datatype.birth_date"
     type: "DATE"
@@ -179,7 +181,9 @@ datatype:
       public:
         min: 1900-01-01
         max: "NOW"
-        error: "datatype.birth_date_error"
+        error:
+          de: "Bitte wählen Sie ein Datum zwischen 1900-1-1 und heute"
+          en: "Please choose a date between 1900-1-1 and today"
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"
@@ -188,23 +192,22 @@ keyAlgorithm:
     params:
       public:
         algorithm: "Ed25519"
+  ES256:
+    display: "keyAlgorithm.es256"
+    order: 1
+    type: "ES256"
+    params:
+      public:
+        algorithm: "ES256"
   BBS_PLUS:
     display: "keyAlgorithm.bbs_plus"
     order: 2
     type: "BBS_PLUS"
     params: null
-  ES256:
-    display: "keyAlgorithm.es256"
-    order: 3
-    type: "ES256"
-    params:
-      public:
-        algorithm: "ES256"
   DILITHIUM:
     display: "keyAlgorithm.dilithium"
-    order: 1
-    disabled: false
-    type: "DILITHIUM" # Switch to ML_DSA when possible
+    order: 3
+    type: "DILITHIUM"
     params:
       public:
         algorithm: "CRYDI3"
@@ -220,7 +223,7 @@ keyStorage:
     display: "keyStorage.pkcs11"
     type: "PKCS11"
     disabled: true
-    order: 1
+    order: 2
     params: null
 task:
   SUSPEND_CHECK:
