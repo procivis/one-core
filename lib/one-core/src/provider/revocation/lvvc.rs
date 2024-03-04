@@ -23,7 +23,7 @@ use crate::{
     util::key_verification::KeyVerification,
 };
 
-use super::CredentialRevocationInfo;
+use super::{CredentialRevocationInfo, RevocationMethodCapabilities};
 
 #[serde_with::serde_as]
 #[derive(Deserialize)]
@@ -153,6 +153,12 @@ impl LvvcProvider {
 impl RevocationMethod for LvvcProvider {
     fn get_status_type(&self) -> String {
         "LVVC".to_string()
+    }
+
+    fn get_capabilities(&self) -> RevocationMethodCapabilities {
+        RevocationMethodCapabilities {
+            operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
+        }
     }
 
     async fn add_issued_credential(

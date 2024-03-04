@@ -15,7 +15,9 @@ use crate::provider::credential_formatter::status_list_jwt_formatter::BitstringS
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::revocation::{CredentialRevocationInfo, RevocationMethod};
+use crate::provider::revocation::{
+    CredentialRevocationInfo, RevocationMethod, RevocationMethodCapabilities,
+};
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::{
     credential_repository::CredentialRepository,
@@ -41,6 +43,12 @@ pub(crate) struct BitstringStatusList {
 impl RevocationMethod for BitstringStatusList {
     fn get_status_type(&self) -> String {
         CREDENTIAL_STATUS_TYPE.to_string()
+    }
+
+    fn get_capabilities(&self) -> RevocationMethodCapabilities {
+        RevocationMethodCapabilities {
+            operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
+        }
     }
 
     async fn add_issued_credential(

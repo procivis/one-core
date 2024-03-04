@@ -135,7 +135,6 @@ impl OneCore {
         let formatter_provider =
             Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
 
-        let config = Arc::new(core_config);
         let client = reqwest::Client::new();
 
         let exportable_storages = key_providers
@@ -152,7 +151,7 @@ impl OneCore {
         let data_provider = data_provider_creator(exportable_storages);
 
         let revocation_methods = crate::provider::revocation::provider::from_config(
-            &config.revocation,
+            &mut core_config.revocation,
             core_base_url.clone(),
             data_provider.get_credential_repository(),
             data_provider.get_revocation_list_repository(),
@@ -167,6 +166,8 @@ impl OneCore {
         let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
             revocation_methods.to_owned(),
         ));
+
+        let config = Arc::new(core_config);
 
         let transport_protocols = transport_protocol_providers_from_config(
             &config.exchange,
