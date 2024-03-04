@@ -8,7 +8,9 @@ use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
+};
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
@@ -80,6 +82,7 @@ fn generic_credential_schema() -> CredentialSchema {
         created_date: now,
         last_modified: now,
         name: "".to_string(),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         format: "JWT".to_string(),
         revocation_method: "".to_string(),
         claim_schemas: None,

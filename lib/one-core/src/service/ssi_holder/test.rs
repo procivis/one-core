@@ -4,6 +4,7 @@ use mockall::predicate::eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::{
     model::{
         claim::Claim,
@@ -721,6 +722,7 @@ fn dummy_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "schema".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: None,

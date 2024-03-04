@@ -1,3 +1,4 @@
+use dto_mapper::convert_inner;
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::ActiveValue::Set;
 use sea_orm::IntoSimpleExpr;
@@ -35,6 +36,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             format: Set(value.format),
             revocation_method: Set(value.revocation_method),
             organisation_id: Set(organisation_id.to_string()),
+            wallet_storage_type: Set(convert_inner(value.wallet_storage_type)),
         })
     }
 }
@@ -61,6 +63,7 @@ fn entity_model_to_credential_schema(
         last_modified: value.last_modified,
         name: value.name,
         format: value.format,
+        wallet_storage_type: convert_inner(value.wallet_storage_type),
         revocation_method: value.revocation_method,
         claim_schemas: None,
         organisation,
@@ -144,6 +147,7 @@ pub(crate) fn credential_schema_from_models(
             created_date: credential_schema.created_date,
             last_modified: credential_schema.last_modified,
             name: credential_schema.name,
+            wallet_storage_type: convert_inner(credential_schema.wallet_storage_type),
             format: credential_schema.format,
             revocation_method: credential_schema.revocation_method,
             claim_schemas,

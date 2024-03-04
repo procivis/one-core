@@ -34,6 +34,8 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -53,6 +55,8 @@ pub struct CredentialSchemaResponseRestDTO {
     pub organisation_id: Uuid,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -82,6 +86,15 @@ pub enum SortableCredentialSchemaColumnRestEnum {
     CreatedDate,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
+#[serde(rename_all = "UPPERCASE")]
+#[into("one_core::model::credential_schema::WalletStorageTypeEnum")]
+#[from("one_core::model::credential_schema::WalletStorageTypeEnum")]
+pub enum WalletStorageTypeRestEnum {
+    Hardware,
+    Software,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
 #[into(CreateCredentialSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -94,6 +107,8 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     #[into(with_fn = convert_inner)]
     #[validate(length(min = 1))]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
+    #[into(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]

@@ -1,5 +1,6 @@
 use super::CredentialSchemaProvider;
 use crate::{entity::credential_schema, list_query::from_pagination, test_utilities::*};
+use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::{
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
@@ -100,6 +101,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         credential_schema: CredentialSchema {
             id: credential_schema_id,
             deleted_at: None,
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "credential schema".to_string(),
@@ -167,6 +169,7 @@ async fn test_create_credential_schema_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),

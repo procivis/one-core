@@ -6,6 +6,7 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 
 use crate::entity::credential::CredentialRole;
+use crate::entity::credential_schema::WalletStorageType;
 
 #[derive(Debug, FromQueryResult)]
 pub struct UnexportableCredentialModel {
@@ -26,6 +27,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_name: CredentialSchemaName,
     pub credential_schema_format: CredentialFormat,
     pub credential_schema_revocation_method: RevocationMethod,
+    pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
 
     pub organisation_id: String,
     pub organisation_created_date: OffsetDateTime,

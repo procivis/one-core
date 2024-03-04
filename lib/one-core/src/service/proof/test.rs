@@ -7,6 +7,7 @@ use uuid::Uuid;
 use super::ProofService;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::CredentialRelations;
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::did::{KeyRole, RelatedKey};
 use crate::model::key::Key;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
@@ -145,6 +146,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     id: Uuid::new_v4(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
@@ -255,6 +257,7 @@ async fn test_get_proof_exists() {
                     id: Uuid::new_v4(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),

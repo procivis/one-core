@@ -1,3 +1,4 @@
+use dto_mapper::convert_inner;
 use migration::IntoCondition;
 use one_core::{
     model::{
@@ -122,6 +123,7 @@ pub(super) fn credential_list_model_to_repository_model(
         deleted_at: credential.credential_schema_deleted_at,
         created_date: credential.credential_schema_created_date,
         last_modified: credential.credential_schema_last_modified,
+        wallet_storage_type: convert_inner(credential.credential_schema_wallet_storage_type),
         name: credential.credential_schema_name,
         format: credential.credential_schema_format,
         revocation_method: credential.credential_schema_revocation_method,

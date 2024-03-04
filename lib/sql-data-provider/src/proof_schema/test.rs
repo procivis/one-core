@@ -1,5 +1,6 @@
 use super::ProofSchemaProvider;
 use crate::{entity::proof_schema, test_utilities::*};
+use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::{
     model::{
         claim_schema::ClaimSchema,
@@ -449,6 +450,7 @@ async fn test_get_proof_schema_with_relations() {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
+                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),

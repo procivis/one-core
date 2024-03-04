@@ -97,6 +97,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             name: value.name,
             format: value.format,
             revocation_method: value.revocation_method,
+            wallet_storage_type: value.wallet_storage_type.map(|inner| inner.into()),
         }
     }
 }

@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use dto_mapper::From;
 
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::{
     model::{
         common::GetListResponse,
@@ -71,6 +72,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

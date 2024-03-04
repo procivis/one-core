@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -19,6 +20,7 @@ pub struct CredentialSchema {
     pub name: CredentialSchemaName,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
@@ -42,6 +44,11 @@ pub enum SortableCredentialSchemaColumn {
     Name,
     Format,
     CreatedDate,
+}
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+pub enum WalletStorageTypeEnum {
+    Hardware,
+    Software,
 }
 
 pub type GetCredentialSchemaList = GetListResponse<CredentialSchema>;

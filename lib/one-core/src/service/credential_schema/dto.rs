@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use dto_mapper::From;
 
+use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::{
     claim_schema::ClaimSchemaId,
     common::{GetListQueryParams, GetListResponse},
@@ -28,6 +29,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -40,6 +42,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -65,6 +68,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[derive(Clone, Debug)]
