@@ -2,7 +2,7 @@ use shared_types::DidValue;
 
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
-use crate::provider::revocation::{CredentialDataByRole, RevocationMethod};
+use crate::provider::revocation::{CredentialDataByRole, NewCredentialState, RevocationMethod};
 use crate::service::error::ServiceError;
 
 use super::{CredentialRevocationInfo, RevocationMethodCapabilities};
@@ -41,5 +41,17 @@ impl RevocationMethod for NoneRevocation {
         Err(ServiceError::ValidationError(
             "Credential cannot be revoked - status invalid".to_string(),
         ))
+    }
+
+    async fn mark_credential_as(
+        &self,
+        credential: &Credential,
+        new_state: NewCredentialState,
+    ) -> Result<(), ServiceError> {
+        match new_state {
+            NewCredentialState::Revoked => self.mark_credential_revoked(credential).await,
+            NewCredentialState::Reactivated => todo!(),
+            NewCredentialState::Suspended => todo!(),
+        }
     }
 }

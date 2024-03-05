@@ -37,8 +37,8 @@ use crate::{
 };
 
 use super::{
-    CredentialDataByRole, CredentialRevocationInfo, RevocationMethodCapabilities,
-    VerifierCredentialData,
+    CredentialDataByRole, CredentialRevocationInfo, NewCredentialState,
+    RevocationMethodCapabilities, VerifierCredentialData,
 };
 
 #[serde_with::serde_as]
@@ -375,6 +375,18 @@ impl RevocationMethod for LvvcProvider {
             CredentialDataByRole::Verifier(data) => {
                 self.check_revocation_status_as_verifier(issuer_did, *data)
             }
+        }
+    }
+
+    async fn mark_credential_as(
+        &self,
+        credential: &Credential,
+        new_state: NewCredentialState,
+    ) -> Result<(), ServiceError> {
+        match new_state {
+            NewCredentialState::Revoked => self.mark_credential_revoked(credential).await,
+            NewCredentialState::Reactivated => todo!(),
+            NewCredentialState::Suspended => todo!(),
         }
     }
 }

@@ -33,6 +33,12 @@ pub enum CredentialDataByRole {
     Verifier(Box<VerifierCredentialData>),
 }
 
+pub enum NewCredentialState {
+    Revoked,
+    Reactivated,
+    Suspended,
+}
+
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait RevocationMethod: Send + Sync {
@@ -44,6 +50,12 @@ pub trait RevocationMethod: Send + Sync {
     ) -> Result<Option<CredentialRevocationInfo>, ServiceError>;
 
     async fn mark_credential_revoked(&self, credential: &Credential) -> Result<(), ServiceError>;
+
+    async fn mark_credential_as(
+        &self,
+        credential: &Credential,
+        new_state: NewCredentialState,
+    ) -> Result<(), ServiceError>;
 
     /// perform check of credential revocation status
     /// * returns `bool` - true if credential revoked, false if valid
