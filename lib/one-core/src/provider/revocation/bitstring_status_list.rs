@@ -16,7 +16,8 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationInfo, RevocationMethod, RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, NewCredentialState, RevocationMethod,
+    RevocationMethodCapabilities,
 };
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::{
@@ -193,6 +194,18 @@ impl RevocationMethod for BitstringStatusList {
 
         let result = extract_bitstring_index(encoded_list, list_index)?;
         Ok(result)
+    }
+
+    async fn mark_credential_as(
+        &self,
+        credential: &Credential,
+        new_state: NewCredentialState,
+    ) -> Result<(), ServiceError> {
+        match new_state {
+            NewCredentialState::Revoked => self.mark_credential_revoked(credential).await,
+            NewCredentialState::Reactivated => todo!(),
+            NewCredentialState::Suspended => todo!(),
+        }
     }
 }
 

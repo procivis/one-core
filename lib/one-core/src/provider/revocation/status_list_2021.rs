@@ -10,7 +10,8 @@ use crate::provider::credential_formatter::{
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationInfo, RevocationMethod, RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, NewCredentialState, RevocationMethod,
+    RevocationMethodCapabilities,
 };
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -107,5 +108,17 @@ impl RevocationMethod for StatusList2021 {
 
         let result = extract_bitstring_index(encoded_list, list_index)?;
         Ok(result)
+    }
+
+    async fn mark_credential_as(
+        &self,
+        credential: &Credential,
+        new_state: NewCredentialState,
+    ) -> Result<(), ServiceError> {
+        match new_state {
+            NewCredentialState::Revoked => self.mark_credential_revoked(credential).await,
+            NewCredentialState::Reactivated => todo!(),
+            NewCredentialState::Suspended => todo!(),
+        }
     }
 }
