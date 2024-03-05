@@ -8,10 +8,12 @@ use super::{
     },
     SSIHolderService,
 };
+
 use crate::{
     common_validator::{
         throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
     },
+    config::core_config::{Fields, RevocationType},
     model::{
         claim::{Claim, ClaimRelations},
         claim_schema::ClaimSchemaRelations,
@@ -28,13 +30,16 @@ use crate::{
     },
     provider::{
         credential_formatter::model::CredentialPresentation,
+        revocation::lvvc::prepare_bearer_token,
         transport_protocol::{
             dto::{PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential},
             provider::DetectedProtocol,
+            TransportProtocolError,
         },
     },
     service::{
         error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
+        ssi_issuer::dto::IssuerResponseDTO,
         ssi_validator::validate_config_entity_presence,
     },
     util::oidc::detect_correct_format,
@@ -250,6 +255,11 @@ impl SSIHolderService {
                         claims: Some(ClaimRelations {
                             schema: Some(ClaimSchemaRelations::default()),
                         }),
+                        holder_did: Some(DidRelations {
+                            keys: Some(KeyRelations::default()),
+                            ..Default::default()
+                        }),
+                        issuer_did: Some(DidRelations::default()),
                         schema: Some(CredentialSchemaRelations::default()),
                         ..Default::default()
                     },
@@ -262,36 +272,42 @@ impl SSIHolderService {
                 );
             };
 
-            let credential_data = credential.credential;
+            let credential_data = credential.credential.as_slice();
             if credential_data.is_empty() {
                 return Err(BusinessLogicError::MissingCredentialData {
                     credential_id: credential_request.credential_id,
                 }
                 .into());
             }
-            let credential_content = std::str::from_utf8(&credential_data)
+            let credential_content = std::str::from_utf8(credential_data)
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-            let credential_schema = credential.schema.ok_or(ServiceError::MappingError(
-                "credential_schema missing".to_string(),
-            ))?;
+            let credential_schema =
+                credential
+                    .schema
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(
+                        "credential_schema missing".to_string(),
+                    ))?;
 
             for claim in credential
                 .claims
+                .as_ref()
                 .ok_or(ServiceError::MappingError("claims missing".to_string()))?
             {
                 let claim_schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
                     "claim_schema missing".to_string(),
                 ))?;
+
                 if submitted_keys.contains(&claim_schema.key)
                     && submitted_claims.iter().all(|c| c.id != claim.id)
                 {
-                    submitted_claims.push(claim);
+                    submitted_claims.push(claim.to_owned());
                 }
             }
 
             // Workaround credential format detection
-            let format = detect_correct_format(&credential_schema, credential_content)?;
+            let format = detect_correct_format(credential_schema, credential_content)?;
 
             let formatter = self
                 .formatter_provider
@@ -300,7 +316,7 @@ impl SSIHolderService {
 
             let credential_presentation = CredentialPresentation {
                 token: credential_content.to_owned(),
-                disclosed_keys: submitted_keys,
+                disclosed_keys: submitted_keys.to_owned(),
             };
 
             let formatted_credential_presentation = formatter
@@ -308,10 +324,58 @@ impl SSIHolderService {
                 .await?;
 
             credential_presentations.push(PresentedCredential {
-                presentation: formatted_credential_presentation,
-                credential_schema,
+                presentation: formatted_credential_presentation.to_owned(),
+                credential_schema: credential_schema.to_owned(),
                 request: requested_credential.to_owned(),
             });
+
+            let revocation_method: Fields<RevocationType> = self
+                .config
+                .revocation
+                .get(&credential_schema.revocation_method)?;
+            if revocation_method.r#type == RevocationType::Lvvc {
+                let extracted = formatter
+                    .extract_credentials_unverified(&formatted_credential_presentation)
+                    .await?;
+                let credential_status = extracted.status.ok_or(ServiceError::MappingError(
+                    "credential_status is None".to_string(),
+                ))?;
+
+                let bearer_token =
+                    prepare_bearer_token(&credential, self.key_provider.clone()).await?;
+
+                let lvvc_url = credential_status.id;
+
+                let client = reqwest::Client::new();
+                let response: IssuerResponseDTO = client
+                    .get(lvvc_url)
+                    .bearer_auth(bearer_token)
+                    .send()
+                    .await
+                    .map_err(TransportProtocolError::HttpRequestError)?
+                    .error_for_status()
+                    .map_err(TransportProtocolError::HttpRequestError)?
+                    .json()
+                    .await
+                    .map_err(TransportProtocolError::HttpRequestError)?;
+
+                let lvvc_content = response.credential;
+
+                let lvvc_presentation = CredentialPresentation {
+                    token: lvvc_content.to_owned(),
+                    disclosed_keys: submitted_keys,
+                };
+
+                let formatted_lvvc_presentation = formatter
+                    .format_credential_presentation(lvvc_presentation)
+                    .await?;
+
+                credential_presentations.push(PresentedCredential {
+                    presentation: formatted_lvvc_presentation,
+                    credential_schema: credential_schema.to_owned(),
+                    request: requested_credential.to_owned(),
+                });
+            }
         }
 
         let submit_result = transport_protocol

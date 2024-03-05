@@ -27,6 +27,7 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
+use headers::Authorization;
 use one_core::model::credential_schema::CredentialSchemaId;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{CredentialId, DidId};
@@ -110,6 +111,48 @@ pub(crate) async fn get_revocation_list_by_id(
         Err(ServiceError::EntityNotFound(EntityNotFoundError::RevocationList(_))) => {
             tracing::error!("Missing revocation list");
             (StatusCode::NOT_FOUND, "Missing revocation list").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/revocation/v1/lvvc/{id}",
+    params(
+        ("id" = Uuid, Path, description = "Credential id")
+    ),
+    responses(
+        (status = 200, description = "OK", content_type = "text/plain"),
+        (status = 400, description = "Credential in PENDING, REQUESTED or CREATED state/Invalid holder token"),
+        (status = 404, description = "Credential not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn get_lvvc_by_credential_id(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
+) -> Response {
+    let result = state
+        .core
+        .revocation_list_service
+        .get_lvvc_by_credential_id(&id.into(), bearer.token())
+        .await;
+
+    match result {
+        Ok(result) => (StatusCode::OK, Json(IssuerResponseRestDTO::from(result))).into_response(),
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {}", error);
+            StatusCode::BAD_REQUEST.into_response()
+        }
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::Credential(_))) => {
+            tracing::error!("Missing credential");
+            (StatusCode::NOT_FOUND, "Missing credential").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

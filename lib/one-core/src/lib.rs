@@ -225,7 +225,16 @@ impl OneCore {
                 config.clone(),
             ),
             revocation_list_service: RevocationListService::new(
+                core_base_url.clone(),
+                data_provider.get_credential_repository(),
+                data_provider.get_lvvc_repository(),
                 data_provider.get_revocation_list_repository(),
+                crypto.clone(),
+                did_method_provider.clone(),
+                formatter_provider.clone(),
+                key_provider.clone(),
+                key_algorithm_provider.clone(),
+                config.clone(),
             ),
             oidc_service: OIDCService::new(
                 core_base_url.clone(),
@@ -252,7 +261,7 @@ impl OneCore {
                 data_provider.get_key_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),
-                key_provider,
+                key_provider.clone(),
                 config.clone(),
             ),
             proof_schema_service: ProofSchemaService::new(
@@ -295,6 +304,7 @@ impl OneCore {
                 data_provider.get_proof_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_history_repository(),
+                key_provider,
                 formatter_provider,
                 protocol_provider,
                 config.clone(),

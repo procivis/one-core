@@ -69,7 +69,10 @@ impl CredentialFormatter for JsonLdBbsplus {
         self.verify(credential, verification_fn).await
     }
 
-    async fn peek(&self, credential: &str) -> Result<DetailCredential, FormatterError> {
+    async fn extract_credentials_unverified(
+        &self,
+        credential: &str,
+    ) -> Result<DetailCredential, FormatterError> {
         let ld_credential: LdCredential = serde_json::from_str(credential).map_err(|e| {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
@@ -111,6 +114,13 @@ impl CredentialFormatter for JsonLdBbsplus {
             signing_key_algorithms: vec!["BBS_PLUS".to_owned()],
             features: vec!["SELECTIVE_DISCLOSURE".to_owned()],
         }
+    }
+
+    async fn extract_presentation_unverified(
+        &self,
+        _token: &str,
+    ) -> Result<Presentation, FormatterError> {
+        unimplemented!()
     }
 }
 

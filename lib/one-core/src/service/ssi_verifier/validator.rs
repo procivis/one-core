@@ -10,7 +10,9 @@ use crate::{
         credential_formatter::{model::DetailCredential, provider::CredentialFormatterProvider},
         did_method::provider::DidMethodProvider,
         key_algorithm::provider::KeyAlgorithmProvider,
-        revocation::provider::RevocationMethodProvider,
+        revocation::{
+            provider::RevocationMethodProvider, CredentialDataByRole, VerifierCredentialData,
+        },
     },
     service::error::{MissingProviderError, ServiceError},
     util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_real},
@@ -110,6 +112,8 @@ pub(super) async fn validate_proof(
     let mut proved_credentials: HashMap<CredentialSchemaId, Vec<ValidatedProofClaimDTO>> =
         HashMap::new();
 
+    let extracted_lvvcs = extract_lvvcs(&presentation.credentials, formatter_provider).await?;
+
     for credential in presentation.credentials {
         // Workaround credential format detection
         let format = if credential.starts_with('{') {
@@ -129,15 +133,19 @@ pub(super) async fn validate_proof(
             .extract_credentials(&credential, key_verification_credentials.clone())
             .await?;
 
-        let (credential_schema_id, requested_proof_claims) =
-            extract_matching_requested_schema(&credential, &mut remaining_requested_claims)?;
-
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
         validate_issuance_time(
             &credential.invalid_before,
             credential_formatter.get_leeway(),
         )?;
         validate_expiration_time(&credential.expires_at, credential_formatter.get_leeway())?;
+
+        if credential.is_lvvc() {
+            continue;
+        }
+
+        let (credential_schema_id, requested_proof_claims) =
+            extract_matching_requested_schema(&credential, &mut remaining_requested_claims)?;
 
         if let Some(credential_status) = &credential.status {
             let (revocation_method, _) = revocation_method_provider
@@ -155,7 +163,17 @@ pub(super) async fn validate_proof(
                     ))?;
 
             if revocation_method
-                .check_credential_revocation_status(credential_status, issuer_did)
+                .check_credential_revocation_status(
+                    credential_status,
+                    issuer_did,
+                    Some(CredentialDataByRole::Verifier(Box::new(
+                        VerifierCredentialData {
+                            credential: credential.to_owned(),
+                            extracted_lvvcs: extracted_lvvcs.to_owned(),
+                            proof_schema: proof_schema.to_owned(),
+                        },
+                    ))),
+                )
                 .await?
             {
                 return Err(ServiceError::ValidationError(
@@ -253,5 +271,37 @@ fn extract_matching_requested_schema(
         matching_claim_schemas.to_owned(),
     );
     remaining_requested_claims.remove(&result.0);
+    Ok(result)
+}
+
+async fn extract_lvvcs(
+    presentation_credentials: &[String],
+    formatter_provider: &(dyn CredentialFormatterProvider),
+) -> Result<Vec<DetailCredential>, ServiceError> {
+    let mut result = vec![];
+
+    for credential in presentation_credentials {
+        // Workaround credential format detection
+        let format = if credential.starts_with('{') {
+            map_from_oidc_format_to_core_real("ldp_vc", credential)
+                .map_err(|_| ServiceError::Other("Credential format not resolved".to_owned()))?
+        } else if credential.contains('~') {
+            "SDJWT".to_owned()
+        } else {
+            "JWT".to_owned()
+        };
+
+        let credential_formatter = formatter_provider
+            .get_formatter(&format)
+            .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
+
+        let credential = credential_formatter
+            .extract_credentials_unverified(credential)
+            .await?;
+        if credential.is_lvvc() {
+            result.push(credential);
+        }
+    }
+
     Ok(result)
 }

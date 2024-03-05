@@ -17,20 +17,21 @@ use crate::{
         organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
     },
-    provider::transport_protocol::{
-        dto::{
-            PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-            PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionRuleDTO,
-            PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
-        },
-        provider::MockTransportProtocolProvider,
-        MockTransportProtocol,
-    },
     provider::{
         credential_formatter::{
             provider::MockCredentialFormatterProvider, MockCredentialFormatter,
         },
-        transport_protocol::dto::PresentationDefinitionResponseDTO,
+        key_storage::provider::MockKeyProvider,
+        transport_protocol::{
+            dto::{
+                PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+                PresentationDefinitionRequestedCredentialResponseDTO,
+                PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
+                PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
+            },
+            provider::MockTransportProtocolProvider,
+            MockTransportProtocol,
+        },
     },
     repository::did_repository::MockDidRepository,
     repository::mock::proof_repository::MockProofRepository,
@@ -682,6 +683,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         proof_repository: Arc::new(MockProofRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         history_repository: Arc::new(MockHistoryRepository::new()),
+        key_provider: Arc::new(MockKeyProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
         config: Arc::new(generic_config().core),

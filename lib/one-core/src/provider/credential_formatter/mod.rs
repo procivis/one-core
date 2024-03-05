@@ -120,7 +120,10 @@ pub trait CredentialFormatter: Send + Sync {
         credential: CredentialPresentation,
     ) -> Result<String, FormatterError>;
 
-    async fn peek(&self, credential: &str) -> Result<DetailCredential, FormatterError>;
+    async fn extract_credentials_unverified(
+        &self,
+        credential: &str,
+    ) -> Result<DetailCredential, FormatterError>;
 
     async fn format_presentation(
         &self,
@@ -135,6 +138,11 @@ pub trait CredentialFormatter: Send + Sync {
         &self,
         token: &str,
         verification: Box<dyn TokenVerifier>,
+    ) -> Result<Presentation, FormatterError>;
+
+    async fn extract_presentation_unverified(
+        &self,
+        token: &str,
     ) -> Result<Presentation, FormatterError>;
 
     fn get_leeway(&self) -> u64;

@@ -376,7 +376,7 @@ pub struct Fields<T> {
     pub(crate) disabled: Option<bool>,
     #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub(crate) capabilities: Option<Value>,
-    #[serde(deserialize_with = "deserialize_params")]
+    #[serde(default, deserialize_with = "deserialize_params")]
     pub(crate) params: Option<Params>,
 }
 

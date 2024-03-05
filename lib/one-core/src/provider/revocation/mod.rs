@@ -1,8 +1,9 @@
 use serde::Serialize;
-use shared_types::DidValue;
+use shared_types::{CredentialId, DidValue};
 
 use crate::model::credential::Credential;
-use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::model::proof_schema::ProofSchema;
+use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
 use crate::service::error::ServiceError;
 
 pub mod bitstring_status_list;
@@ -18,6 +19,18 @@ pub struct RevocationMethodCapabilities {
 
 pub struct CredentialRevocationInfo {
     pub credential_status: CredentialStatus,
+}
+
+pub struct VerifierCredentialData {
+    pub credential: DetailCredential,
+    pub extracted_lvvcs: Vec<DetailCredential>,
+    pub proof_schema: ProofSchema,
+}
+
+pub enum CredentialDataByRole {
+    Holder(CredentialId),
+    Issuer(CredentialId),
+    Verifier(Box<VerifierCredentialData>),
 }
 
 #[cfg_attr(test, mockall::automock)]
@@ -38,6 +51,7 @@ pub trait RevocationMethod: Send + Sync {
         &self,
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
+        additional_credential_data: Option<CredentialDataByRole>,
     ) -> Result<bool, ServiceError>;
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities;

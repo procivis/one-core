@@ -928,20 +928,22 @@ async fn test_check_revocation_non_revocable() {
 
     let mut formatter = MockCredentialFormatter::default();
 
-    formatter.expect_peek().returning(|_| {
-        Ok(DetailCredential {
-            id: None,
-            issued_at: None,
-            expires_at: None,
-            invalid_before: None,
-            issuer_did: None,
-            subject: None,
-            claims: CredentialSubject {
-                values: HashMap::default(),
-            },
-            status: None,
-        })
-    });
+    formatter
+        .expect_extract_credentials_unverified()
+        .returning(|_| {
+            Ok(DetailCredential {
+                id: None,
+                issued_at: None,
+                expires_at: None,
+                invalid_before: None,
+                issuer_did: None,
+                subject: None,
+                claims: CredentialSubject {
+                    values: HashMap::default(),
+                },
+                status: None,
+            })
+        });
 
     let formatter = Arc::new(formatter);
     formatter_provider
@@ -1067,29 +1069,31 @@ async fn test_check_revocation_being_revoked() {
 
     let mut revocation_method = MockRevocationMethod::default();
 
-    formatter.expect_peek().returning(|_| {
-        Ok(DetailCredential {
-            id: None,
-            issued_at: None,
-            expires_at: None,
-            invalid_before: None,
-            issuer_did: None,
-            subject: None,
-            claims: CredentialSubject {
-                values: HashMap::default(),
-            },
-            status: Some(CredentialStatus {
-                id: "id".to_string(),
-                r#type: "type".to_string(),
-                status_purpose: Some("purpose".to_string()),
-                additional_fields: HashMap::default(),
-            }),
-        })
-    });
+    formatter
+        .expect_extract_credentials_unverified()
+        .returning(|_| {
+            Ok(DetailCredential {
+                id: None,
+                issued_at: None,
+                expires_at: None,
+                invalid_before: None,
+                issuer_did: None,
+                subject: None,
+                claims: CredentialSubject {
+                    values: HashMap::default(),
+                },
+                status: Some(CredentialStatus {
+                    id: "id".to_string(),
+                    r#type: "type".to_string(),
+                    status_purpose: Some("purpose".to_string()),
+                    additional_fields: HashMap::default(),
+                }),
+            })
+        });
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _| Ok(true));
+        .returning(|_, _, _| Ok(true));
 
     let formatter = Arc::new(formatter);
     formatter_provider

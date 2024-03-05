@@ -1,7 +1,10 @@
 use crate::{
     config::core_config,
-    provider::credential_formatter::provider::CredentialFormatterProvider,
-    provider::transport_protocol::provider::TransportProtocolProvider,
+    provider::{
+        credential_formatter::provider::CredentialFormatterProvider,
+        key_storage::provider::KeyProvider,
+        transport_protocol::provider::TransportProtocolProvider,
+    },
     repository::{
         credential_repository::CredentialRepository, did_repository::DidRepository,
         history_repository::HistoryRepository, proof_repository::ProofRepository,
@@ -23,6 +26,7 @@ pub struct SSIHolderService {
     proof_repository: Arc<dyn ProofRepository>,
     did_repository: Arc<dyn DidRepository>,
     history_repository: Arc<dyn HistoryRepository>,
+    key_provider: Arc<dyn KeyProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn TransportProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
@@ -35,6 +39,7 @@ impl SSIHolderService {
         proof_repository: Arc<dyn ProofRepository>,
         did_repository: Arc<dyn DidRepository>,
         history_repository: Arc<dyn HistoryRepository>,
+        key_provider: Arc<dyn KeyProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn TransportProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
@@ -44,6 +49,7 @@ impl SSIHolderService {
             proof_repository,
             did_repository,
             history_repository,
+            key_provider,
             formatter_provider,
             protocol_provider,
             config,

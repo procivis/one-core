@@ -13,14 +13,15 @@ use crate::{
         claim_schema::ClaimSchemaRelations,
         common::EntityShareResponseDTO,
         credential::{
-            self, Credential, CredentialRelations, CredentialState, CredentialStateEnum,
-            CredentialStateRelations, UpdateCredentialRequest,
+            self, Credential, CredentialRelations, CredentialRole, CredentialState,
+            CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
         did::{DidRelations, DidType, KeyRole},
         key::KeyRelations,
         organisation::OrganisationRelations,
     },
+    provider::revocation::CredentialDataByRole,
     repository::error::DataLayerError,
     service::{
         credential::{
@@ -431,7 +432,9 @@ impl CredentialService {
                         .get_formatter(&format)
                         .ok_or(MissingProviderError::Formatter(credential_schema.format))?;
 
-                    let credential = formatter.peek(&credential_str).await?;
+                    let credential = formatter
+                        .extract_credentials_unverified(&credential_str)
+                        .await?;
 
                     if let Some(status) = credential.status {
                         status
@@ -476,8 +479,22 @@ impl CredentialService {
                 .issuer_did
                 .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
 
+            let credential_data_by_role = match credential.role {
+                CredentialRole::Holder => {
+                    Some(CredentialDataByRole::Holder(credential_id.to_owned()))
+                }
+                CredentialRole::Issuer => {
+                    Some(CredentialDataByRole::Issuer(credential_id.to_owned()))
+                }
+                CredentialRole::Verifier => None,
+            };
+
             let revoked = match revocation_method
-                .check_credential_revocation_status(&credential_status, &issuer_did.did)
+                .check_credential_revocation_status(
+                    &credential_status,
+                    &issuer_did.did,
+                    credential_data_by_role,
+                )
                 .await
             {
                 Err(error) => {

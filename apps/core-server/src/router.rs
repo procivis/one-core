@@ -222,6 +222,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::get_revocation_list_by_id),
         )
         .route(
+            "/ssi/revocation/v1/lvvc/:id",
+            get(ssi::controller::get_lvvc_by_credential_id),
+        )
+        .route(
             "/ssi/did-web/v1/:id/did.json",
             get(ssi::controller::get_did_web_document),
         )
@@ -350,6 +354,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::ssi_issuer_connect,
             endpoint::ssi::controller::ssi_issuer_reject,
             endpoint::ssi::controller::ssi_issuer_submit,
+            endpoint::ssi::controller::get_lvvc_by_credential_id,
             endpoint::ssi::controller::get_revocation_list_by_id,
             endpoint::ssi::controller::get_did_web_document,
             endpoint::ssi::controller::oidc_get_issuer_metadata,

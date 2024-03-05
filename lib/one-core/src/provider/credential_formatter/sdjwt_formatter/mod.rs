@@ -101,7 +101,10 @@ impl CredentialFormatter for SDJWTFormatter {
             .await
     }
 
-    async fn peek(&self, token: &str) -> Result<DetailCredential, FormatterError> {
+    async fn extract_credentials_unverified(
+        &self,
+        token: &str,
+    ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(token, None).await
     }
 
@@ -158,6 +161,25 @@ impl CredentialFormatter for SDJWTFormatter {
             ],
             features: vec!["SELECTIVE_DISCLOSURE".to_string()],
         }
+    }
+
+    async fn extract_presentation_unverified(
+        &self,
+        token: &str,
+    ) -> Result<Presentation, FormatterError> {
+        let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, None).await?;
+
+        Ok(Presentation {
+            id: jwt.payload.jwt_id,
+            issued_at: jwt.payload.issued_at,
+            expires_at: jwt.payload.expires_at,
+            issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
+                Ok(v) => v,
+                Err(err) => match err {},
+            }),
+            nonce: jwt.payload.nonce,
+            credentials: jwt.payload.custom.vp.verifiable_credential,
+        })
     }
 }
 

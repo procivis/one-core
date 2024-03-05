@@ -24,6 +24,7 @@ use crate::model::proof_schema::{
     ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferDTO, OpenID4VPClientMetadata,
@@ -31,10 +32,10 @@ use crate::provider::transport_protocol::openid4vc::dto::{
 use crate::provider::transport_protocol::openid4vc::mapper::{
     create_credential_offer, create_open_id_for_vp_client_metadata,
 };
-use crate::service::error::ServiceError::MappingError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
+    PresentationSubmissionMappingDTO,
 };
 use crate::service::oidc::mapper::{
     interaction_data_to_dto, parse_access_token, parse_interaction_content,
@@ -42,7 +43,7 @@ use crate::service::oidc::mapper::{
 };
 use crate::service::oidc::model::OpenID4VPPresentationDefinition;
 use crate::service::oidc::validator::{
-    throw_if_credential_request_invalid, throw_if_interaction_created_date,
+    peek_presentation, throw_if_credential_request_invalid, throw_if_interaction_created_date,
     throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
     throw_if_token_request_invalid, validate_claims, validate_config_entity_presence,
     validate_credential, validate_presentation, validate_transport_type,
@@ -56,6 +57,7 @@ use crate::service::oidc::{
     OIDCService,
 };
 use crate::util::key_verification::KeyVerification;
+use crate::util::oidc::map_from_oidc_format_to_core_real;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use shared_types::CredentialId;
 use std::collections::HashMap;
@@ -475,10 +477,9 @@ impl OIDCService {
 
         let mut interaction_data = parse_interaction_content(interaction.data.as_ref())?;
 
-        let proof_schema = proof
-            .schema
-            .as_ref()
-            .ok_or(MappingError("Proof schema not found".to_string()))?;
+        let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
+            "Proof schema not found".to_string(),
+        ))?;
         if let Some(validity_constraint) = proof_schema.validity_constraint {
             let now = OffsetDateTime::now_utc();
             interaction_data
@@ -492,6 +493,64 @@ impl OIDCService {
         }
 
         Ok(interaction_data.presentation_definition)
+    }
+
+    async fn extract_lvvcs(
+        &self,
+        presentation_strings: &[String],
+        presentation_submission: &PresentationSubmissionMappingDTO,
+    ) -> Result<Vec<DetailCredential>, ServiceError> {
+        let mut result = vec![];
+
+        for presentation_submitted in &presentation_submission.descriptor_map {
+            let presentation_string_index =
+                vec_last_position_from_token_path(&presentation_submitted.path)?;
+            let presentation_string = presentation_strings
+                .get(presentation_string_index)
+                .ok_or(OpenID4VCIError::InvalidRequest)?;
+
+            let presentation = peek_presentation(
+                presentation_string,
+                &presentation_submitted.format,
+                &self.formatter_provider,
+            )
+            .await?;
+
+            let path_nested = presentation_submitted
+                .path_nested
+                .as_ref()
+                .ok_or(OpenID4VCIError::InvalidRequest)?;
+
+            let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
+            let credential = presentation
+                .credentials
+                .get(credential_index)
+                .ok_or(OpenID4VCIError::InvalidRequest)?;
+
+            let oidc_format = &path_nested.format;
+            let format = map_from_oidc_format_to_core_real(oidc_format, credential)?;
+            let formatter = &self
+                .formatter_provider
+                .get_formatter(&format)
+                .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
+
+            let credential = formatter
+                .extract_credentials_unverified(credential)
+                .await
+                .map_err(|e| {
+                    if matches!(e, FormatterError::CouldNotExtractCredentials(_)) {
+                        OpenID4VCIError::VCFormatsNotSupported.into()
+                    } else {
+                        ServiceError::Other(e.to_string())
+                    }
+                })?;
+
+            if credential.is_lvvc() {
+                result.push(credential);
+            }
+        }
+
+        Ok(result)
     }
 
     async fn process_proof_submission(
@@ -514,16 +573,6 @@ impl OIDCService {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
-        if presentation_submission.descriptor_map.len()
-            != interaction_data
-                .presentation_definition
-                .input_descriptors
-                .len()
-        {
-            // different count of requested and submitted credentials
-            return Err(OpenID4VCIError::InvalidRequest.into());
-        }
-
         let presentation_strings: Vec<String> = if submission.vp_token.starts_with('[') {
             serde_json::from_str(&submission.vp_token)
                 .map_err(|_| OpenID4VCIError::InvalidRequest)?
@@ -532,17 +581,17 @@ impl OIDCService {
         };
 
         // collect expected credentials
-        let proof_schema_claims = proof
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "missing proof schema".to_string(),
-            ))?
-            .claim_schemas
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "missing proof schema claims".to_string(),
-            ))?;
+        let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
+            "missing proof schema".to_string(),
+        ))?;
+
+        let proof_schema_claims =
+            proof_schema
+                .claim_schemas
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "missing proof schema claims".to_string(),
+                ))?;
 
         let mut claim_to_credential_schema_mapping: HashMap<ClaimSchemaId, CredentialSchemaId> =
             HashMap::new();
@@ -563,6 +612,21 @@ impl OIDCService {
             entry.push(proof_schema_claim);
             claim_to_credential_schema_mapping
                 .insert(proof_schema_claim.schema.id, credential_schema.id);
+        }
+
+        let extracted_lvvcs = self
+            .extract_lvvcs(&presentation_strings, presentation_submission)
+            .await?;
+
+        if presentation_submission.descriptor_map.len()
+            != (interaction_data
+                .presentation_definition
+                .input_descriptors
+                .len()
+                + extracted_lvvcs.len())
+        {
+            // different count of requested and submitted credentials
+            return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
         let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
@@ -590,33 +654,25 @@ impl OIDCService {
             )
             .await?;
 
-            let holder_did =
-                presentation
-                    .issuer_did
-                    .as_ref()
-                    .ok_or(ServiceError::ValidationError(
-                        "Missing holder id".to_string(),
-                    ))?;
-
             let path_nested = presentation_submitted
                 .path_nested
                 .as_ref()
                 .ok_or(OpenID4VCIError::InvalidRequest)?;
-            let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
-            let credential = presentation
-                .credentials
-                .get(credential_index)
-                .ok_or(OpenID4VCIError::InvalidRequest)?;
 
             let credential = validate_credential(
-                credential,
-                holder_did,
-                &path_nested.format,
+                presentation,
+                path_nested,
+                &extracted_lvvcs,
+                proof_schema,
                 &self.formatter_provider,
                 self.build_key_verification(KeyRole::AssertionMethod),
                 &self.revocation_method_provider,
             )
             .await?;
+
+            if credential.is_lvvc() {
+                continue;
+            }
 
             let proved_claims: Vec<ValidatedProofClaimDTO> = validate_claims(
                 credential,

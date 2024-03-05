@@ -403,7 +403,7 @@ impl TransportProtocol for OpenID4VC {
             .ok_or_else(|| {
                 TransportProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?
-            .peek(&result.credential)
+            .extract_credentials_unverified(&result.credential)
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 

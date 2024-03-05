@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
+use serde::Deserialize;
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct IssuerResponseDTO {
     pub credential: String,
     pub format: String,
