@@ -29,15 +29,13 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
 
-    let (server_issuer_did, _, _) = prepare_dids(
+    let (server_issuer_did, _, server_issuer_key) = prepare_dids(
         &server_context,
         &server_organisation,
         Some(issuer_bbs_key.to_owned()),
         None,
     )
     .await;
-
-    let server_local_issuer_did = server_issuer_did.unwrap();
 
     let (verifier_did, holder_did, local_verifier_key) = prepare_dids(
         &server_context,
@@ -79,10 +77,11 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
         .create(
             &credential_schema,
             CredentialStateEnum::Offered,
-            &server_local_issuer_did,
+            &server_issuer_did.unwrap(),
             "PROCIVIS_TEMPORARY",
             TestingCredentialParams {
                 holder_did: Some(server_remote_holder_did.clone()),
+                key: Some(server_issuer_key.unwrap()),
                 ..Default::default()
             },
         )
@@ -368,16 +367,13 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
     let server_context = TestContext::new().await;
     let server_organisation = server_context.db.organisations.create().await;
 
-    let (server_issuer_did, holder_did, _) = prepare_dids(
+    let (server_issuer_did, holder_did, server_issuer_key) = prepare_dids(
         &server_context,
         &server_organisation,
         Some(issuer_not_bbs_key),
         Some(holder_key),
     )
     .await;
-
-    let server_local_issuer_did = server_issuer_did.unwrap();
-    let server_remote_holder_did = holder_did.unwrap();
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> =
         vec![(Uuid::new_v4(), "Key", true, "STRING")];
@@ -400,10 +396,11 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
         .create(
             &credential_schema,
             CredentialStateEnum::Offered,
-            &server_local_issuer_did,
+            &server_issuer_did.unwrap(),
             "PROCIVIS_TEMPORARY",
             TestingCredentialParams {
-                holder_did: Some(server_remote_holder_did.clone()),
+                holder_did: Some(holder_did.unwrap()),
+                key: Some(server_issuer_key.unwrap()),
                 ..Default::default()
             },
         )

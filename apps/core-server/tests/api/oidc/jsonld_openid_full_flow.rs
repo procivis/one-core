@@ -77,6 +77,7 @@ async fn test_opeind4vc_jsondl_flow(server_key: TestKey, holder_key: TestKey) {
             "PROCIVIS_TEMPORARY",
             TestingCredentialParams {
                 holder_did: Some(holder_did.clone()),
+                key: Some(local_key.to_owned()),
                 ..Default::default()
             },
         )

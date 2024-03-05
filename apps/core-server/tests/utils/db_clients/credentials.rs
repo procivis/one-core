@@ -91,7 +91,7 @@ impl CredentialsDB {
             schema: Some(credential_schema.to_owned()),
             interaction: params.interaction,
             revocation_list: None,
-            key: None,
+            key: params.key,
         };
 
         let id = self

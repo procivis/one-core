@@ -41,7 +41,6 @@ async fn test_issuer_submit_succeeds() {
     let key_type = "EDDSA";
     let algorithm = "algorithm";
 
-    let key_id = Uuid::new_v4();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credential()
@@ -51,6 +50,22 @@ async fn test_issuer_submit_succeeds() {
         })
         .once()
         .return_once(move |_, _| {
+            let key = Key {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                public_key: b"public_key".to_vec(),
+                name: "key name".to_string(),
+                key_reference: b"private_key".to_vec(),
+                storage_type: key_storage_type.to_string(),
+                key_type: key_type.to_string(),
+                organisation: Some(Organisation {
+                    id: Uuid::new_v4(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                }),
+            };
+
             Ok(Some(Credential {
                 state: Some(vec![CredentialState {
                     created_date: OffsetDateTime::now_utc(),
@@ -60,24 +75,11 @@ async fn test_issuer_submit_succeeds() {
                 issuer_did: Some(Did {
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
-                        key: Key {
-                            id: key_id.into(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            public_key: b"public_key".to_vec(),
-                            name: "key name".to_string(),
-                            key_reference: b"private_key".to_vec(),
-                            storage_type: key_storage_type.to_string(),
-                            key_type: key_type.to_string(),
-                            organisation: Some(Organisation {
-                                id: Uuid::new_v4(),
-                                created_date: OffsetDateTime::now_utc(),
-                                last_modified: OffsetDateTime::now_utc(),
-                            }),
-                        },
+                        key: key.to_owned(),
                     }]),
                     ..dummy_did()
                 }),
+                key: Some(key),
                 ..dummy_credential()
             }))
         });
@@ -85,7 +87,6 @@ async fn test_issuer_submit_succeeds() {
     credential_repository
         .expect_update_credential()
         .once()
-        .withf(move |update_request| update_request.key == Some(key_id.into()))
         .return_once(|_| Ok(()));
 
     let mut revocation_method = MockRevocationMethod::new();
