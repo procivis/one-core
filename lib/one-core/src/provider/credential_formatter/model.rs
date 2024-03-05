@@ -15,6 +15,12 @@ pub struct DetailCredential {
     pub status: Option<CredentialStatus>,
 }
 
+impl DetailCredential {
+    pub fn is_lvvc(&self) -> bool {
+        self.claims.values.get("id").is_some() && self.claims.values.get("status").is_some()
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VCCredentialClaimSchemaResponse {

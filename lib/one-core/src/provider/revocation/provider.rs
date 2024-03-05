@@ -103,11 +103,13 @@ pub(crate) fn from_config(
                     let params = config.get(key)?;
                     Arc::new(LvvcProvider::new(
                         core_base_url.clone(),
+                        credential_repository.clone(),
                         lvvc_repository.clone(),
                         credential_formatter_provider.clone(),
                         key_provider.clone(),
                         key_algorithm_provider.clone(),
                         did_method_provider.clone(),
+                        client.clone(),
                         params,
                     ))
                 }) as _

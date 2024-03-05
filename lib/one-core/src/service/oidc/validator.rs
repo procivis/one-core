@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+
 use std::sync::Arc;
 
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
@@ -7,22 +8,25 @@ use crate::config::ConfigValidationError;
 use crate::model::claim_schema::ClaimSchemaId;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaId};
 use crate::model::interaction::Interaction;
-use crate::model::proof_schema::ProofSchemaClaim;
+use crate::model::proof_schema::{ProofSchema, ProofSchemaClaim};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{DetailCredential, Presentation};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::TokenVerifier;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::revocation::{CredentialDataByRole, VerifierCredentialData};
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::oidc::dto::{
-    OpenID4VCICredentialRequestDTO, OpenID4VCIError, OpenID4VCIInteractionDataDTO,
-    OpenID4VCITokenRequestDTO,
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIError,
+    OpenID4VCIInteractionDataDTO, OpenID4VCITokenRequestDTO,
 };
+use crate::service::oidc::mapper::vec_last_position_from_token_path;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::{
     map_from_oidc_format_to_core, map_from_oidc_format_to_core_real,
     map_from_oidc_vp_format_to_core,
 };
-use shared_types::DidValue;
+
 use time::{Duration, OffsetDateTime};
 
 use super::dto::ValidatedProofClaimDTO;
@@ -111,12 +115,36 @@ pub(crate) fn throw_if_interaction_data_invalid(
     Ok(())
 }
 
+pub(super) async fn peek_presentation(
+    presentation_string: &str,
+    oidc_format: &str,
+    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+) -> Result<Presentation, ServiceError> {
+    let format = map_from_oidc_vp_format_to_core(oidc_format)?;
+    let formatter = formatter_provider
+        .get_formatter(&format)
+        .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
+
+    let presentation = formatter
+        .extract_presentation_unverified(presentation_string)
+        .await
+        .map_err(|e| {
+            if matches!(e, FormatterError::CouldNotExtractPresentation(_)) {
+                OpenID4VCIError::VPFormatsNotSupported.into()
+            } else {
+                ServiceError::Other(e.to_string())
+            }
+        })?;
+
+    Ok(presentation)
+}
+
 pub(super) async fn validate_presentation(
     presentation_string: &str,
     nonce: &str,
     oidc_format: &str,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
-    key_verification: Box<KeyVerification>,
+    key_verification: Box<dyn TokenVerifier>,
 ) -> Result<Presentation, ServiceError> {
     let format = map_from_oidc_vp_format_to_core(oidc_format)?;
     let formatter = formatter_provider
@@ -151,20 +179,35 @@ pub(super) async fn validate_presentation(
 }
 
 pub(super) async fn validate_credential(
-    credential_string: &str,
-    holder_did: &DidValue,
-    oidc_format: &str,
+    presentation: Presentation,
+    path_nested: &NestedPresentationSubmissionDescriptorDTO,
+    extracted_lvvcs: &[DetailCredential],
+    proof_schema: &ProofSchema,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<KeyVerification>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
 ) -> Result<DetailCredential, ServiceError> {
-    let format = map_from_oidc_format_to_core_real(oidc_format, credential_string)?;
+    let holder_did = presentation
+        .issuer_did
+        .as_ref()
+        .ok_or(ServiceError::ValidationError(
+            "Missing holder id".to_string(),
+        ))?;
+
+    let credential_index = vec_last_position_from_token_path(&path_nested.path)?;
+    let credential = presentation
+        .credentials
+        .get(credential_index)
+        .ok_or(OpenID4VCIError::InvalidRequest)?;
+
+    let oidc_format = &path_nested.format;
+    let format = map_from_oidc_format_to_core_real(oidc_format, credential)?;
     let formatter = formatter_provider
         .get_formatter(&format)
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let credential = formatter
-        .extract_credentials(credential_string, key_verification)
+        .extract_credentials(credential, key_verification)
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractCredentials(_)) {
@@ -194,7 +237,17 @@ pub(super) async fn validate_credential(
             ))?;
 
         if revocation_method
-            .check_credential_revocation_status(credential_status, &issuer_did)
+            .check_credential_revocation_status(
+                credential_status,
+                &issuer_did,
+                Some(CredentialDataByRole::Verifier(Box::new(
+                    VerifierCredentialData {
+                        credential: credential.to_owned(),
+                        extracted_lvvcs: extracted_lvvcs.to_owned(),
+                        proof_schema: proof_schema.to_owned(),
+                    },
+                ))),
+            )
             .await?
         {
             return Err(ServiceError::ValidationError(
@@ -218,7 +271,6 @@ pub(super) async fn validate_credential(
             "Holder DID doesn't match.".to_owned(),
         ));
     }
-
     Ok(credential)
 }
 

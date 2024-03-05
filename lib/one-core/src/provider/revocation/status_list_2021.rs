@@ -10,7 +10,7 @@ use crate::provider::credential_formatter::{
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::{
-    CredentialRevocationInfo, RevocationMethod, RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, RevocationMethod, RevocationMethodCapabilities,
 };
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -52,6 +52,7 @@ impl RevocationMethod for StatusList2021 {
         &self,
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
+        _additional_credential_data: Option<CredentialDataByRole>,
     ) -> Result<bool, ServiceError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(ServiceError::ValidationError(format!(

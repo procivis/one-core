@@ -342,6 +342,34 @@ async fn test_submit_proof_succeeds() {
     let mut formatter = MockCredentialFormatter::new();
 
     let holder_did_clone = holder_did.clone();
+    let issuer_did_clone = issuer_did.clone();
+    formatter
+        .expect_extract_credentials_unverified()
+        .once()
+        .returning(move |_| {
+            Ok(DetailCredential {
+                id: None,
+                issued_at: Some(OffsetDateTime::now_utc()),
+                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                invalid_before: Some(OffsetDateTime::now_utc()),
+                issuer_did: Some(issuer_did_clone.to_owned()),
+                subject: Some(holder_did_clone.to_owned()),
+                claims: CredentialSubject {
+                    // submitted claims
+                    values: HashMap::from([
+                        // ignored by verifier
+                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
+                        // required by verifier
+                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        // optional
+                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                    ]),
+                },
+                status: None,
+            })
+        });
+
+    let holder_did_clone = holder_did.clone();
     formatter
         .expect_extract_presentation()
         .once()
@@ -387,7 +415,7 @@ async fn test_submit_proof_succeeds() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_formatter()
-        .times(2)
+        .times(3)
         .returning(move |_| Some(formatter.clone()));
 
     proof_repository

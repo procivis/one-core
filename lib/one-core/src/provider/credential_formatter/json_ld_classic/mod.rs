@@ -31,7 +31,10 @@ pub struct Params {}
 
 #[async_trait]
 impl CredentialFormatter for JsonLdClassic {
-    async fn peek(&self, credential: &str) -> Result<DetailCredential, FormatterError> {
+    async fn extract_credentials_unverified(
+        &self,
+        credential: &str,
+    ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(credential, None).await
     }
 
@@ -180,30 +183,8 @@ impl CredentialFormatter for JsonLdClassic {
         json_ld: &str,
         verification_fn: VerificationFn,
     ) -> Result<Presentation, FormatterError> {
-        let presentation: LdPresentation = serde_json::from_str(json_ld)
-            .map_err(|e| FormatterError::CouldNotExtractPresentation(e.to_string()))?;
-
-        json_ld::verify_presentation_signature(presentation.clone(), verification_fn, &self.crypto)
-            .await?;
-
-        let credentials: Vec<String> = if presentation.verifiable_credential.starts_with('[') {
-            serde_json::from_str(&presentation.verifiable_credential).map_err(|_| {
-                FormatterError::CouldNotExtractPresentation(
-                    "Invalid credential collection".to_string(),
-                )
-            })?
-        } else {
-            vec![presentation.verifiable_credential]
-        };
-
-        Ok(Presentation {
-            id: None,
-            issued_at: Some(presentation.issuance_date),
-            expires_at: None,
-            issuer_did: Some(presentation.holder),
-            nonce: presentation.nonce,
-            credentials,
-        })
+        self.extract_presentation_internal(json_ld, Some(verification_fn))
+            .await
     }
 
     fn get_leeway(&self) -> u64 {
@@ -215,6 +196,13 @@ impl CredentialFormatter for JsonLdClassic {
             signing_key_algorithms: vec!["EDDSA".to_owned(), "ES256".to_owned()],
             features: vec![],
         }
+    }
+
+    async fn extract_presentation_unverified(
+        &self,
+        json_ld: &str,
+    ) -> Result<Presentation, FormatterError> {
+        self.extract_presentation_internal(json_ld, None).await
     }
 }
 
@@ -270,6 +258,43 @@ impl JsonLdClassic {
             subject: Some(credential.credential_subject.id),
             claims,
             status: credential.credential_status,
+        })
+    }
+
+    async fn extract_presentation_internal(
+        &self,
+        json_ld: &str,
+        verification_fn: Option<VerificationFn>,
+    ) -> Result<Presentation, FormatterError> {
+        let presentation: LdPresentation = serde_json::from_str(json_ld)
+            .map_err(|e| FormatterError::CouldNotExtractPresentation(e.to_string()))?;
+
+        if let Some(verification_fn) = verification_fn {
+            json_ld::verify_presentation_signature(
+                presentation.clone(),
+                verification_fn,
+                &self.crypto,
+            )
+            .await?;
+        }
+
+        let credentials: Vec<String> = if presentation.verifiable_credential.starts_with('[') {
+            serde_json::from_str(&presentation.verifiable_credential).map_err(|_| {
+                FormatterError::CouldNotExtractPresentation(
+                    "Invalid credential collection".to_string(),
+                )
+            })?
+        } else {
+            vec![presentation.verifiable_credential]
+        };
+
+        Ok(Presentation {
+            id: None,
+            issued_at: Some(presentation.issuance_date),
+            expires_at: None,
+            issuer_did: Some(presentation.holder),
+            nonce: presentation.nonce,
+            credentials,
         })
     }
 }

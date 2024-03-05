@@ -1,29 +1,45 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, ops::Sub, str::FromStr, sync::Arc};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::{CredentialId, DidValue};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
-    model::{credential::Credential, did::KeyRole},
+    model::{
+        credential::{
+            Credential, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
+        },
+        did::{DidRelations, KeyRole},
+        key::KeyRelations,
+        lvvc::Lvvc,
+    },
     provider::{
         credential_formatter::{
-            model::CredentialStatus, provider::CredentialFormatterProvider, CredentialData,
-            CredentialFormatter,
+            jwt::{model::JWTPayload, Jwt},
+            model::CredentialStatus,
+            provider::CredentialFormatterProvider,
+            CredentialData, CredentialFormatter,
         },
         did_method::provider::DidMethodProvider,
         key_algorithm::provider::KeyAlgorithmProvider,
         key_storage::provider::KeyProvider,
         revocation::RevocationMethod,
+        transport_protocol::TransportProtocolError,
     },
-    repository::lvvc_repository::LvvcRepository,
-    service::error::{BusinessLogicError, MissingProviderError, ServiceError},
+    repository::{credential_repository::CredentialRepository, lvvc_repository::LvvcRepository},
+    service::{
+        error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
+        ssi_issuer::dto::IssuerResponseDTO,
+    },
     util::key_verification::KeyVerification,
 };
 
-use super::{CredentialRevocationInfo, RevocationMethodCapabilities};
+use super::{
+    CredentialDataByRole, CredentialRevocationInfo, RevocationMethodCapabilities,
+    VerifierCredentialData,
+};
 
 #[serde_with::serde_as]
 #[derive(Deserialize)]
@@ -35,32 +51,39 @@ pub struct Params {
 
 pub struct LvvcProvider {
     core_base_url: Option<String>,
+    credential_repository: Arc<dyn CredentialRepository>,
     lvvc_repository: Arc<dyn LvvcRepository>,
     credential_formatter: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    client: reqwest::Client,
     params: Params,
 }
 
 impl LvvcProvider {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         core_base_url: Option<String>,
+        credential_repository: Arc<dyn CredentialRepository>,
         lvvc_repository: Arc<dyn LvvcRepository>,
         credential_formatter: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        client: reqwest::Client,
         params: Params,
     ) -> Self {
         Self {
             core_base_url,
+            credential_repository,
             lvvc_repository,
             credential_formatter,
-            params,
             key_provider,
             key_algorithm_provider,
             did_method_provider,
+            client,
+            params,
         }
     }
 
@@ -95,57 +118,165 @@ impl LvvcProvider {
         credential: &Credential,
         status: Status,
     ) -> Result<(), ServiceError> {
-        let base_url = self.core_base_url.as_ref().ok_or_else(|| {
-            ServiceError::MappingError("LVVC issuance is missing core base_url".to_string())
-        })?;
-        let issuer_did = credential.issuer_did.as_ref().ok_or_else(|| {
-            ServiceError::MappingError("LVVC issuance is missing issuer DID".to_string())
-        })?;
-        let holder_did = credential.holder_did.as_ref().ok_or_else(|| {
-            ServiceError::MappingError("LVVC issuance is missing holder DID".to_string())
-        })?;
+        create_lvvc_with_status(
+            credential,
+            status,
+            &self.core_base_url,
+            self.params.credential_expiry,
+            self.formatter(credential)?,
+            self.lvvc_repository.clone(),
+            self.key_provider.clone(),
+        )
+        .await
+        .map(|_| ())
+    }
 
-        let key = issuer_did
-            .keys
-            .as_ref()
-            .and_then(|keys| keys.iter().find(|k| k.role == KeyRole::AssertionMethod))
-            .map(|k| &k.key)
-            .ok_or_else(|| {
-                ServiceError::MappingError("LVVC issuance is missing key".to_string())
-            })?;
-        let auth_fn = self.key_provider.get_signature_provider(key)?;
-
-        let lvvc_credential_id = Uuid::new_v4();
-        let credential_data = CredentialData {
-            id: format!("{base_url}/ssi/lvvc/v1/{lvvc_credential_id}"),
-            issuance_date: OffsetDateTime::now_utc(),
-            valid_for: self.params.credential_expiry,
-            claims: vec![id_claim(base_url, credential.id), status_claim(status)],
-            issuer_did: issuer_did.did.to_owned(),
-            credential_schema: None,
-            credential_status: None,
-        };
-
-        let formatter = self.formatter(credential)?;
-        let formatted_credential = formatter
-            .format_credentials(
-                credential_data,
-                &holder_did.did,
-                &key.key_type,
-                vec![],
-                vec![],
-                auth_fn,
+    async fn check_revocation_status_as_holder(
+        &self,
+        credential_id: &CredentialId,
+        credential_status: &CredentialStatus,
+    ) -> Result<bool, ServiceError> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    holder_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
             )
+            .await?
+            .ok_or(EntityNotFoundError::Credential(credential_id.to_owned()))?;
+
+        let bearer_token = prepare_bearer_token(&credential, self.key_provider.clone()).await?;
+
+        let lvvc_check_url = &credential_status.id;
+        let response: IssuerResponseDTO = self
+            .client
+            .get(lvvc_check_url)
+            .bearer_auth(bearer_token)
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpRequestError)?
+            .json()
+            .await
+            .map_err(TransportProtocolError::HttpRequestError)?;
+
+        let formatter = self
+            .credential_formatter
+            .get_formatter(&response.format)
+            .ok_or(MissingProviderError::Formatter(response.format))?;
+
+        let lvvc = formatter
+            .extract_credentials_unverified(&response.credential)
             .await?;
 
-        let lvvc_credential = crate::model::lvvc::Lvvc {
-            id: lvvc_credential_id,
-            created_date: OffsetDateTime::now_utc(),
-            credential: formatted_credential.into_bytes(),
-            linked_credential_id: credential.id,
-        };
+        let status = lvvc
+            .claims
+            .values
+            .get("status")
+            .ok_or(ServiceError::ValidationError(
+                "missing status claim in LVVC".to_string(),
+            ))?;
+        let status_as_enum =
+            Status::from_str(status).map_err(|e| ServiceError::ValidationError(e.to_string()))?;
 
-        Ok(self.lvvc_repository.insert(lvvc_credential).await?)
+        Ok(status_as_enum == Status::Revoked)
+    }
+
+    async fn check_revocation_status_as_issuer(
+        &self,
+        credential_id: &CredentialId,
+    ) -> Result<bool, ServiceError> {
+        let credential = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::Credential(credential_id.to_owned()))?;
+
+        let states = credential
+            .state
+            .ok_or(ServiceError::MappingError("state is None".to_string()))?;
+        let latest_state = states
+            .first()
+            .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
+
+        Ok(latest_state.state == CredentialStateEnum::Revoked)
+    }
+
+    fn check_revocation_status_as_verifier(
+        &self,
+        issuer_did: &DidValue,
+        data: VerifierCredentialData,
+    ) -> Result<bool, ServiceError> {
+        let credential_id = data
+            .credential
+            .id
+            .as_ref()
+            .ok_or(ServiceError::ValidationError(
+                "credential id missing".to_string(),
+            ))?;
+
+        let lvvc = data
+            .extracted_lvvcs
+            .iter()
+            .find(|lvvc| {
+                if let Some(id) = lvvc.claims.values.get("id") {
+                    *id == *credential_id
+                } else {
+                    false
+                }
+            })
+            .ok_or(ServiceError::ValidationError(
+                "no matching LVVC found among credentials".to_string(),
+            ))?;
+
+        let lvvc_issuer_did = lvvc
+            .issuer_did
+            .as_ref()
+            .ok_or(ServiceError::ValidationError(
+                "LVVC issuer DID missing".to_string(),
+            ))?;
+
+        if issuer_did != lvvc_issuer_did {
+            return Err(ServiceError::ValidationError(
+                "LVVC issuer DID is not equal to issuer DID".to_string(),
+            ));
+        }
+
+        let lvvc_issued_at = lvvc.issued_at.ok_or(ServiceError::ValidationError(
+            "LVVC issued_at missing".to_string(),
+        ))?;
+        if let Some(validity_constraint) = data.proof_schema.validity_constraint {
+            let now = OffsetDateTime::now_utc();
+
+            if now.sub(Duration::seconds(validity_constraint)) > lvvc_issued_at {
+                return Err(ServiceError::ValidationError(
+                    "LVVC has expired".to_string(),
+                ));
+            }
+        }
+
+        let lvvc_status = lvvc
+            .claims
+            .values
+            .get("status")
+            .ok_or(ServiceError::ValidationError("status is None".to_string()))?;
+        let status = Status::from_str(lvvc_status)
+            .map_err(|e| ServiceError::ValidationError(e.to_string()))?;
+
+        Ok(status == Status::Revoked)
     }
 }
 
@@ -225,10 +356,26 @@ impl RevocationMethod for LvvcProvider {
 
     async fn check_credential_revocation_status(
         &self,
-        _credential_status: &CredentialStatus,
-        _issuer_did: &DidValue,
+        credential_status: &CredentialStatus,
+        issuer_did: &DidValue,
+        additional_credential_data: Option<CredentialDataByRole>,
     ) -> Result<bool, ServiceError> {
-        unimplemented!()
+        let additional_credential_data = additional_credential_data.ok_or(
+            ServiceError::ValidationError("additional_credential_data is None".to_string()),
+        )?;
+
+        match additional_credential_data {
+            CredentialDataByRole::Holder(credential_id) => {
+                self.check_revocation_status_as_holder(&credential_id, credential_status)
+                    .await
+            }
+            CredentialDataByRole::Issuer(credential_id) => {
+                self.check_revocation_status_as_issuer(&credential_id).await
+            }
+            CredentialDataByRole::Verifier(data) => {
+                self.check_revocation_status_as_verifier(issuer_did, *data)
+            }
+        }
     }
 }
 
@@ -243,10 +390,110 @@ fn status_claim(status: Status) -> (String, String) {
     ("status".to_owned(), status.to_string())
 }
 
-#[derive(strum::Display, strum::EnumString)]
-enum Status {
+#[derive(PartialEq, strum::Display, strum::EnumString)]
+pub(crate) enum Status {
     #[strum(serialize = "ACCEPTED")]
     Accepted,
     #[strum(serialize = "REVOKED")]
     Revoked,
+}
+
+pub(crate) async fn create_lvvc_with_status(
+    credential: &Credential,
+    status: Status,
+    core_base_url: &Option<String>,
+    credential_expiry: time::Duration,
+    formatter: Arc<dyn CredentialFormatter>,
+    lvvc_repository: Arc<dyn LvvcRepository>,
+    key_provider: Arc<dyn KeyProvider>,
+) -> Result<Lvvc, ServiceError> {
+    let base_url = core_base_url.as_ref().ok_or_else(|| {
+        ServiceError::MappingError("LVVC issuance is missing core base_url".to_string())
+    })?;
+    let issuer_did = credential.issuer_did.as_ref().ok_or_else(|| {
+        ServiceError::MappingError("LVVC issuance is missing issuer DID".to_string())
+    })?;
+    let holder_did = credential.holder_did.as_ref().ok_or_else(|| {
+        ServiceError::MappingError("LVVC issuance is missing holder DID".to_string())
+    })?;
+
+    let key = issuer_did
+        .keys
+        .as_ref()
+        .and_then(|keys| keys.iter().find(|k| k.role == KeyRole::AssertionMethod))
+        .map(|k| &k.key)
+        .ok_or_else(|| ServiceError::MappingError("LVVC issuance is missing key".to_string()))?;
+    let auth_fn = key_provider.get_signature_provider(key)?;
+
+    let lvvc_credential_id = Uuid::new_v4();
+    let credential_data = CredentialData {
+        id: format!("{base_url}/ssi/lvvc/v1/{lvvc_credential_id}"),
+        issuance_date: OffsetDateTime::now_utc(),
+        valid_for: credential_expiry,
+        claims: vec![id_claim(base_url, credential.id), status_claim(status)],
+        issuer_did: issuer_did.did.to_owned(),
+        credential_schema: None,
+        credential_status: None,
+    };
+
+    let formatted_credential = formatter
+        .format_credentials(
+            credential_data,
+            &holder_did.did,
+            &key.key_type,
+            vec![],
+            vec![],
+            auth_fn,
+        )
+        .await?;
+
+    let lvvc_credential = Lvvc {
+        id: lvvc_credential_id,
+        created_date: OffsetDateTime::now_utc(),
+        credential: formatted_credential.into_bytes(),
+        linked_credential_id: credential.id,
+    };
+
+    lvvc_repository.insert(lvvc_credential.to_owned()).await?;
+
+    Ok(lvvc_credential)
+}
+
+pub(crate) async fn prepare_bearer_token(
+    credential: &Credential,
+    key_provider: Arc<dyn KeyProvider>,
+) -> Result<String, ServiceError> {
+    let holder_did = credential
+        .holder_did
+        .as_ref()
+        .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+    let keys = holder_did
+        .keys
+        .as_ref()
+        .ok_or(ServiceError::MappingError("keys is None".to_string()))?;
+    let authentication_key = keys
+        .iter()
+        .find(|key| key.role == KeyRole::Authentication)
+        .ok_or(ServiceError::MappingError(
+            "No authentication keys found for holder DID".to_string(),
+        ))?;
+
+    let payload = JWTPayload {
+        custom: BearerTokenPayload {
+            timestamp: OffsetDateTime::now_utc().unix_timestamp(),
+        },
+        ..Default::default()
+    };
+
+    let signer = key_provider.get_signature_provider(&authentication_key.key)?;
+    let bearer_token = Jwt::new("JWT".to_string(), "HS256".to_string(), None, payload)
+        .tokenize(signer)
+        .await?;
+
+    Ok(bearer_token)
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+struct BearerTokenPayload {
+    pub timestamp: i64,
 }

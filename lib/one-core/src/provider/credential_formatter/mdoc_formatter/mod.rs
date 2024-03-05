@@ -35,7 +35,10 @@ impl CredentialFormatter for MdocFormatter {
         todo!()
     }
 
-    async fn peek(&self, _token: &str) -> Result<DetailCredential, FormatterError> {
+    async fn extract_credentials_unverified(
+        &self,
+        _token: &str,
+    ) -> Result<DetailCredential, FormatterError> {
         todo!()
     }
 
@@ -71,6 +74,13 @@ impl CredentialFormatter for MdocFormatter {
 
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities::default()
+    }
+
+    async fn extract_presentation_unverified(
+        &self,
+        _token: &str,
+    ) -> Result<Presentation, FormatterError> {
+        todo!()
     }
 }
 

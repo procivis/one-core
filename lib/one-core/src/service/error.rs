@@ -120,6 +120,9 @@ pub enum EntityNotFoundError {
 
     #[error("Credential schema `{0}` not found")]
     CredentialSchema(CredentialSchemaId),
+
+    #[error("Lvvc with credentialId `{0}` not found")]
+    Lvvc(CredentialId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -592,6 +595,7 @@ impl EntityNotFoundError {
             EntityNotFoundError::Organisation(_) => ErrorCode::BR_0022,
             EntityNotFoundError::Key(_) => ErrorCode::BR_0037,
             EntityNotFoundError::CredentialSchema(_) => ErrorCode::BR_0006,
+            EntityNotFoundError::Lvvc(_) => ErrorCode::BR_0000,
         }
     }
 }

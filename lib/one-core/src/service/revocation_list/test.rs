@@ -1,18 +1,48 @@
-use crate::model::revocation_list::{RevocationList, RevocationListRelations};
-use crate::repository::mock::revocation_list_repository::MockRevocationListRepository;
-use crate::service::revocation_list::RevocationListService;
 use mockall::predicate::eq;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::{
+    crypto::MockCryptoProvider,
+    model::revocation_list::{RevocationList, RevocationListRelations},
+    provider::{
+        credential_formatter::provider::MockCredentialFormatterProvider,
+        did_method::provider::MockDidMethodProvider,
+        key_algorithm::provider::MockKeyAlgorithmProvider, key_storage::provider::MockKeyProvider,
+    },
+    repository::{
+        credential_repository::MockCredentialRepository, lvvc_repository::MockLvvcRepository,
+        mock::revocation_list_repository::MockRevocationListRepository,
+    },
+    service::{revocation_list::RevocationListService, test_utilities::generic_config},
+};
+
 #[derive(Default)]
 struct Repositories {
+    pub credential_repository: MockCredentialRepository,
+    pub lvvc_repository: MockLvvcRepository,
     pub revocation_list_repository: MockRevocationListRepository,
+    pub crypto_provider: MockCryptoProvider,
+    pub did_method_provider: MockDidMethodProvider,
+    pub formatter_provider: MockCredentialFormatterProvider,
+    pub key_provider: MockKeyProvider,
+    pub key_algorithm_provider: MockKeyAlgorithmProvider,
 }
 
 fn setup_service(repositories: Repositories) -> RevocationListService {
-    RevocationListService::new(Arc::new(repositories.revocation_list_repository))
+    RevocationListService::new(
+        None,
+        Arc::new(repositories.credential_repository),
+        Arc::new(repositories.lvvc_repository),
+        Arc::new(repositories.revocation_list_repository),
+        Arc::new(repositories.crypto_provider),
+        Arc::new(repositories.did_method_provider),
+        Arc::new(repositories.formatter_provider),
+        Arc::new(repositories.key_provider),
+        Arc::new(repositories.key_algorithm_provider),
+        Arc::new(generic_config().core),
+    )
 }
 
 #[tokio::test]
@@ -39,6 +69,7 @@ async fn test_get_revocation_list() {
 
     let service = setup_service(Repositories {
         revocation_list_repository,
+        ..Default::default()
     });
 
     let result = service
