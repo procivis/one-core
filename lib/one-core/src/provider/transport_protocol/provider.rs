@@ -10,7 +10,7 @@ use crate::model::credential::{
     CredentialRelations, CredentialStateEnum, CredentialStateRelations,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, KeyRole};
+use crate::model::did::DidRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -121,6 +121,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
                         ..Default::default()
                     }),
                     holder_did: Some(DidRelations::default()),
+                    key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
             )
@@ -143,12 +144,6 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .ok_or(ServiceError::MappingError("holder did is None".to_string()))?
             .clone();
 
-        let issuer_did = credential
-            .issuer_did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("issuer did is None".to_string()))?
-            .clone();
-
         let format = credential_schema.format.to_owned();
 
         let revocation_method = self
@@ -162,17 +157,12 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .await?
             .map(|revocation_info| revocation_info.credential_status);
 
-        let keys = issuer_did
-            .keys
+        let key = credential
+            .key
             .as_ref()
-            .ok_or(ServiceError::MappingError("Issuer has no keys".to_string()))?;
-
-        let key = keys
-            .iter()
-            .find(|k| k.role == KeyRole::AssertionMethod)
             .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
 
-        let auth_fn = self.key_provider.get_signature_provider(&key.key)?;
+        let auth_fn = self.key_provider.get_signature_provider(key)?;
 
         let redirect_uri = credential.redirect_uri.to_owned();
 
@@ -194,7 +184,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .format_credentials(
                 credential_data,
                 &holder_did.did,
-                &key.key.key_type,
+                &key.key_type,
                 vec![],
                 vec![],
                 auth_fn,
@@ -202,11 +192,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .await?;
 
         self.credential_repository
-            .update_credential(get_issued_credential_update(
-                credential_id,
-                &token,
-                &key.key,
-            ))
+            .update_credential(get_issued_credential_update(credential_id, &token))
             .await?;
 
         let _ = self

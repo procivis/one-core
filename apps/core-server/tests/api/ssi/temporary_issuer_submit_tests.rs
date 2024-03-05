@@ -23,7 +23,7 @@ async fn test_temporary_issuer_submit_success() {
         Some(TestingDidParams {
             keys: Some(vec![RelatedKey {
                 role: KeyRole::AssertionMethod,
-                key,
+                key: key.to_owned(),
             }]),
             ..Default::default()
         }),
@@ -49,6 +49,7 @@ async fn test_temporary_issuer_submit_success() {
         "PROCIVIS_TEMPORARY",
         TestingCredentialParams {
             holder_did: Some(holder_did),
+            key: Some(key),
             ..Default::default()
         },
     )

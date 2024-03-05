@@ -59,7 +59,7 @@ async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestConte
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
-                    key,
+                    key: key.clone(),
                 }]),
                 ..Default::default()
             },
@@ -97,6 +97,7 @@ async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestConte
             "OPENID4VC",
             TestingCredentialParams {
                 interaction: Some(interaction),
+                key: Some(key),
                 ..Default::default()
             },
         )

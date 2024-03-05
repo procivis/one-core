@@ -26,7 +26,7 @@ async fn test_add_credential_to_list() {
         Some(TestingDidParams {
             keys: Some(vec![RelatedKey {
                 role: KeyRole::AssertionMethod,
-                key,
+                key: key.to_owned(),
             }]),
             ..Default::default()
         }),
@@ -53,6 +53,7 @@ async fn test_add_credential_to_list() {
         "PROCIVIS_TEMPORARY",
         TestingCredentialParams {
             holder_did: Some(holder_did),
+            key: Some(key),
             ..Default::default()
         },
     )

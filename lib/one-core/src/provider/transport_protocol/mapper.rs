@@ -29,7 +29,6 @@ use uuid::Uuid;
 pub(super) fn get_issued_credential_update(
     credential_id: &CredentialId,
     token: &str,
-    key: &Key,
 ) -> UpdateCredentialRequest {
     UpdateCredentialRequest {
         id: credential_id.to_owned(),
@@ -38,7 +37,7 @@ pub(super) fn get_issued_credential_update(
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Accepted,
         }),
-        key: Some(key.id),
+        key: None,
         holder_did_id: None,
         issuer_did_id: None,
         interaction: None,

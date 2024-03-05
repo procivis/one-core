@@ -484,6 +484,7 @@ pub struct TestingCredentialParams<'a> {
     pub interaction: Option<Interaction>,
     pub deleted_at: Option<OffsetDateTime>,
     pub role: Option<CredentialRole>,
+    pub key: Option<Key>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -533,7 +534,7 @@ pub async fn create_credential(
         schema: Some(credential_schema.to_owned()),
         interaction: params.interaction,
         revocation_list: None,
-        key: None,
+        key: params.key,
     };
 
     data_layer
