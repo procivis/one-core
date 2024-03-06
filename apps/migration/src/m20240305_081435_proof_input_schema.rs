@@ -78,7 +78,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum ProofInputSchema {
+pub enum ProofInputSchema {
     Table,
     Id,
     CreatedDate,
