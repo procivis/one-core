@@ -45,6 +45,7 @@ impl ProofSchemaService {
                         }),
                     }),
                     organisation: Some(OrganisationRelations::default()),
+                    proof_inputs: None,
                 },
             )
             .await?

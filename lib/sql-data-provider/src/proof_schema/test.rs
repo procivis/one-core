@@ -141,6 +141,7 @@ async fn test_create_proof_schema_invalid_params() {
             claim_schemas: None,
             organisation: None,
             validity_constraint: None,
+            input_schemas: None,
         })
         .await;
 
@@ -186,6 +187,7 @@ async fn test_create_proof_schema_already_exists() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
             }),
+            input_schemas: None,
         })
         .await;
 
@@ -251,6 +253,7 @@ async fn test_create_proof_schema_success() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
             }),
+            input_schemas: None,
         })
         .await;
 
@@ -512,6 +515,7 @@ async fn test_get_proof_schema_with_relations() {
                     credential_schema: Some(CredentialSchemaRelations::default()),
                 }),
                 organisation: Some(OrganisationRelations::default()),
+                proof_inputs: None,
             },
         )
         .await

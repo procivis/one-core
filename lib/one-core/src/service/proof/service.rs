@@ -51,6 +51,7 @@ impl ProofService {
                             credential_schema: Some(Default::default()),
                         }),
                         organisation: Some(Default::default()),
+                        proof_inputs: None,
                     }),
                     state: Some(Default::default()),
                     claims: Some(ProofClaimRelations {

@@ -160,6 +160,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
+            input_schemas: None,
         }),
         claims: Some(vec![]),
         verifier_did: Some(Did {
@@ -271,6 +272,7 @@ async fn test_get_proof_exists() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
+            input_schemas: None,
         }),
         claims: Some(vec![]),
         verifier_did: Some(Did {
@@ -302,6 +304,7 @@ async fn test_get_proof_exists() {
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                         organisation: Some(OrganisationRelations::default()),
+                        proof_inputs: None,
                     }),
                     state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {
@@ -393,6 +396,7 @@ async fn test_get_proof_list_success() {
             expire_duration: 0,
             claim_schemas: None,
             organisation: None,
+            input_schemas: None,
         }),
         claims: None,
         verifier_did: Some(Did {
@@ -478,6 +482,7 @@ async fn test_create_proof_without_related_key() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
+                input_schemas: None,
             }))
         });
 
@@ -570,6 +575,7 @@ async fn test_create_proof_with_related_key() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
+                input_schemas: None,
             }))
         });
 
@@ -659,6 +665,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
+                input_schemas: None,
             }))
         });
 
@@ -729,6 +736,7 @@ async fn test_create_proof_did_deactivated_error() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
+                input_schemas: None,
             }))
         });
 
@@ -787,6 +795,7 @@ async fn test_create_proof_schema_deleted() {
                 expire_duration: 0,
                 claim_schemas: None,
                 organisation: None,
+                input_schemas: None,
             }))
         });
 

@@ -303,6 +303,7 @@ async fn test_create_proof_success() {
             claim_schemas: None,
             validity_constraint: None,
             organisation: None,
+            input_schemas: None,
         }),
         claims: None,
         verifier_did: Some(Did {
@@ -443,6 +444,7 @@ async fn test_get_proof_with_relations() {
                 claim_schemas: None,
                 organisation: None,
                 validity_constraint: None,
+                input_schemas: None,
             }))
         });
 
@@ -682,6 +684,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 claim_schemas: None,
                 validity_constraint: None,
                 organisation: None,
+                input_schemas: None,
             }))
         });
 

@@ -129,6 +129,7 @@ fn construct_proof_with_state() -> Proof {
                 }),
             }]),
             organisation: None,
+            input_schemas: None,
         }),
         claims: None,
         verifier_did: None,
