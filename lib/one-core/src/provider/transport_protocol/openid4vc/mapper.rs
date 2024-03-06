@@ -300,6 +300,7 @@ pub(crate) fn create_credential_offer(
     Ok(OpenID4VCICredentialOfferDTO {
         credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", url, credential_schema.id),
         credentials: vec![OpenID4VCICredentialOfferCredentialDTO {
+            wallet_storage_type: credential_schema.wallet_storage_type.clone(),
             format: map_core_to_oidc_format(&credential_schema.format)
                 .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
             credential_definition: OpenID4VCICredentialDefinition {

@@ -9,7 +9,7 @@ use one_core::model::credential::{
     CredentialStateRelations,
 };
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
@@ -304,7 +304,7 @@ pub async fn create_credential_schema(
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: name.to_owned(),
-        wallet_storage_type: None,
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         organisation: Some(organisation.to_owned()),
         deleted_at: None,
         format: "JWT".to_string(),

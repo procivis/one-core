@@ -46,6 +46,7 @@ pub enum SortableCredentialSchemaColumn {
     CreatedDate,
 }
 #[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum WalletStorageTypeEnum {
     Hardware,
     Software,

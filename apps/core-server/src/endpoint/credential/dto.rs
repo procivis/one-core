@@ -1,5 +1,6 @@
 use crate::dto::common::ExactColumn;
 use crate::dto::common::ListQueryParamsRest;
+use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
 use crate::endpoint::credential_schema::dto::{
     CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
 };
@@ -109,6 +110,8 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     pub format: String,
     pub revocation_method: String,
     pub organisation_id: Uuid,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

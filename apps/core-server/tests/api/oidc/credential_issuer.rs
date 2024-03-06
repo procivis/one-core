@@ -1,40 +1,36 @@
-use core_server::router::start_server;
-use serde_json::Value;
-
-use crate::{fixtures, utils};
+use crate::utils::context::TestContext;
 
 #[tokio::test]
 async fn test_get_credential_issuer_metadata() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE")
+        .await;
 
     // WHEN
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
-
-    let url = format!(
-        "{base_url}/ssi/oidc-issuer/v1/{}/.well-known/openid-credential-issuer",
-        credential_schema.id
-    );
-
-    let resp = utils::client().get(url).send().await.unwrap();
+    let resp = context
+        .api
+        .ssi
+        .openid_credential_issuer(credential_schema.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
 
-    let resp: Value = resp.json().await.unwrap();
-
-    let issuer = format!("{base_url}/ssi/oidc-issuer/v1/{}", credential_schema.id);
-
-    assert_eq!(issuer, resp["credential_issuer"].as_str().unwrap());
-    assert_eq!(
-        format!("{issuer}/credential"),
-        resp["credential_endpoint"].as_str().unwrap()
+    let issuer = format!(
+        "{}/ssi/oidc-issuer/v1/{}",
+        context.config.app.core_base_url, credential_schema.id
     );
-    assert!(!resp["credentials_supported"].as_array().unwrap().is_empty());
+    assert_eq!(issuer, resp["credential_issuer"]);
+    assert_eq!(format!("{issuer}/credential"), resp["credential_endpoint"]);
+
+    let credentials = resp["credentials_supported"].as_array().unwrap();
+    assert!(!credentials.is_empty());
+    assert!(credentials
+        .iter()
+        .all(|entry| entry["wallet_storage_type"] == "SOFTWARE"));
 }

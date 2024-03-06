@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     common_mapper::deserialize_with_serde_json,
-    model::{claim_schema::ClaimSchemaId, interaction::InteractionId},
+    model::{
+        claim_schema::ClaimSchemaId, credential_schema::WalletStorageTypeEnum,
+        interaction::InteractionId,
+    },
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -32,6 +35,7 @@ pub struct OpenID4VCICredentialDefinition {
 pub struct OpenID4VCICredentialOfferCredentialDTO {
     pub format: String,
     pub credential_definition: OpenID4VCICredentialDefinition,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

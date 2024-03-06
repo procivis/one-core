@@ -1,10 +1,10 @@
-use one_core::{
-    model::credential::CredentialStateEnum,
-    provider::transport_protocol::openid4vc::dto::OpenID4VCICredentialOfferDTO,
-};
+use one_core::model::credential::CredentialStateEnum;
 use uuid::Uuid;
 
-use crate::{fixtures::TestingCredentialParams, utils::context::TestContext};
+use crate::{
+    fixtures::TestingCredentialParams,
+    utils::{context::TestContext, field_match::FieldHelpers},
+};
 
 #[tokio::test]
 async fn test_get_credential_offer_success() {
@@ -47,21 +47,21 @@ async fn test_get_credential_offer_success() {
 
     // THEN
     assert_eq!(resp.status(), 200);
-    let offer: OpenID4VCICredentialOfferDTO = resp.json().await;
+    let offer = resp.json_value().await;
 
     assert_eq!(
-        offer.credential_issuer,
+        offer["credential_issuer"],
         format!(
             "{}/ssi/oidc-issuer/v1/{}",
             context.config.app.core_base_url, credential_schema.id
         )
     );
-    assert_eq!(
-        offer.grants.code.pre_authorized_code,
-        interaction.id.to_string()
-    );
-    let offer_credential = &offer.credentials[0];
-    assert_eq!(offer_credential.format, "jwt_vc_json");
+    offer["grants"]["urn:ietf:params:oauth:grant-type:pre-authorized_code"]["pre-authorized_code"]
+        .assert_eq(&interaction.id);
+
+    let offer_credential = &offer["credentials"][0];
+    assert_eq!(offer_credential["format"], "jwt_vc_json");
+    assert_eq!(offer_credential["wallet_storage_type"], "SOFTWARE");
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(
