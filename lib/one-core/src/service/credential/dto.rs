@@ -112,6 +112,7 @@ pub enum CredentialFilterValue {
     OrganisationId(OrganisationId),
     Role(CredentialRole),
     CredentialIds(Vec<CredentialId>),
+    State(crate::model::credential::CredentialStateEnum),
 }
 
 impl ListFilterValue for CredentialFilterValue {}

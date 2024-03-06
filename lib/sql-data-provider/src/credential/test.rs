@@ -519,23 +519,12 @@ async fn test_get_credential_list_success() {
 
 #[tokio::test]
 async fn test_get_credential_list_success_verify_state_sorting() {
-    let TestSetup {
+    let TestSetupWithCredential {
         credential_schema,
-        did,
         db,
+        credential_id,
         ..
-    } = setup_empty().await;
-
-    let credential_id = insert_credential(
-        &db,
-        &credential_schema.id.to_string(),
-        CredentialStateEnum::Created,
-        "PROCIVIS_TEMPORARY",
-        did.id,
-        None,
-    )
-    .await
-    .unwrap();
+    } = setup_with_credential().await;
 
     let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
     insert_credential_state_to_database(
@@ -582,6 +571,56 @@ async fn test_get_credential_list_success_verify_state_sorting() {
     let states = first.state.as_ref().unwrap();
     assert_eq!(1, states.len());
     assert_eq!(CredentialStateEnum::Offered, states.first().unwrap().state);
+}
+
+#[tokio::test]
+async fn test_get_credential_list_success_filter_state() {
+    let TestSetupWithCredential {
+        db, credential_id, ..
+    } = setup_with_credential().await;
+
+    let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
+    insert_credential_state_to_database(
+        &db,
+        credential_id,
+        CredentialState {
+            created_date: later,
+            state: CredentialStateEnum::Offered,
+            suspend_end_date: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let provider = CredentialProvider {
+        db,
+        credential_schema_repository: Arc::from(MockCredentialSchemaRepository::default()),
+        claim_repository: Arc::from(MockClaimRepository::default()),
+        did_repository: Arc::from(MockDidRepository::default()),
+        interaction_repository: Arc::from(MockInteractionRepository::default()),
+        revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
+    };
+
+    let credentials = provider
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(CredentialFilterValue::State(CredentialStateEnum::Offered).condition()),
+            ..Default::default()
+        })
+        .await;
+    let credentials = credentials.unwrap();
+    assert_eq!(1, credentials.total_items);
+    assert_eq!(1, credentials.values.len());
+
+    let credentials = provider
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(CredentialFilterValue::State(CredentialStateEnum::Created).condition()),
+            ..Default::default()
+        })
+        .await;
+    let credentials = credentials.unwrap();
+    assert_eq!(0, credentials.total_items);
+    assert_eq!(0, credentials.values.len());
 }
 
 #[tokio::test]
