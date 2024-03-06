@@ -291,6 +291,9 @@ pub enum MissingProviderError {
 
     #[error("Cannot find `{0}` in transport protocol provider")]
     TransportProtocol(String),
+
+    #[error("Cannot find task `{0}`")]
+    Task(String),
 }
 
 impl MissingProviderError {
@@ -303,6 +306,7 @@ impl MissingProviderError {
             MissingProviderError::RevocationMethod(_) => ErrorCode::BR_0044,
             MissingProviderError::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
             MissingProviderError::TransportProtocol(_) => ErrorCode::BR_0046,
+            MissingProviderError::Task(_) => ErrorCode::BR_0103,
         }
     }
 }
@@ -546,6 +550,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Revocation error")]
     BR_0101,
+
+    #[strum(to_string = "Missing task")]
+    BR_0103,
 }
 
 impl From<FormatError> for ServiceError {

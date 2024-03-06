@@ -104,6 +104,7 @@ rusty_fork_test! {
                     type: 'INTERNAL'
                     order: 0
                     params: null
+            task: {}
     "};
 
         let config3 = indoc::indoc! {"

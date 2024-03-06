@@ -95,7 +95,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 type: 'INTERNAL'
                 order: 0
                 params: null
-
+        task: {}
     "};
 
     AppConfig::from_yaml_str_configs(vec![config]).unwrap()

@@ -17,6 +17,7 @@ mod ssi_validator;
 pub mod ssi_verifier;
 
 pub mod revocation_list;
+pub mod task;
 
 #[cfg(test)]
 pub mod test_utilities;

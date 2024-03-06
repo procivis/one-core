@@ -15,13 +15,14 @@ use crypto::signer::Signer;
 use crypto::{CryptoProvider, CryptoProviderImpl};
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::key_storage::secure_element::NativeKeyStorage;
+use provider::task::{provider::TaskProviderImpl, tasks_from_config};
 use provider::transport_protocol::{provider::TransportProtocolProviderImpl, TransportProtocol};
 use repository::DataRepository;
-use service::backup::BackupService;
 use service::{
-    config::ConfigService, credential::CredentialService, did::DidService,
+    backup::BackupService, config::ConfigService, credential::CredentialService, did::DidService,
     organisation::OrganisationService, proof::ProofService, proof_schema::ProofSchemaService,
     ssi_holder::SSIHolderService, ssi_issuer::SSIIssuerService, ssi_verifier::SSIVerifierService,
+    task::TaskService,
 };
 
 pub mod config;
@@ -75,6 +76,7 @@ pub struct OneCore {
     pub oidc_service: OIDCService,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
+    pub task_service: TaskService,
     pub config: Arc<CoreConfig>,
     pub crypto: Arc<dyn CryptoProvider>,
 }
@@ -166,6 +168,9 @@ impl OneCore {
         let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
             revocation_methods.to_owned(),
         ));
+
+        let task_providers = tasks_from_config(&core_config.task)?;
+        let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
 
         let config = Arc::new(core_config);
 
@@ -309,6 +314,7 @@ impl OneCore {
                 protocol_provider,
                 config.clone(),
             ),
+            task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
             crypto,
             config,

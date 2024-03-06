@@ -45,6 +45,7 @@ pub struct CoreConfig {
     pub(crate) datatype: DatatypeConfig,
     pub(crate) key_algorithm: KeyAlgorithmConfig,
     pub(crate) key_storage: KeyStorageConfig,
+    pub(crate) task: TaskConfig,
 }
 
 #[derive(Debug)]
@@ -283,6 +284,17 @@ pub enum KeyStorageType {
     #[serde(rename = "SECURE_ELEMENT")]
     #[strum(serialize = "SECURE_ELEMENT")]
     SecureElement,
+}
+
+pub type TaskConfig = ConfigBlock<TaskType>;
+
+#[derive(
+    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum TaskType {
+    #[serde(rename = "SUSPEND_CHECK")]
+    #[strum(serialize = "SUSPEND_CHECK")]
+    SuspendCheck,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

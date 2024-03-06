@@ -23,15 +23,14 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::dto::response::ErrorResponse;
-use crate::endpoint::did_resolver;
 use crate::middleware::get_http_request_context;
-use crate::{build_info, ServerConfig};
 use crate::{
-    dto,
+    build_info, dto,
     endpoint::{
-        self, config, credential, credential_schema, did, history, interaction, key, misc,
-        organisation, proof, proof_schema, ssi,
+        self, config, credential, credential_schema, did, did_resolver, history, interaction, key,
+        misc, organisation, proof, proof_schema, ssi, task,
     },
+    ServerConfig,
 };
 
 pub(crate) struct InternalAppState {
@@ -186,6 +185,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             "/api/interaction/v1/presentation-reject",
             post(interaction::controller::presentation_reject),
         )
+        .route("/api/task/v1/run", post(task::controller::post_task))
         .layer(middleware::from_fn(crate::middleware::bearer_check));
 
     let unprotected = Router::new()
@@ -378,6 +378,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::interaction::controller::presentation_submit,
             endpoint::interaction::controller::presentation_reject,
 
+            endpoint::task::controller::post_task,
+
             endpoint::misc::get_build_info,
             endpoint::misc::health_check,
             endpoint::misc::get_metrics,
@@ -502,6 +504,9 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::interaction::dto::PresentationSubmitRequestRestDTO,
                 endpoint::interaction::dto::PresentationSubmitCredentialRequestRestDTO,
 
+                endpoint::task::dto::TaskRequestRestDTO,
+                endpoint::task::dto::TaskResponseRestDTO,
+
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
 
@@ -542,6 +547,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             (name = "proof_management", description = "Proof management"),
             (name = "proof_schema_management", description = "Proof schema management"),
             (name = "ssi", description = "SSI"),
+            (name = "task", description = "Background tasks"),
         ),
         modifiers(&SecurityAddon)
     )]
