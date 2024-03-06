@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "proof_input_schema")]
