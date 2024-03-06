@@ -34,9 +34,9 @@ pub struct UnexportableEntitiesResponseDTO {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(super) struct MetadataFile {
-    pub(super) db_version: String,
-    pub(super) db_hash: String,
+pub struct MetadataDTO {
+    pub db_version: String,
+    pub db_hash: String,
     #[serde(with = "time::serde::rfc3339")]
-    pub(super) created_at: OffsetDateTime,
+    pub created_at: OffsetDateTime,
 }

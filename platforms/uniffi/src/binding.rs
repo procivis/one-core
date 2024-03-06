@@ -1,4 +1,4 @@
-use std::future::Future;
+use std::{future::Future, pin::Pin};
 
 use crate::error::BindingError;
 use tokio::{
@@ -7,33 +7,59 @@ use tokio::{
     sync::{RwLock, RwLockReadGuard},
 };
 
+type CoreBuilder = Box<
+    dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<one_core::OneCore, BindingError>>>>
+        + Send
+        + Sync,
+>;
+
 pub(crate) struct OneCoreBinding {
     runtime: Runtime,
     inner: RwLock<Option<one_core::OneCore>>,
-    db_path: String,
+    pub(crate) main_db_path: String,
+    pub(crate) backup_db_path: String,
+    core_builder: CoreBuilder,
 }
 
 impl OneCoreBinding {
-    pub(crate) fn new(core: one_core::OneCore, db_path: String, runtime: Runtime) -> Self {
+    pub(crate) fn new(
+        runtime: Runtime,
+        main_db_path: String,
+        backup_db_path: String,
+        core_builder: CoreBuilder,
+    ) -> Self {
         Self {
-            inner: RwLock::new(Some(core)),
-            db_path,
             runtime,
+            inner: RwLock::new(None),
+            main_db_path,
+            backup_db_path,
+            core_builder,
         }
     }
 
-    pub fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
+    pub fn initialize(&self, db_path: String) -> Result<(), BindingError> {
         self.runtime.block_on(async {
+            let mut guard = self.inner.write().await;
+            let new_core = (self.core_builder)(db_path).await?;
+            guard.replace(new_core);
+            Ok(())
+        })
+    }
+
+    pub fn uninitialize(&self, delete_data: bool) -> Result<(), BindingError> {
+        self.block_on(async {
             let mut guard = self.inner.write().await;
             if guard.take().is_none() {
                 return Err(BindingError::Uninitialized);
             }
 
-            if delete_data {
-                fs::remove_file(&self.db_path)
-                    .await
-                    .map_err(|e| BindingError::Unknown(e.to_string()))?;
+            if !delete_data {
+                return Ok(());
             }
+
+            let _ = fs::remove_file(&self.backup_db_path).await;
+            fs::remove_file(&self.main_db_path).await?;
+
             Ok(())
         })
     }

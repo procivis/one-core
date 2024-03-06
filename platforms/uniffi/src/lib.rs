@@ -22,6 +22,9 @@ fn initialize_core(
     data_dir_path: String,
     native_key_storage: Option<Box<dyn NativeKeyStorage>>,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
+    let native_key_storage =
+        native_key_storage.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
+
     let placeholder_config: AppConfig<NoCustomConfig> =
         core_config::AppConfig::from_yaml_str_configs(vec![
             include_str!("../../../config/config.yml"),
@@ -34,22 +37,37 @@ fn initialize_core(
         .build()
         .map_err(|e| BindingError::Unknown(e.to_string()))?;
 
-    let db_path = format!("{data_dir_path}/one_core_db.sqlite");
-    let core: Result<one_core::OneCore, BindingError> = runtime.block_on(async {
-        let db_url = format!("sqlite:{db_path}?mode=rwc");
-        let db_conn = sql_data_provider::db_conn(db_url)
-            .await
-            .map_err(|e| BindingError::DbErr(e.to_string()))?;
+    let main_db_path = format!("{data_dir_path}/one_core_db.sqlite");
+    let backup_db_path = format!("{data_dir_path}/backup_one_core_db.sqlite");
+    let _ = std::fs::remove_file(&backup_db_path);
 
-        Ok(one_core::OneCore::new(
-            |exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)),
-            placeholder_config.core,
-            None,
-            native_key_storage.map(|storage| {
-                Arc::new(NativeKeyStorageWrapper(storage))
-                    as Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>
-            }),
-        )?)
-    });
-    Ok(Arc::new(OneCoreBinding::new(core?, db_path, runtime)))
+    let core_builder = move |db_path: String| {
+        let core_config = placeholder_config.core.clone();
+        let native_key_storage = native_key_storage.clone();
+
+        Box::pin(async move {
+            let db_url = format!("sqlite:{db_path}?mode=rwc");
+            let db_conn = sql_data_provider::db_conn(db_url)
+                .await
+                .map_err(|e| BindingError::DbErr(e.to_string()))?;
+
+            Ok(one_core::OneCore::new(
+                |exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)),
+                core_config,
+                None,
+                native_key_storage,
+            )?)
+        }) as _
+    };
+
+    let core_binding = Arc::new(OneCoreBinding::new(
+        runtime,
+        main_db_path,
+        backup_db_path,
+        Box::new(core_builder),
+    ));
+
+    core_binding.initialize(core_binding.main_db_path.clone())?;
+
+    Ok(core_binding)
 }

@@ -5,7 +5,15 @@ namespace one_core {
 
 [Error]
 enum BindingError {
-  "AlreadyExists", "DbErr", "NotFound", "NotSupported", "ValidationError", "ConfigValidationError", "Uninitialized", "Unknown"
+  "AlreadyExists",
+  "DbErr",
+  "NotFound",
+  "NotSupported",
+  "ValidationError",
+  "ConfigValidationError",
+  "Uninitialized",
+  "IOError",
+  "Unknown",
 };
 
 [Error]
@@ -268,7 +276,8 @@ enum HistoryActionBindingEnum {
   "Rejected",
   "Requested",
   "Revoked",
-  "Pending"
+  "Pending",
+  "Restored",
 };
 
 enum HistoryEntityTypeBindingEnum {
@@ -341,6 +350,12 @@ dictionary UnexportableEntitiesBindingDTO {
   u64 total_dids;
 };
 
+dictionary MetadataBindingDTO {
+  string db_version;
+  string db_hash;
+  string created_at;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -397,6 +412,15 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   UnexportableEntitiesBindingDTO backup_info();
+
+  [Throws=BindingError]
+  MetadataBindingDTO unpack_backup(string password, string input_path);
+
+  [Throws=BindingError]
+  void finalize_import();
+
+  [Throws=BindingError]
+  void rollback_import();
 
   [Throws=BindingError]
   HistoryListBindingDTO get_history_list(HistoryListQueryBindingDTO query);
