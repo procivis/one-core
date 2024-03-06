@@ -90,6 +90,7 @@ impl ProofsDB {
                             }),
                         }),
                         organisation: Some(OrganisationRelations {}),
+                        proof_inputs: None,
                     }),
                     holder_did: Some(DidRelations::default()),
                     verifier_did: Some(DidRelations::default()),

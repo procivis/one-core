@@ -936,6 +936,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                         validity_constraint: Some(100),
                         claim_schemas: None,
                         organisation: None,
+                        input_schemas: None,
                     }),
                     claims: None,
                     verifier_did: None,

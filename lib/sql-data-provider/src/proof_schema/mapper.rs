@@ -32,6 +32,7 @@ impl TryFrom<proof_schema::Model> for ProofSchema {
             claim_schemas: None,
             organisation: None,
             validity_constraint: value.validity_constraint,
+            input_schemas: None,
         })
     }
 }

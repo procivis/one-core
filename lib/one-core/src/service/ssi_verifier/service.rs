@@ -53,6 +53,7 @@ impl SSIVerifierService {
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                         organisation: Some(OrganisationRelations::default()),
+                        proof_inputs: None,
                     }),
                     state: Some(ProofStateRelations::default()),
                     verifier_did: Some(DidRelations::default()),
@@ -109,6 +110,7 @@ impl SSIVerifierService {
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                         organisation: Some(OrganisationRelations::default()),
+                        proof_inputs: None,
                     }),
                     holder_did: Some(DidRelations::default()),
                     ..Default::default()

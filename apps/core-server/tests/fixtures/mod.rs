@@ -399,6 +399,7 @@ pub async fn create_proof_schema(
         claim_schemas: Some(claim_schemas),
         expire_duration: 0,
         validity_constraint: Some(10),
+        input_schemas: None,
     };
 
     data_layer
@@ -636,6 +637,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                         }),
                     }),
                     organisation: Some(OrganisationRelations {}),
+                    proof_inputs: None,
                 }),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),

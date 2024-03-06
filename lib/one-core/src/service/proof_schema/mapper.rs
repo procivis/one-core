@@ -91,6 +91,7 @@ pub fn proof_schema_from_create_request(
         organisation: Some(organisation),
         deleted_at: None,
         validity_constraint: request.validity_constraint,
+        input_schemas: None,
     }
 }
 

@@ -56,6 +56,7 @@ impl ProofSchemasDB {
             claim_schemas: Some(claim_schemas),
             expire_duration: 0,
             validity_constraint: None,
+            input_schemas: None,
         };
 
         let id = self
@@ -79,6 +80,7 @@ impl ProofSchemasDB {
                         }),
                     }),
                     organisation: Some(OrganisationRelations {}),
+                    proof_inputs: None,
                 },
             )
             .await

@@ -418,6 +418,7 @@ impl OIDCService {
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                         organisation: Some(OrganisationRelations::default()),
+                        proof_inputs: None,
                     }),
                     interaction: Some(InteractionRelations::default()),
                     state: Some(ProofStateRelations::default()),

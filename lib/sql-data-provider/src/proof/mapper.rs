@@ -78,6 +78,7 @@ impl TryFrom<ProofListItemModel> for Proof {
                 claim_schemas: None,
                 organisation: None,
                 validity_constraint: value.schema_validity_constraint,
+                input_schemas: None,
             }),
             claims: None,
             verifier_did,

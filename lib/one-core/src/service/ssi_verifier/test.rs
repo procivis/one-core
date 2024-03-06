@@ -531,6 +531,7 @@ fn dummy_proof_schema() -> ProofSchema {
         claim_schemas: None,
         organisation: None,
         validity_constraint: None,
+        input_schemas: None,
     }
 }
 

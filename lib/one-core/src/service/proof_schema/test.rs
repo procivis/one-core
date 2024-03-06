@@ -67,6 +67,7 @@ async fn test_get_proof_schema_exists() {
                         }),
                     }),
                     organisation: Some(OrganisationRelations::default()),
+                    proof_inputs: None,
                 }),
             )
             .returning(move |_id, _relations| Ok(Some(res_clone.clone())));
@@ -151,6 +152,7 @@ async fn test_get_proof_schema_list_success() {
         claim_schemas: None,
         organisation: None,
         validity_constraint: None,
+        input_schemas: None,
     };
     {
         let res_clone = proof_schema.clone();
@@ -243,6 +245,7 @@ async fn test_delete_proof_schema_success() {
                 claim_schemas: None,
                 organisation: None,
                 validity_constraint: None,
+                input_schemas: None,
             }))
         });
 
@@ -285,6 +288,7 @@ async fn test_delete_proof_schema_failure() {
                 claim_schemas: None,
                 organisation: None,
                 validity_constraint: None,
+                input_schemas: None,
             }))
         });
 
@@ -589,5 +593,6 @@ fn generic_proof_schema() -> ProofSchema {
             last_modified: OffsetDateTime::now_utc(),
         }),
         validity_constraint: None,
+        input_schemas: None,
     }
 }
