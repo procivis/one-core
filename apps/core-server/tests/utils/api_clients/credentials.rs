@@ -82,6 +82,22 @@ impl CredentialsApi {
         self.client.post(&url, None).await
     }
 
+    pub async fn suspend(&self, id: &impl Display, suspend_end_date: Option<String>) -> Response {
+        let url = format!("/api/credential/v1/{id}/suspend");
+        if let Some(suspend_end_date) = suspend_end_date {
+            self.client
+                .post(
+                    &url,
+                    json!({
+                      "suspendEndDate": suspend_end_date,
+                    }),
+                )
+                .await
+        } else {
+            self.client.post(&url, json!({})).await
+        }
+    }
+
     pub async fn revocation_check(&self, credential_id: impl Into<Uuid>) -> Response {
         let body = json!({
           "credentialIds": vec![credential_id.into()]

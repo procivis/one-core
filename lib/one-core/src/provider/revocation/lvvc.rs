@@ -1,11 +1,5 @@
 use std::{collections::HashMap, ops::Sub, str::FromStr, sync::Arc};
 
-use serde::{Deserialize, Serialize};
-use serde_with::DurationSeconds;
-use shared_types::{CredentialId, DidValue};
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
-
 use crate::{
     model::{
         credential::{
@@ -35,6 +29,11 @@ use crate::{
     },
     util::key_verification::KeyVerification,
 };
+use serde::{Deserialize, Serialize};
+use serde_with::DurationSeconds;
+use shared_types::{CredentialId, DidValue};
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
 
 use super::{
     CredentialDataByRole, CredentialRevocationInfo, NewCredentialState,

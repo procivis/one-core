@@ -5,3 +5,4 @@ mod list_credential_tests;
 mod revoke_check_tests;
 mod revoke_credential_tests;
 mod share_credential_tests;
+mod suspend_credential_tests;

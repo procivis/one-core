@@ -52,6 +52,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             state: Some(vec![CredentialState {
                 created_date: OffsetDateTime::now_utc(),
                 state: CredentialStateEnum::Created,
+                suspend_end_date: None,
             }]),
             claims: Some(vec![]),
             issuer_did: None,

@@ -118,6 +118,7 @@ pub fn dummy_credential() -> Credential {
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Pending,
+            suspend_end_date: None,
         }]),
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),

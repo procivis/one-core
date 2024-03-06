@@ -79,6 +79,8 @@ pub enum HistoryAction {
     Revoked,
     #[sea_orm(string_value = "PENDING")]
     Pending,
+    #[sea_orm(string_value = "SUSPENDED")]
+    Suspended,
     #[sea_orm(string_value = "RESTORED")]
     Restored,
 }

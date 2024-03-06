@@ -466,6 +466,7 @@ impl SSIHolderService {
                     state: Some(CredentialState {
                         created_date: OffsetDateTime::now_utc(),
                         state: CredentialStateEnum::Accepted,
+                        suspend_end_date: None,
                     }),
                     credential: Some(issuer_response.credential.bytes().collect()),
                     holder_did_id: None,
@@ -531,6 +532,7 @@ impl SSIHolderService {
                     state: Some(CredentialState {
                         created_date: OffsetDateTime::now_utc(),
                         state: CredentialStateEnum::Rejected,
+                        suspend_end_date: None,
                     }),
                     credential: None,
                     holder_did_id: None,

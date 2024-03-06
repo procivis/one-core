@@ -1,3 +1,4 @@
+use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ExactColumn;
 use crate::dto::common::ListQueryParamsRest;
 use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
@@ -17,6 +18,7 @@ use one_core::service::credential::dto::CredentialRole;
 use one_core::service::credential::dto::CredentialStateEnum;
 use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
 use one_core::service::credential::dto::DetailCredentialSchemaResponseDTO;
+use one_core::service::credential::dto::SuspendCredentialRequestDTO;
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialId;
 use shared_types::KeyId;
@@ -130,6 +132,7 @@ pub enum CredentialStateRestEnum {
     Pending,
     Offered,
     Accepted,
+    Suspended,
     Rejected,
     Revoked,
     Error,
@@ -187,6 +190,15 @@ pub struct CredentialRequestClaimRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialRevocationCheckRequestRestDTO {
     pub credential_ids: Vec<CredentialId>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, IntoParams)]
+#[serde(rename_all = "camelCase")]
+#[into(SuspendCredentialRequestDTO)]
+pub struct SuspendCredentialRequestRestDTO {
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub suspend_end_date: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

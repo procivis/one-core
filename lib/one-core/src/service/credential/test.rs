@@ -105,6 +105,7 @@ fn generic_credential() -> Credential {
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Created,
+            suspend_end_date: None,
         }]),
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),
@@ -177,6 +178,7 @@ fn generic_credential_list_entity() -> Credential {
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Created,
+            suspend_end_date: None,
         }]),
         claims: None,
         issuer_did: Some(Did {
@@ -280,6 +282,7 @@ async fn test_delete_credential_incorrect_state() {
     credential.state = Some(vec![CredentialState {
         created_date: OffsetDateTime::now_utc(),
         state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
     }]);
 
     let copy = credential.clone();
@@ -316,6 +319,7 @@ async fn test_get_credential_list_success() {
     c.state = Some(vec![CredentialState {
         created_date: now,
         state: CredentialStateEnum::Revoked,
+        suspend_end_date: None,
     }]);
 
     let credentials = GetCredentialList {
@@ -444,6 +448,7 @@ async fn test_get_revoked_credential_success() {
     credential.state = Some(vec![CredentialState {
         created_date: now,
         state: CredentialStateEnum::Revoked,
+        suspend_end_date: None,
     }]);
 
     {
@@ -988,6 +993,7 @@ async fn test_check_revocation_non_revocable() {
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
         }]),
         ..generic_credential()
     };
@@ -1041,6 +1047,7 @@ async fn test_check_revocation_already_revoked() {
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Revoked,
+            suspend_end_date: None,
         }]),
         ..generic_credential()
     };
@@ -1139,6 +1146,7 @@ async fn test_check_revocation_being_revoked() {
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
         }]),
         ..generic_credential()
     };

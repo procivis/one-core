@@ -128,6 +128,7 @@ pub fn extracted_credential_to_model(
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
         }]),
         claims: Some(
             claims

@@ -14,6 +14,7 @@ use crate::dto::response::{
 };
 use crate::endpoint::credential::dto::{
     CreateCredentialRequestRestDTO, GetCredentialQuery, GetCredentialResponseRestDTO,
+    SuspendCredentialRequestRestDTO,
 };
 use crate::extractor::Qs;
 
@@ -134,6 +135,35 @@ pub(crate) async fn revoke_credential(
 ) -> EmptyOrErrorResponse {
     let result = state.core.credential_service.revoke_credential(&id).await;
     EmptyOrErrorResponse::from_result(result, state, "revoking credential")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/credential/v1/{id}/suspend",
+    request_body = SuspendCredentialRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = Uuid, Path, description = "Credential id")
+    ),
+    tag = "credential_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn suspend_credential(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<SuspendCredentialRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .credential_service
+        .suspend_credential(&id, request.into())
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "suspending credential")
 }
 
 #[utoipa::path(

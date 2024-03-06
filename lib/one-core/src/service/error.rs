@@ -212,6 +212,9 @@ pub enum BusinessLogicError {
 
     #[error("Credential already revoked")]
     CredentialAlreadyRevoked,
+
+    #[error("Revocation method does not support state ({operation})")]
+    OperationNotSupportedByRevocationMethod { operation: String },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -538,6 +541,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Invalid key")]
     BR_0096,
 
+    #[strum(to_string = "Revocation method does not support state (REVOKE, SUSPEND)")]
+    BR_0098,
+
     #[strum(to_string = "Revocation error")]
     BR_0101,
 }
@@ -630,6 +636,9 @@ impl BusinessLogicError {
             BusinessLogicError::MissingProofForInteraction(_) => ErrorCode::BR_0094,
             BusinessLogicError::StatusList2021NotSupported => ErrorCode::BR_0095,
             BusinessLogicError::CredentialAlreadyRevoked => ErrorCode::BR_0092,
+            BusinessLogicError::OperationNotSupportedByRevocationMethod { .. } => {
+                ErrorCode::BR_0098
+            }
         }
     }
 }

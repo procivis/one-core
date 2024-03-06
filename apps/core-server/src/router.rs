@@ -93,6 +93,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(credential::controller::revoke_credential),
         )
         .route(
+            "/api/credential/v1/:id/suspend",
+            post(credential::controller::suspend_credential),
+        )
+        .route(
             "/api/credential/v1/:id/share",
             post(credential::controller::share_credential),
         )
@@ -315,6 +319,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::credential::controller::get_credential_list,
             endpoint::credential::controller::post_credential,
             endpoint::credential::controller::revoke_credential,
+            endpoint::credential::controller::suspend_credential,
             endpoint::credential::controller::share_credential,
             endpoint::credential::controller::revocation_check,
 
@@ -395,6 +400,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::credential::dto::CredentialRevocationCheckResponseRestDTO,
                 endpoint::credential::dto::CredentialStateRestEnum,
                 endpoint::credential::dto::CredentialRoleRestEnum,
+                endpoint::credential::dto::SuspendCredentialRequestRestDTO,
 
                 endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO,
                 endpoint::credential_schema::dto::CredentialClaimSchemaRequestRestDTO,

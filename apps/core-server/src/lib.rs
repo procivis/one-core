@@ -2,6 +2,7 @@ use std::net::IpAddr;
 
 use serde::{Deserialize, Serialize};
 
+pub mod deserialize;
 pub mod dto;
 pub mod endpoint;
 pub mod extractor;

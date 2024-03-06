@@ -544,6 +544,7 @@ async fn test_get_credential_list_success_verify_state_sorting() {
         CredentialState {
             created_date: later,
             state: CredentialStateEnum::Offered,
+            suspend_end_date: None,
         },
     )
     .await

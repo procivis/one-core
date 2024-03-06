@@ -102,6 +102,7 @@ pub enum CredentialStateEnum {
     Accepted,
     Rejected,
     Revoked,
+    Suspended,
     Error,
 }
 
@@ -126,6 +127,11 @@ pub struct CreateCredentialRequestDTO {
     pub transport: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub redirect_uri: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SuspendCredentialRequestDTO {
+    pub suspend_end_date: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]
