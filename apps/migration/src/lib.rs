@@ -18,6 +18,7 @@ mod m20240223_094129_validity_constraint_in_proof_schema;
 mod m20240223_103849_add_backup_columns;
 mod m20240229_134129_wallet_storage_type_credential_schema;
 mod m20240305_081435_proof_input_schema;
+mod m20240306_122440_add_backup_restored;
 
 pub struct Migrator;
 
@@ -41,6 +42,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240223_103849_add_backup_columns::Migration),
             Box::new(m20240229_134129_wallet_storage_type_credential_schema::Migration),
             Box::new(m20240305_081435_proof_input_schema::Migration),
+            Box::new(m20240306_122440_add_backup_restored::Migration),
         ]
     }
 }

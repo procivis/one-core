@@ -32,6 +32,7 @@ pub enum HistoryAction {
     Requested,
     Revoked,
     Pending,
+    Restored,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

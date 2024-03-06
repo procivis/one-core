@@ -512,10 +512,12 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 dto::error::ErrorCode,
                 dto::error::Cause,
 
+                shared_types::CredentialId,
                 shared_types::DidId,
                 shared_types::DidValue,
                 shared_types::EntityId,
                 shared_types::HistoryId,
+                shared_types::KeyId,
                 shared_types::OrganisationId,
                 shared_types::KeyId,
                 shared_types::CredentialId,

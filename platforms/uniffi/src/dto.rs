@@ -3,7 +3,9 @@ use crate::mapper::serialize_config_entity;
 use crate::utils::{into_id, TimestampFormat};
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into, TryInto};
-use one_core::service::backup::dto::{BackupCreateResponseDTO, UnexportableEntitiesResponseDTO};
+use one_core::service::backup::dto::{
+    BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
+};
 use one_core::service::credential::dto::CredentialRole;
 use one_core::service::credential_schema::dto::GetCredentialSchemaListResponseDTO;
 use one_core::service::did::dto::DidListItemResponseDTO;
@@ -376,6 +378,7 @@ pub enum HistoryActionBindingEnum {
     Requested,
     Revoked,
     Pending,
+    Restored,
 }
 
 #[derive(From, Into)]
@@ -447,6 +450,15 @@ pub struct HistorySearchBindingDTO {
 pub struct BackupCreateBindingDTO {
     pub file: String,
     pub unexportable: UnexportableEntitiesBindingDTO,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(MetadataDTO)]
+pub struct MetadataBindingDTO {
+    pub db_version: String,
+    pub db_hash: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_at: String,
 }
 
 #[derive(Debug, Clone, From)]

@@ -1,19 +1,24 @@
-use std::sync::Arc;
+use std::{fs::File, sync::Arc};
 
 use crate::{
-    crypto::encryption::encrypt_file,
+    crypto::encryption::{decrypt_file, encrypt_file},
+    model::history::HistoryAction,
     repository::{
         backup_repository::BackupRepository, error::DataLayerError,
         history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
     },
     service::error::ServiceError,
 };
+use anyhow::Context;
 use futures::{FutureExt, TryFutureExt};
-use tempfile::NamedTempFile;
+use tempfile::{tempfile, NamedTempFile};
 
 use super::{
-    dto::{BackupCreateResponseDTO, UnexportableEntitiesResponseDTO},
-    utils::{build_metadata_file_content, create_backup_history_event, create_zip},
+    dto::{BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO},
+    utils::{
+        build_metadata_file_content, create_backup_history_event, create_zip,
+        get_metadata_from_zip, hash_reader, load_db_from_zip, map_error,
+    },
     BackupService,
 };
 
@@ -37,10 +42,12 @@ impl BackupService {
         output_path: String,
     ) -> Result<BackupCreateResponseDTO, ServiceError> {
         let mut db_copy = NamedTempFile::new()
-            .map_err(|err| ServiceError::Other(format!("Failed to create db temp file: {err}")))?;
+            .context("Failed to create db temp file")
+            .map_err(map_error)?;
 
-        let zip_file = NamedTempFile::new()
-            .map_err(|err| ServiceError::Other(format!("Failed to create zip temp file: {err}")))?;
+        let zip_file = tempfile()
+            .context("Failed to create zip temp file")
+            .map_err(map_error)?;
 
         let db_metadata = self.backup_repository.copy_db_to(db_copy.path()).await?;
         let unexportable = self
@@ -55,7 +62,8 @@ impl BackupService {
         let metadata_file = build_metadata_file_content(&mut db_copy, db_metadata.version)?;
         let zip_file = create_zip(db_copy, metadata_file, zip_file)?;
         encrypt_file(&password, &output_path, zip_file)
-            .map_err(|err| ServiceError::Other(format!("Failed to encrypt db file: {err}")))?;
+            .context("Failed to encrypt db file")
+            .map_err(map_error)?;
 
         let _ = self
             .organisation_repository
@@ -70,7 +78,10 @@ impl BackupService {
             })
             .and_then(|organisation| {
                 self.history_repository
-                    .create_history(create_backup_history_event(organisation))
+                    .create_history(create_backup_history_event(
+                        organisation,
+                        HistoryAction::Created,
+                    ))
             })
             .await;
 
@@ -78,6 +89,72 @@ impl BackupService {
             file: output_path,
             unexportable,
         })
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, err(Debug))]
+    pub async fn unpack_backup(
+        &self,
+        password: String,
+        input_path: String,
+        output_path: String,
+    ) -> Result<MetadataDTO, ServiceError> {
+        let zip = File::open(input_path)
+            .context("Failed to open backup")
+            .map_err(map_error)?;
+
+        let mut decrypted_zip = tempfile()
+            .context("Failed to create zip temp file")
+            .map_err(map_error)?;
+
+        let mut decrypted_db = tempfile()
+            .context("Failed to create db temp file")
+            .map_err(map_error)?;
+
+        decrypt_file(&password, zip, &mut decrypted_zip)
+            .context("Failed to decrypt db file")
+            .map_err(map_error)?;
+
+        let metadata = get_metadata_from_zip(&mut decrypted_zip)?;
+        load_db_from_zip(&mut decrypted_zip, &mut decrypted_db)?;
+
+        let hash = hash_reader(&mut decrypted_db)?;
+
+        if hash != metadata.db_hash {
+            return Err(ServiceError::Other("hashes do not match".into()));
+        }
+
+        let mut output_file = File::create(output_path)
+            .context("Failed to create output file")
+            .map_err(map_error)?;
+
+        std::io::copy(&mut decrypted_db, &mut output_file)
+            .context("Failed to copy db to output path")
+            .map_err(map_error)?;
+
+        Ok(metadata)
+    }
+
+    #[tracing::instrument(level = "debug", skip(self))]
+    pub async fn finalize_import(&self) {
+        let _ = self
+            .organisation_repository
+            .get_organisation_list()
+            .map(|result| {
+                result.and_then(|organisations| {
+                    organisations
+                        .into_iter()
+                        .next()
+                        .ok_or(DataLayerError::MappingError)
+                })
+            })
+            .and_then(|organisation| {
+                self.history_repository
+                    .create_history(create_backup_history_event(
+                        organisation,
+                        HistoryAction::Restored,
+                    ))
+            })
+            .await;
     }
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]

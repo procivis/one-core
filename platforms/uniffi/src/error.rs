@@ -17,10 +17,12 @@ pub enum BindingError {
     NotSupported(String),
     #[error("Validation error: `{0}`")]
     ValidationError(String),
-    #[error("Config validation error `{0}`")]
+    #[error("Config validation error: `{0}`")]
     ConfigValidationError(String),
     #[error("Core uninitialized")]
     Uninitialized,
+    #[error("IO error: `{0}`")]
+    IOError(String),
     #[error("Unknown error: `{0}`")]
     Unknown(String),
 }
@@ -66,6 +68,12 @@ impl From<ConfigError> for BindingError {
 impl From<time::error::Parse> for BindingError {
     fn from(error: time::error::Parse) -> Self {
         Self::ValidationError(format!("OffsetDateTime parse error: {}", error))
+    }
+}
+
+impl From<std::io::Error> for BindingError {
+    fn from(error: std::io::Error) -> Self {
+        Self::IOError(error.to_string())
     }
 }
 
