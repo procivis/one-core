@@ -17,7 +17,7 @@ use crate::{
             CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::CredentialSchemaRelations,
-        did::{DidRelations, DidType, KeyRole},
+        did::{DidRelations, DidType, KeyRole, RelatedKey},
         key::KeyRelations,
         organisation::OrganisationRelations,
     },
@@ -116,28 +116,37 @@ impl CredentialService {
             &claim_schemas,
         )?;
 
+        let formatter_signing_key_algorithms = self
+            .formatter_provider
+            .get_formatter(&schema.format)
+            .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?
+            .get_capabilities()
+            .signing_key_algorithms;
+
+        let valid_keys_filter = |entry: &&RelatedKey| {
+            entry.role == KeyRole::AssertionMethod
+                && formatter_signing_key_algorithms.contains(&entry.key.key_type)
+        };
+
+        let did_keys = issuer_did
+            .keys
+            .as_ref()
+            .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?;
+
         let key = match request.issuer_key {
-            Some(key_id) => issuer_did
-                .keys
-                .as_ref()
-                .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
+            Some(key_id) => did_keys
                 .iter()
-                .filter(|entry| entry.role == KeyRole::AssertionMethod)
+                .filter(valid_keys_filter)
                 .find(|entry| entry.key.id == key_id)
                 .ok_or(ServiceError::Validation(ValidationError::InvalidKey(
-                    "key not found or has wrong role".into(),
+                    "key not found or invalid".into(),
                 )))?,
-            None => issuer_did
-                .keys
-                .as_ref()
-                .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
-                .iter()
-                .find(|entry| entry.role == KeyRole::AssertionMethod)
-                .ok_or_else(|| {
-                    ServiceError::Validation(ValidationError::InvalidKey(
-                        "no assertion method keys found in did".to_string(),
-                    ))
-                })?,
+            // no explicit key specified, pick first valid key
+            None => did_keys.iter().find(valid_keys_filter).ok_or_else(|| {
+                ServiceError::Validation(ValidationError::InvalidKey(
+                    "no valid keys found in did".to_string(),
+                ))
+            })?,
         }
         .key
         .clone();

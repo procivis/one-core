@@ -21,7 +21,7 @@ use crate::{
         credential_formatter::{
             model::{CredentialStatus, CredentialSubject, DetailCredential},
             provider::MockCredentialFormatterProvider,
-            MockCredentialFormatter,
+            FormatterCapabilities, MockCredentialFormatter,
         },
         revocation::{provider::MockRevocationMethodProvider, MockRevocationMethod},
         transport_protocol::{provider::MockTransportProtocolProvider, MockTransportProtocol},
@@ -603,7 +603,6 @@ async fn test_create_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -633,12 +632,28 @@ async fn test_create_credential_success() {
             .returning(move |_| Ok(clone.id));
     }
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_string()],
+            features: vec![],
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository,
-        revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -714,7 +729,6 @@ async fn test_create_credential_one_required_claim_missing() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -767,12 +781,28 @@ async fn test_create_credential_one_required_claim_missing() {
             .returning(move |_| Ok(clone.id));
     }
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_string()],
+            features: vec![],
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential_schema.format))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository,
-        revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1165,11 +1195,10 @@ async fn test_check_revocation_being_revoked() {
 }
 
 #[tokio::test]
-async fn test_create_credentials_key_with_issuer_key() {
+async fn test_create_credential_key_with_issuer_key() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -1198,12 +1227,28 @@ async fn test_create_credentials_key_with_issuer_key() {
             move |_| Ok(credential.id)
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_string()],
+            features: vec![],
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository,
-        revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1231,11 +1276,10 @@ async fn test_create_credentials_key_with_issuer_key() {
 }
 
 #[tokio::test]
-async fn test_create_credentials_key_with_issuer_key_and_repeating_key() {
+async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
 
     let mut history_repository = MockHistoryRepository::default();
     history_repository
@@ -1297,12 +1341,28 @@ async fn test_create_credentials_key_with_issuer_key_and_repeating_key() {
             move |_| Ok(credential.id)
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_string()],
+            features: vec![],
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         history_repository,
-        revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1330,13 +1390,9 @@ async fn test_create_credentials_key_with_issuer_key_and_repeating_key() {
 }
 
 #[tokio::test]
-async fn test_fail_to_create_credentials_no_assertion_key() {
-    let credential_repository = MockCredentialRepository::default();
+async fn test_fail_to_create_credential_no_assertion_key() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
-
-    let history_repository = MockHistoryRepository::default();
 
     let credential = generic_credential();
     let issuer_did = Did {
@@ -1369,12 +1425,26 @@ async fn test_fail_to_create_credentials_no_assertion_key() {
         .times(1)
         .returning(move |_, _| Ok(Some(credential_schema.clone())));
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_string()],
+            features: vec![],
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
-        credential_repository,
         credential_schema_repository,
         did_repository,
-        history_repository,
-        revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1405,13 +1475,9 @@ async fn test_fail_to_create_credentials_no_assertion_key() {
 }
 
 #[tokio::test]
-async fn test_fail_to_create_credentials_unknown_key_id() {
-    let credential_repository = MockCredentialRepository::default();
+async fn test_fail_to_create_credential_unknown_key_id() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
-
-    let history_repository = MockHistoryRepository::default();
 
     let credential = generic_credential();
     let issuer_did = credential.issuer_did.clone().unwrap();
@@ -1427,12 +1493,26 @@ async fn test_fail_to_create_credentials_unknown_key_id() {
         .times(1)
         .returning(move |_, _| Ok(Some(credential_schema.clone())));
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_string()],
+            features: vec![],
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
-        credential_repository,
         credential_schema_repository,
         did_repository,
-        history_repository,
-        revocation_method_provider,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -1463,13 +1543,9 @@ async fn test_fail_to_create_credentials_unknown_key_id() {
 }
 
 #[tokio::test]
-async fn test_fail_to_create_credentials_key_id_points_to_wrong_key_type() {
-    let credential_repository = MockCredentialRepository::default();
+async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
-    let revocation_method_provider = MockRevocationMethodProvider::default();
-
-    let history_repository = MockHistoryRepository::default();
 
     let credential = generic_credential();
     let key_id = Uuid::new_v4();
@@ -1502,12 +1578,111 @@ async fn test_fail_to_create_credentials_key_id_points_to_wrong_key_type() {
         .times(1)
         .returning(move |_, _| Ok(Some(credential_schema.clone())));
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_string()],
+            features: vec![],
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
-        credential_repository,
         credential_schema_repository,
         did_repository,
-        history_repository,
-        revocation_method_provider,
+        formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+            issuer_key: Some(key_id.into()),
+            transport: "PROCIVIS_TEMPORARY".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: credential.claims.as_ref().unwrap()[0]
+                    .schema
+                    .as_ref()
+                    .unwrap()
+                    .id
+                    .to_owned(),
+                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+            }],
+            redirect_uri: None,
+        })
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::InvalidKey(_)))
+    ));
+}
+
+#[tokio::test]
+async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorithm() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    let key_id = Uuid::new_v4();
+    let issuer_did = Did {
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::AssertionMethod,
+            key: Key {
+                id: key_id.into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                public_key: vec![],
+                name: "key_name".to_string(),
+                key_reference: vec![],
+                storage_type: "INTERNAL".to_string(),
+                key_type: "unsupported".to_string(),
+                organisation: None,
+            },
+        }]),
+        ..credential.issuer_did.clone().unwrap()
+    };
+    let credential_schema = credential.schema.clone().unwrap();
+
+    did_repository
+        .expect_get_did()
+        .times(1)
+        .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .times(1)
+        .returning(move |_, _| Ok(Some(credential_schema.clone())));
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            signing_key_algorithms: vec!["EDDSA".to_string()],
+            features: vec![],
+        });
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let service = setup_service(Repositories {
+        credential_schema_repository,
+        did_repository,
+        formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
