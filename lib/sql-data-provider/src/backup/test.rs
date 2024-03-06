@@ -102,6 +102,7 @@ async fn insert_credential_to_database(
         credential_id: Set(credential_id),
         created_date: Set(get_dummy_date()),
         state: Set(CredentialState::Created),
+        suspend_end_date: Set(None),
     }
     .insert(database)
     .await

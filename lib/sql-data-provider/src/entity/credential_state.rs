@@ -17,6 +17,7 @@ pub struct Model {
     #[serde(with = "time::serde::rfc3339")]
     #[sea_orm(primary_key, auto_increment = false)]
     pub created_date: OffsetDateTime,
+    pub suspend_end_date: Option<OffsetDateTime>,
 
     pub state: CredentialState,
 }
@@ -61,6 +62,8 @@ pub enum CredentialState {
     Rejected,
     #[sea_orm(string_value = "REVOKED")]
     Revoked,
+    #[sea_orm(string_value = "SUSPENDED")]
+    Suspended,
     #[sea_orm(string_value = "ERROR")]
     Error,
 }

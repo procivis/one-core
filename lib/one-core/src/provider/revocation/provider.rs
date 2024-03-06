@@ -53,7 +53,6 @@ impl RevocationMethodProvider for RevocationMethodProviderImpl {
     ) -> Option<Arc<dyn RevocationMethod>> {
         self.revocation_methods.get(revocation_method_id).cloned()
     }
-
     fn get_revocation_method_by_status_type(
         &self,
         credential_status_type: &str,

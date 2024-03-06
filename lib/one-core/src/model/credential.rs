@@ -54,6 +54,7 @@ pub struct CredentialRelations {
 pub struct CredentialState {
     pub created_date: OffsetDateTime,
     pub state: CredentialStateEnum,
+    pub suspend_end_date: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Display)]
@@ -64,6 +65,7 @@ pub enum CredentialStateEnum {
     Accepted,
     Rejected,
     Revoked,
+    Suspended,
     Error,
 }
 

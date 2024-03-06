@@ -68,6 +68,7 @@ pub enum CredentialStateBindingEnum {
     Accepted,
     Rejected,
     Revoked,
+    Suspended,
     Error,
 }
 
@@ -377,6 +378,7 @@ pub enum HistoryActionBindingEnum {
     Rejected,
     Requested,
     Revoked,
+    Suspended,
     Pending,
     Restored,
 }

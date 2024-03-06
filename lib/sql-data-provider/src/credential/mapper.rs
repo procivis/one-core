@@ -59,6 +59,7 @@ pub(super) fn get_credential_state_active_model(
         credential_id: Set(id),
         created_date: Set(state.created_date),
         state: Set(state.state.into()),
+        suspend_end_date: Set(state.suspend_end_date),
     }
 }
 
@@ -165,6 +166,7 @@ pub(super) fn credential_list_model_to_repository_model(
     let state = vec![CredentialState {
         created_date: credential.credential_state_created_date,
         state: credential.credential_state_state.into(),
+        suspend_end_date: None,
     }];
 
     Ok(Credential {

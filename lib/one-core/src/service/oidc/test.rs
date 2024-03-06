@@ -125,6 +125,7 @@ fn dummy_credential(state: CredentialStateEnum, pre_authroized_code: bool) -> Cr
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state,
+            suspend_end_date: None,
         }]),
         claims: None,
         issuer_did: None,

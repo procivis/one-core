@@ -175,6 +175,7 @@ pub(super) fn from_create_request(
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Created,
+            suspend_end_date: None,
         }]),
         last_modified: now,
         deleted_at: None,
@@ -256,6 +257,20 @@ pub(super) fn credential_revoked_history_event(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action: HistoryAction::Revoked,
+        entity_id: Some(id.into()),
+        entity_type: HistoryEntityType::Credential,
+        organisation,
+    }
+}
+
+pub(super) fn credential_suspend_history_event(
+    id: CredentialId,
+    organisation: Option<Organisation>,
+) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action: HistoryAction::Suspended,
         entity_id: Some(id.into()),
         entity_type: HistoryEntityType::Credential,
         organisation,

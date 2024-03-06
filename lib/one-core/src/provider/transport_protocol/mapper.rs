@@ -36,6 +36,7 @@ pub(super) fn get_issued_credential_update(
         state: Some(CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
         }),
         key: None,
         holder_did_id: None,

@@ -1,5 +1,5 @@
 use dto_mapper::{convert_inner, From, Into};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 use one_core::service::history::dto::HistoryResponseDTO;
 
+use crate::deserialize::deserialize_timestamp;
 use crate::{dto::common::ListQueryParamsRest, serialize::front_time};
 
 pub type GetHistoryQuery =
@@ -42,6 +43,7 @@ pub enum HistoryAction {
     Requested,
     Revoked,
     Pending,
+    Suspended,
     Restored,
 }
 
@@ -88,13 +90,6 @@ pub struct HistoryFilterQueryParamsRest {
     pub search_text: Option<String>,
     pub search_type: Option<HistorySearchEnumRest>,
     pub organisation_id: OrganisationId,
-}
-
-fn deserialize_timestamp<'de, D>(deserializer: D) -> Result<Option<OffsetDateTime>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Ok(Some(time::serde::rfc3339::deserialize(deserializer)?))
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into)]

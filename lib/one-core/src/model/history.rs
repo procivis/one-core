@@ -32,6 +32,7 @@ pub enum HistoryAction {
     Requested,
     Revoked,
     Pending,
+    Suspended,
     Restored,
 }
 

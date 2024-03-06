@@ -89,6 +89,7 @@ impl SSIIssuerService {
                 state: Some(CredentialState {
                     created_date: now,
                     state: new_state.clone(),
+                    suspend_end_date: None,
                 }),
                 credential: None,
                 issuer_did_id: None,
@@ -104,6 +105,7 @@ impl SSIIssuerService {
             states.push(CredentialState {
                 created_date: now,
                 state: new_state,
+                suspend_end_date: None,
             });
         }
 
@@ -159,6 +161,7 @@ impl SSIIssuerService {
                 state: Some(CredentialState {
                     created_date: OffsetDateTime::now_utc(),
                     state: CredentialStateEnum::Rejected,
+                    suspend_end_date: None,
                 }),
                 credential: None,
                 holder_did_id: None,

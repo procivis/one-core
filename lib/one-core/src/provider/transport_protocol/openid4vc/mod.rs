@@ -1094,6 +1094,7 @@ async fn create_credential(
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Pending,
+            suspend_end_date: None,
         }]),
         claims: Some(claims),
         issuer_did: None,

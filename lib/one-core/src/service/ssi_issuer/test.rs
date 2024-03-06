@@ -74,6 +74,7 @@ async fn test_issuer_reject_succeeds() {
                 state: Some(vec![CredentialState {
                     created_date: OffsetDateTime::now_utc(),
                     state: CredentialStateEnum::Offered,
+                    suspend_end_date: None,
                 }]),
                 ..dummy_credential()
             }))

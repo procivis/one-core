@@ -58,7 +58,7 @@ dictionary ConfigBindingDTO {
 };
 
 enum CredentialStateBindingEnum {
-  "Created", "Pending", "Offered", "Accepted", "Rejected", "Revoked", "Error"
+  "Created", "Pending", "Offered", "Accepted", "Rejected", "Revoked", "Error", "Suspended"
 };
 
 enum WalletStorageTypeBindingEnum {
@@ -277,6 +277,7 @@ enum HistoryActionBindingEnum {
   "Requested",
   "Revoked",
   "Pending",
+  "Suspended",
   "Restored",
 };
 

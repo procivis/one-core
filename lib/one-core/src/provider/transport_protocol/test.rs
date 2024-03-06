@@ -70,6 +70,7 @@ async fn test_issuer_submit_succeeds() {
                 state: Some(vec![CredentialState {
                     created_date: OffsetDateTime::now_utc(),
                     state: CredentialStateEnum::Offered,
+                    suspend_end_date: None,
                 }]),
                 holder_did: Some(dummy_did()),
                 issuer_did: Some(Did {
@@ -184,6 +185,7 @@ fn dummy_credential() -> Credential {
         state: Some(vec![CredentialState {
             created_date: OffsetDateTime::now_utc(),
             state: CredentialStateEnum::Pending,
+            suspend_end_date: None,
         }]),
         claims: Some(vec![Claim {
             id: Uuid::new_v4(),

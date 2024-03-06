@@ -549,6 +549,7 @@ async fn handle_credential_invitation(
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Pending,
+            suspend_end_date: None,
         }]),
         claims: Some(claims),
         issuer_did: Some(issuer_did),
