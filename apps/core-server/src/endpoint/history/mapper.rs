@@ -1,6 +1,6 @@
 use one_core::model::{
     history::{HistoryFilterValue, HistorySearchEnum},
-    list_filter::{ListFilterCondition, ListFilterValue},
+    list_filter::{ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison},
 };
 
 use crate::endpoint::history::dto::{HistoryFilterQueryParamsRest, HistorySearchEnumRest};
@@ -19,10 +19,18 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
         let action = value
             .action
             .map(|value| HistoryFilterValue::Action(value.into()));
-        let created_date_from = value
-            .created_date_from
-            .map(HistoryFilterValue::CreatedDateFrom);
-        let created_date_to = value.created_date_to.map(HistoryFilterValue::CreatedDateTo);
+        let created_date_from = value.created_date_from.map(|date| {
+            HistoryFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_to = value.created_date_to.map(|date| {
+            HistoryFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
         let did_id = value.did_id.map(HistoryFilterValue::DidId);
         let credential_id = value.credential_id.map(HistoryFilterValue::CredentialId);
         let credential_schema_id = value

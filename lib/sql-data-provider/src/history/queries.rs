@@ -11,8 +11,8 @@ use crate::{
         proof_schema_claim_schema,
     },
     list_query_generic::{
-        get_equals_condition, get_greater_than_condition, get_lesser_than_condition,
-        IntoFilterCondition, IntoJoinCondition, IntoSortingColumn, JoinRelation,
+        get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinCondition,
+        IntoSortingColumn, JoinRelation,
     },
 };
 use one_core::model::history::{HistoryFilterValue, HistorySearchEnum, SortableHistoryColumn};
@@ -46,11 +46,8 @@ impl IntoFilterCondition for HistoryFilterValue {
                 history::Column::Action,
                 history::HistoryAction::from(action),
             ),
-            HistoryFilterValue::CreatedDateFrom(created_date_from) => {
-                get_greater_than_condition(history::Column::CreatedDate, created_date_from)
-            }
-            HistoryFilterValue::CreatedDateTo(created_date_to) => {
-                get_lesser_than_condition(history::Column::CreatedDate, created_date_to)
+            HistoryFilterValue::CreatedDate(date_comparison) => {
+                get_comparison_condition(history::Column::CreatedDate, date_comparison)
             }
             HistoryFilterValue::DidId(did_id) => credential::Column::IssuerDidId
                 .eq(did_id)

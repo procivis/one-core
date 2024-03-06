@@ -26,6 +26,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
     pub credential_state_created_date: OffsetDateTime,
     pub credential_state_state: credential_state::CredentialState,
+    pub credential_state_suspend_end_date: Option<OffsetDateTime>,
     pub issuer_did_created_date: Option<OffsetDateTime>,
     pub issuer_did_deactivated: Option<bool>,
     pub issuer_did_did: Option<DidValue>,

@@ -1,7 +1,10 @@
 use crate::mapper::order_from_sort_direction;
 use one_core::model::{
     common::SortDirection,
-    list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
+    list_filter::{
+        ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+        ValueComparison,
+    },
     list_query::ListQuery,
 };
 use sea_orm::{
@@ -189,23 +192,24 @@ pub(crate) fn get_string_match_condition(
     .into_condition()
 }
 
+/// helper function to construct a `sea_query::Condition` from a `DateTimeComparison`
+pub(crate) fn get_comparison_condition<T: Into<Value>>(
+    column: impl ColumnTrait,
+    value: ValueComparison<T>,
+) -> Condition {
+    let ValueComparison { comparison, value } = value;
+    match comparison {
+        ComparisonType::Equal => column.eq(value),
+        ComparisonType::NotEqual => column.ne(value),
+        ComparisonType::LessThan => column.lt(value),
+        ComparisonType::GreaterThan => column.gt(value),
+        ComparisonType::LessThanOrEqual => column.lte(value),
+        ComparisonType::GreaterThanOrEqual => column.gte(value),
+    }
+    .into_condition()
+}
+
 /// helper function to construct an `eq` `sea_query::Condition` with a specific value
 pub(crate) fn get_equals_condition(column: impl ColumnTrait, value: impl Into<Value>) -> Condition {
     column.eq(value).into_condition()
-}
-
-/// helper function to construct an `gt` `sea_query::Condition` with a specific value
-pub(crate) fn get_greater_than_condition(
-    column: impl ColumnTrait,
-    value: impl Into<Value>,
-) -> Condition {
-    column.gt(value).into_condition()
-}
-
-/// helper function to construct an `lt` `sea_query::Condition` with a specific value
-pub(crate) fn get_lesser_than_condition(
-    column: impl ColumnTrait,
-    value: impl Into<Value>,
-) -> Condition {
-    column.lt(value).into_condition()
 }
