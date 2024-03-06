@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    model::proof_schema::ProofSchemaClaim,
+    model::{credential_schema::WalletStorageTypeEnum, proof_schema::ProofSchemaClaim},
     provider::{
         credential_formatter::model::DetailCredential,
         transport_protocol::dto::SubmitIssuerResponse,
@@ -18,11 +18,13 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub credential_endpoint: String,
     pub credentials_supported: Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO>,
 }
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
     pub format: String,
     pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

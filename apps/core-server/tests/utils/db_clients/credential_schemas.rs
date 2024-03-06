@@ -3,6 +3,7 @@ use std::sync::Arc;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
+    WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -41,7 +42,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: None,
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: "JWT".to_string(),

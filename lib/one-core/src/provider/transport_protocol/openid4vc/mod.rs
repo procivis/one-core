@@ -1141,9 +1141,7 @@ async fn get_discovery_and_issuer_metadata(
         client,
         format!("{credential_issuer_endpoint}/.well-known/openid-credential-issuer"),
     );
-    let (oicd_discovery, issuer_metadata) = tokio::join!(oicd_discovery, issuer_metadata);
-
-    Ok((oicd_discovery?, issuer_metadata?))
+    tokio::try_join!(oicd_discovery, issuer_metadata)
 }
 
 async fn interaction_data_from_query(

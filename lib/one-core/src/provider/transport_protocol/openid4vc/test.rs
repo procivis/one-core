@@ -232,8 +232,23 @@ async fn test_generate_offer() {
             .unwrap();
 
     assert_eq!(
-        serde_json::to_string(&offer).unwrap(),
-        r#"{"credential_issuer":"BASE_URL/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965","credentials":[{"format":"jwt_vc_json","credential_definition":{"type":["VerifiableCredential"],"credentialSubject":{"NUMBER":{"value":"123","value_type":"NUMBER"}}}}],"grants":{"urn:ietf:params:oauth:grant-type:pre-authorized_code":{"pre-authorized_code":"c322aa7f-9803-410d-b891-939b279fb965"}}}"#
+        serde_json::json!(&offer),
+        serde_json::json!({
+            "credential_issuer": "BASE_URL/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965",
+            "credentials": [{
+                "wallet_storage_type": "SOFTWARE",
+                "format": "jwt_vc_json",
+                "credential_definition": {
+                    "type": ["VerifiableCredential"],
+                    "credentialSubject": {
+                        "NUMBER": { "value": "123", "value_type": "NUMBER" }
+                    }
+                }
+            }],
+            "grants": {
+                "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
+            },
+        })
     )
 }
 
@@ -352,8 +367,8 @@ async fn test_generate_share_credentials_offer_by_value() {
     // Everything except for interaction id is here.
     // Generating token with predictable interaction id is tested somewhere else.
     assert!(
-         result.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
-      )
+        result.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credentials%22%3A%5B%7B%22format%22%3A%22jwt_vc_json%22%2C%22credential_definition%22%3A%7B%22type%22%3A%5B%22VerifiableCredential%22%5D%2C%22credentialSubject%22%3A%7B%22NUMBER%22%3A%7B%22value%22%3A%22123%22%2C%22value_type%22%3A%22NUMBER%22%7D%7D%7D%2C%22wallet_storage_type%22%3A%22SOFTWARE%22%7D%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+    )
 }
 
 #[tokio::test]

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
 use crate::serialize::front_time_option;
 use crate::{
     endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
@@ -103,6 +104,8 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -399,6 +402,8 @@ pub struct OpenID4VCIGrantRestDTO {
 pub struct OpenID4VCICredentialOfferCredentialRestDTO {
     pub format: String,
     pub credential_definition: OpenID4VCICredentialDefinitionRestDTO,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

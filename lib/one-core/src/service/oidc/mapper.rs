@@ -24,6 +24,7 @@ pub(super) fn create_issuer_metadata_response(
         credential_issuer: base_url.to_owned(),
         credential_endpoint: format!("{base_url}/credential"),
         credentials_supported: vec![OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
+            wallet_storage_type: schema.wallet_storage_type,
             format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
             credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
                 r#type: vec!["VerifiableCredential".to_string()],

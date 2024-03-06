@@ -85,4 +85,15 @@ impl SSIApi {
 
         self.client.post(&url, body).await
     }
+
+    pub async fn openid_credential_issuer(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let url = format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
+        );
+        self.client.get(&url).await
+    }
 }
