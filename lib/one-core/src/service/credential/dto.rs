@@ -7,6 +7,7 @@ use uuid::Uuid;
 use dto_mapper::From;
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::list_filter::ValueComparison;
 use crate::{
     model::{
         common::GetListResponse,
@@ -113,6 +114,7 @@ pub enum CredentialFilterValue {
     Role(CredentialRole),
     CredentialIds(Vec<CredentialId>),
     State(crate::model::credential::CredentialStateEnum),
+    SuspendEndDate(ValueComparison<OffsetDateTime>),
 }
 
 impl ListFilterValue for CredentialFilterValue {}

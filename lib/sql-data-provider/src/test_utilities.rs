@@ -80,7 +80,7 @@ pub async fn insert_credential_state_to_database(
         credential_id: Set(credential_id),
         created_date: Set(state.created_date),
         state: Set(state.state.into()),
-        suspend_end_date: Set(None),
+        suspend_end_date: Set(state.suspend_end_date),
     }
     .insert(database)
     .await?;

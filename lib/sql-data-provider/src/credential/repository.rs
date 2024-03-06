@@ -284,6 +284,10 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             "credential_state_created_date",
         )
         .column_as(credential_state::Column::State, "credential_state_state")
+        .column_as(
+            credential_state::Column::SuspendEndDate,
+            "credential_state_suspend_end_date",
+        )
         .column_as(did::Column::CreatedDate, "issuer_did_created_date")
         .column_as(did::Column::Deactivated, "issuer_did_deactivated")
         .column_as(did::Column::Did, "issuer_did_did")

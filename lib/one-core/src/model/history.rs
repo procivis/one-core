@@ -2,7 +2,9 @@ use shared_types::{CredentialId, DidId, EntityId, HistoryId};
 use time::OffsetDateTime;
 
 use crate::model::{
-    common::GetListResponse, credential_schema::CredentialSchemaId, list_filter::ListFilterValue,
+    common::GetListResponse,
+    credential_schema::CredentialSchemaId,
+    list_filter::{ListFilterValue, ValueComparison},
     list_query::ListQuery,
 };
 
@@ -60,8 +62,7 @@ pub enum HistoryFilterValue {
     EntityTypes(Vec<HistoryEntityType>),
     EntityId(EntityId),
     Action(HistoryAction),
-    CreatedDateFrom(OffsetDateTime),
-    CreatedDateTo(OffsetDateTime),
+    CreatedDate(ValueComparison<OffsetDateTime>),
     DidId(DidId),
     CredentialId(CredentialId),
     CredentialSchemaId(CredentialSchemaId),

@@ -20,7 +20,8 @@ use crate::{
     credential::entity_model::CredentialListEntityModel,
     entity::{self, credential, credential_schema, credential_state, did},
     list_query_generic::{
-        get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+        get_comparison_condition, get_equals_condition, get_string_match_condition,
+        IntoFilterCondition, IntoSortingColumn,
     },
 };
 
@@ -51,6 +52,9 @@ impl IntoFilterCondition for CredentialFilterValue {
                 credential_state::Column::State,
                 credential_state::CredentialState::from(state),
             ),
+            Self::SuspendEndDate(comparison) => {
+                get_comparison_condition(credential_state::Column::SuspendEndDate, comparison)
+            }
         }
     }
 }
@@ -170,7 +174,7 @@ pub(super) fn credential_list_model_to_repository_model(
     let state = vec![CredentialState {
         created_date: credential.credential_state_created_date,
         state: credential.credential_state_state.into(),
-        suspend_end_date: None,
+        suspend_end_date: credential.credential_state_suspend_end_date,
     }];
 
     Ok(Credential {

@@ -11,6 +11,23 @@ pub struct StringMatch {
     pub r#match: StringMatchType,
     pub value: String,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ComparisonType {
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessThanOrEqual,
+    GreaterThanOrEqual,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ValueComparison<Value> {
+    pub comparison: ComparisonType,
+    pub value: Value,
+}
+
 pub trait ListFilterValue {
     fn condition(self) -> ListFilterCondition<Self>
     where

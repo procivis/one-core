@@ -3,7 +3,7 @@ use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use one_core::model::history::HistorySearchEnum;
 use one_core::model::{
     history::{HistoryFilterValue, HistoryListQuery},
-    list_filter::ListFilterCondition,
+    list_filter::{ComparisonType, ListFilterCondition, ValueComparison},
     list_query::ListPagination,
 };
 
@@ -54,17 +54,21 @@ impl OneCoreBinding {
             }
             if let Some(value) = query.created_date_from {
                 let created_date_from = deserialize_timestamp(&value)?;
-
-                conditions.push(ListFilterCondition::Value(
-                    HistoryFilterValue::CreatedDateFrom(created_date_from),
-                ));
+                conditions.push(ListFilterCondition::Value(HistoryFilterValue::CreatedDate(
+                    ValueComparison {
+                        comparison: ComparisonType::GreaterThanOrEqual,
+                        value: created_date_from,
+                    },
+                )));
             }
             if let Some(value) = query.created_date_to {
                 let created_date_to = deserialize_timestamp(&value)?;
-
-                conditions.push(ListFilterCondition::Value(
-                    HistoryFilterValue::CreatedDateTo(created_date_to),
-                ));
+                conditions.push(ListFilterCondition::Value(HistoryFilterValue::CreatedDate(
+                    ValueComparison {
+                        comparison: ComparisonType::LessThanOrEqual,
+                        value: created_date_to,
+                    },
+                )));
             }
             if let Some(value) = query.credential_id {
                 conditions.push(ListFilterCondition::Value(
