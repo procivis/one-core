@@ -1,5 +1,5 @@
 # Cargo deny options
-
+[graph]
 targets = [
     # Linux
     { triple = "x86_64-unknown-linux-gnu" },
@@ -21,30 +21,40 @@ no-default-features = false
 # More documentation for the advisories section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 [advisories]
+version = 2
 db-path       = "~/.cargo/advisory-db"
 db-urls       = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained  = "warn"
 yanked        = "deny"
-notice        = "deny"
 
+ignore = [
+    { id = "RUSTSEC-2023-0055", reason = "no safe upgrade available, hard to replace dependency of JSON-LD" },
+    { id = "RUSTSEC-2023-0071", reason = "no safe upgrade available, can be avoided by not using RSA in mysql server" },
+    { id = "RUSTSEC-2021-0127", reason = "unmaintained only, alternative ciborium is being evaluated" },
+]
 
 # This section is considered when running `cargo deny check licenses`
 # More documentation for the licenses section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
 [licenses]
-unlicensed         = "deny"
-allow              = ["Unicode-DFS-2016", "MIT-0"]
-deny               = []
-copyleft           = "deny"
-allow-osi-fsf-free = "both"
-# Deny licenses not covered by allow/deny, copyleft and OSI/FSF rules
-default              = "deny"
+version = 2
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "CECILL-B",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "Unicode-DFS-2016",
+    "Zlib",
+]
 confidence-threshold = 0.8
 
 exceptions = [
     # Allow MPL-2.0 for libraries we do not modify
     { allow = ["MPL-2.0"], name = "webpki-roots", version = "*" },
+    { allow = ["MPL-2.0"], name = "resiter", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_bindgen", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_build", version = "*" },
