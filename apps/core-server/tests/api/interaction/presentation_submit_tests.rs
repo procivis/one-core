@@ -1,4 +1,3 @@
-use core_server::router::start_server;
 use one_core::model::{
     credential::CredentialStateEnum,
     did::{KeyRole, RelatedKey},
@@ -13,7 +12,7 @@ use wiremock::{
 
 use crate::{
     fixtures::{self, TestingCredentialParams, TestingDidParams, TestingKeyParams},
-    utils,
+    utils::{self, server::run_server},
 };
 
 #[tokio::test]
@@ -110,10 +109,9 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
     // WHEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let url = format!("{base_url}/api/interaction/v1/presentation-submit");
+    let _handle = run_server(listener, config, &db_conn);
 
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
+    let url = format!("{base_url}/api/interaction/v1/presentation-submit");
 
     let resp = utils::client()
         .post(url)
@@ -220,6 +218,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let _handle = run_server(listener, config, &db_conn);
 
     let claims = credential.claims.clone().unwrap();
     let interaction = fixtures::create_interaction(
@@ -311,9 +310,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
 
     // WHEN
     let url = format!("{base_url}/api/interaction/v1/presentation-submit");
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
 
     let resp = utils::client()
         .post(url)

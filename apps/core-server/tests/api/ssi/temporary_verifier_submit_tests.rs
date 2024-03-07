@@ -1,13 +1,12 @@
 use std::str::FromStr;
 
-use core_server::router::start_server;
 use one_core::model::proof::ProofStateEnum;
 use shared_types::DidValue;
 use uuid::Uuid;
 
 use crate::{
     fixtures::{self, TestingDidParams},
-    utils,
+    utils::{self, server::run_server},
 };
 
 static PRESENTATION_TOKEN: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDAxMzgwNTcsImV4cCI6MzMyMzYxMzgwNTcsIm5iZiI6MTcwMDEz\
@@ -107,9 +106,7 @@ async fn test_correct() {
     .await;
 
     // WHEN
-    let db_conn_moved = db_conn.clone();
-    let _handle =
-        tokio::spawn(async move { start_server(listener, config, db_conn_moved.clone()).await });
+    let _handle = run_server(listener, config, &db_conn);
 
     let url = format!("{base_url}/ssi/temporary-verifier/v1/submit");
 

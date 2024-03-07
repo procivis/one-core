@@ -1,6 +1,7 @@
-use core_server::router::start_server;
-
-use crate::{fixtures, utils};
+use crate::{
+    fixtures,
+    utils::{self, server::run_server},
+};
 
 #[tokio::test]
 async fn test_get_revocation_list_success() {
@@ -23,7 +24,7 @@ async fn test_get_revocation_list_success() {
     // WHEN
     let url = format!("{base_url}/ssi/revocation/v1/list/{}", revocation_list.id);
 
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let _handle = run_server(listener, config, &db_conn);
 
     let resp = utils::client().get(url).send().await.unwrap();
 

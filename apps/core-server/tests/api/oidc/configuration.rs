@@ -1,7 +1,9 @@
-use core_server::router::start_server;
 use serde_json::Value;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures,
+    utils::{self, server::run_server},
+};
 
 #[tokio::test]
 async fn test_get_issuer_configuration() {
@@ -15,7 +17,7 @@ async fn test_get_issuer_configuration() {
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
 
     // WHEN
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let _handle = run_server(listener, config, &db_conn);
 
     let url = format!(
         "{base_url}/ssi/oidc-issuer/v1/{}/.well-known/openid-configuration",

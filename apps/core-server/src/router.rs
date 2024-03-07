@@ -12,9 +12,7 @@ use axum::middleware;
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Router};
-use one_core::config::core_config::AppConfig;
 use one_core::OneCore;
-use sql_data_provider::{DataLayer, DbConn};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
 use tracing::{info, info_span, Span};
@@ -40,18 +38,10 @@ pub(crate) struct InternalAppState {
 
 pub(crate) type AppState = Arc<InternalAppState>;
 
-pub async fn start_server(listener: TcpListener, config: AppConfig<ServerConfig>, db_conn: DbConn) {
+pub async fn start_server(listener: TcpListener, config: ServerConfig, core: OneCore) {
     listener.set_nonblocking(true).unwrap();
 
-    let core = OneCore::new(
-        |exportable_storages| Arc::new(DataLayer::build(db_conn, exportable_storages)),
-        config.core,
-        Some(config.app.core_base_url.to_owned()),
-        None,
-    )
-    .expect("Failed to parse config");
-
-    let config = Arc::new(config.app);
+    let config = Arc::new(config);
     let state: AppState = Arc::new(InternalAppState {
         core,
         config: config.to_owned(),

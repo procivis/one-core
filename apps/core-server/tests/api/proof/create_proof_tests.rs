@@ -1,10 +1,9 @@
-use core_server::router::start_server;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::{
     fixtures::{self, TestingDidParams},
-    utils::{self, context::TestContext},
+    utils::{self, context::TestContext, server::run_server},
 };
 
 #[tokio::test]
@@ -167,10 +166,8 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
     .await;
 
     // WHEN
-
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!("{base_url}/api/proof-request/v1");
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .post(url)

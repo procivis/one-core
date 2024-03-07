@@ -1,11 +1,10 @@
-use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::json;
 use time::{macros::format_description, OffsetDateTime};
 
 use crate::{
     fixtures::{self, TestingCredentialParams},
-    utils,
+    utils::{self, server::run_server},
 };
 
 #[tokio::test]
@@ -44,7 +43,7 @@ async fn test_post_issuer_token() {
     .await;
 
     // WHEN
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let _handle = run_server(listener, config, &db_conn);
 
     let url = format!(
         "{base_url}/ssi/oidc-issuer/v1/{}/token",

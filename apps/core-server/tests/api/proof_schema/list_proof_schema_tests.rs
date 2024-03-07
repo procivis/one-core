@@ -1,8 +1,9 @@
-use core_server::router::start_server;
-
 use serde_json::Value;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures,
+    utils::{self, server::run_server},
+};
 
 #[tokio::test]
 async fn test_list_proof_schema_success() {
@@ -39,7 +40,7 @@ async fn test_list_proof_schema_success() {
         .await;
     }
 
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
+    let _handle = run_server(listener, config, &db_conn);
 
     // WHEN
     let url = format!(

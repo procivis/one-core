@@ -1,4 +1,3 @@
-use core_server::router::start_server;
 use core_server::ServerConfig;
 use one_core::model::did::{Did, KeyRole};
 use one_core::model::key::Key;
@@ -12,6 +11,7 @@ use super::api_clients::Client;
 use super::db_clients::keys::es256_testing_params;
 use super::db_clients::DbClient;
 use super::mock_server::MockServer;
+use super::server::run_server;
 use crate::fixtures::{self, TestingDidParams};
 
 pub struct TestContext {
@@ -37,11 +37,7 @@ impl TestContext {
 
         let config = fixtures::create_config(&base_url, Some(server_mock.uri()));
         let db = fixtures::create_db(&config).await;
-        let config_clone = config.clone();
-        let _handle = tokio::spawn({
-            let db = db.clone();
-            async move { start_server(listener, config_clone, db).await }
-        });
+        let _handle = run_server(listener, config.to_owned(), &db);
 
         Self {
             db: DbClient::new(db),
