@@ -10,6 +10,7 @@ pub struct Model {
     pub proof_input_schema_id: u64,
 
     pub order: u32,
+    pub required: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

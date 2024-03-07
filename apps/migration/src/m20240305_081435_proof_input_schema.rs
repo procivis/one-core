@@ -16,6 +16,13 @@ impl MigrationTrait for Migration {
                     .table(ProofInputSchema::Table)
                     .if_not_exists()
                     .col(
+                        ColumnDef::new(ProofInputSchema::Id)
+                            .big_unsigned()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
+                    .col(
                         ColumnDef::new(ProofInputSchema::CreatedDate)
                             .custom(datetime)
                             .not_null(),
@@ -24,13 +31,6 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(ProofInputSchema::LastModified)
                             .custom(datetime)
                             .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(ProofInputSchema::Id)
-                            .big_unsigned()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
                     )
                     .col(
                         ColumnDef::new(ProofInputSchema::Order)
