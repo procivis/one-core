@@ -1,10 +1,9 @@
-use core_server::router::start_server;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 
 use crate::{
     fixtures::{self, TestingCredentialParams, TestingDidParams},
-    utils,
+    utils::{self, server::run_server},
 };
 
 #[tokio::test]
@@ -41,12 +40,11 @@ async fn test_temporary_issuer_reject_success() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/ssi/temporary-issuer/v1/reject?credentialId={}",
         credential.id
     );
-    let db_cloned = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_cloned).await });
 
     let resp = utils::client().post(url).send().await.unwrap();
 

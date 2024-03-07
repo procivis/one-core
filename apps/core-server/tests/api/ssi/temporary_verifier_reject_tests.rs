@@ -1,7 +1,9 @@
-use core_server::router::start_server;
 use one_core::model::proof::ProofStateEnum;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures,
+    utils::{self, server::run_server},
+};
 
 #[tokio::test]
 async fn test_temporary_verifier_reject_success() {
@@ -48,12 +50,11 @@ async fn test_temporary_verifier_reject_success() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/ssi/temporary-verifier/v1/reject?proof={}",
         proof.id
     );
-    let db_cloned = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_cloned).await });
 
     let resp = utils::client().post(url).send().await.unwrap();
 

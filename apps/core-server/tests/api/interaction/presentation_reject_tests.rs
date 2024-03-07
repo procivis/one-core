@@ -1,4 +1,3 @@
-use core_server::router::start_server;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use wiremock::{
@@ -8,8 +7,8 @@ use wiremock::{
 };
 
 use crate::{
-    fixtures::{self},
-    utils,
+    fixtures,
+    utils::{self, server::run_server},
 };
 
 #[tokio::test]
@@ -48,10 +47,9 @@ async fn test_presentation_reject_endpoint_for_procivis_temp() {
     // WHEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let url = format!("{base_url}/api/interaction/v1/presentation-reject");
+    let _handle = run_server(listener, config, &db_conn);
 
-    let db_conn_cloned = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_cloned).await });
+    let url = format!("{base_url}/api/interaction/v1/presentation-reject");
 
     let resp = utils::client()
         .post(url)

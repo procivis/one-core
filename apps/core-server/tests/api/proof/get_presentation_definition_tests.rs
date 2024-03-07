@@ -1,9 +1,9 @@
-use core_server::router::start_server;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::{credential::CredentialStateEnum, credential_schema::CredentialSchemaId};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+use crate::utils::server::run_server;
 use crate::{
     fixtures::{self, TestingCredentialParams},
     utils,
@@ -73,12 +73,11 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id
     );
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .get(url)
@@ -146,12 +145,11 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id
     );
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .get(url)
@@ -303,12 +301,11 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id
     );
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .get(url)
@@ -471,12 +468,11 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id
     );
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .get(url)
@@ -540,12 +536,11 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id
     );
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .get(url)
@@ -741,12 +736,11 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/api/proof-request/v1/{}/presentation-definition",
         proof.id
     );
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .get(url)

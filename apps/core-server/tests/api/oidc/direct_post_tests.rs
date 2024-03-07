@@ -1,4 +1,3 @@
-use core_server::router::start_server;
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use uuid::Uuid;
@@ -7,7 +6,7 @@ use crate::{
     fixtures::{
         self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_proof,
     },
-    utils,
+    utils::{self, server::run_server},
 };
 
 static TOKEN1: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDAxMzgwNTcsImV4cCI6MzMyMzYxMzgwNTcsIm5iZiI6MTcwMDEz\
@@ -138,9 +137,7 @@ async fn test_direct_post_one_credential_correct() {
     ];
 
     // WHEN
-    let db_conn_moved = db_conn.clone();
-    let _handle =
-        tokio::spawn(async move { start_server(listener, config, db_conn_moved.clone()).await });
+    let _handle = run_server(listener, config, &db_conn);
 
     let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
 
@@ -266,9 +263,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     ];
 
     // WHEN
-    let db_conn_moved = db_conn.clone();
-    let _handle =
-        tokio::spawn(async move { start_server(listener, config, db_conn_moved.clone()).await });
+    let _handle = run_server(listener, config, &db_conn);
 
     let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
 
@@ -463,9 +458,7 @@ async fn test_direct_post_multiple_presentations() {
     ];
 
     // WHEN
-    let db_conn_moved = db_conn.clone();
-    let _handle =
-        tokio::spawn(async move { start_server(listener, config, db_conn_moved.clone()).await });
+    let _handle = run_server(listener, config, &db_conn);
 
     let url = format!("{base_url}/ssi/oidc-verifier/v1/response");
 

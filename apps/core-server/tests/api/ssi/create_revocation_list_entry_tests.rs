@@ -1,11 +1,10 @@
-use core_server::router::start_server;
 use one_core::model::{
     credential::CredentialStateEnum,
     did::{DidType, KeyRole, RelatedKey},
 };
 use serde_json::Value;
 
-use crate::fixtures::TestingCredentialParams;
+use crate::{fixtures::TestingCredentialParams, utils::server::run_server};
 use crate::{
     fixtures::{self, TestingDidParams},
     utils,
@@ -60,12 +59,12 @@ async fn test_add_credential_to_list() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
+
     let url = format!(
         "{base_url}/ssi/temporary-issuer/v1/submit?credentialId={}",
         credential.id
     );
-    let db_cloned = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_cloned).await });
 
     let resp = utils::client().post(url).send().await.unwrap();
 

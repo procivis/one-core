@@ -1,8 +1,10 @@
-use core_server::router::start_server;
 use reqwest::StatusCode;
 use uuid::Uuid;
 
-use crate::{fixtures, utils};
+use crate::{
+    fixtures,
+    utils::{self, server::run_server},
+};
 
 #[tokio::test]
 async fn test_get_key_ok() {
@@ -15,10 +17,8 @@ async fn test_get_key_ok() {
     let key = fixtures::create_key(&db_conn, &organisation, None).await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!("{base_url}/api/key/v1/{}", key.id);
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
 
     let resp = utils::client()
         .get(url)
@@ -45,9 +45,8 @@ async fn test_get_key_not_found() {
     let db_conn = fixtures::create_db(&config).await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!("{base_url}/api/key/v1/{}", Uuid::new_v4());
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .get(url)

@@ -1,11 +1,10 @@
-use core_server::router::start_server;
 use reqwest::StatusCode;
 use serde_json::Value;
 use shared_types::KeyId;
 
 use crate::{
     fixtures::{self, TestingKeyParams},
-    utils::{self, field_match::FieldHelpers},
+    utils::{self, field_match::FieldHelpers, server::run_server},
 };
 
 #[tokio::test]
@@ -46,13 +45,11 @@ async fn test_get_keys_ok() {
     .await;
 
     // WHEN
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!(
         "{base_url}/api/key/v1?page=0&pageSize=10&organisationId={}&name=name&sort=name",
         organisation.id
     );
-
-    let db_conn_clone = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn_clone).await });
 
     let resp = utils::client()
         .get(url)

@@ -5,7 +5,6 @@ use wiremock::{
     Mock, MockServer, ResponseTemplate,
 };
 
-use core_server::router::start_server;
 use one_core::model::{
     credential::CredentialStateEnum,
     did::{DidType, KeyRole, RelatedKey},
@@ -13,7 +12,7 @@ use one_core::model::{
 
 use crate::{
     fixtures::{self, TestingCredentialParams, TestingDidParams},
-    utils,
+    utils::{self, server::run_server},
 };
 
 #[tokio::test]
@@ -55,12 +54,9 @@ async fn test_issuance_accept_procivis_temp() {
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let _handle = run_server(listener, config, &db_conn);
 
     let url = format!("{base_url}/api/interaction/v1/issuance-accept");
-
-    let backup_db_conn = db_conn.to_owned();
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .post(url)
@@ -74,7 +70,7 @@ async fn test_issuance_accept_procivis_temp() {
 
     assert_eq!(resp.status(), 204);
 
-    let states = fixtures::get_credential(&backup_db_conn, &credential.id)
+    let states = fixtures::get_credential(&db_conn, &credential.id)
         .await
         .state
         .unwrap();
@@ -153,12 +149,9 @@ async fn test_issuance_accept_openid4vc() {
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let _handle = run_server(listener, config, &db_conn);
 
     let url = format!("{base_url}/api/interaction/v1/issuance-accept");
-
-    let backup_db_conn = db_conn.to_owned();
-
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_conn).await });
 
     let resp = utils::client()
         .post(url)
@@ -172,7 +165,7 @@ async fn test_issuance_accept_openid4vc() {
 
     assert_eq!(resp.status(), 204);
 
-    let states = fixtures::get_credential(&backup_db_conn, &credential.id)
+    let states = fixtures::get_credential(&db_conn, &credential.id)
         .await
         .state
         .unwrap();

@@ -6,6 +6,7 @@ pub mod deserialize;
 pub mod dto;
 pub mod endpoint;
 pub mod extractor;
+pub mod init;
 pub mod mapper;
 pub mod metrics;
 pub mod router;

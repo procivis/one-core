@@ -1,4 +1,3 @@
-use core_server::router::start_server;
 use one_core::{
     model::proof::ProofStateEnum,
     provider::transport_protocol::openid4vc::dto::{
@@ -14,9 +13,9 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::fixtures;
 use crate::utils::context::TestContext;
 use crate::utils::{self};
+use crate::{fixtures, utils::server::run_server};
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
@@ -96,11 +95,8 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
     // WHEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let base_url = format!("http://{}", listener.local_addr().unwrap());
-
+    let _handle = run_server(listener, config, &db_conn);
     let url = format!("{base_url}/api/interaction/v1/handle-invitation");
-
-    let db_con_cloned = db_conn.clone();
-    let _handle = tokio::spawn(async move { start_server(listener, config, db_con_cloned).await });
 
     let resp = utils::client()
         .post(url)
