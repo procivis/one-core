@@ -4,10 +4,10 @@ use time::OffsetDateTime;
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "proof_input_schema")]
 pub struct Model {
-    pub created_date: OffsetDateTime,
-    pub last_modified: OffsetDateTime,
     #[sea_orm(primary_key)]
     pub id: u64,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
     pub order: u32,
     pub validity_constraint: Option<u64>,
     pub credential_schema: String,

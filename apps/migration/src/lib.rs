@@ -21,6 +21,7 @@ mod m20240305_081435_proof_input_schema;
 mod m20240305_110029_suspend_credential_state;
 mod m20240306_122440_add_backup_restored;
 mod m20240306_124716_proof_input_claim_schema;
+mod m20240307_071419_proof_input_claim_schema_required;
 
 pub struct Migrator;
 
@@ -47,6 +48,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240305_081435_proof_input_schema::Migration),
             Box::new(m20240306_122440_add_backup_restored::Migration),
             Box::new(m20240306_124716_proof_input_claim_schema::Migration),
+            Box::new(m20240307_071419_proof_input_claim_schema_required::Migration),
         ]
     }
 }
