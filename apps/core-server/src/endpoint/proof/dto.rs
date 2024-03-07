@@ -133,6 +133,9 @@ pub struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub fields: Vec<PresentationDefinitionFieldRestDTO>,
     #[from(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

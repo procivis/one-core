@@ -88,6 +88,7 @@ pub struct PresentationDefinitionRequestedCredentialResponseDTO {
     pub purpose: Option<String>,
     pub fields: Vec<PresentationDefinitionFieldDTO>,
     pub applicable_credentials: Vec<String>,
+    pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]
@@ -118,6 +119,7 @@ pub struct CredentialGroup {
     pub id: String,
     pub claims: Vec<CredentialGroupItem>,
     pub applicable_credentials: Vec<Credential>,
+    pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]

@@ -58,6 +58,7 @@ pub fn create_requested_credential(
     index: usize,
     fields: Vec<CredentialGroupItem>,
     applicable_credentials: Vec<Credential>,
+    validity_credential_nbf: Option<OffsetDateTime>,
 ) -> Result<PresentationDefinitionRequestedCredentialResponseDTO, TransportProtocolError> {
     Ok(PresentationDefinitionRequestedCredentialResponseDTO {
         id: format!("input_{}", index),
@@ -71,6 +72,7 @@ pub fn create_requested_credential(
             .iter()
             .map(|credential| credential.id.to_string())
             .collect(),
+        validity_credential_nbf,
     })
 }
 
@@ -94,7 +96,12 @@ pub(super) fn presentation_definition_from_proof(
                 .into_iter()
                 .enumerate()
                 .map(|(index, group)| {
-                    create_requested_credential(index, group.claims, group.applicable_credentials)
+                    create_requested_credential(
+                        index,
+                        group.claims,
+                        group.applicable_credentials,
+                        group.validity_credential_nbf,
+                    )
                 })
                 .collect::<Result<Vec<_>, TransportProtocolError>>()?,
         }],

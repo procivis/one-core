@@ -388,16 +388,17 @@ impl TransportProtocol for ProcivisTemp {
                     id: group_id,
                     claims: vec![credential_group_item],
                     applicable_credentials: vec![],
+                    validity_credential_nbf: None,
                 });
             }
         }
-        let result = get_relevant_credentials(
+        let (credentials, credential_groups) = get_relevant_credentials(
             &self.credential_repository,
             credential_groups,
             requested_claim_keys,
         )
         .await?;
-        presentation_definition_from_proof(proof, result.0, result.1)
+        presentation_definition_from_proof(proof, credentials, credential_groups)
     }
 }
 
