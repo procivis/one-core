@@ -651,6 +651,7 @@ impl TransportProtocol for OpenID4VC {
         let mut requested_claims = vec![];
 
         let mut credential_groups: Vec<CredentialGroup> = vec![];
+
         for input_descriptor in presentation_definition.input_descriptors {
             let mut requested_claims_for_input = vec![];
             for field in input_descriptor.constraints.fields {
@@ -658,6 +659,9 @@ impl TransportProtocol for OpenID4VC {
                 requested_claims.push(field_name);
                 requested_claims_for_input.push(field);
             }
+
+            let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
+
             credential_groups.push(CredentialGroup {
                 id: input_descriptor.id,
                 claims: requested_claims_for_input
@@ -671,15 +675,16 @@ impl TransportProtocol for OpenID4VC {
                     })
                     .collect::<Result<Vec<_>, _>>()?,
                 applicable_credentials: vec![],
+                validity_credential_nbf,
             });
         }
-        let result = get_relevant_credentials(
+        let (credentials, credential_groups) = get_relevant_credentials(
             &self.credential_repository,
             credential_groups,
             requested_claims,
         )
         .await?;
-        presentation_definition_from_interaction_data(proof.id, result.0, result.1)
+        presentation_definition_from_interaction_data(proof.id, credentials, credential_groups)
     }
 }
 async fn clear_previous_interaction(

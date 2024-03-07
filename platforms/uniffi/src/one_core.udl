@@ -208,6 +208,7 @@ dictionary PresentationDefinitionRequestedCredentialBindingDTO {
   string? purpose;
   sequence<PresentationDefinitionFieldBindingDTO> fields;
   sequence<string> applicable_credentials;
+  string? validity_credential_nbf;
 };
 
 dictionary PresentationDefinitionFieldBindingDTO {

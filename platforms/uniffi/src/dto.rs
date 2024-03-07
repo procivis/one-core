@@ -1,6 +1,6 @@
 use crate::error::NativeKeyStorageError;
 use crate::mapper::serialize_config_entity;
-use crate::utils::{into_id, TimestampFormat};
+use crate::utils::{format_timestamp_opt, into_id, TimestampFormat};
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into, TryInto};
 use one_core::service::backup::dto::{
@@ -273,6 +273,8 @@ pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub fields: Vec<PresentationDefinitionFieldBindingDTO>,
     #[from(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
+    #[from(with_fn = format_timestamp_opt)]
+    pub validity_credential_nbf: Option<String>,
 }
 
 #[derive(From)]

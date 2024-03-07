@@ -340,6 +340,7 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
                         "id": "input_0",
                         "name": null,
                         "purpose": null,
+                        "validityCredentialNbf": null,
                         "fields": [
                             {
                                 "id": "839915f5-e4e2-4591-9d80-fd6178aa84f5",
@@ -357,6 +358,7 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
                         "id": "input_1",
                         "name": null,
                         "purpose": null,
+                        "validityCredentialNbf": null,
                         "fields": [
                             {
                                 "id": "ba2c4567-7c5b-4ee5-b3d6-6eac9161892e",
@@ -777,6 +779,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                         "id": "input_0",
                         "name": null,
                         "purpose": null,
+                        "validityCredentialNbf": null,
                         "fields": [
                             {
                                 "id": "109562f7-2374-4b84-ab84-67709ad25f92",
@@ -803,6 +806,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                         "id": "input_1",
                         "name": null,
                         "purpose": null,
+                        "validityCredentialNbf": null,
                         "fields": [
                             {
                                 "id": "a50ff87a-fedc-4650-8b69-044bd8411f8c",

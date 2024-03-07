@@ -133,6 +133,7 @@ pub(super) fn presentation_definition_from_interaction_data(
                             .into_iter()
                             .map(|credential| credential.id.to_string())
                             .collect(),
+                        validity_credential_nbf: group.validity_credential_nbf,
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?,
@@ -239,6 +240,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
                     optional: !claim.required,
                 })
                 .collect(),
+            validity_credential_nbf: None,
         },
     })
 }

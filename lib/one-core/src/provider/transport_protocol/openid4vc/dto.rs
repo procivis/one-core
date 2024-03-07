@@ -8,6 +8,7 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use url::Url;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -94,6 +95,7 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptor {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
+    pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

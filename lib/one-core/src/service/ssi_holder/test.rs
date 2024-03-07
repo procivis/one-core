@@ -320,6 +320,7 @@ async fn test_submit_proof_succeeds() {
                             purpose: None,
                             fields: vec![],
                             applicable_credentials: vec![],
+                            validity_credential_nbf: None,
                         },
                     ],
                 }],
@@ -498,6 +499,7 @@ async fn test_submit_proof_repeating_claims() {
                                 )]),
                             }],
                             applicable_credentials: vec![],
+                            validity_credential_nbf: None,
                         },
                         PresentationDefinitionRequestedCredentialResponseDTO {
                             id: "cred2".to_string(),
@@ -514,6 +516,7 @@ async fn test_submit_proof_repeating_claims() {
                                 )]),
                             }],
                             applicable_credentials: vec![credential_id.to_string()],
+                            validity_credential_nbf: None,
                         },
                     ],
                 }],
