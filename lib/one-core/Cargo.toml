@@ -7,6 +7,8 @@ build                  = "build.rs"
 publish                = false
 
 [dependencies]
+shared-types.workspace = true
+
 anyhow.workspace           = true
 async-trait                = { version = "0.1" }
 ct-codecs.workspace        = true
@@ -38,7 +40,6 @@ bs58                       = { version = "0.5" }
 strum_macros               = { version = "0.26" }
 cocoon                     = { version = "0.4" }
 tokio-util                 = { version = "0.7", features = ["compat"] }
-shared-types               = { version = "0.1.0", path = "../shared-types" }
 elliptic-curve.workspace   = true
 p256.workspace             = true
 fmap.workspace             = true

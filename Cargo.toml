@@ -18,6 +18,11 @@ members = [
 ]
 
 [workspace.dependencies]
+one-core          = { version = "0.1.0", path = "lib/one-core" }
+sql-data-provider = { version = "0.1.0", path = "lib/sql-data-provider" }
+shared-types      = { version = "0.1.0", path = "lib/shared-types" }
+migration         = { version = "0.1.0", path = "apps/migration" }
+
 anyhow             = { version = "1.0" }
 axum               = { version = "0.7", features = ["macros"] }
 ct-codecs          = { version = "1.1" }
