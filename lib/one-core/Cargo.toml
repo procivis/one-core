@@ -1,9 +1,10 @@
 [package]
-name    = "one-core"
-version = "0.1.0"
-edition = "2021"
-build   = "build.rs"
-publish = false
+name                   = "one-core"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+build                  = "build.rs"
+publish                = false
 
 [dependencies]
 anyhow.workspace           = true

@@ -1,9 +1,10 @@
 [package]
-name    = "core-server"
-version = "0.1.0"
-edition = "2021"
-build   = "build.rs"
-publish = false
+name                   = "core-server"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+build                  = "build.rs"
+publish                = false
 
 # disable doctests
 [lib]
