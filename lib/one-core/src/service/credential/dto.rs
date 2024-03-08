@@ -35,6 +35,7 @@ pub struct CredentialListItemResponseDTO {
     pub issuer_did: Option<DidListItemResponseDTO>,
     pub credential: Vec<u8>,
     pub role: CredentialRole,
+    pub suspend_end_date: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -57,6 +58,8 @@ pub struct CredentialDetailResponseDTO {
     pub role: CredentialRole,
     #[serde(with = "time::serde::rfc3339::option")]
     pub lvvc_issuance_date: Option<OffsetDateTime>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
+    pub suspend_end_date: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]

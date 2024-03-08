@@ -46,8 +46,9 @@ use crate::{
     },
 };
 use mockall::predicate::*;
+use std::ops::Add;
 use std::{collections::HashMap, sync::Arc};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 #[derive(Default)]
@@ -399,6 +400,52 @@ async fn test_get_credential_success() {
     let result = result.unwrap();
     assert_eq!(credential.id, result.id);
     assert_eq!(None, result.revocation_date);
+}
+
+#[tokio::test]
+async fn test_get_credential_success_suspended_credential_with_end_date() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let mut credential = generic_credential();
+    let now = OffsetDateTime::now_utc();
+    let suspend_end_date = now.add(Duration::hours(1));
+    credential.state = Some(vec![CredentialState {
+        created_date: now,
+        state: CredentialStateEnum::Suspended,
+        suspend_end_date: Some(suspend_end_date),
+    }]);
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.get_credential(&credential.id).await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!(credential.id, result.id);
+    assert_eq!(None, result.revocation_date);
+    assert_eq!(
+        credential::dto::CredentialStateEnum::Suspended,
+        result.state
+    );
+    assert_eq!(Some(suspend_end_date), result.suspend_end_date);
 }
 
 #[tokio::test]
