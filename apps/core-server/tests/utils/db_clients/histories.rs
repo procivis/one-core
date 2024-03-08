@@ -44,6 +44,7 @@ impl HistoriesDB {
             action: params.action.unwrap_or(HistoryAction::Accepted),
             entity_id: Some(params.entity_id.unwrap_or(Uuid::new_v4().into())),
             entity_type: params.entity_type.unwrap_or(HistoryEntityType::Credential),
+            metadata: None,
             organisation: Some(organisation.clone()),
         };
 

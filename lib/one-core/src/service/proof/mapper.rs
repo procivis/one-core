@@ -251,6 +251,7 @@ pub(super) fn proof_requested_history_event(proof: Proof) -> History {
         action: HistoryAction::Requested,
         entity_id: Some(proof.id.into()),
         entity_type: HistoryEntityType::Proof,
+        metadata: None,
         organisation: proof.schema.and_then(|s| s.organisation),
     }
 }

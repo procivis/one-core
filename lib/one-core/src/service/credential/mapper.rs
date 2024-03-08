@@ -232,6 +232,7 @@ pub(super) fn credential_created_history_event(
         action: HistoryAction::Issued,
         entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
+        metadata: None,
         organisation: credential
             .schema
             .ok_or(ServiceError::MappingError(
@@ -248,6 +249,7 @@ pub(super) fn credential_offered_history_event(credential: Credential) -> Histor
         action: HistoryAction::Offered,
         entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
+        metadata: None,
         organisation: credential.schema.and_then(|c| c.organisation),
     }
 }
@@ -269,6 +271,7 @@ pub(super) fn credential_revocation_history_event(
         action,
         entity_id: Some(id.into()),
         entity_type: HistoryEntityType::Credential,
+        metadata: None,
         organisation,
     }
 }

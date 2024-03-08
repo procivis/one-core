@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -28,11 +29,13 @@ pub struct KeyResponseDTO {
     pub storage_type: String,
 }
 
-#[derive(Clone, Debug, From)]
+#[derive(Clone, Debug, From, Serialize, Deserialize)]
 #[from(Key)]
 pub struct KeyListItemResponseDTO {
     pub id: Uuid,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub public_key: Vec<u8>,

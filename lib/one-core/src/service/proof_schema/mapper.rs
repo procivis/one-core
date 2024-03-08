@@ -105,6 +105,7 @@ pub(super) fn proof_schema_created_history_event(
         action: HistoryAction::Created,
         entity_id: Some(id.into()),
         entity_type: HistoryEntityType::ProofSchema,
+        metadata: None,
         organisation: Some(organisation),
     }
 }
@@ -116,6 +117,7 @@ pub(super) fn proof_schema_deleted_history_event(proof_schema: ProofSchema) -> H
         action: HistoryAction::Deleted,
         entity_id: Some(proof_schema.id.into()),
         entity_type: HistoryEntityType::ProofSchema,
+        metadata: None,
         organisation: proof_schema.organisation,
     }
 }

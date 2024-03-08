@@ -24,6 +24,7 @@ mod m20240306_124716_proof_input_claim_schema;
 mod m20240307_071419_proof_input_claim_schema_required;
 mod m20240307_093000_add_purpose_to_revocation_list;
 mod m20240307_103000_add_reactivated_history_action;
+mod m20240308_115228_add_metadata_to_history;
 
 pub struct Migrator;
 
@@ -53,6 +54,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240307_071419_proof_input_claim_schema_required::Migration),
             Box::new(m20240307_093000_add_purpose_to_revocation_list::Migration),
             Box::new(m20240307_103000_add_reactivated_history_action::Migration),
+            Box::new(m20240308_115228_add_metadata_to_history::Migration),
         ]
     }
 }

@@ -1,5 +1,6 @@
 use dto_mapper::{convert_inner, try_convert_inner, TryFrom};
 use serde::{Deserialize, Serialize};
+use shared_types::HistoryId;
 use time::OffsetDateTime;
 
 use crate::{
@@ -12,11 +13,12 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct BackupCreateResponseDTO {
+    pub history_id: HistoryId,
     pub file: String,
     pub unexportable: UnexportableEntitiesResponseDTO,
 }
 
-#[derive(Debug, Clone, TryFrom)]
+#[derive(Debug, Clone, TryFrom, Serialize, Deserialize)]
 #[try_from(T = UnexportableEntities, Error = ServiceError)]
 pub struct UnexportableEntitiesResponseDTO {
     #[try_from(with_fn = try_convert_inner)]

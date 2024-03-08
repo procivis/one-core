@@ -202,6 +202,7 @@ fn history_event(did: Did, action: HistoryAction) -> History {
         action,
         entity_id: Some(did.id.into()),
         entity_type: HistoryEntityType::Did,
+        metadata: None,
         organisation: did.organisation,
     }
 }

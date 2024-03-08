@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue};
 use time::OffsetDateTime;
 
@@ -10,7 +10,7 @@ use super::{
     organisation::{Organisation, OrganisationId, OrganisationRelations},
 };
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum DidType {
     Remote,

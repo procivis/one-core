@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -45,7 +45,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialClaimSchemaDTO {
     pub id: ClaimSchemaId,

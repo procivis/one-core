@@ -16,6 +16,7 @@ pub struct Model {
     pub action: HistoryAction,
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
+    pub metadata: Option<String>,
 
     pub organisation_id: OrganisationId,
 }

@@ -340,6 +340,7 @@ dictionary HistorySearchBindingDTO {
 };
 
 dictionary BackupCreateBindingDTO {
+  string history_id;
   string file;
   UnexportableEntitiesBindingDTO unexportable;
 };

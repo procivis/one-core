@@ -1,5 +1,5 @@
 use dto_mapper::From;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 
@@ -35,7 +35,7 @@ pub struct DidResponseKeysDTO {
     pub capability_delegation: Vec<KeyListItemResponseDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, From)]
 #[serde(rename_all = "camelCase")]
 #[from(Did)]
 pub struct DidListItemResponseDTO {
