@@ -57,6 +57,7 @@ impl TryFrom<Credential> for CredentialDetailResponseDTO {
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
             lvvc_issuance_date: None,
+            suspend_end_date: latest_state.suspend_end_date,
         })
     }
 }
@@ -147,6 +148,7 @@ impl TryFrom<Credential> for CredentialListItemResponseDTO {
             issuer_did: convert_inner(value.issuer_did),
             credential: value.credential,
             role: value.role.into(),
+            suspend_end_date: latest_state.suspend_end_date,
         })
     }
 }
