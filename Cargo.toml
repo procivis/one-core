@@ -1,5 +1,5 @@
 [workspace.package]
-version      = "0.1.0"
+version      = "0.1.22"
 edition      = "2021"
 rust-version = "1.76"
 
@@ -18,10 +18,10 @@ members = [
 ]
 
 [workspace.dependencies]
-one-core          = { version = "0.1.0", path = "lib/one-core" }
-sql-data-provider = { version = "0.1.0", path = "lib/sql-data-provider" }
-shared-types      = { version = "0.1.0", path = "lib/shared-types" }
-migration         = { version = "0.1.0", path = "apps/migration" }
+one-core          = { version = "0.1.22", path = "lib/one-core" }
+sql-data-provider = { version = "0.1.22", path = "lib/sql-data-provider" }
+shared-types      = { version = "0.1.22", path = "lib/shared-types" }
+migration         = { version = "0.1.22", path = "apps/migration" }
 
 anyhow             = { version = "1.0" }
 axum               = { version = "0.7", features = ["macros"] }
