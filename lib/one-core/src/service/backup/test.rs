@@ -134,6 +134,7 @@ async fn test_backup_flow() {
     let mut repositories = Repositories::default();
     let organisation = dummy_organisation();
     let db_version = "10".into();
+    let history_id = Uuid::new_v4().into();
 
     repositories
         .backup_repository
@@ -171,12 +172,12 @@ async fn test_backup_flow() {
         .history_repository
         .expect_create_history()
         .once()
-        .return_once(|event| {
+        .return_once(move |event| {
             assert_eq!(event.action, HistoryAction::Created);
             assert_eq!(event.entity_id, None);
             assert_eq!(event.entity_type, HistoryEntityType::Backup);
             assert_eq!(event.organisation, Some(organisation));
-            Ok(Uuid::new_v4().into())
+            Ok(history_id)
         });
 
     let service = setup_service(repositories);
@@ -187,10 +188,12 @@ async fn test_backup_flow() {
     let db = NamedTempFile::new().unwrap();
     let db_path: String = db.path().to_string_lossy().into();
 
-    service
+    let unexportable = service
         .create_backup("foo".into(), zip_path.clone())
         .await
         .unwrap();
+
+    assert_eq!(unexportable.history_id, history_id);
 
     let metadata = service
         .unpack_backup("foo".into(), zip_path, db_path)

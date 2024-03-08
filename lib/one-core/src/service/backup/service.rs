@@ -50,7 +50,7 @@ impl BackupService {
             .map_err(map_error)?;
 
         let db_metadata = self.backup_repository.copy_db_to(db_copy.path()).await?;
-        let unexportable = self
+        let unexportable: UnexportableEntitiesResponseDTO = self
             .backup_repository
             .fetch_unexportable(Some(db_copy.path()))
             .await?
@@ -65,7 +65,7 @@ impl BackupService {
             .context("Failed to encrypt db file")
             .map_err(map_error)?;
 
-        let _ = self
+        let history_id = self
             .organisation_repository
             .get_organisation_list()
             .map(|result| {
@@ -81,11 +81,13 @@ impl BackupService {
                     .create_history(create_backup_history_event(
                         organisation,
                         HistoryAction::Created,
+                        serde_json::to_string(&unexportable).ok(),
                     ))
             })
-            .await;
+            .await?;
 
         Ok(BackupCreateResponseDTO {
+            history_id,
             file: output_path,
             unexportable,
         })
@@ -152,6 +154,7 @@ impl BackupService {
                     .create_history(create_backup_history_event(
                         organisation,
                         HistoryAction::Restored,
+                        None,
                     ))
             })
             .await;

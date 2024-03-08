@@ -122,6 +122,7 @@ fn history_event(schema: CredentialSchema, action: HistoryAction) -> History {
         action,
         entity_id: Some(schema.id.into()),
         entity_type: HistoryEntityType::CredentialSchema,
+        metadata: None,
         organisation: schema.organisation,
     }
 }

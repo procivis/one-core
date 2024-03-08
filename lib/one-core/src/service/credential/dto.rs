@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::AsRefStr;
 use time::OffsetDateTime;
@@ -38,7 +38,7 @@ pub struct CredentialListItemResponseDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialDetailResponseDTO {
     pub id: CredentialId,
@@ -62,7 +62,7 @@ pub struct CredentialDetailResponseDTO {
     pub suspend_end_date: Option<OffsetDateTime>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialSchemaResponseDTO {
     pub id: CredentialSchemaId,
@@ -79,14 +79,14 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialClaimResponseDTO {
     pub schema: CredentialClaimSchemaDTO,
     pub value: String,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Deserialize, From, AsRefStr)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, From, AsRefStr)]
 #[from("crate::model::credential::CredentialRole")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -96,7 +96,7 @@ pub enum CredentialRole {
     Verifier,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Deserialize, From)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, From)]
 #[from("crate::model::credential::CredentialStateEnum")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialStateEnum {

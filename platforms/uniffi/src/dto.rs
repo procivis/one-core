@@ -453,6 +453,8 @@ pub struct HistorySearchBindingDTO {
 #[derive(Debug, Clone, From)]
 #[from(BackupCreateResponseDTO)]
 pub struct BackupCreateBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub history_id: String,
     pub file: String,
     pub unexportable: UnexportableEntitiesBindingDTO,
 }

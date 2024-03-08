@@ -13,6 +13,7 @@ pub(super) fn create_organisation_history_event(organisation: Organisation) -> H
         action: HistoryAction::Created,
         entity_id: Some(organisation.id.into()),
         entity_type: HistoryEntityType::Organisation,
+        metadata: None,
         organisation: Some(organisation),
     }
 }

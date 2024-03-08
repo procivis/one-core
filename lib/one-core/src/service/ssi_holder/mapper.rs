@@ -135,6 +135,7 @@ fn history_event(
         action,
         entity_id: entity_id.into(),
         entity_type,
+        metadata: None,
         organisation,
     }
 }

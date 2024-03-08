@@ -80,6 +80,7 @@ pub(super) fn key_create_history_event(key: Key) -> History {
         action: HistoryAction::Created,
         entity_id: Some(key.id.into()),
         entity_type: HistoryEntityType::Key,
+        metadata: None,
         organisation: key.organisation,
     }
 }

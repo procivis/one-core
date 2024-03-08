@@ -20,6 +20,7 @@ impl From<history::Model> for History {
             action: value.action.into(),
             entity_id: value.entity_id,
             entity_type: value.entity_type.into(),
+            metadata: value.metadata,
             organisation: Some(Organisation {
                 id: value.organisation_id.into(),
                 created_date: OffsetDateTime::UNIX_EPOCH,
@@ -41,6 +42,7 @@ impl TryFrom<History> for history::ActiveModel {
             action: Set(value.action.into()),
             entity_id: Set(value.entity_id),
             entity_type: Set(value.entity_type.into()),
+            metadata: Set(value.metadata),
             organisation_id: Set(organisation.id.into()),
         })
     }

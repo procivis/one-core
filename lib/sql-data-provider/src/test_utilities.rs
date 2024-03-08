@@ -461,6 +461,7 @@ pub async fn insert_history(
         action: Set(action),
         entity_id: Set(Some(entity_id)),
         entity_type: Set(entity_type),
+        metadata: Set(None),
         organisation_id: Set(organisation_id),
     }
     .insert(database)

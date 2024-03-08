@@ -218,6 +218,7 @@ pub(super) fn credential_accepted_history_event(credential: Credential) -> Histo
         action: HistoryAction::Accepted,
         entity_id: Some(credential.id.into()),
         entity_type: HistoryEntityType::Credential,
+        metadata: None,
         organisation: credential.schema.and_then(|s| s.organisation),
     }
 }
