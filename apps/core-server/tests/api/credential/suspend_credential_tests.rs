@@ -4,10 +4,10 @@ use crate::utils::db_clients::keys::eddsa_testing_params;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::revocation_list::RevocationListPurpose;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
-// TODO: Needs to be enabled after https://procivis.atlassian.net/browse/ONE-1746 is finished
 #[tokio::test]
-#[ignore]
 async fn test_suspend_credential_with_bitstring_status_list_success() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
@@ -51,12 +51,13 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
         .revocation_lists
         .create(&issuer_did, RevocationListPurpose::Revocation, None)
         .await;
-    let suspend_end_date = "2023-06-09T14:19:57.000Z".to_string();
+    let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
+    let suspend_end_date = OffsetDateTime::parse(suspend_end_date_str, &Rfc3339).unwrap();
     // WHEN
     let resp = context
         .api
         .credentials
-        .suspend(&credential.id, Some(suspend_end_date.clone()))
+        .suspend(&credential.id, Some(suspend_end_date_str.to_string()))
         .await;
 
     // THEN
@@ -71,9 +72,6 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
 
     assert_eq!(
         suspend_end_date,
-        credential.state.unwrap()[0]
-            .suspend_end_date
-            .unwrap()
-            .to_string()
+        credential.state.unwrap()[0].suspend_end_date.unwrap()
     );
 }

@@ -321,21 +321,9 @@ impl BitstringStatusList {
             .ok_or(ServiceError::MappingError("issuer did is None".to_string()))?
             .clone();
 
-        let revocation_list = self
-            .revocation_list_repository
-            .get_revocation_by_issuer_did_id(
-                &issuer_did.id,
-                purpose.to_owned(),
-                &RevocationListRelations::default(),
-            )
+        let revocation_list_id = self
+            .get_revocation_list_id(&issuer_did, purpose.to_owned())
             .await?;
-
-        let Some(revocation_list) = revocation_list else {
-            return Err(BusinessLogicError::MissingRevocationListForDid {
-                did_id: issuer_did.id,
-            }
-            .into());
-        };
 
         let encoded_list = self
             .generate_bitstring_from_credentials(
@@ -349,11 +337,11 @@ impl BitstringStatusList {
             .await?;
 
         let list_credential = self
-            .format_status_list_credential(&revocation_list.id, &issuer_did, encoded_list)
+            .format_status_list_credential(&revocation_list_id, &issuer_did, encoded_list)
             .await?;
 
         self.revocation_list_repository
-            .update_credentials(&revocation_list.id, list_credential.as_bytes().to_vec())
+            .update_credentials(&revocation_list_id, list_credential.as_bytes().to_vec())
             .await?;
 
         Ok(())
