@@ -365,7 +365,7 @@ async fn test_submit_proof_succeeds() {
                         // ("optional_key".to_owned(), "optional_key_value".to_owned()),
                     ]),
                 },
-                status: None,
+                status: vec![],
             })
         });
 
@@ -407,7 +407,7 @@ async fn test_submit_proof_succeeds() {
                         // ("optional_key".to_owned(), "optional_key_value".to_owned()),
                     ]),
                 },
-                status: None,
+                status: vec![],
             })
         });
 

@@ -71,6 +71,8 @@ pub enum HistoryAction {
     Issued,
     #[sea_orm(string_value = "OFFERED")]
     Offered,
+    #[sea_orm(string_value = "REACTIVATED")]
+    Reactivated,
     #[sea_orm(string_value = "REJECTED")]
     Rejected,
     #[sea_orm(string_value = "REQUESTED")]

@@ -34,6 +34,19 @@ pub(crate) fn throw_if_latest_credential_state_not_eq(
     Ok(())
 }
 
+pub(crate) fn throw_if_state_not_in(
+    state: &CredentialStateEnum,
+    valid_states: &[CredentialStateEnum],
+) -> Result<(), ServiceError> {
+    if !valid_states.contains(state) {
+        return Err(BusinessLogicError::InvalidCredentialState {
+            state: state.to_owned(),
+        }
+        .into());
+    }
+    Ok(())
+}
+
 pub(crate) fn throw_if_latest_proof_state_not_eq(
     proof: &Proof,
     state: ProofStateEnum,
@@ -95,7 +108,7 @@ pub(crate) fn validate_expiration_time(
     Ok(())
 }
 
-fn get_latest_state(credential: &Credential) -> Result<&CredentialState, ServiceError> {
+pub(crate) fn get_latest_state(credential: &Credential) -> Result<&CredentialState, ServiceError> {
     credential
         .state
         .as_ref()

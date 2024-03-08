@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, OneOrMany};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::model::CredentialStatus;
 
 // The main credential
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct LdCredential {
@@ -18,8 +20,9 @@ pub struct LdCredential {
     #[serde(with = "time::serde::rfc3339")]
     pub issuance_date: OffsetDateTime,
     pub credential_subject: LdCredentialSubject,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub credential_status: Option<CredentialStatus>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde_as(as = "OneOrMany<_>")]
+    pub credential_status: Vec<CredentialStatus>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proof: Option<LdProof>,
 }

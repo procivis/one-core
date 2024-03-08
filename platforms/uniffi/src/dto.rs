@@ -377,6 +377,7 @@ pub enum HistoryActionBindingEnum {
     Deleted,
     Issued,
     Offered,
+    Reactivated,
     Rejected,
     Requested,
     Revoked,

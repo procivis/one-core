@@ -147,7 +147,8 @@ pub(super) async fn validate_proof(
         let (credential_schema_id, requested_proof_claims) =
             extract_matching_requested_schema(&credential, &mut remaining_requested_claims)?;
 
-        if let Some(credential_status) = &credential.status {
+        // todo (ONE-1759): check both revocation and suspension (iterate over both)
+        if let Some(credential_status) = credential.status.first() {
             let (revocation_method, _) = revocation_method_provider
                 .get_revocation_method_by_status_type(&credential_status.r#type)
                 .ok_or(MissingProviderError::RevocationMethod(

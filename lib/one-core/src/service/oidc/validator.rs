@@ -220,7 +220,8 @@ pub(super) async fn validate_credential(
     validate_issuance_time(&credential.issued_at, formatter.get_leeway())?;
     validate_expiration_time(&credential.expires_at, formatter.get_leeway())?;
 
-    if let Some(credential_status) = &credential.status {
+    // todo (ONE-1759): check both revocation and suspension (iterate over both)
+    if let Some(credential_status) = credential.status.first() {
         let (revocation_method, _) = revocation_method_provider
             .get_revocation_method_by_status_type(&credential_status.r#type)
             .ok_or(

@@ -3,6 +3,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::revocation_list::RevocationListPurpose;
 
 // TODO: Needs to be enabled after https://procivis.atlassian.net/browse/ONE-1746 is finished
 #[tokio::test]
@@ -45,7 +46,11 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
             TestingCredentialParams::default(),
         )
         .await;
-    context.db.revocation_lists.create(&issuer_did, None).await;
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .await;
     let suspend_end_date = "2023-06-09T14:19:57.000Z".to_string();
     // WHEN
     let resp = context

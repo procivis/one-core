@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, OneOrMany};
 
 use crate::provider::credential_formatter::model::{CredentialStatus, CredentialSubject};
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VCContent {
@@ -11,8 +13,9 @@ pub struct VCContent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub credential_subject: CredentialSubject,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub credential_status: Option<CredentialStatus>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde_as(as = "OneOrMany<_>")]
+    pub credential_status: Vec<CredentialStatus>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

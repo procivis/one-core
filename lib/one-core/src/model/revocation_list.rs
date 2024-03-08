@@ -1,3 +1,4 @@
+use strum_macros::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -11,6 +12,7 @@ pub struct RevocationList {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub credentials: Vec<u8>,
+    pub purpose: RevocationListPurpose,
 
     // Relations:
     pub issuer_did: Option<Did>,
@@ -19,4 +21,10 @@ pub struct RevocationList {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct RevocationListRelations {
     pub issuer_did: Option<DidRelations>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
+pub enum RevocationListPurpose {
+    Revocation,
+    Suspension,
 }

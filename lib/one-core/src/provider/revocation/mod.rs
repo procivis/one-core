@@ -1,5 +1,6 @@
 use serde::Serialize;
 use shared_types::{CredentialId, DidValue};
+use strum_macros::Display;
 
 use crate::model::credential::Credential;
 use crate::model::proof_schema::ProofSchema;
@@ -33,6 +34,7 @@ pub enum CredentialDataByRole {
     Verifier(Box<VerifierCredentialData>),
 }
 
+#[derive(Clone, Debug, Display, PartialEq)]
 pub enum NewCredentialState {
     Revoked,
     Reactivated,
@@ -47,9 +49,7 @@ pub trait RevocationMethod: Send + Sync {
     async fn add_issued_credential(
         &self,
         credential: &Credential,
-    ) -> Result<Option<CredentialRevocationInfo>, ServiceError>;
-
-    async fn mark_credential_revoked(&self, credential: &Credential) -> Result<(), ServiceError>;
+    ) -> Result<Vec<CredentialRevocationInfo>, ServiceError>;
 
     async fn mark_credential_as(
         &self,

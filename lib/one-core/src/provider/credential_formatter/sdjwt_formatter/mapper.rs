@@ -26,7 +26,7 @@ pub(super) fn vc_from_credential(
     id: String,
     hasher: &Arc<dyn Hasher>,
     claims: &[String],
-    credential_status: Option<CredentialStatus>,
+    credential_status: Vec<CredentialStatus>,
     additional_context: Vec<String>,
     additional_types: Vec<String>,
     algorithm: &str,

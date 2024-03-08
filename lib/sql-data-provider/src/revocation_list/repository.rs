@@ -1,11 +1,14 @@
 use autometrics::autometrics;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set, Unchanged};
+use sea_orm::{
+    ActiveEnum, ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, QueryFilter, Set, Unchanged,
+};
 use shared_types::DidId;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{entity::revocation_list, revocation_list::RevocationListProvider};
+use crate::{entity, entity::revocation_list, revocation_list::RevocationListProvider};
+use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::{
     model::revocation_list::{RevocationList, RevocationListId, RevocationListRelations},
     repository::{error::DataLayerError, revocation_list_repository::RevocationListRepository},
@@ -39,6 +42,7 @@ impl RevocationListProvider {
             created_date: revocation_list.created_date,
             last_modified: revocation_list.last_modified,
             credentials: revocation_list.credentials,
+            purpose: revocation_list.purpose.into(),
             issuer_did,
         })
     }
@@ -58,6 +62,7 @@ impl RevocationListRepository for RevocationListProvider {
             created_date: Set(request.created_date),
             last_modified: Set(request.last_modified),
             credentials: Set(request.credentials),
+            purpose: Set(request.purpose.into()),
             issuer_did_id: Set(issuer_did.id),
         }
         .insert(&self.db)
@@ -92,10 +97,17 @@ impl RevocationListRepository for RevocationListProvider {
     async fn get_revocation_by_issuer_did_id(
         &self,
         issuer_did_id: &DidId,
+        purpose: RevocationListPurpose,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError> {
+        let purpose_as_db_type = entity::revocation_list::RevocationListPurpose::from(purpose);
+
         let revocation_list = revocation_list::Entity::find()
-            .filter(revocation_list::Column::IssuerDidId.eq(issuer_did_id))
+            .filter(
+                revocation_list::Column::IssuerDidId
+                    .eq(issuer_did_id)
+                    .and(revocation_list::Column::Purpose.eq(purpose_as_db_type.into_value())),
+            )
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
