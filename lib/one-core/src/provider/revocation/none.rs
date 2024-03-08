@@ -22,14 +22,8 @@ impl RevocationMethod for NoneRevocation {
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<Option<CredentialRevocationInfo>, ServiceError> {
-        Ok(None)
-    }
-
-    async fn mark_credential_revoked(&self, _credential: &Credential) -> Result<(), ServiceError> {
-        Err(ServiceError::ValidationError(
-            "Credential cannot be revoked".to_string(),
-        ))
+    ) -> Result<Vec<CredentialRevocationInfo>, ServiceError> {
+        Ok(vec![])
     }
 
     async fn check_credential_revocation_status(
@@ -45,13 +39,11 @@ impl RevocationMethod for NoneRevocation {
 
     async fn mark_credential_as(
         &self,
-        credential: &Credential,
-        new_state: NewCredentialState,
+        _credential: &Credential,
+        _new_state: NewCredentialState,
     ) -> Result<(), ServiceError> {
-        match new_state {
-            NewCredentialState::Revoked => self.mark_credential_revoked(credential).await,
-            NewCredentialState::Reactivated => todo!(),
-            NewCredentialState::Suspended => todo!(),
-        }
+        Err(ServiceError::ValidationError(
+            "Credential cannot be revoked, reactivated or suspended".to_string(),
+        ))
     }
 }

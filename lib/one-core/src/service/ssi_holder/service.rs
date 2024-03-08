@@ -337,9 +337,13 @@ impl SSIHolderService {
                 let extracted = formatter
                     .extract_credentials_unverified(&formatted_credential_presentation)
                     .await?;
-                let credential_status = extracted.status.ok_or(ServiceError::MappingError(
-                    "credential_status is None".to_string(),
-                ))?;
+                let credential_status = extracted
+                    .status
+                    .first()
+                    .ok_or(ServiceError::MappingError(
+                        "credential_status is None".to_string(),
+                    ))?
+                    .to_owned();
 
                 let bearer_token =
                     prepare_bearer_token(&credential, self.key_provider.clone()).await?;

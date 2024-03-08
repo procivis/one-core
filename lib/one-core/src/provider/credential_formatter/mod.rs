@@ -46,7 +46,7 @@ pub struct CredentialData {
     pub claims: Vec<(String, String)>,
     pub issuer_did: DidValue,
     pub credential_schema: Option<CredentialSchemaData>,
-    pub credential_status: Option<CredentialStatus>,
+    pub credential_status: Vec<CredentialStatus>,
 }
 
 pub struct CredentialSchemaData {
@@ -165,7 +165,7 @@ impl CredentialData {
     pub fn from_credential_detail_response(
         credential: CredentialDetailResponseDTO,
         core_base_url: &str,
-        credential_status: Option<CredentialStatus>,
+        credential_status: Vec<CredentialStatus>,
     ) -> Result<Self, ServiceError> {
         let id = format!("{core_base_url}/ssi/credential/v1/{}", credential.id);
         let issuer_did = credential.issuer_did.map(|did| did.did).ok_or_else(|| {

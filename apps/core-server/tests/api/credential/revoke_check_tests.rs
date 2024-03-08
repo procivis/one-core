@@ -1,5 +1,6 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
+use one_core::model::revocation_list::RevocationListPurpose;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -57,7 +58,11 @@ async fn test_revoke_check_success_statuslist2021() {
         )
         .await;
 
-    context.db.revocation_lists.create(&issuer_did, None).await;
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .await;
 
     Mock::given(method(Method::GET))
         .and(path(
@@ -135,7 +140,11 @@ async fn test_revoke_check_success_bitstring_status_list() {
         )
         .await;
 
-    context.db.revocation_lists.create(&issuer_did, None).await;
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .await;
 
     Mock::given(method(Method::GET))
         .and(path(

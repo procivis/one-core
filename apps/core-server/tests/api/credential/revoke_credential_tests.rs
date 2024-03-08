@@ -1,5 +1,6 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::revocation_list::RevocationListPurpose;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
@@ -45,7 +46,11 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
             TestingCredentialParams::default(),
         )
         .await;
-    context.db.revocation_lists.create(&issuer_did, None).await;
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .await;
 
     // WHEN
     let resp = context.api.credentials.revoke(&credential.id).await;

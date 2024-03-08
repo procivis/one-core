@@ -20,7 +20,9 @@ use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
     ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use one_core::model::revocation_list::{RevocationList, RevocationListRelations};
+use one_core::model::revocation_list::{
+    RevocationList, RevocationListPurpose, RevocationListRelations,
+};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::DataRepository;
 use rand::distributions::Alphanumeric;
@@ -452,6 +454,7 @@ pub async fn create_revocation_list(
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         credentials: credentials.unwrap_or_default().to_owned(),
+        purpose: RevocationListPurpose::Revocation,
         issuer_did: Some(issuer_did.to_owned()),
     };
 
@@ -472,7 +475,11 @@ pub async fn get_revocation_list(
 
     let res = data_layer
         .get_revocation_list_repository()
-        .get_revocation_by_issuer_did_id(&issuer_did.id, &RevocationListRelations::default())
+        .get_revocation_by_issuer_did_id(
+            &issuer_did.id,
+            RevocationListPurpose::Revocation,
+            &RevocationListRelations::default(),
+        )
         .await?;
 
     Ok(res.unwrap())

@@ -20,16 +20,11 @@ use one_core::{
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
-        claim_repository::MockClaimRepository,
-        credential_repository::CredentialRepository,
+        claim_repository::MockClaimRepository, credential_repository::CredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository,
-        error::DataLayerError,
-        interaction_repository::MockInteractionRepository,
-        mock::{
-            key_repository::MockKeyRepository,
-            revocation_list_repository::MockRevocationListRepository,
-        },
+        did_repository::MockDidRepository, error::DataLayerError,
+        interaction_repository::MockInteractionRepository, mock::key_repository::MockKeyRepository,
+        revocation_list_repository::MockRevocationListRepository,
     },
     service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO},
 };

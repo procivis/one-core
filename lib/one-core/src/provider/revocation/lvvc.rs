@@ -277,40 +277,6 @@ impl LvvcProvider {
 
         Ok(status == Status::Revoked)
     }
-}
-
-#[async_trait::async_trait]
-impl RevocationMethod for LvvcProvider {
-    fn get_status_type(&self) -> String {
-        "LVVC".to_string()
-    }
-
-    fn get_capabilities(&self) -> RevocationMethodCapabilities {
-        RevocationMethodCapabilities {
-            operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
-        }
-    }
-
-    async fn add_issued_credential(
-        &self,
-        credential: &Credential,
-    ) -> Result<Option<CredentialRevocationInfo>, ServiceError> {
-        let base_url = self.core_base_url.as_ref().ok_or_else(|| {
-            ServiceError::MappingError("LVVC issuance is missing core base_url".to_string())
-        })?;
-
-        self.create_lvvc_with_status(credential, Status::Accepted)
-            .await?;
-
-        Ok(Some(CredentialRevocationInfo {
-            credential_status: CredentialStatus {
-                id: format!("{base_url}/ssi/revocation/v1/lvvc/{}", credential.id),
-                r#type: self.get_status_type(),
-                status_purpose: None,
-                additional_fields: HashMap::new(),
-            },
-        }))
-    }
 
     async fn mark_credential_revoked(&self, credential: &Credential) -> Result<(), ServiceError> {
         let formatter = self.formatter(credential)?;
@@ -351,6 +317,40 @@ impl RevocationMethod for LvvcProvider {
         };
 
         Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl RevocationMethod for LvvcProvider {
+    fn get_status_type(&self) -> String {
+        "LVVC".to_string()
+    }
+
+    fn get_capabilities(&self) -> RevocationMethodCapabilities {
+        RevocationMethodCapabilities {
+            operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
+        }
+    }
+
+    async fn add_issued_credential(
+        &self,
+        credential: &Credential,
+    ) -> Result<Vec<CredentialRevocationInfo>, ServiceError> {
+        let base_url = self.core_base_url.as_ref().ok_or_else(|| {
+            ServiceError::MappingError("LVVC issuance is missing core base_url".to_string())
+        })?;
+
+        self.create_lvvc_with_status(credential, Status::Accepted)
+            .await?;
+
+        Ok(vec![CredentialRevocationInfo {
+            credential_status: CredentialStatus {
+                id: format!("{base_url}/ssi/revocation/v1/lvvc/{}", credential.id),
+                r#type: self.get_status_type(),
+                status_purpose: None,
+                additional_fields: HashMap::new(),
+            },
+        }])
     }
 
     async fn check_credential_revocation_status(
@@ -444,7 +444,7 @@ pub(crate) async fn create_lvvc_with_status(
         claims: vec![id_claim(base_url, credential.id), status_claim(status)],
         issuer_did: issuer_did.did.to_owned(),
         credential_schema: None,
-        credential_status: None,
+        credential_status: vec![],
     };
 
     let formatted_credential = formatter

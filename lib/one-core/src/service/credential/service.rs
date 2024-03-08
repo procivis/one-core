@@ -4,11 +4,13 @@ use uuid::Uuid;
 
 use crate::provider::revocation::{NewCredentialState, RevocationMethodCapabilities};
 use crate::service::credential::dto::SuspendCredentialRequestDTO;
-use crate::service::credential::mapper::credential_suspend_history_event;
+use crate::service::credential::mapper::{
+    credential_revocation_history_event, new_credential_state_to_model_state,
+};
 use crate::{
     common_mapper::list_response_try_into,
     common_validator::{
-        throw_if_latest_credential_state_eq, throw_if_latest_credential_state_not_eq,
+        get_latest_state, throw_if_latest_credential_state_eq, throw_if_state_not_in,
     },
     config::core_config::RevocationType,
     model::{
@@ -46,7 +48,7 @@ use crate::{
     util::oidc::detect_correct_format,
 };
 
-use super::mapper::{credential_offered_history_event, credential_revoked_history_event};
+use super::mapper::credential_offered_history_event;
 
 impl CredentialService {
     /// Creates a credential according to request
@@ -311,7 +313,7 @@ impl CredentialService {
     ) -> Result<(), ServiceError> {
         self.change_accepted_credential_state(
             credential_id,
-            CredentialStateEnum::Suspended,
+            NewCredentialState::Suspended,
             request.suspend_end_date,
         )
         .await?;
@@ -327,7 +329,7 @@ impl CredentialService {
         &self,
         credential_id: &CredentialId,
     ) -> Result<(), ServiceError> {
-        self.change_accepted_credential_state(credential_id, CredentialStateEnum::Revoked, None)
+        self.change_accepted_credential_state(credential_id, NewCredentialState::Revoked, None)
             .await?;
         Ok(())
     }
@@ -394,8 +396,9 @@ impl CredentialService {
                         .extract_credentials_unverified(&credential_str)
                         .await?;
 
-                    if let Some(status) = credential.status {
-                        status
+                    // todo (ONE-1779): check both revocation and suspension (iterate over both)
+                    if let Some(status) = credential.status.first() {
+                        status.to_owned()
                     } else {
                         result.push(CredentialRevocationCheckResponseDTO {
                             credential_id,
@@ -498,8 +501,9 @@ impl CredentialService {
 
                 let _ = self
                     .history_repository
-                    .create_history(credential_revoked_history_event(
+                    .create_history(credential_revocation_history_event(
                         credential_id,
+                        NewCredentialState::Revoked,
                         credential_schema.organisation,
                     ))
                     .await;
@@ -615,7 +619,7 @@ impl CredentialService {
     async fn change_accepted_credential_state(
         &self,
         credential_id: &CredentialId,
-        credential_state: CredentialStateEnum,
+        credential_state: NewCredentialState,
         suspend_end_date: Option<OffsetDateTime>,
     ) -> Result<(), ServiceError> {
         let credential = self
@@ -642,7 +646,14 @@ impl CredentialService {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
-        throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Accepted)?;
+        let latest_state = &get_latest_state(&credential)?.state;
+        throw_if_state_not_in(
+            latest_state,
+            &[
+                CredentialStateEnum::Accepted,
+                CredentialStateEnum::Suspended,
+            ],
+        )?;
 
         let revocation_method_key = &credential
             .schema
@@ -661,17 +672,25 @@ impl CredentialService {
 
         let capabilities: RevocationMethodCapabilities = revocation_method.get_capabilities();
 
-        if credential_state == CredentialStateEnum::Revoked
+        if credential_state == NewCredentialState::Revoked
             && capabilities.operations.contains(&"REVOKE".to_string())
         {
             revocation_method
                 .mark_credential_as(&credential, NewCredentialState::Revoked)
                 .await?;
-        } else if credential_state == CredentialStateEnum::Suspended
+        } else if credential_state == NewCredentialState::Suspended
+            && *latest_state == CredentialStateEnum::Accepted
             && capabilities.operations.contains(&"SUSPEND".to_string())
         {
             revocation_method
                 .mark_credential_as(&credential, NewCredentialState::Suspended)
+                .await?;
+        } else if credential_state == NewCredentialState::Reactivated
+            && *latest_state == CredentialStateEnum::Suspended
+            && capabilities.operations.contains(&"SUSPEND".to_string())
+        {
+            revocation_method
+                .mark_credential_as(&credential, NewCredentialState::Reactivated)
                 .await?;
         } else {
             return Err(
@@ -688,7 +707,7 @@ impl CredentialService {
                 id: credential_id.to_owned(),
                 state: Some(CredentialState {
                     created_date: now,
-                    state: credential_state.clone(),
+                    state: new_credential_state_to_model_state(credential_state.to_owned()),
                     suspend_end_date,
                 }),
                 credential: None,
@@ -700,23 +719,14 @@ impl CredentialService {
             })
             .await?;
 
-        if credential_state == CredentialStateEnum::Revoked {
-            let _ = self
-                .history_repository
-                .create_history(credential_revoked_history_event(
-                    *credential_id,
-                    credential.schema.and_then(|c| c.organisation),
-                ))
-                .await;
-        } else if credential_state == CredentialStateEnum::Suspended {
-            let _ = self
-                .history_repository
-                .create_history(credential_suspend_history_event(
-                    *credential_id,
-                    credential.schema.and_then(|c| c.organisation),
-                ))
-                .await;
-        }
+        let _ = self
+            .history_repository
+            .create_history(credential_revocation_history_event(
+                *credential_id,
+                credential_state,
+                credential.schema.and_then(|c| c.organisation),
+            ))
+            .await;
 
         Ok(())
     }

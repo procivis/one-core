@@ -11,7 +11,7 @@ use super::model::{VCContent, VC};
 pub(super) fn format_vc(
     id: String,
     claims: Vec<(String, String)>,
-    credential_status: Option<CredentialStatus>,
+    credential_status: Vec<CredentialStatus>,
     additional_context: Vec<String>,
     additional_types: Vec<String>,
 ) -> VC {

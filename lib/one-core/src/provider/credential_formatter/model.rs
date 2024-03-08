@@ -12,7 +12,7 @@ pub struct DetailCredential {
     pub issuer_did: Option<DidValue>,
     pub subject: Option<DidValue>,
     pub claims: CredentialSubject,
-    pub status: Option<CredentialStatus>,
+    pub status: Vec<CredentialStatus>,
 }
 
 impl DetailCredential {

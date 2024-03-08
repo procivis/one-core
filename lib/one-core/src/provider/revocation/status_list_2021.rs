@@ -41,11 +41,7 @@ impl RevocationMethod for StatusList2021 {
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<Option<CredentialRevocationInfo>, ServiceError> {
-        Err(BusinessLogicError::StatusList2021NotSupported.into())
-    }
-
-    async fn mark_credential_revoked(&self, _credential: &Credential) -> Result<(), ServiceError> {
+    ) -> Result<Vec<CredentialRevocationInfo>, ServiceError> {
         Err(BusinessLogicError::StatusList2021NotSupported.into())
     }
 
@@ -112,13 +108,9 @@ impl RevocationMethod for StatusList2021 {
 
     async fn mark_credential_as(
         &self,
-        credential: &Credential,
-        new_state: NewCredentialState,
+        _credential: &Credential,
+        _new_state: NewCredentialState,
     ) -> Result<(), ServiceError> {
-        match new_state {
-            NewCredentialState::Revoked => self.mark_credential_revoked(credential).await,
-            NewCredentialState::Reactivated => todo!(),
-            NewCredentialState::Suspended => todo!(),
-        }
+        Err(BusinessLogicError::StatusList2021NotSupported.into())
     }
 }

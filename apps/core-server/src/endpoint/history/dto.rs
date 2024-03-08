@@ -39,6 +39,7 @@ pub enum HistoryAction {
     Deleted,
     Issued,
     Offered,
+    Reactivated,
     Rejected,
     Requested,
     Revoked,

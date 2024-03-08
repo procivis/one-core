@@ -1,6 +1,8 @@
 use super::CredentialService;
 use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::provider::revocation::{NewCredentialState, RevocationMethodCapabilities};
 use crate::repository::lvvc_repository::MockLvvcRepository;
+use crate::service::credential::dto::SuspendCredentialRequestDTO;
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -976,7 +978,7 @@ async fn test_check_revocation_non_revocable() {
                 claims: CredentialSubject {
                     values: HashMap::default(),
                 },
-                status: None,
+                status: vec![],
             })
         });
 
@@ -1119,12 +1121,12 @@ async fn test_check_revocation_being_revoked() {
                 claims: CredentialSubject {
                     values: HashMap::default(),
                 },
-                status: Some(CredentialStatus {
+                status: vec![CredentialStatus {
                     id: "id".to_string(),
                     r#type: "type".to_string(),
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
-                }),
+                }],
             })
         });
 
@@ -1718,4 +1720,77 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
         result,
         Err(ServiceError::Validation(ValidationError::InvalidKey(_)))
     ));
+}
+
+#[tokio::test]
+async fn test_suspend_credential_success() {
+    let now = OffsetDateTime::now_utc();
+
+    let mut credential = generic_credential();
+    credential.state = Some(vec![CredentialState {
+        created_date: now,
+        state: CredentialStateEnum::Accepted,
+        suspend_end_date: None,
+    }]);
+
+    let mut credential_repository = MockCredentialRepository::default();
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .once()
+        .return_once(move || RevocationMethodCapabilities {
+            operations: vec!["SUSPEND".to_string()],
+        });
+    revocation_method
+        .expect_mark_credential_as()
+        .once()
+        .with(always(), eq(NewCredentialState::Suspended))
+        .return_once(move |_, _| Ok(()));
+
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .returning(move |request| {
+            assert_eq!(CredentialStateEnum::Suspended, request.state.unwrap().state);
+            Ok(())
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    revocation_method_provider
+        .expect_get_revocation_method()
+        .once()
+        .return_once(move |_| Some(Arc::new(revocation_method)));
+
+    let mut history_repository = MockHistoryRepository::default();
+    history_repository
+        .expect_create_history()
+        .once()
+        .return_once(|_| Ok(Uuid::new_v4().into()));
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        history_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    service
+        .suspend_credential(
+            &credential.id,
+            SuspendCredentialRequestDTO {
+                suspend_end_date: None,
+            },
+        )
+        .await
+        .unwrap();
 }

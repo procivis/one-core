@@ -363,13 +363,13 @@ fn allow_bbs_key_only(did_document: &DidDocumentDTO) -> Result<(), FormatterErro
     Ok(())
 }
 
-fn prepare_mandatory_pointers(credential_status: &Option<CredentialStatus>) -> Vec<String> {
+fn prepare_mandatory_pointers(credential_status: &[CredentialStatus]) -> Vec<String> {
     let mut pointers = vec![
         "/issuer".to_string(),
         "/issuanceDate".to_string(),
         "/type".to_string(),
     ];
-    if credential_status.is_some() {
+    if !credential_status.is_empty() {
         pointers.push("/credentialStatus".to_owned());
     }
     pointers

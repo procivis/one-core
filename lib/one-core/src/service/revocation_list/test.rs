@@ -3,6 +3,7 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::revocation_list::RevocationListPurpose;
 use crate::{
     crypto::MockCryptoProvider,
     model::revocation_list::{RevocationList, RevocationListRelations},
@@ -13,7 +14,7 @@ use crate::{
     },
     repository::{
         credential_repository::MockCredentialRepository, lvvc_repository::MockLvvcRepository,
-        mock::revocation_list_repository::MockRevocationListRepository,
+        revocation_list_repository::MockRevocationListRepository,
     },
     service::{revocation_list::RevocationListService, test_utilities::generic_config},
 };
@@ -55,6 +56,7 @@ async fn test_get_revocation_list() {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             credentials: b"revocation-list-credential".to_vec(),
+            purpose: RevocationListPurpose::Revocation,
             issuer_did: None,
         };
         revocation_list_repository

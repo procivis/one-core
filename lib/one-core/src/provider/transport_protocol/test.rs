@@ -95,14 +95,14 @@ async fn test_issuer_submit_succeeds() {
         .expect_add_issued_credential()
         .once()
         .return_once(|_| {
-            Ok(Some(CredentialRevocationInfo {
+            Ok(vec![CredentialRevocationInfo {
                 credential_status: CredentialStatus {
                     id: Uuid::new_v4().to_string(),
                     r#type: "type".to_string(),
                     status_purpose: Some("type".to_string()),
                     additional_fields: HashMap::new(),
                 },
-            }))
+            }])
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();

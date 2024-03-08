@@ -155,7 +155,9 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
         let credential_status = revocation_method
             .add_issued_credential(&credential)
             .await?
-            .map(|revocation_info| revocation_info.credential_status);
+            .into_iter()
+            .map(|revocation_info| revocation_info.credential_status)
+            .collect();
 
         let key = credential
             .key
