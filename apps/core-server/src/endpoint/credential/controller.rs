@@ -119,6 +119,30 @@ pub(crate) async fn post_credential(
 
 #[utoipa::path(
     post,
+    path = "/api/credential/v1/{id}/reactivate",
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = Uuid, Path, description = "Credential id")
+    ),
+    tag = "credential_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn reactivate_credential(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .credential_service
+        .reactivate_credential(&id)
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "reactivating credential")
+}
+
+#[utoipa::path(
+    post,
     path = "/api/credential/v1/{id}/revoke",
     responses(EmptyOrErrorResponse),
     params(
