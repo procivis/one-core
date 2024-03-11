@@ -364,10 +364,9 @@ impl SSIHolderService {
                     .map_err(TransportProtocolError::HttpRequestError)?;
 
                 let lvvc_content = response.credential;
-
                 let lvvc_presentation = CredentialPresentation {
                     token: lvvc_content.to_owned(),
-                    disclosed_keys: submitted_keys,
+                    disclosed_keys: vec!["id".to_string(), "status".to_string()],
                 };
 
                 let formatted_lvvc_presentation = formatter

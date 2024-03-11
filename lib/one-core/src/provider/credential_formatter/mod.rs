@@ -50,8 +50,8 @@ pub struct CredentialData {
 }
 
 pub struct CredentialSchemaData {
-    id: Uuid,
-    name: String,
+    pub id: Uuid,
+    pub name: String,
 }
 
 #[derive(Clone, Default, Serialize)]
