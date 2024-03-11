@@ -45,3 +45,7 @@ mod api_key_tests;
 // SSI
 #[path = "api/ssi/mod.rs"]
 mod ssi_tests;
+
+// Task
+#[path = "api/task/mod.rs"]
+mod task_tests;

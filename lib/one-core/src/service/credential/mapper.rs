@@ -254,7 +254,7 @@ pub(super) fn credential_offered_history_event(credential: Credential) -> Histor
     }
 }
 
-pub(super) fn credential_revocation_history_event(
+pub(crate) fn credential_revocation_history_event(
     id: CredentialId,
     new_state: NewCredentialState,
     organisation: Option<Organisation>,

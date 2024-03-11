@@ -169,7 +169,12 @@ impl OneCore {
             revocation_methods.to_owned(),
         ));
 
-        let task_providers = tasks_from_config(&core_config.task)?;
+        let task_providers = tasks_from_config(
+            &core_config.task,
+            data_provider.get_credential_repository(),
+            data_provider.get_history_repository(),
+            revocation_method_provider.to_owned(),
+        )?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
 
         let config = Arc::new(core_config);
