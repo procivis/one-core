@@ -493,6 +493,7 @@ pub struct TestingCredentialParams<'a> {
     pub deleted_at: Option<OffsetDateTime>,
     pub role: Option<CredentialRole>,
     pub key: Option<Key>,
+    pub suspend_end_date: Option<OffsetDateTime>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -535,7 +536,7 @@ pub async fn create_credential(
         state: Some(vec![CredentialState {
             created_date: get_dummy_date(),
             state,
-            suspend_end_date: None,
+            suspend_end_date: params.suspend_end_date,
         }]),
         claims: Some(claims),
         issuer_did: Some(issuer_did.to_owned()),

@@ -10,6 +10,7 @@ use one_core::{
     OneCore,
 };
 use std::{
+    io::Write,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener},
     path::PathBuf,
 };
@@ -19,6 +20,10 @@ use std::{
 struct Cli {
     #[arg(short, long, value_name = "FILE")]
     config: Option<Vec<PathBuf>>,
+
+    /// Specific task to run
+    #[arg(long)]
+    task: Option<String>,
 }
 
 fn main() {
@@ -46,7 +51,11 @@ fn main() {
 
             let core = initialize_core(&app_config, db_conn);
 
-            run_server(app_config.app, core).await
+            if let Some(task) = cli.task {
+                run_task(task, core).await
+            } else {
+                run_server(app_config.app, core).await
+            }
         })
 }
 
@@ -61,4 +70,19 @@ async fn run_server(config: ServerConfig, core: OneCore) {
     let listener = TcpListener::bind(addr).expect("Failed to bind to address");
 
     start_server(listener, config, core).await
+}
+
+async fn run_task(task: String, core: OneCore) {
+    match core.task_service.run(&task).await {
+        Ok(result) => {
+            let _ = std::io::stdout().write_fmt(format_args!(
+                "{}",
+                serde_json::to_string_pretty(&result).expect("Failed to format JSON")
+            ));
+        }
+        Err(err) => {
+            let _ = std::io::stderr().write_fmt(format_args!("{err}"));
+            std::process::exit(1)
+        }
+    }
 }
