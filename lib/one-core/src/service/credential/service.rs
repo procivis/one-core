@@ -306,12 +306,21 @@ impl CredentialService {
         list_response_try_into(result)
     }
 
+    pub async fn reactivate_credential(
+        &self,
+        credential_id: &CredentialId,
+    ) -> Result<(), ServiceError> {
+        self.change_issued_credential_state(credential_id, NewCredentialState::Reactivated, None)
+            .await?;
+        Ok(())
+    }
+
     pub async fn suspend_credential(
         &self,
         credential_id: &CredentialId,
         request: SuspendCredentialRequestDTO,
     ) -> Result<(), ServiceError> {
-        self.change_accepted_credential_state(
+        self.change_issued_credential_state(
             credential_id,
             NewCredentialState::Suspended,
             request.suspend_end_date,
@@ -329,7 +338,7 @@ impl CredentialService {
         &self,
         credential_id: &CredentialId,
     ) -> Result<(), ServiceError> {
-        self.change_accepted_credential_state(credential_id, NewCredentialState::Revoked, None)
+        self.change_issued_credential_state(credential_id, NewCredentialState::Revoked, None)
             .await?;
         Ok(())
     }
@@ -616,7 +625,7 @@ impl CredentialService {
         Ok((credential, latest_state))
     }
 
-    async fn change_accepted_credential_state(
+    async fn change_issued_credential_state(
         &self,
         credential_id: &CredentialId,
         credential_state: NewCredentialState,
@@ -647,13 +656,16 @@ impl CredentialService {
         };
 
         let latest_state = &get_latest_state(&credential)?.state;
-        throw_if_state_not_in(
-            latest_state,
-            &[
+
+        let valid_states: &[CredentialStateEnum] = match credential_state {
+            NewCredentialState::Revoked => &[
                 CredentialStateEnum::Accepted,
                 CredentialStateEnum::Suspended,
             ],
-        )?;
+            NewCredentialState::Reactivated => &[CredentialStateEnum::Suspended],
+            NewCredentialState::Suspended => &[CredentialStateEnum::Accepted],
+        };
+        throw_if_state_not_in(latest_state, valid_states)?;
 
         let revocation_method_key = &credential
             .schema
@@ -679,14 +691,12 @@ impl CredentialService {
                 .mark_credential_as(&credential, NewCredentialState::Revoked)
                 .await?;
         } else if credential_state == NewCredentialState::Suspended
-            && *latest_state == CredentialStateEnum::Accepted
             && capabilities.operations.contains(&"SUSPEND".to_string())
         {
             revocation_method
                 .mark_credential_as(&credential, NewCredentialState::Suspended)
                 .await?;
         } else if credential_state == NewCredentialState::Reactivated
-            && *latest_state == CredentialStateEnum::Suspended
             && capabilities.operations.contains(&"SUSPEND".to_string())
         {
             revocation_method

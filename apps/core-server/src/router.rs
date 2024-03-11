@@ -78,6 +78,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .get(credential::controller::get_credential),
         )
         .route(
+            "/api/credential/v1/:id/reactivate",
+            post(credential::controller::reactivate_credential),
+        )
+        .route(
             "/api/credential/v1/:id/revoke",
             post(credential::controller::revoke_credential),
         )
@@ -308,6 +312,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::credential::controller::get_credential,
             endpoint::credential::controller::get_credential_list,
             endpoint::credential::controller::post_credential,
+            endpoint::credential::controller::reactivate_credential,
             endpoint::credential::controller::revoke_credential,
             endpoint::credential::controller::suspend_credential,
             endpoint::credential::controller::share_credential,
