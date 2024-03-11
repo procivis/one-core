@@ -109,7 +109,7 @@ impl RevocationListService {
         let status_as_enum =
             Status::from_str(status).map_err(|e| ServiceError::ValidationError(e.to_string()))?;
 
-        if status_as_enum == Status::Revoked {
+        if status_as_enum == Status::Revoked || status_as_enum == Status::Suspended {
             return Ok(IssuerResponseDTO {
                 credential: credential_content.to_string(),
                 format,

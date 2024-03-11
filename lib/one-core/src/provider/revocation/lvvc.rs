@@ -310,7 +310,7 @@ impl LvvcProvider {
             Ok(Status::Revoked) => {
                 return Err(BusinessLogicError::CredentialAlreadyRevoked.into());
             }
-            Ok(Status::Accepted) => {
+            Ok(Status::Accepted | Status::Suspended) => {
                 self.create_lvvc_with_status(credential, Status::Revoked)
                     .await?;
             }
@@ -407,6 +407,8 @@ pub(crate) enum Status {
     Accepted,
     #[strum(serialize = "REVOKED")]
     Revoked,
+    #[strum(serialize = "SUSPENDED")]
+    Suspended,
 }
 
 pub(crate) async fn create_lvvc_with_status(
