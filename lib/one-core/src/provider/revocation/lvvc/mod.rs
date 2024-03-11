@@ -14,7 +14,7 @@ use crate::{
             jwt::{model::JWTPayload, Jwt},
             model::CredentialStatus,
             provider::CredentialFormatterProvider,
-            CredentialData, CredentialFormatter,
+            CredentialData, CredentialFormatter, CredentialSchemaData,
         },
         key_storage::provider::KeyProvider,
         revocation::RevocationMethod,
@@ -349,6 +349,9 @@ pub(crate) async fn create_lvvc_with_status(
     let holder_did = credential.holder_did.as_ref().ok_or_else(|| {
         ServiceError::MappingError("LVVC issuance is missing holder DID".to_string())
     })?;
+    let schema = credential.schema.as_ref().ok_or_else(|| {
+        ServiceError::MappingError("LVVC issuance is missing credential schema".to_string())
+    })?;
 
     let key = issuer_did
         .keys
@@ -367,7 +370,10 @@ pub(crate) async fn create_lvvc_with_status(
         valid_for: credential_expiry,
         claims,
         issuer_did: issuer_did.did.to_owned(),
-        credential_schema: None,
+        credential_schema: Some(CredentialSchemaData {
+            id: schema.id,
+            name: schema.name.to_owned(),
+        }),
         credential_status: vec![],
     };
 
