@@ -41,7 +41,7 @@ async fn test_list_proof_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
@@ -123,7 +123,7 @@ async fn test_list_proofs_by_ids() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;

@@ -49,8 +49,8 @@ use one_core::service::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{self, json::JsonString};
-use shared_types::CredentialId;
-use shared_types::DidValue;
+use shared_types::{CredentialId, DidId};
+use shared_types::{DidValue, KeyId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -372,6 +372,8 @@ pub struct PostSsiIssuerRejectQueryParams {
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerSubmitQueryParams {
     pub credential_id: CredentialId,
+    pub did_id: DidId,
+    pub key_id: Option<KeyId>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

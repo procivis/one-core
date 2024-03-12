@@ -10,6 +10,11 @@ use one_core::repository::credential_schema_repository::CredentialSchemaReposito
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
+#[derive(Debug, Default, Clone)]
+pub struct TestingCreateSchemaParams {
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+}
+
 pub struct CredentialSchemasDB {
     repository: Arc<dyn CredentialSchemaRepository>,
 }
@@ -24,6 +29,7 @@ impl CredentialSchemasDB {
         name: &str,
         organisation: &Organisation,
         revocation_method: &str,
+        params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema = ClaimSchema {
             id: Uuid::new_v4(),
@@ -42,7 +48,11 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(
+                params
+                    .wallet_storage_type
+                    .unwrap_or(WalletStorageTypeEnum::Software),
+            ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: "JWT".to_string(),

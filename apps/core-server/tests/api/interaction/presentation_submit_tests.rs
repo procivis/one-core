@@ -118,6 +118,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
+          "didId": holder_did.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
@@ -316,6 +317,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
+          "didId": holder_did.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,

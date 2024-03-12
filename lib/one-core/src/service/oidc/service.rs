@@ -214,7 +214,7 @@ impl OIDCService {
     ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let schema = self
+        let Some(schema) = self
             .credential_schema_repository
             .get_credential_schema(
                 credential_schema_id,
@@ -223,21 +223,19 @@ impl OIDCService {
                     ..Default::default()
                 },
             )
-            .await?;
-
-        let Some(schema) = schema else {
+            .await?
+        else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
         throw_if_credential_request_invalid(&schema, &request)?;
 
         let interaction_id = parse_access_token(access_token)?;
-        let interaction = self
+        let Some(interaction) = self
             .interaction_repository
             .get_interaction(&interaction_id, &InteractionRelations::default())
-            .await?;
-
-        let Some(interaction) = interaction else {
+            .await?
+        else {
             return Err(
                 BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
             );
@@ -303,7 +301,7 @@ impl OIDCService {
 
         let issued_credential = self
             .protocol_provider
-            .issue_credential(&credential.id)
+            .issue_credential(&credential.id, holder_did, None)
             .await?;
 
         Ok(OpenID4VCICredentialResponseDTO {

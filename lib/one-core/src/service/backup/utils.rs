@@ -69,7 +69,11 @@ pub(super) fn create_zip<T: Write + Seek>(
     add_to_zip(DB_FILE, &mut db_file, &mut archive)?;
     add_to_zip(
         METADATA_FILE,
-        &mut Cursor::new(serde_json::to_vec(&metadata).unwrap()),
+        &mut Cursor::new(
+            serde_json::to_vec(&metadata)
+                .context("failed to serialize metadata")
+                .map_err(map_error)?,
+        ),
         &mut archive,
     )?;
 

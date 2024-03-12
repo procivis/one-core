@@ -550,7 +550,7 @@ async fn test_create_proof_without_related_key() {
 #[tokio::test]
 async fn test_create_proof_with_related_key() {
     let transport = "PROCIVIS_TEMPORARY".to_string();
-    let verifier_key_id = Uuid::new_v4();
+    let verifier_key_id = Uuid::new_v4().into();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
@@ -598,7 +598,7 @@ async fn test_create_proof_with_related_key() {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::Authentication,
                     key: Key {
-                        id: verifier_key_id.into(),
+                        id: verifier_key_id,
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         public_key: vec![],

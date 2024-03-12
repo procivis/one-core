@@ -162,7 +162,10 @@ async fn test_issuer_submit_succeeds() {
         Some("base_url".to_string()),
     );
 
-    service.issue_credential(&credential_id).await.unwrap();
+    service
+        .issue_credential(&credential_id, dummy_did(), None)
+        .await
+        .unwrap();
 }
 
 fn dummy_config() -> CoreConfig {

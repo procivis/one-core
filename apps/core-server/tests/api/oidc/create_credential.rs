@@ -69,7 +69,12 @@ async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestConte
     let credential_schema = context
         .db
         .credential_schemas
-        .create("schema-1", &organisation, revocation_method)
+        .create(
+            "schema-1",
+            &organisation,
+            revocation_method,
+            Default::default(),
+        )
         .await;
 
     let date_format =

@@ -215,6 +215,9 @@ pub enum BusinessLogicError {
 
     #[error("Revocation method does not support state ({operation})")]
     OperationNotSupportedByRevocationMethod { operation: String },
+
+    #[error("Wallet storage type requirement cannot be fulfilled")]
+    UnfulfilledWalletStorageType,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -267,6 +270,12 @@ pub enum ValidationError {
         value: String,
         source: ConfigValidationError,
     },
+
+    #[error("Did not found")]
+    DidNotFound,
+
+    #[error("Key not found")]
+    KeyNotFound,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -545,6 +554,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Invalid key")]
     BR_0096,
 
+    #[strum(to_string = "Requested wallet storage type cannot be fulfilled")]
+    BR_0097,
+
     #[strum(to_string = "Revocation method does not support state (REVOKE, SUSPEND)")]
     BR_0098,
 
@@ -643,6 +655,7 @@ impl BusinessLogicError {
             BusinessLogicError::MissingProofForInteraction(_) => ErrorCode::BR_0094,
             BusinessLogicError::StatusList2021NotSupported => ErrorCode::BR_0095,
             BusinessLogicError::CredentialAlreadyRevoked => ErrorCode::BR_0092,
+            BusinessLogicError::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
             BusinessLogicError::OperationNotSupportedByRevocationMethod { .. } => {
                 ErrorCode::BR_0098
             }
@@ -667,6 +680,8 @@ impl ValidationError {
             ValidationError::BBSNotSupported => ErrorCode::BR_0091,
             ValidationError::InvalidKeyStorage(_) => ErrorCode::BR_0041,
             ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
+            ValidationError::DidNotFound => ErrorCode::BR_0024,
+            ValidationError::KeyNotFound => ErrorCode::BR_0037,
         }
     }
 }

@@ -21,7 +21,7 @@ use crate::provider::transport_protocol::dto::{
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, DidId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -29,6 +29,8 @@ use uuid::Uuid;
 pub(super) fn get_issued_credential_update(
     credential_id: &CredentialId,
     token: &str,
+    holder_did_id: DidId,
+    key_id: Option<KeyId>,
 ) -> UpdateCredentialRequest {
     UpdateCredentialRequest {
         id: credential_id.to_owned(),
@@ -38,8 +40,8 @@ pub(super) fn get_issued_credential_update(
             state: CredentialStateEnum::Accepted,
             suspend_end_date: None,
         }),
-        key: None,
-        holder_did_id: None,
+        key: key_id,
+        holder_did_id: Some(holder_did_id),
         issuer_did_id: None,
         interaction: None,
         redirect_uri: None,

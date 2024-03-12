@@ -8,7 +8,7 @@ async fn test_create_proof_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
@@ -40,13 +40,13 @@ async fn test_create_proof_schema_with_the_same_name_in_different_organisations(
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let credential_schema1 = context
         .db
         .credential_schemas
-        .create("test", &organisation1, "NONE")
+        .create("test", &organisation1, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
@@ -78,7 +78,7 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
@@ -109,7 +109,7 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;

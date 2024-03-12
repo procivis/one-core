@@ -379,7 +379,7 @@ interface OneCoreBinding {
   HandleInvitationResponseBindingEnum handle_invitation(string url, string did_id);
 
   [Throws=BindingError]
-  void holder_accept_credential(string interaction_id);
+  void holder_accept_credential(string interaction_id, string did_id, string? key_id);
 
   [Throws=BindingError]
   void holder_reject_credential(string interaction_id);
@@ -391,7 +391,7 @@ interface OneCoreBinding {
   void holder_reject_proof(string interaction_id);
 
   [Throws=BindingError]
-  void holder_submit_proof(string interaction_id, record<string, PresentationSubmitCredentialRequestBindingDTO> submit_credentials);
+  void holder_submit_proof(string interaction_id, record<string, PresentationSubmitCredentialRequestBindingDTO> submit_credentials, string did_id, string? key_id);
 
   [Throws=BindingError]
   void delete_credential(string credential_id);

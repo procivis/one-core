@@ -17,11 +17,11 @@ use crate::{
     repository::DataRepository,
     service::ssi_holder::dto::InvitationResponseDTO,
 };
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use serde::{de, Serialize};
+use shared_types::{DidId, KeyId};
+use std::collections::HashMap;
+use std::sync::Arc;
 use thiserror::Error;
 use url::Url;
 
@@ -74,6 +74,8 @@ pub trait TransportProtocol: Send + Sync {
     async fn accept_credential(
         &self,
         credential: &Credential,
+        did_id: &DidId,
+        key_id: &Option<KeyId>,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError>;
 
     async fn reject_credential(

@@ -17,7 +17,7 @@ async fn test_get_proof_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
@@ -97,7 +97,7 @@ async fn test_get_proof_with_credentials() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;

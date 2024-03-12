@@ -48,7 +48,7 @@ async fn test_temporary_issuer_submit_success() {
         &issuer_did,
         "PROCIVIS_TEMPORARY",
         TestingCredentialParams {
-            holder_did: Some(holder_did),
+            holder_did: Some(holder_did.clone()),
             key: Some(key),
             ..Default::default()
         },
@@ -58,8 +58,8 @@ async fn test_temporary_issuer_submit_success() {
     // WHEN
     let _handle = run_server(listener, config, &db_conn);
     let url = format!(
-        "{base_url}/ssi/temporary-issuer/v1/submit?credentialId={}",
-        credential.id
+        "{base_url}/ssi/temporary-issuer/v1/submit?credentialId={}&didId={}",
+        credential.id, holder_did.id
     );
 
     let resp = utils::client().post(url).send().await.unwrap();
