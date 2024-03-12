@@ -95,6 +95,7 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptor {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
