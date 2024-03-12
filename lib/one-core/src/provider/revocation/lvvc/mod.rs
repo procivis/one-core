@@ -33,7 +33,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::{
-    CredentialDataByRole, CredentialRevocationInfo, NewCredentialState,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState,
     RevocationMethodCapabilities, VerifierCredentialData,
 };
 
@@ -122,7 +122,7 @@ impl LvvcProvider {
         &self,
         credential_id: &CredentialId,
         credential_status: &CredentialStatus,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<CredentialRevocationState, ServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -164,13 +164,19 @@ impl LvvcProvider {
             .await?;
 
         let status = status_from_lvvc_claims(&lvvc.claims.values)?;
-        Ok(status == LvvcStatus::Revoked)
+        Ok(match status {
+            LvvcStatus::Accepted => CredentialRevocationState::Valid,
+            LvvcStatus::Revoked => CredentialRevocationState::Revoked,
+            LvvcStatus::Suspended { suspend_end_date } => {
+                CredentialRevocationState::Suspended { suspend_end_date }
+            }
+        })
     }
 
     async fn check_revocation_status_as_issuer(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<CredentialRevocationState, ServiceError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -190,14 +196,26 @@ impl LvvcProvider {
             .first()
             .ok_or(ServiceError::MappingError("state is missing".to_string()))?;
 
-        Ok(latest_state.state == CredentialStateEnum::Revoked)
+        Ok(match latest_state.state {
+            CredentialStateEnum::Accepted => CredentialRevocationState::Valid,
+            CredentialStateEnum::Revoked => CredentialRevocationState::Revoked,
+            CredentialStateEnum::Suspended => CredentialRevocationState::Suspended {
+                suspend_end_date: latest_state.suspend_end_date,
+            },
+            _ => {
+                return Err(BusinessLogicError::InvalidCredentialState {
+                    state: latest_state.state.to_owned(),
+                }
+                .into());
+            }
+        })
     }
 
     fn check_revocation_status_as_verifier(
         &self,
         issuer_did: &DidValue,
         data: VerifierCredentialData,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<CredentialRevocationState, ServiceError> {
         let credential_id = data
             .credential
             .id
@@ -247,7 +265,13 @@ impl LvvcProvider {
         }
 
         let status = status_from_lvvc_claims(&lvvc.claims.values)?;
-        Ok(status == LvvcStatus::Revoked)
+        Ok(match status {
+            LvvcStatus::Accepted => CredentialRevocationState::Valid,
+            LvvcStatus::Revoked => CredentialRevocationState::Revoked,
+            LvvcStatus::Suspended { suspend_end_date } => {
+                CredentialRevocationState::Suspended { suspend_end_date }
+            }
+        })
     }
 }
 
@@ -289,7 +313,7 @@ impl RevocationMethod for LvvcProvider {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         additional_credential_data: Option<CredentialDataByRole>,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<CredentialRevocationState, ServiceError> {
         let additional_credential_data = additional_credential_data.ok_or(
             ServiceError::ValidationError("additional_credential_data is None".to_string()),
         )?;
@@ -311,19 +335,18 @@ impl RevocationMethod for LvvcProvider {
     async fn mark_credential_as(
         &self,
         credential: &Credential,
-        new_state: NewCredentialState,
-        suspend_end_date: Option<OffsetDateTime>,
+        new_state: CredentialRevocationState,
     ) -> Result<(), ServiceError> {
         match new_state {
-            NewCredentialState::Revoked => {
+            CredentialRevocationState::Revoked => {
                 self.create_lvvc_with_status(credential, LvvcStatus::Revoked)
                     .await
             }
-            NewCredentialState::Reactivated => {
+            CredentialRevocationState::Valid => {
                 self.create_lvvc_with_status(credential, LvvcStatus::Accepted)
                     .await
             }
-            NewCredentialState::Suspended => {
+            CredentialRevocationState::Suspended { suspend_end_date } => {
                 self.create_lvvc_with_status(credential, LvvcStatus::Suspended { suspend_end_date })
                     .await
             }

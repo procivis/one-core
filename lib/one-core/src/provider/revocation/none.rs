@@ -1,9 +1,10 @@
 use shared_types::DidValue;
-use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
-use crate::provider::revocation::{CredentialDataByRole, NewCredentialState, RevocationMethod};
+use crate::provider::revocation::{
+    CredentialDataByRole, CredentialRevocationState, RevocationMethod,
+};
 use crate::service::error::ServiceError;
 
 use super::{CredentialRevocationInfo, RevocationMethodCapabilities};
@@ -32,7 +33,7 @@ impl RevocationMethod for NoneRevocation {
         _credential_status: &CredentialStatus,
         _issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<CredentialRevocationState, ServiceError> {
         Err(ServiceError::ValidationError(
             "Credential cannot be revoked - status invalid".to_string(),
         ))
@@ -41,8 +42,7 @@ impl RevocationMethod for NoneRevocation {
     async fn mark_credential_as(
         &self,
         _credential: &Credential,
-        _new_state: NewCredentialState,
-        _suspend_end_date: Option<OffsetDateTime>,
+        _new_state: CredentialRevocationState,
     ) -> Result<(), ServiceError> {
         Err(ServiceError::ValidationError(
             "Credential cannot be revoked, reactivated or suspended".to_string(),

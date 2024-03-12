@@ -1,6 +1,6 @@
 use super::CredentialService;
 use crate::model::credential_schema::WalletStorageTypeEnum;
-use crate::provider::revocation::{NewCredentialState, RevocationMethodCapabilities};
+use crate::provider::revocation::{CredentialRevocationState, RevocationMethodCapabilities};
 use crate::repository::lvvc_repository::MockLvvcRepository;
 use crate::service::credential::dto::SuspendCredentialRequestDTO;
 use crate::{
@@ -1179,7 +1179,7 @@ async fn test_check_revocation_being_revoked() {
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _| Ok(true));
+        .returning(|_, _, _| Ok(CredentialRevocationState::Revoked));
 
     let formatter = Arc::new(formatter);
     formatter_provider
@@ -1800,8 +1800,8 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(NewCredentialState::Revoked), eq(None))
-        .return_once(move |_, _, _| Ok(()));
+        .with(always(), eq(CredentialRevocationState::Revoked))
+        .return_once(move |_, _| Ok(()));
 
     credential_repository
         .expect_update_credential()
@@ -1865,8 +1865,8 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(NewCredentialState::Revoked), eq(None))
-        .return_once(move |_, _, _| Ok(()));
+        .with(always(), eq(CredentialRevocationState::Revoked))
+        .return_once(move |_, _| Ok(()));
 
     credential_repository
         .expect_update_credential()
@@ -1934,10 +1934,11 @@ async fn test_suspend_credential_success() {
         .once()
         .with(
             always(),
-            eq(NewCredentialState::Suspended),
-            eq(Some(suspend_end_date)),
+            eq(CredentialRevocationState::Suspended {
+                suspend_end_date: Some(suspend_end_date),
+            }),
         )
-        .return_once(move |_, _, _| Ok(()));
+        .return_once(move |_, _| Ok(()));
 
     credential_repository
         .expect_update_credential()
@@ -2052,8 +2053,8 @@ async fn test_reactivate_credential_success() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(NewCredentialState::Reactivated), eq(None))
-        .return_once(move |_, _, _| Ok(()));
+        .with(always(), eq(CredentialRevocationState::Valid))
+        .return_once(move |_, _| Ok(()));
 
     credential_repository
         .expect_update_credential()

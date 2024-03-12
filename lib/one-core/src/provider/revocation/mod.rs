@@ -23,12 +23,14 @@ pub struct CredentialRevocationInfo {
     pub credential_status: CredentialStatus,
 }
 
+#[derive(Clone)]
 pub struct VerifierCredentialData {
     pub credential: DetailCredential,
     pub extracted_lvvcs: Vec<DetailCredential>,
     pub proof_schema: ProofSchema,
 }
 
+#[derive(Clone)]
 pub enum CredentialDataByRole {
     Holder(CredentialId),
     Issuer(CredentialId),
@@ -36,10 +38,12 @@ pub enum CredentialDataByRole {
 }
 
 #[derive(Clone, Debug, Display, PartialEq)]
-pub enum NewCredentialState {
+pub enum CredentialRevocationState {
+    Valid,
     Revoked,
-    Reactivated,
-    Suspended,
+    Suspended {
+        suspend_end_date: Option<OffsetDateTime>,
+    },
 }
 
 #[cfg_attr(test, mockall::automock)]
@@ -55,18 +59,15 @@ pub trait RevocationMethod: Send + Sync {
     async fn mark_credential_as(
         &self,
         credential: &Credential,
-        new_state: NewCredentialState,
-        suspend_end_date: Option<OffsetDateTime>,
+        new_state: CredentialRevocationState,
     ) -> Result<(), ServiceError>;
 
-    /// perform check of credential revocation status
-    /// * returns `bool` - true if credential revoked, false if valid
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         additional_credential_data: Option<CredentialDataByRole>,
-    ) -> Result<bool, ServiceError>;
+    ) -> Result<CredentialRevocationState, ServiceError>;
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities;
 }

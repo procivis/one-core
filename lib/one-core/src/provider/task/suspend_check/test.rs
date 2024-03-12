@@ -5,7 +5,7 @@ use super::SuspendCheckProvider;
 use crate::model::credential::{Credential, CredentialStateEnum, GetCredentialList};
 use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
-use crate::provider::revocation::{MockRevocationMethod, NewCredentialState};
+use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::provider::task::suspend_check::dto::SuspendCheckResultDTO;
 use crate::provider::task::Task;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -108,12 +108,8 @@ async fn test_run_one_update() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(
-            eq(credential.clone()),
-            eq(NewCredentialState::Reactivated),
-            eq(None),
-        )
-        .return_once(|_, _, _| Ok(()));
+        .with(eq(credential.clone()), eq(CredentialRevocationState::Valid))
+        .return_once(|_, _| Ok(()));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     revocation_method_provider
