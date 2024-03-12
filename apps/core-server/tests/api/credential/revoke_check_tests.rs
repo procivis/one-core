@@ -1,12 +1,14 @@
-use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::DidType;
+use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::revocation_list::RevocationListPurpose;
+use serde_json::json;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -158,6 +160,119 @@ async fn test_revoke_check_success_bitstring_status_list() {
         .respond_with(
             ResponseTemplate::new(200).set_body_string(bitstring_status_list_credential_jwt),
         )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("ACCEPTED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+}
+
+#[tokio::test]
+async fn test_revoke_check_success_lvvc() {
+    // GIVEN
+    // contains id=http://0.0.0.0:4445/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf
+    let credential_jwt = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDc0MDk2ODksImV4cCI6MTc3MDQ4MTY4OSwibmJmIjoxNzA3NDA5NjI5LCJpc3MiOiJkaWQ6a2V5Ono2TWtrdHJ3bUpwdU1ISGtrcVkzZzV4VVA2S0tCMWVYeExvNktaRFo1THBmQmhyYyIsInN1YiI6ImRpZDprZXk6ejZNa2hodHVjWjY3Uzh5QXZIUG9KdE1WeDI4ejNCZmNQTjFncGpmbmk1RFQ3cVNlIiwianRpIjoiODhmYjlhZDItZWZlMC00YWRlLTgyNTEtMmIzOTc4NjQ5MGFmIiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLCJpZCI6Imh0dHA6Ly8wLjAuMC4wOjQ0NDUvYXBpL2NyZWRlbnRpYWwvdjEvMjg4MGQ4ZGQtY2UzZi00ZDc0LWI0NjMtYTJjMGRhMDdhNWNmIiwiY3JlZGVudGlhbFN1YmplY3QiOnsiYWdlIjoiNTUifSwiY3JlZGVudGlhbFN0YXR1cyI6eyJpZCI6Imh0dHA6Ly8wLjAuMC4wOjQ0NDUvc3NpL3Jldm9jYXRpb24vdjEvbHZ2Yy8yODgwZDhkZC1jZTNmLTRkNzQtYjQ2My1hMmMwZGEwN2E1Y2YiLCJ0eXBlIjoiTFZWQyJ9fX0.-r0uxZCI2DAaxO8VHZOsZdcP9oMQhCeGjxOtQyDqITu_SPhuVGg2RZXvQT1C9r1p3CyG3bQRV0W0JOnN0QXtBA";
+    let lvvc_credential_jwt = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDc0MDk2ODksImV4cCI6MTc3MDQ4MTY4OSwibmJmIjoxNzA3NDA5NjI5LCJpc3MiOiJkaWQ6a2V5Ono2TWtrdHJ3bUpwdU1ISGtrcVkzZzV4VVA2S0tCMWVYeExvNktaRFo1THBmQmhyYyIsInN1YiI6ImRpZDprZXk6ejZNa2hodHVjWjY3Uzh5QXZIUG9KdE1WeDI4ejNCZmNQTjFncGpmbmk1RFQ3cVNlIiwianRpIjoiODhmYjlhZDItZWZlMC00YWRlLTgyNTEtMmIzOTc4NjQ5MGFmIiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLCJpZCI6Imh0dHA6Ly8wLjAuMC4wOjQ0NDUvc3NpL3Jldm9jYXRpb24vdjEvbHZ2Yy8yODgwZDhkZC1jZTNmLTRkNzQtYjQ2My1hMmMwZGEwN2E1Y2YiLCJjcmVkZW50aWFsU3ViamVjdCI6eyJpZCI6Imh0dHA6Ly8wLjAuMC4wOjQ0NDUvYXBpL2NyZWRlbnRpYWwvdjEvMjg4MGQ4ZGQtY2UzZi00ZDc0LWI0NjMtYTJjMGRhMDdhNWNmIiwic3RhdHVzIjoiQUNDRVBURUQifX19.Z5PVZfjoLwkKUlJ-2EQN7QWip8S10NbbaatRpfuEgK2EYT2V0c__9Z_4zBJ5mtFvHyucxTb5r8wVcTNo-A0-DA";
+
+    let mock_server = MockServer::builder()
+        .listener(std::net::TcpListener::bind("127.0.0.1:4445").unwrap())
+        .start()
+        .await;
+
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let holder_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6MkktrwmJpuMHHkkqY3g5xUP6KKB1eXxLo6KZDZ5LpfBhrc"
+                        .parse()
+                        .unwrap(),
+                ),
+                did_type: Some(DidType::Local),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: holder_key,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6MkhhtucZ67S8yAvHPoJtMVx28z3BfcPN1gpjfni5DT7qSe"
+                        .parse()
+                        .unwrap(),
+                ),
+                did_type: Some(DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "LVVC", Default::default())
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                credential: Some(credential_jwt),
+                holder_did: Some(holder_did),
+                role: Some(CredentialRole::Holder),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create(&issuer_did, RevocationListPurpose::Revocation, None)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(
+            "/ssi/revocation/v1/lvvc/2880d8dd-ce3f-4d74-b463-a2c0da07a5cf",
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credential": lvvc_credential_jwt,
+            "format": "JWT"
+        })))
         .expect(1)
         .mount(&mock_server)
         .await;

@@ -11,7 +11,8 @@ use crate::{
         did_method::provider::DidMethodProvider,
         key_algorithm::provider::KeyAlgorithmProvider,
         revocation::{
-            provider::RevocationMethodProvider, CredentialDataByRole, VerifierCredentialData,
+            provider::RevocationMethodProvider, CredentialDataByRole, CredentialRevocationState,
+            VerifierCredentialData,
         },
     },
     service::error::{MissingProviderError, ServiceError},
@@ -163,7 +164,7 @@ pub(super) async fn validate_proof(
                         "Issuer DID missing".to_owned(),
                     ))?;
 
-            if revocation_method
+            match revocation_method
                 .check_credential_revocation_status(
                     credential_status,
                     issuer_did,
@@ -177,9 +178,17 @@ pub(super) async fn validate_proof(
                 )
                 .await?
             {
-                return Err(ServiceError::ValidationError(
-                    "Submitted credential revoked".to_owned(),
-                ));
+                CredentialRevocationState::Valid => {}
+                CredentialRevocationState::Revoked => {
+                    return Err(ServiceError::ValidationError(
+                        "Submitted credential revoked".to_owned(),
+                    ))
+                }
+                CredentialRevocationState::Suspended { .. } => {
+                    return Err(ServiceError::ValidationError(
+                        "Submitted credential suspended".to_owned(),
+                    ))
+                }
             }
         }
 

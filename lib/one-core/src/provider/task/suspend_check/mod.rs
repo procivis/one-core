@@ -15,7 +15,7 @@ use crate::{
         list_filter::{ComparisonType, ListFilterValue, ValueComparison},
         organisation::OrganisationRelations,
     },
-    provider::revocation::{provider::RevocationMethodProvider, NewCredentialState},
+    provider::revocation::{provider::RevocationMethodProvider, CredentialRevocationState},
     repository::{
         credential_repository::CredentialRepository, history_repository::HistoryRepository,
     },
@@ -110,7 +110,7 @@ impl Task for SuspendCheckProvider {
             };
 
             revocation_method
-                .mark_credential_as(&credential, NewCredentialState::Reactivated, None)
+                .mark_credential_as(&credential, CredentialRevocationState::Valid)
                 .await?;
 
             self.credential_repository
@@ -134,7 +134,7 @@ impl Task for SuspendCheckProvider {
                 .history_repository
                 .create_history(credential_revocation_history_event(
                     credential_id,
-                    NewCredentialState::Reactivated,
+                    CredentialRevocationState::Valid,
                     credential.schema.and_then(|c| c.organisation),
                 ))
                 .await;

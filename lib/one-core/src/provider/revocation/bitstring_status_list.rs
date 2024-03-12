@@ -17,7 +17,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationInfo, NewCredentialState, RevocationMethod,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, RevocationMethod,
     RevocationMethodCapabilities,
 };
 use crate::provider::transport_protocol::TransportProtocolError;
@@ -88,19 +88,18 @@ impl RevocationMethod for BitstringStatusList {
     async fn mark_credential_as(
         &self,
         credential: &Credential,
-        new_state: NewCredentialState,
-        _suspend_end_date: Option<OffsetDateTime>,
+        new_state: CredentialRevocationState,
     ) -> Result<(), ServiceError> {
         match new_state {
-            NewCredentialState::Revoked => {
+            CredentialRevocationState::Revoked => {
                 self.mark_credential_as_impl(RevocationListPurpose::Revocation, credential, true)
                     .await
             }
-            NewCredentialState::Reactivated => {
+            CredentialRevocationState::Valid => {
                 self.mark_credential_as_impl(RevocationListPurpose::Suspension, credential, false)
                     .await
             }
-            NewCredentialState::Suspended => {
+            CredentialRevocationState::Suspended { .. } => {
                 self.mark_credential_as_impl(RevocationListPurpose::Suspension, credential, true)
                     .await
             }
@@ -112,7 +111,7 @@ impl RevocationMethod for BitstringStatusList {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<CredentialRevocationState, ServiceError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(ServiceError::ValidationError(format!(
                 "Invalid credential status type: {}",
@@ -164,8 +163,28 @@ impl RevocationMethod for BitstringStatusList {
         )
         .await?;
 
-        let result = extract_bitstring_index(encoded_list, list_index)?;
-        Ok(result)
+        if extract_bitstring_index(encoded_list, list_index)? {
+            Ok(match credential_status.status_purpose.as_ref() {
+                Some(purpose) => match purpose.as_str() {
+                    "revocation" => CredentialRevocationState::Revoked,
+                    "suspension" => CredentialRevocationState::Suspended {
+                        suspend_end_date: None,
+                    },
+                    _ => {
+                        return Err(ServiceError::ValidationError(format!(
+                            "Invalid status purpose: {purpose}",
+                        )))
+                    }
+                },
+                None => {
+                    return Err(ServiceError::ValidationError(
+                        "Missing status purpose ".to_string(),
+                    ))
+                }
+            })
+        } else {
+            Ok(CredentialRevocationState::Valid)
+        }
     }
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
