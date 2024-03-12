@@ -89,6 +89,7 @@ impl RevocationMethod for BitstringStatusList {
         &self,
         credential: &Credential,
         new_state: NewCredentialState,
+        _suspend_end_date: Option<OffsetDateTime>,
     ) -> Result<(), ServiceError> {
         match new_state {
             NewCredentialState::Revoked => {

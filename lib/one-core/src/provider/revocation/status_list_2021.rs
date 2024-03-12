@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use shared_types::DidValue;
+use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
@@ -110,6 +111,7 @@ impl RevocationMethod for StatusList2021 {
         &self,
         _credential: &Credential,
         _new_state: NewCredentialState,
+        _suspend_end_date: Option<OffsetDateTime>,
     ) -> Result<(), ServiceError> {
         Err(BusinessLogicError::StatusList2021NotSupported.into())
     }
