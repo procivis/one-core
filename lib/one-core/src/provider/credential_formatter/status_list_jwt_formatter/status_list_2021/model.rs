@@ -3,7 +3,7 @@ use shared_types::DidValue;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::status_list_jwt_formatter::common::{
-    from_timestamp, into_timestamp,
+    from_timestamp, into_timestamp, StatusPurpose,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -23,12 +23,6 @@ pub struct VCContent {
     #[serde(serialize_with = "into_timestamp", deserialize_with = "from_timestamp")]
     pub issued: OffsetDateTime,
     pub credential_subject: CredentialSubject,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum StatusPurpose {
-    Revocation,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

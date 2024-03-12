@@ -641,7 +641,7 @@ impl CredentialService {
                     .extract_credentials_unverified(&credential_str)
                     .await?;
 
-                if credential.status.first().is_some() {
+                if !credential.status.is_empty() {
                     credential.status
                 } else {
                     // no credential status -> credential is irrevocable

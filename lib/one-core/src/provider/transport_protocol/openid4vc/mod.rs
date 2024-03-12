@@ -409,7 +409,7 @@ impl TransportProtocol for OpenID4VC {
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
-        // todo (ONE-1759): check both revocation and suspension (iterate over both)
+        // Revocation method should be the same for every credential in list
         if let Some(credential_status) = response_credential.status.first() {
             let (_, revocation_method) = self
                 .revocation_provider

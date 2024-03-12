@@ -8,7 +8,7 @@ use crate::{
     model::{
         claim_schema::ClaimSchema,
         credential_schema::CredentialSchema,
-        did::{Did, DidRelations, DidType},
+        did::{Did, DidRelations},
         organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
         proof_schema::{ProofSchema, ProofSchemaClaim},
@@ -31,12 +31,15 @@ use crate::{
         history_repository::MockHistoryRepository, mock::proof_repository::MockProofRepository,
     },
     service::{
+        error::{BusinessLogicError, ServiceError},
         ssi_verifier::SSIVerifierService,
-        test_utilities::{dummy_proof, generic_config},
+        test_utilities::*,
     },
 };
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use mockall::predicate::eq;
 
 #[tokio::test]
@@ -461,6 +464,374 @@ async fn test_submit_proof_succeeds() {
 }
 
 #[tokio::test]
+async fn test_submit_proof_failed_credential_revoked() {
+    let proof_id = Uuid::new_v4();
+    let verifier_did = "verifier did".parse().unwrap();
+    let holder_did: DidValue = "did:holder".parse().unwrap();
+    let issuer_did: DidValue = "did:issuer".parse().unwrap();
+
+    let mut proof_repository = MockProofRepository::new();
+
+    let holder_did_clone = holder_did.clone();
+    proof_repository
+        .expect_get_proof()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .return_once(move |_, _| {
+            let credential_schema = dummy_credential_schema();
+            Ok(Some(Proof {
+                id: proof_id,
+                verifier_did: Some(Did {
+                    did: verifier_did,
+                    ..dummy_did()
+                }),
+                holder_did: Some(Did {
+                    did: holder_did_clone,
+                    ..dummy_did()
+                }),
+                state: Some(vec![ProofState {
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    state: ProofStateEnum::Requested,
+                }]),
+                schema: Some(ProofSchema {
+                    claim_schemas: Some(vec![
+                        ProofSchemaClaim {
+                            schema: ClaimSchema {
+                                key: "required_key".to_string(),
+                                ..dummy_claim_schema()
+                            },
+                            required: true,
+                            credential_schema: Some(credential_schema.to_owned()),
+                        },
+                        ProofSchemaClaim {
+                            schema: ClaimSchema {
+                                key: "optional_key".to_string(),
+                                ..dummy_claim_schema()
+                            },
+                            required: false,
+                            credential_schema: Some(credential_schema),
+                        },
+                    ]),
+                    ..dummy_proof_schema()
+                }),
+                ..dummy_proof()
+            }))
+        });
+
+    proof_repository
+        .expect_set_proof_state()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let mut formatter = MockCredentialFormatter::new();
+
+    let holder_did_clone = holder_did.clone();
+    let issuer_did_clone = issuer_did.clone();
+    formatter
+        .expect_extract_credentials_unverified()
+        .once()
+        .returning(move |_| {
+            Ok(DetailCredential {
+                id: None,
+                issued_at: Some(OffsetDateTime::now_utc()),
+                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                invalid_before: Some(OffsetDateTime::now_utc()),
+                issuer_did: Some(issuer_did_clone.to_owned()),
+                subject: Some(holder_did_clone.to_owned()),
+                claims: CredentialSubject {
+                    // submitted claims
+                    values: HashMap::from([
+                        // ignored by verifier
+                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
+                        // required by verifier
+                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        // optional
+                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                    ]),
+                },
+                status: vec![],
+            })
+        });
+
+    let holder_did_clone = holder_did.clone();
+    formatter
+        .expect_extract_presentation()
+        .once()
+        .returning(move |_, _| {
+            Ok(Presentation {
+                id: Some("presentation id".to_string()),
+                issued_at: Some(OffsetDateTime::now_utc()),
+                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                issuer_did: Some(holder_did_clone.to_owned()),
+                nonce: None,
+                credentials: vec!["credential".to_string()],
+            })
+        });
+    formatter.expect_get_leeway().returning(|| 10);
+    let issuer_did_clone = issuer_did.clone();
+    formatter
+        .expect_extract_credentials()
+        .once()
+        .returning(move |_, _| {
+            Ok(DetailCredential {
+                id: None,
+                issued_at: Some(OffsetDateTime::now_utc()),
+                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                invalid_before: Some(OffsetDateTime::now_utc()),
+                issuer_did: Some(issuer_did_clone.to_owned()),
+                subject: Some(holder_did.to_owned()),
+                claims: CredentialSubject {
+                    // submitted claims
+                    values: HashMap::from([
+                        // ignored by verifier
+                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
+                        // required by verifier
+                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        // optional
+                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                    ]),
+                },
+                status: vec![CredentialStatus {
+                    id: "".to_string(),
+                    r#type: "".to_string(),
+                    status_purpose: None,
+                    additional_fields: Default::default(),
+                }],
+            })
+        });
+
+    let formatter = Arc::new(formatter);
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_formatter()
+        .times(3)
+        .returning(move |_| Some(formatter.clone()));
+
+    let mut revocation_method = MockRevocationMethod::new();
+    revocation_method
+        .expect_check_credential_revocation_status()
+        .once()
+        .return_once(|_, _, _| Ok(CredentialRevocationState::Revoked));
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method_by_status_type()
+        .once()
+        .return_once(|_| Some((Arc::new(revocation_method), "".to_string())));
+
+    let service = SSIVerifierService {
+        proof_repository: Arc::new(proof_repository),
+        formatter_provider: Arc::new(formatter_provider),
+        revocation_method_provider: Arc::new(revocation_method_provider),
+        ..mock_ssi_verifier_service()
+    };
+
+    let presentation_content = "presentation content";
+    let err = service
+        .submit_proof(&proof_id, presentation_content)
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        ServiceError::BusinessLogic(BusinessLogicError::CredentialIsRevokedOrSuspended)
+    ));
+}
+
+#[tokio::test]
+async fn test_submit_proof_failed_credential_suspended() {
+    let proof_id = Uuid::new_v4();
+    let verifier_did = "verifier did".parse().unwrap();
+    let holder_did: DidValue = "did:holder".parse().unwrap();
+    let issuer_did: DidValue = "did:issuer".parse().unwrap();
+
+    let mut proof_repository = MockProofRepository::new();
+
+    let holder_did_clone = holder_did.clone();
+    proof_repository
+        .expect_get_proof()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .return_once(move |_, _| {
+            let credential_schema = dummy_credential_schema();
+            Ok(Some(Proof {
+                id: proof_id,
+                verifier_did: Some(Did {
+                    did: verifier_did,
+                    ..dummy_did()
+                }),
+                holder_did: Some(Did {
+                    did: holder_did_clone,
+                    ..dummy_did()
+                }),
+                state: Some(vec![ProofState {
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    state: ProofStateEnum::Requested,
+                }]),
+                schema: Some(ProofSchema {
+                    claim_schemas: Some(vec![
+                        ProofSchemaClaim {
+                            schema: ClaimSchema {
+                                key: "required_key".to_string(),
+                                ..dummy_claim_schema()
+                            },
+                            required: true,
+                            credential_schema: Some(credential_schema.to_owned()),
+                        },
+                        ProofSchemaClaim {
+                            schema: ClaimSchema {
+                                key: "optional_key".to_string(),
+                                ..dummy_claim_schema()
+                            },
+                            required: false,
+                            credential_schema: Some(credential_schema),
+                        },
+                    ]),
+                    ..dummy_proof_schema()
+                }),
+                ..dummy_proof()
+            }))
+        });
+
+    proof_repository
+        .expect_set_proof_state()
+        .withf(move |_proof_id, _| {
+            assert_eq!(_proof_id, &proof_id);
+            true
+        })
+        .once()
+        .returning(|_, _| Ok(()));
+
+    let mut formatter = MockCredentialFormatter::new();
+
+    let holder_did_clone = holder_did.clone();
+    let issuer_did_clone = issuer_did.clone();
+    formatter
+        .expect_extract_credentials_unverified()
+        .once()
+        .returning(move |_| {
+            Ok(DetailCredential {
+                id: None,
+                issued_at: Some(OffsetDateTime::now_utc()),
+                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                invalid_before: Some(OffsetDateTime::now_utc()),
+                issuer_did: Some(issuer_did_clone.to_owned()),
+                subject: Some(holder_did_clone.to_owned()),
+                claims: CredentialSubject {
+                    // submitted claims
+                    values: HashMap::from([
+                        // ignored by verifier
+                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
+                        // required by verifier
+                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        // optional
+                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                    ]),
+                },
+                status: vec![],
+            })
+        });
+
+    let holder_did_clone = holder_did.clone();
+    formatter
+        .expect_extract_presentation()
+        .once()
+        .returning(move |_, _| {
+            Ok(Presentation {
+                id: Some("presentation id".to_string()),
+                issued_at: Some(OffsetDateTime::now_utc()),
+                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                issuer_did: Some(holder_did_clone.to_owned()),
+                nonce: None,
+                credentials: vec!["credential".to_string()],
+            })
+        });
+    formatter.expect_get_leeway().returning(|| 10);
+    let issuer_did_clone = issuer_did.clone();
+    formatter
+        .expect_extract_credentials()
+        .once()
+        .returning(move |_, _| {
+            Ok(DetailCredential {
+                id: None,
+                issued_at: Some(OffsetDateTime::now_utc()),
+                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                invalid_before: Some(OffsetDateTime::now_utc()),
+                issuer_did: Some(issuer_did_clone.to_owned()),
+                subject: Some(holder_did.to_owned()),
+                claims: CredentialSubject {
+                    // submitted claims
+                    values: HashMap::from([
+                        // ignored by verifier
+                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
+                        // required by verifier
+                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        // optional
+                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                    ]),
+                },
+                status: vec![CredentialStatus {
+                    id: "".to_string(),
+                    r#type: "".to_string(),
+                    status_purpose: None,
+                    additional_fields: Default::default(),
+                }],
+            })
+        });
+
+    let formatter = Arc::new(formatter);
+    let mut formatter_provider = MockCredentialFormatterProvider::new();
+    formatter_provider
+        .expect_get_formatter()
+        .times(3)
+        .returning(move |_| Some(formatter.clone()));
+
+    let mut revocation_method = MockRevocationMethod::new();
+    revocation_method
+        .expect_check_credential_revocation_status()
+        .once()
+        .return_once(|_, _, _| {
+            Ok(CredentialRevocationState::Suspended {
+                suspend_end_date: None,
+            })
+        });
+
+    let mut revocation_method_provider = MockRevocationMethodProvider::new();
+    revocation_method_provider
+        .expect_get_revocation_method_by_status_type()
+        .once()
+        .return_once(|_| Some((Arc::new(revocation_method), "".to_string())));
+
+    let service = SSIVerifierService {
+        proof_repository: Arc::new(proof_repository),
+        formatter_provider: Arc::new(formatter_provider),
+        revocation_method_provider: Arc::new(revocation_method_provider),
+        ..mock_ssi_verifier_service()
+    };
+
+    let presentation_content = "presentation content";
+    let err = service
+        .submit_proof(&proof_id, presentation_content)
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        ServiceError::BusinessLogic(BusinessLogicError::CredentialIsRevokedOrSuspended)
+    ));
+}
+
+#[tokio::test]
 async fn test_reject_proof_succeeds() {
     let proof_id = Uuid::new_v4();
 
@@ -517,68 +888,5 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         history_repository: Arc::new(MockHistoryRepository::new()),
         config: Arc::new(generic_config().core),
-    }
-}
-
-fn dummy_proof_schema() -> ProofSchema {
-    ProofSchema {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        deleted_at: None,
-        name: "Proof schema".to_string(),
-        expire_duration: 100,
-        claim_schemas: None,
-        organisation: None,
-        validity_constraint: None,
-        input_schemas: None,
-    }
-}
-
-fn dummy_did() -> Did {
-    Did {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        name: "John".to_string(),
-        did: "did".parse().unwrap(),
-        did_type: DidType::Local,
-        did_method: "INTERNAL".to_string(),
-        keys: None,
-        organisation: Some(dummy_organisation()),
-        deactivated: false,
-    }
-}
-
-fn dummy_organisation() -> Organisation {
-    Organisation {
-        id: Uuid::new_v4(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-    }
-}
-
-fn dummy_credential_schema() -> CredentialSchema {
-    CredentialSchema {
-        id: Uuid::new_v4(),
-        deleted_at: None,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        name: "name".to_string(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-        format: "format".to_string(),
-        revocation_method: "format".to_string(),
-        claim_schemas: None,
-        organisation: None,
-    }
-}
-
-fn dummy_claim_schema() -> ClaimSchema {
-    ClaimSchema {
-        id: Uuid::new_v4(),
-        key: "key".to_string(),
-        data_type: "data type".to_string(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
     }
 }

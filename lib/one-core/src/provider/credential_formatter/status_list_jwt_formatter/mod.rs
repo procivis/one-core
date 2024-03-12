@@ -1,5 +1,5 @@
 mod bitstring_status_list;
-mod common;
+pub(crate) mod common;
 mod status_list_2021;
 
 pub use bitstring_status_list::BitstringStatusListJwtFormatter;

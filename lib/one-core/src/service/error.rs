@@ -218,6 +218,9 @@ pub enum BusinessLogicError {
 
     #[error("Wallet storage type requirement cannot be fulfilled")]
     UnfulfilledWalletStorageType,
+
+    #[error("Credential state is Revoked or Suspended and cannot be shared")]
+    CredentialIsRevokedOrSuspended,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -560,6 +563,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Revocation method does not support state (REVOKE, SUSPEND)")]
     BR_0098,
 
+    #[strum(to_string = "Credential state is Revoked or Suspended and cannot be shared")]
+    BR_0099,
+
     #[strum(to_string = "Revocation error")]
     BR_0101,
 
@@ -659,6 +665,7 @@ impl BusinessLogicError {
             BusinessLogicError::OperationNotSupportedByRevocationMethod { .. } => {
                 ErrorCode::BR_0098
             }
+            BusinessLogicError::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
         }
     }
 }

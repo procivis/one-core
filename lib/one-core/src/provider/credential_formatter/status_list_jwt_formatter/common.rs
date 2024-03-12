@@ -27,3 +27,10 @@ where
         OffsetDateTime::parse(&string, &Rfc3339).map_err(|err| Error::custom(err.to_string()))
     })
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum StatusPurpose {
+    Revocation,
+    Suspension,
+}
