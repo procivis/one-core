@@ -81,7 +81,7 @@ async fn test_create_credential_schema_with_the_same_name_and_organisation_as_de
     let credential_schema = context
         .db
         .credential_schemas
-        .create(schema_name, &organisation, "NONE")
+        .create(schema_name, &organisation, "NONE", Default::default())
         .await;
 
     context

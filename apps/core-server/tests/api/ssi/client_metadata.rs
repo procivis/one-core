@@ -10,7 +10,7 @@ async fn test_get_client_metadata() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
@@ -96,7 +96,7 @@ async fn test_fail_to_get_client_metadata_wrong_transport_protocol() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
@@ -146,7 +146,7 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;

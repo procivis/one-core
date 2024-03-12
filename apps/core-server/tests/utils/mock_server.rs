@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
+use shared_types::{DidId, KeyId};
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
@@ -24,6 +25,43 @@ impl MockServer {
         Mock::given(method(Method::POST))
             .and(path("/ssi/temporary-issuer/v1/reject"))
             .respond_with(ResponseTemplate::new(200))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn ssi_submit(
+        &self,
+        credential_id: impl Display,
+        did_id: DidId,
+        key_id: Option<KeyId>,
+    ) {
+        let mut expectation = Mock::given(method(Method::POST))
+            .and(path("/ssi/temporary-issuer/v1/submit"))
+            .and(query_param("credentialId", credential_id.to_string()))
+            .and(query_param("didId", did_id.to_string()));
+
+        if let Some(key_id) = key_id {
+            expectation = expectation.and(query_param("keyId", key_id.to_string()))
+        }
+
+        expectation
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "credential": "123",
+                "format": "JWT"
+            })))
+            .expect(1)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn credential_endpoint(&self) {
+        Mock::given(method(Method::POST))
+            .and(path("/credential"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "credential": "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDEyNTk2MzcsImV4cCI6MTc2NDMzMTYzNywibmJmIjoxNzAxMjU5NTc3LCJpc3MiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInN1YiI6ImRkMmZmMDE2LTVmYmUtNDNiMC1hMmJhLTNiMDIzZWNjNTRmYiIsImp0aSI6IjNjNDgwYjUxLTI0ZDQtNGM3OS05MDViLTI3MTQ4YjYyY2RlNiIsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiaHR0cHM6Ly93M2lkLm9yZy92Yy9zdGF0dXMtbGlzdC8yMDIxL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsic3RyaW5nIjoic3RyaW5nIn0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIzAiLCJ0eXBlIjoiU3RhdHVzTGlzdDIwMjFFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIiwic3RhdHVzTGlzdEluZGV4IjoiMCJ9fX0.JUe1lljvJAXMMLr9mKOKLMFJ1XQr_GzL0i8JTOvt1_uNwVgQzMFQPqMUZ-sQg2JtWogDHLaUsjW64yFyc7ExCg",
+                "format": "JWT"
+            })))
             .expect(1)
             .mount(&self.mock)
             .await;

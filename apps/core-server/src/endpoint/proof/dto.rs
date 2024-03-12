@@ -19,7 +19,7 @@ use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
-use shared_types::DidId;
+use shared_types::{DidId, KeyId};
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
@@ -48,7 +48,7 @@ pub struct CreateProofRequestRestDTO {
     pub verifier_did: DidId,
     pub transport: String,
     pub redirect_uri: Option<String>,
-    pub verifier_key: Option<Uuid>,
+    pub verifier_key: Option<KeyId>,
 }
 
 // list endpoint

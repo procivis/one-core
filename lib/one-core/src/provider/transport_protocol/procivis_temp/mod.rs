@@ -2,6 +2,7 @@ mod dto;
 mod mapper;
 
 use async_trait::async_trait;
+use shared_types::{DidId, KeyId};
 use std::sync::Arc;
 use time::OffsetDateTime;
 use url::Url;
@@ -271,10 +272,22 @@ impl TransportProtocol for ProcivisTemp {
     async fn accept_credential(
         &self,
         credential: &Credential,
+        did_id: &DidId,
+        key_id: &Option<KeyId>,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/submit");
-        url.set_query(Some(&format!("credentialId={}", credential.id)));
+        if let Some(key_id) = key_id {
+            url.set_query(Some(&format!(
+                "credentialId={}&didId={}&keyId={}",
+                credential.id, did_id, key_id
+            )));
+        } else {
+            url.set_query(Some(&format!(
+                "credentialId={}&didId={}",
+                credential.id, did_id
+            )));
+        }
 
         let response = self
             .client

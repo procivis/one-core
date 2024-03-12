@@ -140,7 +140,13 @@ async fn test_opeind4vc_jsondl_flow(server_key: TestKey, holder_key: TestKey) {
         )
         .await;
 
-    let resp = server_context.api.ssi.temporary_submit(credential.id).await;
+    let resp = server_context
+        .api
+        .ssi
+        .temporary_submit(credential.id, holder_did.id)
+        .await;
+
+    assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
     // Valid credentials
@@ -279,7 +285,12 @@ async fn test_opeind4vc_jsondl_flow(server_key: TestKey, holder_key: TestKey) {
     let resp = holder_context
         .api
         .interactions
-        .presentation_submit(holder_interaction.id, holder_credential.id, claims)
+        .presentation_submit(
+            holder_interaction.id,
+            holder_did.id,
+            holder_credential.id,
+            claims,
+        )
         .await;
 
     // THEN

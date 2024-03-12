@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::json;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, DidId, KeyId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -318,6 +318,8 @@ impl TransportProtocol for OpenID4VC {
     async fn accept_credential(
         &self,
         credential: &Credential,
+        _did_id: &DidId,
+        _key_id: &Option<KeyId>,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
         let schema = credential
             .schema

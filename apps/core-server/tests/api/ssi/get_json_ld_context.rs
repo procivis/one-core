@@ -11,7 +11,7 @@ async fn test_get_json_ld_context_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test schema", &organisation, "NONE")
+        .create("test schema", &organisation, "NONE", Default::default())
         .await;
 
     // WHEN

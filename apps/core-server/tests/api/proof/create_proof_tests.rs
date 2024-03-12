@@ -13,7 +13,7 @@ async fn test_create_proof_success_without_related_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas
@@ -72,7 +72,7 @@ async fn test_create_proof_success_with_related_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
     let claim_schema = credential_schema
         .claim_schemas

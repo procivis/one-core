@@ -1,6 +1,6 @@
 use one_core::model::claim::Claim;
 use serde_json::json;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, DidId, KeyId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -25,6 +25,23 @@ impl InteractionsApi {
             .await
     }
 
+    pub async fn issuance_accept(
+        &self,
+        interaction_id: impl Into<Uuid>,
+        did_id: impl Into<DidId>,
+        key_id: impl Into<Option<KeyId>>,
+    ) -> Response {
+        let body = json!({
+          "interactionId": interaction_id.into(),
+          "didId": did_id.into(),
+          "keyId": key_id.into(),
+        });
+
+        self.client
+            .post("/api/interaction/v1/issuance-accept", body)
+            .await
+    }
+
     pub async fn issuance_reject(&self, interaction_id: impl Into<Uuid>) -> Response {
         let body = json!({
           "interactionId": interaction_id.into(),
@@ -38,11 +55,13 @@ impl InteractionsApi {
     pub async fn presentation_submit(
         &self,
         interaction_id: Uuid,
+        did_id: DidId,
         credential_id: CredentialId,
         claims_id: Vec<Claim>,
     ) -> Response {
         let body = json!({
           "interactionId": interaction_id,
+          "didId": did_id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential_id,

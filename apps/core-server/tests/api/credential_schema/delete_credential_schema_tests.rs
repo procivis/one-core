@@ -7,7 +7,12 @@ async fn test_delete_credential_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test schema", &organisation, "BITSTRINGSTATUSLIST")
+        .create(
+            "test schema",
+            &organisation,
+            "BITSTRINGSTATUSLIST",
+            Default::default(),
+        )
         .await;
 
     // WHEN

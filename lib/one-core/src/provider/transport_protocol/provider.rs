@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use shared_types::CredentialId;
+use shared_types::{CredentialId, KeyId};
 use url::Url;
 
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
@@ -10,7 +10,7 @@ use crate::model::credential::{
     CredentialRelations, CredentialStateEnum, CredentialStateRelations,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::DidRelations;
+use crate::model::did::{Did, DidRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -46,6 +46,8 @@ pub(crate) trait TransportProtocolProvider: Send + Sync {
     async fn issue_credential(
         &self,
         credential_id: &CredentialId,
+        holder_did: Did,
+        key_id: Option<KeyId>,
     ) -> Result<SubmitIssuerResponse, ServiceError>;
 }
 
@@ -102,8 +104,10 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
     async fn issue_credential(
         &self,
         credential_id: &CredentialId,
+        holder_did: Did,
+        key_id: Option<KeyId>,
     ) -> Result<SubmitIssuerResponse, ServiceError> {
-        let credential = self
+        let Some(credential) = self
             .credential_repository
             .get_credential(
                 credential_id,
@@ -125,9 +129,8 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
                     ..Default::default()
                 },
             )
-            .await?;
-
-        let Some(credential) = credential else {
+            .await?
+        else {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
 
@@ -137,12 +140,6 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .schema
             .as_ref()
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
-
-        let holder_did = credential
-            .holder_did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("holder did is None".to_string()))?
-            .clone();
 
         let format = credential_schema.format.to_owned();
 
@@ -179,7 +176,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             credential_status,
         )?;
 
-        let token: String = self
+        let token = self
             .formatter_provider
             .get_formatter(&format)
             .ok_or(ValidationError::InvalidFormatter(format.to_string()))?
@@ -194,7 +191,12 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .await?;
 
         self.credential_repository
-            .update_credential(get_issued_credential_update(credential_id, &token))
+            .update_credential(get_issued_credential_update(
+                credential_id,
+                &token,
+                holder_did.id,
+                key_id,
+            ))
             .await?;
 
         let _ = self

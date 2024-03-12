@@ -20,9 +20,9 @@ use crate::{
 #[tokio::test]
 async fn test_opeind4vc_jsondl_bbsplus_flow() {
     // GIVEN
-    let issuer_bbs_key: TestKey = bbs_key_1();
-    let holder_key: TestKey = eddsa_key_1();
-    let verifier_key: TestKey = eddsa_key_2();
+    let issuer_bbs_key = bbs_key_1();
+    let holder_key = eddsa_key_1();
+    let verifier_key = eddsa_key_2();
 
     let server_context = TestContext::new().await;
     let base_url = server_context.config.app.core_base_url.clone();
@@ -154,7 +154,11 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
         )
         .await;
 
-    let resp = server_context.api.ssi.temporary_submit(credential.id).await;
+    let resp = server_context
+        .api
+        .ssi
+        .temporary_submit(credential.id, server_remote_holder_did.id)
+        .await;
     let resp = resp.json_value().await;
 
     // Valid credentials
@@ -315,7 +319,12 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
     let resp = holder_context
         .api
         .interactions
-        .presentation_submit(holder_interaction.id, holder_credential.id, claims)
+        .presentation_submit(
+            holder_interaction.id,
+            holder_local_holder_did.id,
+            holder_credential.id,
+            claims,
+        )
         .await;
 
     // THEN
@@ -374,6 +383,7 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
         Some(holder_key),
     )
     .await;
+    let holder_did = holder_did.unwrap();
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> =
         vec![(Uuid::new_v4(), "Key", true, "STRING")];
@@ -399,7 +409,7 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
             &server_issuer_did.unwrap(),
             "PROCIVIS_TEMPORARY",
             TestingCredentialParams {
-                holder_did: Some(holder_did.unwrap()),
+                holder_did: Some(holder_did.clone()),
                 key: Some(server_issuer_key.unwrap()),
                 ..Default::default()
             },
@@ -411,7 +421,11 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
         .json_ld_context(&credential_schema.id, "Test")
         .await;
 
-    let resp = server_context.api.ssi.temporary_submit(credential.id).await;
+    let resp = server_context
+        .api
+        .ssi
+        .temporary_submit(credential.id, holder_did.id)
+        .await;
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }
 

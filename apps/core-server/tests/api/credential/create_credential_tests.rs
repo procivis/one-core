@@ -15,7 +15,7 @@ async fn test_create_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
     let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
 
@@ -72,7 +72,7 @@ async fn test_create_credential_with_issuer_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let did = context
@@ -138,7 +138,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let did = context
@@ -185,7 +185,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
     let claim_id = credential_schema.claim_schemas.unwrap()[0].schema.id;
 

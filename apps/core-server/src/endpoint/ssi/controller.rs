@@ -699,7 +699,7 @@ pub(crate) async fn ssi_issuer_submit(
     let result = state
         .core
         .ssi_issuer_service
-        .issuer_submit(&query.credential_id)
+        .issuer_submit(&query.credential_id, query.did_id, query.key_id)
         .await;
     OkOrErrorResponse::from_result(result, state, "accepting credential")
 }

@@ -14,7 +14,7 @@ async fn test_get_credential_offer_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let interaction = context

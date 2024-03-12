@@ -7,10 +7,10 @@ use uuid::Uuid;
 use crate::{
     model::credential::{Credential, CredentialState, CredentialStateEnum},
     provider::transport_protocol::provider::MockTransportProtocolProvider,
-    repository::did_repository::MockDidRepository,
     repository::{
         credential_repository::MockCredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
+        did_repository::MockDidRepository,
     },
     service::{
         ssi_issuer::SSIIssuerService,

@@ -41,7 +41,7 @@ async fn test_revoke_check_success_statuslist2021() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "STATUSLIST2021")
+        .create("test", &organisation, "STATUSLIST2021", Default::default())
         .await;
     let credential = context
         .db
@@ -123,7 +123,12 @@ async fn test_revoke_check_success_bitstring_status_list() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "BITSTRINGSTATUSLIST")
+        .create(
+            "test",
+            &organisation,
+            "BITSTRINGSTATUSLIST",
+            Default::default(),
+        )
         .await;
     let credential = context
         .db

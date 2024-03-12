@@ -7,7 +7,7 @@ use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::model::credential_schema::CredentialSchemaId;
-use crate::service::error::EntityNotFoundError;
+use crate::service::error::{EntityNotFoundError, ValidationError};
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -26,7 +26,7 @@ use crate::{
     },
 };
 use convert_case::{Case, Casing};
-use shared_types::{CredentialId, DidValue};
+use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -79,7 +79,7 @@ impl SSIIssuerService {
         )
         .await?;
 
-        let now: OffsetDateTime = OffsetDateTime::now_utc();
+        let now = OffsetDateTime::now_utc();
         let new_state = CredentialStateEnum::Offered;
 
         self.credential_repository
@@ -115,12 +115,28 @@ impl SSIIssuerService {
     pub async fn issuer_submit(
         &self,
         credential_id: &CredentialId,
+        did_id: DidId,
+        key_id: Option<KeyId>,
     ) -> Result<IssuerResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
+        let Some(did) = self
+            .did_repository
+            .get_did(
+                &did_id,
+                &DidRelations {
+                    keys: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
+            return Err(ValidationError::DidNotFound.into());
+        };
+
         let token = self
             .protocol_provider
-            .issue_credential(credential_id)
+            .issue_credential(credential_id, did, key_id)
             .await?;
         Ok(IssuerResponseDTO {
             credential: token.credential,

@@ -27,7 +27,12 @@ async fn test_run_task_suspend_check_with_update() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "BITSTRINGSTATUSLIST")
+        .create(
+            "test",
+            &organisation,
+            "BITSTRINGSTATUSLIST",
+            Default::default(),
+        )
         .await;
 
     let a_while_ago = OffsetDateTime::now_utc().sub(Duration::seconds(1));

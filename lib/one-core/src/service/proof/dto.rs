@@ -12,7 +12,7 @@ use crate::{
         },
     },
 };
-use shared_types::DidId;
+use shared_types::{DidId, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -24,7 +24,7 @@ pub struct CreateProofRequestDTO {
     pub verifier_did_id: DidId,
     pub transport: String,
     pub redirect_uri: Option<String>,
-    pub verifier_key: Option<Uuid>,
+    pub verifier_key: Option<KeyId>,
 }
 
 #[derive(Clone, Debug)]
