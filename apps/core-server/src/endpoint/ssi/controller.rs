@@ -463,6 +463,14 @@ pub(crate) async fn oidc_verifier_direct_post(
             tracing::error!("Config validation error: {error}");
             StatusCode::NOT_FOUND.into_response()
         }
+        Err(ServiceError::BusinessLogic(BusinessLogicError::CredentialIsRevokedOrSuspended)) => {
+            tracing::error!("Credential is revoked or suspended");
+            (
+                StatusCode::BAD_REQUEST,
+                "Credential is revoked or suspended",
+            )
+                .into_response()
+        }
         Err(ServiceError::BusinessLogic(BusinessLogicError::MissingProofForInteraction(_))) => {
             tracing::error!("Missing interaction or proof");
             (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()

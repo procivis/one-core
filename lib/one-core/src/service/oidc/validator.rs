@@ -17,7 +17,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
-use crate::service::error::{MissingProviderError, ServiceError};
+use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 use crate::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialRequestDTO, OpenID4VCIError,
     OpenID4VCIInteractionDataDTO, OpenID4VCITokenRequestDTO,
@@ -222,8 +222,14 @@ pub(super) async fn validate_credential(
     validate_issuance_time(&credential.issued_at, formatter.get_leeway())?;
     validate_expiration_time(&credential.expires_at, formatter.get_leeway())?;
 
-    // todo (ONE-1759): check both revocation and suspension (iterate over both)
-    if let Some(credential_status) = credential.status.first() {
+    let issuer_did = credential
+        .issuer_did
+        .clone()
+        .ok_or(ServiceError::ValidationError(
+            "Issuer DID missing".to_owned(),
+        ))?;
+
+    for credential_status in credential.status.iter() {
         let (revocation_method, _) = revocation_method_provider
             .get_revocation_method_by_status_type(&credential_status.r#type)
             .ok_or(
@@ -231,13 +237,6 @@ pub(super) async fn validate_credential(
                     credential_status.r#type.clone(),
                 ),
             )?;
-
-        let issuer_did = credential
-            .issuer_did
-            .clone()
-            .ok_or(ServiceError::ValidationError(
-                "Issuer DID missing".to_owned(),
-            ))?;
 
         match revocation_method
             .check_credential_revocation_status(
@@ -254,15 +253,8 @@ pub(super) async fn validate_credential(
             .await?
         {
             CredentialRevocationState::Valid => {}
-            CredentialRevocationState::Revoked => {
-                return Err(ServiceError::ValidationError(
-                    "Submitted credential revoked".to_owned(),
-                ))
-            }
-            CredentialRevocationState::Suspended { .. } => {
-                return Err(ServiceError::ValidationError(
-                    "Submitted credential suspended".to_owned(),
-                ))
+            CredentialRevocationState::Revoked | CredentialRevocationState::Suspended { .. } => {
+                return Err(BusinessLogicError::CredentialIsRevokedOrSuspended.into());
             }
         }
     }
