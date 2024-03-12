@@ -106,8 +106,6 @@ pub(crate) fn from_config(
                         lvvc_repository.clone(),
                         credential_formatter_provider.clone(),
                         key_provider.clone(),
-                        key_algorithm_provider.clone(),
-                        did_method_provider.clone(),
                         client.clone(),
                         params,
                     ))

@@ -1800,8 +1800,8 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(NewCredentialState::Revoked))
-        .return_once(move |_, _| Ok(()));
+        .with(always(), eq(NewCredentialState::Revoked), eq(None))
+        .return_once(move |_, _, _| Ok(()));
 
     credential_repository
         .expect_update_credential()
@@ -1865,8 +1865,8 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(NewCredentialState::Revoked))
-        .return_once(move |_, _| Ok(()));
+        .with(always(), eq(NewCredentialState::Revoked), eq(None))
+        .return_once(move |_, _, _| Ok(()));
 
     credential_repository
         .expect_update_credential()
@@ -1910,6 +1910,8 @@ async fn test_suspend_credential_success() {
         suspend_end_date: None,
     }]);
 
+    let suspend_end_date = now.add(Duration::days(1));
+
     let mut credential_repository = MockCredentialRepository::default();
     {
         let clone = credential.clone();
@@ -1930,8 +1932,12 @@ async fn test_suspend_credential_success() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(NewCredentialState::Suspended))
-        .return_once(move |_, _| Ok(()));
+        .with(
+            always(),
+            eq(NewCredentialState::Suspended),
+            eq(Some(suspend_end_date)),
+        )
+        .return_once(move |_, _, _| Ok(()));
 
     credential_repository
         .expect_update_credential()
@@ -1965,7 +1971,7 @@ async fn test_suspend_credential_success() {
         .suspend_credential(
             &credential.id,
             SuspendCredentialRequestDTO {
-                suspend_end_date: None,
+                suspend_end_date: Some(suspend_end_date),
             },
         )
         .await
@@ -2046,8 +2052,8 @@ async fn test_reactivate_credential_success() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(NewCredentialState::Reactivated))
-        .return_once(move |_, _| Ok(()));
+        .with(always(), eq(NewCredentialState::Reactivated), eq(None))
+        .return_once(move |_, _, _| Ok(()));
 
     credential_repository
         .expect_update_credential()

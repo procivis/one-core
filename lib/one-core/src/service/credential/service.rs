@@ -688,19 +688,19 @@ impl CredentialService {
             && capabilities.operations.contains(&"REVOKE".to_string())
         {
             revocation_method
-                .mark_credential_as(&credential, NewCredentialState::Revoked)
+                .mark_credential_as(&credential, NewCredentialState::Revoked, None)
                 .await?;
         } else if credential_state == NewCredentialState::Suspended
             && capabilities.operations.contains(&"SUSPEND".to_string())
         {
             revocation_method
-                .mark_credential_as(&credential, NewCredentialState::Suspended)
+                .mark_credential_as(&credential, NewCredentialState::Suspended, suspend_end_date)
                 .await?;
         } else if credential_state == NewCredentialState::Reactivated
             && capabilities.operations.contains(&"SUSPEND".to_string())
         {
             revocation_method
-                .mark_credential_as(&credential, NewCredentialState::Reactivated)
+                .mark_credential_as(&credential, NewCredentialState::Reactivated, None)
                 .await?;
         } else {
             return Err(

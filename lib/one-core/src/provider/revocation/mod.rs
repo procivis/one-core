@@ -1,6 +1,7 @@
 use serde::Serialize;
 use shared_types::{CredentialId, DidValue};
 use strum_macros::Display;
+use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
 use crate::model::proof_schema::ProofSchema;
@@ -55,6 +56,7 @@ pub trait RevocationMethod: Send + Sync {
         &self,
         credential: &Credential,
         new_state: NewCredentialState,
+        suspend_end_date: Option<OffsetDateTime>,
     ) -> Result<(), ServiceError>;
 
     /// perform check of credential revocation status

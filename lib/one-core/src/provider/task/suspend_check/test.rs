@@ -108,8 +108,12 @@ async fn test_run_one_update() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(eq(credential.clone()), eq(NewCredentialState::Reactivated))
-        .return_once(|_, _| Ok(()));
+        .with(
+            eq(credential.clone()),
+            eq(NewCredentialState::Reactivated),
+            eq(None),
+        )
+        .return_once(|_, _, _| Ok(()));
 
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     revocation_method_provider

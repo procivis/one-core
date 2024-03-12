@@ -1,4 +1,5 @@
 use shared_types::DidValue;
+use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
@@ -41,6 +42,7 @@ impl RevocationMethod for NoneRevocation {
         &self,
         _credential: &Credential,
         _new_state: NewCredentialState,
+        _suspend_end_date: Option<OffsetDateTime>,
     ) -> Result<(), ServiceError> {
         Err(ServiceError::ValidationError(
             "Credential cannot be revoked, reactivated or suspended".to_string(),

@@ -110,7 +110,7 @@ impl Task for SuspendCheckProvider {
             };
 
             revocation_method
-                .mark_credential_as(&credential, NewCredentialState::Reactivated)
+                .mark_credential_as(&credential, NewCredentialState::Reactivated, None)
                 .await?;
 
             self.credential_repository
