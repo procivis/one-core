@@ -49,6 +49,7 @@ use self::mapper::{create_id_claim, create_status_claims, status_from_lvvc_claim
 pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub credential_expiry: time::Duration,
+    pub json_ld_context_url: Option<String>,
 }
 
 pub struct LvvcProvider {
@@ -80,6 +81,18 @@ impl LvvcProvider {
             client,
             params,
         }
+    }
+
+    fn get_base_url(&self) -> Result<&String, ServiceError> {
+        self.core_base_url.as_ref().ok_or_else(|| {
+            ServiceError::MappingError("LVVC issuance is missing core base_url".to_string())
+        })
+    }
+    fn _get_json_ld_lvvc_context_url(&self) -> Result<String, ServiceError> {
+        if let Some(json_ld_params_context_url) = &self.params.json_ld_context_url {
+            return Ok(json_ld_params_context_url.to_string());
+        }
+        Ok(format!("{}/ssi/context/v1/lvvc.json", self.get_base_url()?))
     }
 
     fn formatter(
@@ -291,9 +304,7 @@ impl RevocationMethod for LvvcProvider {
         &self,
         credential: &Credential,
     ) -> Result<Vec<CredentialRevocationInfo>, ServiceError> {
-        let base_url = self.core_base_url.as_ref().ok_or_else(|| {
-            ServiceError::MappingError("LVVC issuance is missing core base_url".to_string())
-        })?;
+        let base_url = self.get_base_url()?;
 
         self.create_lvvc_with_status(credential, LvvcStatus::Accepted)
             .await?;
