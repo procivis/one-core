@@ -1,4 +1,8 @@
-use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
+use std::{
+    ffi::OsStr,
+    io::{self, Cursor, Read, Seek, SeekFrom, Write},
+    path::PathBuf,
+};
 
 use anyhow::Context;
 use time::OffsetDateTime;
@@ -158,4 +162,16 @@ pub(super) fn create_backup_history_event(
 
 pub(super) fn map_error(err: anyhow::Error) -> ServiceError {
     ServiceError::Other(format!("{:?}", err))
+}
+
+pub(super) fn dir_path_from_file_path<T: ?Sized + AsRef<OsStr>>(
+    file_path: &T,
+) -> Result<PathBuf, ServiceError> {
+    let file_path = PathBuf::from(file_path);
+    Ok(file_path
+        .parent()
+        .ok_or(ServiceError::Other(
+            "Failed to find parent directory".to_string(),
+        ))?
+        .to_path_buf())
 }
