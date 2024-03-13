@@ -716,7 +716,7 @@ pub(crate) async fn ssi_issuer_submit(
     get,
     path = "/ssi/context/v1/{id}",
     params(
-        ("id" = Uuid, Path, description = "Credential schema id")
+        ("id" = String, Path, description = "context id or credentialSchemaId")
     ),
     responses(
         (status = 200, description = "OK", body = JsonLDContextResponseRestDTO),
@@ -727,13 +727,9 @@ pub(crate) async fn ssi_issuer_submit(
 )]
 pub(crate) async fn get_json_ld_context(
     state: State<AppState>,
-    WithRejection(Path(credential_schema_id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
 ) -> Response {
-    let result = state
-        .core
-        .ssi_issuer_service
-        .get_json_ld_context(credential_schema_id)
-        .await;
+    let result = state.core.ssi_issuer_service.get_json_ld_context(&id).await;
 
     match result {
         Ok(value) => (

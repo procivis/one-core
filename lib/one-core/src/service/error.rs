@@ -539,6 +539,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Missing organisation")]
     BR_0088,
 
+    #[strum(to_string = "Missing configuration entity")]
+    BR_0089,
+
     #[strum(to_string = "JSON-LD: BBS key needed")]
     BR_0090,
 
@@ -602,7 +605,7 @@ impl ServiceError {
             ServiceError::KeyStorageError(_) => ErrorCode::BR_0039,
             ServiceError::MappingError(_) => ErrorCode::BR_0047,
             ServiceError::OpenID4VCError(_) => ErrorCode::BR_0048,
-            ServiceError::ConfigValidationError(_) => ErrorCode::BR_0051,
+            ServiceError::ConfigValidationError(error) => error.error_code(),
             ServiceError::BitstringError(_) => ErrorCode::BR_0049,
             ServiceError::MissingSigner(_) => ErrorCode::BR_0060,
             ServiceError::MissingAlgorithm(_) => ErrorCode::BR_0061,
@@ -611,6 +614,20 @@ impl ServiceError {
             ServiceError::DidMethodError(_) => ErrorCode::BR_0064,
             ServiceError::ValidationError(_) | ServiceError::Other(_) => ErrorCode::BR_0000,
             ServiceError::Revocation(_) => ErrorCode::BR_0101,
+        }
+    }
+}
+
+impl ConfigValidationError {
+    pub fn error_code(&self) -> ErrorCode {
+        match self {
+            ConfigValidationError::TypeNotFound(_) => ErrorCode::BR_0089,
+            ConfigValidationError::InvalidKey(_)
+            | ConfigValidationError::KeyDisabled(_)
+            | ConfigValidationError::KeyNotFound(_)
+            | ConfigValidationError::FieldsDeserialization { .. }
+            | ConfigValidationError::InvalidType(_, _)
+            | ConfigValidationError::DatatypeValidation(_) => ErrorCode::BR_0051,
         }
     }
 }

@@ -6,8 +6,10 @@ use super::dto::{
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
+use crate::config::core_config::{FormatType, Params};
+use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchemaId;
-use crate::service::error::{EntityNotFoundError, ValidationError};
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ValidationError};
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -192,6 +194,105 @@ impl SSIIssuerService {
     }
 
     pub async fn get_json_ld_context(
+        &self,
+        id: &str,
+    ) -> Result<JsonLDContextResponseDTO, ServiceError> {
+        if self
+            .config
+            .format
+            .get_by_type::<Params>(FormatType::JsonLdClassic)
+            .is_err()
+            && self
+                .config
+                .format
+                .get_by_type::<Params>(FormatType::JsonLdBbsplus)
+                .is_err()
+        {
+            return Err(ServiceError::from(ConfigValidationError::TypeNotFound(
+                "JSON_LD".to_string(),
+            )));
+        }
+
+        match id {
+            "lvvc.json" => self.get_json_ld_context_for_lvvc().await,
+            id => {
+                let credential_schema_id = CredentialSchemaId::parse_str(id).map_err(|_| {
+                    ServiceError::from(BusinessLogicError::GeneralInputValidationError)
+                })?;
+                self.get_json_ld_context_for_credential_schema(credential_schema_id)
+                    .await
+            }
+        }
+    }
+
+    async fn get_json_ld_context_for_lvvc(&self) -> Result<JsonLDContextResponseDTO, ServiceError> {
+        let version = 1.1;
+        let protected = true;
+        let id = "@id";
+        let r#type = "@type";
+
+        let base_url = format!(
+            "{}/ssi/context/v1/lvvc.json",
+            self.core_base_url
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "Host URL not specified".to_string()
+                ))?,
+        );
+
+        Ok(JsonLDContextResponseDTO {
+            context: JsonLDContextDTO {
+                version,
+                protected,
+                id: id.to_owned(),
+                r#type: r#type.to_owned(),
+                entities: HashMap::from([
+                    (
+                        "LvvcCredential".to_string(),
+                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                            id: get_url_with_fragment(&base_url, "LvvcCredential")?,
+                            context: JsonLDContextDTO {
+                                version,
+                                protected,
+                                id: id.to_owned(),
+                                r#type: r#type.to_owned(),
+                                entities: Default::default(),
+                            },
+                        }),
+                    ),
+                    (
+                        "LvvcSubject".to_string(),
+                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                            id: get_url_with_fragment(&base_url, "LvvcSubject")?,
+                            context: JsonLDContextDTO {
+                                version,
+                                protected,
+                                id: id.to_owned(),
+                                r#type: r#type.to_owned(),
+                                entities: HashMap::from([
+                                    (
+                                        "status".to_string(),
+                                        JsonLDEntityDTO::Reference(get_url_with_fragment(
+                                            &base_url, "status",
+                                        )?),
+                                    ),
+                                    (
+                                        "suspendEndDate".to_string(),
+                                        JsonLDEntityDTO::Reference(get_url_with_fragment(
+                                            &base_url,
+                                            "suspendEndDate",
+                                        )?),
+                                    ),
+                                ]),
+                            },
+                        }),
+                    ),
+                ]),
+            },
+        })
+    }
+
+    async fn get_json_ld_context_for_credential_schema(
         &self,
         credential_schema_id: CredentialSchemaId,
     ) -> Result<JsonLDContextResponseDTO, ServiceError> {
