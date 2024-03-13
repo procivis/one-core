@@ -12,6 +12,11 @@ use crate::{
     },
 };
 
+use super::{
+    derived_proof::find_selective_indices,
+    model::{GroupEntry, TransformedEntry},
+};
+
 #[tokio::test]
 async fn test_canonize_any() {
     let mut crypto = MockCryptoProvider::default();
@@ -141,6 +146,27 @@ async fn test_transform_grouped() {
             result.non_mandatory.value[i].entry
         )
     }
+}
+
+#[test]
+fn test_find_disclosed_indicies() {
+    let non_mandatory = TransformedEntry {
+        data_type: "Map".to_owned(),
+        value: vec![GroupEntry {
+            index: 0,
+            entry: "_:c14n5 <https://windsurf.grotto-networking.com/selective#sailNumber> \"Earth101\" .".to_owned()
+        },
+        GroupEntry {
+            index: 1,
+            entry: "_:c14n5 <https://windsurf.grotto-networking.com/selective#sailNumber123> \"Earth101\" .".to_owned()
+        }]
+    };
+
+    let disclosed_keys = vec!["sailNumber".to_string()];
+
+    let result = find_selective_indices(&non_mandatory, &disclosed_keys).unwrap();
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0], 0);
 }
 
 static CANONICAL: &str = "_:c14n0 <https://windsurf.grotto-networking.com/selective#boardName> \"CompFoil170\" .

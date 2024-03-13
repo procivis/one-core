@@ -227,7 +227,7 @@ fn create_compressed_verifier_label_map(
 }
 
 // This is simplified implementation that only works with our jsonld format
-fn find_selective_indices(
+pub(super) fn find_selective_indices(
     non_mandatory: &TransformedEntry,
     disclosed_keys: &[String],
 ) -> Result<Vec<usize>, FormatterError> {
@@ -260,10 +260,11 @@ fn find_selective_indices(
         }
 
         // Find out if a key is disclosed.
-        for key in disclosed_keys {
-            if predicate.contains(&format!("#{}", key)) {
-                indices.push(entry.index);
-            }
+        if disclosed_keys
+            .iter()
+            .any(|key| predicate.ends_with(&format!("#{}>", key)))
+        {
+            indices.push(entry.index);
         }
     }
 
