@@ -6,6 +6,9 @@ use super::{
     validator::validate_proof,
     SSIVerifierService,
 };
+use crate::service::ssi_verifier::mapper::{
+    proof_accepted_history_event, proof_rejected_history_event,
+};
 use crate::{
     common_mapper::{extracted_credential_to_model, get_or_create_did},
     common_validator::throw_if_latest_proof_state_not_eq,
@@ -112,6 +115,7 @@ impl SSIVerifierService {
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: None,
                     }),
+                    verifier_did: Some(DidRelations::default()),
                     holder_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
@@ -146,7 +150,13 @@ impl SSIVerifierService {
             }
         };
 
-        self.accept_proof(proof, proved_claims).await
+        let _ = self.accept_proof(proof.clone(), proved_claims).await;
+
+        let _ = self
+            .history_repository
+            .create_history(proof_accepted_history_event(&proof))
+            .await;
+        Ok(())
     }
 
     /// Proof rejected by user
@@ -161,6 +171,7 @@ impl SSIVerifierService {
             .get_proof_with_state(
                 proof_id,
                 ProofRelations {
+                    verifier_did: Some(DidRelations::default()),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 },
@@ -180,6 +191,11 @@ impl SSIVerifierService {
                 },
             )
             .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(proof_rejected_history_event(&proof))
+            .await;
 
         Ok(())
     }
