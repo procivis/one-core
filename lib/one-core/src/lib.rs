@@ -308,6 +308,7 @@ impl OneCore {
                 protocol_provider.clone(),
                 config.clone(),
                 core_base_url,
+                data_provider.get_history_repository(),
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),

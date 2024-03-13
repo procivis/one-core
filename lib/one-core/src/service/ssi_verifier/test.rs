@@ -448,11 +448,18 @@ async fn test_submit_proof_succeeds() {
         })
         .return_once(|_| Ok(Uuid::new_v4().into()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = SSIVerifierService {
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         did_repository: Arc::new(did_repository),
         credential_repository: Arc::new(credential_repository),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_verifier_service()
     };
 
@@ -864,8 +871,15 @@ async fn test_reject_proof_succeeds() {
         .once()
         .returning(|_, _| Ok(()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = SSIVerifierService {
         proof_repository: Arc::new(proof_repository),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_verifier_service()
     };
 

@@ -14,7 +14,7 @@ use crate::{
     repository::{
         credential_repository::MockCredentialRepository,
         credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository,
+        did_repository::MockDidRepository, history_repository::MockHistoryRepository,
     },
     service::{
         ssi_issuer::SSIIssuerService,
@@ -89,8 +89,15 @@ async fn test_issuer_reject_succeeds() {
         .once()
         .return_once(|_| Ok(()));
 
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
     let service = SSIIssuerService {
         credential_repository: Arc::new(credential_repository),
+        history_repository: Arc::new(history_repository),
         ..mock_ssi_issuer_service()
     };
 
@@ -105,6 +112,7 @@ fn mock_ssi_issuer_service() -> SSIIssuerService {
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
         config: Arc::new(generic_config().core),
         core_base_url: Some("http://127.0.0.1".to_string()),
+        history_repository: Arc::new(MockHistoryRepository::new()),
     }
 }
 

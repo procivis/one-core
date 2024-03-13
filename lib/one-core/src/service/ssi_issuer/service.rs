@@ -10,6 +10,7 @@ use crate::config::core_config::{FormatType, Params};
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchemaId;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ValidationError};
+use crate::service::ssi_issuer::mapper::credential_rejected_history_event;
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -140,6 +141,7 @@ impl SSIIssuerService {
             .protocol_provider
             .issue_credential(credential_id, did, key_id)
             .await?;
+
         Ok(IssuerResponseDTO {
             credential: token.credential,
             format: token.format,
@@ -155,6 +157,7 @@ impl SSIIssuerService {
                 credential_id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
+                    issuer_did: Some(DidRelations::default()),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
@@ -189,6 +192,11 @@ impl SSIIssuerService {
                 redirect_uri: None,
             })
             .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(credential_rejected_history_event(&credential))
+            .await;
 
         Ok(())
     }
