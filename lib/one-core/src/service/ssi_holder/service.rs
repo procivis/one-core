@@ -48,7 +48,7 @@ use crate::{
     },
     util::oidc::detect_correct_format,
 };
-use shared_types::{DidId, KeyId};
+use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -56,24 +56,15 @@ impl SSIHolderService {
     pub async fn handle_invitation(
         &self,
         url: Url,
-        holder_did_id: &DidId,
+        organisation_id: OrganisationId,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let holder_did = self
-            .did_repository
-            .get_did(
-                holder_did_id,
-                &DidRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await?;
-
-        let Some(holder_did) = holder_did else {
-            return Err(EntityNotFoundError::Did(*holder_did_id).into());
-        };
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&organisation_id, &Default::default())
+            .await?
+            .ok_or(EntityNotFoundError::Organisation(organisation_id))?;
 
         let DetectedProtocol { protocol, .. } = self
             .protocol_provider
@@ -82,7 +73,7 @@ impl SSIHolderService {
                 "Cannot detect transport protocol".to_string(),
             ))?;
 
-        let response = protocol.handle_invitation(url, holder_did).await?;
+        let response = protocol.handle_invitation(url, organisation).await?;
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
                 for credential in credentials.iter() {
@@ -190,10 +181,6 @@ impl SSIHolderService {
                 &ProofRelations {
                     state: Some(ProofStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
-                    holder_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
                     ..Default::default()
                 },
             )
@@ -220,7 +207,7 @@ impl SSIHolderService {
             return Err(ValidationError::DidNotFound.into());
         };
 
-        match submission.key_id {
+        let selected_key = match submission.key_id {
             Some(key_id) => did.find_key(&key_id, KeyRole::Authentication)?,
             None => did.find_key_by_role(KeyRole::Authentication)?,
         };
@@ -403,7 +390,7 @@ impl SSIHolderService {
         }
 
         let submit_result = transport_protocol
-            .submit_proof(&proof, credential_presentations)
+            .submit_proof(&proof, credential_presentations, &did, selected_key)
             .await;
 
         if submit_result.is_ok() {
@@ -460,10 +447,6 @@ impl SSIHolderService {
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
-                    }),
-                    holder_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
                     }),
                     issuer_did: Some(DidRelations::default()),
                     ..Default::default()
@@ -531,7 +514,7 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::TransportProtocol(
                     credential.transport.clone(),
                 ))?
-                .accept_credential(&credential, &did_id, &Some(selected_key.id))
+                .accept_credential(&credential, &did, selected_key)
                 .await?;
 
             self.credential_repository

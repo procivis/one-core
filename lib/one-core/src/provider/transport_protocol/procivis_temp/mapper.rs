@@ -19,7 +19,7 @@ use crate::provider::transport_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
 
-pub fn remote_did_from_value(did_value: DidValue, organisation: &Organisation) -> Did {
+pub fn remote_did_from_value(did_value: DidValue, organisation: Organisation) -> Did {
     let id = Uuid::new_v4();
     let now = OffsetDateTime::now_utc();
     Did {
@@ -27,7 +27,7 @@ pub fn remote_did_from_value(did_value: DidValue, organisation: &Organisation) -
         name: format!("issuer {id}"),
         created_date: now,
         last_modified: now,
-        organisation: Some(organisation.to_owned()),
+        organisation: Some(organisation),
         did: did_value,
         did_type: DidType::Remote,
         did_method: "KEY".to_string(),

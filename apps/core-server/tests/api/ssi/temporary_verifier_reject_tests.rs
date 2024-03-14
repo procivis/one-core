@@ -52,8 +52,8 @@ async fn test_temporary_verifier_reject_success() {
     // WHEN
     let _handle = run_server(listener, config, &db_conn);
     let url = format!(
-        "{base_url}/ssi/temporary-verifier/v1/reject?proof={}",
-        proof.id
+        "{base_url}/ssi/temporary-verifier/v1/reject?proof={}&didId={}",
+        proof.id, did.id
     );
 
     let resp = utils::client().post(url).send().await.unwrap();

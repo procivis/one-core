@@ -1,10 +1,10 @@
 use one_core::{
-    model::proof::ProofStateEnum,
+    model::{credential_schema::WalletStorageTypeEnum, proof::ProofStateEnum},
     provider::transport_protocol::openid4vc::dto::{
         OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
     },
 };
-use serde_json::{json, Value};
+use serde_json::json;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use url::Url;
@@ -13,19 +13,17 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::utils::context::TestContext;
-use crate::utils::{self};
-use crate::{fixtures, utils::server::run_server};
+use crate::utils::{context::TestContext, field_match::FieldHelpers};
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
     // GIVEN
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
     let credential_id = Uuid::new_v4();
 
     context
         .server_mock
-        .ssi_issuance("PROCIVIS_TEMPORARY", credential_id)
+        .temporary_issuer_connect("PROCIVIS_TEMPORARY", credential_id)
         .await;
 
     // WHEN
@@ -36,7 +34,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
     let resp = context
         .api
         .interactions
-        .handle_invitation(did.id, &url)
+        .handle_invitation(organisation.id, &url)
         .await;
 
     // THEN
@@ -50,19 +48,21 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
 async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
     // GIVEN
     let mock_server = MockServer::start().await;
-    let config = fixtures::create_config(mock_server.uri(), None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let organisation2 = fixtures::create_organisation(&db_conn).await;
-    let holder_did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let verifier_id = fixtures::create_did(&db_conn, &organisation2, None).await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let organisation2 = context.db.organisations.create().await;
+    let verifier_id = context
+        .db
+        .dids
+        .create(&organisation2, Default::default())
+        .await;
 
     let proof_id = Uuid::new_v4();
 
     Mock::given(method(Method::POST))
         .and(path("/ssi/temporary-verifier/v1/connect"))
         .and(query_param("protocol", "PROCIVIS_TEMPORARY"))
-        .and(query_param("proof", proof_id.to_string()))
+        .and(query_param("proof", proof_id))
         .and(query_param("redirect_uri", ""))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -93,57 +93,41 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
         .await;
 
     // WHEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let _handle = run_server(listener, config, &db_conn);
-    let url = format!("{base_url}/api/interaction/v1/handle-invitation");
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "didId": holder_did.id,
-          "url": format!("{}/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={proof_id}&redirect_uri=", mock_server.uri())
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, &format!("{}/ssi/temporary-verifier/v1/connect?protocol=PROCIVIS_TEMPORARY&proof={proof_id}&redirect_uri=", mock_server.uri()))
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let resp: Value = resp.json().await.unwrap();
+    let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-    assert_eq!(
-        resp.get("proofId").unwrap().as_str(),
-        Some(proof_id.to_string().as_str())
-    );
+    resp["proofId"].assert_eq(&proof_id);
 
-    let proof = fixtures::get_proof(&db_conn, &proof_id).await;
-    assert_eq!(proof.holder_did.unwrap().id, holder_did.id);
+    let proof = context.db.proofs.get(&proof_id).await;
     assert!(proof
         .state
         .unwrap()
         .iter()
         .any(|state| state.state == ProofStateEnum::Pending));
 
-    assert_eq!(
-        &proof.interaction.unwrap().id.to_string(),
-        resp.get("interactionId").unwrap().as_str().unwrap()
-    );
+    resp["interactionId"].assert_eq(&proof.interaction.unwrap().id);
 }
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value() {
     let mock_server = MockServer::start().await;
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, organistion) = TestContext::new_with_organisation().await;
 
-    let credential_id = "90eb3e0f-cc34-4994-8093-0bdb3983ef21";
+    let credential_id = Uuid::new_v4();
     let credential_issuer = format!("{}/ssi/oidc-issuer/v1/{credential_id}", mock_server.uri());
     let credential_offer = json!({
         "credential_issuer": credential_issuer,
         "credentials": [
             {
+                "wallet_storage_type": "SOFTWARE",
                 "format": "vc+sd-jwt",
                 "credential_definition": {
                     "type": [
@@ -180,7 +164,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
                                 "VerifiableCredential"
                             ]
                         },
-                        "format": "vc+sd-jwt"
+                        "format": "vc+sd-jwt",
                     }
                 ]
             }
@@ -239,7 +223,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
     let resp = context
         .api
         .interactions
-        .handle_invitation(did.id, credential_offer_url.as_ref())
+        .handle_invitation(organistion.id, credential_offer_url.as_ref())
         .await;
 
     // THEN
@@ -247,12 +231,22 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
+
+    let credential = context
+        .db
+        .credentials
+        .get(&resp["credentialIds"][0].parse())
+        .await;
+    assert_eq!(
+        credential.schema.unwrap().wallet_storage_type,
+        Some(WalletStorageTypeEnum::Software)
+    )
 }
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_reference() {
     let mock_server = MockServer::start().await;
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
 
     let credential_id = Uuid::new_v4();
     let credential_schema_id = Uuid::new_v4();
@@ -264,6 +258,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         "credential_issuer": credential_issuer,
         "credentials": [
             {
+                "wallet_storage_type": "SOFTWARE",
                 "format": "vc+sd-jwt",
                 "credential_definition": {
                     "type": [
@@ -300,7 +295,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
                                 "VerifiableCredential"
                             ]
                         },
-                        "format": "vc+sd-jwt"
+                        "format": "vc+sd-jwt",
                     }
                 ]
             }
@@ -369,7 +364,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
     let resp = context
         .api
         .interactions
-        .handle_invitation(did.id, credential_offer_url.as_ref())
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
         .await;
 
     // THEN
@@ -377,12 +372,22 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
+
+    let credential = context
+        .db
+        .credentials
+        .get(&resp["credentialIds"][0].parse())
+        .await;
+    assert_eq!(
+        credential.schema.unwrap().wallet_storage_type,
+        Some(WalletStorageTypeEnum::Software)
+    )
 }
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let mock_server = MockServer::start().await;
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, organistion) = TestContext::new_with_organisation().await;
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
         vp_formats: HashMap::from([(
@@ -425,7 +430,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let resp = context
         .api
         .interactions
-        .handle_invitation(did.id, &query)
+        .handle_invitation(organistion.id, &query)
         .await;
     // THEN
     assert_eq!(resp.status(), 200);
@@ -436,7 +441,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
-    let (context, _, did, _) = TestContext::new_with_did().await;
+    let (context, organistion) = TestContext::new_with_organisation().await;
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
         vp_formats: HashMap::from([(
@@ -462,7 +467,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
     let resp = context
         .api
         .interactions
-        .handle_invitation(did.id, &query)
+        .handle_invitation(organistion.id, &query)
         .await;
 
     // THEN

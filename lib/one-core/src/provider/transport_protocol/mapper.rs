@@ -68,7 +68,6 @@ pub fn proof_from_handle_invitation(
     protocol: &str,
     redirect_uri: Option<String>,
     verifier_did: Option<Did>,
-    holder_did: Did,
     interaction: Interaction,
     now: OffsetDateTime,
     verifier_key: Option<Key>,
@@ -88,7 +87,7 @@ pub fn proof_from_handle_invitation(
         schema: None,
         claims: None,
         verifier_did,
-        holder_did: Some(holder_did),
+        holder_did: None,
         interaction: Some(interaction),
         verifier_key,
     }

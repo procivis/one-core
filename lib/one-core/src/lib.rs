@@ -313,6 +313,7 @@ impl OneCore {
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
+                data_provider.get_organisation_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_history_repository(),
                 key_provider,

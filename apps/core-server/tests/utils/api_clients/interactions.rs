@@ -1,6 +1,6 @@
 use one_core::model::claim::Claim;
 use serde_json::json;
-use shared_types::{CredentialId, DidId, KeyId};
+use shared_types::{CredentialId, DidId, KeyId, OrganisationId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -14,9 +14,13 @@ impl InteractionsApi {
         Self { client }
     }
 
-    pub async fn handle_invitation(&self, did_id: impl Into<Uuid>, url: &str) -> Response {
+    pub async fn handle_invitation(
+        &self,
+        organisation_id: impl Into<OrganisationId>,
+        url: &str,
+    ) -> Response {
         let body = json!({
-          "didId": did_id.into(),
+          "organisationId": organisation_id.into(),
           "url": url,
         });
 
