@@ -1,6 +1,6 @@
 use shared_types::CredentialId;
 use std::collections::HashMap;
-use time::OffsetDateTime;
+use time::{OffsetDateTime, PrimitiveDateTime};
 
 use crate::provider::revocation::lvvc::LvvcStatus;
 use crate::service::error::ServiceError;
@@ -24,8 +24,9 @@ pub(crate) fn status_from_lvvc_claims(
             let suspend_end_date = match lvvc_claims.get("suspendEndDate") {
                 None => None,
                 Some(date) => Some(
-                    OffsetDateTime::parse(date, SUSPEND_END_DATE_FORMAT)
-                        .map_err(|e| ServiceError::ValidationError(e.to_string()))?,
+                    PrimitiveDateTime::parse(date, SUSPEND_END_DATE_FORMAT)
+                        .map_err(|e| ServiceError::ValidationError(e.to_string()))?
+                        .assume_utc(),
                 ),
             };
             LvvcStatus::Suspended { suspend_end_date }
