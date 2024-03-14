@@ -2,7 +2,11 @@ use serde_json::Value;
 
 use crate::{
     fixtures,
-    utils::{self, server::run_server},
+    utils::{
+        self,
+        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+        server::run_server,
+    },
 };
 
 #[tokio::test]
@@ -19,6 +23,7 @@ async fn test_get_proof_schema_success() {
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
     let claim_schema = credential_schema
         .claim_schemas
+        .as_ref()
         .unwrap()
         .first()
         .unwrap()
@@ -29,12 +34,16 @@ async fn test_get_proof_schema_success() {
         &db_conn,
         "test",
         &organisation,
-        &[(
-            claim_schema.id,
-            &claim_schema.key,
-            true,
-            &claim_schema.data_type,
-        )],
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+            }],
+            credential_schema: &credential_schema,
+            validity_constraint: Some(10),
+        }],
     )
     .await;
 
@@ -57,9 +66,9 @@ async fn test_get_proof_schema_success() {
         organisation.id.to_string()
     );
     assert_eq!(resp["name"].as_str().unwrap(), "test");
-    assert_eq!(resp["claimSchemas"].as_array().unwrap().len(), 1);
+    assert_eq!(resp["proofInputSchemas"].as_array().unwrap().len(), 1);
 
-    let claim_schema_item = &resp["claimSchemas"][0];
+    let claim_schema_item = &resp["proofInputSchemas"][0]["claimSchemas"][0];
     assert_eq!(
         claim_schema_item["id"].as_str().unwrap(),
         claim_schema.id.to_string()
@@ -70,5 +79,10 @@ async fn test_get_proof_schema_success() {
         claim_schema.data_type
     );
     assert!(claim_schema_item["required"].as_bool().unwrap());
-    assert_eq!(resp["validityConstraint"].as_i64().unwrap(), 10);
+    assert_eq!(
+        resp["proofInputSchemas"][0]["validityConstraint"]
+            .as_i64()
+            .unwrap(),
+        10
+    );
 }

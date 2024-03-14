@@ -108,7 +108,7 @@ fn construct_proof_with_state() -> Proof {
             expire_duration: 10,
             claim_schemas: Some(vec![ProofSchemaClaim {
                 schema: ClaimSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     key: "first_name".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),
@@ -143,7 +143,9 @@ fn generic_credential() -> Credential {
     let now = OffsetDateTime::now_utc();
 
     let claim_schema = ClaimSchema {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
         key: "NUMBER".to_string(),
         data_type: "NUMBER".to_string(),
         created_date: now,

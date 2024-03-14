@@ -1,8 +1,10 @@
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into};
+use one_core::model::credential_schema::CredentialSchemaId;
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
-    GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
+    GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
+    ProofInputSchemaResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -22,12 +24,23 @@ use crate::{
 #[serde(rename_all = "camelCase")]
 pub struct CreateProofSchemaRequestRestDTO {
     #[validate(length(min = 1))]
+    #[schema(min_length = 1)]
     pub name: String,
     pub organisation_id: Uuid,
     pub expire_duration: u32,
+    #[into(with_fn = convert_inner)]
+    #[schema(min_items = 1)]
+    pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
+#[into(ProofInputSchemaRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofInputSchemaRequestRestDTO {
+    pub credential_schema_id: CredentialSchemaId,
     pub validity_constraint: Option<i64>,
     #[into(with_fn = convert_inner)]
-    #[validate(length(min = 1))]
+    #[schema(min_items = 1)]
     pub claim_schemas: Vec<ClaimProofSchemaRequestRestDTO>,
 }
 
@@ -86,10 +99,9 @@ pub struct GetProofSchemaResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub expire_duration: u32,
-    pub validity_constraint: Option<i64>,
     pub organisation_id: Uuid,
     #[from(with_fn = convert_inner)]
-    pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
+    pub proof_input_schemas: Vec<ProofInputSchemaResponseRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -101,5 +113,14 @@ pub struct ProofClaimSchemaResponseRestDTO {
     pub key: String,
     #[schema(example = "STRING")]
     pub data_type: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(ProofInputSchemaResponseDTO)]
+pub struct ProofInputSchemaResponseRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
+    pub validity_constraint: Option<i64>,
 }

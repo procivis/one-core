@@ -1,12 +1,12 @@
 use dto_mapper::From;
-use shared_types::OrganisationId;
+use shared_types::{ClaimSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
     model::{
-        claim_schema::ClaimSchemaId,
         common::{GetListQueryParams, GetListResponse},
+        credential_schema::CredentialSchemaId,
         proof_schema::{ProofSchema, SortableProofSchemaColumn},
     },
     service::credential_schema::dto::CredentialSchemaListItemResponseDTO,
@@ -20,7 +20,6 @@ pub struct ProofClaimSchemaResponseDTO {
     pub required: bool,
     pub key: String,
     pub data_type: String,
-    pub credential_schema: CredentialSchemaListItemResponseDTO,
 }
 
 #[derive(Clone, Debug)]
@@ -31,7 +30,13 @@ pub struct GetProofSchemaResponseDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
     pub expire_duration: u32,
+    pub proof_input_schemas: Vec<ProofInputSchemaResponseDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProofInputSchemaResponseDTO {
     pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
+    pub credential_schema: CredentialSchemaListItemResponseDTO,
     pub validity_constraint: Option<i64>,
 }
 
@@ -60,7 +65,13 @@ pub struct CreateProofSchemaClaimRequestDTO {
 pub struct CreateProofSchemaRequestDTO {
     pub name: String,
     pub organisation_id: OrganisationId,
-    pub validity_constraint: Option<i64>,
     pub expire_duration: u32,
+    pub proof_input_schemas: Vec<ProofInputSchemaRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProofInputSchemaRequestDTO {
+    pub credential_schema_id: CredentialSchemaId,
+    pub validity_constraint: Option<i64>,
     pub claim_schemas: Vec<CreateProofSchemaClaimRequestDTO>,
 }

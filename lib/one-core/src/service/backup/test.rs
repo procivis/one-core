@@ -40,7 +40,7 @@ fn setup_service(repositories: Repositories) -> BackupService {
 }
 
 fn dummy_unexportable_entities() -> UnexportableEntities {
-    let claim_schema_id = Uuid::new_v4();
+    let claim_schema_id = Uuid::new_v4().into();
 
     UnexportableEntities {
         credentials: vec![Credential {

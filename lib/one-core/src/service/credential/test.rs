@@ -82,7 +82,7 @@ fn generic_credential() -> Credential {
     let now = OffsetDateTime::now_utc();
 
     let claim_schema = ClaimSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         key: "NUMBER".to_string(),
         data_type: "NUMBER".to_string(),
         created_date: now,
@@ -797,7 +797,7 @@ async fn test_create_credential_one_required_claim_missing() {
         claim_schemas: Some(vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     key: "required".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),
@@ -807,7 +807,7 @@ async fn test_create_credential_one_required_claim_missing() {
             },
             CredentialSchemaClaim {
                 schema: ClaimSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     key: "optional".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),

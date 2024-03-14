@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::BTreeSet, str::FromStr};
 
 use one_core::model::proof::ProofStateEnum;
 use shared_types::DidValue;
@@ -6,7 +6,11 @@ use uuid::Uuid;
 
 use crate::{
     fixtures::{self, TestingDidParams},
-    utils::{self, server::run_server},
+    utils::{
+        self,
+        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+        server::run_server,
+    },
 };
 
 static PRESENTATION_TOKEN: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDAxMzgwNTcsImV4cCI6MzMyMzYxMzgwNTcsIm5iZiI6MTcwMDEz\
@@ -45,7 +49,7 @@ async fn test_correct() {
         (Uuid::new_v4(), "pet3", false, "STRING"), // Optional, not provided in credentials
     ];
 
-    fixtures::create_credential_schema_with_claims(
+    let credential_schema1 = fixtures::create_credential_schema_with_claims(
         &db_conn,
         "NewCredentialSchema",
         &organisation,
@@ -59,7 +63,7 @@ async fn test_correct() {
         (Uuid::new_v4(), "name2", true, "STRING"),
     ];
 
-    fixtures::create_credential_schema_with_claims(
+    let credential_schema2 = fixtures::create_credential_schema_with_claims(
         &db_conn,
         "NewCredentialSchema2",
         &organisation,
@@ -68,14 +72,24 @@ async fn test_correct() {
     )
     .await;
 
-    let new_claim_schemas_proof: Vec<(Uuid, &str, bool, &str)> = vec![
-        new_claim_schemas_credential_1[1], // Token 1
-        new_claim_schemas_credential_1[2], // Optional, not provided in presentation
-        new_claim_schemas_credential_2[0], // Token 2
+    let proof_input_schemas = [
+        CreateProofInputSchema {
+            claims: vec![
+                CreateProofClaim::from(&new_claim_schemas_credential_1[1]),
+                CreateProofClaim::from(&new_claim_schemas_credential_1[2]),
+            ],
+            credential_schema: &credential_schema1,
+            validity_constraint: None,
+        },
+        CreateProofInputSchema {
+            claims: vec![CreateProofClaim::from(&new_claim_schemas_credential_2[0])], // Token 2
+            credential_schema: &credential_schema2,
+            validity_constraint: None,
+        },
     ];
 
     let proof_schema =
-        fixtures::create_proof_schema(&db_conn, "Schema1", &organisation, &new_claim_schemas_proof)
+        fixtures::create_proof_schema(&db_conn, "Schema1", &organisation, &proof_input_schemas)
             .await;
 
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
@@ -129,12 +143,17 @@ async fn test_correct() {
         ProofStateEnum::Accepted
     );
 
-    let claims = proof.claims.unwrap();
-    assert!(new_claim_schemas_proof
-        .iter()
-        .filter(|required_claim| required_claim.2) //required
-        .all(|required_claim| claims
-            .iter()
-            // Values are just keys uppercase
-            .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase())));
+    let claims: BTreeSet<String> = proof
+        .claims
+        .unwrap()
+        .into_iter()
+        .map(|c| c.claim.value)
+        .collect();
+    let expected_claims: BTreeSet<String> = proof_input_schemas
+        .into_iter()
+        .flat_map(|c| c.claims)
+        .filter_map(|c| c.required.then_some(c.key.to_ascii_uppercase()))
+        .collect();
+
+    assert_eq!(expected_claims, claims);
 }

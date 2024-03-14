@@ -4,7 +4,6 @@ use super::dto::{
 use crate::model::key::Key;
 use crate::{
     model::{
-        claim::Claim,
         claim_schema::ClaimSchema,
         credential_schema::CredentialSchema,
         did::Did,
@@ -67,12 +66,7 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         .claims
         .as_ref()
         .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
-    let proof_claim_schemas = schema
-        .claim_schemas
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "claim_schemas is None".to_string(),
-        ))?;
+
     let organisation_id = schema
         .organisation
         .as_ref()
@@ -89,22 +83,57 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         .map(TryInto::try_into)
         .collect::<Result<_, _>>()?;
 
-    let claims = proof_claim_schemas
-        .iter()
-        .map(|proof_claim_schema| {
-            let claim = claims
-                .iter()
-                .find(|c| {
-                    c.claim
-                        .schema
-                        .as_ref()
-                        .is_some_and(|s| s.id == proof_claim_schema.schema.id)
-                })
-                .map(|c| &c.claim)
-                .cloned();
-            proof_claim_from_claim(proof_claim_schema.clone(), claim)
-        })
-        .collect::<Result<_, _>>()?;
+    let claims = match (schema.input_schemas.as_ref(), schema.claim_schemas.as_ref()) {
+        (Some(input_schemas), _) if !input_schemas.is_empty() => input_schemas
+            .iter()
+            .filter_map(|input_schema| input_schema.claim_schemas.as_ref())
+            .flatten()
+            .map(|proof_claim_schema| {
+                let claim = claims
+                    .iter()
+                    .find(|c| {
+                        c.claim
+                            .schema
+                            .as_ref()
+                            .is_some_and(|s| s.id == proof_claim_schema.schema.id)
+                    })
+                    .map(|c| &c.claim)
+                    .cloned();
+
+                ProofClaimDTO {
+                    schema: proof_claim_schema.clone().into(),
+                    value: claim.map(|c| c.value),
+                }
+            })
+            .collect(),
+        // TODO: ONE-1733
+        (_, Some(proof_claim_schemas)) if !proof_claim_schemas.is_empty() => proof_claim_schemas
+            .iter()
+            .map(|proof_claim_schema| {
+                let claim = claims
+                    .iter()
+                    .find(|c| {
+                        c.claim
+                            .schema
+                            .as_ref()
+                            .is_some_and(|s| s.id == proof_claim_schema.schema.id)
+                    })
+                    .map(|c| &c.claim)
+                    .cloned();
+
+                ProofClaimDTO {
+                    schema: proof_claim_schema.clone().into(),
+                    value: claim.map(|c| c.value),
+                }
+            })
+            .collect(),
+        (_, _) => {
+            // TODO: ONE-1733
+            return Err(ServiceError::MappingError(
+                "input_schemas or proof claim_schemas is missing".to_string(),
+            ));
+        }
+    };
 
     let redirect_uri = value.redirect_uri.to_owned();
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
@@ -174,16 +203,6 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
     })
 }
 
-pub fn proof_claim_from_claim(
-    proof_schema_claim: ProofSchemaClaim,
-    claim: Option<Claim>,
-) -> Result<ProofClaimDTO, ServiceError> {
-    Ok(ProofClaimDTO {
-        schema: proof_schema_claim.try_into()?,
-        value: claim.map(|c| c.value),
-    })
-}
-
 pub fn proof_from_create_request(
     request: CreateProofRequestDTO,
     now: OffsetDateTime,
@@ -216,7 +235,7 @@ impl TryFrom<ProofClaimSchema> for ProofSchemaClaim {
     type Error = ServiceError;
 
     fn try_from(value: ProofClaimSchema) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id)?;
+        let id = Uuid::from_str(&value.id)?.into();
         let credential_schema_id = Uuid::from_str(&value.credential_schema.id)?;
 
         Ok(Self {

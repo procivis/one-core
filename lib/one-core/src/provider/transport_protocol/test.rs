@@ -173,7 +173,7 @@ fn dummy_config() -> CoreConfig {
 }
 
 fn dummy_credential() -> Credential {
-    let claim_schema_id = Uuid::new_v4();
+    let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
     Credential {
         id: credential_id,

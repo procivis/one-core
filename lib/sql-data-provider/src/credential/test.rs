@@ -62,16 +62,24 @@ async fn setup_empty() -> TestSetup {
     )
     .unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..2)
-        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i as u32, "STRING"))
+    let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: "key",
+            required: i % 2 == 0,
+            order: i as u32,
+            datatype: "STRING",
+        })
         .collect();
-    insert_many_claims_schema_to_database(
-        &db,
-        &credential_schema_id.to_string(),
-        &new_claim_schemas,
-    )
-    .await
-    .unwrap();
+
+    let claim_input = ProofInput {
+        credential_schema_id: credential_schema_id.to_string(),
+        claims: &new_claim_schemas,
+    };
+
+    insert_many_claims_schema_to_database(&db, &claim_input)
+        .await
+        .unwrap();
 
     let credential_schema = CredentialSchema {
         id: credential_schema_id,
@@ -87,9 +95,9 @@ async fn setup_empty() -> TestSetup {
                 .into_iter()
                 .map(|schema| CredentialSchemaClaim {
                     schema: ClaimSchema {
-                        id: schema.0,
-                        key: "key".to_string(),
-                        data_type: "STRING".to_string(),
+                        id: schema.id,
+                        key: schema.key.to_string(),
+                        data_type: schema.datatype.to_string(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                     },
@@ -756,7 +764,7 @@ async fn test_get_credential_success() {
             .map(|claim| claim::ActiveModel {
                 id: Set(claim.id.into()),
                 credential_id: Set(credential_id),
-                claim_schema_id: Set(claim.schema.as_ref().unwrap().id.into()),
+                claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
                 value: Set(claim.value.to_owned().into()),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
@@ -1014,7 +1022,7 @@ async fn test_get_credential_by_claim_id_success() {
     claim::ActiveModel {
         id: Set(claim.id.into()),
         credential_id: Set(credential_id),
-        claim_schema_id: Set(claim.schema.as_ref().unwrap().id.into()),
+        claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
         value: Set(claim.value.as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),

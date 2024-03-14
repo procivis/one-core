@@ -1,8 +1,9 @@
 use crate::{
-    model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
+    model::claim_schema::{ClaimSchema, ClaimSchemaRelations},
     repository::error::DataLayerError,
 };
 use mockall::*;
+use shared_types::ClaimSchemaId;
 
 #[derive(Default)]
 struct ClaimSchemaRepository;

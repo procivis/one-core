@@ -1,7 +1,5 @@
+use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
-use uuid::Uuid;
-
-pub type ClaimSchemaId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ClaimSchema {

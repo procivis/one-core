@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{common_mapper::deserialize_with_serde_json, model::claim_schema::ClaimSchemaId};
+use crate::common_mapper::deserialize_with_serde_json;
 
 // Equivalent of transport_protocol/openid4vc/model.rs for deserialization
 // to avoid dependency to the transport protocol itself

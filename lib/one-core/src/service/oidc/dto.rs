@@ -5,7 +5,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::{
-    model::{credential_schema::WalletStorageTypeEnum, proof_schema::ProofSchemaClaim},
+    model::{
+        credential_schema::{CredentialSchema, WalletStorageTypeEnum},
+        proof_schema::ProofInputClaimSchema,
+    },
     provider::{
         credential_formatter::model::DetailCredential,
         transport_protocol::dto::SubmitIssuerResponse,
@@ -171,7 +174,8 @@ pub enum PresentationToken {
 
 #[derive(Clone, Debug)]
 pub(super) struct ValidatedProofClaimDTO {
-    pub claim_schema: ProofSchemaClaim,
+    pub proof_input_claim: ProofInputClaimSchema,
     pub credential: DetailCredential,
+    pub credential_schema: CredentialSchema,
     pub value: String,
 }

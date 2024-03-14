@@ -1,4 +1,4 @@
-use shared_types::{CredentialId, HistoryId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialId, HistoryId, OrganisationId};
 use shared_types::{DidId, DidValue, KeyId};
 use strum_macros::Display;
 use thiserror::Error;
@@ -6,7 +6,6 @@ use uuid::Uuid;
 
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
-use crate::model::claim_schema::ClaimSchemaId;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::credential_schema::CredentialSchemaId;
 use crate::model::interaction::InteractionId;
@@ -181,7 +180,7 @@ pub enum BusinessLogicError {
     MissingCredentialSchema,
 
     #[error("Missing claim schema: {claim_schema_id}")]
-    MissingClaimSchema { claim_schema_id: Uuid },
+    MissingClaimSchema { claim_schema_id: ClaimSchemaId },
 
     #[error("Missing proof schema: {proof_schema_id}")]
     MissingProofSchema { proof_schema_id: Uuid },
@@ -259,6 +258,9 @@ pub enum ValidationError {
 
     #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
     CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
+
+    #[error("Proof schema: Missing proof input schemas")]
+    ProofSchemaMissingProofInputSchemas,
 
     #[error("Proof schema: Missing claims")]
     ProofSchemaMissingClaims,
@@ -579,6 +581,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Missing task")]
     BR_0103,
+
+    #[strum(to_string = "Missing proof input schemas")]
+    BR_0104,
 }
 
 impl From<FormatError> for ServiceError {
@@ -712,6 +717,7 @@ impl ValidationError {
             ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
             ValidationError::DidNotFound => ErrorCode::BR_0024,
             ValidationError::KeyNotFound => ErrorCode::BR_0037,
+            ValidationError::ProofSchemaMissingProofInputSchemas => ErrorCode::BR_0104,
         }
     }
 }

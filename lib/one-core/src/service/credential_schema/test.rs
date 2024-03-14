@@ -59,7 +59,7 @@ fn generic_credential_schema() -> CredentialSchema {
         revocation_method: "".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 key: "".to_string(),
                 data_type: "".to_string(),
                 created_date: now,

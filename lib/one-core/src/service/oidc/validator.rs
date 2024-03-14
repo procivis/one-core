@@ -1,14 +1,12 @@
-use std::collections::HashMap;
-
 use std::sync::Arc;
 
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
-use crate::model::claim_schema::ClaimSchemaId;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaId};
+
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::interaction::Interaction;
-use crate::model::proof_schema::{ProofSchema, ProofSchemaClaim};
+use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{DetailCredential, Presentation};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -32,7 +30,6 @@ use crate::util::oidc::{
 use time::{Duration, OffsetDateTime};
 
 use super::dto::ValidatedProofClaimDTO;
-use super::model::OpenID4VPPresentationDefinitionInputDescriptor;
 
 pub(crate) fn throw_if_token_request_invalid(
     request: &OpenID4VCITokenRequestDTO,
@@ -184,7 +181,7 @@ pub(super) async fn validate_credential(
     presentation: Presentation,
     path_nested: &NestedPresentationSubmissionDescriptorDTO,
     extracted_lvvcs: &[DetailCredential],
-    proof_schema: &ProofSchema,
+    proof_schema_input: &ProofInputSchema,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<KeyVerification>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
@@ -246,7 +243,7 @@ pub(super) async fn validate_credential(
                     VerifierCredentialData {
                         credential: credential.to_owned(),
                         extracted_lvvcs: extracted_lvvcs.to_owned(),
-                        proof_schema: proof_schema.to_owned(),
+                        proof_input: proof_schema_input.to_owned(),
                     },
                 ))),
             )
@@ -279,34 +276,27 @@ pub(super) async fn validate_credential(
 
 pub(super) fn validate_claims(
     received_credential: DetailCredential,
-    descriptor: &OpenID4VPPresentationDefinitionInputDescriptor,
-    claim_to_credential_schema_mapping: &HashMap<ClaimSchemaId, CredentialSchemaId>,
-    expected_credential_claims: &HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>>,
+    //descriptor: &OpenID4VPPresentationDefinitionInputDescriptor,
+    proof_input_schema: &ProofInputSchema,
 ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
-    // each descriptor contains only fields from a single credential_schema...
-    let first_claim_schema = descriptor
-        .constraints
-        .fields
-        // ... so one field is enough to find the proper credential_schema (and requested claims from that schema)
-        .first()
-        .ok_or(ServiceError::OpenID4VCError(
-            OpenID4VCIError::InvalidRequest,
-        ))?;
+    let expected_credential_claims =
+        proof_input_schema
+            .claim_schemas
+            .as_ref()
+            .ok_or(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            ))?;
 
-    let expected_credential_schema_id = claim_to_credential_schema_mapping
-        .get(&first_claim_schema.id)
-        .ok_or(ServiceError::OpenID4VCError(
-            OpenID4VCIError::InvalidRequest,
-        ))?;
-
-    let expected_credential_claims = expected_credential_claims
-        .get(expected_credential_schema_id)
-        .ok_or(ServiceError::OpenID4VCError(
-            OpenID4VCIError::InvalidRequest,
-        ))?;
+    let credential_schema =
+        proof_input_schema
+            .credential_schema
+            .as_ref()
+            .ok_or(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            ))?;
 
     let mut proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
-    for &expected_credential_claim in expected_credential_claims {
+    for expected_credential_claim in expected_credential_claims {
         if let Some(value) = received_credential
             .claims
             .values
@@ -314,9 +304,10 @@ pub(super) fn validate_claims(
         {
             // Expected claim present in the presentation
             proved_claims.push(ValidatedProofClaimDTO {
-                claim_schema: expected_credential_claim.to_owned(),
+                proof_input_claim: expected_credential_claim.to_owned(),
                 credential: received_credential.to_owned(),
                 value: value.to_owned(),
+                credential_schema: credential_schema.to_owned(),
             })
         } else if expected_credential_claim.required {
             // Fail as required claim was not sent

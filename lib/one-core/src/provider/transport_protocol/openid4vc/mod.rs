@@ -80,10 +80,12 @@ use crate::{
 };
 use crate::{
     model::credential_schema::WalletStorageTypeEnum,
+    model::proof_schema::ProofInputSchemaRelations,
     provider::transport_protocol::mapper::get_relevant_credentials,
 };
 use crate::{
     model::key::Key,
+    model::proof_schema::ProofSchemaClaimRelationsNew,
     provider::transport_protocol::openid4vc::mapper::{
         get_claim_name_by_json_path, presentation_definition_from_interaction_data,
     },
@@ -562,6 +564,10 @@ impl TransportProtocol for OpenID4VC {
                                 ..Default::default()
                             }),
                         }),
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
                         ..Default::default()
                     }),
                     ..Default::default()
@@ -859,7 +865,7 @@ async fn handle_credential_invitation(
         data,
     )
     .await
-    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+    .map_err(|error: DataLayerError| TransportProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id;
 
     let credential_id = Uuid::new_v4().into();

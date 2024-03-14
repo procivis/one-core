@@ -3,13 +3,11 @@ use crate::{entity::claim, mapper::to_data_layer_error};
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
 use one_core::{
-    model::{
-        claim::{Claim, ClaimId, ClaimRelations},
-        claim_schema::ClaimSchemaId,
-    },
+    model::claim::{Claim, ClaimId, ClaimRelations},
     repository::{claim_repository::ClaimRepository, error::DataLayerError},
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use shared_types::ClaimSchemaId;
 use std::collections::HashMap;
 
 #[autometrics]
@@ -60,7 +58,7 @@ impl ClaimRepository for ClaimProvider {
         if let Some(claim_schema_relations) = &relations.schema {
             let claim_schema_ids = models
                 .iter()
-                .map(|model| model.claim_schema_id.into())
+                .map(|model| model.claim_schema_id)
                 .collect::<Vec<ClaimSchemaId>>();
 
             let claim_schemas = self

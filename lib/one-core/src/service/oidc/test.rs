@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
@@ -16,7 +17,9 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
-use crate::model::proof_schema::{ProofSchema, ProofSchemaClaim};
+use crate::model::proof_schema::{
+    ProofInputClaimSchema, ProofInputSchema, ProofSchema, ProofSchemaClaim,
+};
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
 };
@@ -893,8 +896,9 @@ fn test_vec_last_position_from_token_path() {
     assert!(vec_last_position_from_token_path("$[ABC]").is_err());
 }
 
+// TODO - ONE-1733
 #[tokio::test]
-async fn test_oidc_verifier_presentation_definition_success() {
+async fn test_oidc_verifier_presentation_definition_success_old() {
     let mut proof_repository = MockProofRepository::default();
 
     let proof_id = Uuid::new_v4();
@@ -908,7 +912,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                 constraints: OpenID4VPPresentationDefinitionConstraint {
                     validity_credential_nbf: None,
                     fields: vec![OpenID4VPPresentationDefinitionConstraintField {
-                        id: Uuid::new_v4(),
+                        id: Uuid::new_v4().into(),
                         path: vec!["123".to_string()],
                         optional: false,
                     }],
@@ -944,7 +948,30 @@ async fn test_oidc_verifier_presentation_definition_success() {
                         name: "test".to_string(),
                         expire_duration: 0,
                         validity_constraint: Some(100),
-                        claim_schemas: None,
+                        claim_schemas: Some(vec![ProofSchemaClaim {
+                            schema: ClaimSchema {
+                                id: Uuid::from_str("2fa85f64-5717-4562-b3fc-2c963f66afa6")
+                                    .unwrap()
+                                    .into(),
+                                key: "Key".to_owned(),
+                                data_type: "STRING".to_owned(),
+                                created_date: get_dummy_date(),
+                                last_modified: get_dummy_date(),
+                            },
+                            required: true,
+                            credential_schema: Some(CredentialSchema {
+                                id: Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap(),
+                                deleted_at: None,
+                                created_date: get_dummy_date(),
+                                last_modified: get_dummy_date(),
+                                name: "Credential1".to_owned(),
+                                format: "JWT".to_owned(),
+                                revocation_method: "NONE".to_owned(),
+                                wallet_storage_type: None,
+                                claim_schemas: None,
+                                organisation: None,
+                            }),
+                        }]),
                         organisation: None,
                         input_schemas: None,
                     }),
@@ -988,6 +1015,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
 
+    let claim_id = Uuid::new_v4().into();
     let interaction_data = OpenID4VPInteractionContent {
         nonce: nonce.to_owned(),
         presentation_definition: OpenID4VPPresentationDefinition {
@@ -996,7 +1024,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: "input_0".to_string(),
                 constraints: OpenID4VPPresentationDefinitionConstraint {
                     fields: vec![OpenID4VPPresentationDefinitionConstraintField {
-                        id: Uuid::new_v4(),
+                        id: claim_id,
                         path: vec!["$.vc.credentialSubject.string".to_string()],
                         optional: false,
                     }],
@@ -1042,24 +1070,30 @@ async fn test_submit_proof_failed_credential_suspended() {
                     state: ProofStateEnum::Pending,
                 }]),
                 schema: Some(ProofSchema {
-                    claim_schemas: Some(vec![
-                        ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                key: "required_key".to_string(),
-                                ..dummy_claim_schema()
+                    claim_schemas: None,
+                    input_schemas: Some(vec![ProofInputSchema {
+                        validity_constraint: None,
+                        claim_schemas: Some(vec![
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    id: claim_id,
+                                    key: "required_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: true,
+                                order: 0,
                             },
-                            required: true,
-                            credential_schema: Some(credential_schema.to_owned()),
-                        },
-                        ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                key: "optional_key".to_string(),
-                                ..dummy_claim_schema()
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    key: "optional_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: false,
+                                order: 1,
                             },
-                            required: false,
-                            credential_schema: Some(credential_schema),
-                        },
-                    ]),
+                        ]),
+                        credential_schema: Some(credential_schema),
+                    }]),
                     ..dummy_proof_schema()
                 }),
                 interaction: Some(interaction),

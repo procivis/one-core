@@ -1,8 +1,8 @@
 use crate::{
-    model::claim_schema::ClaimSchemaId, provider::credential_formatter::model::DetailCredential,
+    provider::credential_formatter::model::DetailCredential,
     service::credential_schema::dto::CredentialSchemaListItemResponseDTO,
 };
-use shared_types::DidValue;
+use shared_types::{ClaimSchemaId, DidValue};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]

@@ -267,7 +267,8 @@ impl LvvcProvider {
         let lvvc_issued_at = lvvc.issued_at.ok_or(ServiceError::ValidationError(
             "LVVC issued_at missing".to_string(),
         ))?;
-        if let Some(validity_constraint) = data.proof_schema.validity_constraint {
+
+        if let Some(validity_constraint) = data.proof_input.validity_constraint {
             let now = OffsetDateTime::now_utc();
 
             if now.sub(Duration::seconds(validity_constraint)) > lvvc_issued_at {
