@@ -1,9 +1,25 @@
+use serde::de::{Deserialize, Deserializer, Error, Unexpected};
+
 pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u64 {
     if page_size == 0 {
         return 0;
     }
 
     (total_items_count / page_size) + std::cmp::min(total_items_count % page_size, 1)
+}
+
+pub(super) fn bool_from_int<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match u8::deserialize(deserializer)? {
+        0 => Ok(false),
+        1 => Ok(true),
+        other => Err(Error::invalid_value(
+            Unexpected::Unsigned(other as u64),
+            &"zero or one",
+        )),
+    }
 }
 
 #[cfg(test)]

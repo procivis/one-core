@@ -17,26 +17,17 @@ impls_for_uuid_newtype!(EntityId);
 #[cfg(feature = "sea-orm")]
 impls_for_seaorm_newtype!(EntityId);
 
-impl From<DidId> for EntityId {
-    fn from(value: DidId) -> Self {
-        EntityId(value.into())
-    }
+macro_rules! impl_from_other_type {
+    ($other: ty) => {
+        impl std::convert::From<$other> for EntityId {
+            fn from(value: $other) -> Self {
+                Self(value.into())
+            }
+        }
+    };
 }
 
-impl From<KeyId> for EntityId {
-    fn from(value: KeyId) -> Self {
-        EntityId(value.into())
-    }
-}
-
-impl From<CredentialId> for EntityId {
-    fn from(value: CredentialId) -> Self {
-        EntityId(value.into())
-    }
-}
-
-impl From<OrganisationId> for EntityId {
-    fn from(value: OrganisationId) -> Self {
-        EntityId(value.into())
-    }
-}
+impl_from_other_type!(CredentialId);
+impl_from_other_type!(DidId);
+impl_from_other_type!(KeyId);
+impl_from_other_type!(OrganisationId);

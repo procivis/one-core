@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use autometrics::autometrics;
-use dto_mapper::{convert_inner, try_convert_inner};
+use dto_mapper::convert_inner;
 use one_core::{
     model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
     repository::{claim_schema_repository::ClaimSchemaRepository, error::DataLayerError},
@@ -55,7 +55,7 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
             });
         }
 
-        let mut claim_schema_list: Vec<ClaimSchema> = try_convert_inner(models)?;
+        let mut claim_schema_list: Vec<ClaimSchema> = convert_inner(models);
 
         claim_schema_list.sort_by_key(|claim_schema| claim_schema_to_index[&claim_schema.id]);
 

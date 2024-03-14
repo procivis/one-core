@@ -30,7 +30,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     let claim_schema_ids: Vec<ClaimSchemaId> = (0..4).map(|_| ClaimSchemaId::new_v4()).collect();
     for id in &claim_schema_ids {
         claim_schema::ActiveModel {
-            id: Set(id.to_string()),
+            id: Set((*id).into()),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             key: Set("TestKey".to_string()),

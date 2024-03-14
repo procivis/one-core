@@ -1,25 +1,25 @@
 use std::str::FromStr;
 
-use dto_mapper::TryInto;
+use dto_mapper::Into;
 use one_core::{model::claim_schema::ClaimSchema, repository::error::DataLayerError};
 use sea_orm::entity::prelude::*;
+use serde::Deserialize;
+use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, TryInto)]
-#[try_into(T = ClaimSchema, Error = DataLayerError)]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Into, Deserialize)]
+#[into(ClaimSchema)]
 #[sea_orm(table_name = "claim_schema")]
 pub struct Model {
-    #[try_into(with_fn_ref = "uuid::Uuid::from_str")]
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
-    #[try_into(infallible)]
+    pub id: ClaimSchemaId,
     pub key: String,
 
-    #[try_into(infallible)]
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
-    #[try_into(infallible)]
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
-    #[try_into(infallible, rename = "data_type")]
+    #[into(rename = "data_type")]
     pub datatype: String,
 }
 
