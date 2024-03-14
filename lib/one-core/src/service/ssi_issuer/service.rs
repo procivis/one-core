@@ -4,7 +4,6 @@ use super::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
 };
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
-use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::config::core_config::{FormatType, Params};
 use crate::config::ConfigValidationError;
@@ -29,7 +28,7 @@ use crate::{
     },
 };
 use convert_case::{Case, Casing};
-use shared_types::{CredentialId, DidId, DidValue, KeyId};
+use shared_types::{CredentialId, DidId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -37,7 +36,6 @@ impl SSIIssuerService {
     pub async fn issuer_connect(
         &self,
         credential_id: &CredentialId,
-        holder_did_value: &DidValue,
     ) -> Result<CredentialDetailResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
@@ -66,34 +64,18 @@ impl SSIIssuerService {
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
-        let credential_schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
-
-        /*
-         * TODO: holder_did_value is not verified if it's a valid/supported DID
-         * I was able to insert 'test' string as a DID value and it got accepted
-         */
-        let holder_did = get_or_create_did(
-            &*self.did_repository,
-            &credential_schema.organisation,
-            holder_did_value,
-        )
-        .await?;
-
         let now = OffsetDateTime::now_utc();
         let new_state = CredentialStateEnum::Offered;
 
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                holder_did_id: Some(holder_did.id),
                 state: Some(CredentialState {
                     created_date: now,
                     state: new_state.clone(),
                     suspend_end_date: None,
                 }),
+                holder_did_id: None,
                 credential: None,
                 issuer_did_id: None,
                 interaction: None,
@@ -102,8 +84,6 @@ impl SSIIssuerService {
             })
             .await?;
 
-        // Update local copy for conversion.
-        credential.holder_did = Some(holder_did);
         if let Some(states) = &mut credential.state {
             states.push(CredentialState {
                 created_date: now,

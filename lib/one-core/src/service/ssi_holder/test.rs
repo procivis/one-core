@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::provider::key_storage::{KeySecurity, KeyStorageCapabilities, MockKeyStorage};
+use crate::repository::mock::organisation_repository::MockOrganisationRepository;
 use crate::service::test_utilities::dummy_key;
 use crate::{
     model::{
@@ -15,8 +16,6 @@ use crate::{
         credential_schema::CredentialSchema,
         did::{Did, DidType, KeyRole, RelatedKey},
         interaction::Interaction,
-        key::Key,
-        organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
     },
     provider::{
@@ -199,9 +198,6 @@ async fn test_submit_proof_succeeds() {
     let proof_id = Uuid::new_v4();
     let protocol = "protocol";
 
-    let key_storage_type = "storage type";
-    let key_type = "ECDSA";
-
     let mut did_repository = MockDidRepository::new();
     did_repository.expect_get_did().once().return_once(|_, _| {
         Ok(Some(Did {
@@ -237,27 +233,6 @@ async fn test_submit_proof_succeeds() {
                         state: ProofStateEnum::Created,
                     },
                 ]),
-                holder_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: Key {
-                            id: Uuid::new_v4().into(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            public_key: b"public_key".to_vec(),
-                            name: "key name".to_string(),
-                            key_reference: b"private_key".to_vec(),
-                            storage_type: key_storage_type.to_string(),
-                            key_type: key_type.to_string(),
-                            organisation: Some(Organisation {
-                                id: Uuid::new_v4().into(),
-                                created_date: OffsetDateTime::now_utc(),
-                                last_modified: OffsetDateTime::now_utc(),
-                            }),
-                        },
-                    }]),
-                    ..dummy_did()
-                }),
                 interaction: Some(Interaction {
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),
@@ -349,12 +324,12 @@ async fn test_submit_proof_succeeds() {
 
     transport_protocol
         .expect_submit_proof()
-        .withf(move |proof, _| {
+        .withf(move |proof, _, _, _| {
             assert_eq!(proof.id, proof_id);
             true
         })
         .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _, _| Ok(()));
 
     let mut protocol_provider = MockTransportProtocolProvider::new();
     protocol_provider
@@ -429,27 +404,6 @@ async fn test_submit_proof_repeating_claims() {
                     last_modified: OffsetDateTime::now_utc(),
                     state: ProofStateEnum::Pending,
                 }]),
-                holder_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: Key {
-                            id: Uuid::new_v4().into(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            public_key: b"public_key".to_vec(),
-                            name: "key name".to_string(),
-                            key_reference: b"private_key".to_vec(),
-                            storage_type: "storage type".to_string(),
-                            key_type: "ECDSA".to_string(),
-                            organisation: Some(Organisation {
-                                id: Uuid::new_v4().into(),
-                                created_date: OffsetDateTime::now_utc(),
-                                last_modified: OffsetDateTime::now_utc(),
-                            }),
-                        },
-                    }]),
-                    ..dummy_did()
-                }),
                 interaction: Some(Interaction {
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),
@@ -560,12 +514,12 @@ async fn test_submit_proof_repeating_claims() {
 
     transport_protocol
         .expect_submit_proof()
-        .withf(move |proof, _| {
+        .withf(move |proof, _, _, _| {
             assert_eq!(proof.id, proof_id);
             true
         })
         .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _, _| Ok(()));
 
     let mut protocol_provider = MockTransportProtocolProvider::new();
     protocol_provider
@@ -759,6 +713,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
     SSIHolderService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         proof_repository: Arc::new(MockProofRepository::new()),
+        organisation_repository: Arc::new(MockOrganisationRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),

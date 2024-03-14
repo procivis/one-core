@@ -67,7 +67,7 @@ impl MockServer {
             .await;
     }
 
-    pub async fn ssi_issuance(&self, protocol: &str, credential_id: impl Display) {
+    pub async fn temporary_issuer_connect(&self, protocol: &str, credential_id: impl Display) {
         Mock::given(method(Method::POST))
             .and(path("/ssi/temporary-issuer/v1/connect"))
             .and(query_param("protocol", protocol))

@@ -18,7 +18,7 @@ use crate::{
     },
     service::{
         ssi_issuer::SSIIssuerService,
-        test_utilities::{dummy_credential, dummy_did, generic_config},
+        test_utilities::{dummy_credential, generic_config},
     },
 };
 
@@ -41,24 +41,12 @@ async fn test_issuer_connect_succeeds() {
         .once()
         .return_once(|_| Ok(()));
 
-    let mut did_repository = MockDidRepository::new();
-    did_repository
-        .expect_get_did_by_value()
-        .once()
-        .return_once(move |_, _| Ok(Some(dummy_did())));
-
     let service = SSIIssuerService {
         credential_repository: Arc::new(credential_repository),
-        did_repository: Arc::new(did_repository),
         ..mock_ssi_issuer_service()
     };
 
-    let holder_did_value = "holder did".parse().unwrap();
-
-    service
-        .issuer_connect(&credential_id, &holder_did_value)
-        .await
-        .unwrap();
+    service.issuer_connect(&credential_id).await.unwrap();
 }
 
 #[tokio::test]

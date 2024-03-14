@@ -60,12 +60,7 @@ use uuid::Uuid;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProofRequestQueryParams {
     pub proof: Uuid,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectRequestRestDTO {
-    pub did: DidValue,
+    pub did_id: DidId,
 }
 
 // verifier specific

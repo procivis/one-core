@@ -1,10 +1,9 @@
 use super::dto::{
-    ConnectRequestRestDTO, ConnectVerifierResponseRestDTO, IssuerResponseRestDTO,
-    JsonLDContextResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
-    OpenID4VPClientMetadataResponseRestDTO, OpenID4VPDirectPostRequestRestDTO,
-    OpenID4VPDirectPostResponseRestDTO, OpenID4VPPresentationDefinitionResponseRestDTO,
-    PostSsiIssuerConnectQueryParams, PostSsiIssuerSubmitQueryParams,
-    PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
+    ConnectVerifierResponseRestDTO, IssuerResponseRestDTO, JsonLDContextResponseRestDTO,
+    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
+    OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
+    OpenID4VPPresentationDefinitionResponseRestDTO, PostSsiIssuerConnectQueryParams,
+    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
@@ -36,7 +35,6 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/ssi/temporary-verifier/v1/connect",
-    request_body = ConnectRequestRestDTO,
     responses(OkOrErrorResponse<ConnectVerifierResponseRestDTO>),
     params(
         PostSsiVerifierConnectQueryParams
@@ -49,15 +47,11 @@ pub(crate) async fn ssi_verifier_connect(
         Query<PostSsiVerifierConnectQueryParams>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(Json(request), _): WithRejection<
-        Json<ConnectRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
 ) -> OkOrErrorResponse<ConnectVerifierResponseRestDTO> {
     let result = state
         .core
         .ssi_verifier_service
-        .connect_to_holder(&query.proof, &request.did, &query.redirect_uri)
+        .connect_to_holder(&query.proof, &query.redirect_uri)
         .await;
     OkOrErrorResponse::from_result(result, state, "connecting verifier")
 }
@@ -636,7 +630,7 @@ pub(crate) async fn ssi_verifier_submit_proof(
     let result = state
         .core
         .ssi_verifier_service
-        .submit_proof(&query.proof, &request)
+        .submit_proof(query.proof, query.did_id, &request)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "submitting proof")
 }
@@ -644,7 +638,6 @@ pub(crate) async fn ssi_verifier_submit_proof(
 #[utoipa::path(
     post,
     path = "/ssi/temporary-issuer/v1/connect",
-    request_body = ConnectRequestRestDTO,
     responses(OkOrErrorResponse<GetCredentialResponseRestDTO>),
     params(PostSsiIssuerConnectQueryParams),
     tag = "ssi",
@@ -655,15 +648,11 @@ pub(crate) async fn ssi_issuer_connect(
         Query<PostSsiIssuerConnectQueryParams>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(Json(request), _): WithRejection<
-        Json<ConnectRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
 ) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
     let result = state
         .core
         .ssi_issuer_service
-        .issuer_connect(&query.credential, &request.did)
+        .issuer_connect(&query.credential)
         .await;
     OkOrErrorResponse::from_result(result, state, "connecting to issuer")
 }

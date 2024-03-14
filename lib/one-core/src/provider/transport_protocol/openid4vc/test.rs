@@ -425,19 +425,12 @@ async fn test_generate_share_proof_open_id_flow_success() {
     assert!(result.starts_with(r#"openid4vp://?response_type=vp_token"#))
 }
 
-fn generic_holder_did() -> Did {
+fn generic_organisation() -> Organisation {
     let now = OffsetDateTime::now_utc();
-    Did {
+    Organisation {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
-        name: "holder".to_string(),
-        did: "did:key:holder".parse().unwrap(),
-        did_type: DidType::Remote,
-        did_method: "KEY".to_string(),
-        keys: None,
-        organisation: None,
-        deactivated: false,
     }
 }
 
@@ -481,7 +474,7 @@ async fn test_handle_invitation_proof_success() {
         , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
 
     let result = protocol
-        .handle_invitation(url, generic_holder_did())
+        .handle_invitation(url, generic_organisation())
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -513,7 +506,7 @@ async fn test_handle_invitation_proof_success() {
                                                               , nonce, callback_url, client_metadata_uri, callback_url, presentation_definition_uri)).unwrap();
 
     let result = protocol
-        .handle_invitation(url_using_uri_instead_of_values, generic_holder_did())
+        .handle_invitation(url_using_uri_instead_of_values, generic_organisation())
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -549,7 +542,7 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_response_type = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                       , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_response_type, generic_holder_did())
+        .handle_invitation(incorrect_response_type, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -557,7 +550,7 @@ async fn test_handle_invitation_proof_failed() {
     let missing_nonce = Url::parse(&format!("openid4vp://?response_type=vp_token&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                             , callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(missing_nonce, generic_holder_did())
+        .handle_invitation(missing_nonce, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -565,7 +558,7 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                          , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_client_id_scheme, generic_holder_did())
+        .handle_invitation(incorrect_client_id_scheme, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -573,7 +566,7 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_response_mode = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=some_mode&response_uri={}&presentation_definition={}"
                                                       , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_response_mode, generic_holder_did())
+        .handle_invitation(incorrect_response_mode, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -581,7 +574,7 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                          , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_client_id_scheme, generic_holder_did())
+        .handle_invitation(incorrect_client_id_scheme, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -593,7 +586,7 @@ async fn test_handle_invitation_proof_failed() {
     .unwrap();
     let missing_metadata_field = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}", nonce, callback_url, metadata_missing_jwt_vp_json, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(missing_metadata_field, generic_holder_did())
+        .handle_invitation(missing_metadata_field, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -601,7 +594,10 @@ async fn test_handle_invitation_proof_failed() {
     let both_client_metadata_and_uri_specified = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                                      , nonce, callback_url, client_metadata, client_metadata_uri, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(both_client_metadata_and_uri_specified, generic_holder_did())
+        .handle_invitation(
+            both_client_metadata_and_uri_specified,
+            generic_organisation(),
+        )
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -611,7 +607,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .handle_invitation(
             both_presentation_definition_and_uri_specified,
-            generic_holder_did(),
+            generic_organisation(),
         )
         .await
         .unwrap_err();
@@ -633,7 +629,7 @@ async fn test_handle_invitation_proof_failed() {
     let client_metadata_uri_is_not_https = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                                , nonce, callback_url, invalid_client_metadata_uri, callback_url, presentation_definition)).unwrap();
     let result = protocol_https_only
-        .handle_invitation(client_metadata_uri_is_not_https, generic_holder_did())
+        .handle_invitation(client_metadata_uri_is_not_https, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -644,7 +640,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol_https_only
         .handle_invitation(
             presentation_definition_uri_is_not_https,
-            generic_holder_did(),
+            generic_organisation(),
         )
         .await
         .unwrap_err();

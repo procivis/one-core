@@ -97,7 +97,7 @@ async fn test_correct() {
     let proof = fixtures::create_proof(
         &db_conn,
         &verifier_did,
-        Some(&holder_did),
+        None,
         Some(&proof_schema),
         ProofStateEnum::Requested,
         "PROCIVIS_TEMPORARY",
@@ -110,7 +110,7 @@ async fn test_correct() {
 
     let url = format!("{base_url}/ssi/temporary-verifier/v1/submit");
 
-    let params = [("proof", proof.id)];
+    let params = [("proof", proof.id), ("didId", holder_did.id.into())];
 
     let resp = utils::client()
         .post(url)

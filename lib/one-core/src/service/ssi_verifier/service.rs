@@ -16,7 +16,7 @@ use crate::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaId, CredentialSchemaRelations},
-        did::DidRelations,
+        did::{Did, DidRelations},
         interaction::InteractionRelations,
         organisation::OrganisationRelations,
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
@@ -28,7 +28,7 @@ use crate::{
         ssi_validator::validate_config_entity_presence,
     },
 };
-use shared_types::DidValue;
+use shared_types::DidId;
 use time::OffsetDateTime;
 
 impl SSIVerifierService {
@@ -41,7 +41,6 @@ impl SSIVerifierService {
     pub async fn connect_to_holder(
         &self,
         proof_id: &ProofId,
-        holder_did_value: &DidValue,
         redirect_uri: &Option<String>,
     ) -> Result<ConnectVerifierResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
@@ -87,7 +86,7 @@ impl SSIVerifierService {
             did.to_owned(),
         )?;
 
-        self.set_holder_connected(proof, holder_did_value).await?;
+        self.set_holder_connected(proof).await?;
 
         Ok(result)
     }
@@ -99,14 +98,15 @@ impl SSIVerifierService {
     /// * `proof_id` - proof identifier
     pub async fn submit_proof(
         &self,
-        proof_id: &ProofId,
+        proof_id: ProofId,
+        did_id: DidId,
         presentation_content: &str,
     ) -> Result<(), ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
         let proof = self
             .get_proof_with_state(
-                proof_id,
+                &proof_id,
                 ProofRelations {
                     schema: Some(ProofSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations {
@@ -116,25 +116,26 @@ impl SSIVerifierService {
                         proof_inputs: None,
                     }),
                     verifier_did: Some(DidRelations::default()),
-                    holder_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
             )
             .await?;
+
+        let holder_did = self
+            .did_repository
+            .get_did(&did_id, &Default::default())
+            .await?
+            .ok_or(EntityNotFoundError::Did(did_id))?;
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),
         ))?;
-        let holder_did = proof
-            .holder_did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("holder did is None".to_string()))?;
 
         let proved_claims = match validate_proof(
             proof_schema,
-            holder_did,
+            &holder_did,
             presentation_content,
             &*self.formatter_provider,
             self.key_algorithm_provider.clone(),
@@ -145,12 +146,14 @@ impl SSIVerifierService {
         {
             Ok(claims) => claims,
             Err(e) => {
-                self.fail_proof(proof_id).await?;
+                self.fail_proof(&proof_id).await?;
                 return Err(e);
             }
         };
 
-        let _ = self.accept_proof(proof.clone(), proved_claims).await;
+        let _ = self
+            .accept_proof(proof.clone(), proved_claims, holder_did)
+            .await;
 
         let _ = self
             .history_repository
@@ -207,27 +210,8 @@ impl SSIVerifierService {
     /// # Arguments
     ///
     /// * `id` - proof identifier
-    async fn set_holder_connected(
-        &self,
-        proof: Proof,
-        holder_did_value: &DidValue,
-    ) -> Result<(), ServiceError> {
+    async fn set_holder_connected(&self, proof: Proof) -> Result<(), ServiceError> {
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-
-        let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
-            "proof schema is None".to_string(),
-        ))?;
-
-        let holder_did = get_or_create_did(
-            &*self.did_repository,
-            &proof_schema.organisation,
-            holder_did_value,
-        )
-        .await?;
-
-        self.proof_repository
-            .set_proof_holder_did(&proof.id, holder_did)
-            .await?;
 
         let now = OffsetDateTime::now_utc();
         self.proof_repository
@@ -252,6 +236,7 @@ impl SSIVerifierService {
         &self,
         proof: Proof,
         proved_claims: Vec<ValidatedProofClaimDTO>,
+        holder_did: Did,
     ) -> Result<(), ServiceError> {
         let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),
@@ -301,11 +286,6 @@ impl SSIVerifierService {
                 .push(proved_claim);
         }
 
-        let holder_did = proof
-            .holder_did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
-
         let mut proof_claims: Vec<Claim> = vec![];
         for (_, credential_claims) in claims_per_credential {
             let claims: Vec<(String, ClaimSchema)> = credential_claims
@@ -335,7 +315,7 @@ impl SSIVerifierService {
                 first_claim.credential_schema.to_owned(),
                 claims,
                 issuer_did,
-                holder_did.to_owned(),
+                holder_did.clone(),
             );
 
             proof_claims.append(
@@ -350,6 +330,10 @@ impl SSIVerifierService {
                 .create_credential(credential)
                 .await?;
         }
+
+        self.proof_repository
+            .set_proof_holder_did(&proof.id, holder_did)
+            .await?;
 
         self.proof_repository
             .set_proof_claims(&proof.id, proof_claims)

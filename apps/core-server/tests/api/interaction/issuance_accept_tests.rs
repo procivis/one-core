@@ -547,7 +547,6 @@ async fn test_issuance_accept_openid4vc() {
             &issuer_did,
             "OPENID4VC",
             TestingCredentialParams {
-                holder_did: Some(holder_did.clone()),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
@@ -637,7 +636,6 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             &issuer_did,
             "OPENID4VC",
             TestingCredentialParams {
-                holder_did: Some(holder_did.clone()),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
@@ -790,7 +788,6 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             &issuer_did,
             "OPENID4VC",
             TestingCredentialParams {
-                holder_did: Some(holder_did.clone()),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
@@ -873,7 +870,6 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
             &issuer_did,
             "OPENID4VC",
             TestingCredentialParams {
-                holder_did: Some(holder_did.clone()),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
@@ -956,7 +952,6 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
             &issuer_did,
             "OPENID4VC",
             TestingCredentialParams {
-                holder_did: Some(holder_did.clone()),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },
@@ -1046,7 +1041,6 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             &issuer_did,
             "OPENID4VC",
             TestingCredentialParams {
-                holder_did: Some(holder_did.clone()),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },

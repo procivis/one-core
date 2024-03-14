@@ -45,7 +45,6 @@ use mockall::predicate::eq;
 #[tokio::test]
 async fn test_connect_to_holder_succeeds() {
     let proof_id = Uuid::new_v4();
-    let holder_did_value: DidValue = "holder did value".parse().unwrap();
 
     let verifier_did: DidValue = "verifier did".parse().unwrap();
 
@@ -113,45 +112,12 @@ async fn test_connect_to_holder_succeeds() {
         .once()
         .returning(|_, _| Ok(()));
 
-    let did_id: DidId = Uuid::new_v4().into();
-
-    let holder_did_value_clone = holder_did_value.clone();
-
-    let mut did_repository = MockDidRepository::new();
-    did_repository
-        .expect_get_did_by_value()
-        .withf(move |_holder_did_value, _| {
-            assert_eq!(_holder_did_value, &holder_did_value_clone.clone());
-            true
-        })
-        .once()
-        .return_once(move |_, _| {
-            Ok(Some(Did {
-                id: did_id,
-                ..dummy_did()
-            }))
-        });
-
-    proof_repository
-        .expect_set_proof_holder_did()
-        .withf(move |_proof_id, did| {
-            assert_eq!(_proof_id, &proof_id);
-            assert_eq!(did.id, did_id);
-            true
-        })
-        .once()
-        .returning(|_, _| Ok(()));
-
     let service = SSIVerifierService {
         proof_repository: Arc::new(proof_repository),
-        did_repository: Arc::new(did_repository),
         ..mock_ssi_verifier_service()
     };
 
-    let res = service
-        .connect_to_holder(&proof_id, &holder_did_value, &None)
-        .await
-        .unwrap();
+    let res = service.connect_to_holder(&proof_id, &None).await.unwrap();
 
     assert_eq!(verifier_did, res.verifier_did);
 }
@@ -227,17 +193,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
         .once()
         .returning(|_, _| Ok(()));
 
-    let holder_did_value_clone = holder_did_value.clone();
-
     let mut did_repository = MockDidRepository::new();
-    did_repository
-        .expect_get_did_by_value()
-        .withf(move |_holder_did_value, _| {
-            assert_eq!(_holder_did_value, &holder_did_value_clone.clone());
-            true
-        })
-        .once()
-        .returning(|_, _| Ok(None));
 
     let did_id: DidId = Uuid::new_v4().into();
 
@@ -250,15 +206,6 @@ async fn test_connect_to_holder_succeeds_new_did() {
         })
         .returning(move |_| Ok(did_id));
 
-    proof_repository
-        .expect_set_proof_holder_did()
-        .withf(move |_proof_id, _| {
-            assert_eq!(_proof_id, &proof_id);
-            true
-        })
-        .once()
-        .returning(|_, _| Ok(()));
-
     let service = SSIVerifierService {
         proof_repository: Arc::new(proof_repository),
         did_repository: Arc::new(did_repository),
@@ -266,24 +213,20 @@ async fn test_connect_to_holder_succeeds_new_did() {
         ..mock_ssi_verifier_service()
     };
 
-    let res = service
-        .connect_to_holder(&proof_id, &holder_did_value, &None)
-        .await
-        .unwrap();
-
+    let res = service.connect_to_holder(&proof_id, &None).await.unwrap();
     assert_eq!(verifier_did, res.verifier_did);
 }
 
 #[tokio::test]
 async fn test_submit_proof_succeeds() {
     let proof_id = Uuid::new_v4();
+    let did_id = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
 
-    let holder_did_clone = holder_did.clone();
     proof_repository
         .expect_get_proof()
         .withf(move |_proof_id, _| {
@@ -297,10 +240,6 @@ async fn test_submit_proof_succeeds() {
                 id: proof_id,
                 verifier_did: Some(Did {
                     did: verifier_did,
-                    ..dummy_did()
-                }),
-                holder_did: Some(Did {
-                    did: holder_did_clone,
                     ..dummy_did()
                 }),
                 state: Some(vec![ProofState {
@@ -388,6 +327,7 @@ async fn test_submit_proof_succeeds() {
         });
     formatter.expect_get_leeway().returning(|| 10);
     let issuer_did_clone = issuer_did.clone();
+    let holder_did_clone = holder_did.clone();
     formatter
         .expect_extract_credentials()
         .once()
@@ -398,7 +338,7 @@ async fn test_submit_proof_succeeds() {
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned()),
-                subject: Some(holder_did.to_owned()),
+                subject: Some(holder_did_clone.to_owned()),
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([
@@ -422,6 +362,11 @@ async fn test_submit_proof_succeeds() {
         .returning(move |_| Some(formatter.clone()));
 
     proof_repository
+        .expect_set_proof_holder_did()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    proof_repository
         .expect_set_proof_claims()
         .withf(move |set_proof_id, claims| {
             set_proof_id == &proof_id
@@ -432,6 +377,15 @@ async fn test_submit_proof_succeeds() {
         .returning(|_, _| Ok(()));
 
     let mut did_repository = MockDidRepository::new();
+    did_repository.expect_get_did().once().return_once({
+        let holder_did = holder_did.clone();
+        |_, _| {
+            Ok(Some(Did {
+                did: holder_did,
+                ..dummy_did()
+            }))
+        }
+    });
     did_repository
         .expect_get_did_by_value()
         .once()
@@ -465,7 +419,7 @@ async fn test_submit_proof_succeeds() {
 
     let presentation_content = "presentation content";
     service
-        .submit_proof(&proof_id, presentation_content)
+        .submit_proof(proof_id, did_id, presentation_content)
         .await
         .unwrap();
 }
@@ -473,13 +427,13 @@ async fn test_submit_proof_succeeds() {
 #[tokio::test]
 async fn test_submit_proof_failed_credential_revoked() {
     let proof_id = Uuid::new_v4();
+    let did_id = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
 
-    let holder_did_clone = holder_did.clone();
     proof_repository
         .expect_get_proof()
         .withf(move |_proof_id, _| {
@@ -493,10 +447,6 @@ async fn test_submit_proof_failed_credential_revoked() {
                 id: proof_id,
                 verifier_did: Some(Did {
                     did: verifier_did,
-                    ..dummy_did()
-                }),
-                holder_did: Some(Did {
-                    did: holder_did_clone,
                     ..dummy_did()
                 }),
                 state: Some(vec![ProofState {
@@ -537,6 +487,12 @@ async fn test_submit_proof_failed_credential_revoked() {
         })
         .once()
         .returning(|_, _| Ok(()));
+
+    let mut did_repository = MockDidRepository::new();
+    did_repository
+        .expect_get_did()
+        .once()
+        .return_once(|_, _| Ok(Some(dummy_did())));
 
     let mut formatter = MockCredentialFormatter::new();
 
@@ -638,12 +594,13 @@ async fn test_submit_proof_failed_credential_revoked() {
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         revocation_method_provider: Arc::new(revocation_method_provider),
+        did_repository: Arc::new(did_repository),
         ..mock_ssi_verifier_service()
     };
 
     let presentation_content = "presentation content";
     let err = service
-        .submit_proof(&proof_id, presentation_content)
+        .submit_proof(proof_id, did_id, presentation_content)
         .await
         .unwrap_err();
     assert!(matches!(
@@ -655,13 +612,13 @@ async fn test_submit_proof_failed_credential_revoked() {
 #[tokio::test]
 async fn test_submit_proof_failed_credential_suspended() {
     let proof_id = Uuid::new_v4();
+    let did_id = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
 
-    let holder_did_clone = holder_did.clone();
     proof_repository
         .expect_get_proof()
         .withf(move |_proof_id, _| {
@@ -675,10 +632,6 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: proof_id,
                 verifier_did: Some(Did {
                     did: verifier_did,
-                    ..dummy_did()
-                }),
-                holder_did: Some(Did {
-                    did: holder_did_clone,
                     ..dummy_did()
                 }),
                 state: Some(vec![ProofState {
@@ -719,6 +672,12 @@ async fn test_submit_proof_failed_credential_suspended() {
         })
         .once()
         .returning(|_, _| Ok(()));
+
+    let mut did_repository = MockDidRepository::new();
+    did_repository
+        .expect_get_did()
+        .once()
+        .return_once(|_, _| Ok(Some(dummy_did())));
 
     let mut formatter = MockCredentialFormatter::new();
 
@@ -824,12 +783,13 @@ async fn test_submit_proof_failed_credential_suspended() {
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         revocation_method_provider: Arc::new(revocation_method_provider),
+        did_repository: Arc::new(did_repository),
         ..mock_ssi_verifier_service()
     };
 
     let presentation_content = "presentation content";
     let err = service
-        .submit_proof(&proof_id, presentation_content)
+        .submit_proof(proof_id, did_id, presentation_content)
         .await
         .unwrap_err();
     assert!(matches!(

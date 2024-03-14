@@ -1,19 +1,14 @@
-mod dto;
 mod mapper;
 
 use async_trait::async_trait;
-use shared_types::{DidId, KeyId};
 use std::sync::Arc;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use self::{
-    dto::HandleInvitationConnectRequest,
-    mapper::{
-        get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
-        remote_did_from_value,
-    },
+use self::mapper::{
+    get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
+    remote_did_from_value,
 };
 use crate::{
     model::{
@@ -22,6 +17,8 @@ use crate::{
         credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations, KeyRole},
+        key::Key,
+        organisation::Organisation,
         proof::Proof,
     },
     provider::{
@@ -135,23 +132,21 @@ impl TransportProtocol for ProcivisTemp {
     async fn handle_invitation(
         &self,
         url: Url,
-        own_did: Did,
+        organisation: Organisation,
     ) -> Result<InvitationResponseDTO, TransportProtocolError> {
         let invitation_type = categorize_url(&url)?;
 
         let base_url = get_base_url(&url)?;
 
-        let redirect_uri: Option<String> = url
+        let redirect_uri = url
             .query_pairs()
-            .find_map(|(k, v)| (k == REDIRECT_URI_QUERY_PARAM_KEY).then_some(v.to_string()));
+            .filter(|(k, _)| k == REDIRECT_URI_QUERY_PARAM_KEY)
+            .map(|(_, v)| v.to_string())
+            .next();
 
-        let request_body = HandleInvitationConnectRequest {
-            did: own_did.did.to_owned(),
-        };
         let response = self
             .client
             .post(url)
-            .json(&request_body)
             .send()
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;
@@ -167,7 +162,7 @@ impl TransportProtocol for ProcivisTemp {
                     .await
                     .map_err(TransportProtocolError::HttpResponse)?;
 
-                handle_credential_invitation(self, base_url, own_did, issuer_response).await?
+                handle_credential_invitation(self, base_url, organisation, issuer_response).await?
             }
             InvitationType::ProofRequest { proof_id, protocol } => {
                 let proof_request = response
@@ -181,7 +176,7 @@ impl TransportProtocol for ProcivisTemp {
                     proof_id,
                     proof_request,
                     &protocol,
-                    &own_did,
+                    organisation,
                     redirect_uri,
                 )
                 .await?
@@ -211,34 +206,17 @@ impl TransportProtocol for ProcivisTemp {
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
+        holder_did: &Did,
+        key: &Key,
     ) -> Result<(), TransportProtocolError> {
         let presentation_formatter = self
             .formatter_provider
             .get_formatter("JWT")
             .ok_or_else(|| TransportProtocolError::Failed("JWT formatter not found".to_string()))?;
 
-        let holder_did = proof
-            .holder_did
-            .as_ref()
-            .ok_or(TransportProtocolError::Failed(
-                "holder_did is None".to_string(),
-            ))?;
-
-        let keys = holder_did
-            .keys
-            .as_ref()
-            .ok_or(TransportProtocolError::Failed(
-                "Holder has no keys".to_string(),
-            ))?;
-
-        let key = keys
-            .iter()
-            .find(|k| k.role == KeyRole::Authentication)
-            .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
-
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.key)
+            .get_signature_provider(key)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let tokens: Vec<String> = credential_presentations
@@ -247,7 +225,7 @@ impl TransportProtocol for ProcivisTemp {
             .collect();
 
         let presentation = presentation_formatter
-            .format_presentation(&tokens, &holder_did.did, &key.key.key_type, auth_fn, None)
+            .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, None)
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
@@ -272,22 +250,15 @@ impl TransportProtocol for ProcivisTemp {
     async fn accept_credential(
         &self,
         credential: &Credential,
-        did_id: &DidId,
-        key_id: &Option<KeyId>,
+        holder_did: &Did,
+        key: &Key,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/submit");
-        if let Some(key_id) = key_id {
-            url.set_query(Some(&format!(
-                "credentialId={}&didId={}&keyId={}",
-                credential.id, did_id, key_id
-            )));
-        } else {
-            url.set_query(Some(&format!(
-                "credentialId={}&didId={}",
-                credential.id, did_id
-            )));
-        }
+        url.set_query(Some(&format!(
+            "credentialId={}&didId={}&keyId={}",
+            credential.id, holder_did.id, key.id
+        )));
 
         let response = self
             .client
@@ -418,16 +389,9 @@ impl TransportProtocol for ProcivisTemp {
 async fn handle_credential_invitation(
     deps: &ProcivisTemp,
     base_url: Url,
-    holder_did: Did,
+    organisation: Organisation,
     issuer_response: CredentialDetailResponseDTO,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
-    let organisation = holder_did
-        .organisation
-        .as_ref()
-        .ok_or(TransportProtocolError::Failed(
-            "organisation is None".to_string(),
-        ))?;
-
     let credential_schema: CredentialSchema = issuer_response.schema.into();
     let credential_schema = match deps
         .credential_schema_repository
@@ -567,7 +531,7 @@ async fn handle_credential_invitation(
         }]),
         claims: Some(claims),
         issuer_did: Some(issuer_did),
-        holder_did: Some(holder_did),
+        holder_did: None,
         schema: Some(credential_schema),
         interaction: Some(interaction),
         revocation_list: None,
@@ -585,7 +549,7 @@ async fn handle_proof_invitation(
     proof_id: String,
     proof_request: ConnectVerifierResponse,
     protocol: &str,
-    holder_did: &Did,
+    organisation: Organisation,
     redirect_uri: Option<String>,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
     let verifier_did_result = deps
@@ -608,7 +572,7 @@ async fn handle_proof_invitation(
                 did_type: crate::model::did::DidType::Remote,
                 did_method: "KEY".to_owned(),
                 keys: None,
-                organisation: holder_did.organisation.to_owned(),
+                organisation: Some(organisation),
                 deactivated: false,
             };
             deps.did_repository
@@ -654,7 +618,6 @@ async fn handle_proof_invitation(
         protocol,
         redirect_uri,
         Some(verifier_did),
-        holder_did.to_owned(),
         interaction,
         now,
         verifier_key,
