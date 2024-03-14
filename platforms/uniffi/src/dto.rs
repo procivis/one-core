@@ -129,6 +129,7 @@ pub struct CredentialDetailBindingDTO {
     pub redirect_uri: Option<String>,
     pub role: CredentialRoleBindingDTO,
     pub lvvc_issuance_date: Option<String>,
+    pub suspend_end_date: Option<String>,
 }
 
 pub struct CredentialListItemBindingDTO {
@@ -141,6 +142,7 @@ pub struct CredentialListItemBindingDTO {
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
     pub role: CredentialRoleBindingDTO,
+    pub suspend_end_date: Option<String>,
 }
 
 #[derive(Debug, Clone, From)]
