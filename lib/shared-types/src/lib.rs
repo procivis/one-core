@@ -1,3 +1,5 @@
+mod claim_id;
+mod claim_schema_id;
 mod credential_id;
 mod did_id;
 mod did_value;
@@ -7,6 +9,8 @@ mod key_id;
 mod macros;
 mod organisation_id;
 
+pub use claim_id::ClaimId;
+pub use claim_schema_id::ClaimSchemaId;
 pub use credential_id::CredentialId;
 pub use did_id::DidId;
 pub use did_value::DidValue;

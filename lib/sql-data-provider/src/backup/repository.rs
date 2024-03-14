@@ -3,21 +3,27 @@ use std::path::Path;
 use anyhow::Context;
 use autometrics::autometrics;
 use dto_mapper::{convert_inner, try_convert_inner, Into};
-use migration::{Alias, Expr, Func, Query, SimpleExpr};
+use migration::{Alias, Expr, Func, Query};
 use one_core::{
     model::backup::{Metadata, UnexportableEntities},
     repository::{backup_repository::BackupRepository, error::DataLayerError},
 };
 use sea_orm::{
     ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, FromQueryResult,
-    Iterable, JoinType, Order, PaginatorTrait, QueryFilter, QuerySelect, RelationTrait, Statement,
-    Values,
+    Iterable, JoinType, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
+    RelationTrait, Statement, Values,
 };
 use time::OffsetDateTime;
 
 use crate::{
+    backup::helpers::coalesce_to_empty_array,
+    entity::{claim_schema, credential_schema_claim_schema},
+};
+use crate::{
     backup::{
-        helpers::{json_agg, open_sqlite_on_path, JsonArray},
+        helpers::{
+            json_agg_columns, json_object_columns, open_sqlite_on_path, JsonAgg, JsonObject,
+        },
         models::UnexportableCredentialModel,
     },
     entity::{
@@ -134,47 +140,72 @@ impl BackupRepository for BackupProvider {
                 "organisation_last_modified",
             )
             .expr_as_(
-                Func::coalesce([
-                    SimpleExpr::SubQuery(
-                        None,
-                        Box::new(
-                            Query::select()
-                                .expr(json_agg(credential_state::Column::iter()))
-                                .from(credential_state::Entity)
-                                .and_where(
-                                    Expr::col((
-                                        credential_state::Entity,
-                                        credential_state::Column::CredentialId,
+                coalesce_to_empty_array(
+                    credential_schema_claim_schema::Entity::find()
+                        .select_only()
+                        .expr(
+                            Func::cust(JsonAgg).arg(
+                                Func::cust(JsonObject)
+                                    .arg("credential_schema_claim_schema")
+                                    .arg(json_object_columns(
+                                        credential_schema_claim_schema::Column::iter(),
                                     ))
-                                    .equals((credential::Entity, credential::Column::Id)),
-                                )
-                                .order_by(credential_state::Column::CreatedDate, Order::Desc)
-                                .to_owned()
-                                .into_sub_query_statement(),
-                        ),
-                    ),
-                    Func::cust(JsonArray).into(),
-                ]),
+                                    .arg("claim_schema")
+                                    .arg(json_object_columns(claim_schema::Column::iter())),
+                            ),
+                        )
+                        .join(
+                            JoinType::InnerJoin,
+                            credential_schema_claim_schema::Relation::ClaimSchema.def(),
+                        )
+                        .filter(
+                            Expr::col((
+                                credential_schema_claim_schema::Entity,
+                                credential_schema_claim_schema::Column::CredentialSchemaId,
+                            ))
+                            .equals((credential_schema::Entity, credential_schema::Column::Id)),
+                        )
+                        .into_query(),
+                ),
+                "credential_schema_claim_schemas",
+            )
+            .expr_as_(
+                coalesce_to_empty_array(
+                    credential_state::Entity::find()
+                        .select_only()
+                        .expr(json_agg_columns(credential_state::Column::iter()))
+                        .filter(
+                            Expr::col((
+                                credential_state::Entity,
+                                credential_state::Column::CredentialId,
+                            ))
+                            .equals((credential::Entity, credential::Column::Id)),
+                        )
+                        .order_by(credential_state::Column::CreatedDate, Order::Desc)
+                        .into_query(),
+                ),
                 "credential_states",
             )
             .expr_as_(
-                Func::coalesce([
-                    SimpleExpr::SubQuery(
-                        None,
-                        Box::new(
-                            Query::select()
-                                .expr(json_agg(claim::Column::iter()))
-                                .from(claim::Entity)
-                                .and_where(
-                                    Expr::col((claim::Entity, claim::Column::CredentialId))
-                                        .equals((credential::Entity, credential::Column::Id)),
-                                )
-                                .to_owned()
-                                .into_sub_query_statement(),
-                        ),
-                    ),
-                    Func::cust(JsonArray).into(),
-                ]),
+                coalesce_to_empty_array(
+                    claim::Entity::find()
+                        .select_only()
+                        .expr(
+                            Func::cust(JsonAgg).arg(
+                                Func::cust(JsonObject)
+                                    .arg("claim")
+                                    .arg(json_object_columns(claim::Column::iter()))
+                                    .arg("claim_schema")
+                                    .arg(json_object_columns(claim_schema::Column::iter())),
+                            ),
+                        )
+                        .join(JoinType::InnerJoin, claim::Relation::ClaimSchema.def())
+                        .filter(
+                            Expr::col((claim::Entity, claim::Column::CredentialId))
+                                .equals((credential::Entity, credential::Column::Id)),
+                        )
+                        .into_query(),
+                ),
                 "claims",
             )
             .join(

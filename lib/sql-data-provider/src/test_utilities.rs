@@ -118,8 +118,8 @@ pub async fn insert_many_claims_to_database(
     let models =
         claims.iter().map(
             |(id, claim_schema_id, credential_id, value)| claim::ActiveModel {
-                id: Set(id.to_string()),
-                claim_schema_id: Set(claim_schema_id.to_string()),
+                id: Set((*id).into()),
+                claim_schema_id: Set((*claim_schema_id).into()),
                 credential_id: Set(*credential_id),
                 value: Set(value.to_owned()),
                 created_date: Set(get_dummy_date()),
@@ -139,7 +139,7 @@ pub async fn insert_many_claims_schema_to_database(
 ) -> Result<(), DbErr> {
     for (id, key, required, order, datatype) in claims {
         claim_schema::ActiveModel {
-            id: Set(id.to_string()),
+            id: Set((*id).into()),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             key: Set(key.to_string()),
@@ -149,7 +149,7 @@ pub async fn insert_many_claims_schema_to_database(
         .await?;
 
         credential_schema_claim_schema::ActiveModel {
-            claim_schema_id: Set(id.to_string()),
+            claim_schema_id: Set((*id).into()),
             credential_schema_id: Set(credential_schema_id.to_owned()),
             required: Set(*required),
             order: Set(*order),

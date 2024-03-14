@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
-use dto_mapper::try_convert_inner;
 use one_core::{
     model::{
         claim_schema::ClaimSchemaId,
@@ -124,7 +123,11 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .await
                 .map_err(to_data_layer_error)?;
 
-            let claim_schema_ids: Vec<ClaimSchemaId> = try_convert_inner(models.clone())?;
+            let claim_schema_ids: Vec<ClaimSchemaId> = models
+                .iter()
+                .map(|model| model.claim_schema_id.into())
+                .collect();
+
             let claim_schemas = self
                 .claim_schema_repository
                 .get_claim_schema_list(claim_schema_ids, claim_schema_relations)

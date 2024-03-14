@@ -1,7 +1,7 @@
 use super::ClaimProvider;
 use crate::{entity::claim, mapper::to_data_layer_error};
 use autometrics::autometrics;
-use dto_mapper::try_convert_inner;
+use dto_mapper::convert_inner;
 use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
@@ -10,8 +10,7 @@ use one_core::{
     repository::{claim_repository::ClaimRepository, error::DataLayerError},
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use std::{collections::HashMap, str::FromStr};
-use uuid::Uuid;
+use std::collections::HashMap;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -37,10 +36,10 @@ impl ClaimRepository for ClaimProvider {
     ) -> Result<Vec<Claim>, DataLayerError> {
         let claims_cnt = ids.len();
 
-        let claim_id_to_index: HashMap<String, usize> = ids
+        let claim_id_to_index: HashMap<shared_types::ClaimId, usize> = ids
             .into_iter()
             .enumerate()
-            .map(|(index, id)| (id.to_string(), index))
+            .map(|(index, id)| (id.into(), index))
             .collect();
 
         let mut models = claim::Entity::find()
@@ -61,15 +60,15 @@ impl ClaimRepository for ClaimProvider {
         if let Some(claim_schema_relations) = &relations.schema {
             let claim_schema_ids = models
                 .iter()
-                .map(|model| Uuid::from_str(&model.claim_schema_id))
-                .collect::<Result<Vec<ClaimSchemaId>, _>>()?;
+                .map(|model| model.claim_schema_id.into())
+                .collect::<Vec<ClaimSchemaId>>();
 
             let claim_schemas = self
                 .claim_schema_repository
                 .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
                 .await?;
 
-            let claims: Vec<Claim> = try_convert_inner(models)?;
+            let claims: Vec<Claim> = convert_inner(models);
 
             Ok(claims
                 .into_iter()
@@ -80,7 +79,7 @@ impl ClaimRepository for ClaimProvider {
                 })
                 .collect())
         } else {
-            try_convert_inner(models)
+            Ok(convert_inner(models))
         }
     }
 }

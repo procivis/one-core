@@ -597,9 +597,9 @@ async fn test_get_proof_with_relations() {
     .unwrap();
 
     claim::ActiveModel {
-        id: Set(claim_id.to_string()),
+        id: Set(claim_id.into()),
         credential_id: Set(credential_id),
-        claim_schema_id: Set(claim_schema_ids[0].to_string()),
+        claim_schema_id: Set(claim_schema_ids[0].into()),
         value: Set("value".as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
@@ -922,9 +922,9 @@ async fn test_set_proof_claims_success() {
 
     // necessary to pass db consistency checks
     claim::ActiveModel {
-        id: Set(claim.id.to_string()),
+        id: Set(claim.id.into()),
         credential_id: Set(credential_id),
-        claim_schema_id: Set(claim_schema_ids[0].to_string()),
+        claim_schema_id: Set(claim_schema_ids[0].into()),
         value: Set("value".into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
