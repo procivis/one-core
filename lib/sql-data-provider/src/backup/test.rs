@@ -17,7 +17,7 @@ use crate::{
     test_utilities::{
         assert_eq_unordered, get_dummy_date, insert_credential_schema_to_database, insert_key_did,
         insert_many_claims_schema_to_database, insert_many_claims_to_database,
-        insert_organisation_to_database,
+        insert_organisation_to_database, ClaimInsertInfo, ProofInput,
     },
 };
 
@@ -83,17 +83,31 @@ async fn insert_credential_to_database(
     .unwrap()
     .id;
 
-    let claim_schema_id = Uuid::new_v4();
-    insert_many_claims_schema_to_database(
-        database,
-        &schema_id.to_string(),
-        &vec![(claim_schema_id, "name", false, 0, "STRING")],
-    )
-    .await
-    .unwrap();
+    let claim_schema_id = Uuid::new_v4().into();
+    let claim = ClaimInsertInfo {
+        id: claim_schema_id,
+        key: "name",
+        required: false,
+        order: 0,
+        datatype: "STRING",
+    };
+
+    let proof_input = ProofInput {
+        credential_schema_id: schema_id.to_string(),
+        claims: &vec![claim],
+    };
+
+    insert_many_claims_schema_to_database(database, &proof_input)
+        .await
+        .unwrap();
     insert_many_claims_to_database(
         database,
-        &[(Uuid::new_v4(), claim_schema_id, credential_id, vec![255])],
+        &[(
+            Uuid::new_v4().into(),
+            claim_schema_id,
+            credential_id,
+            vec![255],
+        )],
     )
     .await
     .unwrap();

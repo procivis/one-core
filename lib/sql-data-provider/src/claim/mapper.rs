@@ -12,11 +12,7 @@ impl TryFrom<Claim> for claim::ActiveModel {
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             value: Set(value.value.as_bytes().to_owned()),
-            claim_schema_id: Set(value
-                .schema
-                .ok_or(DataLayerError::IncorrectParameters)?
-                .id
-                .into()),
+            claim_schema_id: Set(value.schema.ok_or(DataLayerError::IncorrectParameters)?.id),
         })
     }
 }

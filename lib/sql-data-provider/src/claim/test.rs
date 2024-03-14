@@ -3,7 +3,7 @@ use crate::{entity::claim_schema, test_utilities::*};
 use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
-        claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
+        claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential::CredentialStateEnum,
     },
     repository::{
@@ -12,7 +12,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use shared_types::CredentialId;
+use shared_types::{ClaimSchemaId, CredentialId};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -27,10 +27,10 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let claim_schema_ids: Vec<ClaimSchemaId> = (0..4).map(|_| ClaimSchemaId::new_v4()).collect();
+    let claim_schema_ids: Vec<ClaimSchemaId> = (0..4).map(|_| Uuid::new_v4().into()).collect();
     for id in &claim_schema_ids {
         claim_schema::ActiveModel {
-            id: Set((*id).into()),
+            id: Set(*id),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
             key: Set("TestKey".to_string()),

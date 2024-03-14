@@ -1,6 +1,8 @@
+use shared_types::ClaimSchemaId;
+
 use super::error::DataLayerError;
 
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations};
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 
 #[async_trait::async_trait]
 pub trait ClaimSchemaRepository: Send + Sync {

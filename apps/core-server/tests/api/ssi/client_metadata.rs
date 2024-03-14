@@ -1,4 +1,7 @@
-use crate::utils::context::TestContext;
+use crate::utils::{
+    context::TestContext,
+    db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+};
 use one_core::model::proof::ProofStateEnum;
 use uuid::Uuid;
 
@@ -21,12 +24,16 @@ async fn test_get_client_metadata() {
         .create(
             "test",
             &organisation,
-            &[(
-                claim_schema.id,
-                &claim_schema.key,
-                true,
-                &claim_schema.data_type,
-            )],
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
         )
         .await;
 
@@ -107,12 +114,16 @@ async fn test_fail_to_get_client_metadata_wrong_transport_protocol() {
         .create(
             "test",
             &organisation,
-            &[(
-                claim_schema.id,
-                &claim_schema.key,
-                true,
-                &claim_schema.data_type,
-            )],
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
         )
         .await;
 
@@ -157,12 +168,16 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
         .create(
             "test",
             &organisation,
-            &[(
-                claim_schema.id,
-                &claim_schema.key,
-                true,
-                &claim_schema.data_type,
-            )],
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
         )
         .await;
 

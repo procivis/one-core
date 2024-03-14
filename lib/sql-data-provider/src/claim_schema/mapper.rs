@@ -6,7 +6,7 @@ use crate::entity::claim_schema;
 impl From<ClaimSchema> for claim_schema::ActiveModel {
     fn from(value: ClaimSchema) -> Self {
         Self {
-            id: Set(value.id.into()),
+            id: Set(value.id),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             key: Set(value.key),

@@ -33,11 +33,10 @@ pub struct ProofSchema {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ProofInputSchema {
-    pub order: u64,
-    pub validity_constraints: Option<u64>,
+    pub validity_constraint: Option<i64>,
 
     //Relations
-    pub claim_schemas: Option<Vec<ProofSchemaClaim>>,
+    pub claim_schemas: Option<Vec<ProofInputClaimSchema>>,
     pub credential_schema: Option<CredentialSchema>,
 }
 
@@ -47,7 +46,15 @@ pub struct ProofSchemaClaim {
     pub required: bool,
 
     // Relations
+    // TODO: ONE-1733
     pub credential_schema: Option<CredentialSchema>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProofInputClaimSchema {
+    pub schema: ClaimSchema,
+    pub required: bool,
+    pub order: u32,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

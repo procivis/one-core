@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
 use one_core::{
-    model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
+    model::claim_schema::{ClaimSchema, ClaimSchemaRelations},
     repository::{claim_schema_repository::ClaimSchemaRepository, error::DataLayerError},
 };
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use uuid::Uuid;
+use shared_types::ClaimSchemaId;
 
 use super::ClaimSchemaProvider;
 use crate::{entity::claim_schema, mapper::to_data_layer_error};
@@ -35,7 +35,7 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
         _relations: &ClaimSchemaRelations,
     ) -> Result<Vec<ClaimSchema>, DataLayerError> {
         let claim_schema_cnt = ids.len();
-        let claim_schema_to_index: HashMap<Uuid, usize> = ids
+        let claim_schema_to_index: HashMap<ClaimSchemaId, usize> = ids
             .into_iter()
             .enumerate()
             .map(|(index, id)| (id, index))

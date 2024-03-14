@@ -1,12 +1,9 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::{
-    model::{
-        claim_schema::ClaimSchemaId,
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
-            GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
-        },
+    model::credential_schema::{
+        CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
+        GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
     },
     repository::{credential_schema_repository::CredentialSchemaRepository, error::DataLayerError},
 };
@@ -15,6 +12,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, SqlErr, Unchanged,
 };
+use shared_types::ClaimSchemaId;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -123,10 +121,8 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .await
                 .map_err(to_data_layer_error)?;
 
-            let claim_schema_ids: Vec<ClaimSchemaId> = models
-                .iter()
-                .map(|model| model.claim_schema_id.into())
-                .collect();
+            let claim_schema_ids: Vec<ClaimSchemaId> =
+                models.iter().map(|model| model.claim_schema_id).collect();
 
             let claim_schemas = self
                 .claim_schema_repository

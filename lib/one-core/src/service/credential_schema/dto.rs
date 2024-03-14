@@ -1,12 +1,11 @@
 use serde::{Deserialize, Serialize};
-use shared_types::OrganisationId;
+use shared_types::{ClaimSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 use dto_mapper::From;
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::{
-    claim_schema::ClaimSchemaId,
     common::{GetListQueryParams, GetListResponse},
     credential_schema::{
         CredentialFormat, CredentialSchema, CredentialSchemaId, RevocationMethod,

@@ -9,7 +9,11 @@ use uuid::Uuid;
 
 use crate::{
     fixtures::TestingDidParams,
-    utils::{context::TestContext, field_match::FieldHelpers},
+    utils::{
+        context::TestContext,
+        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+        field_match::FieldHelpers,
+    },
 };
 
 #[tokio::test]
@@ -44,7 +48,7 @@ async fn test_list_proof_success() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
 
     let proof_schema = context
         .db
@@ -52,12 +56,16 @@ async fn test_list_proof_success() {
         .create(
             "proof-schema-name",
             &organisation,
-            &[(
-                claim_schema.id,
-                &claim_schema.key,
-                true,
-                &claim_schema.data_type,
-            )],
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
         )
         .await;
 
@@ -126,7 +134,7 @@ async fn test_list_proofs_by_ids() {
         .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
 
     let proof_schema = context
         .db
@@ -134,12 +142,16 @@ async fn test_list_proofs_by_ids() {
         .create(
             "proof-schema-name",
             &organisation,
-            &[(
-                claim_schema.id,
-                &claim_schema.key,
-                true,
-                &claim_schema.data_type,
-            )],
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
         )
         .await;
 

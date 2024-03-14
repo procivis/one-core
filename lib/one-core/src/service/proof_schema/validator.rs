@@ -26,23 +26,29 @@ pub async fn proof_schema_name_already_exists(
 pub fn validate_create_request(
     request: &CreateProofSchemaRequestDTO,
 ) -> Result<(), ValidationError> {
-    if request.claim_schemas.is_empty() {
+    if request.proof_input_schemas.is_empty() {
         return Err(ValidationError::ProofSchemaMissingClaims);
     }
 
-    // at least one claim must be required
-    if !request.claim_schemas.iter().any(|claim| claim.required) {
-        return Err(ValidationError::ProofSchemaNoRequiredClaim);
-    }
-
-    // no claim duplicates allowed
     let mut uniq = HashSet::new();
-    if !request
-        .claim_schemas
-        .iter()
-        .all(move |claim| uniq.insert(claim.id))
-    {
-        return Err(ValidationError::ProofSchemaDuplicitClaim);
+
+    for proof_input in &request.proof_input_schemas {
+        if proof_input.claim_schemas.is_empty() {
+            return Err(ValidationError::ProofSchemaMissingClaims);
+        }
+
+        // at least one claim must be required
+        if !proof_input.claim_schemas.iter().any(|claim| claim.required) {
+            return Err(ValidationError::ProofSchemaNoRequiredClaim);
+        }
+
+        if !proof_input
+            .claim_schemas
+            .iter()
+            .all(|claim| uniq.insert(claim.id))
+        {
+            return Err(ValidationError::ProofSchemaDuplicitClaim);
+        }
     }
 
     Ok(())

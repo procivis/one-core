@@ -22,9 +22,14 @@ use crate::{
         interaction::InteractionRelations,
         key::KeyRelations,
         organisation::OrganisationRelations,
-        proof::ProofClaimRelations,
-        proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
-        proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
+        proof::{
+            Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
+            ProofStateRelations,
+        },
+        proof_schema::{
+            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaClaimRelationsNew,
+            ProofSchemaRelations,
+        },
     },
     provider::transport_protocol::dto::PresentationDefinitionResponseDTO,
     service::error::{
@@ -51,7 +56,10 @@ impl ProofService {
                             credential_schema: Some(Default::default()),
                         }),
                         organisation: Some(Default::default()),
-                        proof_inputs: None,
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
                     }),
                     state: Some(Default::default()),
                     claims: Some(ProofClaimRelations {

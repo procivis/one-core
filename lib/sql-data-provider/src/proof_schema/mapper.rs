@@ -1,15 +1,9 @@
-use crate::{
-    common::calculate_pages_count,
-    entity::{proof_schema, proof_schema_claim_schema},
-    list_query::GetEntityColumn,
-};
+use crate::{common::calculate_pages_count, entity::proof_schema, list_query::GetEntityColumn};
 use anyhow::anyhow;
 use dto_mapper::try_convert_inner;
 use migration::SimpleExpr;
 use one_core::{
-    model::proof_schema::{
-        GetProofSchemaList, ProofSchema, ProofSchemaClaim, ProofSchemaId, SortableProofSchemaColumn,
-    },
+    model::proof_schema::{GetProofSchemaList, ProofSchema, SortableProofSchemaColumn},
     repository::error::DataLayerError,
 };
 use sea_orm::{IntoSimpleExpr, Set};
@@ -81,18 +75,5 @@ impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
             expire_duration: Set(value.expire_duration),
             validity_constraint: Set(value.validity_constraint),
         })
-    }
-}
-
-pub(crate) fn proof_schema_claim_to_active_model(
-    claim_schema: ProofSchemaClaim,
-    proof_schema_id: &ProofSchemaId,
-    order: u32,
-) -> proof_schema_claim_schema::ActiveModel {
-    proof_schema_claim_schema::ActiveModel {
-        proof_schema_id: Set(proof_schema_id.to_string()),
-        claim_schema_id: Set(claim_schema.schema.id.to_string()),
-        required: Set(claim_schema.required),
-        order: Set(order),
     }
 }

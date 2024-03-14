@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use one_core::model::proof::ProofStateEnum;
 
+use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 use crate::{fixtures::TestingDidParams, utils::context::TestContext};
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::interaction::Interaction;
@@ -53,7 +54,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         }
     });
 
-    context
+    let credential_schema = context
         .db
         .credential_schemas
         .create_with_claims(
@@ -64,10 +65,13 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
             "JWT",
         )
         .await;
+    let proof_input_schema =
+        CreateProofInputSchema::from((&new_claim_schemas[..], &credential_schema));
+
     let proof_schema = context
         .db
         .proof_schemas
-        .create("Schema1", &organisation, &new_claim_schemas)
+        .create("Schema1", &organisation, proof_input_schema)
         .await;
     let verifier_key = context
         .db

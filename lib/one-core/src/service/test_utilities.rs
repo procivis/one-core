@@ -108,7 +108,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
 }
 
 pub fn dummy_credential() -> Credential {
-    let claim_schema_id = Uuid::new_v4();
+    let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
 
     Credential {
@@ -266,7 +266,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
 
 pub fn dummy_claim_schema() -> ClaimSchema {
     ClaimSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         key: "key".to_string(),
         data_type: "data type".to_string(),
         created_date: OffsetDateTime::now_utc(),

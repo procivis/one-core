@@ -98,7 +98,7 @@ pub(super) fn claim_schemas_to_model_vec(
     claim_schemas
         .into_iter()
         .map(|claim_schema| claim_schema::ActiveModel {
-            id: Set(claim_schema.schema.id.into()),
+            id: Set(claim_schema.schema.id),
             created_date: Set(claim_schema.schema.created_date),
             last_modified: Set(claim_schema.schema.last_modified),
             key: Set(claim_schema.schema.key),
@@ -116,7 +116,7 @@ pub(super) fn claim_schemas_to_relations(
         .enumerate()
         .map(
             |(i, claim_schema)| credential_schema_claim_schema::ActiveModel {
-                claim_schema_id: Set(claim_schema.schema.id.into()),
+                claim_schema_id: Set(claim_schema.schema.id),
                 credential_schema_id: Set(credential_schema_id.to_string()),
                 required: Set(claim_schema.required),
                 order: Set(i as u32),

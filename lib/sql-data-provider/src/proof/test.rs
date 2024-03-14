@@ -4,7 +4,6 @@ use mockall::predicate::eq;
 use one_core::{
     model::{
         claim::{Claim, ClaimRelations},
-        claim_schema::ClaimSchemaId,
         credential::{Credential, CredentialRelations, CredentialRole, CredentialStateEnum},
         did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
@@ -31,7 +30,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
-use shared_types::{DidId, KeyId, OrganisationId};
+use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -88,22 +87,30 @@ async fn setup(
     )
     .unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..4)
-        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i, "STRING"))
+    let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: "test",
+            required: i % 2 == 0,
+            order: i as u32,
+            datatype: "STRING",
+        })
         .collect();
-    insert_many_claims_schema_to_database(
-        &db,
-        &credential_schema_id.to_string(),
-        &new_claim_schemas,
-    )
-    .await
-    .unwrap();
+
+    let claim_input = ProofInput {
+        credential_schema_id: credential_schema_id.to_string(),
+        claims: &new_claim_schemas,
+    };
+
+    insert_many_claims_schema_to_database(&db, &claim_input)
+        .await
+        .unwrap();
 
     let proof_schema_id = Uuid::parse_str(
         &insert_proof_schema_with_claims_to_database(
             &db,
             None,
-            &new_claim_schemas,
+            vec![&claim_input],
             organisation_id,
             "proof schema",
         )
@@ -155,7 +162,7 @@ async fn setup(
         organisation_id,
         proof_schema_id,
         did_id,
-        claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.0).collect(),
+        claim_schema_ids: new_claim_schemas.into_iter().map(|item| item.id).collect(),
         interaction_id,
         key_id,
     }
@@ -599,7 +606,7 @@ async fn test_get_proof_with_relations() {
     claim::ActiveModel {
         id: Set(claim_id.into()),
         credential_id: Set(credential_id),
-        claim_schema_id: Set(claim_schema_ids[0].into()),
+        claim_schema_id: Set(claim_schema_ids[0]),
         value: Set("value".as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
@@ -924,7 +931,7 @@ async fn test_set_proof_claims_success() {
     claim::ActiveModel {
         id: Set(claim.id.into()),
         credential_id: Set(credential_id),
-        claim_schema_id: Set(claim_schema_ids[0].into()),
+        claim_schema_id: Set(claim_schema_ids[0]),
         value: Set("value".into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),

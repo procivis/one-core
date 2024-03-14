@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::{
     fixtures::{TestingCredentialParams, TestingDidParams, TestingKeyParams},
-    utils::context::TestContext,
+    utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
 };
 
 #[tokio::test]
@@ -95,7 +95,11 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
     let proof_schema = server_context
         .db
         .proof_schemas
-        .create("Test", &server_organisation, &proof_claim_schemas)
+        .create(
+            "Test",
+            &server_organisation,
+            CreateProofInputSchema::from((&proof_claim_schemas[..], &credential_schema)),
+        )
         .await;
 
     let interaction_id = Uuid::new_v4();

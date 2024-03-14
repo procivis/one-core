@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId, KeyId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialId, DidId, KeyId, OrganisationId};
 use strum_macros::AsRefStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -141,7 +141,7 @@ pub struct SuspendCredentialRequestDTO {
 
 #[derive(Clone, Debug)]
 pub struct CredentialRequestClaimDTO {
-    pub claim_schema_id: Uuid,
+    pub claim_schema_id: ClaimSchemaId,
     pub value: String,
 }
 

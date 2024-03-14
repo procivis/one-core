@@ -7,9 +7,9 @@ pub struct Model {
     pub claim_schema_id: String,
 
     #[sea_orm(primary_key, auto_increment = false)]
-    pub proof_input_schema_id: u64,
+    pub proof_input_schema_id: i64,
 
-    pub order: u32,
+    pub order: i32,
     pub required: bool,
 }
 

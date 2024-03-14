@@ -54,7 +54,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
         claims: vec![
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {
-                    id,
+                    id: id.into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     key: "name".to_string(),
@@ -65,7 +65,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
             },
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {
-                    id,
+                    id: id.into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     key: "age".to_string(),

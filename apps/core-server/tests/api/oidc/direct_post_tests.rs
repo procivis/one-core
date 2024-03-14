@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use one_core::model::proof::ProofStateEnum;
 use serde_json::json;
 use uuid::Uuid;
@@ -6,7 +8,11 @@ use crate::{
     fixtures::{
         self, create_credential_schema_with_claims, create_proof, create_proof_schema, get_proof,
     },
-    utils::{self, server::run_server},
+    utils::{
+        self,
+        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+        server::run_server,
+    },
 };
 
 static TOKEN1: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDAxMzgwNTcsImV4cCI6MzMyMzYxMzgwNTcsIm5iZiI6MTcwMDEz\
@@ -58,7 +64,7 @@ async fn test_direct_post_one_credential_correct() {
         (Uuid::new_v4(), "cat2", false, "STRING"), // Optional - not provided
     ];
 
-    create_credential_schema_with_claims(
+    let credential_schema = create_credential_schema_with_claims(
         &db_conn,
         "NewCredentialSchema",
         &organisation,
@@ -67,8 +73,16 @@ async fn test_direct_post_one_credential_correct() {
     )
     .await;
 
-    let proof_schema =
-        create_proof_schema(&db_conn, "Schema1", &organisation, &new_claim_schemas).await;
+    let proof_schema = create_proof_schema(
+        &db_conn,
+        "Schema1",
+        &organisation,
+        &[CreateProofInputSchema::from((
+            &new_claim_schemas[..],
+            &credential_schema,
+        ))],
+    )
+    .await;
 
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
@@ -182,7 +196,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         (Uuid::new_v4(), "cat2", true, "STRING"), // required - not provided
     ];
 
-    create_credential_schema_with_claims(
+    let credential_schema = create_credential_schema_with_claims(
         &db_conn,
         "NewCredentialSchema",
         &organisation,
@@ -191,8 +205,16 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     )
     .await;
 
-    let proof_schema =
-        create_proof_schema(&db_conn, "Schema1", &organisation, &new_claim_schemas).await;
+    let proof_schema = create_proof_schema(
+        &db_conn,
+        "Schema1",
+        &organisation,
+        &[CreateProofInputSchema::from((
+            &new_claim_schemas[..],
+            &credential_schema,
+        ))],
+    )
+    .await;
 
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
@@ -311,14 +333,7 @@ async fn test_direct_post_multiple_presentations() {
         (Uuid::new_v4(), "cat2", false, "STRING"), // Optional - not provided but requested
     ];
 
-    let proof_claim_claims = [
-        credential1_claims[0], // name1
-        credential2_claims[0], // pet1
-        credential3_claims[0], // cat1
-        credential3_claims[1], // cat2 - optional
-    ];
-
-    create_credential_schema_with_claims(
+    let credential_schema1 = create_credential_schema_with_claims(
         &db_conn,
         "NameSchema",
         &organisation,
@@ -327,7 +342,7 @@ async fn test_direct_post_multiple_presentations() {
     )
     .await;
 
-    create_credential_schema_with_claims(
+    let credential_schema2 = create_credential_schema_with_claims(
         &db_conn,
         "PetSchema",
         &organisation,
@@ -336,7 +351,7 @@ async fn test_direct_post_multiple_presentations() {
     )
     .await;
 
-    create_credential_schema_with_claims(
+    let credential_schema3 = create_credential_schema_with_claims(
         &db_conn,
         "CatSchema",
         &organisation,
@@ -345,8 +360,33 @@ async fn test_direct_post_multiple_presentations() {
     )
     .await;
 
+    let proof_input_schemas = [
+        CreateProofInputSchema {
+            claims: vec![
+                CreateProofClaim::from(&credential1_claims[0]), // name1
+            ],
+            credential_schema: &credential_schema1,
+            validity_constraint: None,
+        },
+        CreateProofInputSchema {
+            claims: vec![
+                CreateProofClaim::from(&credential2_claims[0]), // pet1
+            ],
+            credential_schema: &credential_schema2,
+            validity_constraint: None,
+        },
+        CreateProofInputSchema {
+            claims: vec![
+                CreateProofClaim::from(&credential3_claims[0]), // cat1
+                CreateProofClaim::from(&credential3_claims[1]), // cat2 (optional)
+            ],
+            credential_schema: &credential_schema3,
+            validity_constraint: None,
+        },
+    ];
+
     let proof_schema =
-        create_proof_schema(&db_conn, "Schema1", &organisation, &proof_claim_claims).await;
+        create_proof_schema(&db_conn, "Schema1", &organisation, &proof_input_schemas).await;
 
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
 
@@ -478,14 +518,20 @@ async fn test_direct_post_multiple_presentations() {
         ProofStateEnum::Accepted
     );
 
-    let claims = proof.claims.unwrap();
-    assert!(proof_claim_claims
-        .iter()
-        .filter(|required_claim| required_claim.2) //required
-        .all(|required_claim| claims
-            .iter()
-            // Values are just keys uppercase
-            .any(|db_claim| db_claim.claim.value == required_claim.1.to_ascii_uppercase())));
+    let expected_claims: BTreeSet<String> = proof_input_schemas
+        .into_iter()
+        .flat_map(|c| c.claims)
+        .filter_map(|c| c.required.then_some(c.key.to_ascii_uppercase()))
+        .collect();
+
+    let claims: BTreeSet<String> = proof
+        .claims
+        .unwrap()
+        .into_iter()
+        .map(|c| c.claim.value)
+        .collect();
+
+    assert_eq!(expected_claims, claims);
 
     // TODO: Add additional checks when https://procivis.atlassian.net/browse/ONE-1133 is implemented
 }

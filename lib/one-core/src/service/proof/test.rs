@@ -10,6 +10,7 @@ use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::did::{KeyRole, RelatedKey};
 use crate::model::key::Key;
+use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaClaimRelationsNew};
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
@@ -135,7 +136,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             validity_constraint: None,
             claim_schemas: Some(vec![ProofSchemaClaim {
                 schema: ClaimSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     key: "key_123".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),
@@ -247,7 +248,7 @@ async fn test_get_proof_exists() {
             expire_duration: 0,
             claim_schemas: Some(vec![ProofSchemaClaim {
                 schema: ClaimSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     key: "key".to_string(),
                     data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),
@@ -304,7 +305,10 @@ async fn test_get_proof_exists() {
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                         organisation: Some(OrganisationRelations::default()),
-                        proof_inputs: None,
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
                     }),
                     state: Some(ProofStateRelations::default()),
                     claims: Some(ProofClaimRelations {

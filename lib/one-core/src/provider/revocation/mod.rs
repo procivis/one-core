@@ -4,7 +4,7 @@ use strum_macros::Display;
 use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
-use crate::model::proof_schema::ProofSchema;
+use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
 use crate::service::error::ServiceError;
 
@@ -23,11 +23,11 @@ pub struct CredentialRevocationInfo {
     pub credential_status: CredentialStatus,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct VerifierCredentialData {
     pub credential: DetailCredential,
     pub extracted_lvvcs: Vec<DetailCredential>,
-    pub proof_schema: ProofSchema,
+    pub proof_input: ProofInputSchema,
 }
 
 #[derive(Clone)]

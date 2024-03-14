@@ -32,7 +32,7 @@ impl CredentialSchemasDB {
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema = ClaimSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             key: "firstName".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
@@ -62,7 +62,7 @@ impl CredentialSchemasDB {
 
         let id = self
             .repository
-            .create_credential_schema(credential_schema.clone())
+            .create_credential_schema(credential_schema)
             .await
             .unwrap();
 
@@ -75,7 +75,7 @@ impl CredentialSchemasDB {
         organisation: &Organisation,
     ) -> CredentialSchema {
         let claim_schema = ClaimSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             key: "firstName".to_string(),
             data_type: "PICTURE".to_string(),
             created_date: get_dummy_date(),
@@ -120,7 +120,7 @@ impl CredentialSchemasDB {
             .iter()
             .map(|(id, name, required, data_type)| CredentialSchemaClaim {
                 schema: ClaimSchema {
-                    id: id.to_owned(),
+                    id: (*id).into(),
                     key: name.to_string(),
                     data_type: data_type.to_string(),
                     created_date: get_dummy_date(),

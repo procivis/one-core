@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::dto::{ClaimBindingDTO, CredentialSchemaBindingDTO, ProofRequestClaimBindingDTO};
+use super::dto::{ClaimBindingDTO, CredentialSchemaBindingDTO};
 use crate::{
     dto::{
         CredentialDetailBindingDTO, CredentialListItemBindingDTO, DidRequestBindingDTO,
@@ -20,7 +20,7 @@ use one_core::service::{
     error::ServiceError,
     history::dto::{HistoryMetadataResponse, HistoryResponseDTO},
     key::dto::KeyRequestDTO,
-    proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
+    proof::dto::ProofDetailResponseDTO,
     ssi_holder::dto::InvitationResponseDTO,
 };
 use serde_json::json;
@@ -84,7 +84,8 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
-            claims: convert_inner(value.claims),
+            // will be fixed in ONE-1735
+            claims: vec![],
             verifier_did: value.verifier_did.map(|inner| inner.did.to_string()),
             transport: value.transport,
             redirect_uri: value.redirect_uri,
@@ -114,18 +115,6 @@ impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
             key: value.schema.key,
             data_type: value.schema.datatype,
             value: value.value,
-        }
-    }
-}
-
-impl From<ProofClaimDTO> for ProofRequestClaimBindingDTO {
-    fn from(value: ProofClaimDTO) -> Self {
-        Self {
-            id: value.schema.id.to_string(),
-            key: value.schema.key,
-            data_type: value.schema.data_type,
-            required: value.schema.required,
-            credential_schema: value.schema.credential_schema.into(),
         }
     }
 }

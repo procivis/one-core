@@ -134,7 +134,7 @@ fn from_jwt_request_claim_schema(
 ) -> CredentialSchemaClaim {
     CredentialSchemaClaim {
         schema: ClaimSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             key: claim_schema.key,
             data_type: claim_schema.datatype,
             created_date: now,

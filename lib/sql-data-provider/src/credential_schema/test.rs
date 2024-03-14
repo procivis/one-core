@@ -3,7 +3,7 @@ use crate::{entity::credential_schema, list_query::from_pagination, test_utiliti
 use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::{
     model::{
-        claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
+        claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential_schema::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
             UpdateCredentialSchemaRequest,
@@ -85,16 +85,24 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
     )
     .unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..2)
-        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i as u32, "STRING"))
+    let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: "test",
+            required: i % 2 == 0,
+            order: i as u32,
+            datatype: "STRING",
+        })
         .collect();
-    insert_many_claims_schema_to_database(
-        &db,
-        &credential_schema_id.to_string(),
-        &new_claim_schemas,
-    )
-    .await
-    .unwrap();
+
+    let claim_input = ProofInput {
+        credential_schema_id: credential_schema_id.to_string(),
+        claims: &new_claim_schemas,
+    };
+
+    insert_many_claims_schema_to_database(&db, &claim_input)
+        .await
+        .unwrap();
 
     TestSetupWithCredentialSchema {
         credential_schema: CredentialSchema {
@@ -109,9 +117,9 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             claim_schemas: Some(
                 new_claim_schemas
                     .into_iter()
-                    .map(|(id, ..)| CredentialSchemaClaim {
+                    .map(|claim| CredentialSchemaClaim {
                         schema: ClaimSchema {
-                            id,
+                            id: claim.id,
                             created_date: get_dummy_date(),
                             last_modified: get_dummy_date(),
                             key: "key1".to_string(),
@@ -142,7 +150,7 @@ async fn test_create_credential_schema_success() {
     let claim_schemas = vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {
-                id: ClaimSchemaId::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 key: "key1".to_string(),
@@ -152,7 +160,7 @@ async fn test_create_credential_schema_success() {
         },
         CredentialSchemaClaim {
             schema: ClaimSchema {
-                id: ClaimSchemaId::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 key: "key2".to_string(),

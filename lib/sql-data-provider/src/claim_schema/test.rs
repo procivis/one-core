@@ -1,10 +1,11 @@
 use super::ClaimSchemaProvider;
 use crate::test_utilities::*;
 use one_core::{
-    model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations},
+    model::claim_schema::{ClaimSchema, ClaimSchemaRelations},
     repository::{claim_schema_repository::ClaimSchemaRepository, error::DataLayerError},
 };
 use sea_orm::{DatabaseConnection, EntityTrait};
+use uuid::Uuid;
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -27,7 +28,7 @@ async fn test_create_claim_schema_list() {
 
     let result = repository
         .create_claim_schema_list(vec![ClaimSchema {
-            id: ClaimSchemaId::new_v4(),
+            id: Uuid::new_v4().into(),
             key: "key".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
@@ -52,14 +53,14 @@ async fn test_get_claim_schema_list() {
 
     let schemas = vec![
         ClaimSchema {
-            id: ClaimSchemaId::new_v4(),
+            id: Uuid::new_v4().into(),
             key: "key1".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         },
         ClaimSchema {
-            id: ClaimSchemaId::new_v4(),
+            id: Uuid::new_v4().into(),
             key: "key2".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
@@ -109,7 +110,7 @@ async fn test_get_claim_schema_list() {
     // one item missing
     let result = repository
         .get_claim_schema_list(
-            vec![schemas[0].id, ClaimSchemaId::new_v4()],
+            vec![schemas[0].id, Uuid::new_v4().into()],
             &ClaimSchemaRelations::default(),
         )
         .await;

@@ -2,12 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     common_mapper::deserialize_with_serde_json,
-    model::{
-        claim_schema::ClaimSchemaId, credential_schema::WalletStorageTypeEnum,
-        interaction::InteractionId,
-    },
+    model::{credential_schema::WalletStorageTypeEnum, interaction::InteractionId},
 };
 use serde::{Deserialize, Serialize};
+use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 use url::Url;
 

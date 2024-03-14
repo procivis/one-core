@@ -1,6 +1,7 @@
 use crate::repository::{
-    claim_schema_repository::ClaimSchemaRepository, history_repository::HistoryRepository,
-    organisation_repository::OrganisationRepository,
+    claim_schema_repository::ClaimSchemaRepository,
+    credential_schema_repository::CredentialSchemaRepository,
+    history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
     proof_schema_repository::ProofSchemaRepository,
 };
 use std::sync::Arc;
@@ -15,6 +16,7 @@ mod validator;
 pub struct ProofSchemaService {
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     history_repository: Arc<dyn HistoryRepository>,
 }
@@ -23,6 +25,7 @@ impl ProofSchemaService {
     pub fn new(
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         claim_schema_repository: Arc<dyn ClaimSchemaRepository>,
+        credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         history_repository: Arc<dyn HistoryRepository>,
     ) -> Self {
@@ -31,6 +34,7 @@ impl ProofSchemaService {
             claim_schema_repository,
             organisation_repository,
             history_repository,
+            credential_schema_repository,
         }
     }
 }
