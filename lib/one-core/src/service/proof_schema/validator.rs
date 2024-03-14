@@ -1,8 +1,9 @@
+use shared_types::OrganisationId;
+
 use super::dto::CreateProofSchemaRequestDTO;
 use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::service::proof_schema::mapper::create_unique_name_check_request;
 use crate::{
-    model::organisation::OrganisationId,
     repository::proof_schema_repository::ProofSchemaRepository, service::error::ServiceError,
 };
 use std::collections::HashSet;
@@ -11,7 +12,7 @@ use std::sync::Arc;
 pub async fn proof_schema_name_already_exists(
     repository: &Arc<dyn ProofSchemaRepository>,
     name: &str,
-    organisation_id: &OrganisationId,
+    organisation_id: OrganisationId,
 ) -> Result<(), ServiceError> {
     let proof_schemas = repository
         .get_proof_schema_list(create_unique_name_check_request(name, organisation_id)?)

@@ -1,5 +1,6 @@
 use dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
+use shared_types::OrganisationId;
 use std::fmt;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -48,7 +49,7 @@ pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
 
     // filtering
     pub name: Option<String>,
-    pub organisation_id: String,
+    pub organisation_id: OrganisationId,
     // It is required to rename fields in swagger which are of type vector to <name>[]
     #[param(rename = "exact[]", value_type = Option::<Vec::<String>>)]
     pub exact: Option<Vec<ExactColumn>>,

@@ -1,6 +1,6 @@
 use std::vec;
 
-use uuid::Uuid;
+use shared_types::OrganisationId;
 
 use crate::model::{
     common::ExactColumn,
@@ -44,13 +44,13 @@ impl dyn CredentialSchemaRepository {
     pub async fn get_by_name_and_organisation(
         &self,
         name: &str,
-        organisation_id: Uuid,
+        organisation_id: OrganisationId,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let mut schema = self
             .get_credential_schema_list(GetCredentialSchemaQuery {
                 page: 0,
                 page_size: 1,
-                organisation_id: organisation_id.to_string(),
+                organisation_id,
                 name: Some(name.to_owned()),
                 exact: Some(vec![ExactColumn::Name]),
                 sort: None,

@@ -60,7 +60,7 @@ async fn test_issuer_submit_succeeds() {
                 storage_type: key_storage_type.to_string(),
                 key_type: key_type.to_string(),
                 organisation: Some(Organisation {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                 }),
@@ -226,7 +226,7 @@ fn dummy_credential() -> Credential {
                 required: true,
             }]),
             organisation: Some(Organisation {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),

@@ -2,7 +2,7 @@ use one_core::model::credential_schema::{
     CredentialFormat, CredentialSchemaName, RevocationMethod,
 };
 use sea_orm::FromQueryResult;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::entity::credential::CredentialRole;
@@ -29,7 +29,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_revocation_method: RevocationMethod,
     pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
 
-    pub organisation_id: String,
+    pub organisation_id: OrganisationId,
     pub organisation_created_date: OffsetDateTime,
     pub organisation_last_modified: OffsetDateTime,
 

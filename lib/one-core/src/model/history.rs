@@ -1,14 +1,29 @@
-use shared_types::{CredentialId, DidId, EntityId, HistoryId};
+use serde::{Deserialize, Serialize};
+use shared_types::{CredentialId, DidId, EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::model::{
-    common::GetListResponse,
-    credential_schema::CredentialSchemaId,
-    list_filter::{ListFilterValue, ValueComparison},
-    list_query::ListQuery,
+use crate::{
+    model::{
+        common::GetListResponse,
+        credential_schema::CredentialSchemaId,
+        list_filter::{ListFilterValue, ValueComparison},
+        list_query::ListQuery,
+    },
+    service::backup::dto::UnexportableEntitiesResponseDTO,
 };
 
-use super::organisation::{Organisation, OrganisationId};
+use super::organisation::Organisation;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum HistoryMetadata {
+    UnexportableEntities(UnexportableEntitiesResponseDTO),
+}
+
+impl From<UnexportableEntitiesResponseDTO> for HistoryMetadata {
+    fn from(value: UnexportableEntitiesResponseDTO) -> Self {
+        Self::UnexportableEntities(value)
+    }
+}
 
 #[derive(Clone)]
 pub struct History {
@@ -17,7 +32,7 @@ pub struct History {
     pub action: HistoryAction,
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
-    pub metadata: Option<String>,
+    pub metadata: Option<HistoryMetadata>,
 
     // Relations
     pub organisation: Option<Organisation>,

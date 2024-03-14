@@ -1,5 +1,6 @@
 use crate::{
-    error::BindingError, CredentialSchemaListBindingDTO, ListQueryBindingDTO, OneCoreBinding,
+    error::BindingError, utils::into_id, CredentialSchemaListBindingDTO, ListQueryBindingDTO,
+    OneCoreBinding,
 };
 use one_core::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
 
@@ -18,7 +19,7 @@ impl OneCoreBinding {
                     sort: None,
                     sort_direction: None,
                     name: None,
-                    organisation_id: query.organisation_id,
+                    organisation_id: into_id(&query.organisation_id)?,
                     exact: None,
                     ids: None,
                 })

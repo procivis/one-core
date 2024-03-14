@@ -22,6 +22,7 @@ use one_core::service::credential::dto::SuspendCredentialRequestDTO;
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialId;
 use shared_types::KeyId;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use utoipa::IntoParams;
 use utoipa::ToSchema;
@@ -147,7 +148,7 @@ pub enum CredentialStateRestEnum {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialsFilterQueryParamsRest {
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     pub name: Option<String>,
     pub role: Option<CredentialRoleRestEnum>,
     #[param(inline, rename = "exact[]")]

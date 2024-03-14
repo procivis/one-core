@@ -250,7 +250,7 @@ async fn test_submit_proof_succeeds() {
                             storage_type: key_storage_type.to_string(),
                             key_type: key_type.to_string(),
                             organisation: Some(Organisation {
-                                id: Uuid::new_v4(),
+                                id: Uuid::new_v4().into(),
                                 created_date: OffsetDateTime::now_utc(),
                                 last_modified: OffsetDateTime::now_utc(),
                             }),
@@ -442,7 +442,7 @@ async fn test_submit_proof_repeating_claims() {
                             storage_type: "storage type".to_string(),
                             key_type: "ECDSA".to_string(),
                             organisation: Some(Organisation {
-                                id: Uuid::new_v4(),
+                                id: Uuid::new_v4().into(),
                                 created_date: OffsetDateTime::now_utc(),
                                 last_modified: OffsetDateTime::now_utc(),
                             }),

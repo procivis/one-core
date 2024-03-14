@@ -112,7 +112,7 @@ pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let organisation = Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
     };

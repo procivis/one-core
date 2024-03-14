@@ -5,7 +5,7 @@ use one_core::{
     model::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        organisation::{Organisation, OrganisationId, OrganisationRelations},
+        organisation::{Organisation, OrganisationRelations},
         proof_schema::{
             GetProofSchemaQuery, ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations,
             ProofSchemaId, ProofSchemaRelations,
@@ -25,6 +25,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
+use shared_types::OrganisationId;
 use std::{boxed::Box, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -52,7 +53,7 @@ async fn setup_empty(
             organisation_repository,
             credential_schema_repository,
         }),
-        organisation_id: Uuid::parse_str(&organisation_id).unwrap(),
+        organisation_id,
         db,
     }
 }
@@ -85,14 +86,9 @@ async fn setup_with_proof_schema(
     let proof_schema_name = "proof schema".to_string();
 
     let proof_schema_id = Uuid::parse_str(
-        &insert_proof_schema_to_database(
-            &db,
-            None,
-            &organisation_id.to_string(),
-            &proof_schema_name,
-        )
-        .await
-        .unwrap(),
+        &insert_proof_schema_to_database(&db, None, organisation_id, &proof_schema_name)
+            .await
+            .unwrap(),
     )
     .unwrap();
 
@@ -211,7 +207,7 @@ async fn test_create_proof_schema_success() {
     let cred_schema_id = insert_credential_schema_to_database(
         &db,
         None,
-        &organisation_id.to_string(),
+        organisation_id,
         "cred-schema",
         "JWT",
         "NONE",
@@ -479,7 +475,7 @@ async fn test_get_proof_schema_with_relations() {
     let credential_schema_id = insert_credential_schema_to_database(
         &db,
         None,
-        &organisation_id.to_string(),
+        organisation_id,
         "credential schema",
         "JWT",
         "NONE",
@@ -499,7 +495,7 @@ async fn test_get_proof_schema_with_relations() {
             &db,
             None,
             &new_claim_schemas,
-            &organisation_id.to_string(),
+            organisation_id,
             "proof schema",
         )
         .await
@@ -559,7 +555,7 @@ async fn test_get_proof_schema_list_empty() {
             exact: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -598,7 +594,7 @@ async fn test_get_proof_schema_list_deleted() {
             exact: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -633,7 +629,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             validity_constraint: Set(None),
             name: Set("schema-1".to_string()),
             expire_duration: Set(Default::default()),
-            organisation_id: Set(organisation_id.to_string()),
+            organisation_id: Set(organisation_id),
             deleted_at: Set(None),
         }
         .insert(&db)
@@ -652,7 +648,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             validity_constraint: Set(None),
             name: Set("schema-2".to_string()),
             expire_duration: Set(Default::default()),
-            organisation_id: Set(organisation_id.to_string()),
+            organisation_id: Set(organisation_id),
             deleted_at: Set(None),
         }
         .insert(&db)
@@ -671,7 +667,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -693,7 +689,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             exact: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -708,7 +704,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: Some(one_core::model::common::SortDirection::Descending),
             exact: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -723,7 +719,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: Some(one_core::model::common::SortDirection::Ascending),
             exact: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -739,7 +735,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             sort_direction: None,
             name: Some("schema-1".to_string()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -760,7 +756,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             sort_direction: None,
             name: Some("schema".to_string()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -780,7 +776,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             sort_direction: None,
             name: Some("nothing".to_string()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -801,7 +797,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             exact: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -822,7 +818,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;

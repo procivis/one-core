@@ -56,7 +56,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         storage_type: "INTERNAL".to_string(),
         key_type: "RSA4096".to_string(),
         organisation: Some(Organisation {
-            id: organisation_id,
+            id: organisation_id.into(),
             created_date: now,
             last_modified: now,
         }),
@@ -184,7 +184,7 @@ async fn test_get_key_list() {
         sort: None,
         sort_direction: None,
         name: Some("NAME".to_owned()),
-        organisation_id: org_id.to_string(),
+        organisation_id: org_id.into(),
         exact: None,
         ids: None,
     };

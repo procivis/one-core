@@ -51,6 +51,19 @@ impl HistoryRepository for HistoryProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        Ok(create_list_response(history_list, limit, items_count))
+        create_list_response(history_list, limit, items_count)
+    }
+
+    #[tracing::instrument(level = "debug", skip(self), err(Debug))]
+    async fn get_history_entry(
+        &self,
+        history_id: HistoryId,
+    ) -> Result<Option<History>, DataLayerError> {
+        history::Entity::find_by_id(history_id)
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?
+            .map(TryInto::try_into)
+            .transpose()
     }
 }

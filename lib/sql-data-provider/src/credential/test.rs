@@ -46,14 +46,13 @@ async fn setup_empty() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id =
-        Uuid::parse_str(&insert_organisation_to_database(&db, None).await.unwrap()).unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let credential_schema_id = Uuid::parse_str(
         &insert_credential_schema_to_database(
             &db,
             None,
-            &organisation_id.to_string(),
+            organisation_id,
             "credential schema",
             "JWT",
             "NONE",
@@ -111,7 +110,7 @@ async fn setup_empty() -> TestSetup {
         Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
         "KEY",
-        &organisation_id.to_string(),
+        organisation_id,
     )
     .await
     .unwrap();

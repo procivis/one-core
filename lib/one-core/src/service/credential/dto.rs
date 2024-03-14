@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId, KeyId};
+use shared_types::{CredentialId, DidId, KeyId, OrganisationId};
 use strum_macros::AsRefStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -15,7 +15,6 @@ use crate::{
         credential_schema::{CredentialFormat, CredentialSchemaId, RevocationMethod},
         list_filter::{ListFilterValue, StringMatch},
         list_query::ListQuery,
-        organisation::OrganisationId,
     },
     service::{
         credential_schema::dto::{CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO},

@@ -13,8 +13,6 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
 };
 use shared_types::KeyId;
-use std::str::FromStr;
-use uuid::Uuid;
 
 use super::mapper::create_list_response;
 
@@ -26,18 +24,15 @@ impl KeyProvider {
     ) -> Result<Option<Organisation>, DataLayerError> {
         match &organisation_relations {
             None => Ok(None),
-            Some(organisation_relations) => {
-                let organisation_id = Uuid::from_str(&key.organisation_id)?;
-                Ok(Some(
-                    self.organisation_repository
-                        .get_organisation(&organisation_id, organisation_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "key-organisation",
-                            id: organisation_id.to_string(),
-                        })?,
-                ))
-            }
+            Some(organisation_relations) => Ok(Some(
+                self.organisation_repository
+                    .get_organisation(&key.organisation_id, organisation_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "key-organisation",
+                        id: key.organisation_id.to_string(),
+                    })?,
+            )),
         }
     }
 }
@@ -46,11 +41,7 @@ impl KeyProvider {
 #[async_trait::async_trait]
 impl KeyRepository for KeyProvider {
     async fn create_key(&self, request: Key) -> Result<KeyId, DataLayerError> {
-        let organisation_id = request
-            .organisation
-            .ok_or(DataLayerError::MappingError)?
-            .id
-            .to_string();
+        let organisation_id = request.organisation.ok_or(DataLayerError::MappingError)?.id;
 
         key::ActiveModel {
             id: Set(request.id),

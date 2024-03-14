@@ -1,5 +1,6 @@
+use shared_types::OrganisationId;
+
 use crate::config::core_config::CoreConfig;
-use crate::model::organisation::OrganisationId;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::mapper::create_unique_name_check_request;
 use crate::service::error::{BusinessLogicError, ValidationError};
@@ -14,7 +15,7 @@ use std::sync::Arc;
 pub(crate) async fn credential_schema_already_exists(
     repository: &Arc<dyn CredentialSchemaRepository>,
     name: &str,
-    organisation_id: &OrganisationId,
+    organisation_id: OrganisationId,
 ) -> Result<(), ServiceError> {
     let credential_schemas = repository
         .get_credential_schema_list(create_unique_name_check_request(name, organisation_id)?)

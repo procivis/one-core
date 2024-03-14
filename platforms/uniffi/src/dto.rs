@@ -400,12 +400,20 @@ pub enum HistoryEntityTypeBindingEnum {
     Backup,
 }
 
+#[derive(Debug, Clone)]
+pub enum HistoryMetadataBinding {
+    UnexportableEntities {
+        value: UnexportableEntitiesBindingDTO,
+    },
+}
+
 pub struct HistoryListItemBindingDTO {
     pub id: String,
     pub created_date: String,
     pub action: HistoryActionBindingEnum,
     pub entity_id: Option<String>,
     pub entity_type: HistoryEntityTypeBindingEnum,
+    pub metadata: Option<HistoryMetadataBinding>,
     pub organisation_id: String,
 }
 

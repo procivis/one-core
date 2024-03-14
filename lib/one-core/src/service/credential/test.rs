@@ -89,7 +89,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
     };
     let organisation = Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
     };
@@ -354,7 +354,9 @@ async fn test_get_credential_list_success() {
                 page_size: 5,
             }),
             sorting: None,
-            filtering: Some(CredentialFilterValue::OrganisationId(Uuid::new_v4()).condition()),
+            filtering: Some(
+                CredentialFilterValue::OrganisationId(Uuid::new_v4().into()).condition(),
+            ),
         })
         .await;
 

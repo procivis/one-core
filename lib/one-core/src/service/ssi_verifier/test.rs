@@ -94,7 +94,7 @@ async fn test_connect_to_holder_succeeds() {
                         }),
                     }]),
                     organisation: Some(Organisation {
-                        id: Uuid::new_v4(),
+                        id: Uuid::new_v4().into(),
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
                     }),
@@ -208,7 +208,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                         }),
                     }]),
                     organisation: Some(Organisation {
-                        id: Uuid::new_v4(),
+                        id: Uuid::new_v4().into(),
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
                     }),

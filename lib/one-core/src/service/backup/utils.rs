@@ -12,7 +12,7 @@ use super::dto::MetadataDTO;
 use crate::{
     crypto::hasher::sha256::SHA256,
     model::{
-        history::{History, HistoryAction, HistoryEntityType},
+        history::{History, HistoryAction, HistoryEntityType, HistoryMetadata},
         organisation::Organisation,
     },
     service::error::ServiceError,
@@ -147,7 +147,7 @@ pub(super) fn load_db_from_zip<T: Read + Seek, K: Write + Seek>(
 pub(super) fn create_backup_history_event(
     organisation: Organisation,
     action: HistoryAction,
-    metadata: Option<String>,
+    metadata: Option<HistoryMetadata>,
 ) -> History {
     History {
         id: Uuid::new_v4().into(),

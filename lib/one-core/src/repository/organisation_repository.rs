@@ -1,4 +1,6 @@
-use crate::model::organisation::{Organisation, OrganisationId, OrganisationRelations};
+use shared_types::OrganisationId;
+
+use crate::model::organisation::{Organisation, OrganisationRelations};
 
 use super::error::DataLayerError;
 

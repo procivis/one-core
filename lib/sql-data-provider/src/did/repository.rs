@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 use autometrics::autometrics;
 use one_core::model::{
@@ -11,7 +11,6 @@ use sea_orm::{
     QuerySelect, Set, Unchanged,
 };
 use shared_types::{DidId, DidValue, KeyId};
-use uuid::Uuid;
 
 use super::{mapper::create_list_response, DidProvider};
 use crate::list_query_generic::SelectWithFilterJoin;
@@ -29,15 +28,13 @@ impl DidProvider {
         let mut result: Did = model.clone().into();
 
         if let Some(organisation_relations) = &relations.organisation {
-            let organisation_id = Uuid::from_str(&model.organisation_id)?;
-
             result.organisation = Some(
                 self.organisation_repository
-                    .get_organisation(&organisation_id, organisation_relations)
+                    .get_organisation(&model.organisation_id, organisation_relations)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "did-organisation",
-                        id: organisation_id.to_string(),
+                        id: model.organisation_id.to_string(),
                     })?,
             );
         }

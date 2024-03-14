@@ -1,4 +1,5 @@
 use dto_mapper::From;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -6,7 +7,6 @@ use crate::{
     model::{
         claim_schema::ClaimSchemaId,
         common::{GetListQueryParams, GetListResponse},
-        organisation::OrganisationId,
         proof_schema::{ProofSchema, SortableProofSchemaColumn},
     },
     service::credential_schema::dto::CredentialSchemaListItemResponseDTO,

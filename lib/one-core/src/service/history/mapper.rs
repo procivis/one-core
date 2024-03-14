@@ -5,7 +5,7 @@ use crate::{
         history::dto::{GetHistoryListResponseDTO, HistoryResponseDTO},
     },
 };
-use dto_mapper::try_convert_inner;
+use dto_mapper::{convert_inner, try_convert_inner};
 
 impl TryFrom<History> for HistoryResponseDTO {
     type Error = ServiceError;
@@ -21,7 +21,8 @@ impl TryFrom<History> for HistoryResponseDTO {
             action: value.action,
             entity_id: value.entity_id,
             entity_type: value.entity_type,
-            organisation_id: organisation.id.into(),
+            metadata: convert_inner(value.metadata),
+            organisation_id: organisation.id,
         })
     }
 }

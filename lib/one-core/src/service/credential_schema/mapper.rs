@@ -4,7 +4,7 @@ use crate::{
         common::ExactColumn,
         credential_schema::{CredentialSchema, CredentialSchemaClaim},
         history::{History, HistoryAction, HistoryEntityType},
-        organisation::{Organisation, OrganisationId},
+        organisation::Organisation,
     },
     service::{
         credential_schema::dto::{
@@ -16,6 +16,7 @@ use crate::{
     },
 };
 use dto_mapper::convert_inner;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -61,7 +62,7 @@ impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
 
 pub(super) fn create_unique_name_check_request(
     name: &str,
-    organisation_id: &OrganisationId,
+    organisation_id: OrganisationId,
 ) -> Result<GetCredentialSchemaQueryDTO, ServiceError> {
     Ok(GetCredentialSchemaQueryDTO {
         page: 0,
@@ -70,7 +71,7 @@ pub(super) fn create_unique_name_check_request(
         sort_direction: None,
         name: Some(name.to_string()),
         exact: Some(vec![ExactColumn::Name]),
-        organisation_id: organisation_id.to_string(),
+        organisation_id,
         ids: None,
     })
 }

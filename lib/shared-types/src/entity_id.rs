@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     macros::{impls_for_seaorm_newtype, impls_for_uuid_newtype},
-    CredentialId, DidId, KeyId,
+    CredentialId, DidId, KeyId, OrganisationId,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -31,6 +31,12 @@ impl From<KeyId> for EntityId {
 
 impl From<CredentialId> for EntityId {
     fn from(value: CredentialId) -> Self {
+        EntityId(value.into())
+    }
+}
+
+impl From<OrganisationId> for EntityId {
+    fn from(value: OrganisationId) -> Self {
         EntityId(value.into())
     }
 }

@@ -181,7 +181,7 @@ async fn test_get_proof_schema_list_success() {
         sort_direction: None,
         exact: None,
         name: None,
-        organisation_id: Uuid::new_v4().to_string(),
+        organisation_id: Uuid::new_v4().into(),
         ids: None,
     };
     let result = service.get_proof_schema_list(query).await;
@@ -217,7 +217,7 @@ async fn test_get_proof_schema_list_failure() {
         sort_direction: None,
         exact: None,
         name: None,
-        organisation_id: Uuid::new_v4().to_string(),
+        organisation_id: Uuid::new_v4().into(),
         ids: None,
     };
     let result = service.get_proof_schema_list(query).await;
@@ -332,7 +332,7 @@ async fn test_create_proof_schema_success() {
         )
         .returning(move |_, _| Ok(vec![claim_schema.clone()]));
 
-    let organisation_id = Uuid::new_v4();
+    let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
         .expect_get_organisation()
@@ -399,7 +399,7 @@ async fn test_create_proof_schema_success() {
 #[tokio::test]
 async fn test_create_proof_schema_unique_name_error() {
     let claim_schema_id = Uuid::new_v4();
-    let organisation_id = Uuid::new_v4();
+    let organisation_id = Uuid::new_v4().into();
 
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
@@ -479,7 +479,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
             expire_duration: 0,
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_schema_id,
                 required: true,
@@ -508,7 +508,7 @@ async fn test_create_proof_schema_no_claims() {
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
             expire_duration: 0,
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claim_schemas: vec![],
             validity_constraint: None,
         })
@@ -533,7 +533,7 @@ async fn test_create_proof_schema_no_required_claims() {
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
             expire_duration: 0,
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: Uuid::new_v4(),
                 required: false,
@@ -565,7 +565,7 @@ async fn test_create_proof_schema_duplicit_claims() {
         .create_proof_schema(CreateProofSchemaRequestDTO {
             name: "name".to_string(),
             expire_duration: 0,
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claim_schemas: vec![claim_schema.clone(), claim_schema],
             validity_constraint: None,
         })
@@ -588,7 +588,7 @@ fn generic_proof_schema() -> ProofSchema {
         expire_duration: 0,
         claim_schemas: Some(vec![]),
         organisation: Some(Organisation {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
         }),

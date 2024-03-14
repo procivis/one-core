@@ -76,8 +76,7 @@ impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
                     "Missing organisation for proof schema {}",
                     value.id
                 )))?
-                .id
-                .to_string()),
+                .id),
             deleted_at: Set(None),
             expire_duration: Set(value.expire_duration),
             validity_constraint: Set(value.validity_constraint),

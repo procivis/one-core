@@ -10,8 +10,16 @@ use one_core::service::history::dto::HistoryResponseDTO;
 use crate::deserialize::deserialize_timestamp;
 use crate::{dto::common::ListQueryParamsRest, serialize::front_time};
 
+use super::mapper::convert_history_metadata;
+
 pub type GetHistoryQuery =
     ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;
+
+#[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
+pub enum HistoryMetadataRest {
+    // dummy entry just to make ToSchema compile
+    Nothing,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(HistoryResponseDTO)]
@@ -25,7 +33,9 @@ pub struct HistoryResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub entity_id: Option<Uuid>,
     pub entity_type: HistoryEntityType,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
+    #[from(with_fn = convert_history_metadata)]
+    pub metadata: Option<HistoryMetadataRest>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]

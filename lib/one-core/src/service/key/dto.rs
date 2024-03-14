@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -10,7 +11,7 @@ use crate::model::{
 };
 
 pub struct KeyRequestDTO {
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     pub key_type: String,
     pub key_params: serde_json::Value,
     pub name: String,
@@ -22,7 +23,7 @@ pub struct KeyResponseDTO {
     pub id: Uuid,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     pub name: String,
     pub public_key: Vec<u8>,
     pub key_type: String,

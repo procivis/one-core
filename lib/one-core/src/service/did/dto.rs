@@ -1,13 +1,12 @@
 use dto_mapper::From;
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue, KeyId};
+use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::{
     model::{
         common::{GetListQueryParams, GetListResponse},
         did::{Did, DidType, SortableDidColumn},
-        organisation::OrganisationId,
     },
     service::key::dto::KeyListItemResponseDTO,
 };

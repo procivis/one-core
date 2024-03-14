@@ -8,7 +8,7 @@ use crate::{
         ProofRequestBindingDTO,
     },
     utils::{into_id, TimestampFormat},
-    HistoryListItemBindingDTO,
+    HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
 use dto_mapper::convert_inner;
 use one_core::service::{
@@ -18,14 +18,13 @@ use one_core::service::{
     },
     did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
     error::ServiceError,
-    history::dto::HistoryResponseDTO,
+    history::dto::{HistoryMetadataResponse, HistoryResponseDTO},
     key::dto::KeyRequestDTO,
     proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
     ssi_holder::dto::InvitationResponseDTO,
 };
 use serde_json::json;
 use shared_types::KeyId;
-use uuid::Uuid;
 
 pub(crate) fn serialize_config_entity(
     input: HashMap<String, serde_json::Value>,
@@ -150,7 +149,7 @@ impl TryFrom<KeyRequestBindingDTO> for KeyRequestDTO {
     type Error = ServiceError;
     fn try_from(request: KeyRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
-            organisation_id: Uuid::parse_str(&request.organisation_id)?,
+            organisation_id: into_id(&request.organisation_id)?,
             key_type: request.key_type.to_owned(),
             key_params: json!(request.key_params),
             name: request.name.to_owned(),
@@ -164,7 +163,7 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
     type Error = ServiceError;
     fn try_from(request: DidRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
-            organisation_id: Uuid::parse_str(&request.organisation_id)?,
+            organisation_id: into_id(&request.organisation_id)?,
             name: request.name,
             did_method: request.did_method,
             did_type: request.did_type.into(),
@@ -191,6 +190,16 @@ impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
     }
 }
 
+impl From<HistoryMetadataResponse> for HistoryMetadataBinding {
+    fn from(value: HistoryMetadataResponse) -> Self {
+        match value {
+            HistoryMetadataResponse::UnexportableEntities(value) => Self::UnexportableEntities {
+                value: value.into(),
+            },
+        }
+    }
+}
+
 impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
     fn from(value: HistoryResponseDTO) -> Self {
         Self {
@@ -199,6 +208,7 @@ impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
             action: value.action.into(),
             entity_id: value.entity_id.map(|id| id.to_string()),
             entity_type: value.entity_type.into(),
+            metadata: convert_inner(value.metadata),
             organisation_id: value.organisation_id.to_string(),
         }
     }

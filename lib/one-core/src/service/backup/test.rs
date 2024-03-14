@@ -68,7 +68,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 revocation_method: "revocation_method".into(),
                 claim_schemas: None,
                 organisation: Some(Organisation {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                 }),

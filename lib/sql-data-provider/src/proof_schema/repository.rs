@@ -95,8 +95,6 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         }
 
         if let Some(organisation_relations) = &relations.organisation {
-            let organisation_id = Uuid::from_str(&organisation_id)?;
-
             proof_schema.organisation = Some(
                 self.organisation_repository
                     .get_organisation(&organisation_id, organisation_relations)

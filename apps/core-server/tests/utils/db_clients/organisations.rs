@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use one_core::model::organisation::{Organisation, OrganisationId, OrganisationRelations};
+use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::organisation_repository::OrganisationRepository;
+use shared_types::OrganisationId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -23,7 +24,7 @@ impl OrganisationsDB {
     }
 
     pub async fn create(&self) -> Organisation {
-        let id = Uuid::new_v4();
+        let id = Uuid::new_v4().into();
 
         let organisation = Organisation {
             id,

@@ -9,7 +9,7 @@ use one_core::service::did::dto::{
     DidResponseKeysDTO,
 };
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue, KeyId};
+use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -96,7 +96,7 @@ pub struct DidResponseKeysRestDTO {
 #[serde(rename_all = "camelCase")]
 pub struct CreateDidRequestRestDTO {
     pub name: String,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
     #[schema(value_type = Object)]
@@ -166,7 +166,7 @@ pub struct DidFilterQueryParamsRest {
     pub r#type: Option<DidType>,
     #[param(inline, rename = "exact[]")]
     pub exact: Option<Vec<ExactDidFilterColumnRestEnum>>,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     #[param(inline)]
     pub deactivated: Option<Boolean>,
     #[param(inline, rename = "keyAlgorithms[]")]

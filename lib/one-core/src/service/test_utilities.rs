@@ -162,7 +162,7 @@ pub fn dummy_credential() -> Credential {
                 required: true,
             }]),
             organisation: Some(Organisation {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
@@ -228,7 +228,7 @@ pub fn dummy_key() -> Key {
 
 pub fn dummy_organisation() -> Organisation {
     Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
     }

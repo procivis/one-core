@@ -1,6 +1,7 @@
 use dto_mapper::From;
 use one_core::service::organisation::dto::GetOrganisationDetailsResponseDTO;
 use serde::{Deserialize, Serialize};
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -10,13 +11,13 @@ use crate::serialize::front_time;
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateOrganisationRequestRestDTO {
-    pub id: Option<Uuid>,
+    pub id: Option<OrganisationId>,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateOrganisationResponseRestDTO {
-    pub id: Uuid,
+    pub id: OrganisationId,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

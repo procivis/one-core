@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue, KeyId};
+use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::service::error::{ServiceError, ValidationError};
@@ -9,7 +9,7 @@ use super::{
     key::{Key, KeyRelations},
     list_filter::{ListFilterValue, StringMatch},
     list_query::ListQuery,
-    organisation::{Organisation, OrganisationId, OrganisationRelations},
+    organisation::{Organisation, OrganisationRelations},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

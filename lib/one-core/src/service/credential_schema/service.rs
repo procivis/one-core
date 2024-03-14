@@ -36,7 +36,7 @@ impl CredentialSchemaService {
         super::validator::credential_schema_already_exists(
             &self.credential_schema_repository,
             &request.name,
-            &request.organisation_id,
+            request.organisation_id,
         )
         .await?;
 

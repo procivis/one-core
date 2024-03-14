@@ -39,7 +39,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
             name: "Credential schema name".to_string(),
             format: "Credential schema format".to_string(),
             revocation_method: "Credential schema revocation method".to_string(),
-            organisation_id: id,
+            organisation_id: id.into(),
         },
         issuer_did: Some(DidListItemResponseDTO {
             id: id.into(),

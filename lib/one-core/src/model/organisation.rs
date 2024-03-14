@@ -1,7 +1,5 @@
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
-use uuid::Uuid;
-
-pub type OrganisationId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Organisation {

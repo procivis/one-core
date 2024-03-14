@@ -68,7 +68,7 @@ fn generic_credential_schema() -> CredentialSchema {
             required: true,
         }]),
         organisation: Some(Organisation {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
         }),
@@ -211,7 +211,7 @@ async fn test_get_credential_schema_list_success() {
             sort_direction: None,
             exact: None,
             name: None,
-            organisation_id: "".to_string(),
+            organisation_id: Uuid::new_v4().into(),
             ids: None,
         })
         .await;
@@ -271,7 +271,7 @@ async fn test_create_credential_schema_success() {
 
     let now = OffsetDateTime::now_utc();
     let organisation = Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
     };
@@ -340,7 +340,7 @@ async fn test_create_credential_schema_unique_name_error() {
 
     let now = OffsetDateTime::now_utc();
     let organisation = Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
     };
@@ -408,7 +408,7 @@ async fn test_create_credential_schema_fail_validation() {
             format: "NON_EXISTING_FORMAT".to_string(),
             revocation_method: "NONE".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
@@ -424,7 +424,7 @@ async fn test_create_credential_schema_fail_validation() {
             format: "JWT".to_string(),
             revocation_method: "TEST".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
@@ -441,7 +441,7 @@ async fn test_create_credential_schema_fail_validation() {
             format: "JWT".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "BLABLA".to_string(),
@@ -457,7 +457,7 @@ async fn test_create_credential_schema_fail_validation() {
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![],
         })
         .await;
@@ -508,7 +508,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             format: "JWT".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),

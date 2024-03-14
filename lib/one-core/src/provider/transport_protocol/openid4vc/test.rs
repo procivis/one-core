@@ -150,7 +150,9 @@ fn generic_credential() -> Credential {
         last_modified: now,
     };
     let organisation = Organisation {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
         created_date: now,
         last_modified: now,
     };

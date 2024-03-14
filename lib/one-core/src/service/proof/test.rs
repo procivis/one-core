@@ -93,7 +93,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             last_modified: OffsetDateTime::now_utc(),
             name: "did".to_string(),
             organisation: Some(Organisation {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
@@ -156,7 +156,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                 }),
             }]),
             organisation: Some(Organisation {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
@@ -268,7 +268,7 @@ async fn test_get_proof_exists() {
                 }),
             }]),
             organisation: Some(Organisation {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
@@ -442,7 +442,7 @@ async fn test_get_proof_list_success() {
             sort_direction: None,
             exact: None,
             name: None,
-            organisation_id: Uuid::new_v4().to_string(),
+            organisation_id: Uuid::new_v4().into(),
             ids: None,
         })
         .await;
