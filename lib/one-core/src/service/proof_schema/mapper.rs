@@ -8,12 +8,12 @@ use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 use crate::{
     model::{
         organisation::Organisation,
-        organisation::OrganisationId,
         proof_schema::{ProofSchema, ProofSchemaClaim},
     },
     service::error::ServiceError,
 };
 use dto_mapper::try_convert_inner;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -61,7 +61,7 @@ impl TryFrom<ProofSchemaClaim> for ProofClaimSchemaResponseDTO {
 
 pub fn create_unique_name_check_request(
     name: &str,
-    organisation_id: &OrganisationId,
+    organisation_id: OrganisationId,
 ) -> Result<GetProofSchemaQueryDTO, ServiceError> {
     Ok(GetProofSchemaQueryDTO {
         page: 0,
@@ -70,7 +70,7 @@ pub fn create_unique_name_check_request(
         sort_direction: None,
         exact: Some(vec![ExactColumn::Name]),
         name: Some(name.to_string()),
-        organisation_id: organisation_id.to_string(),
+        organisation_id,
         ids: None,
     })
 }

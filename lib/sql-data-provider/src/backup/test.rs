@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
 use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, DatabaseConnection, EntityTrait, Set};
-use shared_types::{CredentialId, DidId, DidValue, KeyId};
+use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId};
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 
@@ -25,7 +25,7 @@ use super::BackupProvider;
 
 async fn insert_key_to_database(
     database: &DatabaseConnection,
-    organisation_id: Uuid,
+    organisation_id: OrganisationId,
     storage_type: &str,
     deleted: bool,
 ) -> KeyId {
@@ -38,7 +38,7 @@ async fn insert_key_to_database(
         key_reference: Set(vec![]),
         storage_type: Set(storage_type.into()),
         key_type: Set("".into()),
-        organisation_id: Set(organisation_id.to_string()),
+        organisation_id: Set(organisation_id),
         deleted_at: if deleted {
             Set(Some(get_dummy_date()))
         } else {
@@ -113,7 +113,7 @@ async fn insert_credential_to_database(
 
 async fn insert_did_to_database(
     database: &DatabaseConnection,
-    organisation_id: Uuid,
+    organisation_id: OrganisationId,
     deleted: bool,
     key_id: Uuid,
 ) -> DidId {
@@ -125,7 +125,7 @@ async fn insert_did_to_database(
         name: Set(Uuid::new_v4().to_string()),
         type_field: Set(DidType::Local),
         method: Set("method".into()),
-        organisation_id: Set(organisation_id.to_string()),
+        organisation_id: Set(organisation_id),
         deactivated: Set(false),
         deleted_at: if deleted {
             Set(Some(get_dummy_date()))
@@ -148,7 +148,7 @@ async fn insert_did_to_database(
 struct TestSetup {
     pub db: DatabaseConnection,
     pub provider: BackupProvider,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     pub _db_holder: NamedTempFile,
 }
 
@@ -170,7 +170,7 @@ async fn setup_empty() -> TestSetup {
             db,
             exportable_storages: vec!["INTERNAL".into()],
         },
-        organisation_id: organisation_id.parse().unwrap(),
+        organisation_id,
         _db_holder,
     }
 }
@@ -189,7 +189,7 @@ impl UnexportableSetup {
 
 async fn add_unexportable_keys(
     db: &DatabaseConnection,
-    organisation_id: Uuid,
+    organisation_id: OrganisationId,
 ) -> UnexportableSetup {
     let exportable_key_id = insert_key_to_database(db, organisation_id, "INTERNAL", false).await;
     let unexportable_key_id = insert_key_to_database(db, organisation_id, "FOO", false).await;
@@ -210,13 +210,13 @@ async fn add_unexportable_keys(
 
 async fn add_unexportable_credentials(
     db: &DatabaseConnection,
-    organisation_id: Uuid,
+    organisation_id: OrganisationId,
     keys_setup: &UnexportableSetup,
 ) -> UnexportableSetup {
     let schema_id = insert_credential_schema_to_database(
         db,
         None,
-        &organisation_id.to_string(),
+        organisation_id,
         "credential schema 1",
         "JWT",
         "NONE",
@@ -256,7 +256,7 @@ async fn add_unexportable_credentials(
 
 async fn add_unexportable_dids(
     db: &DatabaseConnection,
-    organisation_id: Uuid,
+    organisation_id: OrganisationId,
     keys_setup: &UnexportableSetup,
 ) -> UnexportableSetup {
     let exportable_ids = futures::stream::iter(keys_setup.exportable_ids.iter())

@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use one_core::model::credential_schema::CredentialSchemaId;
+use shared_types::HistoryId;
 
 use super::{HttpClient, Response};
 
@@ -38,6 +39,11 @@ impl HistoriesApi {
                 .join("&");
             url.push_str(&format!("&{entity_types_as_string}"));
         }
+        self.client.get(&url).await
+    }
+
+    pub async fn get(&self, history_id: HistoryId) -> Response {
+        let url = format!("/api/history/v1/{history_id}");
         self.client.get(&url).await
     }
 }

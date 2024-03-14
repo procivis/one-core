@@ -8,7 +8,6 @@ use one_core::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
             GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
         },
-        organisation::Organisation,
     },
     repository::{credential_schema_repository::CredentialSchemaRepository, error::DataLayerError},
 };
@@ -155,15 +154,13 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                     "Missing organisation for credential schema {id}"
                 )))?;
 
-            let organisation: Organisation = model.try_into()?;
-
             Some(
                 self.organisation_repository
-                    .get_organisation(&organisation.id, organisation_relations)
+                    .get_organisation(&model.id, organisation_relations)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "credential_schema-organisation",
-                        id: organisation.id.to_string(),
+                        id: model.id.to_string(),
                     })?,
             )
         } else {

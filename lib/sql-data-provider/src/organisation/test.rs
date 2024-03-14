@@ -26,7 +26,7 @@ async fn setup() -> TestSetup {
 async fn test_create_organisation() {
     let TestSetup { db, repository } = setup().await;
 
-    let org_id = Uuid::new_v4();
+    let org_id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
 
     let organisation = Organisation {
@@ -54,7 +54,7 @@ async fn test_get_organisation_missing() {
     let TestSetup { repository, .. } = setup().await;
 
     let result = repository
-        .get_organisation(&Uuid::new_v4(), &OrganisationRelations::default())
+        .get_organisation(&Uuid::new_v4().into(), &OrganisationRelations::default())
         .await;
     assert!(matches!(result, Ok(None)));
 }
@@ -63,7 +63,7 @@ async fn test_get_organisation_missing() {
 async fn test_get_organisation_success() {
     let TestSetup { repository, db } = setup().await;
 
-    let org_id = Uuid::new_v4();
+    let org_id = Uuid::new_v4().into();
     insert_organisation_to_database(&db, Some(org_id))
         .await
         .unwrap();
@@ -81,7 +81,7 @@ async fn test_get_organisation_success() {
 async fn test_get_organisation_list() {
     let TestSetup { repository, db } = setup().await;
 
-    let org_id = Uuid::new_v4();
+    let org_id = Uuid::new_v4().into();
     insert_organisation_to_database(&db, Some(org_id))
         .await
         .unwrap();

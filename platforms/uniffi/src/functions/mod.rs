@@ -10,6 +10,7 @@ mod get_config;
 mod get_credential;
 mod get_credential_schemas;
 mod get_credentials;
+mod get_history_entry;
 mod get_history_list;
 mod get_presentation_defintion;
 mod get_proof;

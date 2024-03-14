@@ -64,7 +64,7 @@ async fn test_create_organisation_id_set() {
         .returning(|history| Ok(history.id));
 
     let service = setup_service(organisation_repository, history_repository);
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4().into();
     let result = service.create_organisation(Some(id)).await.unwrap();
 
     assert_eq!(result, id);
@@ -85,7 +85,7 @@ async fn test_create_organisation_already_exists() {
         });
 
     let service = setup_service(organisation_repository, MockHistoryRepository::default());
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4().into();
     let result = service.create_organisation(Some(id)).await;
 
     assert!(matches!(
@@ -101,7 +101,7 @@ async fn test_get_organisation_success() {
     let mut organisation_repository = MockOrganisationRepository::default();
 
     let organisation = Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
     };
@@ -134,7 +134,7 @@ async fn test_get_organisation_failure() {
         .returning(|_, _| Ok(None));
 
     let service = setup_service(organisation_repository, MockHistoryRepository::default());
-    let result = service.get_organisation(&Uuid::new_v4()).await;
+    let result = service.get_organisation(&Uuid::new_v4().into()).await;
 
     assert!(matches!(
         result,
@@ -152,7 +152,7 @@ async fn test_get_organisation_list_success() {
         .times(1)
         .returning(|| {
             Ok(vec![Organisation {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }])

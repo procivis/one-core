@@ -30,8 +30,7 @@ async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id =
-        Uuid::parse_str(&insert_organisation_to_database(&db, None).await.unwrap()).unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let now = OffsetDateTime::now_utc();
     let organisation = Organisation {
@@ -50,7 +49,7 @@ async fn setup() -> TestSetup {
         key_reference: Set(vec![]),
         storage_type: Set("test".to_string()),
         key_type: Set("test".to_string()),
-        organisation_id: Set(organisation_id.to_string()),
+        organisation_id: Set(organisation_id),
         deleted_at: NotSet,
     }
     .insert(&db)
@@ -88,7 +87,7 @@ async fn setup_list() -> TestListSetup {
         key_reference: Set(vec![]),
         storage_type: Set("test2".to_string()),
         key_type: Set("test2".to_string()),
-        organisation_id: Set(organisation.id.to_string()),
+        organisation_id: Set(organisation.id),
         deleted_at: NotSet,
     }
     .insert(&db)
@@ -177,7 +176,7 @@ async fn test_get_key_list_success() {
         sort: None,
         sort_direction: None,
         name: None,
-        organisation_id: organisation.id.to_string(),
+        organisation_id: organisation.id,
         exact: None,
         ids: None,
     };

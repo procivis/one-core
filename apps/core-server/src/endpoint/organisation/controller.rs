@@ -1,5 +1,6 @@
 use axum::extract::{Path, State};
 use axum::Json;
+use shared_types::OrganisationId;
 
 use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse, VecResponse};
 use crate::router::AppState;
@@ -15,7 +16,7 @@ use super::dto::{
     path = "/api/organisation/v1/{id}",
     responses(OkOrErrorResponse<GetOrganisationDetailsResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Organisation id")
+        ("id" = OrganisationId, Path, description = "Organisation id")
     ),
     tag = "organisation_management",
     security(
@@ -24,7 +25,7 @@ use super::dto::{
 )]
 pub(crate) async fn get_organisation(
     state: State<AppState>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<OrganisationId>,
 ) -> OkOrErrorResponse<GetOrganisationDetailsResponseRestDTO> {
     let result = state.core.organisation_service.get_organisation(&id).await;
     OkOrErrorResponse::from_result(result, state, "getting organisation details")
@@ -68,7 +69,7 @@ pub(crate) async fn post_organisation(
 ) -> CreatedOrErrorResponse<CreateOrganisationResponseRestDTO> {
     let Json(request): Json<CreateOrganisationRequestRestDTO> =
         request.unwrap_or(Json(CreateOrganisationRequestRestDTO {
-            id: Some(Uuid::new_v4()),
+            id: Some(Uuid::new_v4().into()),
         }));
 
     let result = state

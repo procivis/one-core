@@ -41,14 +41,13 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         .unwrap();
     }
 
-    let organisation_id =
-        Uuid::parse_str(&insert_organisation_to_database(&db, None).await.unwrap()).unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let credential_schema_id = Uuid::parse_str(
         &insert_credential_schema_to_database(
             &db,
             None,
-            &organisation_id.to_string(),
+            organisation_id,
             "credential schema",
             "JWT",
             "NONE",
@@ -64,7 +63,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
         "KEY",
-        &organisation_id.to_string(),
+        organisation_id,
     )
     .await
     .unwrap();

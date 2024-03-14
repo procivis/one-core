@@ -1,4 +1,4 @@
-use shared_types::CredentialId;
+use shared_types::{CredentialId, HistoryId, OrganisationId};
 use shared_types::{DidId, DidValue, KeyId};
 use strum_macros::Display;
 use thiserror::Error;
@@ -10,7 +10,6 @@ use crate::model::claim_schema::ClaimSchemaId;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::credential_schema::CredentialSchemaId;
 use crate::model::interaction::InteractionId;
-use crate::model::organisation::OrganisationId;
 use crate::model::proof::ProofId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::proof_schema::ProofSchemaId;
@@ -123,6 +122,9 @@ pub enum EntityNotFoundError {
 
     #[error("Lvvc with credentialId `{0}` not found")]
     Lvvc(CredentialId),
+
+    #[error("History entry `{0}` not found")]
+    History(HistoryId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -569,6 +571,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Credential state is Revoked or Suspended and cannot be shared")]
     BR_0099,
 
+    #[strum(to_string = "History event not found")]
+    BR_0100,
+
     #[strum(to_string = "Revocation error")]
     BR_0101,
 
@@ -644,6 +649,7 @@ impl EntityNotFoundError {
             EntityNotFoundError::Key(_) => ErrorCode::BR_0037,
             EntityNotFoundError::CredentialSchema(_) => ErrorCode::BR_0006,
             EntityNotFoundError::Lvvc(_) => ErrorCode::BR_0000,
+            EntityNotFoundError::History(_) => ErrorCode::BR_0100,
         }
     }
 }

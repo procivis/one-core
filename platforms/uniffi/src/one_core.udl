@@ -294,12 +294,18 @@ enum HistoryEntityTypeBindingEnum {
   "Backup",
 };
 
+[Enum]
+interface HistoryMetadataBinding {
+  UnexportableEntities(UnexportableEntitiesBindingDTO value);
+};
+
 dictionary HistoryListItemBindingDTO {
   string created_date;
   string id;
   HistoryActionBindingEnum action;
   string? entity_id;
   HistoryEntityTypeBindingEnum entity_type;
+  HistoryMetadataBinding? metadata;
   string organisation_id;
 };
 
@@ -428,6 +434,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   HistoryListBindingDTO get_history_list(HistoryListQueryBindingDTO query);
+
+  [Throws=BindingError]
+  HistoryListItemBindingDTO get_history_entry(string history_id);
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);

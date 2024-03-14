@@ -2,6 +2,7 @@ use dto_mapper::{From, Into};
 use one_core::model::credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum;
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -17,7 +18,7 @@ pub struct Model {
     pub revocation_method: String,
     pub wallet_storage_type: Option<WalletStorageType>,
 
-    pub organisation_id: String,
+    pub organisation_id: OrganisationId,
 }
 
 #[derive(

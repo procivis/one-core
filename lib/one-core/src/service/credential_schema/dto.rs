@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use dto_mapper::From;
 
@@ -12,7 +12,6 @@ use crate::model::{
         CredentialFormat, CredentialSchema, CredentialSchemaId, RevocationMethod,
         SortableCredentialSchemaColumn,
     },
-    organisation::OrganisationId,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, From)]
@@ -66,7 +65,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }

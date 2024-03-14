@@ -90,7 +90,7 @@ pub async fn insert_credential_state_to_database(
 pub async fn insert_credential_schema_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
     name: &str,
     format: &str,
     revocation_method: &str,
@@ -102,7 +102,7 @@ pub async fn insert_credential_schema_to_database(
         format: Set(format.to_owned()),
         name: Set(name.to_owned()),
         revocation_method: Set(revocation_method.to_owned()),
-        organisation_id: Set(organisation_id.to_owned()),
+        organisation_id: Set(organisation_id),
         wallet_storage_type: Set(None),
         deleted_at: Set(deleted_at),
     }
@@ -213,7 +213,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
     claims: &Vec<(Uuid, &str, bool, u32, &str)>,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
     name: &str,
 ) -> Result<String, DbErr> {
     let schema = proof_schema::ActiveModel {
@@ -222,7 +222,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
-        organisation_id: Set(organisation_id.to_owned()),
+        organisation_id: Set(organisation_id),
         validity_constraint: Set(None),
         deleted_at: Set(deleted_at),
     }
@@ -246,7 +246,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
 pub async fn insert_proof_schema_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
     name: &str,
 ) -> Result<String, DbErr> {
     let schema = proof_schema::ActiveModel {
@@ -255,7 +255,7 @@ pub async fn insert_proof_schema_to_database(
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
-        organisation_id: Set(organisation_id.to_owned()),
+        organisation_id: Set(organisation_id),
         validity_constraint: Set(None),
         deleted_at: Set(deleted_at),
     }
@@ -284,10 +284,10 @@ pub async fn insert_many_proof_claim_to_database(
 
 pub async fn insert_organisation_to_database(
     database: &DatabaseConnection,
-    id: Option<Uuid>,
-) -> Result<String, DbErr> {
+    id: Option<OrganisationId>,
+) -> Result<OrganisationId, DbErr> {
     let organisation = organisation::ActiveModel {
-        id: Set(id.unwrap_or_else(Uuid::new_v4).to_string()),
+        id: Set(id.unwrap_or(Uuid::new_v4().into())),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
     }
@@ -302,7 +302,7 @@ pub async fn insert_key_to_database(
     public_key: Vec<u8>,
     key_reference: Vec<u8>,
     did_id: Option<DidId>,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
 ) -> Result<KeyId, DbErr> {
     let id = did_id
         .as_ref()
@@ -318,7 +318,7 @@ pub async fn insert_key_to_database(
         key_reference: Set(key_reference),
         storage_type: Set("INTERNAL".to_string()),
         key_type: Set(key_type),
-        organisation_id: Set(organisation_id.to_string()),
+        organisation_id: Set(organisation_id),
         deleted_at: NotSet,
     }
     .insert(database)
@@ -345,7 +345,7 @@ pub async fn insert_did_key(
     did_id: impl Into<DidId>,
     did: DidValue,
     method: &str,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
 ) -> Result<DidId, DbErr> {
     insert_did(
         database,
@@ -366,7 +366,7 @@ pub async fn insert_did(
     name: &str,
     did_id: DidId,
     did: DidValue,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
     method: impl Into<String>,
     did_type: DidType,
     deactivated: impl Into<Option<bool>>,
@@ -381,7 +381,7 @@ pub async fn insert_did(
         name: Set(name.to_owned()),
         type_field: Set(did_type),
         method: Set(method.into()),
-        organisation_id: Set(organisation_id.to_owned()),
+        organisation_id: Set(organisation_id),
         deactivated: Set(deactivated.into().unwrap_or_default()),
         deleted_at: NotSet,
     }

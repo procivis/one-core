@@ -35,7 +35,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             name: Set(value.name),
             format: Set(value.format),
             revocation_method: Set(value.revocation_method),
-            organisation_id: Set(organisation_id.to_string()),
+            organisation_id: Set(organisation_id),
             wallet_storage_type: Set(convert_inner(value.wallet_storage_type)),
         })
     }
@@ -54,7 +54,6 @@ fn entity_model_to_credential_schema(
     organisation: Option<Organisation>,
 ) -> Result<CredentialSchema, DataLayerError> {
     let id = Uuid::from_str(&value.id)?;
-    let _organisation_id = Uuid::from_str(&value.organisation_id)?;
 
     Ok(CredentialSchema {
         id,

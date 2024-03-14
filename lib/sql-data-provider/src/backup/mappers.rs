@@ -47,7 +47,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 revocation_method: value.credential_schema_revocation_method,
                 claim_schemas: None,
                 organisation: Some(Organisation {
-                    id: Uuid::from_str(&value.organisation_id)?,
+                    id: value.organisation_id,
                     created_date: value.organisation_created_date,
                     last_modified: value.organisation_last_modified,
                 }),

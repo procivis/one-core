@@ -120,6 +120,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             "/api/history/v1",
             get(history::controller::get_history_list),
         )
+        .route(
+            "/api/history/v1/:id",
+            get(history::controller::get_history_entry),
+        )
         .route("/api/key/v1/:id", get(key::controller::get_key))
         .route(
             "/api/key/v1",
@@ -331,6 +335,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::did_resolver::controller::resolve_did,
 
             endpoint::history::controller::get_history_list,
+            endpoint::history::controller::get_history_entry,
 
             endpoint::key::controller::get_key,
             endpoint::key::controller::get_key_list,
@@ -418,6 +423,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::history::dto::HistoryAction,
                 endpoint::history::dto::HistoryEntityType,
                 endpoint::history::dto::HistorySearchEnumRest,
+                endpoint::history::dto::HistoryMetadataRest,
 
                 endpoint::key::dto::KeyRequestRestDTO,
                 endpoint::key::dto::KeyResponseRestDTO,

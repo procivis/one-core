@@ -39,8 +39,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id =
-        Uuid::parse_str(&insert_organisation_to_database(&db, None).await.unwrap()).unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     TestSetup {
         organisation: Organisation {
@@ -76,7 +75,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         &insert_credential_schema_to_database(
             &db,
             None,
-            &organisation.id.to_string(),
+            organisation.id,
             "credential schema",
             "JWT",
             "NONE",
@@ -228,7 +227,7 @@ async fn test_get_credential_schema_list_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema_list(from_pagination(0, 5, organisation.id.to_string()))
+        .get_credential_schema_list(from_pagination(0, 5, organisation.id))
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -257,7 +256,7 @@ async fn test_get_credential_schema_list_deleted_schema() {
     .unwrap();
 
     let result = repository
-        .get_credential_schema_list(from_pagination(0, 1, organisation.id.to_string()))
+        .get_credential_schema_list(from_pagination(0, 1, organisation.id))
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();

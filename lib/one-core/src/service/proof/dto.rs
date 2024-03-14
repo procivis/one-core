@@ -2,7 +2,6 @@ use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::{
     model::{
         common::{GetListQueryParams, GetListResponse},
-        organisation::OrganisationId,
         proof::{ProofStateEnum, SortableProofColumn},
     },
     service::{
@@ -12,7 +11,7 @@ use crate::{
         },
     },
 };
-use shared_types::{DidId, KeyId};
+use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 

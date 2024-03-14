@@ -1,3 +1,4 @@
+use shared_types::OrganisationId;
 use strum_macros::EnumString;
 use uuid::Uuid;
 
@@ -25,7 +26,7 @@ pub struct GetListQueryParams<SortableColumn> {
 
     // filtering
     pub name: Option<String>,
-    pub organisation_id: String,
+    pub organisation_id: OrganisationId,
     pub exact: Option<Vec<ExactColumn>>,
     pub ids: Option<Vec<Uuid>>,
 }

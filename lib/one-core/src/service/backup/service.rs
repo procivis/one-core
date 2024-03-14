@@ -83,7 +83,7 @@ impl BackupService {
                     .create_history(create_backup_history_event(
                         organisation,
                         HistoryAction::Created,
-                        serde_json::to_string(&unexportable).ok(),
+                        Some(unexportable.clone().into()),
                     ))
             })
             .await?;

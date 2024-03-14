@@ -9,7 +9,6 @@ use one_core::{
         did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
         key::{Key, KeyRelations},
-        organisation::OrganisationId,
         proof::{
             Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
             ProofStateRelations,
@@ -32,7 +31,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
-use shared_types::{DidId, KeyId};
+use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -70,7 +69,7 @@ async fn setup(
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id = Uuid::new_v4();
+    let organisation_id = Uuid::new_v4().into();
     insert_organisation_to_database(&db, Some(organisation_id))
         .await
         .unwrap();
@@ -79,7 +78,7 @@ async fn setup(
         &insert_credential_schema_to_database(
             &db,
             None,
-            &organisation_id.to_string(),
+            organisation_id,
             "credential schema",
             "JWT",
             "NONE",
@@ -105,7 +104,7 @@ async fn setup(
             &db,
             None,
             &new_claim_schemas,
-            &organisation_id.to_string(),
+            organisation_id,
             "proof schema",
         )
         .await
@@ -119,7 +118,7 @@ async fn setup(
         Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
         "KEY",
-        &organisation_id.to_string(),
+        organisation_id,
     )
     .await
     .unwrap();
@@ -130,7 +129,7 @@ async fn setup(
         vec![],
         vec![],
         None,
-        &organisation_id.to_string(),
+        organisation_id,
     )
     .await
     .unwrap();
@@ -372,7 +371,7 @@ async fn test_get_proof_list() {
     .await;
 
     let result = repository
-        .get_proof_list(from_pagination(0, 1, organisation_id.to_string()))
+        .get_proof_list(from_pagination(0, 1, organisation_id))
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -566,7 +565,7 @@ async fn test_get_proof_with_relations() {
         &insert_credential_schema_to_database(
             &db,
             None,
-            &organisation_id.to_string(),
+            organisation_id,
             "credential schema 1",
             "JWT",
             "NONE",
@@ -834,7 +833,7 @@ async fn test_set_proof_holder_did() {
         Uuid::new_v4(),
         "did:holder".to_owned().parse().unwrap(),
         "KEY",
-        &organisation_id.to_string(),
+        organisation_id,
     )
     .await
     .unwrap();
@@ -891,7 +890,7 @@ async fn test_set_proof_claims_success() {
         &insert_credential_schema_to_database(
             &db,
             None,
-            &organisation_id.to_string(),
+            organisation_id,
             "credential schema 1",
             "JWT",
             "NONE",

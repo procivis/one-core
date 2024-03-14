@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -13,7 +14,7 @@ pub struct Model {
     pub name: String,
     pub expire_duration: u32,
     pub validity_constraint: Option<i64>,
-    pub organisation_id: String,
+    pub organisation_id: OrganisationId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

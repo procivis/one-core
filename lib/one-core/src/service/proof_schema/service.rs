@@ -87,7 +87,7 @@ impl ProofSchemaService {
         proof_schema_name_already_exists(
             &self.proof_schema_repository,
             &request.name,
-            &request.organisation_id,
+            request.organisation_id,
         )
         .await?;
         let claim_schema_ids: Vec<ClaimSchemaId> =
