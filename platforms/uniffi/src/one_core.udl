@@ -96,6 +96,7 @@ dictionary CredentialListItemBindingDTO {
   CredentialStateBindingEnum state;
   CredentialSchemaBindingDTO schema;
   CredentialRoleBindingDTO role;
+  string? suspend_end_date;
 };
 
 dictionary KeyListItemBindingDTO {
@@ -132,6 +133,7 @@ dictionary CredentialDetailBindingDTO {
   string? redirect_uri;
   CredentialRoleBindingDTO role;
   string? lvvc_issuance_date;
+  string? suspend_end_date;
 };
 
 dictionary ProofRequestClaimBindingDTO {

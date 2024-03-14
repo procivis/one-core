@@ -52,6 +52,9 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             lvvc_issuance_date: value
                 .lvvc_issuance_date
                 .map(|lvvc_issuance_date| lvvc_issuance_date.format_timestamp()),
+            suspend_end_date: value
+                .suspend_end_date
+                .map(|suspend_end_date| suspend_end_date.format_timestamp()),
         }
     }
 }
@@ -68,6 +71,9 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             state: value.state.into(),
             schema: value.schema.into(),
             role: value.role.into(),
+            suspend_end_date: value
+                .suspend_end_date
+                .map(|suspend_end_date| suspend_end_date.format_timestamp()),
         }
     }
 }
