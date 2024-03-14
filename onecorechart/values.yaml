@@ -80,6 +80,18 @@ config:
     vaultUrl: ""
 
 
+cronJob:
+  suspension:
+    enabled: true
+    schedule: "*/1 * * * *"
+    concurrencyPolicy: Forbid
+    failedJobsHistoryLimit: 1
+    successfulJobsHistoryLimit: 2
+    jobRestartPolicy: Never
+    backoffLimit: 2
+    activeDeadlineSeconds: 60
+
+
 mariadb:
   enabled: true
   architecture: standalone
