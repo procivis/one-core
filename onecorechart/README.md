@@ -18,7 +18,7 @@
 
 * Import key to gpg
 ```shell
-gpg --import one.private
+gpg --import dev.procivis.sec
 ```
 
 * Verify import
