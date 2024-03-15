@@ -220,7 +220,6 @@ async fn test_connect_to_holder_succeeds_new_did() {
 #[tokio::test]
 async fn test_submit_proof_succeeds() {
     let proof_id = Uuid::new_v4();
-    let did_id = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
@@ -377,15 +376,18 @@ async fn test_submit_proof_succeeds() {
         .returning(|_, _| Ok(()));
 
     let mut did_repository = MockDidRepository::new();
-    did_repository.expect_get_did().once().return_once({
-        let holder_did = holder_did.clone();
-        |_, _| {
-            Ok(Some(Did {
-                did: holder_did,
-                ..dummy_did()
-            }))
-        }
-    });
+    did_repository
+        .expect_get_did_by_value()
+        .once()
+        .return_once({
+            let holder_did = holder_did.clone();
+            |_, _| {
+                Ok(Some(Did {
+                    did: holder_did,
+                    ..dummy_did()
+                }))
+            }
+        });
     did_repository
         .expect_get_did_by_value()
         .once()
@@ -419,7 +421,7 @@ async fn test_submit_proof_succeeds() {
 
     let presentation_content = "presentation content";
     service
-        .submit_proof(proof_id, did_id, presentation_content)
+        .submit_proof(proof_id, holder_did, presentation_content)
         .await
         .unwrap();
 }
@@ -427,7 +429,6 @@ async fn test_submit_proof_succeeds() {
 #[tokio::test]
 async fn test_submit_proof_failed_credential_revoked() {
     let proof_id = Uuid::new_v4();
-    let did_id = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
@@ -490,7 +491,7 @@ async fn test_submit_proof_failed_credential_revoked() {
 
     let mut did_repository = MockDidRepository::new();
     did_repository
-        .expect_get_did()
+        .expect_get_did_by_value()
         .once()
         .return_once(|_, _| Ok(Some(dummy_did())));
 
@@ -540,6 +541,7 @@ async fn test_submit_proof_failed_credential_revoked() {
         });
     formatter.expect_get_leeway().returning(|| 10);
     let issuer_did_clone = issuer_did.clone();
+    let holder_did_clone = holder_did.clone();
     formatter
         .expect_extract_credentials()
         .once()
@@ -550,7 +552,7 @@ async fn test_submit_proof_failed_credential_revoked() {
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned()),
-                subject: Some(holder_did.to_owned()),
+                subject: Some(holder_did_clone.to_owned()),
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([
@@ -600,7 +602,7 @@ async fn test_submit_proof_failed_credential_revoked() {
 
     let presentation_content = "presentation content";
     let err = service
-        .submit_proof(proof_id, did_id, presentation_content)
+        .submit_proof(proof_id, holder_did, presentation_content)
         .await
         .unwrap_err();
     assert!(matches!(
@@ -612,7 +614,6 @@ async fn test_submit_proof_failed_credential_revoked() {
 #[tokio::test]
 async fn test_submit_proof_failed_credential_suspended() {
     let proof_id = Uuid::new_v4();
-    let did_id = Uuid::new_v4().into();
     let verifier_did = "verifier did".parse().unwrap();
     let holder_did: DidValue = "did:holder".parse().unwrap();
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
@@ -675,7 +676,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let mut did_repository = MockDidRepository::new();
     did_repository
-        .expect_get_did()
+        .expect_get_did_by_value()
         .once()
         .return_once(|_, _| Ok(Some(dummy_did())));
 
@@ -725,6 +726,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         });
     formatter.expect_get_leeway().returning(|| 10);
     let issuer_did_clone = issuer_did.clone();
+    let holder_did_clone = holder_did.clone();
     formatter
         .expect_extract_credentials()
         .once()
@@ -735,7 +737,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned()),
-                subject: Some(holder_did.to_owned()),
+                subject: Some(holder_did_clone.to_owned()),
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([
@@ -789,7 +791,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let presentation_content = "presentation content";
     let err = service
-        .submit_proof(proof_id, did_id, presentation_content)
+        .submit_proof(proof_id, holder_did, presentation_content)
         .await
         .unwrap_err();
     assert!(matches!(

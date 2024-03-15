@@ -49,8 +49,7 @@ use one_core::service::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::{self, json::JsonString};
-use shared_types::{CredentialId, DidId};
-use shared_types::{DidValue, KeyId};
+use shared_types::{CredentialId, DidValue};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -58,9 +57,16 @@ use uuid::Uuid;
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct ProofRequestQueryParams {
+pub(crate) struct ProofRejectQueryParams {
     pub proof: Uuid,
-    pub did_id: DidId,
+}
+
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProofSubmitQueryParams {
+    pub proof: Uuid,
+    pub did_value: DidValue,
 }
 
 // verifier specific
@@ -367,8 +373,7 @@ pub struct PostSsiIssuerRejectQueryParams {
 #[serde(rename_all = "camelCase")]
 pub struct PostSsiIssuerSubmitQueryParams {
     pub credential_id: CredentialId,
-    pub did_id: DidId,
-    pub key_id: Option<KeyId>,
+    pub did_value: DidValue,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

@@ -1,11 +1,10 @@
-use std::{collections::BTreeSet, str::FromStr};
+use std::collections::BTreeSet;
 
 use one_core::model::proof::ProofStateEnum;
-use shared_types::DidValue;
 use uuid::Uuid;
 
 use crate::{
-    fixtures::{self, TestingDidParams},
+    fixtures,
     utils::{
         self,
         db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
@@ -93,18 +92,7 @@ async fn test_correct() {
             .await;
 
     let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let holder_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            did: Some(
-                DidValue::from_str("did:key:z6MkttiJVZB4dwWkF9ALwaELUDq5Jj9j1BhZHNzNcLVNam6n")
-                    .unwrap(),
-            ),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let holder_did = "did:key:z6MkttiJVZB4dwWkF9ALwaELUDq5Jj9j1BhZHNzNcLVNam6n";
 
     let interaction = fixtures::create_interaction(&db_conn, &base_url, "123".as_bytes()).await;
 
@@ -124,7 +112,10 @@ async fn test_correct() {
 
     let url = format!("{base_url}/ssi/temporary-verifier/v1/submit");
 
-    let params = [("proof", proof.id), ("didId", holder_did.id.into())];
+    let params = [
+        ("proof", proof.id.to_string()),
+        ("didValue", holder_did.to_string()),
+    ];
 
     let resp = utils::client()
         .post(url)

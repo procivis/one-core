@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use shared_types::{CredentialId, KeyId};
+use shared_types::CredentialId;
 use url::Url;
 
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
@@ -47,7 +47,6 @@ pub(crate) trait TransportProtocolProvider: Send + Sync {
         &self,
         credential_id: &CredentialId,
         holder_did: Did,
-        key_id: Option<KeyId>,
     ) -> Result<SubmitIssuerResponse, ServiceError>;
 }
 
@@ -105,9 +104,8 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
         &self,
         credential_id: &CredentialId,
         holder_did: Did,
-        key_id: Option<KeyId>,
     ) -> Result<SubmitIssuerResponse, ServiceError> {
-        let Some(credential) = self
+        let Some(mut credential) = self
             .credential_repository
             .get_credential(
                 credential_id,
@@ -124,7 +122,6 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
                         keys: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
-                    holder_did: Some(DidRelations::default()),
                     key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
@@ -133,6 +130,8 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
         else {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
+
+        credential.holder_did = Some(holder_did.clone());
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
 
@@ -199,7 +198,6 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
                 credential_id,
                 &token,
                 holder_did.id,
-                key_id,
             ))
             .await?;
 

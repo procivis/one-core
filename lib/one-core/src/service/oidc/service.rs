@@ -302,7 +302,7 @@ impl OIDCService {
 
         let issued_credential = self
             .protocol_provider
-            .issue_credential(&credential.id, holder_did, None)
+            .issue_credential(&credential.id, holder_did)
             .await?;
 
         Ok(OpenID4VCICredentialResponseDTO {

@@ -160,7 +160,7 @@ async fn test_openid4vc_jsonld_flow(
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(credential.id, holder_did.id)
+        .temporary_submit(credential.id, holder_did.did)
         .await;
 
     assert_eq!(resp.status(), 200);

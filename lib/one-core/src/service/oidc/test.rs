@@ -456,7 +456,7 @@ async fn test_oidc_create_credential_success() {
         transport_provider
             .expect_issue_credential()
             .once()
-            .return_once(|_, _, _| {
+            .return_once(|_, _| {
                 Ok(SubmitIssuerResponse {
                     credential: "xyz".to_string(),
                     format: "jwt_vc_json".to_string(),

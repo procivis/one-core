@@ -31,7 +31,7 @@ use crate::{
         ssi_validator::validate_config_entity_presence,
     },
 };
-use shared_types::DidId;
+use shared_types::DidValue;
 use time::OffsetDateTime;
 
 impl SSIVerifierService {
@@ -106,7 +106,7 @@ impl SSIVerifierService {
     pub async fn submit_proof(
         &self,
         proof_id: ProofId,
-        did_id: DidId,
+        did_value: DidValue,
         presentation_content: &str,
     ) -> Result<(), ServiceError> {
         validate_config_entity_presence(&self.config)?;
@@ -131,11 +131,15 @@ impl SSIVerifierService {
             )
             .await?;
 
-        let holder_did = self
-            .did_repository
-            .get_did(&did_id, &Default::default())
-            .await?
-            .ok_or(EntityNotFoundError::Did(did_id))?;
+        let holder_did = get_or_create_did(
+            self.did_repository.as_ref(),
+            &proof
+                .schema
+                .as_ref()
+                .and_then(|schema| schema.organisation.clone()),
+            &did_value,
+        )
+        .await?;
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
