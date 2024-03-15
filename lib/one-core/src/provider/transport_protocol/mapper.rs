@@ -140,6 +140,7 @@ pub async fn get_relevant_credentials(
             // only consider credentials that have finished the issuance flow
             if credential_state.state != CredentialStateEnum::Accepted
                 && credential_state.state != CredentialStateEnum::Revoked
+                && credential_state.state != CredentialStateEnum::Suspended
             {
                 continue;
             }
