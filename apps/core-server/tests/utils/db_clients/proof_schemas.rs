@@ -63,7 +63,7 @@ impl ProofSchemasDB {
             .collect();
 
         let input_schemas = vec![ProofInputSchema {
-            validity_constraint: None,
+            validity_constraint: proof_input_schema.validity_constraint,
             claim_schemas: Some(claim_schemas),
             credential_schema: Some(proof_input_schema.credential_schema.to_owned()),
         }];
