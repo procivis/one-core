@@ -1,6 +1,6 @@
 use time::OffsetDateTime;
 
-#[derive(PartialEq, strum::Display)]
+#[derive(PartialEq, Debug, strum::Display)]
 pub(crate) enum LvvcStatus {
     #[strum(serialize = "ACCEPTED")]
     Accepted,
