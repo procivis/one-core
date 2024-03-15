@@ -87,12 +87,17 @@ async fn test_get_proof_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
+
     resp["id"].assert_eq(&proof.id);
     resp["organisationId"].assert_eq(&organisation.id);
     resp["schema"]["id"].assert_eq(&proof_schema.id);
 
-    assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
-    let claim_item = &resp["claims"][0];
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        resp["proofInputs"][0]["claims"].as_array().unwrap().len(),
+        1
+    );
+    let claim_item = &resp["proofInputs"][0]["claims"][0];
     claim_item["schema"]["id"].assert_eq(&claim_schema.id);
     assert!(claim_item["value"].is_null());
 }
@@ -190,9 +195,10 @@ async fn test_get_proof_with_credentials() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
     resp["id"].assert_eq(&proof.id);
-    assert_eq!(resp["credentials"].as_array().unwrap().len(), 1);
-    resp["credentials"][0]["id"].assert_eq(&credential.id);
-    assert!(resp["credentials"][0]["role"].is_string());
+
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
+    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
+    assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
 }
 
 #[tokio::test]
@@ -250,5 +256,5 @@ async fn test_get_proof_as_holder_success() {
     resp["id"].assert_eq(&proof.id);
     resp["organisationId"].assert_eq(&organisation.id);
     assert!(resp["schema"].as_object().is_none());
-    assert_eq!(resp["claims"].as_array().unwrap().len(), 0);
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 0);
 }

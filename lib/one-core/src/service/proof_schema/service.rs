@@ -129,6 +129,7 @@ impl ProofSchemaService {
             .map(|proof_input_schema| proof_input_schema.credential_schema_id)
             .collect();
 
+        let expected_credential_schemas = credential_schema_ids.len();
         let credential_schemas = self
             .credential_schema_repository
             .get_credential_schema_list(GetCredentialSchemaQuery {
@@ -143,6 +144,10 @@ impl ProofSchemaService {
             })
             .await?
             .values;
+
+        if credential_schemas.len() != expected_credential_schemas {
+            return Err(BusinessLogicError::MissingCredentialSchema.into());
+        }
 
         let now = OffsetDateTime::now_utc();
         let proof_schema = proof_schema_from_create_request(

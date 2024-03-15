@@ -1,7 +1,10 @@
 use super::dto::{
-    CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
+    CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofInputDTO,
+    ProofListItemResponseDTO,
 };
+use crate::model::credential_schema::CredentialSchemaId;
 use crate::model::key::Key;
+use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::{
     model::{
         claim_schema::ClaimSchema,
@@ -15,6 +18,7 @@ use crate::{
     service::error::ServiceError,
 };
 use dto_mapper::convert_inner;
+use std::collections::HashMap;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -56,13 +60,15 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
     }
 }
 
-pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
-    let holder_did_id = value.holder_did.as_ref().map(|did| did.id);
-    let schema = value
+pub fn get_verifier_proof_detail(proof: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
+    let holder_did_id = proof.holder_did.as_ref().map(|did| did.id);
+
+    let schema = proof
         .schema
         .as_ref()
         .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
-    let claims = value
+
+    let claims = proof
         .claims
         .as_ref()
         .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
@@ -75,70 +81,126 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         ))?
         .id;
 
-    let credentials = value
-        .claims
-        .iter()
-        .flatten()
-        .filter_map(|claim| claim.credential.clone())
-        .map(TryInto::try_into)
-        .collect::<Result<_, _>>()?;
-
-    let claims = match (schema.input_schemas.as_ref(), schema.claim_schemas.as_ref()) {
-        (Some(input_schemas), _) if !input_schemas.is_empty() => input_schemas
+    let credential_for_credential_schema: HashMap<CredentialSchemaId, CredentialDetailResponseDTO> =
+        claims
             .iter()
-            .filter_map(|input_schema| input_schema.claim_schemas.as_ref())
-            .flatten()
-            .map(|proof_claim_schema| {
-                let claim = claims
-                    .iter()
-                    .find(|c| {
-                        c.claim
-                            .schema
-                            .as_ref()
-                            .is_some_and(|s| s.id == proof_claim_schema.schema.id)
-                    })
-                    .map(|c| &c.claim)
-                    .cloned();
+            .map(|proof_claim| {
+                let credential = proof_claim.credential.clone().ok_or_else(|| {
+                    ServiceError::MappingError(format!(
+                        "Missing credential for proof claim {}",
+                        proof_claim.claim.id
+                    ))
+                })?;
+                let credential_schema = credential.schema.clone().ok_or_else(|| {
+                    ServiceError::MappingError(format!(
+                        "Missing credential schema for credential {}",
+                        credential.id
+                    ))
+                })?;
+                let credential = CredentialDetailResponseDTO::try_from(credential)?;
 
-                ProofClaimDTO {
-                    schema: proof_claim_schema.clone().into(),
-                    value: claim.map(|c| c.value),
-                }
+                Ok::<_, ServiceError>((credential_schema.id, credential))
             })
-            .collect(),
-        // TODO: ONE-1733
-        (_, Some(proof_claim_schemas)) if !proof_claim_schemas.is_empty() => proof_claim_schemas
-            .iter()
-            .map(|proof_claim_schema| {
-                let claim = claims
-                    .iter()
-                    .find(|c| {
-                        c.claim
-                            .schema
-                            .as_ref()
-                            .is_some_and(|s| s.id == proof_claim_schema.schema.id)
-                    })
-                    .map(|c| &c.claim)
-                    .cloned();
+            .collect::<Result<_, _>>()?;
 
-                ProofClaimDTO {
-                    schema: proof_claim_schema.clone().into(),
-                    value: claim.map(|c| c.value),
+    let proof_inputs =
+        match (schema.input_schemas.as_ref(), schema.claim_schemas.as_ref()) {
+            (Some(proof_input_schemas), _) if !proof_input_schemas.is_empty() => {
+                let mut proof_inputs = vec![];
+
+                for input_schema in proof_input_schemas {
+                    let input_claim_schemas =
+                        input_schema
+                            .claim_schemas
+                            .as_ref()
+                            .ok_or(ServiceError::MappingError(
+                                "Missing claims schemas in input_schema".to_string(),
+                            ))?;
+
+                    let credential_schema = input_schema.credential_schema.as_ref().ok_or(
+                        ServiceError::MappingError(
+                            "Missing credential schema in input_schema".to_string(),
+                        ),
+                    )?;
+
+                    let claims = input_claim_schemas
+                        .iter()
+                        .map(|claim_schema| {
+                            let claim = claims.iter().find(|c| {
+                                c.claim
+                                    .schema
+                                    .as_ref()
+                                    .is_some_and(|s| s.id == claim_schema.schema.id)
+                            });
+
+                            ProofClaimDTO {
+                                schema: claim_schema.clone().into(),
+                                value: claim.map(|c| c.claim.value.to_string()),
+                            }
+                        })
+                        .collect();
+
+                    proof_inputs.push(ProofInputDTO {
+                        claims,
+                        credential: credential_for_credential_schema
+                            .get(&credential_schema.id)
+                            .cloned(),
+                        credential_schema: credential_schema.clone().into(),
+                        validity_constraint: input_schema.validity_constraint,
+                    })
                 }
-            })
-            .collect(),
-        (_, _) => {
+
+                proof_inputs
+            }
             // TODO: ONE-1733
-            return Err(ServiceError::MappingError(
-                "input_schemas or proof claim_schemas is missing".to_string(),
-            ));
-        }
-    };
+            (_, Some(proof_claim_schemas)) if !proof_claim_schemas.is_empty() => {
+                let mut proof_inputs = vec![];
 
-    let redirect_uri = value.redirect_uri.to_owned();
-    let list_item_response: ProofListItemResponseDTO = value.try_into()?;
+                for proof_claim_schema in proof_claim_schemas {
+                    let credential_schema = proof_claim_schema.credential_schema.as_ref().ok_or(
+                        ServiceError::MappingError(
+                            "Missing credential schema in input_schema".to_string(),
+                        ),
+                    )?;
+
+                    let claims = {
+                        let claim = claims.iter().find(|c| {
+                            c.claim
+                                .schema
+                                .as_ref()
+                                .is_some_and(|s| s.id == proof_claim_schema.schema.id)
+                        });
+
+                        vec![ProofClaimDTO {
+                            schema: proof_claim_schema.clone().into(),
+                            value: claim.map(|c| c.claim.value.to_string()),
+                        }]
+                    };
+
+                    proof_inputs.push(ProofInputDTO {
+                        claims,
+                        credential: credential_for_credential_schema
+                            .get(&credential_schema.id)
+                            .cloned(),
+                        credential_schema: credential_schema.clone().into(),
+                        validity_constraint: schema.validity_constraint,
+                    })
+                }
+
+                proof_inputs
+            }
+            (_, _) => {
+                // TODO: ONE-1733
+                return Err(ServiceError::MappingError(
+                    "input_schemas or proof claim_schemas is missing".to_string(),
+                ));
+            }
+        };
+
+    let redirect_uri = proof.redirect_uri.to_owned();
+    let list_item_response: ProofListItemResponseDTO = proof.try_into()?;
+
     Ok(ProofDetailResponseDTO {
-        claims,
         id: list_item_response.id,
         created_date: list_item_response.created_date,
         last_modified: list_item_response.last_modified,
@@ -152,7 +214,7 @@ pub fn get_verifier_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO,
         organisation_id,
         schema: list_item_response.schema,
         redirect_uri,
-        credentials,
+        proof_inputs,
     })
 }
 
@@ -173,19 +235,31 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
     let holder_did_id = holder_did.id.to_owned();
 
     let redirect_uri = value.redirect_uri.to_owned();
-    let credentials = value
-        .claims
-        .iter()
-        .flatten()
-        .filter_map(|claim| claim.credential.clone())
-        .map(TryInto::try_into)
-        .collect::<Result<_, _>>()?;
+
+    let mut proof_inputs = vec![];
+    for claim in value.claims.iter().flatten() {
+        let Some(credential) = &claim.credential else {
+            continue;
+        };
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError(format!(
+                "Missing credential schema for credential: {}",
+                credential.id
+            )))?;
+
+        proof_inputs.push(ProofInputDTO {
+            claims: vec![],
+            credential: Some(CredentialDetailResponseDTO::try_from(credential.clone())?),
+            credential_schema: credential_schema.clone().into(),
+            validity_constraint: None,
+        });
+    }
 
     let list_item_response: ProofListItemResponseDTO = value.try_into()?;
 
     Ok(ProofDetailResponseDTO {
-        // TODO: properly reconstruct claims when proof submitted
-        claims: vec![],
         id: list_item_response.id,
         created_date: list_item_response.created_date,
         last_modified: list_item_response.last_modified,
@@ -199,7 +273,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         organisation_id,
         schema: list_item_response.schema,
         redirect_uri,
-        credentials,
+        proof_inputs,
     })
 }
 

@@ -1,4 +1,5 @@
 use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
+use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::{
     dto::common::GetListQueryParams,
@@ -16,7 +17,8 @@ use one_core::provider::transport_protocol::dto::{
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
 use one_core::service::proof::dto::{
-    CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofListItemResponseDTO,
+    CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofInputDTO,
+    ProofListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, KeyId};
@@ -205,11 +207,9 @@ pub struct ProofDetailResponseRestDTO {
     pub organisation_id: Uuid,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub claims: Vec<ProofClaimRestDTO>,
     pub redirect_uri: Option<String>,
     #[from(with_fn = convert_inner)]
-    pub credentials: Vec<GetCredentialResponseRestDTO>,
+    pub proof_inputs: Vec<ProofInputRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -218,4 +218,16 @@ pub struct ProofDetailResponseRestDTO {
 pub struct ProofClaimRestDTO {
     pub schema: ProofClaimSchemaResponseRestDTO,
     pub value: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(ProofInputDTO)]
+pub struct ProofInputRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<ProofClaimRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub credential: Option<GetCredentialResponseRestDTO>,
+    pub credential_schema: CredentialSchemaListItemResponseRestDTO,
+    pub validity_constraint: Option<i64>,
 }

@@ -1,4 +1,5 @@
 use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::{
     model::{
         common::{GetListQueryParams, GetListResponse},
@@ -45,9 +46,8 @@ pub struct ProofDetailResponseDTO {
     pub state: ProofStateEnum,
     pub organisation_id: OrganisationId,
     pub schema: Option<GetProofSchemaListItemDTO>,
-    pub claims: Vec<ProofClaimDTO>,
     pub redirect_uri: Option<String>,
-    pub credentials: Vec<CredentialDetailResponseDTO>,
+    pub proof_inputs: Vec<ProofInputDTO>,
 }
 
 #[derive(Clone, Debug)]
@@ -68,6 +68,14 @@ pub struct ProofListItemResponseDTO {
 pub struct ProofClaimDTO {
     pub schema: ProofClaimSchemaResponseDTO,
     pub value: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProofInputDTO {
+    pub claims: Vec<ProofClaimDTO>,
+    pub credential: Option<CredentialDetailResponseDTO>,
+    pub credential_schema: CredentialSchemaListItemResponseDTO,
+    pub validity_constraint: Option<i64>,
 }
 
 pub type GetProofListResponseDTO = GetListResponse<ProofListItemResponseDTO>;
