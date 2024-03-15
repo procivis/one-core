@@ -107,6 +107,8 @@ pub trait CredentialFormatter: Send + Sync {
         additional_context: Vec<String>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
+        json_ld_context_url: Option<String>,
+        custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError>;
 
     async fn extract_credentials(

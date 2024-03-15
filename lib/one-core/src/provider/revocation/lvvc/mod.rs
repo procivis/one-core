@@ -33,7 +33,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::{
-    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
     RevocationMethodCapabilities, VerifierCredentialData,
 };
 
@@ -88,12 +88,6 @@ impl LvvcProvider {
             ServiceError::MappingError("LVVC issuance is missing core base_url".to_string())
         })
     }
-    fn _get_json_ld_lvvc_context_url(&self) -> Result<String, ServiceError> {
-        if let Some(json_ld_params_context_url) = &self.params.json_ld_context_url {
-            return Ok(json_ld_params_context_url.to_string());
-        }
-        Ok(format!("{}/ssi/context/v1/lvvc.json", self.get_base_url()?))
-    }
 
     fn formatter(
         &self,
@@ -126,6 +120,7 @@ impl LvvcProvider {
             self.formatter(credential)?,
             self.lvvc_repository.clone(),
             self.key_provider.clone(),
+            self.get_json_ld_context()?,
         )
         .await
         .map(|_| ())
@@ -287,6 +282,16 @@ impl LvvcProvider {
             }
         })
     }
+
+    fn get_json_ld_context_url(&self) -> Result<Option<String>, ServiceError> {
+        if let Some(json_ld_params_context_url) = &self.params.json_ld_context_url {
+            return Ok(Some(json_ld_params_context_url.to_string()));
+        }
+        Ok(Some(format!(
+            "{}/ssi/context/v1/lvvc.json",
+            self.get_base_url()?
+        )))
+    }
 }
 
 #[async_trait::async_trait]
@@ -364,8 +369,17 @@ impl RevocationMethod for LvvcProvider {
             }
         }
     }
+
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, ServiceError> {
+        Ok(JsonLdContext {
+            revokable_credential_type: "LvvcCredential".to_string(),
+            revokable_credential_subject: "Lvvc".to_string(),
+            url: self.get_json_ld_context_url()?,
+        })
+    }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn create_lvvc_with_status(
     credential: &Credential,
     status: LvvcStatus,
@@ -374,6 +388,7 @@ pub(crate) async fn create_lvvc_with_status(
     formatter: Arc<dyn CredentialFormatter>,
     lvvc_repository: Arc<dyn LvvcRepository>,
     key_provider: Arc<dyn KeyProvider>,
+    json_ld_context: JsonLdContext,
 ) -> Result<Lvvc, ServiceError> {
     let base_url = core_base_url.as_ref().ok_or_else(|| {
         ServiceError::MappingError("LVVC issuance is missing core base_url".to_string())
@@ -418,8 +433,10 @@ pub(crate) async fn create_lvvc_with_status(
             &holder_did.did,
             &key.key_type,
             vec![],
-            vec![],
+            vec![json_ld_context.revokable_credential_type],
             auth_fn,
+            json_ld_context.url,
+            Some(json_ld_context.revokable_credential_subject),
         )
         .await?;
 

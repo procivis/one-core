@@ -118,17 +118,21 @@ impl RevocationListService {
         }
 
         // If issuanceDate + credentialExpiry < now then a new VC of the LVVC credential needs to be created and saved in database.
-        let revocation: revocation::lvvc::Params = self
-            .config
-            .revocation
-            .get(&schema.revocation_method.to_string())?;
-        let expiry = revocation.credential_expiry;
+        let revocation_method = schema.revocation_method.to_string();
+        let revocation_params: revocation::lvvc::Params =
+            self.config.revocation.get(&revocation_method)?;
+        let expiry = revocation_params.credential_expiry;
 
         let issuance_date = extracted_credential
             .issued_at
             .ok_or(ServiceError::MappingError("issued_at is None".to_string()))?;
 
         if OffsetDateTime::now_utc() > issuance_date + expiry {
+            let revocation = self
+                .revocation_method_provider
+                .get_revocation_method(&revocation_method)
+                .ok_or(MissingProviderError::RevocationMethod(revocation_method))?;
+
             let lvvc = revocation::lvvc::create_lvvc_with_status(
                 &credential,
                 status,
@@ -137,6 +141,7 @@ impl RevocationListService {
                 formatter,
                 self.lvvc_repository.clone(),
                 self.key_provider.clone(),
+                revocation.get_json_ld_context()?,
             )
             .await?;
 

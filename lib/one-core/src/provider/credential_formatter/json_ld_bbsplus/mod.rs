@@ -49,6 +49,8 @@ impl CredentialFormatter for JsonLdBbsplus {
         additional_context: Vec<String>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
+        json_ld_context_url: Option<String>,
+        custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
         self.format(
             credential,
@@ -57,6 +59,8 @@ impl CredentialFormatter for JsonLdBbsplus {
             additional_context,
             additional_types,
             auth_fn,
+            json_ld_context_url,
+            custom_subject_name,
         )
         .await
     }

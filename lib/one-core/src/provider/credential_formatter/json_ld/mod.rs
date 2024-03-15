@@ -29,6 +29,8 @@ pub(super) fn prepare_credential(
     holder_did: &DidValue,
     additional_context: Vec<String>,
     additional_types: Vec<String>,
+    json_ld_context_url: Option<String>,
+    custom_subject_name: Option<String>,
 ) -> Result<LdCredential, FormatterError> {
     let credential_schema = credential.credential_schema.ok_or_else(|| {
         FormatterError::Failed(
@@ -39,7 +41,9 @@ pub(super) fn prepare_credential(
     let issuance_date = OffsetDateTime::now_utc();
 
     let mut context = prepare_context(additional_context);
-    if let Some(base_url) = base_url {
+    if let Some(json_ld_context_url) = json_ld_context_url {
+        context.push(json_ld_context_url);
+    } else if let Some(base_url) = base_url {
         context.push(format!(
             "{base_url}/ssi/context/v1/{}",
             credential_schema.id
@@ -48,8 +52,12 @@ pub(super) fn prepare_credential(
 
     let ld_type = prepare_credential_type(&credential_schema.name, additional_types);
 
-    let credential_subject =
-        prepare_credential_subject(&credential_schema.name, credential.claims, holder_did);
+    let credential_subject = prepare_credential_subject(
+        &credential_schema.name,
+        credential.claims,
+        holder_did,
+        custom_subject_name,
+    );
 
     Ok(LdCredential {
         context,
@@ -135,13 +143,16 @@ pub(super) fn prepare_credential_subject(
     credential_schema_name: &str,
     claims: Vec<(String, String)>,
     holder_did: &DidValue,
+    custom_subject_name: Option<String>,
 ) -> LdCredentialSubject {
     let credential_schema_name = credential_schema_name.to_case(Case::Pascal);
 
     let mut subject = HashMap::new();
     let claims = HashMap::from_iter(claims);
 
-    subject.insert(format!("{}Subject", credential_schema_name), claims);
+    let subject_name_base = custom_subject_name.unwrap_or(credential_schema_name);
+
+    subject.insert(format!("{}Subject", subject_name_base), claims);
 
     LdCredentialSubject {
         id: holder_did.clone(),

@@ -5,14 +5,13 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::{
     config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params},
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, WalletStorageTypeEnum},
         did::{Did, DidType, KeyRole, RelatedKey},
         interaction::Interaction,
         key::Key,
@@ -25,7 +24,8 @@ use crate::{
         },
         key_storage::provider::MockKeyProvider,
         revocation::{
-            provider::MockRevocationMethodProvider, CredentialRevocationInfo, MockRevocationMethod,
+            provider::MockRevocationMethodProvider, CredentialRevocationInfo, JsonLdContext,
+            MockRevocationMethod,
         },
         transport_protocol::provider::{TransportProtocolProvider, TransportProtocolProviderImpl},
     },
@@ -92,6 +92,10 @@ async fn test_issuer_submit_succeeds() {
 
     let mut revocation_method = MockRevocationMethod::new();
     revocation_method
+        .expect_get_json_ld_context()
+        .once()
+        .return_once(|| Ok(JsonLdContext::default()));
+    revocation_method
         .expect_add_issued_credential()
         .once()
         .return_once(|_| {
@@ -115,7 +119,7 @@ async fn test_issuer_submit_succeeds() {
     formatter
         .expect_format_credentials()
         .once()
-        .returning(|_, _, _, _, _, _| Ok("token".to_string()));
+        .returning(|_, _, _, _, _, _, _, _| Ok("token".to_string()));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider

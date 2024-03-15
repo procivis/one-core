@@ -17,8 +17,19 @@ use crate::{
     utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
 };
 
+// Todo (ONE-1968): This works, but running too many tests at once will cause 429 Too Many Requests from w3.org
+#[ignore]
 #[tokio::test]
-async fn test_opeind4vc_jsondl_bbsplus_flow() {
+async fn test_openid4vc_jsonld_bbsplus_flow_bitstring() {
+    test_openid4vc_jsonld_bbsplus_flow("BITSTRINGSTATUSLIST").await
+}
+
+#[tokio::test]
+async fn test_openid4vc_jsonld_bbsplus_flow_lvvc() {
+    test_openid4vc_jsonld_bbsplus_flow("LVVC").await
+}
+
+async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     // GIVEN
     let issuer_bbs_key = bbs_key_1();
     let holder_key = eddsa_key_1();
@@ -65,7 +76,7 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
         .create_with_claims(
             "Test",
             &server_organisation,
-            "BITSTRINGSTATUSLIST",
+            revocation_method,
             &new_claim_schemas,
             "JSON_LD_BBSPLUS",
         )
@@ -201,7 +212,7 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
         .create_with_claims(
             "Test",
             &holder_organisation,
-            "NONE",
+            revocation_method,
             &new_claim_schemas,
             // This reflects latest changes - on the holder side we don't really know what's the correct format here
             "JSON_LD",
