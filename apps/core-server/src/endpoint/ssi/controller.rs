@@ -3,7 +3,8 @@ use super::dto::{
     OpenID4VCIDiscoveryResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
     OpenID4VPPresentationDefinitionResponseRestDTO, PostSsiIssuerConnectQueryParams,
-    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
+    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRejectQueryParams,
+    ProofSubmitQueryParams,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
@@ -593,13 +594,13 @@ pub(crate) async fn oidc_client_metadata(
     post,
     path = "/ssi/temporary-verifier/v1/reject",
     responses(EmptyOrErrorResponse),
-    params(ProofRequestQueryParams),
+    params(ProofRejectQueryParams),
     tag = "ssi"
 )]
 pub(crate) async fn ssi_verifier_reject_proof(
     state: State<AppState>,
     WithRejection(Query(query), _): WithRejection<
-        Query<ProofRequestQueryParams>,
+        Query<ProofRejectQueryParams>,
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
@@ -616,13 +617,13 @@ pub(crate) async fn ssi_verifier_reject_proof(
     path = "/ssi/temporary-verifier/v1/submit",
     request_body = String, // signed JWT
     responses(EmptyOrErrorResponse),
-    params(ProofRequestQueryParams),
+    params(ProofSubmitQueryParams ),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_verifier_submit_proof(
     state: State<AppState>,
     WithRejection(Query(query), _): WithRejection<
-        Query<ProofRequestQueryParams>,
+        Query<ProofSubmitQueryParams>,
         ErrorResponseRestDTO,
     >,
     request: String,
@@ -630,7 +631,7 @@ pub(crate) async fn ssi_verifier_submit_proof(
     let result = state
         .core
         .ssi_verifier_service
-        .submit_proof(query.proof, query.did_id, &request)
+        .submit_proof(query.proof, query.did_value, &request)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "submitting proof")
 }
@@ -696,7 +697,7 @@ pub(crate) async fn ssi_issuer_submit(
     let result = state
         .core
         .ssi_issuer_service
-        .issuer_submit(&query.credential_id, query.did_id, query.key_id)
+        .issuer_submit(&query.credential_id, query.did_value)
         .await;
     OkOrErrorResponse::from_result(result, state, "accepting credential")
 }

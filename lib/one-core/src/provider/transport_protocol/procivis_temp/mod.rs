@@ -231,7 +231,10 @@ impl TransportProtocol for ProcivisTemp {
 
         let mut url = super::get_base_url_from_interaction(proof.interaction.as_ref())?;
         url.set_path("/ssi/temporary-verifier/v1/submit");
-        url.set_query(Some(&format!("proof={}", proof.id)));
+        url.set_query(Some(&format!(
+            "proof={}&didValue={}",
+            proof.id, holder_did.did
+        )));
 
         let response = self
             .client
@@ -251,13 +254,13 @@ impl TransportProtocol for ProcivisTemp {
         &self,
         credential: &Credential,
         holder_did: &Did,
-        key: &Key,
+        _key: &Key,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/submit");
         url.set_query(Some(&format!(
-            "credentialId={}&didId={}&keyId={}",
-            credential.id, holder_did.id, key.id
+            "credentialId={}&didValue={}",
+            credential.id, holder_did.did
         )));
 
         let response = self

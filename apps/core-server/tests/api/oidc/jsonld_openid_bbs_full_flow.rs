@@ -172,8 +172,10 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(credential.id, server_remote_holder_did.id)
+        .temporary_submit(credential.id, server_remote_holder_did.did)
         .await;
+
+    assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
     // Valid credentials
@@ -439,7 +441,7 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
     let resp = server_context
         .api
         .ssi
-        .temporary_submit(credential.id, holder_did.id)
+        .temporary_submit(credential.id, holder_did.did)
         .await;
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }

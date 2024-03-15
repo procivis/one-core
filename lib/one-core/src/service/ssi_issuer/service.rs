@@ -4,11 +4,12 @@ use super::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
 };
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
+use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::config::core_config::{FormatType, Params};
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchemaId;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ValidationError};
+use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::service::ssi_issuer::mapper::credential_rejected_history_event;
 use crate::{
     model::{
@@ -28,7 +29,7 @@ use crate::{
     },
 };
 use convert_case::{Case, Casing};
-use shared_types::{CredentialId, DidId, KeyId};
+use shared_types::{CredentialId, DidValue};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -98,28 +99,37 @@ impl SSIIssuerService {
     pub async fn issuer_submit(
         &self,
         credential_id: &CredentialId,
-        did_id: DidId,
-        key_id: Option<KeyId>,
+        did_value: DidValue,
     ) -> Result<IssuerResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let Some(did) = self
-            .did_repository
-            .get_did(
-                &did_id,
-                &DidRelations {
-                    keys: Some(Default::default()),
+        let Some(credential) = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
             .await?
         else {
-            return Err(ValidationError::DidNotFound.into());
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
         };
+
+        let did = get_or_create_did(
+            self.did_repository.as_ref(),
+            &credential.schema.and_then(|schema| schema.organisation),
+            &did_value,
+        )
+        .await?;
 
         let token = self
             .protocol_provider
-            .issue_credential(credential_id, did, key_id)
+            .issue_credential(credential_id, did)
             .await?;
 
         Ok(IssuerResponseDTO {

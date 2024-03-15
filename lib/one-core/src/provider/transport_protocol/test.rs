@@ -167,7 +167,7 @@ async fn test_issuer_submit_succeeds() {
     );
 
     service
-        .issue_credential(&credential_id, dummy_did(), None)
+        .issue_credential(&credential_id, dummy_did())
         .await
         .unwrap();
 }

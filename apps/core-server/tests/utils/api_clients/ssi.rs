@@ -25,10 +25,11 @@ impl SSIApi {
     pub async fn temporary_submit(
         &self,
         credential_id: impl Display,
-        did_id: impl Display,
+        did_value: impl Display,
     ) -> Response {
-        let url =
-            format!("/ssi/temporary-issuer/v1/submit?credentialId={credential_id}&didId={did_id}");
+        let url = format!(
+            "/ssi/temporary-issuer/v1/submit?credentialId={credential_id}&didValue={did_value}"
+        );
         self.client.post(&url, None).await
     }
 

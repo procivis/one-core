@@ -69,7 +69,7 @@ async fn test_issuance_accept_procivis_temp() {
         .await;
     context
         .server_mock
-        .ssi_submit(credential.id, holder_did.id, None)
+        .ssi_submit(credential.id, holder_did.did)
         .await;
 
     // WHEN
@@ -144,7 +144,7 @@ async fn test_issuance_accept_procivis_temp_with_key_id() {
         .await;
     context
         .server_mock
-        .ssi_submit(credential.id, holder_did.id, Some(key.id))
+        .ssi_submit(credential.id, holder_did.did)
         .await;
 
     // WHEN

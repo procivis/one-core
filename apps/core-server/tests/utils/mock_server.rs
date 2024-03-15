@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
-use shared_types::{DidId, KeyId};
+use shared_types::DidValue;
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
@@ -30,29 +30,18 @@ impl MockServer {
             .await;
     }
 
-    pub async fn ssi_submit(
-        &self,
-        credential_id: impl Display,
-        did_id: DidId,
-        key_id: Option<KeyId>,
-    ) {
-        let mut expectation = Mock::given(method(Method::POST))
+    pub async fn ssi_submit(&self, credential_id: impl Display, did_value: DidValue) {
+        Mock::given(method(Method::POST))
             .and(path("/ssi/temporary-issuer/v1/submit"))
             .and(query_param("credentialId", credential_id.to_string()))
-            .and(query_param("didId", did_id.to_string()));
-
-        if let Some(key_id) = key_id {
-            expectation = expectation.and(query_param("keyId", key_id.to_string()))
-        }
-
-        expectation
+            .and(query_param("didValue", did_value.to_string()))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "credential": "123",
                 "format": "JWT"
             })))
             .expect(1)
             .mount(&self.mock)
-            .await;
+            .await
     }
 
     pub async fn credential_endpoint(&self) {
