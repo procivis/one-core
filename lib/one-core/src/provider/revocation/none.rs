@@ -3,7 +3,7 @@ use shared_types::DidValue;
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationState, RevocationMethod,
+    CredentialDataByRole, CredentialRevocationState, JsonLdContext, RevocationMethod,
 };
 use crate::service::error::ServiceError;
 
@@ -47,5 +47,9 @@ impl RevocationMethod for NoneRevocation {
         Err(ServiceError::ValidationError(
             "Credential cannot be revoked, reactivated or suspended".to_string(),
         ))
+    }
+
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, ServiceError> {
+        Ok(JsonLdContext::default())
     }
 }

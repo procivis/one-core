@@ -176,6 +176,8 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             credential_status,
         )?;
 
+        let json_ld_context = revocation_method.get_json_ld_context()?;
+
         let token = self
             .formatter_provider
             .get_formatter(&format)
@@ -187,6 +189,8 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
                 vec![],
                 vec![],
                 auth_fn,
+                json_ld_context.url,
+                None,
             )
             .await?;
 

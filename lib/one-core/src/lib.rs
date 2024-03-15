@@ -244,6 +244,7 @@ impl OneCore {
                 formatter_provider.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
+                revocation_method_provider.clone(),
                 config.clone(),
             ),
             oidc_service: OIDCService::new(

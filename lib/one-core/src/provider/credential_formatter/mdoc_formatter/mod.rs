@@ -23,6 +23,8 @@ impl CredentialFormatter for MdocFormatter {
         _additional_context: Vec<String>,
         _additional_types: Vec<String>,
         _auth_fn: AuthenticationFn,
+        _json_ld_context_url: Option<String>,
+        _custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
         todo!()
     }

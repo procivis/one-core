@@ -48,6 +48,8 @@ impl CredentialFormatter for JWTFormatter {
         additional_context: Vec<String>,
         additional_types: Vec<String>,
         auth_fn: AuthenticationFn,
+        _json_ld_context_url: Option<String>,
+        _custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
         let vc = format_vc(
             credential.id.clone(),

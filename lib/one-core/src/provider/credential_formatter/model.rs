@@ -66,6 +66,7 @@ pub struct CredentialPresentation {
 pub struct CredentialStatus {
     pub id: String,
     pub r#type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub status_purpose: Option<String>,
     #[serde(flatten)]
     pub additional_fields: HashMap<String, String>,

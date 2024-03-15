@@ -10,8 +10,8 @@ use crate::provider::credential_formatter::{
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, RevocationMethod,
-    RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
+    RevocationMethod, RevocationMethodCapabilities,
 };
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -132,5 +132,9 @@ impl RevocationMethod for StatusList2021 {
         _new_state: CredentialRevocationState,
     ) -> Result<(), ServiceError> {
         Err(BusinessLogicError::StatusList2021NotSupported.into())
+    }
+
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, ServiceError> {
+        Ok(JsonLdContext::default())
     }
 }

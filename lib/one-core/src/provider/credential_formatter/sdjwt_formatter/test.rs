@@ -69,6 +69,8 @@ async fn test_format_credential() {
             vec!["Context1".to_string()],
             vec!["Type1".to_string()],
             Box::new(auth_fn),
+            None,
+            None,
         )
         .await;
 

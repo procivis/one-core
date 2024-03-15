@@ -18,26 +18,39 @@ use crate::{
 };
 
 #[tokio::test]
-async fn test_opeind4vc_jsondl_flow_eddsa_eddsa() {
-    test_opeind4vc_jsondl_flow(eddsa_key_1(), eddsa_key_2()).await
+async fn test_openid4vc_jsonld_flow_eddsa_eddsa() {
+    test_openid4vc_jsonld_flow(eddsa_key_1(), eddsa_key_2(), "NONE").await
 }
 
 #[tokio::test]
-async fn test_opeind4vc_jsondl_flow_ecdsa_eddsa() {
-    test_opeind4vc_jsondl_flow(ecdsa_key_1(), eddsa_key_1()).await
+async fn test_openid4vc_jsonld_flow_ecdsa_eddsa() {
+    test_openid4vc_jsonld_flow(ecdsa_key_1(), eddsa_key_1(), "NONE").await
+}
+
+//Todo (ONE-1968): This works, but running too many tests at once will cause 429 Too Many Requests from w3.org
+#[ignore]
+#[tokio::test]
+async fn test_openid4vc_jsonld_flow_eddsa_ecdsa() {
+    test_openid4vc_jsonld_flow(eddsa_key_1(), ecdsa_key_1(), "NONE").await
+}
+
+// Todo (ONE-1968): This works, but running too many tests at once will cause 429 Too Many Requests from w3.org
+#[ignore]
+#[tokio::test]
+async fn test_openid4vc_jsonld_flow_ecdsa_ecdsa() {
+    test_openid4vc_jsonld_flow(ecdsa_key_1(), ecdsa_key_2(), "NONE").await
 }
 
 #[tokio::test]
-async fn test_opeind4vc_jsondl_flow_eddsa_ecdsa() {
-    test_opeind4vc_jsondl_flow(eddsa_key_1(), ecdsa_key_1()).await
+async fn test_openid4vc_jsonld_flow_eddsa_eddsa_lvvc() {
+    test_openid4vc_jsonld_flow(eddsa_key_1(), eddsa_key_2(), "LVVC").await
 }
 
-#[tokio::test]
-async fn test_opeind4vc_jsondl_flow_ecdsa_ecdsa() {
-    test_opeind4vc_jsondl_flow(ecdsa_key_1(), ecdsa_key_2()).await
-}
-
-async fn test_opeind4vc_jsondl_flow(server_key: TestKey, holder_key: TestKey) {
+async fn test_openid4vc_jsonld_flow(
+    server_key: TestKey,
+    holder_key: TestKey,
+    revocation_method: &str,
+) {
     // GIVEN
     let server_context = TestContext::new().await;
     let base_url = server_context.config.app.core_base_url.clone();
@@ -61,7 +74,7 @@ async fn test_opeind4vc_jsondl_flow(server_key: TestKey, holder_key: TestKey) {
         .create_with_claims(
             "Test",
             &server_organisation,
-            "NONE",
+            revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
         )
@@ -174,7 +187,7 @@ async fn test_opeind4vc_jsondl_flow(server_key: TestKey, holder_key: TestKey) {
         .create_with_claims(
             "Test",
             &holder_organisation,
-            "NONE",
+            revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
         )

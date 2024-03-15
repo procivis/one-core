@@ -46,6 +46,13 @@ pub enum CredentialRevocationState {
     },
 }
 
+#[derive(Debug, Default)]
+pub struct JsonLdContext {
+    pub revokable_credential_type: String,
+    pub revokable_credential_subject: String,
+    pub url: Option<String>,
+}
+
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
 pub trait RevocationMethod: Send + Sync {
@@ -70,4 +77,6 @@ pub trait RevocationMethod: Send + Sync {
     ) -> Result<CredentialRevocationState, ServiceError>;
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities;
+
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, ServiceError>;
 }
