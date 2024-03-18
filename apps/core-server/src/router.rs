@@ -434,6 +434,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::proof::dto::ProofListItemResponseRestDTO,
                 endpoint::proof::dto::ProofDetailResponseRestDTO,
                 endpoint::proof::dto::ProofClaimRestDTO,
+                endpoint::proof::dto::ProofInputRestDTO,
                 endpoint::proof::dto::PresentationDefinitionResponseRestDTO,
                 endpoint::proof::dto::PresentationDefinitionRequestGroupResponseRestDTO,
                 endpoint::proof::dto::PresentationDefinitionRuleRestDTO,
@@ -448,6 +449,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
                 endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO,
                 endpoint::proof_schema::dto::ProofClaimSchemaResponseRestDTO,
+                endpoint::proof_schema::dto::ProofInputSchemaRequestRestDTO,
+                endpoint::proof_schema::dto::ProofInputSchemaResponseRestDTO,
 
                 endpoint::ssi::dto::ConnectVerifierResponseRestDTO,
                 endpoint::ssi::dto::ProofRequestClaimRestDTO,
