@@ -533,8 +533,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 shared_types::HistoryId,
                 shared_types::KeyId,
                 shared_types::OrganisationId,
-                shared_types::KeyId,
-                shared_types::CredentialId,
                 shared_types::ClaimSchemaId,
                 shared_types::ClaimId,
             )

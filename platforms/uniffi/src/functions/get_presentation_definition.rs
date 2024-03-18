@@ -3,7 +3,7 @@ use crate::{
 };
 
 impl OneCoreBinding {
-    pub fn get_presentation_defintion(
+    pub fn get_presentation_definition(
         &self,
         proof_id: String,
     ) -> Result<PresentationDefinitionBindingDTO, BindingError> {
