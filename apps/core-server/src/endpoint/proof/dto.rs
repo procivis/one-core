@@ -204,7 +204,8 @@ pub struct ProofDetailResponseRestDTO {
     pub verifier_did: Option<DidListItemResponseRestDTO>,
     pub transport: String,
     pub state: ProofStateRestEnum,
-    pub organisation_id: Uuid,
+    #[from(with_fn = convert_inner)]
+    pub organisation_id: Option<Uuid>,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
     pub redirect_uri: Option<String>,

@@ -44,7 +44,7 @@ pub struct ProofDetailResponseDTO {
     pub holder_did_id: Option<DidId>,
     pub transport: String,
     pub state: ProofStateEnum,
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     pub schema: Option<GetProofSchemaListItemDTO>,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputDTO>,

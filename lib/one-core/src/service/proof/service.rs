@@ -129,12 +129,11 @@ impl ProofService {
             return Err(EntityNotFoundError::Proof(*id).into());
         };
 
-        let holder_did = proof
+        if proof
             .holder_did
             .as_ref()
-            .ok_or(ServiceError::MappingError("holder did is None".to_string()))?;
-
-        if holder_did.did_type.is_remote() {
+            .is_some_and(|did| did.did_type.is_remote())
+        {
             return Err(BusinessLogicError::IncompatibleDidType {
                 reason: "holder_did is remote".to_string(),
             }
