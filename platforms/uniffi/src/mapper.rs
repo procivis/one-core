@@ -11,17 +11,20 @@ use crate::{
     HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
 use dto_mapper::convert_inner;
-use one_core::service::{
-    credential::dto::{
-        CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-        DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+use one_core::{
+    model::did::DidType,
+    service::{
+        credential::dto::{
+            CredentialDetailResponseDTO, CredentialListItemResponseDTO,
+            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+        },
+        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
+        error::ServiceError,
+        history::dto::{HistoryMetadataResponse, HistoryResponseDTO},
+        key::dto::KeyRequestDTO,
+        proof::dto::ProofDetailResponseDTO,
+        ssi_holder::dto::InvitationResponseDTO,
     },
-    did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
-    error::ServiceError,
-    history::dto::{HistoryMetadataResponse, HistoryResponseDTO},
-    key::dto::KeyRequestDTO,
-    proof::dto::ProofDetailResponseDTO,
-    ssi_holder::dto::InvitationResponseDTO,
 };
 use serde_json::json;
 use shared_types::KeyId;
@@ -166,7 +169,7 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
             organisation_id: into_id(&request.organisation_id)?,
             name: request.name,
             did_method: request.did_method,
-            did_type: request.did_type.into(),
+            did_type: DidType::Local,
             keys: request.keys.try_into()?,
             params: Some(json!(request.params)),
         })

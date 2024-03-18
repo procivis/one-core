@@ -327,7 +327,6 @@ pub struct DidRequestBindingDTO {
     pub organisation_id: String,
     pub name: String,
     pub did_method: String,
-    pub did_type: DidTypeBindingEnum,
     pub keys: DidRequestKeysBindingDTO,
     pub params: HashMap<String, String>,
 }
