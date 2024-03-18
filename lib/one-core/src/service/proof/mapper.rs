@@ -211,7 +211,7 @@ pub fn get_verifier_proof_detail(proof: Proof) -> Result<ProofDetailResponseDTO,
         holder_did_id,
         transport: list_item_response.transport,
         state: list_item_response.state,
-        organisation_id,
+        organisation_id: Some(organisation_id),
         schema: list_item_response.schema,
         redirect_uri,
         proof_inputs,
@@ -219,20 +219,12 @@ pub fn get_verifier_proof_detail(proof: Proof) -> Result<ProofDetailResponseDTO,
 }
 
 pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
-    let holder_did = value
+    let organisation_id = value
         .holder_did
         .as_ref()
-        .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+        .and_then(|did| did.organisation.as_ref().map(|o| o.id));
 
-    let organisation_id = holder_did
-        .organisation
-        .as_ref()
-        .ok_or(ServiceError::MappingError(
-            "organisation is None".to_string(),
-        ))?
-        .id;
-
-    let holder_did_id = holder_did.id.to_owned();
+    let holder_did_id = value.holder_did.as_ref().map(|did| did.id);
 
     let redirect_uri = value.redirect_uri.to_owned();
 
@@ -267,7 +259,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         requested_date: list_item_response.requested_date,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
-        holder_did_id: Some(holder_did_id),
+        holder_did_id,
         transport: list_item_response.transport,
         state: list_item_response.state,
         organisation_id,
