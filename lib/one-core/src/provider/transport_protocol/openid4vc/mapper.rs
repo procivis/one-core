@@ -161,63 +161,68 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
     interaction_id: InteractionId,
     proof: &Proof,
 ) -> Result<OpenID4VPPresentationDefinition, TransportProtocolError> {
-    // using vec to keep the original order of claims/credentials in the proof request
-    let requested_credentials: Vec<(CredentialSchemaId, Option<Vec<ProofInputClaimSchema>>)>;
-
     let proof_schema = proof.schema.as_ref().ok_or(TransportProtocolError::Failed(
         "Proof schema not found".to_string(),
     ))?;
+    // using vec to keep the original order of claims/credentials in the proof request
+    let requested_credentials: Vec<(CredentialSchemaId, Option<Vec<ProofInputClaimSchema>>)> =
+        match (
+            proof_schema.input_schemas.as_ref(),
+            proof_schema.claim_schemas.as_ref(),
+        ) {
+            (Some(proof_input), _) if !proof_input.is_empty() => proof_input
+                .iter()
+                .filter_map(|input| {
+                    let credential_schema = input.credential_schema.as_ref()?;
 
-    // TODO: ONE-1733
-    if let Some(claim_schemas) = proof_schema.claim_schemas.as_ref() {
-        let mut collected: HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>> = HashMap::new();
+                    let claims = input.claim_schemas.as_ref().map(|schemas| {
+                        schemas
+                            .iter()
+                            .enumerate()
+                            .map(|(i, credential_claim_schema)| ProofInputClaimSchema {
+                                order: i as u32,
+                                required: credential_claim_schema.required,
+                                schema: credential_claim_schema.schema.to_owned(),
+                            })
+                            .collect()
+                    });
 
-        for (i, claim_schema) in claim_schemas.iter().enumerate() {
-            let credential_schema_id = claim_schema
-                .credential_schema
-                .as_ref()
-                .ok_or(TransportProtocolError::Failed(
-                    "Credential schema not found".to_string(),
-                ))?
-                .id;
-            {
-                let entry = collected.entry(credential_schema_id).or_default();
-                entry.push(ProofInputClaimSchema {
-                    order: i as u32,
-                    required: claim_schema.required,
-                    schema: claim_schema.schema.to_owned(),
-                });
-            }
-        }
-        requested_credentials = collected
-            .into_iter()
-            .map(|(id, input_claim_schemas)| (id, Some(input_claim_schemas)))
-            .collect();
-    } else if let Some(proof_input) = proof_schema.input_schemas.as_ref() {
-        requested_credentials = proof_input
-            .iter()
-            .filter_map(|input| {
-                input.credential_schema.as_ref().map(|cs| {
-                    (
-                        cs.id,
-                        cs.claim_schemas.as_ref().map(|schemas| {
-                            schemas
-                                .iter()
-                                .enumerate()
-                                .map(|(i, credential_claim_schema)| ProofInputClaimSchema {
-                                    order: i as u32,
-                                    required: credential_claim_schema.required,
-                                    schema: credential_claim_schema.schema.to_owned(),
-                                })
-                                .collect()
-                        }),
-                    )
+                    Some((credential_schema.id, claims))
                 })
-            })
-            .collect();
-    } else {
-        return Err(TransportProtocolError::Failed("Missing claims!".to_owned()));
-    }
+                .collect(),
+            // TODO: ONE-1733
+            (_, Some(claim_schemas)) if !claim_schemas.is_empty() => {
+                let mut collected: HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>> =
+                    HashMap::new();
+
+                for (i, claim_schema) in claim_schemas.iter().enumerate() {
+                    let credential_schema_id = claim_schema
+                        .credential_schema
+                        .as_ref()
+                        .ok_or(TransportProtocolError::Failed(
+                            "Credential schema not found".to_string(),
+                        ))?
+                        .id;
+                    {
+                        let entry = collected.entry(credential_schema_id).or_default();
+                        entry.push(ProofInputClaimSchema {
+                            order: i as u32,
+                            required: claim_schema.required,
+                            schema: claim_schema.schema.to_owned(),
+                        });
+                    }
+                }
+                collected
+                    .into_iter()
+                    .map(|(id, input_claim_schemas)| (id, Some(input_claim_schemas)))
+                    .collect()
+            }
+            (_, _) => {
+                return Err(TransportProtocolError::Failed(
+                    "Missing proof input schemas or claim schemas!".to_owned(),
+                ))
+            }
+        };
 
     Ok(OpenID4VPPresentationDefinition {
         id: interaction_id,

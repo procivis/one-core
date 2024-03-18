@@ -497,11 +497,7 @@ impl OIDCService {
             proof_schema.input_schemas.as_ref(),
             proof_schema.claim_schemas.as_ref(),
         ) {
-            (Some(input_schemas), _) if !input_schemas.is_empty() => proof_schema
-                .input_schemas
-                .as_ref()
-                .ok_or(ServiceError::Other("Missing proof input schema".to_owned()))?
-                .to_owned(),
+            (Some(input_schemas), _) if !input_schemas.is_empty() => input_schemas.to_vec(),
             // TODO: ONE-1733 - the old way
             (_, Some(proof_schema_claims)) if !proof_schema_claims.is_empty() => {
                 let mut claim_to_credential_schema_mapping: HashMap<
