@@ -1,6 +1,5 @@
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into};
-use one_core::model::credential_schema::CredentialSchemaId;
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
     GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
@@ -37,7 +36,7 @@ pub struct CreateProofSchemaRequestRestDTO {
 #[into(ProofInputSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ProofInputSchemaRequestRestDTO {
-    pub credential_schema_id: CredentialSchemaId,
+    pub credential_schema_id: Uuid,
     pub validity_constraint: Option<i64>,
     #[into(with_fn = convert_inner)]
     #[schema(min_items = 1)]
