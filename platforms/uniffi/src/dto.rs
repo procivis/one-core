@@ -104,6 +104,7 @@ pub struct CredentialListQueryBindingDTO {
     pub organisation_id: String,
     pub role: Option<CredentialRoleBindingDTO>,
     pub ids: Option<Vec<String>>,
+    pub status: Option<Vec<CredentialStateBindingEnum>>,
 }
 
 #[derive(From)]

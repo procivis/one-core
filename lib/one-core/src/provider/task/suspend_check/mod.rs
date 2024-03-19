@@ -58,7 +58,7 @@ impl Task for SuspendCheckProvider {
             .credential_repository
             .get_credential_list(GetCredentialQuery {
                 filtering: Some(
-                    CredentialFilterValue::State(CredentialStateEnum::Suspended).condition()
+                    CredentialFilterValue::State(vec![CredentialStateEnum::Suspended]).condition()
                         & CredentialFilterValue::SuspendEndDate(ValueComparison {
                             comparison: ComparisonType::LessThan,
                             value: now,
