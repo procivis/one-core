@@ -29,8 +29,8 @@ pub enum Relation {
     Claim,
     #[sea_orm(has_one = "super::credential_schema_claim_schema::Entity")]
     CredentialSchemaClaimSchema,
-    #[sea_orm(has_many = "super::proof_schema_claim_schema::Entity")]
-    ProofSchemaClaimSchema,
+    #[sea_orm(has_many = "super::proof_input_claim_schema::Entity")]
+    ProofInputClaimSchema,
 }
 
 impl Related<super::claim::Entity> for Entity {
@@ -45,9 +45,9 @@ impl Related<super::credential_schema_claim_schema::Entity> for Entity {
     }
 }
 
-impl Related<super::proof_schema_claim_schema::Entity> for Entity {
+impl Related<super::proof_input_claim_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ProofSchemaClaimSchema.def()
+        Relation::ProofInputClaimSchema.def()
     }
 }
 
@@ -64,13 +64,13 @@ impl Related<super::credential_schema::Entity> for Entity {
     }
 }
 
-impl Related<super::proof_schema::Entity> for Entity {
+impl Related<super::proof_input_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        super::proof_schema_claim_schema::Relation::ProofSchema.def()
+        super::proof_input_claim_schema::Relation::ProofInputSchema.def()
     }
     fn via() -> Option<RelationDef> {
         Some(
-            super::proof_schema_claim_schema::Relation::ClaimSchema
+            super::proof_input_claim_schema::Relation::ClaimSchema
                 .def()
                 .rev(),
         )

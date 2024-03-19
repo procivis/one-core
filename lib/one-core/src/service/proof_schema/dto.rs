@@ -49,7 +49,6 @@ pub struct GetProofSchemaListItemDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub expire_duration: u32,
-    pub validity_constraint: Option<i64>,
 }
 
 pub type GetProofSchemaListResponseDTO = GetListResponse<GetProofSchemaListItemDTO>;

@@ -8,7 +8,7 @@ use sea_orm::{
 use crate::{
     entity::{
         claim, claim_schema, credential, credential_schema, did, history, proof, proof_claim,
-        proof_schema_claim_schema,
+        proof_input_claim_schema, proof_input_schema,
     },
     list_query_generic::{
         get_comparison_condition, get_equals_condition, IntoFilterCondition, IntoJoinCondition,
@@ -115,17 +115,26 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                             .eq(Expr::col((claim::Entity, claim::Column::ClaimSchemaId))),
                     )
                     .inner_join(
-                        proof_schema_claim_schema::Entity,
+                        proof_input_claim_schema::Entity,
                         Expr::col((claim::Entity, claim::Column::ClaimSchemaId)).eq(Expr::col((
-                            proof_schema_claim_schema::Entity,
-                            proof_schema_claim_schema::Column::ClaimSchemaId,
+                            proof_input_claim_schema::Entity,
+                            proof_input_claim_schema::Column::ClaimSchemaId,
                         ))),
+                    )
+                    .inner_join(
+                        proof_input_schema::Entity,
+                        Expr::col((proof_input_schema::Entity, proof_input_schema::Column::Id)).eq(
+                            Expr::col((
+                                proof_input_claim_schema::Entity,
+                                proof_input_claim_schema::Column::ProofInputSchemaId,
+                            )),
+                        ),
                     )
                     .inner_join(
                         proof::Entity,
                         Expr::col((
-                            proof_schema_claim_schema::Entity,
-                            proof_schema_claim_schema::Column::ProofSchemaId,
+                            proof_input_schema::Entity,
+                            proof_input_schema::Column::ProofSchema,
                         ))
                         .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
                     )
@@ -146,17 +155,26 @@ fn search_query_filter(search_text: String, search_type: HistorySearchEnum) -> C
                     .expr(proof::Column::Id.into_expr())
                     .from(claim::Entity)
                     .inner_join(
-                        proof_schema_claim_schema::Entity,
+                        proof_input_claim_schema::Entity,
                         Expr::col((claim::Entity, claim::Column::ClaimSchemaId)).eq(Expr::col((
-                            proof_schema_claim_schema::Entity,
-                            proof_schema_claim_schema::Column::ClaimSchemaId,
+                            proof_input_claim_schema::Entity,
+                            proof_input_claim_schema::Column::ClaimSchemaId,
                         ))),
+                    )
+                    .inner_join(
+                        proof_input_schema::Entity,
+                        Expr::col((proof_input_schema::Entity, proof_input_schema::Column::Id)).eq(
+                            Expr::col((
+                                proof_input_claim_schema::Entity,
+                                proof_input_claim_schema::Column::ProofInputSchemaId,
+                            )),
+                        ),
                     )
                     .inner_join(
                         proof::Entity,
                         Expr::col((
-                            proof_schema_claim_schema::Entity,
-                            proof_schema_claim_schema::Column::ProofSchemaId,
+                            proof_input_schema::Entity,
+                            proof_input_schema::Column::ProofSchema,
                         ))
                         .eq(Expr::col((proof::Entity, proof::Column::ProofSchemaId))),
                     )

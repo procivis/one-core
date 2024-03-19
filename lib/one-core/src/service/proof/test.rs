@@ -10,7 +10,7 @@ use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::did::{KeyRole, RelatedKey};
 use crate::model::key::Key;
-use crate::model::proof_schema::{ProofInputSchemaRelations, ProofSchemaClaimRelationsNew};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
@@ -30,7 +30,7 @@ use crate::{
             ProofStateRelations,
         },
         proof_schema::{
-            ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
+            ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
         },
     },
     repository::{
@@ -133,16 +133,24 @@ async fn test_get_presentation_definition_holder_did_not_local() {
             last_modified: OffsetDateTime::now_utc(),
             name: "proof schema".to_string(),
             expire_duration: 0,
-            validity_constraint: None,
-            claim_schemas: Some(vec![ProofSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "key_123".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                },
-                required: true,
+            organisation: Some(Organisation {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: Some(vec![ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "key_123".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    },
+                    required: true,
+                    order: 0,
+                }]),
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4(),
                     deleted_at: None,
@@ -156,12 +164,6 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     organisation: None,
                 }),
             }]),
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
-            input_schemas: None,
         }),
         claims: Some(vec![]),
         verifier_did: Some(Did {
@@ -240,21 +242,29 @@ async fn test_get_proof_exists() {
         redirect_uri: None,
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
-            validity_constraint: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            claim_schemas: Some(vec![ProofSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "key".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                },
-                required: true,
+            organisation: Some(Organisation {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+            }),
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: Some(vec![ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "key".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    },
+                    required: true,
+                    order: 0,
+                }]),
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4(),
                     deleted_at: None,
@@ -268,12 +278,6 @@ async fn test_get_proof_exists() {
                     organisation: None,
                 }),
             }]),
-            organisation: Some(Organisation {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-            }),
-            input_schemas: None,
         }),
         claims: Some(vec![]),
         verifier_did: Some(Did {
@@ -301,12 +305,9 @@ async fn test_get_proof_exists() {
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }),
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                     }),
@@ -392,13 +393,11 @@ async fn test_get_proof_list_success() {
         }]),
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
-            validity_constraint: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            claim_schemas: None,
             organisation: None,
             input_schemas: None,
         }),
@@ -478,13 +477,11 @@ async fn test_create_proof_without_related_key() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
-                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
                 organisation: None,
                 input_schemas: None,
             }))
@@ -571,13 +568,11 @@ async fn test_create_proof_with_related_key() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
-                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
                 organisation: None,
                 input_schemas: None,
             }))
@@ -661,13 +656,11 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
-                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
                 organisation: None,
                 input_schemas: None,
             }))
@@ -732,13 +725,11 @@ async fn test_create_proof_did_deactivated_error() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
-                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
                 organisation: None,
                 input_schemas: None,
             }))
@@ -791,13 +782,11 @@ async fn test_create_proof_schema_deleted() {
         .returning(|id, _| {
             Ok(Some(ProofSchema {
                 id: id.to_owned(),
-                validity_constraint: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deleted_at: Some(OffsetDateTime::now_utc()),
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
                 organisation: None,
                 input_schemas: None,
             }))

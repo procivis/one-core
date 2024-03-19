@@ -33,7 +33,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum ProofSchema {
+pub enum ProofSchema {
     Table,
     ValidityConstraint,
 }

@@ -13,7 +13,9 @@ use one_core::{
             Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
             ProofStateRelations,
         },
-        proof_schema::{ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations},
+        proof_schema::{
+            ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
+        },
     },
     repository::proof_repository::ProofRepository,
 };
@@ -83,14 +85,11 @@ impl ProofsDB {
                         ..Default::default()
                     }),
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations {}),
-                                ..Default::default()
-                            }),
-                        }),
                         organisation: Some(OrganisationRelations {}),
-                        proof_inputs: None,
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
                     }),
                     holder_did: Some(DidRelations::default()),
                     verifier_did: Some(DidRelations::default()),

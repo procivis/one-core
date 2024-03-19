@@ -53,6 +53,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organisation,
+    #[sea_orm(has_many = "super::proof_input_schema::Entity")]
+    ProofInputSchema,
 }
 
 impl Related<super::credential::Entity> for Entity {
@@ -83,6 +85,12 @@ impl Related<super::claim_schema::Entity> for Entity {
                 .def()
                 .rev(),
         )
+    }
+}
+
+impl Related<super::proof_input_schema::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProofInputSchema.def()
     }
 }
 

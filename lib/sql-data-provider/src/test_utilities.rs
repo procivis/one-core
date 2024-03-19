@@ -21,7 +21,7 @@ use crate::{
         history::{self, HistoryAction, HistoryEntityType},
         interaction, key, key_did,
         key_did::KeyRole,
-        organisation, proof, proof_claim, proof_schema, proof_schema_claim_schema,
+        organisation, proof, proof_claim, proof_schema,
         proof_state::{self, ProofRequestState},
     },
     DataLayer,
@@ -238,7 +238,6 @@ pub async fn insert_proof_schema_with_claims_to_database<'a>(
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
         organisation_id: Set(organisation_id),
-        validity_constraint: Set(None),
         deleted_at: Set(deleted_at),
     }
     .insert(database)
@@ -258,15 +257,6 @@ pub async fn insert_proof_schema_with_claims_to_database<'a>(
         .await?;
 
         for claim in input.claims {
-            proof_schema_claim_schema::ActiveModel {
-                claim_schema_id: Set(claim.id.to_string()),
-                proof_schema_id: Set(schema.id.clone()),
-                required: Set(claim.required),
-                order: Set(claim.order),
-            }
-            .insert(database)
-            .await?;
-
             proof_input_claim_schema::ActiveModel {
                 proof_input_schema_id: Set(input_id.id),
                 claim_schema_id: Set(claim.id.to_string()),
@@ -294,7 +284,6 @@ pub async fn insert_proof_schema_to_database(
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
         organisation_id: Set(organisation_id),
-        validity_constraint: Set(None),
         deleted_at: Set(deleted_at),
     }
     .insert(database)

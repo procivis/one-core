@@ -19,7 +19,7 @@ use crate::{
         },
         organisation::OrganisationRelations,
         proof_schema::{
-            ProofInputSchemaRelations, ProofSchemaClaimRelationsNew, ProofSchemaRelations,
+            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
         },
     },
     repository::error::DataLayerError,
@@ -43,10 +43,9 @@ impl ProofSchemaService {
             .get_proof_schema(
                 id,
                 &ProofSchemaRelations {
-                    claim_schemas: None,
                     organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                        claim_schemas: Some(ProofSchemaClaimRelations::default()),
                         credential_schema: Some(CredentialSchemaRelations::default()),
                     }),
                 },

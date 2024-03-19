@@ -23,9 +23,7 @@ impl TryFrom<proof_schema::Model> for ProofSchema {
             deleted_at: value.deleted_at,
             name: value.name,
             expire_duration: value.expire_duration,
-            claim_schemas: None,
             organisation: None,
-            validity_constraint: value.validity_constraint,
             input_schemas: None,
         })
     }
@@ -73,7 +71,6 @@ impl TryFrom<&ProofSchema> for proof_schema::ActiveModel {
                 .id),
             deleted_at: Set(None),
             expire_duration: Set(value.expire_duration),
-            validity_constraint: Set(value.validity_constraint),
         })
     }
 }

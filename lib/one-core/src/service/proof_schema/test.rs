@@ -65,7 +65,6 @@ async fn test_get_proof_schema_exists() {
             .with(
                 eq(proof_schema.id.to_owned()),
                 eq(ProofSchemaRelations {
-                    claim_schemas: None,
                     organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(Default::default()),
@@ -155,9 +154,7 @@ async fn test_get_proof_schema_list_success() {
         deleted_at: None,
         name: "name".to_string(),
         expire_duration: 0,
-        claim_schemas: None,
         organisation: None,
-        validity_constraint: None,
         input_schemas: None,
     };
     {
@@ -250,9 +247,7 @@ async fn test_delete_proof_schema_success() {
                 deleted_at: None,
                 name: "name".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
                 organisation: None,
-                validity_constraint: None,
                 input_schemas: None,
             }))
         });
@@ -294,9 +289,7 @@ async fn test_delete_proof_schema_failure() {
                 deleted_at: None,
                 name: "name".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
                 organisation: None,
-                validity_constraint: None,
                 input_schemas: None,
             }))
         });
@@ -663,13 +656,11 @@ fn generic_proof_schema() -> ProofSchema {
         deleted_at: None,
         name: "name".to_string(),
         expire_duration: 0,
-        claim_schemas: Some(vec![]),
         organisation: Some(Organisation {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
         }),
-        validity_constraint: None,
         input_schemas: Some(vec![]),
     }
 }

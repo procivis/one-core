@@ -12,10 +12,7 @@ use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
 use crate::service::error::BusinessLogicError;
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 use crate::{
-    model::{
-        organisation::Organisation,
-        proof_schema::{ProofSchema, ProofSchemaClaim},
-    },
+    model::{organisation::Organisation, proof_schema::ProofSchema},
     service::error::ServiceError,
 };
 use dto_mapper::{convert_inner, try_convert_inner};
@@ -67,17 +64,6 @@ impl TryFrom<ProofInputSchema> for ProofInputSchemaResponseDTO {
 
 impl From<ProofInputClaimSchema> for ProofClaimSchemaResponseDTO {
     fn from(value: ProofInputClaimSchema) -> Self {
-        Self {
-            id: value.schema.id,
-            required: value.required,
-            key: value.schema.key,
-            data_type: value.schema.data_type,
-        }
-    }
-}
-
-impl From<ProofSchemaClaim> for ProofClaimSchemaResponseDTO {
-    fn from(value: ProofSchemaClaim) -> Self {
         Self {
             id: value.schema.id,
             required: value.required,
@@ -159,10 +145,8 @@ pub fn proof_schema_from_create_request(
         last_modified: now,
         name: request.name,
         expire_duration: request.expire_duration,
-        claim_schemas: None,
         organisation: Some(organisation),
         deleted_at: None,
-        validity_constraint: None,
         input_schemas: Some(input_schemas),
     })
 }

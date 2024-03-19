@@ -18,8 +18,8 @@ use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{Proof, ProofClaimRelations, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
-    ProofInputClaimSchema, ProofInputSchema, ProofSchema, ProofSchemaClaimRelations,
-    ProofSchemaRelations,
+    ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
+    ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use one_core::model::revocation_list::{
     RevocationList, RevocationListPurpose, RevocationListRelations,
@@ -414,9 +414,7 @@ pub async fn create_proof_schema(
         name: name.to_owned(),
         organisation: Some(organisation.to_owned()),
         deleted_at: None,
-        claim_schemas: None,
         expire_duration: 0,
-        validity_constraint: Some(10),
         input_schemas: Some(input_schemas),
     };
 
@@ -655,14 +653,11 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                     ..Default::default()
                 }),
                 schema: Some(ProofSchemaRelations {
-                    claim_schemas: Some(ProofSchemaClaimRelations {
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations {}),
-                            ..Default::default()
-                        }),
-                    }),
                     organisation: Some(OrganisationRelations {}),
-                    proof_inputs: None,
+                    proof_inputs: Some(ProofInputSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                        credential_schema: Some(CredentialSchemaRelations::default()),
+                    }),
                 }),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),

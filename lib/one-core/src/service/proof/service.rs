@@ -27,8 +27,7 @@ use crate::{
             ProofStateRelations,
         },
         proof_schema::{
-            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaClaimRelationsNew,
-            ProofSchemaRelations,
+            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
         },
     },
     provider::transport_protocol::dto::PresentationDefinitionResponseDTO,
@@ -52,12 +51,9 @@ impl ProofService {
                 id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(Default::default()),
-                        }),
                         organisation: Some(Default::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                     }),

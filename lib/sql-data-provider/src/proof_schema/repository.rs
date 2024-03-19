@@ -1,9 +1,6 @@
 use super::{mapper::create_list_response, ProofSchemaProvider};
 use crate::{
-    entity::{
-        claim_schema, credential_schema_claim_schema, proof_input_claim_schema, proof_input_schema,
-        proof_schema, proof_schema_claim_schema,
-    },
+    entity::{proof_input_claim_schema, proof_input_schema, proof_schema},
     list_query::SelectWithListQuery,
     mapper::to_data_layer_error,
 };
@@ -15,15 +12,14 @@ use one_core::{
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
         proof_schema::{
             GetProofSchemaList, GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema,
-            ProofInputSchemaRelations, ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations,
-            ProofSchemaId, ProofSchemaRelations,
+            ProofInputSchemaRelations, ProofSchema, ProofSchemaId, ProofSchemaRelations,
         },
     },
     repository::{error::DataLayerError, proof_schema_repository::ProofSchemaRepository},
 };
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, RelationTrait, Set, TransactionTrait, Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
+    TransactionTrait, Unchanged,
 };
 use shared_types::ClaimSchemaId;
 use std::str::FromStr;
@@ -186,12 +182,6 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                 Some(self.get_related_input_schemas(id, input_relations).await?);
         }
 
-        // TODO: ONE-1733
-        if let Some(claim_relations) = &relations.claim_schemas {
-            proof_schema.claim_schemas =
-                Some(self.get_related_claim_schemas(id, claim_relations).await?);
-        }
-
         if let Some(organisation_relations) = &relations.organisation {
             proof_schema.organisation = Some(
                 self.organisation_repository
@@ -274,97 +264,6 @@ impl ProofSchemaProvider {
                 relation: "proof_schema-credential_schema",
                 id: credential_schema_id.to_string(),
             })
-    }
-
-    //TODO: ONE-1733
-    async fn get_related_claim_schemas(
-        &self,
-        proof_schema_id: &ProofSchemaId,
-        relations: &ProofSchemaClaimRelations,
-    ) -> Result<Vec<ProofSchemaClaim>, DataLayerError> {
-        #[derive(FromQueryResult)]
-        struct ProofSchemaClaimCombinedModel {
-            pub id: String,
-            pub required: bool,
-            pub credential_schema_id: String,
-        }
-
-        let proof_schema_claims = crate::entity::proof_schema_claim_schema::Entity::find()
-            .filter(
-                proof_schema_claim_schema::Column::ProofSchemaId.eq(proof_schema_id.to_string()),
-            )
-            .order_by_asc(proof_schema_claim_schema::Column::Order)
-            .join(
-                sea_orm::JoinType::InnerJoin,
-                proof_schema_claim_schema::Relation::ClaimSchema.def(),
-            )
-            .join(
-                sea_orm::JoinType::InnerJoin,
-                claim_schema::Relation::CredentialSchemaClaimSchema.def(),
-            )
-            .select_only()
-            .columns([proof_schema_claim_schema::Column::Required])
-            .columns([claim_schema::Column::Id])
-            .columns([credential_schema_claim_schema::Column::CredentialSchemaId])
-            .into_model::<ProofSchemaClaimCombinedModel>()
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        let claim_schema_ids = proof_schema_claims
-            .iter()
-            .map(|item| Uuid::from_str(&item.id).map(Into::into))
-            .collect::<Result<Vec<ClaimSchemaId>, _>>()?;
-
-        let claim_schemas = self
-            .claim_schema_repository
-            .get_claim_schema_list(claim_schema_ids, &ClaimSchemaRelations::default())
-            .await?;
-
-        let proof_schema_claims_with_credential_schema_ids: Vec<(ProofSchemaClaim, String)> =
-            proof_schema_claims
-                .into_iter()
-                .zip(claim_schemas)
-                .map(|(model, schema)| {
-                    (
-                        ProofSchemaClaim {
-                            schema,
-                            required: model.required,
-                            credential_schema: None,
-                        },
-                        model.credential_schema_id,
-                    )
-                })
-                .collect();
-
-        if let Some(credential_schema_relations) = &relations.credential_schema {
-            let mut claim_schemas = Vec::<ProofSchemaClaim>::with_capacity(
-                proof_schema_claims_with_credential_schema_ids.len(),
-            );
-
-            for (proof_schema_claim, credential_schema_id) in
-                proof_schema_claims_with_credential_schema_ids
-            {
-                let credential_schema = self
-                    .get_related_credential_schema(
-                        credential_schema_id,
-                        credential_schema_relations,
-                    )
-                    .await?;
-
-                claim_schemas.push(ProofSchemaClaim {
-                    credential_schema: Some(credential_schema),
-                    ..proof_schema_claim
-                })
-            }
-
-            Ok(claim_schemas)
-        } else {
-            Ok(proof_schema_claims_with_credential_schema_ids
-                .into_iter()
-                .map(|(proof_schema_claim, _)| proof_schema_claim)
-                .collect())
-        }
     }
 
     async fn get_related_input_schemas(

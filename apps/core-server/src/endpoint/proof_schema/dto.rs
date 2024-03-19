@@ -81,7 +81,6 @@ pub struct GetProofSchemaListItemResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub expire_duration: u32,
-    pub validity_constraint: Option<i64>,
 }
 
 // detail endpoint

@@ -22,7 +22,7 @@ use crate::{
         proof::{Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
         proof_schema::{
             ProofInputClaimSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
-            ProofSchemaClaimRelationsNew, ProofSchemaRelations,
+            ProofSchemaRelations,
         },
     },
     provider::credential_formatter::model::DetailCredential,
@@ -54,13 +54,9 @@ impl SSIVerifierService {
                 proof_id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        // TODO: ONE-1733 we keep it backwards compatible
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }),
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                     }),
@@ -116,12 +112,9 @@ impl SSIVerifierService {
                 &proof_id,
                 ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }),
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                     }),
@@ -256,77 +249,48 @@ impl SSIVerifierService {
             "proof schema is None".to_string(),
         ))?;
 
-        let claim_schemas_with_cred_schemas = match (
-            proof_schema.input_schemas.as_ref(),
-            proof_schema.claim_schemas.as_ref(),
-        ) {
-            (Some(input_schemas), _) if !input_schemas.is_empty() => {
-                let mut res: Vec<(ProofInputClaimSchema, CredentialSchema)> = Vec::new();
+        let claim_schemas_with_cred_schemas =
+            match proof_schema.input_schemas.as_ref() {
+                Some(input_schemas) if !input_schemas.is_empty() => {
+                    let mut res: Vec<(ProofInputClaimSchema, CredentialSchema)> = Vec::new();
 
-                let input_schemas =
-                    proof_schema
-                        .input_schemas
-                        .as_ref()
-                        .ok_or(ServiceError::MappingError(
-                            "claim_schemas is None".to_string(),
-                        ))?;
-
-                for input in input_schemas {
-                    let proof_input_claim_schemas =
-                        input
-                            .claim_schemas
+                    let input_schemas =
+                        proof_schema
+                            .input_schemas
                             .as_ref()
                             .ok_or(ServiceError::MappingError(
                                 "claim_schemas is None".to_string(),
                             ))?;
 
-                    for proof_input_claim_schema in proof_input_claim_schemas {
-                        let credential_schema =
+                    for input in input_schemas {
+                        let proof_input_claim_schemas =
                             input
-                                .credential_schema
+                                .claim_schemas
                                 .as_ref()
                                 .ok_or(ServiceError::MappingError(
-                                    "credential schema is None".to_string(),
+                                    "claim_schemas is None".to_string(),
                                 ))?;
-                        res.push((
-                            proof_input_claim_schema.to_owned(),
-                            credential_schema.to_owned(),
-                        ))
+
+                        for proof_input_claim_schema in proof_input_claim_schemas {
+                            let credential_schema = input.credential_schema.as_ref().ok_or(
+                                ServiceError::MappingError("credential schema is None".to_string()),
+                            )?;
+                            res.push((
+                                proof_input_claim_schema.to_owned(),
+                                credential_schema.to_owned(),
+                            ))
+                        }
                     }
+
+                    res
                 }
 
-                res
-            }
-            // TODO: ONE-1733
-            (_, Some(claim_schemas)) if !claim_schemas.is_empty() => claim_schemas
-                .iter()
-                .enumerate()
-                .map(|(i, claim)| {
-                    claim
-                        .credential_schema
-                        .as_ref()
-                        .map(|credential_schema| {
-                            (
-                                ProofInputClaimSchema {
-                                    schema: claim.schema.to_owned(),
-                                    required: claim.required,
-                                    order: i as u32,
-                                },
-                                credential_schema.to_owned(),
-                            )
-                        })
-                        .ok_or(ServiceError::MappingError(
-                            "credential_schema is None".to_string(),
-                        ))
-                })
-                .collect::<Result<Vec<(ProofInputClaimSchema, CredentialSchema)>, ServiceError>>(
-                )?,
-            (_, _) => {
-                return Err(ServiceError::MappingError(
-                    "input_schema or credential_schema is missing".to_string(),
-                ))
-            }
-        };
+                _ => {
+                    return Err(ServiceError::MappingError(
+                        "proof input schemas are missing".to_string(),
+                    ))
+                }
+            };
 
         struct ProvedClaim {
             claim_schema: ClaimSchema,

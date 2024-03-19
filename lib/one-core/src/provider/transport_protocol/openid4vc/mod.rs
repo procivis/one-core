@@ -47,10 +47,8 @@ use crate::{
     },
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
-        revocation::provider::RevocationMethodProvider,
-    },
-    provider::{
         key_storage::provider::KeyProvider,
+        revocation::provider::RevocationMethodProvider,
         transport_protocol::{
             mapper::proof_from_handle_invitation,
             openid4vc::{
@@ -85,7 +83,6 @@ use crate::{
 };
 use crate::{
     model::key::Key,
-    model::proof_schema::ProofSchemaClaimRelationsNew,
     provider::transport_protocol::openid4vc::mapper::{
         get_claim_name_by_json_path, presentation_definition_from_interaction_data,
     },
@@ -558,14 +555,8 @@ impl TransportProtocol for OpenID4VC {
                         ..Default::default()
                     }),
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                ..Default::default()
-                            }),
-                        }),
                         proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                         ..Default::default()

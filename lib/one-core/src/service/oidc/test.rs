@@ -17,9 +17,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
-use crate::model::proof_schema::{
-    ProofInputClaimSchema, ProofInputSchema, ProofSchema, ProofSchemaClaim,
-};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::{
     CredentialStatus, CredentialSubject, DetailCredential, Presentation,
 };
@@ -896,9 +894,8 @@ fn test_vec_last_position_from_token_path() {
     assert!(vec_last_position_from_token_path("$[ABC]").is_err());
 }
 
-// TODO - ONE-1733
 #[tokio::test]
-async fn test_oidc_verifier_presentation_definition_success_old() {
+async fn test_oidc_verifier_presentation_definition_success() {
     let mut proof_repository = MockProofRepository::default();
 
     let proof_id = Uuid::new_v4();
@@ -947,18 +944,22 @@ async fn test_oidc_verifier_presentation_definition_success_old() {
                         deleted_at: None,
                         name: "test".to_string(),
                         expire_duration: 0,
-                        validity_constraint: Some(100),
-                        claim_schemas: Some(vec![ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                id: Uuid::from_str("2fa85f64-5717-4562-b3fc-2c963f66afa6")
-                                    .unwrap()
-                                    .into(),
-                                key: "Key".to_owned(),
-                                data_type: "STRING".to_owned(),
-                                created_date: get_dummy_date(),
-                                last_modified: get_dummy_date(),
-                            },
-                            required: true,
+                        organisation: None,
+                        input_schemas: Some(vec![ProofInputSchema {
+                            validity_constraint: Some(100),
+                            claim_schemas: Some(vec![ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    id: Uuid::from_str("2fa85f64-5717-4562-b3fc-2c963f66afa6")
+                                        .unwrap()
+                                        .into(),
+                                    key: "Key".to_owned(),
+                                    data_type: "STRING".to_owned(),
+                                    created_date: get_dummy_date(),
+                                    last_modified: get_dummy_date(),
+                                },
+                                required: true,
+                                order: 0,
+                            }]),
                             credential_schema: Some(CredentialSchema {
                                 id: Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap(),
                                 deleted_at: None,
@@ -972,8 +973,6 @@ async fn test_oidc_verifier_presentation_definition_success_old() {
                                 organisation: None,
                             }),
                         }]),
-                        organisation: None,
-                        input_schemas: None,
                     }),
                     claims: None,
                     verifier_did: None,
@@ -1070,7 +1069,6 @@ async fn test_submit_proof_failed_credential_suspended() {
                     state: ProofStateEnum::Pending,
                 }]),
                 schema: Some(ProofSchema {
-                    claim_schemas: None,
                     input_schemas: Some(vec![ProofInputSchema {
                         validity_constraint: None,
                         claim_schemas: Some(vec![

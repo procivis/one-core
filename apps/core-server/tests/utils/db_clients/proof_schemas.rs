@@ -75,9 +75,7 @@ impl ProofSchemasDB {
             name: name.to_owned(),
             organisation: Some(organisation.to_owned()),
             deleted_at: None,
-            claim_schemas: None,
             expire_duration: 0,
-            validity_constraint: proof_input_schema.validity_constraint,
             input_schemas: Some(input_schemas),
         };
 
@@ -95,7 +93,6 @@ impl ProofSchemasDB {
             .get_proof_schema(
                 id,
                 &ProofSchemaRelations {
-                    claim_schemas: None,
                     organisation: Some(OrganisationRelations {}),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(Default::default()),

@@ -166,11 +166,8 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
     ))?;
     // using vec to keep the original order of claims/credentials in the proof request
     let requested_credentials: Vec<(CredentialSchemaId, Option<Vec<ProofInputClaimSchema>>)> =
-        match (
-            proof_schema.input_schemas.as_ref(),
-            proof_schema.claim_schemas.as_ref(),
-        ) {
-            (Some(proof_input), _) if !proof_input.is_empty() => proof_input
+        match proof_schema.input_schemas.as_ref() {
+            Some(proof_input) if !proof_input.is_empty() => proof_input
                 .iter()
                 .filter_map(|input| {
                     let credential_schema = input.credential_schema.as_ref()?;
@@ -190,36 +187,10 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
                     Some((credential_schema.id, claims))
                 })
                 .collect(),
-            // TODO: ONE-1733
-            (_, Some(claim_schemas)) if !claim_schemas.is_empty() => {
-                let mut collected: HashMap<CredentialSchemaId, Vec<ProofInputClaimSchema>> =
-                    HashMap::new();
 
-                for (i, claim_schema) in claim_schemas.iter().enumerate() {
-                    let credential_schema_id = claim_schema
-                        .credential_schema
-                        .as_ref()
-                        .ok_or(TransportProtocolError::Failed(
-                            "Credential schema not found".to_string(),
-                        ))?
-                        .id;
-                    {
-                        let entry = collected.entry(credential_schema_id).or_default();
-                        entry.push(ProofInputClaimSchema {
-                            order: i as u32,
-                            required: claim_schema.required,
-                            schema: claim_schema.schema.to_owned(),
-                        });
-                    }
-                }
-                collected
-                    .into_iter()
-                    .map(|(id, input_claim_schemas)| (id, Some(input_claim_schemas)))
-                    .collect()
-            }
-            (_, _) => {
+            _ => {
                 return Err(TransportProtocolError::Failed(
-                    "Missing proof input schemas or claim schemas!".to_owned(),
+                    "Missing proof input schemas".to_owned(),
                 ))
             }
         };
