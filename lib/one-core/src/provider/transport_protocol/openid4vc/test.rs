@@ -12,6 +12,7 @@ use wiremock::{
 };
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
 use crate::{
     crypto::MockCryptoProvider,
     model::{
@@ -23,7 +24,7 @@ use crate::{
         interaction::Interaction,
         organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
-        proof_schema::{ProofSchema, ProofSchemaClaim},
+        proof_schema::ProofSchema,
     },
     provider::{
         credential_formatter::provider::MockCredentialFormatterProvider,
@@ -100,21 +101,25 @@ fn construct_proof_with_state() -> Proof {
         }]),
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
-            validity_constraint: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             name: "schema".to_string(),
             expire_duration: 10,
-            claim_schemas: Some(vec![ProofSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "first_name".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                },
-                required: true,
+            organisation: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: Some(vec![ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "first_name".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    },
+                    required: true,
+                    order: 0,
+                }]),
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4(),
                     deleted_at: None,
@@ -128,8 +133,6 @@ fn construct_proof_with_state() -> Proof {
                     organisation: None,
                 }),
             }]),
-            organisation: None,
-            input_schemas: None,
         }),
         claims: None,
         verifier_did: None,

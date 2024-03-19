@@ -28,6 +28,5 @@ pub(super) struct ProofListItemModel {
     pub schema_name: String,
     pub schema_created_date: OffsetDateTime,
     pub schema_last_modified: OffsetDateTime,
-    pub schema_validity_constraint: Option<i64>,
     pub expire_duration: u32,
 }

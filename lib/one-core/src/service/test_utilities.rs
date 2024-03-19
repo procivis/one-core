@@ -242,9 +242,7 @@ pub fn dummy_proof_schema() -> ProofSchema {
         deleted_at: None,
         name: "Proof schema".to_string(),
         expire_duration: 100,
-        claim_schemas: None,
         organisation: None,
-        validity_constraint: None,
         input_schemas: None,
     }
 }

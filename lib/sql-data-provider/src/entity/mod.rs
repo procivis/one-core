@@ -18,6 +18,5 @@ pub mod proof_claim;
 pub mod proof_input_claim_schema;
 pub mod proof_input_schema;
 pub mod proof_schema;
-pub mod proof_schema_claim_schema;
 pub mod proof_state;
 pub mod revocation_list;

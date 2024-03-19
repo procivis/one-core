@@ -21,8 +21,7 @@ use crate::model::proof::{
     Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
 };
 use crate::model::proof_schema::{
-    ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
-    ProofSchemaClaimRelationsNew, ProofSchemaRelations,
+    ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 
 use crate::provider::credential_formatter::error::FormatterError;
@@ -60,7 +59,7 @@ use crate::service::oidc::{
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_real;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
-use shared_types::{ClaimSchemaId, CredentialId};
+use shared_types::CredentialId;
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::str::FromStr;
@@ -414,12 +413,9 @@ impl OIDCService {
                 &interaction_id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }),
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
-                            claim_schemas: Some(ProofSchemaClaimRelationsNew::default()),
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                     }),
@@ -462,9 +458,6 @@ impl OIDCService {
                 &ProofRelations {
                     interaction: Some(InteractionRelations::default()),
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations::default()),
-                        }), // TODO: ONE-1733
                         proof_inputs: Some(ProofInputSchemaRelations {
                             ..Default::default()
                         }),
@@ -493,61 +486,11 @@ impl OIDCService {
             "Proof schema not found".to_string(),
         ))?;
 
-        let proof_schema_inputs = match (
-            proof_schema.input_schemas.as_ref(),
-            proof_schema.claim_schemas.as_ref(),
-        ) {
-            (Some(input_schemas), _) if !input_schemas.is_empty() => input_schemas.to_vec(),
-            // TODO: ONE-1733 - the old way
-            (_, Some(proof_schema_claims)) if !proof_schema_claims.is_empty() => {
-                let mut claim_to_credential_schema_mapping: HashMap<
-                    ClaimSchemaId,
-                    CredentialSchema,
-                > = HashMap::new();
-                let mut expected_credential_claims: HashMap<
-                    CredentialSchemaId,
-                    Vec<ProofInputClaimSchema>,
-                > = HashMap::new();
-
-                for (i, proof_schema_claim) in proof_schema_claims.iter().enumerate() {
-                    let credential_schema = proof_schema_claim.credential_schema.as_ref().ok_or(
-                        ServiceError::MappingError(
-                            "missing proof schema claim credential_schema".to_string(),
-                        ),
-                    )?;
-
-                    let entry = expected_credential_claims
-                        .entry(credential_schema.id)
-                        .or_default();
-
-                    entry.push(ProofInputClaimSchema {
-                        schema: proof_schema_claim.schema.to_owned(),
-                        required: proof_schema_claim.required,
-                        order: i as u32,
-                    });
-
-                    claim_to_credential_schema_mapping
-                        .insert(proof_schema_claim.schema.id, credential_schema.to_owned());
-                }
-
-                expected_credential_claims
-                    .iter()
-                    .filter_map(|(_, claim_schemas)| {
-                        let first_claim_schema = claim_schemas.first()?;
-                        let credential_schema = claim_to_credential_schema_mapping
-                            .get(&first_claim_schema.schema.id)?;
-                        Some(ProofInputSchema {
-                            validity_constraint: proof_schema.validity_constraint,
-                            claim_schemas: Some(claim_schemas.to_owned()),
-                            credential_schema: Some(credential_schema.to_owned()),
-                        })
-                    })
-                    .collect()
-            }
-            // TODO: ONE-1733 - the old way
-            (_, _) => {
+        let proof_schema_inputs = match proof_schema.input_schemas.as_ref() {
+            Some(input_schemas) if !input_schemas.is_empty() => input_schemas.to_vec(),
+            _ => {
                 return Err(ServiceError::MappingError(
-                    "input_schemas or claims_schemas is missing".to_string(),
+                    "input_schemas are missing".to_string(),
                 ))
             }
         };
@@ -670,62 +613,10 @@ impl OIDCService {
             "missing proof schema".to_string(),
         ))?;
 
-        let proof_schema_inputs = match (
-            proof_schema.input_schemas.as_ref(),
-            proof_schema.claim_schemas.as_ref(),
-        ) {
-            (Some(input_schemas), _) if !input_schemas.is_empty() => input_schemas.to_vec(),
-            // TODO: ONE-1733 - the old way
-            (_, Some(proof_schema_claims)) if !proof_schema_claims.is_empty() => {
-                let mut claim_to_credential_schema_mapping: HashMap<
-                    ClaimSchemaId,
-                    CredentialSchema,
-                > = HashMap::new();
-                let mut expected_credential_claims: HashMap<
-                    CredentialSchemaId,
-                    Vec<ProofInputClaimSchema>,
-                > = HashMap::new();
-
-                for (i, proof_schema_claim) in proof_schema_claims.iter().enumerate() {
-                    let credential_schema = proof_schema_claim.credential_schema.as_ref().ok_or(
-                        ServiceError::MappingError(
-                            "missing proof schema claim credential_schema".to_string(),
-                        ),
-                    )?;
-
-                    let entry = expected_credential_claims
-                        .entry(credential_schema.id)
-                        .or_default();
-
-                    entry.push(ProofInputClaimSchema {
-                        schema: proof_schema_claim.schema.to_owned(),
-                        required: proof_schema_claim.required,
-                        order: i as u32,
-                    });
-
-                    claim_to_credential_schema_mapping
-                        .insert(proof_schema_claim.schema.id, credential_schema.to_owned());
-                }
-
-                expected_credential_claims
-                    .iter()
-                    .filter_map(|(_, claim_schemas)| {
-                        let first_claim_schema = claim_schemas.first()?;
-                        let credential_schema = claim_to_credential_schema_mapping
-                            .get(&first_claim_schema.schema.id)?;
-                        Some(ProofInputSchema {
-                            validity_constraint: proof_schema.validity_constraint,
-                            claim_schemas: Some(claim_schemas.to_owned()),
-                            credential_schema: Some(credential_schema.to_owned()),
-                        })
-                    })
-                    .collect()
-            }
-            (_, _) => {
-                // TODO: ONE-1733 - only proof input schema can be missing
-                return Err(ServiceError::Other(
-                    "Missing proof input schema or claim schemas".to_owned(),
-                ));
+        let proof_schema_inputs = match proof_schema.input_schemas.as_ref() {
+            Some(input_schemas) if !input_schemas.is_empty() => input_schemas.to_vec(),
+            _ => {
+                return Err(ServiceError::Other("Missing proof input schema".to_owned()));
             }
         };
 

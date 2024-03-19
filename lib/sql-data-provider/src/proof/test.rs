@@ -306,8 +306,6 @@ async fn test_create_proof_success() {
             deleted_at: None,
             name: "proof schema".to_string(),
             expire_duration: 0,
-            claim_schemas: None,
-            validity_constraint: None,
             organisation: None,
             input_schemas: None,
         }),
@@ -447,9 +445,7 @@ async fn test_get_proof_with_relations() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
                 organisation: None,
-                validity_constraint: None,
                 input_schemas: None,
             }))
         });
@@ -687,8 +683,6 @@ async fn test_get_proof_by_interaction_id_success() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                claim_schemas: None,
-                validity_constraint: None,
                 organisation: None,
                 input_schemas: None,
             }))

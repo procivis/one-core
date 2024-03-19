@@ -11,7 +11,7 @@ use crate::{
         did::{Did, DidRelations},
         organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
-        proof_schema::{ProofSchema, ProofSchemaClaim},
+        proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema},
     },
     provider::{
         credential_formatter::{
@@ -70,15 +70,24 @@ async fn test_connect_to_holder_succeeds() {
                     state: ProofStateEnum::Pending,
                 }]),
                 schema: Some(ProofSchema {
-                    claim_schemas: Some(vec![ProofSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "key".to_string(),
-                            data_type: "data type".to_string(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                        },
-                        required: false,
+                    organisation: Some(Organisation {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    }),
+                    input_schemas: Some(vec![ProofInputSchema {
+                        validity_constraint: None,
+                        claim_schemas: Some(vec![ProofInputClaimSchema {
+                            schema: ClaimSchema {
+                                id: Uuid::new_v4().into(),
+                                key: "key".to_string(),
+                                data_type: "data type".to_string(),
+                                created_date: OffsetDateTime::now_utc(),
+                                last_modified: OffsetDateTime::now_utc(),
+                            },
+                            required: false,
+                            order: 0,
+                        }]),
                         credential_schema: Some(CredentialSchema {
                             id: Uuid::new_v4(),
                             deleted_at: None,
@@ -92,11 +101,6 @@ async fn test_connect_to_holder_succeeds() {
                             organisation: None,
                         }),
                     }]),
-                    organisation: Some(Organisation {
-                        id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                    }),
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()
@@ -151,15 +155,24 @@ async fn test_connect_to_holder_succeeds_new_did() {
                     state: ProofStateEnum::Pending,
                 }]),
                 schema: Some(ProofSchema {
-                    claim_schemas: Some(vec![ProofSchemaClaim {
-                        schema: ClaimSchema {
-                            id: Uuid::new_v4().into(),
-                            key: "key".to_string(),
-                            data_type: "data type".to_string(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                        },
-                        required: false,
+                    organisation: Some(Organisation {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    }),
+                    input_schemas: Some(vec![ProofInputSchema {
+                        validity_constraint: None,
+                        claim_schemas: Some(vec![ProofInputClaimSchema {
+                            schema: ClaimSchema {
+                                id: Uuid::new_v4().into(),
+                                key: "key".to_string(),
+                                data_type: "data type".to_string(),
+                                created_date: OffsetDateTime::now_utc(),
+                                last_modified: OffsetDateTime::now_utc(),
+                            },
+                            required: false,
+                            order: 0,
+                        }]),
                         credential_schema: Some(CredentialSchema {
                             id: Uuid::new_v4(),
                             deleted_at: None,
@@ -173,11 +186,6 @@ async fn test_connect_to_holder_succeeds_new_did() {
                             organisation: None,
                         }),
                     }]),
-                    organisation: Some(Organisation {
-                        id: Uuid::new_v4().into(),
-                        created_date: OffsetDateTime::now_utc(),
-                        last_modified: OffsetDateTime::now_utc(),
-                    }),
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()
@@ -247,24 +255,28 @@ async fn test_submit_proof_succeeds() {
                     state: ProofStateEnum::Requested,
                 }]),
                 schema: Some(ProofSchema {
-                    claim_schemas: Some(vec![
-                        ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                key: "required_key".to_string(),
-                                ..dummy_claim_schema()
+                    input_schemas: Some(vec![ProofInputSchema {
+                        validity_constraint: None,
+                        claim_schemas: Some(vec![
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    key: "required_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: true,
+                                order: 0,
                             },
-                            required: true,
-                            credential_schema: Some(credential_schema.to_owned()),
-                        },
-                        ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                key: "optional_key".to_string(),
-                                ..dummy_claim_schema()
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    key: "optional_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: false,
+                                order: 1,
                             },
-                            required: false,
-                            credential_schema: Some(credential_schema),
-                        },
-                    ]),
+                        ]),
+                        credential_schema: Some(credential_schema),
+                    }]),
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()
@@ -456,24 +468,28 @@ async fn test_submit_proof_failed_credential_revoked() {
                     state: ProofStateEnum::Requested,
                 }]),
                 schema: Some(ProofSchema {
-                    claim_schemas: Some(vec![
-                        ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                key: "required_key".to_string(),
-                                ..dummy_claim_schema()
+                    input_schemas: Some(vec![ProofInputSchema {
+                        validity_constraint: None,
+                        claim_schemas: Some(vec![
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    key: "required_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: true,
+                                order: 0,
                             },
-                            required: true,
-                            credential_schema: Some(credential_schema.to_owned()),
-                        },
-                        ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                key: "optional_key".to_string(),
-                                ..dummy_claim_schema()
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    key: "optional_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: false,
+                                order: 1,
                             },
-                            required: false,
-                            credential_schema: Some(credential_schema),
-                        },
-                    ]),
+                        ]),
+                        credential_schema: Some(credential_schema),
+                    }]),
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()
@@ -641,24 +657,28 @@ async fn test_submit_proof_failed_credential_suspended() {
                     state: ProofStateEnum::Requested,
                 }]),
                 schema: Some(ProofSchema {
-                    claim_schemas: Some(vec![
-                        ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                key: "required_key".to_string(),
-                                ..dummy_claim_schema()
+                    input_schemas: Some(vec![ProofInputSchema {
+                        validity_constraint: None,
+                        claim_schemas: Some(vec![
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    key: "required_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: true,
+                                order: 0,
                             },
-                            required: true,
-                            credential_schema: Some(credential_schema.to_owned()),
-                        },
-                        ProofSchemaClaim {
-                            schema: ClaimSchema {
-                                key: "optional_key".to_string(),
-                                ..dummy_claim_schema()
+                            ProofInputClaimSchema {
+                                schema: ClaimSchema {
+                                    key: "optional_key".to_string(),
+                                    ..dummy_claim_schema()
+                                },
+                                required: false,
+                                order: 1,
                             },
-                            required: false,
-                            credential_schema: Some(credential_schema),
-                        },
-                    ]),
+                        ]),
+                        credential_schema: Some(credential_schema),
+                    }]),
                     ..dummy_proof_schema()
                 }),
                 ..dummy_proof()

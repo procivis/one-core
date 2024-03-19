@@ -7,19 +7,15 @@ use crate::model::key::Key;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::{
     model::{
-        claim_schema::ClaimSchema,
-        credential_schema::CredentialSchema,
         did::Did,
         history::{History, HistoryAction, HistoryEntityType},
         proof::{self, Proof, ProofStateEnum},
-        proof_schema::{ProofSchema, ProofSchemaClaim},
+        proof_schema::ProofSchema,
     },
-    provider::transport_protocol::dto::ProofClaimSchema,
     service::error::ServiceError,
 };
 use dto_mapper::convert_inner;
 use std::collections::HashMap;
-use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -104,8 +100,8 @@ pub fn get_verifier_proof_detail(proof: Proof) -> Result<ProofDetailResponseDTO,
             .collect::<Result<_, _>>()?;
 
     let proof_inputs =
-        match (schema.input_schemas.as_ref(), schema.claim_schemas.as_ref()) {
-            (Some(proof_input_schemas), _) if !proof_input_schemas.is_empty() => {
+        match schema.input_schemas.as_ref() {
+            Some(proof_input_schemas) if !proof_input_schemas.is_empty() => {
                 let mut proof_inputs = vec![];
 
                 for input_schema in proof_input_schemas {
@@ -152,47 +148,10 @@ pub fn get_verifier_proof_detail(proof: Proof) -> Result<ProofDetailResponseDTO,
 
                 proof_inputs
             }
-            // TODO: ONE-1733
-            (_, Some(proof_claim_schemas)) if !proof_claim_schemas.is_empty() => {
-                let mut proof_inputs = vec![];
 
-                for proof_claim_schema in proof_claim_schemas {
-                    let credential_schema = proof_claim_schema.credential_schema.as_ref().ok_or(
-                        ServiceError::MappingError(
-                            "Missing credential schema in input_schema".to_string(),
-                        ),
-                    )?;
-
-                    let claims = {
-                        let claim = claims.iter().find(|c| {
-                            c.claim
-                                .schema
-                                .as_ref()
-                                .is_some_and(|s| s.id == proof_claim_schema.schema.id)
-                        });
-
-                        vec![ProofClaimDTO {
-                            schema: proof_claim_schema.clone().into(),
-                            value: claim.map(|c| c.claim.value.to_string()),
-                        }]
-                    };
-
-                    proof_inputs.push(ProofInputDTO {
-                        claims,
-                        credential: credential_for_credential_schema
-                            .get(&credential_schema.id)
-                            .cloned(),
-                        credential_schema: credential_schema.clone().into(),
-                        validity_constraint: schema.validity_constraint,
-                    })
-                }
-
-                proof_inputs
-            }
-            (_, _) => {
-                // TODO: ONE-1733
+            _ => {
                 return Err(ServiceError::MappingError(
-                    "input_schemas or proof claim_schemas is missing".to_string(),
+                    "input_schemas are missing".to_string(),
                 ));
             }
         };
@@ -294,38 +253,6 @@ pub fn proof_from_create_request(
         holder_did: None,
         verifier_key,
         interaction: None,
-    }
-}
-
-impl TryFrom<ProofClaimSchema> for ProofSchemaClaim {
-    type Error = ServiceError;
-
-    fn try_from(value: ProofClaimSchema) -> Result<Self, Self::Error> {
-        let id = Uuid::from_str(&value.id)?.into();
-        let credential_schema_id = Uuid::from_str(&value.credential_schema.id)?;
-
-        Ok(Self {
-            schema: ClaimSchema {
-                id,
-                key: value.key,
-                data_type: value.datatype,
-                created_date: value.created_date,
-                last_modified: value.last_modified,
-            },
-            required: value.required,
-            credential_schema: Some(CredentialSchema {
-                id: credential_schema_id,
-                deleted_at: None,
-                created_date: value.credential_schema.created_date,
-                last_modified: value.credential_schema.last_modified,
-                name: value.credential_schema.name,
-                wallet_storage_type: value.credential_schema.wallet_storage_type,
-                format: value.credential_schema.format,
-                revocation_method: value.credential_schema.revocation_method,
-                claim_schemas: None,
-                organisation: None,
-            }),
-        })
     }
 }
 
