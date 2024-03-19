@@ -34,6 +34,10 @@ impl From<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFi
 
         let credential_ids = value.ids.map(CredentialFilterValue::CredentialIds);
 
-        organisation_id & name & role & credential_ids
+        let states = value.status.map(|values| {
+            CredentialFilterValue::State(values.into_iter().map(|status| status.into()).collect())
+        });
+
+        organisation_id & name & role & credential_ids & states
     }
 }

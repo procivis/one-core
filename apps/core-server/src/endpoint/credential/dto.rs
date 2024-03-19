@@ -131,9 +131,10 @@ pub struct CredentialDetailClaimResponseRestDTO {
     pub value: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(CredentialStateEnum)]
+#[into(one_core::model::credential::CredentialStateEnum)]
 pub enum CredentialStateRestEnum {
     Created,
     Pending,
@@ -155,6 +156,8 @@ pub struct CredentialsFilterQueryParamsRest {
     pub exact: Option<Vec<ExactColumn>>,
     #[param(inline, rename = "ids[]")]
     pub ids: Option<Vec<CredentialId>>,
+    #[param(inline, rename = "status[]")]
+    pub status: Option<Vec<CredentialStateRestEnum>>,
 }
 
 pub type GetCredentialQuery =

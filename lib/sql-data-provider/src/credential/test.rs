@@ -578,17 +578,55 @@ async fn test_get_credential_list_success_verify_state_sorting() {
 
 #[tokio::test]
 async fn test_get_credential_list_success_filter_state() {
-    let TestSetupWithCredential {
-        db, credential_id, ..
-    } = setup_with_credential().await;
+    let TestSetup {
+        credential_schema,
+        did,
+        db,
+        ..
+    } = setup_empty().await;
+
+    let credential_id_first = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let credential_id_second = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
+    )
+    .await
+    .unwrap();
 
     let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
+
     insert_credential_state_to_database(
         &db,
-        credential_id,
+        credential_id_first,
         CredentialState {
             created_date: later,
             state: CredentialStateEnum::Offered,
+            suspend_end_date: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    insert_credential_state_to_database(
+        &db,
+        credential_id_second,
+        CredentialState {
+            created_date: later,
+            state: CredentialStateEnum::Revoked,
             suspend_end_date: None,
         },
     )
@@ -607,7 +645,9 @@ async fn test_get_credential_list_success_filter_state() {
 
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
-            filtering: Some(CredentialFilterValue::State(CredentialStateEnum::Offered).condition()),
+            filtering: Some(
+                CredentialFilterValue::State(vec![CredentialStateEnum::Offered]).condition(),
+            ),
             ..Default::default()
         })
         .await;
@@ -617,13 +657,31 @@ async fn test_get_credential_list_success_filter_state() {
 
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
-            filtering: Some(CredentialFilterValue::State(CredentialStateEnum::Created).condition()),
+            filtering: Some(
+                CredentialFilterValue::State(vec![CredentialStateEnum::Created]).condition(),
+            ),
             ..Default::default()
         })
         .await;
     let credentials = credentials.unwrap();
     assert_eq!(0, credentials.total_items);
     assert_eq!(0, credentials.values.len());
+
+    let credentials = provider
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::State(vec![
+                    CredentialStateEnum::Offered,
+                    CredentialStateEnum::Revoked,
+                ])
+                .condition(),
+            ),
+            ..Default::default()
+        })
+        .await;
+    let credentials = credentials.unwrap();
+    assert_eq!(2, credentials.total_items);
+    assert_eq!(2, credentials.values.len());
 }
 
 #[tokio::test]

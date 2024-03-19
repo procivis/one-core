@@ -184,6 +184,7 @@ dictionary CredentialListQueryBindingDTO {
   string organisation_id;
   CredentialRoleBindingDTO? role;
   sequence<string>? ids;
+  sequence<CredentialStateBindingEnum>? status;
 };
 
 dictionary CredentialListBindingDTO {
