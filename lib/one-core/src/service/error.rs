@@ -182,6 +182,9 @@ pub enum BusinessLogicError {
     #[error("Missing claim schema: {claim_schema_id}")]
     MissingClaimSchema { claim_schema_id: ClaimSchemaId },
 
+    #[error("Missing parent claim schema for: {claim_schema_id}")]
+    MissingParentClaimSchema { claim_schema_id: ClaimSchemaId },
+
     #[error("Missing proof schema: {proof_schema_id}")]
     MissingProofSchema { proof_schema_id: Uuid },
 
@@ -255,6 +258,15 @@ pub enum ValidationError {
 
     #[error("Credential schema: Missing claims")]
     CredentialSchemaMissingClaims,
+
+    #[error("Credential schema: Missing nested claims for type '{0}'")]
+    CredentialSchemaMissingNestedClaims(String),
+
+    #[error("Credential schema: Nested claims should be empty for type '{0}'")]
+    CredentialSchemaNestedClaimsShouldBeEmpty(String),
+
+    #[error("Credential schema: Claim `{0}` name contains invalid character '/'")]
+    CredentialSchemaClaimSchemaSlashInKeyName(String),
 
     #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
     CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
@@ -584,6 +596,18 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Missing proof input schemas")]
     BR_0104,
+
+    #[strum(to_string = "Missing nested claims")]
+    BR_0106,
+
+    #[strum(to_string = "Nested claims should be empty")]
+    BR_0107,
+
+    #[strum(to_string = "Slash in claim schema key name")]
+    BR_0108,
+
+    #[strum(to_string = "Missing parent claim schema")]
+    BR_0109,
 }
 
 impl From<FormatError> for ServiceError {
@@ -677,6 +701,7 @@ impl BusinessLogicError {
             BusinessLogicError::MissingCredentialData { .. } => ErrorCode::BR_0005,
             BusinessLogicError::MissingCredentialSchema => ErrorCode::BR_0009,
             BusinessLogicError::MissingClaimSchema { .. } => ErrorCode::BR_0010,
+            BusinessLogicError::MissingParentClaimSchema { .. } => ErrorCode::BR_0109,
             BusinessLogicError::MissingRevocationListForDid { .. } => ErrorCode::BR_0035,
             BusinessLogicError::MissingProofSchema { .. } => ErrorCode::BR_0020,
             BusinessLogicError::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
@@ -718,6 +743,9 @@ impl ValidationError {
             ValidationError::DidNotFound => ErrorCode::BR_0024,
             ValidationError::KeyNotFound => ErrorCode::BR_0037,
             ValidationError::ProofSchemaMissingProofInputSchemas => ErrorCode::BR_0104,
+            ValidationError::CredentialSchemaMissingNestedClaims(_) => ErrorCode::BR_0106,
+            ValidationError::CredentialSchemaNestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
+            ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
         }
     }
 }

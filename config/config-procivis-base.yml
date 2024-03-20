@@ -184,6 +184,11 @@ datatype:
         error:
           de: "Bitte wählen Sie ein Datum zwischen 1900-1-1 und heute"
           en: "Please choose a date between 1900-1-1 and today"
+  OBJECT:
+    display: "datatype.object"
+    type: "OBJECT"
+    order: 500
+    params: null
 keyAlgorithm:
   EDDSA:
     display: "keyAlgorithm.eddsa"

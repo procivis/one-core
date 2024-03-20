@@ -1,8 +1,10 @@
 use shared_types::OrganisationId;
 
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::service::credential_schema::dto::CredentialClaimSchemaRequestDTO;
 use crate::service::credential_schema::mapper::create_unique_name_check_request;
+use crate::service::credential_schema::NESTED_CLAIM_MARKER;
 use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::{
     config::validator::{
@@ -37,14 +39,79 @@ pub(crate) fn validate_create_request(
 
     validate_format(&request.format, &config.format)?;
     validate_revocation(&request.revocation_method, &config.revocation)?;
-    validate_datatypes(
-        &request
-            .claims
-            .iter()
-            .map(|f| &f.datatype)
-            .collect::<Vec<&String>>(),
-        &config.datatype,
-    )?;
+    validate_nested_claim_schemas(&request.claims, config)?;
 
     Ok(())
+}
+
+fn validate_nested_claim_schemas(
+    claims: &[CredentialClaimSchemaRequestDTO],
+    config: &CoreConfig,
+) -> Result<(), ServiceError> {
+    for claim_schema in gather_claim_schemas(claims) {
+        validate_claim_schema(claim_schema, config)?;
+    }
+
+    validate_datatypes(
+        gather_claim_schemas(claims).map(|value| value.datatype.as_str()),
+        &config.datatype,
+    )
+    .map_err(ServiceError::ConfigValidationError)
+}
+
+fn validate_claim_schema(
+    claim_schema: &CredentialClaimSchemaRequestDTO,
+    config: &CoreConfig,
+) -> Result<(), ServiceError> {
+    let claim_type = config.datatype.get_fields(&claim_schema.datatype)?.r#type();
+    validate_claim_schema_name(claim_schema)?;
+    validate_claim_schema_type(claim_schema, claim_type)?;
+
+    Ok(())
+}
+
+fn validate_claim_schema_name(
+    claim_schema: &CredentialClaimSchemaRequestDTO,
+) -> Result<(), ValidationError> {
+    if claim_schema.key.find(NESTED_CLAIM_MARKER).is_some() {
+        Err(ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(
+            claim_schema.key.to_owned(),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_claim_schema_type(
+    claim_schema: &CredentialClaimSchemaRequestDTO,
+    claim_type: &DatatypeType,
+) -> Result<(), ValidationError> {
+    match claim_type {
+        DatatypeType::Object => {
+            if claim_schema.claims.is_empty() {
+                return Err(ValidationError::CredentialSchemaMissingNestedClaims(
+                    claim_schema.key.to_owned(),
+                ));
+            }
+        }
+        _ => {
+            if !claim_schema.claims.is_empty() {
+                return Err(ValidationError::CredentialSchemaNestedClaimsShouldBeEmpty(
+                    claim_schema.key.to_owned(),
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn gather_claim_schemas<'a>(
+    claim_schemas: &'a [CredentialClaimSchemaRequestDTO],
+) -> Box<dyn Iterator<Item = &'a CredentialClaimSchemaRequestDTO> + 'a> {
+    let nested = claim_schemas
+        .iter()
+        .flat_map(|f| gather_claim_schemas(&f.claims));
+
+    Box::new(claim_schemas.iter().chain(nested))
 }
