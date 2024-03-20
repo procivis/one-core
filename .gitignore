@@ -6,7 +6,9 @@
 .vscode
 .DS_Store
 
+# Helm deps
 mariadb-*.tgz
+raw_secrets.yaml
 
 # Reports file
 report.json

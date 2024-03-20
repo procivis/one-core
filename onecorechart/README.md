@@ -75,6 +75,11 @@ helm upgrade --install one-core . --values values/test/main.yaml -f secrets://va
 helm upgrade --install one-core . --values values/demo/main.yaml -f secrets://values/demo/secrets.yaml --namespace default
 ```
 
+* Trial (Namespace: trial) [https://core.trial.procivis-one.com](https://core.demo.procivis-one.com/swagger-ui/)
+```shell
+helm upgrade --install one-core . --values values/trial/main.yaml -f secrets://values/trial/secrets.yaml --namespace trial
+```
+
 * Uninstall chart:
 ```shell
 helm uninstall one-core --namespace <namespace>
