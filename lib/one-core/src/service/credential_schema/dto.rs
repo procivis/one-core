@@ -54,6 +54,8 @@ pub struct CredentialClaimSchemaDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub claims: Vec<CredentialClaimSchemaDTO>,
 }
 
 pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaListItemResponseDTO>;
@@ -69,9 +71,10 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CredentialClaimSchemaRequestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }

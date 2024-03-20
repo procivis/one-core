@@ -68,8 +68,8 @@ pub enum DatatypeValidationError {
     EnumInvalidValue(String),
 }
 
-pub fn validate_datatypes(
-    query_datatypes: &[&String],
+pub fn validate_datatypes<'a>(
+    query_datatypes: impl Iterator<Item = &'a str>,
     config: &DatatypeConfig,
 ) -> Result<(), ConfigValidationError> {
     for datatype in query_datatypes {
@@ -91,6 +91,7 @@ pub fn validate_datatype_value(
         DatatypeType::Number => validate_number(value, config.get(datatype)?)?,
         DatatypeType::Date => validate_date(value, config.get(datatype)?)?,
         DatatypeType::File => validate_file(value, config.get(datatype)?)?,
+        DatatypeType::Object => validate_object(value, config.get(datatype)?)?,
     };
 
     Ok(())
@@ -254,6 +255,15 @@ fn validate_file(value: &str, params: FileParams) -> Result<(), DatatypeValidati
     Ok(())
 }
 
+#[allow(dead_code)]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ObjectParams {}
+
+fn validate_object(_value: &str, _params: ObjectParams) -> Result<(), DatatypeValidationError> {
+    todo!() // Todo (ONE-1321)
+}
+
 fn parse_min_max_date(value: &str) -> Result<OffsetDateTime, DatatypeValidationError> {
     if value == "NOW" {
         return Ok(OffsetDateTime::now_utc());
@@ -305,14 +315,12 @@ mod tests {
             "};
         let datatype_config: DatatypeConfig = serde_yaml::from_str(datatype_config).unwrap();
 
-        let string_and_number_are_fine = validate_datatypes(
-            &[&"STRING".to_string(), &"NUMBER".to_string()],
-            &datatype_config,
-        );
+        let string_and_number_are_fine =
+            validate_datatypes(["STRING", "NUMBER"].into_iter(), &datatype_config);
         assert!(string_and_number_are_fine.is_ok());
 
         let but_undeclared_type_is_not =
-            validate_datatypes(&[&"UNKNOWN".to_string()], &datatype_config);
+            validate_datatypes(["UNKNOWN"].into_iter(), &datatype_config);
         assert!(but_undeclared_type_is_not.is_err());
     }
 

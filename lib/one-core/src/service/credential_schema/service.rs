@@ -12,14 +12,14 @@ use crate::{
                 CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
                 GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
             },
-            mapper::{from_create_request, schema_create_history_event},
+            mapper::{
+                from_create_request, schema_create_history_event, schema_delete_history_event,
+            },
             CredentialSchemaService,
         },
         error::{BusinessLogicError, EntityNotFoundError, ServiceError},
     },
 };
-
-use super::mapper::schema_delete_history_event;
 
 impl CredentialSchemaService {
     /// Creates a credential according to request

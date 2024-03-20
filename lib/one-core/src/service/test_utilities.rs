@@ -87,6 +87,11 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 type: 'NUMBER'
                 order: 200
                 params: null
+            OBJECT:
+                display: 'display'
+                type: 'OBJECT'
+                order: 300
+                params: null
         keyAlgorithm:
             EDDSA:
                 display: 'display'
