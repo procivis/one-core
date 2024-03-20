@@ -78,6 +78,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .get(credential::controller::get_credential),
         )
         .route(
+            "/api/credential/v1/:id/reactivate",
+            post(credential::controller::reactivate_credential),
+        )
+        .route(
             "/api/credential/v1/:id/revoke",
             post(credential::controller::revoke_credential),
         )
@@ -115,6 +119,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route(
             "/api/history/v1",
             get(history::controller::get_history_list),
+        )
+        .route(
+            "/api/history/v1/:id",
+            get(history::controller::get_history_entry),
         )
         .route("/api/key/v1/:id", get(key::controller::get_key))
         .route(
@@ -308,6 +316,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::credential::controller::get_credential,
             endpoint::credential::controller::get_credential_list,
             endpoint::credential::controller::post_credential,
+            endpoint::credential::controller::reactivate_credential,
             endpoint::credential::controller::revoke_credential,
             endpoint::credential::controller::suspend_credential,
             endpoint::credential::controller::share_credential,
@@ -326,6 +335,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::did_resolver::controller::resolve_did,
 
             endpoint::history::controller::get_history_list,
+            endpoint::history::controller::get_history_entry,
 
             endpoint::key::controller::get_key,
             endpoint::key::controller::get_key_list,
@@ -413,6 +423,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::history::dto::HistoryAction,
                 endpoint::history::dto::HistoryEntityType,
                 endpoint::history::dto::HistorySearchEnumRest,
+                endpoint::history::dto::HistoryMetadataRest,
 
                 endpoint::key::dto::KeyRequestRestDTO,
                 endpoint::key::dto::KeyResponseRestDTO,
@@ -423,6 +434,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::proof::dto::ProofListItemResponseRestDTO,
                 endpoint::proof::dto::ProofDetailResponseRestDTO,
                 endpoint::proof::dto::ProofClaimRestDTO,
+                endpoint::proof::dto::ProofInputRestDTO,
                 endpoint::proof::dto::PresentationDefinitionResponseRestDTO,
                 endpoint::proof::dto::PresentationDefinitionRequestGroupResponseRestDTO,
                 endpoint::proof::dto::PresentationDefinitionRuleRestDTO,
@@ -437,8 +449,9 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
                 endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO,
                 endpoint::proof_schema::dto::ProofClaimSchemaResponseRestDTO,
+                endpoint::proof_schema::dto::ProofInputSchemaRequestRestDTO,
+                endpoint::proof_schema::dto::ProofInputSchemaResponseRestDTO,
 
-                endpoint::ssi::dto::ConnectRequestRestDTO,
                 endpoint::ssi::dto::ConnectVerifierResponseRestDTO,
                 endpoint::ssi::dto::ProofRequestClaimRestDTO,
                 endpoint::ssi::dto::IssuerResponseRestDTO,
@@ -520,8 +533,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 shared_types::HistoryId,
                 shared_types::KeyId,
                 shared_types::OrganisationId,
-                shared_types::KeyId,
-                shared_types::CredentialId,
+                shared_types::ClaimSchemaId,
+                shared_types::ClaimId,
             )
         ),
         tags(

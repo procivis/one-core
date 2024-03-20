@@ -21,11 +21,18 @@ pub mod pkcs11;
 pub mod provider;
 pub mod secure_element;
 
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Debug, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum KeySecurity {
+    Hardware,
+    Software,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct KeyStorageCapabilities {
     pub features: Vec<String>,
     pub algorithms: Vec<String>,
-    pub security: Vec<String>,
+    pub security: Vec<KeySecurity>,
 }
 
 pub struct GeneratedKey {

@@ -1,4 +1,4 @@
-use shared_types::CredentialId;
+use shared_types::{CredentialId, DidId, KeyId};
 
 use crate::model::{credential::Credential, interaction::InteractionId, proof::Proof};
 use std::collections::HashMap;
@@ -19,6 +19,8 @@ pub enum InvitationResponseDTO {
 pub struct PresentationSubmitRequestDTO {
     pub interaction_id: InteractionId,
     pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestDTO>,
+    pub did_id: DidId,
+    pub key_id: Option<KeyId>,
 }
 
 #[derive(Clone, Debug)]

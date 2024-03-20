@@ -6,6 +6,7 @@ use crate::{
     repository::{
         credential_repository::CredentialRepository,
         credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
+        history_repository::HistoryRepository,
     },
 };
 
@@ -24,6 +25,7 @@ pub struct SSIIssuerService {
     protocol_provider: Arc<dyn TransportProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
     core_base_url: Option<String>,
+    history_repository: Arc<dyn HistoryRepository>,
 }
 
 impl SSIIssuerService {
@@ -34,6 +36,7 @@ impl SSIIssuerService {
         protocol_provider: Arc<dyn TransportProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
         core_base_url: Option<String>,
+        history_repository: Arc<dyn HistoryRepository>,
     ) -> Self {
         Self {
             credential_schema_repository,
@@ -42,6 +45,7 @@ impl SSIIssuerService {
             protocol_provider,
             config,
             core_base_url,
+            history_repository,
         }
     }
 }

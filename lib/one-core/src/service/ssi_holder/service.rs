@@ -21,8 +21,8 @@ use crate::{
             CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
             UpdateCredentialRequest,
         },
-        credential_schema::CredentialSchemaRelations,
-        did::DidRelations,
+        credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum},
+        did::{DidRelations, KeyRole},
         interaction::{InteractionId, InteractionRelations},
         key::KeyRelations,
         organisation::OrganisationRelations,
@@ -30,6 +30,7 @@ use crate::{
     },
     provider::{
         credential_formatter::model::CredentialPresentation,
+        key_storage::KeySecurity,
         revocation::lvvc::prepare_bearer_token,
         transport_protocol::{
             dto::{PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential},
@@ -38,13 +39,16 @@ use crate::{
         },
     },
     service::{
-        error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
+        error::{
+            BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+            ValidationError,
+        },
         ssi_issuer::dto::IssuerResponseDTO,
         ssi_validator::validate_config_entity_presence,
     },
     util::oidc::detect_correct_format,
 };
-use shared_types::DidId;
+use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -52,24 +56,15 @@ impl SSIHolderService {
     pub async fn handle_invitation(
         &self,
         url: Url,
-        holder_did_id: &DidId,
+        organisation_id: OrganisationId,
     ) -> Result<InvitationResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let holder_did = self
-            .did_repository
-            .get_did(
-                holder_did_id,
-                &DidRelations {
-                    organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await?;
-
-        let Some(holder_did) = holder_did else {
-            return Err(EntityNotFoundError::Did(*holder_did_id).into());
-        };
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&organisation_id, &Default::default())
+            .await?
+            .ok_or(EntityNotFoundError::Organisation(organisation_id))?;
 
         let DetectedProtocol { protocol, .. } = self
             .protocol_provider
@@ -78,7 +73,7 @@ impl SSIHolderService {
                 "Cannot detect transport protocol".to_string(),
             ))?;
 
-        let response = protocol.handle_invitation(url, holder_did).await?;
+        let response = protocol.handle_invitation(url, organisation).await?;
         match &response {
             InvitationResponseDTO::Credential { credentials, .. } => {
                 for credential in credentials.iter() {
@@ -179,29 +174,43 @@ impl SSIHolderService {
     ) -> Result<(), ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let proof = self
+        let Some(proof) = self
             .proof_repository
             .get_proof_by_interaction_id(
                 &submission.interaction_id,
                 &ProofRelations {
                     state: Some(ProofStateRelations::default()),
                     interaction: Some(InteractionRelations::default()),
-                    holder_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
                     ..Default::default()
                 },
             )
-            .await?;
-
-        let Some(proof) = proof else {
+            .await?
+        else {
             return Err(
                 BusinessLogicError::MissingProofForInteraction(submission.interaction_id).into(),
             );
         };
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+
+        let Some(did) = self
+            .did_repository
+            .get_did(
+                &submission.did_id,
+                &DidRelations {
+                    keys: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
+            return Err(ValidationError::DidNotFound.into());
+        };
+
+        let selected_key = match submission.key_id {
+            Some(key_id) => did.find_key(&key_id, KeyRole::Authentication)?,
+            None => did.find_key_by_role(KeyRole::Authentication)?,
+        };
 
         let transport_protocol = self
             .protocol_provider
@@ -247,7 +256,7 @@ impl SSIHolderService {
                 })
                 .collect::<Result<Vec<String>, ServiceError>>()?;
 
-            let credential = self
+            let Some(credential) = self
                 .credential_repository
                 .get_credential(
                     &credential_request.credential_id,
@@ -264,9 +273,8 @@ impl SSIHolderService {
                         ..Default::default()
                     },
                 )
-                .await?;
-
-            let Some(credential) = credential else {
+                .await?
+            else {
                 return Err(
                     EntityNotFoundError::Credential(credential_request.credential_id).into(),
                 );
@@ -364,10 +372,9 @@ impl SSIHolderService {
                     .map_err(TransportProtocolError::HttpRequestError)?;
 
                 let lvvc_content = response.credential;
-
                 let lvvc_presentation = CredentialPresentation {
                     token: lvvc_content.to_owned(),
-                    disclosed_keys: submitted_keys,
+                    disclosed_keys: vec!["id".to_string(), "status".to_string()],
                 };
 
                 let formatted_lvvc_presentation = formatter
@@ -383,10 +390,14 @@ impl SSIHolderService {
         }
 
         let submit_result = transport_protocol
-            .submit_proof(&proof, credential_presentations)
+            .submit_proof(&proof, credential_presentations, &did, selected_key)
             .await;
 
         if submit_result.is_ok() {
+            self.proof_repository
+                .set_proof_holder_did(&proof.id, did)
+                .await?;
+
             self.proof_repository
                 .set_proof_claims(&proof.id, submitted_claims)
                 .await?;
@@ -421,6 +432,8 @@ impl SSIHolderService {
     pub async fn accept_credential(
         &self,
         interaction_id: &InteractionId,
+        did_id: DidId,
+        key_id: Option<KeyId>,
     ) -> Result<(), ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
@@ -435,10 +448,6 @@ impl SSIHolderService {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
-                    holder_did: Some(DidRelations {
-                        keys: Some(KeyRelations::default()),
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
                     issuer_did: Some(DidRelations::default()),
                     ..Default::default()
                 },
@@ -452,8 +461,52 @@ impl SSIHolderService {
             .into());
         }
 
+        let Some(did) = self
+            .did_repository
+            .get_did(
+                &did_id,
+                &DidRelations {
+                    keys: Some(Default::default()),
+                    organisation: None,
+                },
+            )
+            .await?
+        else {
+            return Err(ValidationError::DidNotFound.into());
+        };
+
+        let selected_key = match key_id {
+            Some(key_id) => did.find_key(&key_id, KeyRole::Authentication)?,
+            None => did.find_key_by_role(KeyRole::Authentication)?,
+        };
+
+        let key_security = self
+            .key_provider
+            .get_key_storage(&selected_key.storage_type)
+            .ok_or_else(|| MissingProviderError::KeyStorage(selected_key.storage_type.clone()))?
+            .get_capabilities()
+            .security;
+
         for credential in credentials {
             throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
+
+            let wallet_storage_matches = match credential
+                .schema
+                .as_ref()
+                .and_then(|schema| schema.wallet_storage_type.as_ref())
+            {
+                Some(WalletStorageTypeEnum::Hardware) => {
+                    key_security.contains(&KeySecurity::Hardware)
+                }
+                Some(WalletStorageTypeEnum::Software) => {
+                    key_security.contains(&KeySecurity::Software)
+                }
+                None => true,
+            };
+
+            if !wallet_storage_matches {
+                return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
+            }
 
             let issuer_response = self
                 .protocol_provider
@@ -461,7 +514,7 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::TransportProtocol(
                     credential.transport.clone(),
                 ))?
-                .accept_credential(&credential)
+                .accept_credential(&credential, &did, selected_key)
                 .await?;
 
             self.credential_repository
@@ -473,10 +526,10 @@ impl SSIHolderService {
                         suspend_end_date: None,
                     }),
                     credential: Some(issuer_response.credential.bytes().collect()),
-                    holder_did_id: None,
+                    holder_did_id: Some(did_id),
                     issuer_did_id: None,
                     interaction: None,
-                    key: None,
+                    key: Some(selected_key.id),
                     redirect_uri: None,
                 })
                 .await?;

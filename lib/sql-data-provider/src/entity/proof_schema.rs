@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -12,8 +13,7 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub expire_duration: u32,
-    pub validity_constraint: Option<i64>,
-    pub organisation_id: String,
+    pub organisation_id: OrganisationId,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -28,8 +28,8 @@ pub enum Relation {
     Organisation,
     #[sea_orm(has_many = "super::proof::Entity")]
     Proof,
-    #[sea_orm(has_many = "super::proof_schema_claim_schema::Entity")]
-    ProofSchemaClaimSchema,
+    #[sea_orm(has_many = "super::proof_input_schema::Entity")]
+    ProofInputSchema,
 }
 
 impl Related<super::organisation::Entity> for Entity {
@@ -44,22 +44,9 @@ impl Related<super::proof::Entity> for Entity {
     }
 }
 
-impl Related<super::proof_schema_claim_schema::Entity> for Entity {
+impl Related<super::proof_input_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ProofSchemaClaimSchema.def()
-    }
-}
-
-impl Related<super::claim_schema::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::proof_schema_claim_schema::Relation::ClaimSchema.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::proof_schema_claim_schema::Relation::ProofSchema
-                .def()
-                .rev(),
-        )
+        Relation::ProofInputSchema.def()
     }
 }
 

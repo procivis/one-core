@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::proof_schema::ProofSchema;
 use crate::{
     config::core_config::AppConfig,
     model::{
@@ -33,6 +34,11 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         leeway: 60
+            JSON_LD_CLASSIC:
+                type: 'JSON_LD_CLASSIC'
+                display: 'display'
+                order: 1
+                params: null
         exchange:
             PROCIVIS_TEMPORARY:
                 display: 'display'
@@ -81,6 +87,11 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 type: 'NUMBER'
                 order: 200
                 params: null
+            OBJECT:
+                display: 'display'
+                type: 'OBJECT'
+                order: 300
+                params: null
         keyAlgorithm:
             EDDSA:
                 display: 'display'
@@ -102,7 +113,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
 }
 
 pub fn dummy_credential() -> Credential {
-    let claim_schema_id = Uuid::new_v4();
+    let claim_schema_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
 
     Credential {
@@ -156,7 +167,7 @@ pub fn dummy_credential() -> Credential {
                 required: true,
             }]),
             organisation: Some(Organisation {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
@@ -181,9 +192,9 @@ pub fn dummy_did() -> Did {
         name: "John".to_string(),
         did: "did".parse().unwrap(),
         did_type: DidType::Local,
-        did_method: "John".to_string(),
+        did_method: "INTERNAL".to_string(),
         keys: None,
-        organisation: None,
+        organisation: Some(dummy_organisation()),
         deactivated: false,
     }
 }
@@ -222,7 +233,45 @@ pub fn dummy_key() -> Key {
 
 pub fn dummy_organisation() -> Organisation {
     Organisation {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+    }
+}
+
+pub fn dummy_proof_schema() -> ProofSchema {
+    ProofSchema {
         id: Uuid::new_v4(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        deleted_at: None,
+        name: "Proof schema".to_string(),
+        expire_duration: 100,
+        organisation: None,
+        input_schemas: None,
+    }
+}
+
+pub fn dummy_credential_schema() -> CredentialSchema {
+    CredentialSchema {
+        id: Uuid::new_v4(),
+        deleted_at: None,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "name".to_string(),
+        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        format: "format".to_string(),
+        revocation_method: "format".to_string(),
+        claim_schemas: None,
+        organisation: None,
+    }
+}
+
+pub fn dummy_claim_schema() -> ClaimSchema {
+    ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "key".to_string(),
+        data_type: "data type".to_string(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
     }

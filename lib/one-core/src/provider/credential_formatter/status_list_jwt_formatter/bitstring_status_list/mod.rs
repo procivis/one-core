@@ -1,10 +1,11 @@
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use self::model::{ContentType, CredentialSubject, StatusPurpose, SubjectType, VCContent, VC};
+use self::model::{ContentType, CredentialSubject, SubjectType, VCContent, VC};
 use crate::provider::credential_formatter::Context;
 use crate::provider::credential_formatter::{
-    error::FormatterError, jwt::model::JWTPayload, AuthenticationFn, VerificationFn,
+    error::FormatterError, jwt::model::JWTPayload,
+    status_list_jwt_formatter::common::StatusPurpose, AuthenticationFn, VerificationFn,
 };
 use crate::{model::did::Did, provider::credential_formatter::jwt::Jwt};
 
@@ -19,6 +20,7 @@ impl BitstringStatusListJwtFormatter {
         encoded_list: String,
         algorithm: String,
         auth_fn: AuthenticationFn,
+        status_purpose: StatusPurpose,
     ) -> Result<String, FormatterError> {
         let subject = format!("{}#list", revocation_list_url);
         let vc = VC {
@@ -34,7 +36,7 @@ impl BitstringStatusListJwtFormatter {
                 credential_subject: CredentialSubject {
                     id: subject.to_owned(),
                     r#type: SubjectType::BitstringStatusList,
-                    status_purpose: StatusPurpose::Revocation,
+                    status_purpose,
                     encoded_list,
                 },
             },

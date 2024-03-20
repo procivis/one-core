@@ -1,13 +1,15 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{DidId, DidValue};
+use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
+
+use crate::service::error::{ServiceError, ValidationError};
 
 use super::{
     common::GetListResponse,
     key::{Key, KeyRelations},
     list_filter::{ListFilterValue, StringMatch},
     list_query::ListQuery,
-    organisation::{Organisation, OrganisationId, OrganisationRelations},
+    organisation::{Organisation, OrganisationRelations},
 };
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -57,6 +59,36 @@ pub struct Did {
 impl Did {
     pub fn is_remote(&self) -> bool {
         self.did_type.is_remote()
+    }
+
+    pub fn find_key(&self, key_id: &KeyId, role: KeyRole) -> Result<&Key, ServiceError> {
+        let mut same_id_keys = self
+            .keys
+            .as_ref()
+            .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
+            .iter()
+            .filter(|entry| &entry.key.id == key_id)
+            .peekable();
+
+        if same_id_keys.peek().is_none() {
+            return Err(ValidationError::KeyNotFound.into());
+        }
+
+        Ok(&same_id_keys
+            .find(|entry| entry.role == role)
+            .ok_or_else(|| ValidationError::InvalidKey("key has wrong role".into()))?
+            .key)
+    }
+
+    pub fn find_key_by_role(&self, role: KeyRole) -> Result<&Key, ServiceError> {
+        Ok(&self
+            .keys
+            .as_ref()
+            .ok_or_else(|| ServiceError::MappingError("keys is None".to_string()))?
+            .iter()
+            .find(|entry| entry.role == role)
+            .ok_or_else(|| ValidationError::InvalidKey("no matching keys found".into()))?
+            .key)
     }
 }
 

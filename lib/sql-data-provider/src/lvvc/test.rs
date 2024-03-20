@@ -122,7 +122,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
     let credential_schema_id = test_utilities::insert_credential_schema_to_database(
         db_conn,
         None,
-        &organisation_id,
+        organisation_id,
         "credential-schema",
         "jwt",
         "LVVC",
@@ -136,7 +136,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         "did-test",
         Uuid::new_v4().into(),
         "did-value".parse().unwrap(),
-        &organisation_id,
+        organisation_id,
         "web",
         DidType::Remote,
         None,

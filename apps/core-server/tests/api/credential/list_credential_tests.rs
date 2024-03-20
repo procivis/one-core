@@ -15,7 +15,7 @@ async fn test_get_list_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     for _ in 1..15 {
@@ -55,7 +55,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     for _ in 1..15 {
@@ -110,7 +110,7 @@ async fn test_get_list_credential_filter_by_role() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     for (number, role, role_enum) in [
@@ -180,13 +180,13 @@ async fn test_get_list_credential_filter_by_name() {
     let credential_schema1 = context
         .db
         .credential_schemas
-        .create("test 1", &organisation, "NONE")
+        .create("test 1", &organisation, "NONE", Default::default())
         .await;
 
     let credential_schema2 = context
         .db
         .credential_schemas
-        .create("test 2", &organisation, "NONE")
+        .create("test 2", &organisation, "NONE", Default::default())
         .await;
 
     let credential = context
@@ -237,7 +237,7 @@ async fn test_get_list_credential_filter_by_ids() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let mut credentials = vec![];

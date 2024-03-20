@@ -1,18 +1,16 @@
 use serde::{Deserialize, Serialize};
+use shared_types::{ClaimSchemaId, OrganisationId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use dto_mapper::From;
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::{
-    claim_schema::ClaimSchemaId,
     common::{GetListQueryParams, GetListResponse},
     credential_schema::{
         CredentialFormat, CredentialSchema, CredentialSchemaId, RevocationMethod,
         SortableCredentialSchemaColumn,
     },
-    organisation::OrganisationId,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, From)]
@@ -56,6 +54,8 @@ pub struct CredentialClaimSchemaDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub claims: Vec<CredentialClaimSchemaDTO>,
 }
 
 pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaListItemResponseDTO>;
@@ -66,14 +66,15 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CredentialClaimSchemaRequestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }

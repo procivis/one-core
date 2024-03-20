@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::dto::{ClaimBindingDTO, CredentialSchemaBindingDTO, ProofRequestClaimBindingDTO};
+use super::dto::{ClaimBindingDTO, CredentialSchemaBindingDTO};
 use crate::{
     dto::{
         CredentialDetailBindingDTO, CredentialListItemBindingDTO, DidRequestBindingDTO,
@@ -8,24 +8,26 @@ use crate::{
         ProofRequestBindingDTO,
     },
     utils::{into_id, TimestampFormat},
-    HistoryListItemBindingDTO,
+    HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
 use dto_mapper::convert_inner;
-use one_core::service::{
-    credential::dto::{
-        CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-        DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+use one_core::{
+    model::did::DidType,
+    service::{
+        credential::dto::{
+            CredentialDetailResponseDTO, CredentialListItemResponseDTO,
+            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+        },
+        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
+        error::ServiceError,
+        history::dto::{HistoryMetadataResponse, HistoryResponseDTO},
+        key::dto::KeyRequestDTO,
+        proof::dto::ProofDetailResponseDTO,
+        ssi_holder::dto::InvitationResponseDTO,
     },
-    did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
-    error::ServiceError,
-    history::dto::HistoryResponseDTO,
-    key::dto::KeyRequestDTO,
-    proof::dto::{ProofClaimDTO, ProofDetailResponseDTO},
-    ssi_holder::dto::InvitationResponseDTO,
 };
 use serde_json::json;
 use shared_types::KeyId;
-use uuid::Uuid;
 
 pub(crate) fn serialize_config_entity(
     input: HashMap<String, serde_json::Value>,
@@ -53,6 +55,9 @@ impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
             lvvc_issuance_date: value
                 .lvvc_issuance_date
                 .map(|lvvc_issuance_date| lvvc_issuance_date.format_timestamp()),
+            suspend_end_date: value
+                .suspend_end_date
+                .map(|suspend_end_date| suspend_end_date.format_timestamp()),
         }
     }
 }
@@ -69,6 +74,9 @@ impl From<CredentialListItemResponseDTO> for CredentialListItemBindingDTO {
             state: value.state.into(),
             schema: value.schema.into(),
             role: value.role.into(),
+            suspend_end_date: value
+                .suspend_end_date
+                .map(|suspend_end_date| suspend_end_date.format_timestamp()),
         }
     }
 }
@@ -79,11 +87,17 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
-            claims: convert_inner(value.claims),
+            // will be fixed in ONE-1735
+            claims: vec![],
             verifier_did: value.verifier_did.map(|inner| inner.did.to_string()),
             transport: value.transport,
             redirect_uri: value.redirect_uri,
-            credentials: convert_inner(value.credentials),
+            credentials: value
+                .proof_inputs
+                .into_iter()
+                .filter_map(|p| p.credential)
+                .map(Into::into)
+                .collect(),
         }
     }
 }
@@ -113,18 +127,6 @@ impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
     }
 }
 
-impl From<ProofClaimDTO> for ProofRequestClaimBindingDTO {
-    fn from(value: ProofClaimDTO) -> Self {
-        Self {
-            id: value.schema.id.to_string(),
-            key: value.schema.key,
-            data_type: value.schema.data_type,
-            required: value.schema.required,
-            credential_schema: value.schema.credential_schema.into(),
-        }
-    }
-}
-
 impl From<InvitationResponseDTO> for HandleInvitationResponseBindingEnum {
     fn from(value: InvitationResponseDTO) -> Self {
         match value {
@@ -150,7 +152,7 @@ impl TryFrom<KeyRequestBindingDTO> for KeyRequestDTO {
     type Error = ServiceError;
     fn try_from(request: KeyRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
-            organisation_id: Uuid::parse_str(&request.organisation_id)?,
+            organisation_id: into_id(&request.organisation_id)?,
             key_type: request.key_type.to_owned(),
             key_params: json!(request.key_params),
             name: request.name.to_owned(),
@@ -164,10 +166,10 @@ impl TryFrom<DidRequestBindingDTO> for CreateDidRequestDTO {
     type Error = ServiceError;
     fn try_from(request: DidRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
-            organisation_id: Uuid::parse_str(&request.organisation_id)?,
+            organisation_id: into_id(&request.organisation_id)?,
             name: request.name,
             did_method: request.did_method,
-            did_type: request.did_type.into(),
+            did_type: DidType::Local,
             keys: request.keys.try_into()?,
             params: Some(json!(request.params)),
         })
@@ -191,6 +193,16 @@ impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
     }
 }
 
+impl From<HistoryMetadataResponse> for HistoryMetadataBinding {
+    fn from(value: HistoryMetadataResponse) -> Self {
+        match value {
+            HistoryMetadataResponse::UnexportableEntities(value) => Self::UnexportableEntities {
+                value: value.into(),
+            },
+        }
+    }
+}
+
 impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
     fn from(value: HistoryResponseDTO) -> Self {
         Self {
@@ -199,6 +211,7 @@ impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
             action: value.action.into(),
             entity_id: value.entity_id.map(|id| id.to_string()),
             entity_type: value.entity_type.into(),
+            metadata: convert_inner(value.metadata),
             organisation_id: value.organisation_id.to_string(),
         }
     }

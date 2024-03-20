@@ -11,7 +11,7 @@ async fn test_issuance_reject_procivis_temp() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
     let interaction = context
         .db
@@ -60,15 +60,11 @@ async fn test_issuance_reject_procivis_temp() {
 async fn test_issuance_reject_openid4vc() {
     // GIVEN
     let (context, organisation, did, _) = TestContext::new_with_did().await;
-    let holder_did = context
-        .db
-        .dids
-        .create(&organisation, Default::default())
-        .await;
+
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let interaction_data = serde_json::to_vec(&json!({
@@ -93,7 +89,6 @@ async fn test_issuance_reject_openid4vc() {
             &did,
             "OPENID4VC",
             TestingCredentialParams {
-                holder_did: Some(holder_did),
                 interaction: Some(interaction.to_owned()),
                 ..Default::default()
             },

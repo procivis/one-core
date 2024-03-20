@@ -105,7 +105,7 @@ where
         query_params: &GetListQueryParams<SortableColumn>,
         column: &FilterColumn,
     ) -> Select<T> {
-        let conditions = Condition::all().add(column.eq(&query_params.organisation_id));
+        let conditions = Condition::all().add(column.eq(query_params.organisation_id));
         self.filter(conditions)
     }
 
@@ -124,10 +124,13 @@ where
 }
 
 #[cfg(test)]
+use shared_types::OrganisationId;
+
+#[cfg(test)]
 pub fn from_pagination<T: GetEntityColumn>(
     page: u32,
     page_size: u32,
-    organisation_id: String,
+    organisation_id: OrganisationId,
 ) -> GetListQueryParams<T> {
     GetListQueryParams {
         page,

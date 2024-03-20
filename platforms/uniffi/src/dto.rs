@@ -3,6 +3,8 @@ use crate::mapper::serialize_config_entity;
 use crate::utils::{format_timestamp_opt, into_id, TimestampFormat};
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into, TryInto};
+use one_core::model::common::ExactColumn;
+use one_core::model::credential::SortableCredentialColumn;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
@@ -59,8 +61,9 @@ pub struct ConfigBindingDTO {
     pub key_storage: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Debug, Clone, From, Into)]
 #[from(CredentialStateEnum)]
+#[into("one_core::model::credential::CredentialStateEnum")]
 pub enum CredentialStateBindingEnum {
     Created,
     Pending,
@@ -98,12 +101,41 @@ pub struct CredentialSchemaListBindingDTO {
     pub total_items: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Into)]
+#[into(ExactColumn)]
+pub enum CredentialListQueryExactColumnBindingEnum {
+    Name,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into("one_core::model::common::SortDirection")]
+pub enum SortDirection {
+    Ascending,
+    Descending,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(SortableCredentialColumn)]
+pub enum SortableCredentialColumnBindingEnum {
+    CreatedDate,
+    SchemaName,
+    IssuerDid,
+    State,
+}
+
 pub struct CredentialListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
+
+    pub sort: Option<SortableCredentialColumnBindingEnum>,
+    pub sort_direction: Option<SortDirection>,
+
     pub organisation_id: String,
+    pub name: Option<String>,
+    pub exact: Option<Vec<CredentialListQueryExactColumnBindingEnum>>,
     pub role: Option<CredentialRoleBindingDTO>,
     pub ids: Option<Vec<String>>,
+    pub status: Option<Vec<CredentialStateBindingEnum>>,
 }
 
 #[derive(From)]
@@ -129,6 +161,7 @@ pub struct CredentialDetailBindingDTO {
     pub redirect_uri: Option<String>,
     pub role: CredentialRoleBindingDTO,
     pub lvvc_issuance_date: Option<String>,
+    pub suspend_end_date: Option<String>,
 }
 
 pub struct CredentialListItemBindingDTO {
@@ -141,6 +174,7 @@ pub struct CredentialListItemBindingDTO {
     pub state: CredentialStateBindingEnum,
     pub schema: CredentialSchemaBindingDTO,
     pub role: CredentialRoleBindingDTO,
+    pub suspend_end_date: Option<String>,
 }
 
 #[derive(Debug, Clone, From)]
@@ -325,7 +359,6 @@ pub struct DidRequestBindingDTO {
     pub organisation_id: String,
     pub name: String,
     pub did_method: String,
-    pub did_type: DidTypeBindingEnum,
     pub keys: DidRequestKeysBindingDTO,
     pub params: HashMap<String, String>,
 }
@@ -400,12 +433,20 @@ pub enum HistoryEntityTypeBindingEnum {
     Backup,
 }
 
+#[derive(Debug, Clone)]
+pub enum HistoryMetadataBinding {
+    UnexportableEntities {
+        value: UnexportableEntitiesBindingDTO,
+    },
+}
+
 pub struct HistoryListItemBindingDTO {
     pub id: String,
     pub created_date: String,
     pub action: HistoryActionBindingEnum,
     pub entity_id: Option<String>,
     pub entity_type: HistoryEntityTypeBindingEnum,
+    pub metadata: Option<HistoryMetadataBinding>,
     pub organisation_id: String,
 }
 

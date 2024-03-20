@@ -21,7 +21,7 @@ use crate::provider::transport_protocol::dto::{
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, DidId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -29,6 +29,7 @@ use uuid::Uuid;
 pub(super) fn get_issued_credential_update(
     credential_id: &CredentialId,
     token: &str,
+    holder_did_id: DidId,
 ) -> UpdateCredentialRequest {
     UpdateCredentialRequest {
         id: credential_id.to_owned(),
@@ -39,7 +40,7 @@ pub(super) fn get_issued_credential_update(
             suspend_end_date: None,
         }),
         key: None,
-        holder_did_id: None,
+        holder_did_id: Some(holder_did_id),
         issuer_did_id: None,
         interaction: None,
         redirect_uri: None,
@@ -66,7 +67,6 @@ pub fn proof_from_handle_invitation(
     protocol: &str,
     redirect_uri: Option<String>,
     verifier_did: Option<Did>,
-    holder_did: Did,
     interaction: Interaction,
     now: OffsetDateTime,
     verifier_key: Option<Key>,
@@ -86,7 +86,7 @@ pub fn proof_from_handle_invitation(
         schema: None,
         claims: None,
         verifier_did,
-        holder_did: Some(holder_did),
+        holder_did: None,
         interaction: Some(interaction),
         verifier_key,
     }
@@ -139,6 +139,7 @@ pub async fn get_relevant_credentials(
             // only consider credentials that have finished the issuance flow
             if credential_state.state != CredentialStateEnum::Accepted
                 && credential_state.state != CredentialStateEnum::Revoked
+                && credential_state.state != CredentialStateEnum::Suspended
             {
                 continue;
             }

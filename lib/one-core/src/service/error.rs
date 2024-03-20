@@ -1,4 +1,4 @@
-use shared_types::CredentialId;
+use shared_types::{ClaimSchemaId, CredentialId, HistoryId, OrganisationId};
 use shared_types::{DidId, DidValue, KeyId};
 use strum_macros::Display;
 use thiserror::Error;
@@ -6,11 +6,9 @@ use uuid::Uuid;
 
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
-use crate::model::claim_schema::ClaimSchemaId;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::credential_schema::CredentialSchemaId;
 use crate::model::interaction::InteractionId;
-use crate::model::organisation::OrganisationId;
 use crate::model::proof::ProofId;
 use crate::model::proof::ProofStateEnum;
 use crate::model::proof_schema::ProofSchemaId;
@@ -123,6 +121,9 @@ pub enum EntityNotFoundError {
 
     #[error("Lvvc with credentialId `{0}` not found")]
     Lvvc(CredentialId),
+
+    #[error("History entry `{0}` not found")]
+    History(HistoryId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -179,7 +180,10 @@ pub enum BusinessLogicError {
     MissingCredentialSchema,
 
     #[error("Missing claim schema: {claim_schema_id}")]
-    MissingClaimSchema { claim_schema_id: Uuid },
+    MissingClaimSchema { claim_schema_id: ClaimSchemaId },
+
+    #[error("Missing parent claim schema for: {claim_schema_id}")]
+    MissingParentClaimSchema { claim_schema_id: ClaimSchemaId },
 
     #[error("Missing proof schema: {proof_schema_id}")]
     MissingProofSchema { proof_schema_id: Uuid },
@@ -215,6 +219,12 @@ pub enum BusinessLogicError {
 
     #[error("Revocation method does not support state ({operation})")]
     OperationNotSupportedByRevocationMethod { operation: String },
+
+    #[error("Wallet storage type requirement cannot be fulfilled")]
+    UnfulfilledWalletStorageType,
+
+    #[error("Credential state is Revoked or Suspended and cannot be shared")]
+    CredentialIsRevokedOrSuspended,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -249,8 +259,20 @@ pub enum ValidationError {
     #[error("Credential schema: Missing claims")]
     CredentialSchemaMissingClaims,
 
+    #[error("Credential schema: Missing nested claims for type '{0}'")]
+    CredentialSchemaMissingNestedClaims(String),
+
+    #[error("Credential schema: Nested claims should be empty for type '{0}'")]
+    CredentialSchemaNestedClaimsShouldBeEmpty(String),
+
+    #[error("Credential schema: Claim `{0}` name contains invalid character '/'")]
+    CredentialSchemaClaimSchemaSlashInKeyName(String),
+
     #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
     CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
+
+    #[error("Proof schema: Missing proof input schemas")]
+    ProofSchemaMissingProofInputSchemas,
 
     #[error("Proof schema: Missing claims")]
     ProofSchemaMissingClaims,
@@ -267,6 +289,12 @@ pub enum ValidationError {
         value: String,
         source: ConfigValidationError,
     },
+
+    #[error("Did not found")]
+    DidNotFound,
+
+    #[error("Key not found")]
+    KeyNotFound,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -527,6 +555,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Missing organisation")]
     BR_0088,
 
+    #[strum(to_string = "Missing configuration entity")]
+    BR_0089,
+
     #[strum(to_string = "JSON-LD: BBS key needed")]
     BR_0090,
 
@@ -545,14 +576,38 @@ pub enum ErrorCode {
     #[strum(to_string = "Invalid key")]
     BR_0096,
 
+    #[strum(to_string = "Requested wallet storage type cannot be fulfilled")]
+    BR_0097,
+
     #[strum(to_string = "Revocation method does not support state (REVOKE, SUSPEND)")]
     BR_0098,
+
+    #[strum(to_string = "Credential state is Revoked or Suspended and cannot be shared")]
+    BR_0099,
+
+    #[strum(to_string = "History event not found")]
+    BR_0100,
 
     #[strum(to_string = "Revocation error")]
     BR_0101,
 
     #[strum(to_string = "Missing task")]
     BR_0103,
+
+    #[strum(to_string = "Missing proof input schemas")]
+    BR_0104,
+
+    #[strum(to_string = "Missing nested claims")]
+    BR_0106,
+
+    #[strum(to_string = "Nested claims should be empty")]
+    BR_0107,
+
+    #[strum(to_string = "Slash in claim schema key name")]
+    BR_0108,
+
+    #[strum(to_string = "Missing parent claim schema")]
+    BR_0109,
 }
 
 impl From<FormatError> for ServiceError {
@@ -584,7 +639,7 @@ impl ServiceError {
             ServiceError::KeyStorageError(_) => ErrorCode::BR_0039,
             ServiceError::MappingError(_) => ErrorCode::BR_0047,
             ServiceError::OpenID4VCError(_) => ErrorCode::BR_0048,
-            ServiceError::ConfigValidationError(_) => ErrorCode::BR_0051,
+            ServiceError::ConfigValidationError(error) => error.error_code(),
             ServiceError::BitstringError(_) => ErrorCode::BR_0049,
             ServiceError::MissingSigner(_) => ErrorCode::BR_0060,
             ServiceError::MissingAlgorithm(_) => ErrorCode::BR_0061,
@@ -593,6 +648,20 @@ impl ServiceError {
             ServiceError::DidMethodError(_) => ErrorCode::BR_0064,
             ServiceError::ValidationError(_) | ServiceError::Other(_) => ErrorCode::BR_0000,
             ServiceError::Revocation(_) => ErrorCode::BR_0101,
+        }
+    }
+}
+
+impl ConfigValidationError {
+    pub fn error_code(&self) -> ErrorCode {
+        match self {
+            ConfigValidationError::TypeNotFound(_) => ErrorCode::BR_0089,
+            ConfigValidationError::InvalidKey(_)
+            | ConfigValidationError::KeyDisabled(_)
+            | ConfigValidationError::KeyNotFound(_)
+            | ConfigValidationError::FieldsDeserialization { .. }
+            | ConfigValidationError::InvalidType(_, _)
+            | ConfigValidationError::DatatypeValidation(_) => ErrorCode::BR_0051,
         }
     }
 }
@@ -609,6 +678,7 @@ impl EntityNotFoundError {
             EntityNotFoundError::Key(_) => ErrorCode::BR_0037,
             EntityNotFoundError::CredentialSchema(_) => ErrorCode::BR_0006,
             EntityNotFoundError::Lvvc(_) => ErrorCode::BR_0000,
+            EntityNotFoundError::History(_) => ErrorCode::BR_0100,
         }
     }
 }
@@ -631,6 +701,7 @@ impl BusinessLogicError {
             BusinessLogicError::MissingCredentialData { .. } => ErrorCode::BR_0005,
             BusinessLogicError::MissingCredentialSchema => ErrorCode::BR_0009,
             BusinessLogicError::MissingClaimSchema { .. } => ErrorCode::BR_0010,
+            BusinessLogicError::MissingParentClaimSchema { .. } => ErrorCode::BR_0109,
             BusinessLogicError::MissingRevocationListForDid { .. } => ErrorCode::BR_0035,
             BusinessLogicError::MissingProofSchema { .. } => ErrorCode::BR_0020,
             BusinessLogicError::MissingInteractionForAccessToken { .. } => ErrorCode::BR_0033,
@@ -643,9 +714,11 @@ impl BusinessLogicError {
             BusinessLogicError::MissingProofForInteraction(_) => ErrorCode::BR_0094,
             BusinessLogicError::StatusList2021NotSupported => ErrorCode::BR_0095,
             BusinessLogicError::CredentialAlreadyRevoked => ErrorCode::BR_0092,
+            BusinessLogicError::UnfulfilledWalletStorageType => ErrorCode::BR_0097,
             BusinessLogicError::OperationNotSupportedByRevocationMethod { .. } => {
                 ErrorCode::BR_0098
             }
+            BusinessLogicError::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
         }
     }
 }
@@ -667,6 +740,12 @@ impl ValidationError {
             ValidationError::BBSNotSupported => ErrorCode::BR_0091,
             ValidationError::InvalidKeyStorage(_) => ErrorCode::BR_0041,
             ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
+            ValidationError::DidNotFound => ErrorCode::BR_0024,
+            ValidationError::KeyNotFound => ErrorCode::BR_0037,
+            ValidationError::ProofSchemaMissingProofInputSchemas => ErrorCode::BR_0104,
+            ValidationError::CredentialSchemaMissingNestedClaims(_) => ErrorCode::BR_0106,
+            ValidationError::CredentialSchemaNestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
+            ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
         }
     }
 }

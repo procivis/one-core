@@ -39,7 +39,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
             name: "Credential schema name".to_string(),
             format: "Credential schema format".to_string(),
             revocation_method: "Credential schema revocation method".to_string(),
-            organisation_id: id,
+            organisation_id: id.into(),
         },
         issuer_did: Some(DidListItemResponseDTO {
             id: id.into(),
@@ -54,23 +54,25 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
         claims: vec![
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {
-                    id,
+                    id: id.into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     key: "name".to_string(),
                     datatype: "STRING".to_string(),
                     required: true,
+                    claims: vec![],
                 },
                 value: "John".to_string(),
             },
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {
-                    id,
+                    id: id.into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     key: "age".to_string(),
                     datatype: "NUMBER".to_string(),
                     required: true,
+                    claims: vec![],
                 },
                 value: "42".to_string(),
             },

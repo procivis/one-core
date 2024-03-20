@@ -6,8 +6,11 @@ use super::dto::{
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
+use crate::config::core_config::{FormatType, Params};
+use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchemaId;
-use crate::service::error::EntityNotFoundError;
+use crate::service::error::{BusinessLogicError, EntityNotFoundError};
+use crate::service::ssi_issuer::mapper::credential_rejected_history_event;
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -34,7 +37,6 @@ impl SSIIssuerService {
     pub async fn issuer_connect(
         &self,
         credential_id: &CredentialId,
-        holder_did_value: &DidValue,
     ) -> Result<CredentialDetailResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
@@ -63,34 +65,18 @@ impl SSIIssuerService {
 
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
-        let credential_schema = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
-
-        /*
-         * TODO: holder_did_value is not verified if it's a valid/supported DID
-         * I was able to insert 'test' string as a DID value and it got accepted
-         */
-        let holder_did = get_or_create_did(
-            &*self.did_repository,
-            &credential_schema.organisation,
-            holder_did_value,
-        )
-        .await?;
-
-        let now: OffsetDateTime = OffsetDateTime::now_utc();
+        let now = OffsetDateTime::now_utc();
         let new_state = CredentialStateEnum::Offered;
 
         self.credential_repository
             .update_credential(UpdateCredentialRequest {
                 id: credential_id.to_owned(),
-                holder_did_id: Some(holder_did.id),
                 state: Some(CredentialState {
                     created_date: now,
                     state: new_state.clone(),
                     suspend_end_date: None,
                 }),
+                holder_did_id: None,
                 credential: None,
                 issuer_did_id: None,
                 interaction: None,
@@ -99,8 +85,6 @@ impl SSIIssuerService {
             })
             .await?;
 
-        // Update local copy for conversion.
-        credential.holder_did = Some(holder_did);
         if let Some(states) = &mut credential.state {
             states.push(CredentialState {
                 created_date: now,
@@ -115,13 +99,39 @@ impl SSIIssuerService {
     pub async fn issuer_submit(
         &self,
         credential_id: &CredentialId,
+        did_value: DidValue,
     ) -> Result<IssuerResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
+        let Some(credential) = self
+            .credential_repository
+            .get_credential(
+                credential_id,
+                &CredentialRelations {
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
+            return Err(EntityNotFoundError::Credential(*credential_id).into());
+        };
+
+        let did = get_or_create_did(
+            self.did_repository.as_ref(),
+            &credential.schema.and_then(|schema| schema.organisation),
+            &did_value,
+        )
+        .await?;
+
         let token = self
             .protocol_provider
-            .issue_credential(credential_id)
+            .issue_credential(credential_id, did)
             .await?;
+
         Ok(IssuerResponseDTO {
             credential: token.credential,
             format: token.format,
@@ -137,6 +147,7 @@ impl SSIIssuerService {
                 credential_id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
+                    issuer_did: Some(DidRelations::default()),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
@@ -172,10 +183,114 @@ impl SSIIssuerService {
             })
             .await?;
 
+        let _ = self
+            .history_repository
+            .create_history(credential_rejected_history_event(&credential))
+            .await;
+
         Ok(())
     }
 
     pub async fn get_json_ld_context(
+        &self,
+        id: &str,
+    ) -> Result<JsonLDContextResponseDTO, ServiceError> {
+        if self
+            .config
+            .format
+            .get_by_type::<Params>(FormatType::JsonLdClassic)
+            .is_err()
+            && self
+                .config
+                .format
+                .get_by_type::<Params>(FormatType::JsonLdBbsplus)
+                .is_err()
+        {
+            return Err(ServiceError::from(ConfigValidationError::TypeNotFound(
+                "JSON_LD".to_string(),
+            )));
+        }
+
+        match id {
+            "lvvc.json" => self.get_json_ld_context_for_lvvc().await,
+            id => {
+                let credential_schema_id = CredentialSchemaId::parse_str(id).map_err(|_| {
+                    ServiceError::from(BusinessLogicError::GeneralInputValidationError)
+                })?;
+                self.get_json_ld_context_for_credential_schema(credential_schema_id)
+                    .await
+            }
+        }
+    }
+
+    async fn get_json_ld_context_for_lvvc(&self) -> Result<JsonLDContextResponseDTO, ServiceError> {
+        let version = 1.1;
+        let protected = true;
+        let id = "@id";
+        let r#type = "@type";
+
+        let base_url = format!(
+            "{}/ssi/context/v1/lvvc.json",
+            self.core_base_url
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "Host URL not specified".to_string()
+                ))?,
+        );
+
+        Ok(JsonLDContextResponseDTO {
+            context: JsonLDContextDTO {
+                version,
+                protected,
+                id: id.to_owned(),
+                r#type: r#type.to_owned(),
+                entities: HashMap::from([
+                    (
+                        "LvvcCredential".to_string(),
+                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                            id: get_url_with_fragment(&base_url, "LvvcCredential")?,
+                            context: JsonLDContextDTO {
+                                version,
+                                protected,
+                                id: id.to_owned(),
+                                r#type: r#type.to_owned(),
+                                entities: Default::default(),
+                            },
+                        }),
+                    ),
+                    (
+                        "LvvcSubject".to_string(),
+                        JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
+                            id: get_url_with_fragment(&base_url, "LvvcSubject")?,
+                            context: JsonLDContextDTO {
+                                version,
+                                protected,
+                                id: id.to_owned(),
+                                r#type: r#type.to_owned(),
+                                entities: HashMap::from([
+                                    (
+                                        "status".to_string(),
+                                        JsonLDEntityDTO::Reference(get_url_with_fragment(
+                                            &base_url, "status",
+                                        )?),
+                                    ),
+                                    (
+                                        "suspendEndDate".to_string(),
+                                        JsonLDEntityDTO::Reference(get_url_with_fragment(
+                                            &base_url,
+                                            "suspendEndDate",
+                                        )?),
+                                    ),
+                                ]),
+                            },
+                        }),
+                    ),
+                ]),
+            },
+        })
+    }
+
+    async fn get_json_ld_context_for_credential_schema(
         &self,
         credential_schema_id: CredentialSchemaId,
     ) -> Result<JsonLDContextResponseDTO, ServiceError> {

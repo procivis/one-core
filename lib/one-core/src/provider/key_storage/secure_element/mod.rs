@@ -9,6 +9,8 @@ use crate::{
     service::error::{ServiceError, ValidationError},
 };
 
+use super::KeySecurity;
+
 #[cfg_attr(test, mockall::automock)]
 pub trait NativeKeyStorage: Send + Sync {
     fn generate_key(&self, key_alias: String) -> Result<GeneratedKey, ServiceError>;
@@ -47,7 +49,7 @@ impl KeyStorage for SecureElementKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
             algorithms: vec!["ES256".to_string()],
-            security: vec!["HARDWARE".to_string()],
+            security: vec![KeySecurity::Hardware],
             features: vec![],
         }
     }

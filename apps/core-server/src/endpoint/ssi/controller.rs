@@ -1,10 +1,10 @@
 use super::dto::{
-    ConnectRequestRestDTO, ConnectVerifierResponseRestDTO, IssuerResponseRestDTO,
-    JsonLDContextResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
-    OpenID4VPClientMetadataResponseRestDTO, OpenID4VPDirectPostRequestRestDTO,
-    OpenID4VPDirectPostResponseRestDTO, OpenID4VPPresentationDefinitionResponseRestDTO,
-    PostSsiIssuerConnectQueryParams, PostSsiIssuerSubmitQueryParams,
-    PostSsiVerifierConnectQueryParams, ProofRequestQueryParams,
+    ConnectVerifierResponseRestDTO, IssuerResponseRestDTO, JsonLDContextResponseRestDTO,
+    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
+    OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
+    OpenID4VPPresentationDefinitionResponseRestDTO, PostSsiIssuerConnectQueryParams,
+    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRejectQueryParams,
+    ProofSubmitQueryParams,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
@@ -36,7 +36,6 @@ use uuid::Uuid;
 #[utoipa::path(
     post,
     path = "/ssi/temporary-verifier/v1/connect",
-    request_body = ConnectRequestRestDTO,
     responses(OkOrErrorResponse<ConnectVerifierResponseRestDTO>),
     params(
         PostSsiVerifierConnectQueryParams
@@ -49,15 +48,11 @@ pub(crate) async fn ssi_verifier_connect(
         Query<PostSsiVerifierConnectQueryParams>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(Json(request), _): WithRejection<
-        Json<ConnectRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
 ) -> OkOrErrorResponse<ConnectVerifierResponseRestDTO> {
     let result = state
         .core
         .ssi_verifier_service
-        .connect_to_holder(&query.proof, &request.did, &query.redirect_uri)
+        .connect_to_holder(&query.proof, &query.redirect_uri)
         .await;
     OkOrErrorResponse::from_result(result, state, "connecting verifier")
 }
@@ -463,6 +458,14 @@ pub(crate) async fn oidc_verifier_direct_post(
             tracing::error!("Config validation error: {error}");
             StatusCode::NOT_FOUND.into_response()
         }
+        Err(ServiceError::BusinessLogic(BusinessLogicError::CredentialIsRevokedOrSuspended)) => {
+            tracing::error!("Credential is revoked or suspended");
+            (
+                StatusCode::BAD_REQUEST,
+                "Credential is revoked or suspended",
+            )
+                .into_response()
+        }
         Err(ServiceError::BusinessLogic(BusinessLogicError::MissingProofForInteraction(_))) => {
             tracing::error!("Missing interaction or proof");
             (StatusCode::BAD_REQUEST, "Missing interaction of proof").into_response()
@@ -591,13 +594,13 @@ pub(crate) async fn oidc_client_metadata(
     post,
     path = "/ssi/temporary-verifier/v1/reject",
     responses(EmptyOrErrorResponse),
-    params(ProofRequestQueryParams),
+    params(ProofRejectQueryParams),
     tag = "ssi"
 )]
 pub(crate) async fn ssi_verifier_reject_proof(
     state: State<AppState>,
     WithRejection(Query(query), _): WithRejection<
-        Query<ProofRequestQueryParams>,
+        Query<ProofRejectQueryParams>,
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
@@ -614,13 +617,13 @@ pub(crate) async fn ssi_verifier_reject_proof(
     path = "/ssi/temporary-verifier/v1/submit",
     request_body = String, // signed JWT
     responses(EmptyOrErrorResponse),
-    params(ProofRequestQueryParams),
+    params(ProofSubmitQueryParams ),
     tag = "ssi",
 )]
 pub(crate) async fn ssi_verifier_submit_proof(
     state: State<AppState>,
     WithRejection(Query(query), _): WithRejection<
-        Query<ProofRequestQueryParams>,
+        Query<ProofSubmitQueryParams>,
         ErrorResponseRestDTO,
     >,
     request: String,
@@ -628,7 +631,7 @@ pub(crate) async fn ssi_verifier_submit_proof(
     let result = state
         .core
         .ssi_verifier_service
-        .submit_proof(&query.proof, &request)
+        .submit_proof(query.proof, query.did_value, &request)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "submitting proof")
 }
@@ -636,7 +639,6 @@ pub(crate) async fn ssi_verifier_submit_proof(
 #[utoipa::path(
     post,
     path = "/ssi/temporary-issuer/v1/connect",
-    request_body = ConnectRequestRestDTO,
     responses(OkOrErrorResponse<GetCredentialResponseRestDTO>),
     params(PostSsiIssuerConnectQueryParams),
     tag = "ssi",
@@ -647,15 +649,11 @@ pub(crate) async fn ssi_issuer_connect(
         Query<PostSsiIssuerConnectQueryParams>,
         ErrorResponseRestDTO,
     >,
-    WithRejection(Json(request), _): WithRejection<
-        Json<ConnectRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
 ) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
     let result = state
         .core
         .ssi_issuer_service
-        .issuer_connect(&query.credential, &request.did)
+        .issuer_connect(&query.credential)
         .await;
     OkOrErrorResponse::from_result(result, state, "connecting to issuer")
 }
@@ -699,7 +697,7 @@ pub(crate) async fn ssi_issuer_submit(
     let result = state
         .core
         .ssi_issuer_service
-        .issuer_submit(&query.credential_id)
+        .issuer_submit(&query.credential_id, query.did_value)
         .await;
     OkOrErrorResponse::from_result(result, state, "accepting credential")
 }
@@ -708,7 +706,7 @@ pub(crate) async fn ssi_issuer_submit(
     get,
     path = "/ssi/context/v1/{id}",
     params(
-        ("id" = Uuid, Path, description = "Credential schema id")
+        ("id" = String, Path, description = "context id or credentialSchemaId")
     ),
     responses(
         (status = 200, description = "OK", body = JsonLDContextResponseRestDTO),
@@ -719,13 +717,9 @@ pub(crate) async fn ssi_issuer_submit(
 )]
 pub(crate) async fn get_json_ld_context(
     state: State<AppState>,
-    WithRejection(Path(credential_schema_id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
 ) -> Response {
-    let result = state
-        .core
-        .ssi_issuer_service
-        .get_json_ld_context(credential_schema_id)
-        .await;
+    let result = state.core.ssi_issuer_service.get_json_ld_context(&id).await;
 
     match result {
         Ok(value) => (

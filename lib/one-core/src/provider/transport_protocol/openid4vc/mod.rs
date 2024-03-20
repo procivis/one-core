@@ -26,10 +26,6 @@ use super::{
     mapper::interaction_from_handle_invitation,
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
 };
-use crate::provider::transport_protocol::mapper::get_relevant_credentials;
-use crate::provider::transport_protocol::openid4vc::mapper::{
-    get_claim_name_by_json_path, presentation_definition_from_interaction_data,
-};
 use crate::{
     crypto::CryptoProvider,
     model::{
@@ -43,7 +39,7 @@ use crate::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
             UpdateCredentialSchemaRequest,
         },
-        did::{Did, DidRelations, DidType, KeyRole},
+        did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
         organisation::{Organisation, OrganisationRelations},
         proof::{Proof, ProofClaimRelations, ProofId, ProofRelations, UpdateProofRequest},
@@ -51,10 +47,8 @@ use crate::{
     },
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
-        revocation::provider::RevocationMethodProvider,
-    },
-    provider::{
         key_storage::provider::KeyProvider,
+        revocation::provider::RevocationMethodProvider,
         transport_protocol::{
             mapper::proof_from_handle_invitation,
             openid4vc::{
@@ -80,6 +74,17 @@ use crate::{
     util::{
         oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core},
         proof_formatter::OpenID4VCIProofJWTFormatter,
+    },
+};
+use crate::{
+    model::credential_schema::WalletStorageTypeEnum,
+    model::proof_schema::ProofInputSchemaRelations,
+    provider::transport_protocol::mapper::get_relevant_credentials,
+};
+use crate::{
+    model::key::Key,
+    provider::transport_protocol::openid4vc::mapper::{
+        get_claim_name_by_json_path, presentation_definition_from_interaction_data,
     },
 };
 use crate::{
@@ -184,7 +189,7 @@ impl TransportProtocol for OpenID4VC {
     async fn handle_invitation(
         &self,
         url: Url,
-        own_did: Did,
+        organisation: Organisation,
     ) -> Result<InvitationResponseDTO, TransportProtocolError> {
         let invitation_type =
             self.detect_invitation_type(&url)
@@ -194,13 +199,12 @@ impl TransportProtocol for OpenID4VC {
 
         match invitation_type {
             InvitationType::CredentialIssuance => {
-                handle_credential_invitation(self, url, own_did).await
+                handle_credential_invitation(self, url, organisation).await
             }
             InvitationType::ProofRequest => {
                 handle_proof_invitation(
                     url,
                     self,
-                    own_did,
                     self.params
                         .allow_insecure_http_transport
                         .is_some_and(|value| value),
@@ -218,6 +222,8 @@ impl TransportProtocol for OpenID4VC {
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
+        holder_did: &Did,
+        key: &Key,
     ) -> Result<(), TransportProtocolError> {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
@@ -239,26 +245,9 @@ impl TransportProtocol for OpenID4VC {
             .get_formatter(format)
             .ok_or_else(|| TransportProtocolError::Failed("Formatter not found".to_string()))?;
 
-        let holder_did = proof
-            .holder_did
-            .as_ref()
-            .ok_or(TransportProtocolError::Failed(
-                "holder_did is None".to_string(),
-            ))?;
-
-        let key = holder_did
-            .keys
-            .as_ref()
-            .ok_or(TransportProtocolError::Failed(
-                "Holder has no keys".to_string(),
-            ))?
-            .iter()
-            .find(|k| k.role == KeyRole::Authentication)
-            .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
-
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.key)
+            .get_signature_provider(key)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let presentation_submission = create_presentation_submission(
@@ -271,7 +260,7 @@ impl TransportProtocol for OpenID4VC {
             .format_presentation(
                 &tokens,
                 &holder_did.did,
-                &key.key.key_type,
+                &key.key_type,
                 auth_fn,
                 Some(interaction_data.nonce),
             )
@@ -318,6 +307,8 @@ impl TransportProtocol for OpenID4VC {
     async fn accept_credential(
         &self,
         credential: &Credential,
+        holder_did: &Did,
+        key: &Key,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
         let schema = credential
             .schema
@@ -330,32 +321,15 @@ impl TransportProtocol for OpenID4VC {
         let interaction_data: HolderInteractionData =
             deserialize_interaction_data(credential.interaction.as_ref())?;
 
-        let holder_did = credential
-            .holder_did
-            .as_ref()
-            .ok_or(TransportProtocolError::Failed(
-                "holder_did is None".to_string(),
-            ))?;
-
-        let key = holder_did
-            .keys
-            .as_ref()
-            .ok_or(TransportProtocolError::Failed(
-                "Holder has no keys".to_string(),
-            ))?
-            .iter()
-            .find(|k| k.role == KeyRole::Authentication)
-            .ok_or(TransportProtocolError::Failed("Missing Key".to_owned()))?;
-
         let auth_fn = self
             .key_provider
-            .get_signature_provider(&key.key)
+            .get_signature_provider(key)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url,
             holder_did,
-            key.key.key_type.to_owned(),
+            key.key_type.to_owned(),
             auth_fn,
         )
         .await
@@ -407,7 +381,7 @@ impl TransportProtocol for OpenID4VC {
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
-        // todo (ONE-1759): check both revocation and suspension (iterate over both)
+        // Revocation method should be the same for every credential in list
         if let Some(credential_status) = response_credential.status.first() {
             let (_, revocation_method) = self
                 .revocation_provider
@@ -581,11 +555,9 @@ impl TransportProtocol for OpenID4VC {
                         ..Default::default()
                     }),
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(CredentialSchemaRelations {
-                                claim_schemas: Some(ClaimSchemaRelations::default()),
-                                ..Default::default()
-                            }),
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                            credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
                         ..Default::default()
                     }),
@@ -829,7 +801,7 @@ async fn resolve_credential_offer(
 async fn handle_credential_invitation(
     deps: &OpenID4VC,
     invitation_url: Url,
-    holder_did: Did,
+    organisation: Organisation,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
     let credential_offer = resolve_credential_offer(deps, invitation_url).await?;
 
@@ -884,16 +856,10 @@ async fn handle_credential_invitation(
         data,
     )
     .await
-    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+    .map_err(|error: DataLayerError| TransportProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id;
 
     let credential_id = Uuid::new_v4().into();
-    let organisation = holder_did
-        .organisation
-        .as_ref()
-        .ok_or(TransportProtocolError::Failed(
-            "Holder has no organisation".to_string(),
-        ))?;
 
     let (claims, credential_schema) =
         match deps
@@ -981,7 +947,8 @@ async fn handle_credential_invitation(
                     credential_schema_name,
                     credential_format,
                     claim_schemas,
-                    holder_did.organisation.clone(),
+                    organisation,
+                    credential.wallet_storage_type.clone(),
                 )
                 .await
                 .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
@@ -990,16 +957,9 @@ async fn handle_credential_invitation(
             }
         };
 
-    let credential = create_credential(
-        credential_id,
-        holder_did,
-        credential_schema,
-        claims,
-        interaction,
-        None,
-    )
-    .await
-    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+    let credential = create_credential(credential_id, credential_schema, claims, interaction, None)
+        .await
+        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
 
     Ok(InvitationResponseDTO::Credential {
         interaction_id,
@@ -1039,7 +999,8 @@ async fn create_and_store_credential_schema(
     name: String,
     format: String,
     claim_schemas: Vec<CredentialSchemaClaim>,
-    organisation: Option<Organisation>,
+    organisation: Organisation,
+    wallet_storage_type: Option<WalletStorageTypeEnum>,
 ) -> Result<CredentialSchema, DataLayerError> {
     let now = OffsetDateTime::now_utc();
 
@@ -1050,10 +1011,10 @@ async fn create_and_store_credential_schema(
         last_modified: now,
         name,
         format,
-        wallet_storage_type: None,
+        wallet_storage_type,
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(claim_schemas),
-        organisation,
+        organisation: Some(organisation),
     };
 
     let _ = repository
@@ -1079,7 +1040,6 @@ async fn create_and_store_interaction(
 
 async fn create_credential(
     credential_id: CredentialId,
-    holder_did: Did,
     credential_schema: CredentialSchema,
     claims: Vec<Claim>,
     interaction: Interaction,
@@ -1104,7 +1064,7 @@ async fn create_credential(
         }]),
         claims: Some(claims),
         issuer_did: None,
-        holder_did: Some(holder_did),
+        holder_did: None,
         schema: Some(credential_schema),
         interaction: Some(interaction),
         revocation_list: None,
@@ -1229,7 +1189,6 @@ async fn interaction_data_from_query(
 async fn handle_proof_invitation(
     url: Url,
     deps: &OpenID4VC,
-    holder_did: Did,
     allow_insecure_http_transport: bool,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
     let query = url.query().ok_or(TransportProtocolError::InvalidRequest(
@@ -1257,7 +1216,6 @@ async fn handle_proof_invitation(
         "OPENID4VC",
         interaction_data.redirect_uri,
         None,
-        holder_did,
         interaction,
         now,
         None,

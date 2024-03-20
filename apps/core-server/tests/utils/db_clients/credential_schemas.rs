@@ -10,6 +10,11 @@ use one_core::repository::credential_schema_repository::CredentialSchemaReposito
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
+#[derive(Debug, Default, Clone)]
+pub struct TestingCreateSchemaParams {
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+}
+
 pub struct CredentialSchemasDB {
     repository: Arc<dyn CredentialSchemaRepository>,
 }
@@ -24,9 +29,10 @@ impl CredentialSchemasDB {
         name: &str,
         organisation: &Organisation,
         revocation_method: &str,
+        params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema = ClaimSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             key: "firstName".to_string(),
             data_type: "STRING".to_string(),
             created_date: get_dummy_date(),
@@ -42,7 +48,11 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            wallet_storage_type: Some(
+                params
+                    .wallet_storage_type
+                    .unwrap_or(WalletStorageTypeEnum::Software),
+            ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: "JWT".to_string(),
@@ -52,7 +62,7 @@ impl CredentialSchemasDB {
 
         let id = self
             .repository
-            .create_credential_schema(credential_schema.clone())
+            .create_credential_schema(credential_schema)
             .await
             .unwrap();
 
@@ -65,7 +75,7 @@ impl CredentialSchemasDB {
         organisation: &Organisation,
     ) -> CredentialSchema {
         let claim_schema = ClaimSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             key: "firstName".to_string(),
             data_type: "PICTURE".to_string(),
             created_date: get_dummy_date(),
@@ -110,7 +120,7 @@ impl CredentialSchemasDB {
             .iter()
             .map(|(id, name, required, data_type)| CredentialSchemaClaim {
                 schema: ClaimSchema {
-                    id: id.to_owned(),
+                    id: (*id).into(),
                     key: name.to_string(),
                     data_type: data_type.to_string(),
                     created_date: get_dummy_date(),

@@ -11,6 +11,7 @@ use crate::{
         credential_formatter::provider::MockCredentialFormatterProvider,
         did_method::provider::MockDidMethodProvider,
         key_algorithm::provider::MockKeyAlgorithmProvider, key_storage::provider::MockKeyProvider,
+        revocation::provider::MockRevocationMethodProvider,
     },
     repository::{
         credential_repository::MockCredentialRepository, lvvc_repository::MockLvvcRepository,
@@ -29,6 +30,7 @@ struct Repositories {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub key_provider: MockKeyProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
+    pub revocation_method_provider: MockRevocationMethodProvider,
 }
 
 fn setup_service(repositories: Repositories) -> RevocationListService {
@@ -42,6 +44,7 @@ fn setup_service(repositories: Repositories) -> RevocationListService {
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.key_provider),
         Arc::new(repositories.key_algorithm_provider),
+        Arc::new(repositories.revocation_method_provider),
         Arc::new(generic_config().core),
     )
 }

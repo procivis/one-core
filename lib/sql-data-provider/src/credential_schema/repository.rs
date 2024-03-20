@@ -1,14 +1,9 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
-use dto_mapper::try_convert_inner;
 use one_core::{
-    model::{
-        claim_schema::ClaimSchemaId,
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
-            GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
-        },
-        organisation::Organisation,
+    model::credential_schema::{
+        CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
+        GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
     },
     repository::{credential_schema_repository::CredentialSchemaRepository, error::DataLayerError},
 };
@@ -17,6 +12,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, SqlErr, Unchanged,
 };
+use shared_types::ClaimSchemaId;
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -125,7 +121,9 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .await
                 .map_err(to_data_layer_error)?;
 
-            let claim_schema_ids: Vec<ClaimSchemaId> = try_convert_inner(models.clone())?;
+            let claim_schema_ids: Vec<ClaimSchemaId> =
+                models.iter().map(|model| model.claim_schema_id).collect();
+
             let claim_schemas = self
                 .claim_schema_repository
                 .get_claim_schema_list(claim_schema_ids, claim_schema_relations)
@@ -155,15 +153,13 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                     "Missing organisation for credential schema {id}"
                 )))?;
 
-            let organisation: Organisation = model.try_into()?;
-
             Some(
                 self.organisation_repository
-                    .get_organisation(&organisation.id, organisation_relations)
+                    .get_organisation(&model.id, organisation_relations)
                     .await?
                     .ok_or(DataLayerError::MissingRequiredRelation {
                         relation: "credential_schema-organisation",
-                        id: organisation.id.to_string(),
+                        id: model.id.to_string(),
                     })?,
             )
         } else {

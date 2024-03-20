@@ -5,6 +5,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::provider::key_storage::{KeySecurity, KeyStorageCapabilities, MockKeyStorage};
+use crate::repository::mock::organisation_repository::MockOrganisationRepository;
+use crate::service::test_utilities::dummy_key;
 use crate::{
     model::{
         claim::Claim,
@@ -13,8 +16,6 @@ use crate::{
         credential_schema::CredentialSchema,
         did::{Did, DidType, KeyRole, RelatedKey},
         interaction::Interaction,
-        key::Key,
-        organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
     },
     provider::{
@@ -191,13 +192,22 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
 
 #[tokio::test]
 async fn test_submit_proof_succeeds() {
+    let did_id = Uuid::new_v4().into();
     let interaction_id = Uuid::new_v4();
 
     let proof_id = Uuid::new_v4();
     let protocol = "protocol";
 
-    let key_storage_type = "storage type";
-    let key_type = "ECDSA";
+    let mut did_repository = MockDidRepository::new();
+    did_repository.expect_get_did().once().return_once(|_, _| {
+        Ok(Some(Did {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: dummy_key(),
+            }]),
+            ..dummy_did()
+        }))
+    });
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -223,27 +233,6 @@ async fn test_submit_proof_succeeds() {
                         state: ProofStateEnum::Created,
                     },
                 ]),
-                holder_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: Key {
-                            id: Uuid::new_v4().into(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            public_key: b"public_key".to_vec(),
-                            name: "key name".to_string(),
-                            key_reference: b"private_key".to_vec(),
-                            storage_type: key_storage_type.to_string(),
-                            key_type: key_type.to_string(),
-                            organisation: Some(Organisation {
-                                id: Uuid::new_v4(),
-                                created_date: OffsetDateTime::now_utc(),
-                                last_modified: OffsetDateTime::now_utc(),
-                            }),
-                        },
-                    }]),
-                    ..dummy_did()
-                }),
                 interaction: Some(Interaction {
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),
@@ -257,6 +246,11 @@ async fn test_submit_proof_succeeds() {
 
     proof_repository
         .expect_set_proof_claims()
+        .once()
+        .returning(|_, _| Ok(()));
+
+    proof_repository
+        .expect_set_proof_holder_did()
         .once()
         .returning(|_, _| Ok(()));
 
@@ -330,12 +324,12 @@ async fn test_submit_proof_succeeds() {
 
     transport_protocol
         .expect_submit_proof()
-        .withf(move |proof, _| {
+        .withf(move |proof, _, _, _| {
             assert_eq!(proof.id, proof_id);
             true
         })
         .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _, _| Ok(()));
 
     let mut protocol_provider = MockTransportProtocolProvider::new();
     protocol_provider
@@ -355,6 +349,7 @@ async fn test_submit_proof_succeeds() {
         formatter_provider: Arc::new(formatter_provider),
         protocol_provider: Arc::new(protocol_provider),
         history_repository: Arc::new(history_repository),
+        did_repository: Arc::new(did_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -369,6 +364,8 @@ async fn test_submit_proof_succeeds() {
                 },
             ))
             .collect(),
+            did_id,
+            key_id: None,
         })
         .await
         .unwrap();
@@ -376,11 +373,23 @@ async fn test_submit_proof_succeeds() {
 
 #[tokio::test]
 async fn test_submit_proof_repeating_claims() {
+    let did_id = Uuid::new_v4().into();
     let interaction_id = Uuid::new_v4();
     let proof_id = Uuid::new_v4();
     let credential_id = Uuid::new_v4().into();
     let claim_id = Uuid::new_v4();
     let protocol = "protocol";
+
+    let mut did_repository = MockDidRepository::new();
+    did_repository.expect_get_did().once().return_once(|_, _| {
+        Ok(Some(Did {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: dummy_key(),
+            }]),
+            ..dummy_did()
+        }))
+    });
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -395,27 +404,6 @@ async fn test_submit_proof_repeating_claims() {
                     last_modified: OffsetDateTime::now_utc(),
                     state: ProofStateEnum::Pending,
                 }]),
-                holder_did: Some(Did {
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::AssertionMethod,
-                        key: Key {
-                            id: Uuid::new_v4().into(),
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            public_key: b"public_key".to_vec(),
-                            name: "key name".to_string(),
-                            key_reference: b"private_key".to_vec(),
-                            storage_type: "storage type".to_string(),
-                            key_type: "ECDSA".to_string(),
-                            organisation: Some(Organisation {
-                                id: Uuid::new_v4(),
-                                created_date: OffsetDateTime::now_utc(),
-                                last_modified: OffsetDateTime::now_utc(),
-                            }),
-                        },
-                    }]),
-                    ..dummy_did()
-                }),
                 interaction: Some(Interaction {
                     id: interaction_id,
                     created_date: OffsetDateTime::now_utc(),
@@ -441,7 +429,7 @@ async fn test_submit_proof_repeating_claims() {
                     last_modified: OffsetDateTime::now_utc(),
                     value: "claim value".to_string(),
                     schema: Some(ClaimSchema {
-                        id: claim_id,
+                        id: claim_id.into(),
                         key: "claim1".to_string(),
                         data_type: "STRING".to_string(),
                         created_date: OffsetDateTime::now_utc(),
@@ -526,12 +514,12 @@ async fn test_submit_proof_repeating_claims() {
 
     transport_protocol
         .expect_submit_proof()
-        .withf(move |proof, _| {
+        .withf(move |proof, _, _, _| {
             assert_eq!(proof.id, proof_id);
             true
         })
         .once()
-        .returning(|_, _| Ok(()));
+        .returning(|_, _, _, _| Ok(()));
 
     let mut protocol_provider = MockTransportProtocolProvider::new();
     protocol_provider
@@ -539,6 +527,11 @@ async fn test_submit_proof_repeating_claims() {
         .with(eq(protocol))
         .once()
         .return_once(move |_| Some(Arc::new(transport_protocol)));
+
+    proof_repository
+        .expect_set_proof_holder_did()
+        .once()
+        .returning(|_, _| Ok(()));
 
     proof_repository
         .expect_set_proof_claims()
@@ -567,6 +560,7 @@ async fn test_submit_proof_repeating_claims() {
         formatter_provider: Arc::new(formatter_provider),
         protocol_provider: Arc::new(protocol_provider),
         history_repository: Arc::new(history_repository),
+        did_repository: Arc::new(did_repository),
         ..mock_ssi_holder_service()
     };
 
@@ -589,6 +583,8 @@ async fn test_submit_proof_repeating_claims() {
                     },
                 ),
             ]),
+            did_id,
+            key_id: None,
         })
         .await
         .unwrap();
@@ -596,6 +592,34 @@ async fn test_submit_proof_repeating_claims() {
 
 #[tokio::test]
 async fn test_accept_credential() {
+    let did_id = Uuid::new_v4().into();
+    let mut did_repository = MockDidRepository::new();
+    did_repository.expect_get_did().once().return_once(|_, _| {
+        Ok(Some(Did {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: dummy_key(),
+            }]),
+            ..dummy_did()
+        }))
+    });
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_key_storage()
+        .once()
+        .return_once(|_| {
+            let mut mock = MockKeyStorage::new();
+            mock.expect_get_capabilities()
+                .once()
+                .return_once(|| KeyStorageCapabilities {
+                    features: vec![],
+                    algorithms: vec![],
+                    security: vec![KeySecurity::Software],
+                });
+
+            Some(Arc::new(mock))
+        });
+
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
@@ -615,7 +639,7 @@ async fn test_accept_credential() {
     transport_protocol_mock
         .expect_accept_credential()
         .once()
-        .returning(|_| {
+        .returning(|_, _, _| {
             Ok(SubmitIssuerResponse {
                 credential: "credential".to_string(),
                 format: "credential format".to_string(),
@@ -633,11 +657,16 @@ async fn test_accept_credential() {
         credential_repository: Arc::new(credential_repository),
         protocol_provider: Arc::new(protocol_provider),
         history_repository: Arc::new(history_repository),
+        did_repository: Arc::new(did_repository),
+        key_provider: Arc::new(key_provider),
         ..mock_ssi_holder_service()
     };
 
     let interaction_id = Uuid::new_v4();
-    service.accept_credential(&interaction_id).await.unwrap();
+    service
+        .accept_credential(&interaction_id, did_id, None)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -684,6 +713,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
     SSIHolderService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
         proof_repository: Arc::new(MockProofRepository::new()),
+        organisation_repository: Arc::new(MockOrganisationRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
         history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),

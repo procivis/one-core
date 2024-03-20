@@ -13,14 +13,19 @@ use super::{
 use crate::{
     common_mapper::list_response_into,
     model::{
-        claim_schema::{ClaimSchemaId, ClaimSchemaRelations},
-        credential_schema::CredentialSchemaRelations,
+        claim_schema::ClaimSchemaRelations,
+        credential_schema::{
+            CredentialSchemaId, CredentialSchemaRelations, GetCredentialSchemaQuery,
+        },
         organisation::OrganisationRelations,
-        proof_schema::{ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations},
+        proof_schema::{
+            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
+        },
     },
     repository::error::DataLayerError,
     service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
 };
+use shared_types::ClaimSchemaId;
 use time::OffsetDateTime;
 
 impl ProofSchemaService {
@@ -38,14 +43,11 @@ impl ProofSchemaService {
             .get_proof_schema(
                 id,
                 &ProofSchemaRelations {
-                    claim_schemas: Some(ProofSchemaClaimRelations {
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: None,
-                            organisation: None,
-                        }),
-                    }),
                     organisation: Some(OrganisationRelations::default()),
-                    proof_inputs: None,
+                    proof_inputs: Some(ProofInputSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                        credential_schema: Some(CredentialSchemaRelations::default()),
+                    }),
                 },
             )
             .await?
@@ -84,14 +86,30 @@ impl ProofSchemaService {
         request: CreateProofSchemaRequestDTO,
     ) -> Result<ProofSchemaId, ServiceError> {
         validate_create_request(&request)?;
+
         proof_schema_name_already_exists(
             &self.proof_schema_repository,
             &request.name,
-            &request.organisation_id,
+            request.organisation_id,
         )
         .await?;
-        let claim_schema_ids: Vec<ClaimSchemaId> =
-            request.claim_schemas.iter().map(|item| item.id).collect();
+
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .await?;
+
+        let Some(organisation) = organisation else {
+            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
+        };
+
+        let claim_schema_ids: Vec<ClaimSchemaId> = request
+            .proof_input_schemas
+            .iter()
+            .flat_map(|proof_input_schema| {
+                proof_input_schema.claim_schemas.iter().map(|item| item.id)
+            })
+            .collect();
 
         let claim_schemas = self
             .claim_schema_repository
@@ -104,28 +122,40 @@ impl ProofSchemaService {
                 error => ServiceError::from(error),
             })?;
 
-        let claim_schemas: Vec<ProofSchemaClaim> = claim_schemas
-            .into_iter()
-            .zip(&request.claim_schemas)
-            .map(|(schema, request)| ProofSchemaClaim {
-                schema,
-                required: request.required,
-                credential_schema: None,
-            })
+        let credential_schema_ids: Vec<CredentialSchemaId> = request
+            .proof_input_schemas
+            .iter()
+            .map(|proof_input_schema| proof_input_schema.credential_schema_id)
             .collect();
 
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
+        let expected_credential_schemas = credential_schema_ids.len();
+        let credential_schemas = self
+            .credential_schema_repository
+            .get_credential_schema_list(GetCredentialSchemaQuery {
+                page: 0,
+                page_size: 1000,
+                sort: None,
+                sort_direction: None,
+                name: None,
+                organisation_id: request.organisation_id,
+                exact: None,
+                ids: Some(credential_schema_ids),
+            })
+            .await?
+            .values;
 
-        let Some(organisation) = organisation else {
-            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
-        };
+        if credential_schemas.len() != expected_credential_schemas {
+            return Err(BusinessLogicError::MissingCredentialSchema.into());
+        }
 
         let now = OffsetDateTime::now_utc();
-        let proof_schema =
-            proof_schema_from_create_request(request, now, claim_schemas, organisation.clone());
+        let proof_schema = proof_schema_from_create_request(
+            request,
+            now,
+            claim_schemas,
+            credential_schemas,
+            organisation.clone(),
+        )?;
 
         let id = self
             .proof_schema_repository

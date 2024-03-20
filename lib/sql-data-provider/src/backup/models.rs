@@ -2,11 +2,13 @@ use one_core::model::credential_schema::{
     CredentialFormat, CredentialSchemaName, RevocationMethod,
 };
 use sea_orm::FromQueryResult;
-use shared_types::CredentialId;
+use serde::Deserialize;
+use shared_types::{CredentialId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::entity::credential::CredentialRole;
 use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::{claim, claim_schema, credential_schema_claim_schema};
 
 #[derive(Debug, FromQueryResult)]
 pub struct UnexportableCredentialModel {
@@ -29,10 +31,23 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_revocation_method: RevocationMethod,
     pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
 
-    pub organisation_id: String,
+    pub organisation_id: OrganisationId,
     pub organisation_created_date: OffsetDateTime,
     pub organisation_last_modified: OffsetDateTime,
 
     pub claims: String,
     pub credential_states: String,
+    pub credential_schema_claim_schemas: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClaimWithSchema {
+    pub claim: claim::Model,
+    pub claim_schema: claim_schema::Model,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SchemaWithClaimSchema {
+    pub credential_schema_claim_schema: credential_schema_claim_schema::Model,
+    pub claim_schema: claim_schema::Model,
 }

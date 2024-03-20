@@ -8,7 +8,12 @@ async fn test_get_credential_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test schema", &organisation, "STATUSLIST2021")
+        .create(
+            "test schema",
+            &organisation,
+            "STATUSLIST2021",
+            Default::default(),
+        )
         .await;
 
     // WHEN

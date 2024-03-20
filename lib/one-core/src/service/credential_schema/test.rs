@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::{
-    config::core_config::CoreConfig,
+    config::{core_config::CoreConfig, ConfigValidationError},
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         credential_schema::{
@@ -22,9 +22,10 @@ use crate::{
     service::{
         credential_schema::{
             dto::{
-                CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
-                GetCredentialSchemaQueryDTO,
+                CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
+                CredentialClaimSchemaRequestDTO, GetCredentialSchemaQueryDTO,
             },
+            mapper::{renest_claim_schemas, unnest_claim_schemas},
             CredentialSchemaService,
         },
         error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
@@ -59,7 +60,7 @@ fn generic_credential_schema() -> CredentialSchema {
         revocation_method: "".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 key: "".to_string(),
                 data_type: "".to_string(),
                 created_date: now,
@@ -68,7 +69,7 @@ fn generic_credential_schema() -> CredentialSchema {
             required: true,
         }]),
         organisation: Some(Organisation {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
         }),
@@ -211,7 +212,7 @@ async fn test_get_credential_schema_list_success() {
             sort_direction: None,
             exact: None,
             name: None,
-            organisation_id: "".to_string(),
+            organisation_id: Uuid::new_v4().into(),
             ids: None,
         })
         .await;
@@ -271,7 +272,7 @@ async fn test_create_credential_schema_success() {
 
     let now = OffsetDateTime::now_utc();
     let organisation = Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
     };
@@ -326,11 +327,247 @@ async fn test_create_credential_schema_success() {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                claims: vec![],
             }],
         })
         .await;
     assert!(result.is_ok());
     assert_eq!(schema_id, result.unwrap());
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_success_nested_claims() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
+    let mut organisation_repository = MockOrganisationRepository::default();
+
+    history_repository
+        .expect_create_history()
+        .times(1)
+        .returning(|history| Ok(history.id));
+
+    let now = OffsetDateTime::now_utc();
+    let organisation = Organisation {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+    };
+    let schema_id = Uuid::new_v4();
+
+    let response = GetCredentialSchemaList {
+        values: vec![
+            generic_credential_schema(),
+            generic_credential_schema(),
+            generic_credential_schema(),
+        ],
+        total_pages: 0,
+        total_items: 0,
+    };
+
+    {
+        let organisation = organisation.clone();
+        organisation_repository
+            .expect_get_organisation()
+            .times(1)
+            .with(
+                eq(organisation.id.to_owned()),
+                eq(OrganisationRelations::default()),
+            )
+            .returning(move |_, _| Ok(Some(organisation.clone())));
+        repository
+            .expect_create_credential_schema()
+            .times(1)
+            .returning(move |_| Ok(schema_id.to_owned()));
+        let clone = response.clone();
+        repository
+            .expect_get_credential_schema_list()
+            .times(1)
+            .returning(move |_| Ok(clone.clone()));
+    }
+
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: organisation.id.to_owned(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![
+                    CredentialClaimSchemaRequestDTO {
+                        key: "x".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaRequestDTO {
+                        key: "y".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                ],
+            }],
+        })
+        .await
+        .unwrap();
+    assert_eq!(schema_id, result);
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_slash_in_claim_name() {
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "location/x".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            }],
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::Validation(ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(
+            _
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_nested_claims_not_in_object_type() {
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "location".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![
+                    CredentialClaimSchemaRequestDTO {
+                        key: "x".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaRequestDTO {
+                        key: "y".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                ],
+            }],
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::Validation(ValidationError::CredentialSchemaNestedClaimsShouldBeEmpty(
+            _
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_nested_claims_object_type_has_empty_claims() {
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![],
+            }],
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::Validation(ValidationError::CredentialSchemaMissingNestedClaims(_))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![CredentialClaimSchemaRequestDTO {
+                    key: "x".to_string(),
+                    datatype: "NON_EXISTING_TYPE".to_string(),
+                    required: true,
+                    claims: vec![],
+                }],
+            }],
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::ConfigValidationError(ConfigValidationError::KeyNotFound(_))
+    ));
 }
 
 #[tokio::test]
@@ -340,7 +577,7 @@ async fn test_create_credential_schema_unique_name_error() {
 
     let now = OffsetDateTime::now_utc();
     let organisation = Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
     };
@@ -380,6 +617,7 @@ async fn test_create_credential_schema_unique_name_error() {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                claims: vec![],
             }],
         })
         .await;
@@ -408,11 +646,12 @@ async fn test_create_credential_schema_fail_validation() {
             format: "NON_EXISTING_FORMAT".to_string(),
             revocation_method: "NONE".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                claims: vec![],
             }],
         })
         .await;
@@ -424,11 +663,12 @@ async fn test_create_credential_schema_fail_validation() {
             format: "JWT".to_string(),
             revocation_method: "TEST".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                claims: vec![],
             }],
         })
         .await;
@@ -441,11 +681,12 @@ async fn test_create_credential_schema_fail_validation() {
             format: "JWT".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "BLABLA".to_string(),
                 required: true,
+                claims: vec![],
             }],
         })
         .await;
@@ -457,7 +698,7 @@ async fn test_create_credential_schema_fail_validation() {
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![],
         })
         .await;
@@ -508,11 +749,12 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             format: "JWT".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
-            organisation_id: Uuid::new_v4(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![CredentialClaimSchemaRequestDTO {
                 key: "test".to_string(),
                 datatype: "STRING".to_string(),
                 required: true,
+                claims: vec![],
             }],
         })
         .await;
@@ -521,4 +763,406 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         e,
         ServiceError::BusinessLogic(BusinessLogicError::MissingOrganisation(_))
     )));
+}
+
+#[tokio::test]
+async fn test_unnest_claim_schemas_from_request_no_nested_claims() {
+    let request = vec![CredentialClaimSchemaRequestDTO {
+        key: "test".to_string(),
+        datatype: "STRING".to_string(),
+        required: true,
+        claims: vec![],
+    }];
+
+    let expected = vec![CredentialClaimSchemaRequestDTO {
+        key: "test".to_string(),
+        datatype: "STRING".to_string(),
+        required: true,
+        claims: vec![],
+    }];
+
+    assert_eq!(expected, unnest_claim_schemas(request));
+}
+
+#[tokio::test]
+async fn test_unnest_claim_schemas_from_request_single_layer_of_nested_claims() {
+    let request = vec![CredentialClaimSchemaRequestDTO {
+        key: "location".to_string(),
+        datatype: "OBJECT".to_string(),
+        required: true,
+        claims: vec![
+            CredentialClaimSchemaRequestDTO {
+                key: "x".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            },
+            CredentialClaimSchemaRequestDTO {
+                key: "y".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            },
+        ],
+    }];
+
+    let expected = vec![
+        CredentialClaimSchemaRequestDTO {
+            key: "location".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "location/x".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "location/y".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+    ];
+
+    assert_eq!(expected, unnest_claim_schemas(request));
+}
+
+#[tokio::test]
+async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims() {
+    let request = vec![CredentialClaimSchemaRequestDTO {
+        key: "address".to_string(),
+        datatype: "OBJECT".to_string(),
+        required: true,
+        claims: vec![
+            CredentialClaimSchemaRequestDTO {
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![
+                    CredentialClaimSchemaRequestDTO {
+                        key: "x".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaRequestDTO {
+                        key: "y".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                ],
+            },
+            CredentialClaimSchemaRequestDTO {
+                key: "postal_data".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![
+                    CredentialClaimSchemaRequestDTO {
+                        key: "code".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaRequestDTO {
+                        key: "street".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                ],
+            },
+        ],
+    }];
+
+    let expected = vec![
+        CredentialClaimSchemaRequestDTO {
+            key: "address".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "address/location".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "address/postal_data".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "address/location/x".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "address/location/y".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "address/postal_data/code".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "address/postal_data/street".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+    ];
+
+    assert_eq!(expected, unnest_claim_schemas(request));
+}
+
+#[test]
+fn test_renest_claim_schemas_single_layer_of_nested_claims() {
+    let now = OffsetDateTime::now_utc();
+
+    let uuid_location = Uuid::new_v4().into();
+    let uuid_location_x = Uuid::new_v4().into();
+    let uuid_location_y = Uuid::new_v4().into();
+
+    let request = vec![
+        CredentialClaimSchemaDTO {
+            id: uuid_location,
+            created_date: now,
+            last_modified: now,
+            key: "location".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaDTO {
+            id: uuid_location_x,
+            created_date: now,
+            last_modified: now,
+            key: "location/x".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaDTO {
+            id: uuid_location_y,
+            created_date: now,
+            last_modified: now,
+            key: "location/y".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+    ];
+
+    let expected = vec![CredentialClaimSchemaDTO {
+        id: uuid_location,
+        created_date: now,
+        last_modified: now,
+        key: "location".to_string(),
+        datatype: "OBJECT".to_string(),
+        required: true,
+        claims: vec![
+            CredentialClaimSchemaDTO {
+                id: uuid_location_x,
+                created_date: now,
+                last_modified: now,
+                key: "x".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            },
+            CredentialClaimSchemaDTO {
+                id: uuid_location_y,
+                created_date: now,
+                last_modified: now,
+                key: "y".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            },
+        ],
+    }];
+
+    assert_eq!(expected, renest_claim_schemas(request).unwrap());
+}
+
+#[test]
+fn test_renest_claim_schemas_multiple_layers_of_nested_claims() {
+    let now = OffsetDateTime::now_utc();
+
+    let uuid_address = Uuid::new_v4().into();
+    let uuid_address_location = Uuid::new_v4().into();
+    let uuid_address_location_x = Uuid::new_v4().into();
+    let uuid_address_location_y = Uuid::new_v4().into();
+    let uuid_address_postal_data = Uuid::new_v4().into();
+    let uuid_address_postal_data_street = Uuid::new_v4().into();
+    let uuid_address_postal_data_code = Uuid::new_v4().into();
+
+    let request = vec![
+        CredentialClaimSchemaDTO {
+            id: uuid_address,
+            created_date: now,
+            last_modified: now,
+            key: "address".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaDTO {
+            id: uuid_address_location,
+            created_date: now,
+            last_modified: now,
+            key: "address/location".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaDTO {
+            id: uuid_address_postal_data,
+            created_date: now,
+            last_modified: now,
+            key: "address/postal_data".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaDTO {
+            id: uuid_address_location_x,
+            created_date: now,
+            last_modified: now,
+            key: "address/location/x".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaDTO {
+            id: uuid_address_location_y,
+            created_date: now,
+            last_modified: now,
+            key: "address/location/y".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaDTO {
+            id: uuid_address_postal_data_street,
+            created_date: now,
+            last_modified: now,
+            key: "address/postal_data/street".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaDTO {
+            id: uuid_address_postal_data_code,
+            created_date: now,
+            last_modified: now,
+            key: "address/postal_data/code".to_string(),
+            datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+    ];
+
+    let expected = vec![CredentialClaimSchemaDTO {
+        id: uuid_address,
+        created_date: now,
+        last_modified: now,
+        key: "address".to_string(),
+        datatype: "OBJECT".to_string(),
+        required: true,
+        claims: vec![
+            CredentialClaimSchemaDTO {
+                id: uuid_address_location,
+                created_date: now,
+                last_modified: now,
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![
+                    CredentialClaimSchemaDTO {
+                        id: uuid_address_location_x,
+                        created_date: now,
+                        last_modified: now,
+                        key: "x".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaDTO {
+                        id: uuid_address_location_y,
+                        created_date: now,
+                        last_modified: now,
+                        key: "y".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                ],
+            },
+            CredentialClaimSchemaDTO {
+                id: uuid_address_postal_data,
+                created_date: now,
+                last_modified: now,
+                key: "postal_data".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![
+                    CredentialClaimSchemaDTO {
+                        id: uuid_address_postal_data_street,
+                        created_date: now,
+                        last_modified: now,
+                        key: "street".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaDTO {
+                        id: uuid_address_postal_data_code,
+                        created_date: now,
+                        last_modified: now,
+                        key: "code".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                ],
+            },
+        ],
+    }];
+
+    assert_eq!(expected, renest_claim_schemas(request).unwrap());
+}
+
+#[test]
+fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
+    let now = OffsetDateTime::now_utc();
+
+    let uuid_location_x = Uuid::new_v4().into();
+
+    let request = vec![CredentialClaimSchemaDTO {
+        id: uuid_location_x,
+        created_date: now,
+        last_modified: now,
+        key: "location/x".to_string(),
+        datatype: "STRING".to_string(),
+        required: true,
+        claims: vec![],
+    }];
+    assert!(matches!(
+        renest_claim_schemas(request),
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::MissingParentClaimSchema { .. }
+        ))
+    ));
 }

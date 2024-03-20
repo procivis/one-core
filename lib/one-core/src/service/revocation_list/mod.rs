@@ -6,7 +6,7 @@ use crate::{
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
         did_method::provider::DidMethodProvider, key_algorithm::provider::KeyAlgorithmProvider,
-        key_storage::provider::KeyProvider,
+        key_storage::provider::KeyProvider, revocation::provider::RevocationMethodProvider,
     },
     repository::{
         credential_repository::CredentialRepository, lvvc_repository::LvvcRepository,
@@ -31,6 +31,7 @@ pub struct RevocationListService {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -46,6 +47,7 @@ impl RevocationListService {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
@@ -58,6 +60,7 @@ impl RevocationListService {
             formatter_provider,
             key_provider,
             key_algorithm_provider,
+            revocation_method_provider,
             config,
         }
     }

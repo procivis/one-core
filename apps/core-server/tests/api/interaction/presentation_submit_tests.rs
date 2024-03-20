@@ -90,7 +90,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
     let proof = fixtures::create_proof(
         &db_conn,
         &verifier_did,
-        Some(&holder_did),
+        None,
         None,
         ProofStateEnum::Pending,
         "PROCIVIS_TEMPORARY",
@@ -118,6 +118,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
+          "didId": holder_did.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
@@ -147,6 +148,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
         .iter()
         .any(|c| c.claim.value == "test"));
     assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
+    assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
 }
 
 #[tokio::test]
@@ -285,7 +287,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
     let proof = fixtures::create_proof(
         &db_conn,
         &verifier_did,
-        Some(&holder_did),
+        None,
         None,
         ProofStateEnum::Pending,
         "OPENID4VC",
@@ -316,6 +318,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
+          "didId": holder_did.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
@@ -346,4 +349,5 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         .iter()
         .any(|c| c.claim.value == "test"));
     assert_eq!(proof.verifier_did.unwrap().did, verifier_did.did);
+    assert_eq!(proof.holder_did.unwrap().did, holder_did.did);
 }

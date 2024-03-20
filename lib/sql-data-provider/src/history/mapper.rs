@@ -1,4 +1,4 @@
-use dto_mapper::convert_inner;
+use dto_mapper::try_convert_inner;
 use sea_orm::ActiveValue::Set;
 use time::OffsetDateTime;
 
@@ -12,21 +12,30 @@ use one_core::{
 
 use crate::{common::calculate_pages_count, entity::history};
 
-impl From<history::Model> for History {
-    fn from(value: history::Model) -> Self {
-        Self {
+impl TryFrom<history::Model> for History {
+    type Error = DataLayerError;
+
+    fn try_from(value: history::Model) -> Result<Self, Self::Error> {
+        let metadata = value
+            .metadata
+            .as_deref()
+            .map(serde_json::from_str)
+            .transpose()
+            .map_err(|_| Self::Error::MappingError)?;
+
+        Ok(Self {
             id: value.id,
             created_date: value.created_date,
             action: value.action.into(),
             entity_id: value.entity_id,
             entity_type: value.entity_type.into(),
-            metadata: value.metadata,
+            metadata,
             organisation: Some(Organisation {
-                id: value.organisation_id.into(),
+                id: value.organisation_id,
                 created_date: OffsetDateTime::UNIX_EPOCH,
                 last_modified: OffsetDateTime::UNIX_EPOCH,
             }),
-        }
+        })
     }
 }
 
@@ -35,6 +44,12 @@ impl TryFrom<History> for history::ActiveModel {
 
     fn try_from(value: History) -> Result<Self, Self::Error> {
         let organisation = value.organisation.ok_or(DataLayerError::MappingError)?;
+        let metadata = value
+            .metadata
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()
+            .map_err(|_| Self::Error::MappingError)?;
 
         Ok(Self {
             id: Set(value.id),
@@ -42,8 +57,8 @@ impl TryFrom<History> for history::ActiveModel {
             action: Set(value.action.into()),
             entity_id: Set(value.entity_id),
             entity_type: Set(value.entity_type.into()),
-            metadata: Set(value.metadata),
-            organisation_id: Set(organisation.id.into()),
+            metadata: Set(metadata),
+            organisation_id: Set(organisation.id),
         })
     }
 }
@@ -52,10 +67,10 @@ pub(crate) fn create_list_response(
     history_list: Vec<history::Model>,
     limit: Option<u64>,
     items_count: u64,
-) -> GetHistoryList {
-    GetHistoryList {
-        values: convert_inner(history_list),
+) -> Result<GetHistoryList, DataLayerError> {
+    Ok(GetHistoryList {
+        values: try_convert_inner(history_list)?,
         total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
         total_items: items_count,
-    }
+    })
 }

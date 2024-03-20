@@ -84,7 +84,7 @@ impl CredentialsDB {
             state: Some(vec![CredentialState {
                 created_date: get_dummy_date(),
                 state,
-                suspend_end_date: None,
+                suspend_end_date: params.suspend_end_date,
             }]),
             claims: Some(claims),
             issuer_did: Some(issuer_did.to_owned()),

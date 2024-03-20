@@ -1,15 +1,15 @@
 use sea_orm::entity::prelude::*;
 use serde::Deserialize;
-use shared_types::CredentialId;
+use shared_types::{ClaimId, ClaimSchemaId, CredentialId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize)]
 #[sea_orm(table_name = "claim")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: ClaimId,
 
-    pub claim_schema_id: String,
+    pub claim_schema_id: ClaimSchemaId,
     pub credential_id: CredentialId,
 
     #[serde(with = "hex::serde")]

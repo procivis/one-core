@@ -1,14 +1,13 @@
 use super::OrganisationProvider;
 use crate::{entity::organisation, mapper::to_data_layer_error};
 use autometrics::autometrics;
-use dto_mapper::try_convert_inner;
+use dto_mapper::convert_inner;
 use one_core::{
-    model::organisation::{Organisation, OrganisationId, OrganisationRelations},
+    model::organisation::{Organisation, OrganisationRelations},
     repository::{error::DataLayerError, organisation_repository::OrganisationRepository},
 };
 use sea_orm::EntityTrait;
-use std::str::FromStr;
-use uuid::Uuid;
+use shared_types::OrganisationId;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -23,7 +22,7 @@ impl OrganisationRepository for OrganisationProvider {
                 .await
                 .map_err(to_data_layer_error)?;
 
-        Ok(Uuid::from_str(&organisation.last_insert_id)?)
+        Ok(organisation.last_insert_id)
     }
 
     async fn get_organisation(
@@ -31,15 +30,12 @@ impl OrganisationRepository for OrganisationProvider {
         id: &OrganisationId,
         _relations: &OrganisationRelations,
     ) -> Result<Option<Organisation>, DataLayerError> {
-        let organisation = organisation::Entity::find_by_id(id.to_string())
+        let organisation = organisation::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        match organisation {
-            None => Ok(None),
-            Some(organisation) => Ok(Some(organisation.try_into()?)),
-        }
+        Ok(convert_inner(organisation))
     }
 
     async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError> {
@@ -48,6 +44,6 @@ impl OrganisationRepository for OrganisationProvider {
             .await
             .map_err(to_data_layer_error)?;
 
-        try_convert_inner(organisations)
+        Ok(convert_inner(organisations))
     }
 }

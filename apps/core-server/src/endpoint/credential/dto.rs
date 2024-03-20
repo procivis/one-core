@@ -22,6 +22,7 @@ use one_core::service::credential::dto::SuspendCredentialRequestDTO;
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialId;
 use shared_types::KeyId;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use utoipa::IntoParams;
 use utoipa::ToSchema;
@@ -130,9 +131,10 @@ pub struct CredentialDetailClaimResponseRestDTO {
     pub value: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(CredentialStateEnum)]
+#[into(one_core::model::credential::CredentialStateEnum)]
 pub enum CredentialStateRestEnum {
     Created,
     Pending,
@@ -147,13 +149,15 @@ pub enum CredentialStateRestEnum {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialsFilterQueryParamsRest {
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     pub name: Option<String>,
     pub role: Option<CredentialRoleRestEnum>,
     #[param(inline, rename = "exact[]")]
     pub exact: Option<Vec<ExactColumn>>,
     #[param(inline, rename = "ids[]")]
     pub ids: Option<Vec<CredentialId>>,
+    #[param(inline, rename = "status[]")]
+    pub status: Option<Vec<CredentialStateRestEnum>>,
 }
 
 pub type GetCredentialQuery =

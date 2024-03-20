@@ -4,7 +4,9 @@ use tempfile::NamedTempFile;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::{CredentialSchemaClaim, WalletStorageTypeEnum};
 use crate::{
     model::{
         backup::{Metadata, UnexportableEntities},
@@ -38,6 +40,8 @@ fn setup_service(repositories: Repositories) -> BackupService {
 }
 
 fn dummy_unexportable_entities() -> UnexportableEntities {
+    let claim_schema_id = Uuid::new_v4().into();
+
     UnexportableEntities {
         credentials: vec![Credential {
             id: Uuid::new_v4().into(),
@@ -54,7 +58,20 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 state: CredentialStateEnum::Created,
                 suspend_end_date: None,
             }]),
-            claims: Some(vec![]),
+            claims: Some(vec![Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: "value".into(),
+                schema: Some(ClaimSchema {
+                    id: claim_schema_id,
+                    key: "key".into(),
+                    data_type: "data_type".into(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                }),
+            }]),
             issuer_did: None,
             holder_did: None,
             schema: Some(CredentialSchema {
@@ -66,9 +83,18 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 name: "name".into(),
                 format: "format".into(),
                 revocation_method: "revocation_method".into(),
-                claim_schemas: None,
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: claim_schema_id,
+                        key: "key".into(),
+                        data_type: "data_type".into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    },
+                    required: false,
+                }]),
                 organisation: Some(Organisation {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                 }),
@@ -96,7 +122,7 @@ async fn test_fetch_unexportable() {
         .return_once(|_| Ok(dummy_unexportable_entities()));
 
     let service = setup_service(repositories);
-    assert!(service.backup_info().await.is_ok());
+    service.backup_info().await.unwrap();
 }
 
 #[tokio::test]

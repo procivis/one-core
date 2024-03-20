@@ -5,15 +5,16 @@ use time::OffsetDateTime;
 #[sea_orm(table_name = "proof_input_schema")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: u64,
+    pub id: i64,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub order: u32,
-    pub validity_constraint: Option<u64>,
+    pub order: i32,
+    pub validity_constraint: Option<i64>,
     pub credential_schema: String,
     pub proof_schema: String,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
@@ -24,6 +25,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     CredentialSchema,
+    #[sea_orm(has_many = "super::proof_input_claim_schema::Entity")]
+    ProofInputClaimSchema,
     #[sea_orm(
         belongs_to = "super::proof_schema::Entity",
         from = "Column::ProofSchema",
@@ -40,9 +43,28 @@ impl Related<super::credential_schema::Entity> for Entity {
     }
 }
 
+impl Related<super::proof_input_claim_schema::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::ProofInputClaimSchema.def()
+    }
+}
+
 impl Related<super::proof_schema::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ProofSchema.def()
+    }
+}
+
+impl Related<super::claim_schema::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::proof_input_claim_schema::Relation::ClaimSchema.def()
+    }
+    fn via() -> Option<RelationDef> {
+        Some(
+            super::proof_input_claim_schema::Relation::ProofInputSchema
+                .def()
+                .rev(),
+        )
     }
 }
 

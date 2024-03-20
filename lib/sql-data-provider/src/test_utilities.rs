@@ -1,3 +1,4 @@
+use shared_types::{ClaimId, ClaimSchemaId};
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -10,6 +11,7 @@ use shared_types::{CredentialId, DidId, DidValue, EntityId, HistoryId, KeyId, Or
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::entity::{proof_input_claim_schema, proof_input_schema};
 use crate::{
     db_conn,
     entity::{
@@ -19,7 +21,7 @@ use crate::{
         history::{self, HistoryAction, HistoryEntityType},
         interaction, key, key_did,
         key_did::KeyRole,
-        organisation, proof, proof_claim, proof_schema, proof_schema_claim_schema,
+        organisation, proof, proof_claim, proof_schema,
         proof_state::{self, ProofRequestState},
     },
     DataLayer,
@@ -90,7 +92,7 @@ pub async fn insert_credential_state_to_database(
 pub async fn insert_credential_schema_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
     name: &str,
     format: &str,
     revocation_method: &str,
@@ -102,7 +104,7 @@ pub async fn insert_credential_schema_to_database(
         format: Set(format.to_owned()),
         name: Set(name.to_owned()),
         revocation_method: Set(revocation_method.to_owned()),
-        organisation_id: Set(organisation_id.to_owned()),
+        organisation_id: Set(organisation_id),
         wallet_storage_type: Set(None),
         deleted_at: Set(deleted_at),
     }
@@ -113,13 +115,13 @@ pub async fn insert_credential_schema_to_database(
 
 pub async fn insert_many_claims_to_database(
     database: &DatabaseConnection,
-    claims: &[(Uuid, Uuid, CredentialId, Vec<u8>)],
+    claims: &[(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>)],
 ) -> Result<(), DbErr> {
     let models =
         claims.iter().map(
             |(id, claim_schema_id, credential_id, value)| claim::ActiveModel {
-                id: Set(id.to_string()),
-                claim_schema_id: Set(claim_schema_id.to_string()),
+                id: Set(*id),
+                claim_schema_id: Set(*claim_schema_id),
                 credential_id: Set(*credential_id),
                 value: Set(value.to_owned()),
                 created_date: Set(get_dummy_date()),
@@ -132,31 +134,31 @@ pub async fn insert_many_claims_to_database(
 }
 
 #[allow(clippy::ptr_arg)]
-pub async fn insert_many_claims_schema_to_database(
+pub async fn insert_many_claims_schema_to_database<'a>(
     database: &DatabaseConnection,
-    credential_schema_id: &str,
-    claims: &Vec<(Uuid, &str, bool, u32, &str)>,
+    claim_input: &'a ProofInput<'a>,
 ) -> Result<(), DbErr> {
-    for (id, key, required, order, datatype) in claims {
+    for claim_schema in claim_input.claims {
         claim_schema::ActiveModel {
-            id: Set(id.to_string()),
+            id: Set(claim_schema.id),
             created_date: Set(get_dummy_date()),
             last_modified: Set(get_dummy_date()),
-            key: Set(key.to_string()),
-            datatype: Set(datatype.to_string()),
+            key: Set(claim_schema.key.to_string()),
+            datatype: Set(claim_schema.datatype.to_string()),
         }
         .insert(database)
         .await?;
 
         credential_schema_claim_schema::ActiveModel {
-            claim_schema_id: Set(id.to_string()),
-            credential_schema_id: Set(credential_schema_id.to_owned()),
-            required: Set(*required),
-            order: Set(*order),
+            claim_schema_id: Set(claim_schema.id),
+            credential_schema_id: Set(claim_input.credential_schema_id.to_owned()),
+            required: Set(claim_schema.required),
+            order: Set(claim_schema.order),
         }
         .insert(database)
         .await?;
     }
+
     Ok(())
 }
 
@@ -209,11 +211,24 @@ pub async fn insert_proof_state_to_database(
     Ok(())
 }
 
-pub async fn insert_proof_schema_with_claims_to_database(
+pub struct ClaimInsertInfo<'a> {
+    pub id: ClaimSchemaId,
+    pub key: &'a str,
+    pub required: bool,
+    pub order: u32,
+    pub datatype: &'a str,
+}
+
+pub struct ProofInput<'a> {
+    pub credential_schema_id: String,
+    pub claims: &'a Vec<ClaimInsertInfo<'a>>,
+}
+
+pub async fn insert_proof_schema_with_claims_to_database<'a>(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    claims: &Vec<(Uuid, &str, bool, u32, &str)>,
-    organisation_id: &str,
+    proof_inputs: Vec<&ProofInput<'a>>,
+    organisation_id: OrganisationId,
     name: &str,
 ) -> Result<String, DbErr> {
     let schema = proof_schema::ActiveModel {
@@ -222,22 +237,35 @@ pub async fn insert_proof_schema_with_claims_to_database(
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
-        organisation_id: Set(organisation_id.to_owned()),
-        validity_constraint: Set(None),
+        organisation_id: Set(organisation_id),
         deleted_at: Set(deleted_at),
     }
     .insert(database)
     .await?;
 
-    for (id, _key, required, order, _) in claims {
-        proof_schema_claim_schema::ActiveModel {
-            claim_schema_id: Set(id.to_string()),
-            proof_schema_id: Set(schema.id.clone()),
-            required: Set(*required),
-            order: Set(*order),
+    for (i, input) in proof_inputs.iter().enumerate() {
+        let input_id = proof_input_schema::ActiveModel {
+            id: NotSet,
+            created_date: Set(get_dummy_date()),
+            last_modified: Set(get_dummy_date()),
+            order: Set(i as _),
+            validity_constraint: NotSet,
+            credential_schema: Set(input.credential_schema_id.to_owned()),
+            proof_schema: Set(schema.id.clone()),
         }
         .insert(database)
         .await?;
+
+        for claim in input.claims {
+            proof_input_claim_schema::ActiveModel {
+                proof_input_schema_id: Set(input_id.id),
+                claim_schema_id: Set(claim.id.to_string()),
+                required: Set(claim.required),
+                order: Set(claim.order as _),
+            }
+            .insert(database)
+            .await?;
+        }
     }
 
     Ok(schema.id)
@@ -246,7 +274,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
 pub async fn insert_proof_schema_to_database(
     database: &DatabaseConnection,
     deleted_at: Option<OffsetDateTime>,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
     name: &str,
 ) -> Result<String, DbErr> {
     let schema = proof_schema::ActiveModel {
@@ -255,8 +283,7 @@ pub async fn insert_proof_schema_to_database(
         last_modified: Set(get_dummy_date()),
         name: Set(name.to_owned()),
         expire_duration: Set(Default::default()),
-        organisation_id: Set(organisation_id.to_owned()),
-        validity_constraint: Set(None),
+        organisation_id: Set(organisation_id),
         deleted_at: Set(deleted_at),
     }
     .insert(database)
@@ -266,7 +293,7 @@ pub async fn insert_proof_schema_to_database(
 
 pub async fn insert_many_proof_claim_to_database(
     database: &DatabaseConnection,
-    proof_claims: &[(Uuid, Uuid)],
+    proof_claims: &[(Uuid, ClaimId)],
 ) -> Result<(), DbErr> {
     let models = proof_claims
         .iter()
@@ -284,10 +311,10 @@ pub async fn insert_many_proof_claim_to_database(
 
 pub async fn insert_organisation_to_database(
     database: &DatabaseConnection,
-    id: Option<Uuid>,
-) -> Result<String, DbErr> {
+    id: Option<OrganisationId>,
+) -> Result<OrganisationId, DbErr> {
     let organisation = organisation::ActiveModel {
-        id: Set(id.unwrap_or_else(Uuid::new_v4).to_string()),
+        id: Set(id.unwrap_or(Uuid::new_v4().into())),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
     }
@@ -302,7 +329,7 @@ pub async fn insert_key_to_database(
     public_key: Vec<u8>,
     key_reference: Vec<u8>,
     did_id: Option<DidId>,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
 ) -> Result<KeyId, DbErr> {
     let id = did_id
         .as_ref()
@@ -318,7 +345,7 @@ pub async fn insert_key_to_database(
         key_reference: Set(key_reference),
         storage_type: Set("INTERNAL".to_string()),
         key_type: Set(key_type),
-        organisation_id: Set(organisation_id.to_string()),
+        organisation_id: Set(organisation_id),
         deleted_at: NotSet,
     }
     .insert(database)
@@ -345,7 +372,7 @@ pub async fn insert_did_key(
     did_id: impl Into<DidId>,
     did: DidValue,
     method: &str,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
 ) -> Result<DidId, DbErr> {
     insert_did(
         database,
@@ -366,7 +393,7 @@ pub async fn insert_did(
     name: &str,
     did_id: DidId,
     did: DidValue,
-    organisation_id: &str,
+    organisation_id: OrganisationId,
     method: impl Into<String>,
     did_type: DidType,
     deactivated: impl Into<Option<bool>>,
@@ -381,7 +408,7 @@ pub async fn insert_did(
         name: Set(name.to_owned()),
         type_field: Set(did_type),
         method: Set(method.into()),
-        organisation_id: Set(organisation_id.to_owned()),
+        organisation_id: Set(organisation_id),
         deactivated: Set(deactivated.into().unwrap_or_default()),
         deleted_at: NotSet,
     }

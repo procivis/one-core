@@ -1,8 +1,9 @@
 use crate::{
-    model::organisation::{Organisation, OrganisationId, OrganisationRelations},
+    model::organisation::{Organisation, OrganisationRelations},
     repository::error::DataLayerError,
 };
 use mockall::*;
+use shared_types::OrganisationId;
 
 #[derive(Default)]
 struct OrganisationRepository;

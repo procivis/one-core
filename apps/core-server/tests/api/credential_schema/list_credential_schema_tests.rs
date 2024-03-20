@@ -9,7 +9,12 @@ async fn test_get_list_credential_schema_success() {
         context
             .db
             .credential_schemas
-            .create(&format!("test-{}", i), &organisation, "NONE")
+            .create(
+                &format!("test-{}", i),
+                &organisation,
+                "NONE",
+                Default::default(),
+            )
             .await;
     }
 

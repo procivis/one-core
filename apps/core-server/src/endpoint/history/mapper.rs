@@ -1,9 +1,22 @@
-use one_core::model::{
-    history::{HistoryFilterValue, HistorySearchEnum},
-    list_filter::{ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison},
+use one_core::{
+    model::{
+        history::{HistoryFilterValue, HistorySearchEnum},
+        list_filter::{ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison},
+    },
+    service::history::dto::HistoryMetadataResponse,
 };
 
 use crate::endpoint::history::dto::{HistoryFilterQueryParamsRest, HistorySearchEnumRest};
+
+use super::dto::HistoryMetadataRest;
+
+pub fn convert_history_metadata(
+    value: Option<HistoryMetadataResponse>,
+) -> Option<HistoryMetadataRest> {
+    match value? {
+        HistoryMetadataResponse::UnexportableEntities(_) => None,
+    }
+}
 
 impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterValue> {
     fn from(value: HistoryFilterQueryParamsRest) -> Self {
@@ -39,8 +52,7 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
         let search_query = value
             .search_text
             .map(|search_text| search_query_to_filter_value(search_text, value.search_type));
-        let organisation_id =
-            HistoryFilterValue::OrganisationId(value.organisation_id.into()).condition();
+        let organisation_id = HistoryFilterValue::OrganisationId(value.organisation_id).condition();
 
         organisation_id
             & entity_types

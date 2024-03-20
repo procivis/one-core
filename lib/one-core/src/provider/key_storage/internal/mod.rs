@@ -18,6 +18,8 @@ use crate::{
     service::error::ServiceError,
 };
 
+use super::KeySecurity;
+
 pub struct InternalKeyProvider {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     encryption_key: Option<[u8; 32]>,
@@ -82,7 +84,7 @@ impl KeyStorage for InternalKeyProvider {
                 "DILITHIUM".to_string(),
                 "BBS_PLUS".to_string(),
             ],
-            security: vec!["SOFTWARE".to_string()],
+            security: vec![KeySecurity::Software],
             features: vec!["EXPORTABLE".to_string()],
         }
     }

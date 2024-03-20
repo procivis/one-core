@@ -9,11 +9,11 @@ use one_core::{
         },
         list_filter::ListFilterCondition,
         list_query::ListPagination,
-        organisation::{Organisation, OrganisationId},
+        organisation::Organisation,
     },
     repository::history_repository::HistoryRepository,
 };
-use shared_types::{CredentialId, DidId};
+use shared_types::{ClaimId, ClaimSchemaId, CredentialId, DidId, OrganisationId};
 
 use crate::{entity::key_did::KeyRole, history::HistoryProvider, test_utilities::*};
 
@@ -32,7 +32,7 @@ async fn setup_empty() -> TestSetup {
     TestSetup {
         provider: HistoryProvider { db: db.clone() },
         organisation: Organisation {
-            id: Uuid::parse_str(&organisation_id).unwrap(),
+            id: organisation_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         },
@@ -64,9 +64,9 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     insert_history(
         &db,
         HistoryAction::Created.into(),
-        organisation.id.to_owned().into(),
+        organisation.id.into(),
         HistoryEntityType::Organisation.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -75,7 +75,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     let credential_schema_id = insert_credential_schema_to_database(
         &db,
         None,
-        &organisation.id.to_string(),
+        organisation.id,
         credential_schema_name,
         "JWT",
         "NONE",
@@ -87,7 +87,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         HistoryAction::Created.into(),
         Uuid::parse_str(&credential_schema_id).unwrap().into(),
         HistoryEntityType::CredentialSchema.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -100,7 +100,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         Uuid::new_v4(),
         did_value.parse().unwrap(),
         "KEY",
-        &organisation.id.to_string(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -109,7 +109,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         HistoryAction::Created.into(),
         did_id.into(),
         HistoryEntityType::Did.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -120,7 +120,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         vec![],
         vec![],
         None,
-        &organisation.id.to_string(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -129,7 +129,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         HistoryAction::Created.into(),
         key_id.into(),
         HistoryEntityType::Key.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -153,22 +153,35 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         HistoryAction::Issued.into(),
         credential_id.into(),
         HistoryEntityType::Credential.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
 
     let claim_schema_name = "test";
-    let claim_schema: Vec<(Uuid, &str, bool, u32, &str)> =
-        vec![(Uuid::new_v4(), claim_schema_name, false, 0, "STRING")];
-    insert_many_claims_schema_to_database(&db, &credential_schema_id.to_string(), &claim_schema)
+    let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: claim_schema_name,
+            required: i % 2 == 0,
+            order: i as u32,
+            datatype: "STRING",
+        })
+        .collect();
+
+    let claim_input = ProofInput {
+        credential_schema_id: credential_schema_id.clone(),
+        claims: &new_claim_schemas,
+    };
+
+    insert_many_claims_schema_to_database(&db, &claim_input)
         .await
         .unwrap();
 
     let claim_value = "claim_value";
-    let claims: Vec<(Uuid, Uuid, CredentialId, Vec<u8>)> = vec![(
-        Uuid::new_v4(),
-        claim_schema[0].0.to_owned(),
+    let claims: Vec<(ClaimId, ClaimSchemaId, CredentialId, Vec<u8>)> = vec![(
+        Uuid::new_v4().into(),
+        new_claim_schemas[0].id,
         credential_id,
         claim_value.as_bytes().to_vec(),
     )];
@@ -180,8 +193,8 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         &insert_proof_schema_with_claims_to_database(
             &db,
             None,
-            &claim_schema,
-            &organisation.id.to_string(),
+            vec![&claim_input],
+            organisation.id,
             "proof schema",
         )
         .await
@@ -193,7 +206,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         HistoryAction::Created.into(),
         proof_schema_id.into(),
         HistoryEntityType::ProofSchema.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -211,7 +224,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         .unwrap(),
     )
     .unwrap();
-    let proof_claim: Vec<(Uuid, Uuid)> = vec![(proof_id.to_owned(), claims[0].0.to_owned())];
+    let proof_claim: Vec<(Uuid, ClaimId)> = vec![(proof_id.to_owned(), claims[0].0)];
     insert_many_proof_claim_to_database(&db, proof_claim.as_slice())
         .await
         .unwrap();
@@ -221,7 +234,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         HistoryAction::Created.into(),
         proof_id.into(),
         HistoryEntityType::Proof.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -307,7 +320,7 @@ async fn test_get_history_list_simple() {
             HistoryAction::Created.into(),
             Uuid::new_v4().into(),
             HistoryEntityType::Organisation.into(),
-            organisation.id.to_owned().into(),
+            organisation.id,
         )
         .await
         .unwrap();
@@ -342,29 +355,23 @@ async fn test_get_history_list_schema_joins_credentials() {
     insert_history(
         &db,
         HistoryAction::Created.into(),
-        organisation.id.to_owned().into(),
+        organisation.id.into(),
         HistoryEntityType::Organisation.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
 
-    let credential_schema_id = insert_credential_schema_to_database(
-        &db,
-        None,
-        &organisation.id.to_string(),
-        "schema",
-        "JWT",
-        "NONE",
-    )
-    .await
-    .unwrap();
+    let credential_schema_id =
+        insert_credential_schema_to_database(&db, None, organisation.id, "schema", "JWT", "NONE")
+            .await
+            .unwrap();
     insert_history(
         &db,
         HistoryAction::Created.into(),
         Uuid::parse_str(&credential_schema_id).unwrap().into(),
         HistoryEntityType::CredentialSchema.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -375,7 +382,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
         "KEY",
-        &organisation.id.to_string(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -384,7 +391,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         HistoryAction::Created.into(),
         did_id.into(),
         HistoryEntityType::Did.into(),
-        organisation.id.to_owned().into(),
+        organisation.id,
     )
     .await
     .unwrap();
@@ -406,7 +413,7 @@ async fn test_get_history_list_schema_joins_credentials() {
             HistoryAction::Issued.into(),
             credential_id.into(),
             HistoryEntityType::Credential.into(),
-            organisation.id.to_owned().into(),
+            organisation.id,
         )
         .await
         .unwrap();

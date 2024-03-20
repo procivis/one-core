@@ -10,8 +10,8 @@ use crate::provider::credential_formatter::{
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationInfo, NewCredentialState, RevocationMethod,
-    RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
+    RevocationMethod, RevocationMethodCapabilities,
 };
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
@@ -50,7 +50,7 @@ impl RevocationMethod for StatusList2021 {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<CredentialRevocationState, ServiceError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(ServiceError::ValidationError(format!(
                 "Invalid credential status type: {}",
@@ -102,15 +102,39 @@ impl RevocationMethod for StatusList2021 {
         )
         .await?;
 
-        let result = extract_bitstring_index(encoded_list, list_index)?;
-        Ok(result)
+        if extract_bitstring_index(encoded_list, list_index)? {
+            Ok(match credential_status.status_purpose.as_ref() {
+                Some(purpose) => match purpose.as_str() {
+                    "revocation" => CredentialRevocationState::Revoked,
+                    "suspension" => CredentialRevocationState::Suspended {
+                        suspend_end_date: None,
+                    },
+                    _ => {
+                        return Err(ServiceError::ValidationError(format!(
+                            "Invalid status purpose: {purpose}",
+                        )))
+                    }
+                },
+                None => {
+                    return Err(ServiceError::ValidationError(
+                        "Missing status purpose ".to_string(),
+                    ))
+                }
+            })
+        } else {
+            Ok(CredentialRevocationState::Valid)
+        }
     }
 
     async fn mark_credential_as(
         &self,
         _credential: &Credential,
-        _new_state: NewCredentialState,
+        _new_state: CredentialRevocationState,
     ) -> Result<(), ServiceError> {
         Err(BusinessLogicError::StatusList2021NotSupported.into())
+    }
+
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, ServiceError> {
+        Ok(JsonLdContext::default())
     }
 }

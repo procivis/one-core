@@ -1,9 +1,9 @@
-use uuid::Uuid;
+use shared_types::OrganisationId;
 
 use super::dto::CreateOrganisationResponseRestDTO;
 
-impl From<Uuid> for CreateOrganisationResponseRestDTO {
-    fn from(value: Uuid) -> Self {
+impl From<OrganisationId> for CreateOrganisationResponseRestDTO {
+    fn from(value: OrganisationId) -> Self {
         Self { id: value }
     }
 }

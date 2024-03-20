@@ -3,7 +3,7 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::provider::revocation::NewCredentialState;
+use crate::provider::revocation::CredentialRevocationState;
 use crate::{
     model::{
         claim::Claim,
@@ -254,15 +254,15 @@ pub(super) fn credential_offered_history_event(credential: Credential) -> Histor
     }
 }
 
-pub(super) fn credential_revocation_history_event(
+pub(crate) fn credential_revocation_history_event(
     id: CredentialId,
-    new_state: NewCredentialState,
+    new_state: CredentialRevocationState,
     organisation: Option<Organisation>,
 ) -> History {
     let action = match new_state {
-        NewCredentialState::Revoked => HistoryAction::Revoked,
-        NewCredentialState::Reactivated => HistoryAction::Reactivated,
-        NewCredentialState::Suspended => HistoryAction::Suspended,
+        CredentialRevocationState::Revoked => HistoryAction::Revoked,
+        CredentialRevocationState::Valid => HistoryAction::Reactivated,
+        CredentialRevocationState::Suspended { .. } => HistoryAction::Suspended,
     };
 
     History {
@@ -276,12 +276,12 @@ pub(super) fn credential_revocation_history_event(
     }
 }
 
-pub(super) fn new_credential_state_to_model_state(
-    new_credential_state: NewCredentialState,
+pub(super) fn credential_revocation_state_to_model_state(
+    revocation_state: CredentialRevocationState,
 ) -> CredentialStateEnum {
-    match new_credential_state {
-        NewCredentialState::Revoked => CredentialStateEnum::Revoked,
-        NewCredentialState::Reactivated => CredentialStateEnum::Accepted,
-        NewCredentialState::Suspended => CredentialStateEnum::Suspended,
+    match revocation_state {
+        CredentialRevocationState::Revoked => CredentialStateEnum::Revoked,
+        CredentialRevocationState::Valid => CredentialStateEnum::Accepted,
+        CredentialRevocationState::Suspended { .. } => CredentialStateEnum::Suspended,
     }
 }

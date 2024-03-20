@@ -1,9 +1,10 @@
 use serde::Serialize;
 use shared_types::{CredentialId, DidValue};
 use strum_macros::Display;
+use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
-use crate::model::proof_schema::ProofSchema;
+use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
 use crate::service::error::ServiceError;
 
@@ -22,12 +23,14 @@ pub struct CredentialRevocationInfo {
     pub credential_status: CredentialStatus,
 }
 
+#[derive(Debug, Clone)]
 pub struct VerifierCredentialData {
     pub credential: DetailCredential,
     pub extracted_lvvcs: Vec<DetailCredential>,
-    pub proof_schema: ProofSchema,
+    pub proof_input: ProofInputSchema,
 }
 
+#[derive(Clone)]
 pub enum CredentialDataByRole {
     Holder(CredentialId),
     Issuer(CredentialId),
@@ -35,10 +38,19 @@ pub enum CredentialDataByRole {
 }
 
 #[derive(Clone, Debug, Display, PartialEq)]
-pub enum NewCredentialState {
+pub enum CredentialRevocationState {
+    Valid,
     Revoked,
-    Reactivated,
-    Suspended,
+    Suspended {
+        suspend_end_date: Option<OffsetDateTime>,
+    },
+}
+
+#[derive(Debug, Default)]
+pub struct JsonLdContext {
+    pub revokable_credential_type: String,
+    pub revokable_credential_subject: String,
+    pub url: Option<String>,
 }
 
 #[cfg_attr(test, mockall::automock)]
@@ -54,17 +66,17 @@ pub trait RevocationMethod: Send + Sync {
     async fn mark_credential_as(
         &self,
         credential: &Credential,
-        new_state: NewCredentialState,
+        new_state: CredentialRevocationState,
     ) -> Result<(), ServiceError>;
 
-    /// perform check of credential revocation status
-    /// * returns `bool` - true if credential revoked, false if valid
     async fn check_credential_revocation_status(
         &self,
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         additional_credential_data: Option<CredentialDataByRole>,
-    ) -> Result<bool, ServiceError>;
+    ) -> Result<CredentialRevocationState, ServiceError>;
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities;
+
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, ServiceError>;
 }

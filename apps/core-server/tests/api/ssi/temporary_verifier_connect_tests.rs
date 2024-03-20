@@ -1,11 +1,13 @@
-use one_core::model::did::DidType;
 use one_core::model::proof::ProofStateEnum;
-use serde_json::{json, Value};
-use validator::HasLen;
+use serde_json::Value;
 
 use crate::{
-    fixtures::{self, TestingDidParams},
-    utils::{self, server::run_server},
+    fixtures,
+    utils::{
+        self,
+        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+        server::run_server,
+    },
 };
 
 #[tokio::test]
@@ -17,20 +19,12 @@ async fn test_temporary_verifier_connect_success() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let holder_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            did_type: Some(DidType::Remote),
-            ..Default::default()
-        }),
-    )
-    .await;
 
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
     let claim_schema = credential_schema
         .claim_schemas
+        .as_ref()
         .unwrap()
         .first()
         .unwrap()
@@ -41,12 +35,16 @@ async fn test_temporary_verifier_connect_success() {
         &db_conn,
         "test",
         &organisation,
-        &[(
-            claim_schema.id,
-            &claim_schema.key,
-            true,
-            &claim_schema.data_type,
-        )],
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+            }],
+            credential_schema: &credential_schema,
+            validity_constraint: None,
+        }],
     )
     .await;
 
@@ -68,21 +66,14 @@ async fn test_temporary_verifier_connect_success() {
         proof.id
     );
 
-    let resp = utils::client()
-        .post(url)
-        .json(&json!({
-          "did": holder_did.did
-        }))
-        .send()
-        .await
-        .unwrap();
+    let resp = utils::client().post(url).send().await.unwrap();
 
     // THEN
     assert_eq!(resp.status(), 200);
     let resp: Value = resp.json().await.unwrap();
 
     assert_eq!(did.did.to_string(), resp["verifierDid"].as_str().unwrap());
-    assert_eq!(1, resp["claims"].as_array().unwrap().length());
+    assert_eq!(1, resp["claims"].as_array().unwrap().len());
 
     let proof = fixtures::get_proof(&db_conn, &proof.id).await;
     assert_eq!(

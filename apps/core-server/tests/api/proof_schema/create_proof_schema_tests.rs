@@ -1,4 +1,8 @@
-use crate::utils::{context::TestContext, field_match::FieldHelpers};
+use crate::utils::{
+    context::TestContext,
+    db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+    field_match::FieldHelpers,
+};
 
 #[tokio::test]
 async fn test_create_proof_schema_success() {
@@ -8,16 +12,14 @@ async fn test_create_proof_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
-
-    let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
 
     // WHEN
     let resp = context
         .api
         .proof_schemas
-        .create("proof-schema-name", claim_schema.id, organisation.id)
+        .create("proof-schema-name", organisation.id, &credential_schema)
         .await;
 
     // THEN
@@ -27,46 +29,44 @@ async fn test_create_proof_schema_success() {
     let proof_schema = context.db.proof_schemas.get(&resp["id"].parse()).await;
     assert_eq!(proof_schema.name, "proof-schema-name");
     assert_eq!(proof_schema.expire_duration, 0);
-    assert_eq!(proof_schema.claim_schemas.unwrap().len(), 1);
-    assert_eq!(proof_schema.validity_constraint, Some(10));
+
+    let input_schemas = proof_schema.input_schemas.unwrap();
+    assert_eq!(input_schemas.len(), 1);
+    assert_eq!(input_schemas[0].validity_constraint, Some(10));
+    assert_eq!(input_schemas[0].claim_schemas.as_ref().unwrap().len(), 1);
 }
 
 #[tokio::test]
 async fn test_create_proof_schema_with_the_same_name_in_different_organisations() {
-    // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
     let organisation1 = context.db.organisations.create().await;
 
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let credential_schema1 = context
-        .db
-        .credential_schemas
-        .create("test", &organisation1, "NONE")
-        .await;
-
-    let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
-    let claim_schema1 = &credential_schema1.claim_schemas.unwrap()[0].schema;
-
-    // WHEN
     let resp = context
         .api
         .proof_schemas
-        .create("proof-schema-name", claim_schema.id, organisation.id)
+        .create("proof-schema-name", organisation.id, &credential_schema)
+        .await;
+
+    assert_eq!(resp.status(), 201);
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation1, "NONE", Default::default())
         .await;
 
     let resp1 = context
         .api
         .proof_schemas
-        .create("proof-schema-name", claim_schema1.id, organisation1.id)
+        .create("proof-schema-name", organisation1.id, &credential_schema)
         .await;
 
-    // THEN
-    assert_eq!(resp.status(), 201);
     assert_eq!(resp1.status(), 201);
 }
 
@@ -78,23 +78,21 @@ async fn test_fail_to_create_proof_schema_with_the_same_name_in_organisation() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
-
-    let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
 
     // WHEN
     let resp = context
         .api
         .proof_schemas
-        .create("proof-schema-name", claim_schema.id, organisation.id)
+        .create("proof-schema-name", organisation.id, &credential_schema)
         .await;
     assert_eq!(resp.status(), 201);
 
     let resp = context
         .api
         .proof_schemas
-        .create("proof-schema-name", claim_schema.id, organisation.id)
+        .create("proof-schema-name", organisation.id, &credential_schema)
         .await;
 
     // THEN
@@ -109,10 +107,10 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
-    let claim_schema = &credential_schema.claim_schemas.unwrap()[0].schema;
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
 
     let proof_schema = context
         .db
@@ -120,12 +118,16 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
         .create(
             "proof-schema-name",
             &organisation,
-            &[(
-                claim_schema.id,
-                &claim_schema.key,
-                true,
-                &claim_schema.data_type,
-            )],
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
         )
         .await;
 
@@ -135,7 +137,7 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
     let resp = context
         .api
         .proof_schemas
-        .create("proof-schema-name", claim_schema.id, organisation.id)
+        .create("proof-schema-name", organisation.id, &credential_schema)
         .await;
 
     // THEN

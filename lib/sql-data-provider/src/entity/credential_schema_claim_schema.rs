@@ -1,12 +1,17 @@
 use sea_orm::entity::prelude::*;
+use serde::Deserialize;
+use shared_types::ClaimSchemaId;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+use crate::common::bool_from_int;
+
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize)]
 #[sea_orm(table_name = "credential_schema_claim_schema")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub claim_schema_id: String,
+    pub claim_schema_id: ClaimSchemaId,
 
     pub credential_schema_id: String,
+    #[serde(deserialize_with = "bool_from_int")]
     pub required: bool,
     pub order: u32,
 }

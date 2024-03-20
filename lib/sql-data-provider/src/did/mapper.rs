@@ -139,7 +139,7 @@ impl TryFrom<Did> for did::ActiveModel {
             name: Set(value.name),
             type_field: Set(value.did_type.into()),
             method: Set(value.did_method),
-            organisation_id: Set(organisation.id.to_string()),
+            organisation_id: Set(organisation.id),
             deactivated: Set(value.deactivated),
             deleted_at: NotSet,
         })

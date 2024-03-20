@@ -13,7 +13,7 @@ use one_core::model::credential_schema::{
     SortableCredentialSchemaColumn,
 };
 use one_core::model::organisation::Organisation;
-use one_core::{model::claim_schema::ClaimSchemaId, repository::error::DataLayerError};
+use one_core::repository::error::DataLayerError;
 
 use crate::entity::{claim_schema, credential_schema, credential_schema_claim_schema};
 use crate::list_query::GetEntityColumn;
@@ -35,17 +35,9 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             name: Set(value.name),
             format: Set(value.format),
             revocation_method: Set(value.revocation_method),
-            organisation_id: Set(organisation_id.to_string()),
+            organisation_id: Set(organisation_id),
             wallet_storage_type: Set(convert_inner(value.wallet_storage_type)),
         })
-    }
-}
-
-impl TryFrom<credential_schema_claim_schema::Model> for ClaimSchemaId {
-    type Error = DataLayerError;
-
-    fn try_from(value: credential_schema_claim_schema::Model) -> Result<Self, Self::Error> {
-        Ok(Uuid::from_str(&value.claim_schema_id)?)
     }
 }
 
@@ -54,7 +46,6 @@ fn entity_model_to_credential_schema(
     organisation: Option<Organisation>,
 ) -> Result<CredentialSchema, DataLayerError> {
     let id = Uuid::from_str(&value.id)?;
-    let _organisation_id = Uuid::from_str(&value.organisation_id)?;
 
     Ok(CredentialSchema {
         id,
@@ -107,7 +98,7 @@ pub(super) fn claim_schemas_to_model_vec(
     claim_schemas
         .into_iter()
         .map(|claim_schema| claim_schema::ActiveModel {
-            id: Set(claim_schema.schema.id.to_string()),
+            id: Set(claim_schema.schema.id),
             created_date: Set(claim_schema.schema.created_date),
             last_modified: Set(claim_schema.schema.last_modified),
             key: Set(claim_schema.schema.key),
@@ -125,7 +116,7 @@ pub(super) fn claim_schemas_to_relations(
         .enumerate()
         .map(
             |(i, claim_schema)| credential_schema_claim_schema::ActiveModel {
-                claim_schema_id: Set(claim_schema.schema.id.to_string()),
+                claim_schema_id: Set(claim_schema.schema.id),
                 credential_schema_id: Set(credential_schema_id.to_string()),
                 required: Set(claim_schema.required),
                 order: Set(i as u32),

@@ -18,7 +18,8 @@ use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{Proof, ProofClaimRelations, ProofState, ProofStateEnum};
 use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
 use one_core::model::proof_schema::{
-    ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
+    ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
+    ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use one_core::model::revocation_list::{
     RevocationList, RevocationListPurpose, RevocationListRelations,
@@ -32,6 +33,8 @@ use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
+
+use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub fn unwrap_or_random(op: Option<String>) -> String {
     op.unwrap_or_else(|| {
@@ -112,7 +115,7 @@ pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let organisation = Organisation {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
     };
@@ -290,7 +293,7 @@ pub async fn create_credential_schema(
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schema = ClaimSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         key: "firstName".to_string(),
         data_type: "STRING".to_string(),
         created_date: get_dummy_date(),
@@ -336,7 +339,7 @@ pub async fn create_credential_schema_with_claims(
         .iter()
         .map(|(id, key, required, data_type)| CredentialSchemaClaim {
             schema: ClaimSchema {
-                id: id.to_owned(),
+                id: (*id).into(),
                 key: key.to_string(),
                 data_type: data_type.to_string(),
                 created_date: get_dummy_date(),
@@ -372,22 +375,35 @@ pub async fn create_proof_schema(
     db_conn: &DbConn,
     name: &str,
     organisation: &Organisation,
-    claims: &[(Uuid, &str, bool, &str)],
+    proof_input_schemas: &[CreateProofInputSchema<'_>],
 ) -> ProofSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
-    let claim_schemas = claims
+    let input_schemas = proof_input_schemas
         .iter()
-        .map(|(id, key, required, data_type)| ProofSchemaClaim {
-            schema: ClaimSchema {
-                id: id.to_owned(),
-                key: key.to_string(),
-                data_type: data_type.to_string(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-            },
-            required: required.to_owned(),
-            credential_schema: None,
+        .map(|proof_input_schema| {
+            let claim_schemas = proof_input_schema
+                .claims
+                .iter()
+                .enumerate()
+                .map(|(order, claim)| ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: claim.id.to_owned(),
+                        key: claim.key.to_string(),
+                        data_type: claim.data_type.to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                    },
+                    required: claim.required.to_owned(),
+                    order: order as _,
+                })
+                .collect();
+
+            ProofInputSchema {
+                validity_constraint: proof_input_schema.validity_constraint,
+                claim_schemas: Some(claim_schemas),
+                credential_schema: Some(proof_input_schema.credential_schema.to_owned()),
+            }
         })
         .collect();
 
@@ -398,10 +414,8 @@ pub async fn create_proof_schema(
         name: name.to_owned(),
         organisation: Some(organisation.to_owned()),
         deleted_at: None,
-        claim_schemas: Some(claim_schemas),
         expire_duration: 0,
-        validity_constraint: Some(10),
-        input_schemas: None,
+        input_schemas: Some(input_schemas),
     };
 
     data_layer
@@ -493,6 +507,7 @@ pub struct TestingCredentialParams<'a> {
     pub deleted_at: Option<OffsetDateTime>,
     pub role: Option<CredentialRole>,
     pub key: Option<Key>,
+    pub suspend_end_date: Option<OffsetDateTime>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -535,7 +550,7 @@ pub async fn create_credential(
         state: Some(vec![CredentialState {
             created_date: get_dummy_date(),
             state,
-            suspend_end_date: None,
+            suspend_end_date: params.suspend_end_date,
         }]),
         claims: Some(claims),
         issuer_did: Some(issuer_did.to_owned()),
@@ -638,14 +653,11 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                     ..Default::default()
                 }),
                 schema: Some(ProofSchemaRelations {
-                    claim_schemas: Some(ProofSchemaClaimRelations {
-                        credential_schema: Some(CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations {}),
-                            ..Default::default()
-                        }),
-                    }),
                     organisation: Some(OrganisationRelations {}),
-                    proof_inputs: None,
+                    proof_inputs: Some(ProofInputSchemaRelations {
+                        claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                        credential_schema: Some(CredentialSchemaRelations::default()),
+                    }),
                 }),
                 verifier_did: Some(DidRelations::default()),
                 holder_did: Some(DidRelations::default()),

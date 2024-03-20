@@ -31,6 +31,8 @@ use crate::{
     service::error::{ServiceError, ValidationError},
 };
 
+use super::KeySecurity;
+
 mod dto;
 mod mapper;
 
@@ -133,7 +135,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         KeyStorageCapabilities {
             features: vec!["EXPORTABLE".to_owned()],
             algorithms: vec!["ES256".to_string()],
-            security: vec!["HARDWARE".to_string()],
+            security: vec![KeySecurity::Hardware],
         }
     }
 }

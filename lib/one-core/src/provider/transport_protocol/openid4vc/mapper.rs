@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::proof::ProofId;
+use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::transport_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -160,42 +161,49 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
     interaction_id: InteractionId,
     proof: &Proof,
 ) -> Result<OpenID4VPPresentationDefinition, TransportProtocolError> {
+    let proof_schema = proof.schema.as_ref().ok_or(TransportProtocolError::Failed(
+        "Proof schema not found".to_string(),
+    ))?;
     // using vec to keep the original order of claims/credentials in the proof request
-    let mut requested_credentials: Vec<CredentialSchemaId> = vec![];
-    let claim_schemas = proof
-        .schema
-        .as_ref()
-        .ok_or(TransportProtocolError::Failed(
-            "Proof schema not found".to_string(),
-        ))?
-        .claim_schemas
-        .as_ref()
-        .ok_or(TransportProtocolError::Failed(
-            "Proof claim schemas not found".to_string(),
-        ))?;
-    for claim_schema in claim_schemas {
-        let credential_schema_id = claim_schema
-            .credential_schema
-            .as_ref()
-            .ok_or(TransportProtocolError::Failed(
-                "Credential schema not found".to_string(),
-            ))?
-            .id;
-        if !requested_credentials.contains(&credential_schema_id) {
-            requested_credentials.push(credential_schema_id);
-        }
-    }
+    let requested_credentials: Vec<(CredentialSchemaId, Option<Vec<ProofInputClaimSchema>>)> =
+        match proof_schema.input_schemas.as_ref() {
+            Some(proof_input) if !proof_input.is_empty() => proof_input
+                .iter()
+                .filter_map(|input| {
+                    let credential_schema = input.credential_schema.as_ref()?;
+
+                    let claims = input.claim_schemas.as_ref().map(|schemas| {
+                        schemas
+                            .iter()
+                            .enumerate()
+                            .map(|(i, credential_claim_schema)| ProofInputClaimSchema {
+                                order: i as u32,
+                                required: credential_claim_schema.required,
+                                schema: credential_claim_schema.schema.to_owned(),
+                            })
+                            .collect()
+                    });
+
+                    Some((credential_schema.id, claims))
+                })
+                .collect(),
+
+            _ => {
+                return Err(TransportProtocolError::Failed(
+                    "Missing proof input schemas".to_owned(),
+                ))
+            }
+        };
 
     Ok(OpenID4VPPresentationDefinition {
         id: interaction_id,
         input_descriptors: requested_credentials
             .into_iter()
             .enumerate()
-            .map(|(index, credential_schema_id)| {
+            .map(|(index, (_credential_schema_id, claim_schemas))| {
                 create_open_id_for_vp_presentation_definition_input_descriptor(
                     index,
-                    &credential_schema_id,
-                    proof,
+                    claim_schemas.unwrap_or_default(),
                 )
             })
             .collect::<Result<Vec<_>, _>>()?,
@@ -204,35 +212,12 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
 
 pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     index: usize,
-    credential_schema_id: &CredentialSchemaId,
-    proof: &Proof,
+    claim_schemas: Vec<ProofInputClaimSchema>,
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, TransportProtocolError> {
-    let proof_claims = proof
-        .schema
-        .as_ref()
-        .ok_or(TransportProtocolError::Failed(
-            "Schema not found".to_string(),
-        ))?
-        .claim_schemas
-        .as_ref()
-        .ok_or(TransportProtocolError::Failed(
-            "Claim schemas not found".to_string(),
-        ))?;
-    let claims_for_credential: Vec<_> = proof_claims
-        .iter()
-        .filter(|claim| {
-            if let Some(schema) = claim.credential_schema.as_ref() {
-                credential_schema_id == &schema.id
-            } else {
-                false
-            }
-        })
-        .collect();
-
     Ok(OpenID4VPPresentationDefinitionInputDescriptor {
         id: format!("input_{}", index),
         constraints: OpenID4VPPresentationDefinitionConstraint {
-            fields: claims_for_credential
+            fields: claim_schemas
                 .iter()
                 .map(|claim| OpenID4VPPresentationDefinitionConstraintField {
                     id: claim.schema.id,
@@ -364,7 +349,7 @@ pub(super) fn create_claims_from_credential_definition(
     for (key, value_details) in credential_subject.keys.iter() {
         let new_schema_claim = CredentialSchemaClaim {
             schema: ClaimSchema {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 key: key.to_string(),
                 data_type: value_details.value_type.to_string(),
                 created_date: now,

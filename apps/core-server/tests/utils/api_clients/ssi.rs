@@ -19,16 +19,17 @@ impl SSIApi {
             "/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential={credential_id}"
         );
 
-        let body = json!({
-          "did": "did:key:test"
-        });
-
-        self.client.post(&url, body).await
+        self.client.post(&url, None).await
     }
 
-    pub async fn temporary_submit(&self, credential_id: impl Display) -> Response {
-        let url = format!("/ssi/temporary-issuer/v1/submit?credentialId={credential_id}");
-
+    pub async fn temporary_submit(
+        &self,
+        credential_id: impl Display,
+        did_value: impl Display,
+    ) -> Response {
+        let url = format!(
+            "/ssi/temporary-issuer/v1/submit?credentialId={credential_id}&didValue={did_value}"
+        );
         self.client.post(&url, None).await
     }
 

@@ -77,6 +77,11 @@ impl CredentialsApi {
         self.client.delete(&url).await
     }
 
+    pub async fn reactivate(&self, id: &impl Display) -> Response {
+        let url = format!("/api/credential/v1/{id}/reactivate");
+        self.client.post(&url, None).await
+    }
+
     pub async fn revoke(&self, id: &impl Display) -> Response {
         let url = format!("/api/credential/v1/{id}/revoke");
         self.client.post(&url, None).await

@@ -1,5 +1,5 @@
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::{DidType, KeyRole, RelatedKey};
+use one_core::model::did::{KeyRole, RelatedKey};
 use serde_json::Value;
 
 use crate::utils::server::run_server;
@@ -30,15 +30,8 @@ async fn test_temporary_issuer_submit_success() {
     )
     .await;
 
-    let holder_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            did_type: Some(DidType::Remote),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let holder_did = "did:key:z6MkttiJVZB4dwWkF9ALwaELUDq5Jj9j1BhZHNzNcLVNam6n";
+
     let credential_schema =
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
     let credential = fixtures::create_credential(
@@ -48,7 +41,6 @@ async fn test_temporary_issuer_submit_success() {
         &issuer_did,
         "PROCIVIS_TEMPORARY",
         TestingCredentialParams {
-            holder_did: Some(holder_did),
             key: Some(key),
             ..Default::default()
         },
@@ -58,8 +50,8 @@ async fn test_temporary_issuer_submit_success() {
     // WHEN
     let _handle = run_server(listener, config, &db_conn);
     let url = format!(
-        "{base_url}/ssi/temporary-issuer/v1/submit?credentialId={}",
-        credential.id
+        "{base_url}/ssi/temporary-issuer/v1/submit?credentialId={}&didValue={}",
+        credential.id, holder_did
     );
 
     let resp = utils::client().post(url).send().await.unwrap();

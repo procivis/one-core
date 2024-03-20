@@ -7,7 +7,7 @@ async fn test_get_credential_issuer_metadata() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     // WHEN

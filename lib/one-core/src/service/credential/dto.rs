@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId, KeyId};
+use shared_types::{ClaimSchemaId, CredentialId, DidId, KeyId, OrganisationId};
 use strum_macros::AsRefStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -15,7 +15,6 @@ use crate::{
         credential_schema::{CredentialFormat, CredentialSchemaId, RevocationMethod},
         list_filter::{ListFilterValue, StringMatch},
         list_query::ListQuery,
-        organisation::OrganisationId,
     },
     service::{
         credential_schema::dto::{CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO},
@@ -116,7 +115,7 @@ pub enum CredentialFilterValue {
     OrganisationId(OrganisationId),
     Role(CredentialRole),
     CredentialIds(Vec<CredentialId>),
-    State(crate::model::credential::CredentialStateEnum),
+    State(Vec<crate::model::credential::CredentialStateEnum>),
     SuspendEndDate(ValueComparison<OffsetDateTime>),
 }
 
@@ -142,7 +141,7 @@ pub struct SuspendCredentialRequestDTO {
 
 #[derive(Clone, Debug)]
 pub struct CredentialRequestClaimDTO {
-    pub claim_schema_id: Uuid,
+    pub claim_schema_id: ClaimSchemaId,
     pub value: String,
 }
 

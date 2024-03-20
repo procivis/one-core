@@ -22,9 +22,13 @@ use crate::{
         interaction::InteractionRelations,
         key::KeyRelations,
         organisation::OrganisationRelations,
-        proof::ProofClaimRelations,
-        proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
-        proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
+        proof::{
+            Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
+            ProofStateRelations,
+        },
+        proof_schema::{
+            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
+        },
     },
     provider::transport_protocol::dto::PresentationDefinitionResponseDTO,
     service::error::{
@@ -47,11 +51,11 @@ impl ProofService {
                 id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
-                            credential_schema: Some(Default::default()),
-                        }),
                         organisation: Some(Default::default()),
-                        proof_inputs: None,
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                            credential_schema: Some(CredentialSchemaRelations::default()),
+                        }),
                     }),
                     state: Some(Default::default()),
                     claims: Some(ProofClaimRelations {
@@ -121,12 +125,11 @@ impl ProofService {
             return Err(EntityNotFoundError::Proof(*id).into());
         };
 
-        let holder_did = proof
+        if proof
             .holder_did
             .as_ref()
-            .ok_or(ServiceError::MappingError("holder did is None".to_string()))?;
-
-        if holder_did.did_type.is_remote() {
+            .is_some_and(|did| did.did_type.is_remote())
+        {
             return Err(BusinessLogicError::IncompatibleDidType {
                 reason: "holder_did is remote".to_string(),
             }
@@ -186,7 +189,7 @@ impl ProofService {
             return Err(BusinessLogicError::ProofSchemaDeleted { proof_schema_id }.into());
         }
 
-        let verifier_did = self
+        let Some(verifier_did) = self
             .did_repository
             .get_did(
                 &request.verifier_did_id,
@@ -195,9 +198,8 @@ impl ProofService {
                     organisation: None,
                 },
             )
-            .await?;
-
-        let Some(verifier_did) = verifier_did else {
+            .await?
+        else {
             return Err(EntityNotFoundError::Did(request.verifier_did_id).into());
         };
 
@@ -212,26 +214,13 @@ impl ProofService {
             .into());
         }
 
-        let Some(keys) = &verifier_did.keys.as_ref() else {
-            return Err(ServiceError::MappingError("keys is None".to_string()));
-        };
-
-        let verifier_key = if let Some(verifier_key) = request.verifier_key.as_ref() {
-            keys.iter()
-                .find(|key| key.role == KeyRole::Authentication && key.key.id == *verifier_key)
-                .ok_or(ValidationError::InvalidKey(
-                    "Key is not associated with AUTHENTICATION with verifier_did".to_string(),
-                ))?
-        } else {
-            keys.iter()
-                .find(|key| key.role == KeyRole::Authentication)
-                .ok_or(ValidationError::InvalidKey(
-                    "No associated AUTHENTICATION keys within verifier_did".to_string(),
-                ))?
+        let verifier_key = match request.verifier_key {
+            Some(verifier_key) => verifier_did.find_key(&verifier_key, KeyRole::Authentication)?,
+            None => verifier_did.find_key_by_role(KeyRole::Authentication)?,
         }
         .to_owned();
 
-        if verifier_key.key.key_type == "BBS_PLUS" {
+        if verifier_key.key_type == "BBS_PLUS" {
             return Err(ValidationError::BBSNotSupported.into());
         }
 
@@ -241,7 +230,7 @@ impl ProofService {
                 now,
                 proof_schema,
                 verifier_did,
-                Some(verifier_key.key),
+                Some(verifier_key),
             ))
             .await
             .map_err(ServiceError::from)

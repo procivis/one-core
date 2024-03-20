@@ -1,5 +1,5 @@
 use sea_orm::entity::prelude::*;
-use shared_types::KeyId;
+use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -24,7 +24,7 @@ pub struct Model {
     pub storage_type: String,
     pub key_type: String,
 
-    pub organisation_id: String,
+    pub organisation_id: OrganisationId,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

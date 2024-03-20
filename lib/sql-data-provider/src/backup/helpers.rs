@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::Context;
-use migration::{Func, SimpleExpr, Write};
+use migration::{Func, QueryStatementBuilder, SimpleExpr, Write};
 use one_core::repository::error::DataLayerError;
 use sea_orm::{ColumnTrait, Database, DatabaseConnection, Iden};
 
@@ -57,19 +57,30 @@ impl sea_orm::Iden for JsonAgg {
 ///   )
 /// )
 /// ```
-pub fn json_agg<T: Iden + ColumnTrait>(columns: impl IntoIterator<Item = T>) -> SimpleExpr {
-    Func::cust(JsonAgg)
-        .arg(
-            columns
-                .into_iter()
-                .fold(Func::cust(JsonObject), |state, column| {
-                    match column.def().get_column_type() {
-                        sea_orm::ColumnType::Binary(_) => state
-                            .arg(column.to_string())
-                            .arg(Func::cust(Hex).arg(column.into_expr())),
-                        _ => state.arg(column.to_string()).arg(column.into_expr()),
-                    }
-                }),
-        )
+pub fn json_agg_columns<T: Iden + ColumnTrait>(columns: impl IntoIterator<Item = T>) -> SimpleExpr {
+    Func::cust(JsonAgg).arg(json_object_columns(columns)).into()
+}
+
+pub fn json_object_columns<T: Iden + ColumnTrait>(
+    columns: impl IntoIterator<Item = T>,
+) -> SimpleExpr {
+    columns
+        .into_iter()
+        .fold(Func::cust(JsonObject), |state, column| {
+            match column.def().get_column_type() {
+                sea_orm::ColumnType::Binary(_) => state
+                    .arg(column.to_string())
+                    .arg(Func::cust(Hex).arg(column.into_expr())),
+                _ => state.arg(column.to_string()).arg(column.into_expr()),
+            }
+        })
         .into()
+}
+
+pub fn coalesce_to_empty_array<T: QueryStatementBuilder>(expr: T) -> SimpleExpr {
+    Func::coalesce([
+        SimpleExpr::SubQuery(None, Box::new(expr.into_sub_query_statement())),
+        Func::cust(JsonArray).into(),
+    ])
+    .into()
 }

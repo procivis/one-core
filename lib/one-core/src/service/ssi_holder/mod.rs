@@ -7,7 +7,8 @@ use crate::{
     },
     repository::{
         credential_repository::CredentialRepository, did_repository::DidRepository,
-        history_repository::HistoryRepository, proof_repository::ProofRepository,
+        history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
+        proof_repository::ProofRepository,
     },
 };
 use std::sync::Arc;
@@ -24,6 +25,7 @@ mod test;
 pub struct SSIHolderService {
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
     did_repository: Arc<dyn DidRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
@@ -37,6 +39,7 @@ impl SSIHolderService {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
         did_repository: Arc<dyn DidRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         key_provider: Arc<dyn KeyProvider>,
@@ -47,6 +50,7 @@ impl SSIHolderService {
         Self {
             credential_repository,
             proof_repository,
+            organisation_repository,
             did_repository,
             history_repository,
             key_provider,

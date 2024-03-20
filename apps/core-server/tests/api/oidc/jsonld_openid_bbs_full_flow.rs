@@ -14,15 +14,26 @@ use uuid::Uuid;
 
 use crate::{
     fixtures::{TestingCredentialParams, TestingDidParams, TestingKeyParams},
-    utils::context::TestContext,
+    utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
 };
 
+// Todo (ONE-1968): This works, but running too many tests at once will cause 429 Too Many Requests from w3.org
+#[ignore]
 #[tokio::test]
-async fn test_opeind4vc_jsondl_bbsplus_flow() {
+async fn test_openid4vc_jsonld_bbsplus_flow_bitstring() {
+    test_openid4vc_jsonld_bbsplus_flow("BITSTRINGSTATUSLIST").await
+}
+
+#[tokio::test]
+async fn test_openid4vc_jsonld_bbsplus_flow_lvvc() {
+    test_openid4vc_jsonld_bbsplus_flow("LVVC").await
+}
+
+async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     // GIVEN
-    let issuer_bbs_key: TestKey = bbs_key_1();
-    let holder_key: TestKey = eddsa_key_1();
-    let verifier_key: TestKey = eddsa_key_2();
+    let issuer_bbs_key = bbs_key_1();
+    let holder_key = eddsa_key_1();
+    let verifier_key = eddsa_key_2();
 
     let server_context = TestContext::new().await;
     let base_url = server_context.config.app.core_base_url.clone();
@@ -65,7 +76,7 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
         .create_with_claims(
             "Test",
             &server_organisation,
-            "BITSTRINGSTATUSLIST",
+            revocation_method,
             &new_claim_schemas,
             "JSON_LD_BBSPLUS",
         )
@@ -95,7 +106,11 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
     let proof_schema = server_context
         .db
         .proof_schemas
-        .create("Test", &server_organisation, &proof_claim_schemas)
+        .create(
+            "Test",
+            &server_organisation,
+            CreateProofInputSchema::from((&proof_claim_schemas[..], &credential_schema)),
+        )
         .await;
 
     let interaction_id = Uuid::new_v4();
@@ -154,7 +169,13 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
         )
         .await;
 
-    let resp = server_context.api.ssi.temporary_submit(credential.id).await;
+    let resp = server_context
+        .api
+        .ssi
+        .temporary_submit(credential.id, server_remote_holder_did.did)
+        .await;
+
+    assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
 
     // Valid credentials
@@ -193,7 +214,7 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
         .create_with_claims(
             "Test",
             &holder_organisation,
-            "NONE",
+            revocation_method,
             &new_claim_schemas,
             // This reflects latest changes - on the holder side we don't really know what's the correct format here
             "JSON_LD",
@@ -315,7 +336,12 @@ async fn test_opeind4vc_jsondl_bbsplus_flow() {
     let resp = holder_context
         .api
         .interactions
-        .presentation_submit(holder_interaction.id, holder_credential.id, claims)
+        .presentation_submit(
+            holder_interaction.id,
+            holder_local_holder_did.id,
+            holder_credential.id,
+            claims,
+        )
         .await;
 
     // THEN
@@ -374,6 +400,7 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
         Some(holder_key),
     )
     .await;
+    let holder_did = holder_did.unwrap();
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> =
         vec![(Uuid::new_v4(), "Key", true, "STRING")];
@@ -399,7 +426,7 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
             &server_issuer_did.unwrap(),
             "PROCIVIS_TEMPORARY",
             TestingCredentialParams {
-                holder_did: Some(holder_did.unwrap()),
+                holder_did: Some(holder_did.clone()),
                 key: Some(server_issuer_key.unwrap()),
                 ..Default::default()
             },
@@ -411,7 +438,11 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
         .json_ld_context(&credential_schema.id, "Test")
         .await;
 
-    let resp = server_context.api.ssi.temporary_submit(credential.id).await;
+    let resp = server_context
+        .api
+        .ssi
+        .temporary_submit(credential.id, holder_did.did)
+        .await;
     assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 }
 

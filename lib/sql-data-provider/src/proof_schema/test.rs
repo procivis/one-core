@@ -1,15 +1,15 @@
 use super::ProofSchemaProvider;
 use crate::{entity::proof_schema, test_utilities::*};
 use one_core::model::credential_schema::WalletStorageTypeEnum;
+use one_core::model::proof_schema::{
+    ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
+};
 use one_core::{
     model::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        organisation::{Organisation, OrganisationId, OrganisationRelations},
-        proof_schema::{
-            GetProofSchemaQuery, ProofSchema, ProofSchemaClaim, ProofSchemaClaimRelations,
-            ProofSchemaId, ProofSchemaRelations,
-        },
+        organisation::{Organisation, OrganisationRelations},
+        proof_schema::{GetProofSchemaQuery, ProofSchema, ProofSchemaId, ProofSchemaRelations},
     },
     repository::{
         claim_schema_repository::{self, ClaimSchemaRepository},
@@ -25,6 +25,7 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
+use shared_types::OrganisationId;
 use std::{boxed::Box, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -52,7 +53,7 @@ async fn setup_empty(
             organisation_repository,
             credential_schema_repository,
         }),
-        organisation_id: Uuid::parse_str(&organisation_id).unwrap(),
+        organisation_id,
         db,
     }
 }
@@ -85,14 +86,9 @@ async fn setup_with_proof_schema(
     let proof_schema_name = "proof schema".to_string();
 
     let proof_schema_id = Uuid::parse_str(
-        &insert_proof_schema_to_database(
-            &db,
-            None,
-            &organisation_id.to_string(),
-            &proof_schema_name,
-        )
-        .await
-        .unwrap(),
+        &insert_proof_schema_to_database(&db, None, organisation_id, &proof_schema_name)
+            .await
+            .unwrap(),
     )
     .unwrap();
 
@@ -138,9 +134,7 @@ async fn test_create_proof_schema_invalid_params() {
             deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
-            claim_schemas: None,
             organisation: None,
-            validity_constraint: None,
             input_schemas: None,
         })
         .await;
@@ -168,26 +162,39 @@ async fn test_create_proof_schema_already_exists() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
-            validity_constraint: None,
             name: "test".to_string(),
             expire_duration: 0,
-            claim_schemas: Some(vec![ProofSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4(),
-                    key: "key".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                },
-                required: false,
-                credential_schema: None,
-            }]),
             organisation: Some(Organisation {
                 id: organisation_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
             }),
-            input_schemas: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: Some(vec![ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "key".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                    },
+                    required: false,
+                    order: 0,
+                }]),
+                credential_schema: Some(CredentialSchema {
+                    id: Uuid::new_v4(),
+                    deleted_at: None,
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    name: "schema".to_string(),
+                    format: "JWT".to_string(),
+                    revocation_method: "NONE".to_string(),
+                    claim_schemas: None,
+                    organisation: None,
+                }),
+            }]),
         })
         .await;
 
@@ -208,10 +215,10 @@ async fn test_create_proof_schema_success() {
     )
     .await;
 
-    let cred_schema_id = insert_credential_schema_to_database(
+    let credential_schema_id = insert_credential_schema_to_database(
         &db,
         None,
-        &organisation_id.to_string(),
+        organisation_id,
         "cred-schema",
         "JWT",
         "NONE",
@@ -219,11 +226,22 @@ async fn test_create_proof_schema_success() {
     .await
     .unwrap();
 
-    let claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..5)
-        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i, "STRING"))
+    let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: "test",
+            required: i % 2 == 0,
+            order: i as u32,
+            datatype: "STRING",
+        })
         .collect();
 
-    insert_many_claims_schema_to_database(&db, &cred_schema_id, &claim_schemas)
+    let claim_input = ProofInput {
+        credential_schema_id: credential_schema_id.clone(),
+        claims: &new_claim_schemas,
+    };
+
+    insert_many_claims_schema_to_database(&db, &claim_input)
         .await
         .unwrap();
 
@@ -236,24 +254,37 @@ async fn test_create_proof_schema_success() {
             deleted_at: None,
             name: "test".to_string(),
             expire_duration: 0,
-            validity_constraint: None,
-            claim_schemas: Some(vec![ProofSchemaClaim {
-                schema: ClaimSchema {
-                    id: claim_schemas[0].0,
-                    key: "TestKey".to_string(),
-                    data_type: claim_schemas[0].3.to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                },
-                required: false,
-                credential_schema: None,
-            }]),
             organisation: Some(Organisation {
                 id: organisation_id,
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
             }),
-            input_schemas: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: Some(vec![ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: new_claim_schemas[0].id,
+                        key: "TestKey".to_string(),
+                        data_type: new_claim_schemas[0].datatype.to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                    },
+                    required: false,
+                    order: 0,
+                }]),
+                credential_schema: Some(CredentialSchema {
+                    id: credential_schema_id.parse().unwrap(),
+                    deleted_at: None,
+                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    name: "schema".to_string(),
+                    format: "JWT".to_string(),
+                    revocation_method: "NONE".to_string(),
+                    claim_schemas: None,
+                    organisation: None,
+                }),
+            }]),
         })
         .await;
 
@@ -448,7 +479,7 @@ async fn test_get_proof_schema_with_relations() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema()
-        .times(2)
+        .times(1)
         .returning(|id, _| {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
@@ -479,7 +510,7 @@ async fn test_get_proof_schema_with_relations() {
     let credential_schema_id = insert_credential_schema_to_database(
         &db,
         None,
-        &organisation_id.to_string(),
+        organisation_id,
         "credential schema",
         "JWT",
         "NONE",
@@ -487,10 +518,22 @@ async fn test_get_proof_schema_with_relations() {
     .await
     .unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..2)
-        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i as u32, "STRING"))
+    let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: "test",
+            required: i % 2 == 0,
+            order: i as u32,
+            datatype: "STRING",
+        })
         .collect();
-    insert_many_claims_schema_to_database(&db, &credential_schema_id, &new_claim_schemas)
+
+    let claim_input = ProofInput {
+        credential_schema_id: credential_schema_id.clone(),
+        claims: &new_claim_schemas,
+    };
+
+    insert_many_claims_schema_to_database(&db, &claim_input)
         .await
         .unwrap();
 
@@ -498,8 +541,8 @@ async fn test_get_proof_schema_with_relations() {
         &insert_proof_schema_with_claims_to_database(
             &db,
             None,
-            &new_claim_schemas,
-            &organisation_id.to_string(),
+            vec![&claim_input],
+            organisation_id,
             "proof schema",
         )
         .await
@@ -511,11 +554,11 @@ async fn test_get_proof_schema_with_relations() {
         .get_proof_schema(
             &proof_schema_id,
             &ProofSchemaRelations {
-                claim_schemas: Some(ProofSchemaClaimRelations {
+                organisation: Some(OrganisationRelations::default()),
+                proof_inputs: Some(ProofInputSchemaRelations {
+                    claim_schemas: Some(ProofSchemaClaimRelations::default()),
                     credential_schema: Some(CredentialSchemaRelations::default()),
                 }),
-                organisation: Some(OrganisationRelations::default()),
-                proof_inputs: None,
             },
         )
         .await
@@ -527,15 +570,202 @@ async fn test_get_proof_schema_with_relations() {
     assert!(result.organisation.is_some());
     assert_eq!(result.organisation.unwrap().id, organisation_id);
 
-    assert!(result.claim_schemas.is_some());
-    let claim_schemas = result.claim_schemas.unwrap();
+    assert!(result.input_schemas.is_some());
+    let input_schema = result.input_schemas.unwrap()[0].to_owned();
+    let claim_schemas = input_schema.claim_schemas.as_ref().unwrap().to_owned();
     assert_eq!(claim_schemas.len(), 2);
-    assert_eq!(claim_schemas[0].schema.id, new_claim_schemas[0].0);
-    assert_eq!(claim_schemas[1].schema.id, new_claim_schemas[1].0);
+    assert_eq!(claim_schemas[0].schema.id, new_claim_schemas[0].id);
+    assert_eq!(claim_schemas[1].schema.id, new_claim_schemas[1].id);
 
-    assert!(claim_schemas[0].credential_schema.is_some());
-    let credential_schema = claim_schemas[0].credential_schema.as_ref().unwrap();
+    assert!(input_schema.credential_schema.is_some());
+    let credential_schema: &CredentialSchema = input_schema.credential_schema.as_ref().unwrap();
     assert_eq!(credential_schema.id.to_string(), credential_schema_id);
+}
+
+#[tokio::test]
+async fn test_get_proof_schema_with_input_proof_relations() {
+    let mut claim_schema_repository = MockClaimSchemaRepository::default();
+    claim_schema_repository
+        .expect_get_claim_schema_list()
+        .returning(|ids, _| {
+            Ok(ids
+                .into_iter()
+                .map(|id| ClaimSchema {
+                    id,
+                    key: "key".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                })
+                .collect())
+        });
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .returning(|id, _| {
+            Ok(Some(Organisation {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            }))
+        });
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .returning(|id, _| {
+            Ok(Some(CredentialSchema {
+                id: id.to_owned(),
+                deleted_at: None,
+                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "schema".to_string(),
+                format: "JWT".to_string(),
+                revocation_method: "NONE".to_string(),
+                claim_schemas: None,
+                organisation: None,
+            }))
+        });
+
+    let TestSetup {
+        repository,
+        organisation_id,
+        db,
+        ..
+    } = setup_empty(
+        Arc::from(claim_schema_repository),
+        Arc::from(organisation_repository),
+        Arc::from(credential_schema_repository),
+    )
+    .await;
+
+    let credential_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation_id,
+        "credential schema",
+        "JWT",
+        "NONE",
+    )
+    .await
+    .unwrap();
+
+    let credential_schema_id2 = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation_id,
+        "credential schema2",
+        "JWT",
+        "NONE",
+    )
+    .await
+    .unwrap();
+
+    let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: "test",
+            required: i % 2 == 0,
+            order: i as u32,
+            datatype: "STRING",
+        })
+        .collect();
+
+    let new_claim_schemas2: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: "test",
+            required: i % 2 == 0,
+            order: 2 + i as u32,
+            datatype: "STRING",
+        })
+        .collect();
+
+    let claim_input = ProofInput {
+        credential_schema_id: credential_schema_id.clone(),
+        claims: &new_claim_schemas,
+    };
+
+    let claim_input2 = ProofInput {
+        credential_schema_id: credential_schema_id2.clone(),
+        claims: &new_claim_schemas2,
+    };
+
+    insert_many_claims_schema_to_database(&db, &claim_input)
+        .await
+        .unwrap();
+
+    insert_many_claims_schema_to_database(&db, &claim_input2)
+        .await
+        .unwrap();
+
+    let proof_schema_id = Uuid::parse_str(
+        &insert_proof_schema_with_claims_to_database(
+            &db,
+            None,
+            vec![&claim_input, &claim_input2],
+            organisation_id,
+            "proof schema",
+        )
+        .await
+        .unwrap(),
+    )
+    .unwrap();
+
+    let result = repository
+        .get_proof_schema(
+            &proof_schema_id,
+            &ProofSchemaRelations {
+                organisation: Some(OrganisationRelations::default()),
+                proof_inputs: Some(ProofInputSchemaRelations {
+                    claim_schemas: Some(ProofSchemaClaimRelations::default()),
+                    credential_schema: Some(CredentialSchemaRelations::default()),
+                }),
+            },
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(result.id, proof_schema_id);
+
+    assert!(result.organisation.is_some());
+    assert_eq!(result.organisation.unwrap().id, organisation_id);
+
+    let proof_inputs: Vec<one_core::model::proof_schema::ProofInputSchema> =
+        result.input_schemas.unwrap();
+    assert_eq!(proof_inputs.len(), 2);
+    assert_eq!(
+        proof_inputs[0]
+            .credential_schema
+            .as_ref()
+            .unwrap()
+            .id
+            .to_string(),
+        credential_schema_id
+    );
+    assert_eq!(
+        proof_inputs[1]
+            .credential_schema
+            .as_ref()
+            .unwrap()
+            .id
+            .to_string(),
+        credential_schema_id2
+    );
+
+    assert_eq!(proof_inputs[0].claim_schemas.as_ref().unwrap()[0].order, 0);
+    assert_eq!(proof_inputs[1].claim_schemas.as_ref().unwrap()[0].order, 2);
+    assert_eq!(
+        proof_inputs[0].claim_schemas.as_ref().unwrap()[0].schema.id,
+        new_claim_schemas[0].id
+    );
+    assert_eq!(
+        proof_inputs[1].claim_schemas.as_ref().unwrap()[0].schema.id,
+        new_claim_schemas2[0].id
+    );
 }
 
 #[tokio::test]
@@ -559,7 +789,7 @@ async fn test_get_proof_schema_list_empty() {
             exact: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -598,7 +828,7 @@ async fn test_get_proof_schema_list_deleted() {
             exact: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -630,10 +860,9 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(date_now),
             last_modified: Set(date_now),
-            validity_constraint: Set(None),
             name: Set("schema-1".to_string()),
             expire_duration: Set(Default::default()),
-            organisation_id: Set(organisation_id.to_string()),
+            organisation_id: Set(organisation_id),
             deleted_at: Set(None),
         }
         .insert(&db)
@@ -649,10 +878,9 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             id: Set(Uuid::new_v4().to_string()),
             created_date: Set(date_later),
             last_modified: Set(date_later),
-            validity_constraint: Set(None),
             name: Set("schema-2".to_string()),
             expire_duration: Set(Default::default()),
-            organisation_id: Set(organisation_id.to_string()),
+            organisation_id: Set(organisation_id),
             deleted_at: Set(None),
         }
         .insert(&db)
@@ -671,7 +899,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -693,7 +921,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             exact: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -708,7 +936,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: Some(one_core::model::common::SortDirection::Descending),
             exact: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -723,7 +951,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: Some(one_core::model::common::SortDirection::Ascending),
             exact: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -739,7 +967,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             sort_direction: None,
             name: Some("schema-1".to_string()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -760,7 +988,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             sort_direction: None,
             name: Some("schema".to_string()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -780,7 +1008,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             sort_direction: None,
             name: Some("nothing".to_string()),
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -801,7 +1029,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             sort_direction: None,
             exact: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;
@@ -822,7 +1050,7 @@ async fn test_get_proof_schema_list_sorting_filtering_pagination() {
             exact: None,
             sort_direction: None,
             name: None,
-            organisation_id: organisation_id.to_string(),
+            organisation_id,
             ids: None,
         })
         .await;

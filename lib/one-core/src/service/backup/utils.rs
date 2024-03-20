@@ -1,4 +1,8 @@
-use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
+use std::{
+    ffi::OsStr,
+    io::{self, Cursor, Read, Seek, SeekFrom, Write},
+    path::PathBuf,
+};
 
 use anyhow::Context;
 use time::OffsetDateTime;
@@ -8,7 +12,7 @@ use super::dto::MetadataDTO;
 use crate::{
     crypto::hasher::sha256::SHA256,
     model::{
-        history::{History, HistoryAction, HistoryEntityType},
+        history::{History, HistoryAction, HistoryEntityType, HistoryMetadata},
         organisation::Organisation,
     },
     service::error::ServiceError,
@@ -69,7 +73,11 @@ pub(super) fn create_zip<T: Write + Seek>(
     add_to_zip(DB_FILE, &mut db_file, &mut archive)?;
     add_to_zip(
         METADATA_FILE,
-        &mut Cursor::new(serde_json::to_vec(&metadata).unwrap()),
+        &mut Cursor::new(
+            serde_json::to_vec(&metadata)
+                .context("failed to serialize metadata")
+                .map_err(map_error)?,
+        ),
         &mut archive,
     )?;
 
@@ -139,7 +147,7 @@ pub(super) fn load_db_from_zip<T: Read + Seek, K: Write + Seek>(
 pub(super) fn create_backup_history_event(
     organisation: Organisation,
     action: HistoryAction,
-    metadata: Option<String>,
+    metadata: Option<HistoryMetadata>,
 ) -> History {
     History {
         id: Uuid::new_v4().into(),
@@ -154,4 +162,16 @@ pub(super) fn create_backup_history_event(
 
 pub(super) fn map_error(err: anyhow::Error) -> ServiceError {
     ServiceError::Other(format!("{:?}", err))
+}
+
+pub(super) fn dir_path_from_file_path<T: ?Sized + AsRef<OsStr>>(
+    file_path: &T,
+) -> Result<PathBuf, ServiceError> {
+    let file_path = PathBuf::from(file_path);
+    Ok(file_path
+        .parent()
+        .ok_or(ServiceError::Other(
+            "Failed to find parent directory".to_string(),
+        ))?
+        .to_path_buf())
 }

@@ -87,7 +87,7 @@ async fn test_get_did_exists() {
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
         organisation: Some(Organisation {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
         }),
@@ -178,7 +178,7 @@ async fn test_get_did_list() {
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
         organisation: Some(Organisation {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
         }),
@@ -236,7 +236,7 @@ async fn test_create_did_success() {
 
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
-        organisation_id: Uuid::new_v4(),
+        organisation_id: Uuid::new_v4().into(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
@@ -324,7 +324,7 @@ async fn test_create_did_value_already_exists() {
     let key_id = Uuid::new_v4();
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
-        organisation_id: Uuid::new_v4(),
+        organisation_id: Uuid::new_v4().into(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {
@@ -409,7 +409,7 @@ async fn test_create_did_value_already_exists() {
 async fn test_fail_to_create_did_value_invalid_amount_of_keys() {
     let create_request = CreateDidRequestDTO {
         name: "name".to_string(),
-        organisation_id: Uuid::new_v4(),
+        organisation_id: Uuid::new_v4().into(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
         keys: CreateDidRequestKeysDTO {

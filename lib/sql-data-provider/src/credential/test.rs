@@ -46,14 +46,13 @@ async fn setup_empty() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let organisation_id =
-        Uuid::parse_str(&insert_organisation_to_database(&db, None).await.unwrap()).unwrap();
+    let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
     let credential_schema_id = Uuid::parse_str(
         &insert_credential_schema_to_database(
             &db,
             None,
-            &organisation_id.to_string(),
+            organisation_id,
             "credential schema",
             "JWT",
             "NONE",
@@ -63,16 +62,24 @@ async fn setup_empty() -> TestSetup {
     )
     .unwrap();
 
-    let new_claim_schemas: Vec<(Uuid, &str, bool, u32, &str)> = (0..2)
-        .map(|i| (Uuid::new_v4(), "test", i % 2 == 0, i as u32, "STRING"))
+    let new_claim_schemas: Vec<ClaimInsertInfo> = (0..2)
+        .map(|i| ClaimInsertInfo {
+            id: Uuid::new_v4().into(),
+            key: "key",
+            required: i % 2 == 0,
+            order: i as u32,
+            datatype: "STRING",
+        })
         .collect();
-    insert_many_claims_schema_to_database(
-        &db,
-        &credential_schema_id.to_string(),
-        &new_claim_schemas,
-    )
-    .await
-    .unwrap();
+
+    let claim_input = ProofInput {
+        credential_schema_id: credential_schema_id.to_string(),
+        claims: &new_claim_schemas,
+    };
+
+    insert_many_claims_schema_to_database(&db, &claim_input)
+        .await
+        .unwrap();
 
     let credential_schema = CredentialSchema {
         id: credential_schema_id,
@@ -88,9 +95,9 @@ async fn setup_empty() -> TestSetup {
                 .into_iter()
                 .map(|schema| CredentialSchemaClaim {
                     schema: ClaimSchema {
-                        id: schema.0,
-                        key: "key".to_string(),
-                        data_type: "STRING".to_string(),
+                        id: schema.id,
+                        key: schema.key.to_string(),
+                        data_type: schema.datatype.to_string(),
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                     },
@@ -111,7 +118,7 @@ async fn setup_empty() -> TestSetup {
         Uuid::new_v4(),
         "did:key:123".parse().unwrap(),
         "KEY",
-        &organisation_id.to_string(),
+        organisation_id,
     )
     .await
     .unwrap();
@@ -571,17 +578,55 @@ async fn test_get_credential_list_success_verify_state_sorting() {
 
 #[tokio::test]
 async fn test_get_credential_list_success_filter_state() {
-    let TestSetupWithCredential {
-        db, credential_id, ..
-    } = setup_with_credential().await;
+    let TestSetup {
+        credential_schema,
+        did,
+        db,
+        ..
+    } = setup_empty().await;
+
+    let credential_id_first = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let credential_id_second = insert_credential(
+        &db,
+        &credential_schema.id.to_string(),
+        CredentialStateEnum::Created,
+        "PROCIVIS_TEMPORARY",
+        did.id,
+        None,
+    )
+    .await
+    .unwrap();
 
     let later = OffsetDateTime::now_utc().add(Duration::seconds(1));
+
     insert_credential_state_to_database(
         &db,
-        credential_id,
+        credential_id_first,
         CredentialState {
             created_date: later,
             state: CredentialStateEnum::Offered,
+            suspend_end_date: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    insert_credential_state_to_database(
+        &db,
+        credential_id_second,
+        CredentialState {
+            created_date: later,
+            state: CredentialStateEnum::Revoked,
             suspend_end_date: None,
         },
     )
@@ -600,7 +645,9 @@ async fn test_get_credential_list_success_filter_state() {
 
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
-            filtering: Some(CredentialFilterValue::State(CredentialStateEnum::Offered).condition()),
+            filtering: Some(
+                CredentialFilterValue::State(vec![CredentialStateEnum::Offered]).condition(),
+            ),
             ..Default::default()
         })
         .await;
@@ -610,13 +657,31 @@ async fn test_get_credential_list_success_filter_state() {
 
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
-            filtering: Some(CredentialFilterValue::State(CredentialStateEnum::Created).condition()),
+            filtering: Some(
+                CredentialFilterValue::State(vec![CredentialStateEnum::Created]).condition(),
+            ),
             ..Default::default()
         })
         .await;
     let credentials = credentials.unwrap();
     assert_eq!(0, credentials.total_items);
     assert_eq!(0, credentials.values.len());
+
+    let credentials = provider
+        .get_credential_list(GetCredentialQueryDTO {
+            filtering: Some(
+                CredentialFilterValue::State(vec![
+                    CredentialStateEnum::Offered,
+                    CredentialStateEnum::Revoked,
+                ])
+                .condition(),
+            ),
+            ..Default::default()
+        })
+        .await;
+    let credentials = credentials.unwrap();
+    assert_eq!(2, credentials.total_items);
+    assert_eq!(2, credentials.values.len());
 }
 
 #[tokio::test]
@@ -755,9 +820,9 @@ async fn test_get_credential_success() {
         claims
             .iter()
             .map(|claim| claim::ActiveModel {
-                id: Set(claim.id.to_string()),
+                id: Set(claim.id.into()),
                 credential_id: Set(credential_id),
-                claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
+                claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
                 value: Set(claim.value.to_owned().into()),
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
@@ -1013,9 +1078,9 @@ async fn test_get_credential_by_claim_id_success() {
     };
 
     claim::ActiveModel {
-        id: Set(claim.id.to_string()),
+        id: Set(claim.id.into()),
         credential_id: Set(credential_id),
-        claim_schema_id: Set(claim.schema.as_ref().unwrap().id.to_string()),
+        claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
         value: Set(claim.value.as_bytes().to_owned()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),

@@ -96,6 +96,7 @@ dictionary CredentialListItemBindingDTO {
   CredentialStateBindingEnum state;
   CredentialSchemaBindingDTO schema;
   CredentialRoleBindingDTO role;
+  string? suspend_end_date;
 };
 
 dictionary KeyListItemBindingDTO {
@@ -132,6 +133,7 @@ dictionary CredentialDetailBindingDTO {
   string? redirect_uri;
   CredentialRoleBindingDTO role;
   string? lvvc_issuance_date;
+  string? suspend_end_date;
 };
 
 dictionary ProofRequestClaimBindingDTO {
@@ -176,12 +178,29 @@ dictionary CredentialSchemaListBindingDTO {
   u64 total_items;
 };
 
+enum CredentialListQueryExactColumnBindingEnum {
+  "Name"
+};
+
+enum SortDirection {
+  "Ascending", "Descending"
+};
+
+enum SortableCredentialColumnBindingEnum {
+  "CreatedDate", "SchemaName", "IssuerDid", "State"
+};
+
 dictionary CredentialListQueryBindingDTO {
   u32 page;
   u32 page_size;
+  SortableCredentialColumnBindingEnum? sort;
+  SortDirection? sort_direction;
   string organisation_id;
+  string? name;
+  sequence<CredentialListQueryExactColumnBindingEnum>? exact;
   CredentialRoleBindingDTO? role;
   sequence<string>? ids;
+  sequence<CredentialStateBindingEnum>? status;
 };
 
 dictionary CredentialListBindingDTO {
@@ -255,7 +274,6 @@ dictionary DidRequestBindingDTO {
   string organisation_id;
   string name;
   string did_method;
-  DidTypeBindingEnum did_type;
   DidRequestKeysBindingDTO keys;
   record<string, string> params;
 };
@@ -294,12 +312,18 @@ enum HistoryEntityTypeBindingEnum {
   "Backup",
 };
 
+[Enum]
+interface HistoryMetadataBinding {
+  UnexportableEntities(UnexportableEntitiesBindingDTO value);
+};
+
 dictionary HistoryListItemBindingDTO {
   string created_date;
   string id;
   HistoryActionBindingEnum action;
   string? entity_id;
   HistoryEntityTypeBindingEnum entity_type;
+  HistoryMetadataBinding? metadata;
   string organisation_id;
 };
 
@@ -376,22 +400,22 @@ interface OneCoreBinding {
   string create_did(DidRequestBindingDTO request);
 
   [Throws=BindingError]
-  HandleInvitationResponseBindingEnum handle_invitation(string url, string did_id);
+  HandleInvitationResponseBindingEnum handle_invitation(string url, string organisation_id);
 
   [Throws=BindingError]
-  void holder_accept_credential(string interaction_id);
+  void holder_accept_credential(string interaction_id, string did_id, string? key_id);
 
   [Throws=BindingError]
   void holder_reject_credential(string interaction_id);
 
   [Throws=BindingError]
-  PresentationDefinitionBindingDTO get_presentation_defintion(string proof_id);
+  PresentationDefinitionBindingDTO get_presentation_definition(string proof_id);
 
   [Throws=BindingError]
   void holder_reject_proof(string interaction_id);
 
   [Throws=BindingError]
-  void holder_submit_proof(string interaction_id, record<string, PresentationSubmitCredentialRequestBindingDTO> submit_credentials);
+  void holder_submit_proof(string interaction_id, record<string, PresentationSubmitCredentialRequestBindingDTO> submit_credentials, string did_id, string? key_id);
 
   [Throws=BindingError]
   void delete_credential(string credential_id);
@@ -428,6 +452,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   HistoryListBindingDTO get_history_list(HistoryListQueryBindingDTO query);
+
+  [Throws=BindingError]
+  HistoryListItemBindingDTO get_history_entry(string history_id);
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);

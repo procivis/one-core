@@ -12,13 +12,14 @@ use crate::model::{
     revocation_list::{RevocationList, RevocationListId, RevocationListRelations},
 };
 use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::status_list_jwt_formatter::common::StatusPurpose;
 use crate::provider::credential_formatter::status_list_jwt_formatter::BitstringStatusListJwtFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{
-    CredentialDataByRole, CredentialRevocationInfo, NewCredentialState, RevocationMethod,
-    RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
+    RevocationMethod, RevocationMethodCapabilities,
 };
 use crate::provider::transport_protocol::TransportProtocolError;
 use crate::repository::{
@@ -88,18 +89,18 @@ impl RevocationMethod for BitstringStatusList {
     async fn mark_credential_as(
         &self,
         credential: &Credential,
-        new_state: NewCredentialState,
+        new_state: CredentialRevocationState,
     ) -> Result<(), ServiceError> {
         match new_state {
-            NewCredentialState::Revoked => {
+            CredentialRevocationState::Revoked => {
                 self.mark_credential_as_impl(RevocationListPurpose::Revocation, credential, true)
                     .await
             }
-            NewCredentialState::Reactivated => {
+            CredentialRevocationState::Valid => {
                 self.mark_credential_as_impl(RevocationListPurpose::Suspension, credential, false)
                     .await
             }
-            NewCredentialState::Suspended => {
+            CredentialRevocationState::Suspended { .. } => {
                 self.mark_credential_as_impl(RevocationListPurpose::Suspension, credential, true)
                     .await
             }
@@ -111,7 +112,7 @@ impl RevocationMethod for BitstringStatusList {
         credential_status: &CredentialStatus,
         issuer_did: &DidValue,
         _additional_credential_data: Option<CredentialDataByRole>,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<CredentialRevocationState, ServiceError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(ServiceError::ValidationError(format!(
                 "Invalid credential status type: {}",
@@ -163,14 +164,38 @@ impl RevocationMethod for BitstringStatusList {
         )
         .await?;
 
-        let result = extract_bitstring_index(encoded_list, list_index)?;
-        Ok(result)
+        if extract_bitstring_index(encoded_list, list_index)? {
+            Ok(match credential_status.status_purpose.as_ref() {
+                Some(purpose) => match purpose.as_str() {
+                    "revocation" => CredentialRevocationState::Revoked,
+                    "suspension" => CredentialRevocationState::Suspended {
+                        suspend_end_date: None,
+                    },
+                    _ => {
+                        return Err(ServiceError::ValidationError(format!(
+                            "Invalid status purpose: {purpose}",
+                        )))
+                    }
+                },
+                None => {
+                    return Err(ServiceError::ValidationError(
+                        "Missing status purpose ".to_string(),
+                    ))
+                }
+            })
+        } else {
+            Ok(CredentialRevocationState::Valid)
+        }
     }
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
             operations: vec!["REVOKE".to_string(), "SUSPEND".to_string()],
         }
+    }
+
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, ServiceError> {
+        Ok(JsonLdContext::default())
     }
 }
 
@@ -267,6 +292,7 @@ impl BitstringStatusList {
         revocation_list_id: &RevocationListId,
         issuer_did: &Did,
         encoded_list: String,
+        purpose: RevocationListPurpose,
     ) -> Result<String, ServiceError> {
         let revocation_list_url = self.get_revocation_list_url(revocation_list_id)?;
 
@@ -288,6 +314,7 @@ impl BitstringStatusList {
             encoded_list,
             key.key.key_type.to_owned(),
             auth_fn,
+            purpose_to_bitstring_status_purpose(purpose),
         )
         .await?;
 
@@ -328,7 +355,7 @@ impl BitstringStatusList {
         let encoded_list = self
             .generate_bitstring_from_credentials(
                 &issuer_did.id,
-                purpose_to_credential_state_enum(purpose),
+                purpose_to_credential_state_enum(purpose.to_owned()),
                 Some(BitstringCredentialInfo {
                     credential_id: credential.id,
                     value: new_revocation_value,
@@ -337,7 +364,7 @@ impl BitstringStatusList {
             .await?;
 
         let list_credential = self
-            .format_status_list_credential(&revocation_list_id, &issuer_did, encoded_list)
+            .format_status_list_credential(&revocation_list_id, &issuer_did, encoded_list, purpose)
             .await?;
 
         self.revocation_list_repository
@@ -361,20 +388,23 @@ impl BitstringStatusList {
             )
             .await?;
 
+        let credential_state = purpose_to_credential_state_enum(purpose.to_owned());
+
         Ok(match revocation_list {
             Some(value) => value.id,
             None => {
                 let encoded_list = self
-                    .generate_bitstring_from_credentials(
-                        &issuer_did.id,
-                        CredentialStateEnum::Revoked,
-                        None,
-                    )
+                    .generate_bitstring_from_credentials(&issuer_did.id, credential_state, None)
                     .await?;
 
                 let revocation_list_id = Uuid::new_v4();
                 let list_credential = self
-                    .format_status_list_credential(&revocation_list_id, issuer_did, encoded_list)
+                    .format_status_list_credential(
+                        &revocation_list_id,
+                        issuer_did,
+                        encoded_list,
+                        purpose.to_owned(),
+                    )
                     .await?;
 
                 let now = OffsetDateTime::now_utc();
@@ -402,5 +432,12 @@ fn purpose_to_credential_state_enum(purpose: RevocationListPurpose) -> Credentia
     match purpose {
         RevocationListPurpose::Revocation => CredentialStateEnum::Revoked,
         RevocationListPurpose::Suspension => CredentialStateEnum::Suspended,
+    }
+}
+
+fn purpose_to_bitstring_status_purpose(purpose: RevocationListPurpose) -> StatusPurpose {
+    match purpose {
+        RevocationListPurpose::Revocation => StatusPurpose::Revocation,
+        RevocationListPurpose::Suspension => StatusPurpose::Suspension,
     }
 }

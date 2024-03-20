@@ -1,3 +1,4 @@
+use one_core::model::credential_schema::CredentialSchema;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -15,20 +16,27 @@ impl ProofSchemasApi {
     pub async fn create(
         &self,
         name: &str,
-        claim_schema_id: impl Into<Uuid>,
         organisation_id: impl Into<Uuid>,
+        credential_schema: &CredentialSchema,
     ) -> Response {
+        let claim = &credential_schema.claim_schemas.as_ref().unwrap()[0];
+
         let body = json!({
-          "claimSchemas": [
-            {
-              "id": claim_schema_id.into(),
-              "required": true
-            }
-          ],
           "expireDuration": 0,
           "name": name,
-          "validityConstraint": 10,
           "organisationId": organisation_id.into(),
+          "proofInputSchemas": [
+            {
+              "validityConstraint": 10,
+              "claimSchemas": [
+                {
+                  "id": claim.schema.id,
+                  "required": claim.required
+                }
+              ],
+              "credentialSchemaId": credential_schema.id,
+            }
+          ]
         });
 
         self.client.post("/api/proof-schema/v1", body).await

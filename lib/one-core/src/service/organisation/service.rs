@@ -1,4 +1,5 @@
 use dto_mapper::convert_inner;
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -7,7 +8,7 @@ use super::{
     OrganisationService,
 };
 use crate::{
-    model::organisation::{Organisation, OrganisationId, OrganisationRelations},
+    model::organisation::{Organisation, OrganisationRelations},
     service::{
         error::{BusinessLogicError, EntityNotFoundError, ServiceError},
         organisation::mapper::create_organisation_history_event,
@@ -65,7 +66,7 @@ impl OrganisationService {
         }
 
         let request = Organisation {
-            id: id.unwrap_or(Uuid::new_v4()),
+            id: id.unwrap_or(Uuid::new_v4().into()),
             created_date: now,
             last_modified: now,
         };

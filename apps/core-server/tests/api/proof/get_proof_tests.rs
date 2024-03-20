@@ -6,7 +6,11 @@ use one_core::model::{
 
 use crate::{
     fixtures::TestingDidParams,
-    utils::{context::TestContext, field_match::FieldHelpers},
+    utils::{
+        context::TestContext,
+        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+        field_match::FieldHelpers,
+    },
 };
 
 #[tokio::test]
@@ -17,7 +21,7 @@ async fn test_get_proof_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
@@ -28,12 +32,16 @@ async fn test_get_proof_success() {
         .create(
             "test",
             &organisation,
-            &[(
-                claim_schema.id,
-                &claim_schema.key,
-                true,
-                &claim_schema.data_type,
-            )],
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
         )
         .await;
 
@@ -79,12 +87,17 @@ async fn test_get_proof_success() {
     // THEN
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
+
     resp["id"].assert_eq(&proof.id);
     resp["organisationId"].assert_eq(&organisation.id);
     resp["schema"]["id"].assert_eq(&proof_schema.id);
 
-    assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
-    let claim_item = &resp["claims"][0];
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        resp["proofInputs"][0]["claims"].as_array().unwrap().len(),
+        1
+    );
+    let claim_item = &resp["proofInputs"][0]["claims"][0];
     claim_item["schema"]["id"].assert_eq(&claim_schema.id);
     assert!(claim_item["value"].is_null());
 }
@@ -97,7 +110,7 @@ async fn test_get_proof_with_credentials() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE")
+        .create("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
@@ -108,12 +121,16 @@ async fn test_get_proof_with_credentials() {
         .create(
             "test",
             &organisation,
-            &[(
-                claim_schema.id,
-                &claim_schema.key,
-                true,
-                &claim_schema.data_type,
-            )],
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
         )
         .await;
 
@@ -178,9 +195,10 @@ async fn test_get_proof_with_credentials() {
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
     resp["id"].assert_eq(&proof.id);
-    assert_eq!(resp["credentials"].as_array().unwrap().len(), 1);
-    resp["credentials"][0]["id"].assert_eq(&credential.id);
-    assert!(resp["credentials"][0]["role"].is_string());
+
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
+    resp["proofInputs"][0]["credential"]["id"].assert_eq(&credential.id);
+    assert!(resp["proofInputs"][0]["credential"]["role"].is_string());
 }
 
 #[tokio::test]
@@ -238,5 +256,5 @@ async fn test_get_proof_as_holder_success() {
     resp["id"].assert_eq(&proof.id);
     resp["organisationId"].assert_eq(&organisation.id);
     assert!(resp["schema"].as_object().is_none());
-    assert_eq!(resp["claims"].as_array().unwrap().len(), 0);
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 0);
 }

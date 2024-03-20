@@ -12,6 +12,7 @@ use wiremock::{
 };
 
 use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
 use crate::{
     crypto::MockCryptoProvider,
     model::{
@@ -23,7 +24,7 @@ use crate::{
         interaction::Interaction,
         organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
-        proof_schema::{ProofSchema, ProofSchemaClaim},
+        proof_schema::ProofSchema,
     },
     provider::{
         credential_formatter::provider::MockCredentialFormatterProvider,
@@ -100,21 +101,25 @@ fn construct_proof_with_state() -> Proof {
         }]),
         schema: Some(ProofSchema {
             id: Uuid::new_v4(),
-            validity_constraint: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             name: "schema".to_string(),
             expire_duration: 10,
-            claim_schemas: Some(vec![ProofSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4(),
-                    key: "first_name".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                },
-                required: true,
+            organisation: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: Some(vec![ProofInputClaimSchema {
+                    schema: ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "first_name".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    },
+                    required: true,
+                    order: 0,
+                }]),
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4(),
                     deleted_at: None,
@@ -128,8 +133,6 @@ fn construct_proof_with_state() -> Proof {
                     organisation: None,
                 }),
             }]),
-            organisation: None,
-            input_schemas: None,
         }),
         claims: None,
         verifier_did: None,
@@ -143,14 +146,18 @@ fn generic_credential() -> Credential {
     let now = OffsetDateTime::now_utc();
 
     let claim_schema = ClaimSchema {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
         key: "NUMBER".to_string(),
         data_type: "NUMBER".to_string(),
         created_date: now,
         last_modified: now,
     };
     let organisation = Organisation {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
         created_date: now,
         last_modified: now,
     };
@@ -423,19 +430,12 @@ async fn test_generate_share_proof_open_id_flow_success() {
     assert!(result.starts_with(r#"openid4vp://?response_type=vp_token"#))
 }
 
-fn generic_holder_did() -> Did {
+fn generic_organisation() -> Organisation {
     let now = OffsetDateTime::now_utc();
-    Did {
+    Organisation {
         id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
-        name: "holder".to_string(),
-        did: "did:key:holder".parse().unwrap(),
-        did_type: DidType::Remote,
-        did_method: "KEY".to_string(),
-        keys: None,
-        organisation: None,
-        deactivated: false,
     }
 }
 
@@ -479,7 +479,7 @@ async fn test_handle_invitation_proof_success() {
         , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
 
     let result = protocol
-        .handle_invitation(url, generic_holder_did())
+        .handle_invitation(url, generic_organisation())
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -511,7 +511,7 @@ async fn test_handle_invitation_proof_success() {
                                                               , nonce, callback_url, client_metadata_uri, callback_url, presentation_definition_uri)).unwrap();
 
     let result = protocol
-        .handle_invitation(url_using_uri_instead_of_values, generic_holder_did())
+        .handle_invitation(url_using_uri_instead_of_values, generic_organisation())
         .await
         .unwrap();
     assert!(matches!(result, InvitationResponseDTO::ProofRequest { .. }));
@@ -547,7 +547,7 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_response_type = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                       , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_response_type, generic_holder_did())
+        .handle_invitation(incorrect_response_type, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -555,7 +555,7 @@ async fn test_handle_invitation_proof_failed() {
     let missing_nonce = Url::parse(&format!("openid4vp://?response_type=vp_token&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                             , callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(missing_nonce, generic_holder_did())
+        .handle_invitation(missing_nonce, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -563,7 +563,7 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                          , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_client_id_scheme, generic_holder_did())
+        .handle_invitation(incorrect_client_id_scheme, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -571,7 +571,7 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_response_mode = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=some_mode&response_uri={}&presentation_definition={}"
                                                       , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_response_mode, generic_holder_did())
+        .handle_invitation(incorrect_response_mode, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -579,7 +579,7 @@ async fn test_handle_invitation_proof_failed() {
     let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                          , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(incorrect_client_id_scheme, generic_holder_did())
+        .handle_invitation(incorrect_client_id_scheme, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -591,7 +591,7 @@ async fn test_handle_invitation_proof_failed() {
     .unwrap();
     let missing_metadata_field = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}", nonce, callback_url, metadata_missing_jwt_vp_json, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(missing_metadata_field, generic_holder_did())
+        .handle_invitation(missing_metadata_field, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -599,7 +599,10 @@ async fn test_handle_invitation_proof_failed() {
     let both_client_metadata_and_uri_specified = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                                      , nonce, callback_url, client_metadata, client_metadata_uri, callback_url, presentation_definition)).unwrap();
     let result = protocol
-        .handle_invitation(both_client_metadata_and_uri_specified, generic_holder_did())
+        .handle_invitation(
+            both_client_metadata_and_uri_specified,
+            generic_organisation(),
+        )
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -609,7 +612,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol
         .handle_invitation(
             both_presentation_definition_and_uri_specified,
-            generic_holder_did(),
+            generic_organisation(),
         )
         .await
         .unwrap_err();
@@ -631,7 +634,7 @@ async fn test_handle_invitation_proof_failed() {
     let client_metadata_uri_is_not_https = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                                , nonce, callback_url, invalid_client_metadata_uri, callback_url, presentation_definition)).unwrap();
     let result = protocol_https_only
-        .handle_invitation(client_metadata_uri_is_not_https, generic_holder_did())
+        .handle_invitation(client_metadata_uri_is_not_https, generic_organisation())
         .await
         .unwrap_err();
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
@@ -642,7 +645,7 @@ async fn test_handle_invitation_proof_failed() {
     let result = protocol_https_only
         .handle_invitation(
             presentation_definition_uri_is_not_https,
-            generic_holder_did(),
+            generic_organisation(),
         )
         .await
         .unwrap_err();

@@ -169,7 +169,12 @@ impl OneCore {
             revocation_methods.to_owned(),
         ));
 
-        let task_providers = tasks_from_config(&core_config.task)?;
+        let task_providers = tasks_from_config(
+            &core_config.task,
+            data_provider.get_credential_repository(),
+            data_provider.get_history_repository(),
+            revocation_method_provider.to_owned(),
+        )?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
 
         let config = Arc::new(core_config);
@@ -239,6 +244,7 @@ impl OneCore {
                 formatter_provider.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
+                revocation_method_provider.clone(),
                 config.clone(),
             ),
             oidc_service: OIDCService::new(
@@ -272,6 +278,7 @@ impl OneCore {
             proof_schema_service: ProofSchemaService::new(
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_claim_schema_repository(),
+                data_provider.get_credential_schema_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),
             ),
@@ -303,10 +310,12 @@ impl OneCore {
                 protocol_provider.clone(),
                 config.clone(),
                 core_base_url,
+                data_provider.get_history_repository(),
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
+                data_provider.get_organisation_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_history_repository(),
                 key_provider,

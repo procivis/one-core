@@ -1,8 +1,8 @@
 use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::{
     model::{
         common::{GetListQueryParams, GetListResponse},
-        organisation::OrganisationId,
         proof::{ProofStateEnum, SortableProofColumn},
     },
     service::{
@@ -12,7 +12,7 @@ use crate::{
         },
     },
 };
-use shared_types::DidId;
+use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -24,7 +24,7 @@ pub struct CreateProofRequestDTO {
     pub verifier_did_id: DidId,
     pub transport: String,
     pub redirect_uri: Option<String>,
-    pub verifier_key: Option<Uuid>,
+    pub verifier_key: Option<KeyId>,
 }
 
 #[derive(Clone, Debug)]
@@ -44,11 +44,10 @@ pub struct ProofDetailResponseDTO {
     pub holder_did_id: Option<DidId>,
     pub transport: String,
     pub state: ProofStateEnum,
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     pub schema: Option<GetProofSchemaListItemDTO>,
-    pub claims: Vec<ProofClaimDTO>,
     pub redirect_uri: Option<String>,
-    pub credentials: Vec<CredentialDetailResponseDTO>,
+    pub proof_inputs: Vec<ProofInputDTO>,
 }
 
 #[derive(Clone, Debug)]
@@ -69,6 +68,14 @@ pub struct ProofListItemResponseDTO {
 pub struct ProofClaimDTO {
     pub schema: ProofClaimSchemaResponseDTO,
     pub value: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProofInputDTO {
+    pub claims: Vec<ProofClaimDTO>,
+    pub credential: Option<CredentialDetailResponseDTO>,
+    pub credential_schema: CredentialSchemaListItemResponseDTO,
+    pub validity_constraint: Option<i64>,
 }
 
 pub type GetProofListResponseDTO = GetListResponse<ProofListItemResponseDTO>;

@@ -1,13 +1,16 @@
 use self::dto::{
     InvitationType, PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
 };
+use crate::model::did::Did;
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
 use crate::{
     config::{
         core_config::{ExchangeConfig, ExchangeType},
         ConfigValidationError,
     },
     crypto::CryptoProvider,
-    model::{credential::Credential, did::Did, interaction::Interaction, proof::Proof},
+    model::{credential::Credential, interaction::Interaction, proof::Proof},
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
         key_storage::provider::KeyProvider,
@@ -17,11 +20,10 @@ use crate::{
     repository::DataRepository,
     service::ssi_holder::dto::InvitationResponseDTO,
 };
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use serde::{de, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 use thiserror::Error;
 use url::Url;
 
@@ -60,7 +62,7 @@ pub trait TransportProtocol: Send + Sync {
     async fn handle_invitation(
         &self,
         url: Url,
-        own_did: Did,
+        organisation: Organisation,
     ) -> Result<InvitationResponseDTO, TransportProtocolError>;
 
     async fn reject_proof(&self, proof: &Proof) -> Result<(), TransportProtocolError>;
@@ -69,11 +71,15 @@ pub trait TransportProtocol: Send + Sync {
         &self,
         proof: &Proof,
         credential_presentations: Vec<PresentedCredential>,
+        holder_did: &Did,
+        key: &Key,
     ) -> Result<(), TransportProtocolError>;
 
     async fn accept_credential(
         &self,
         credential: &Credential,
+        holder_did: &Did,
+        key: &Key,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError>;
 
     async fn reject_credential(

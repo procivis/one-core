@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use one_core::{
     model::{
-        history::{History, HistoryAction, HistoryEntityType},
+        history::{History, HistoryAction, HistoryEntityType, HistoryMetadata},
         organisation::Organisation,
     },
     repository::history_repository::HistoryRepository,
@@ -19,6 +19,7 @@ pub struct TestingHistoryParams {
     pub action: Option<HistoryAction>,
     pub entity_id: Option<EntityId>,
     pub entity_type: Option<HistoryEntityType>,
+    pub metadata: Option<HistoryMetadata>,
 }
 
 pub struct HistoriesDB {
@@ -44,7 +45,7 @@ impl HistoriesDB {
             action: params.action.unwrap_or(HistoryAction::Accepted),
             entity_id: Some(params.entity_id.unwrap_or(Uuid::new_v4().into())),
             entity_type: params.entity_type.unwrap_or(HistoryEntityType::Credential),
-            metadata: None,
+            metadata: params.metadata,
             organisation: Some(organisation.clone()),
         };
 

@@ -48,11 +48,11 @@ async fn test_multikey_is_present_in_config() {
             "max": 5,
             "assertionMethod": {
                 "min": 1,
-                "max": 2,
+                "max": 5,
             },
             "authentication": {
-                "min": 0,
-                "max": 2,
+                "min": 1,
+                "max": 5,
             },
             "capabilityDelegation": {
                 "min": 1,

@@ -2,7 +2,11 @@ use one_core::model::proof::ProofStateEnum;
 
 use crate::{
     fixtures,
-    utils::{self, server::run_server},
+    utils::{
+        self,
+        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+        server::run_server,
+    },
 };
 
 #[tokio::test]
@@ -19,6 +23,7 @@ async fn test_temporary_verifier_reject_success() {
         fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
     let claim_schema = credential_schema
         .claim_schemas
+        .as_ref()
         .unwrap()
         .first()
         .unwrap()
@@ -29,12 +34,16 @@ async fn test_temporary_verifier_reject_success() {
         &db_conn,
         "test",
         &organisation,
-        &[(
-            claim_schema.id,
-            &claim_schema.key,
-            true,
-            &claim_schema.data_type,
-        )],
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+            }],
+            credential_schema: &credential_schema,
+            validity_constraint: None,
+        }],
     )
     .await;
 
@@ -52,8 +61,8 @@ async fn test_temporary_verifier_reject_success() {
     // WHEN
     let _handle = run_server(listener, config, &db_conn);
     let url = format!(
-        "{base_url}/ssi/temporary-verifier/v1/reject?proof={}",
-        proof.id
+        "{base_url}/ssi/temporary-verifier/v1/reject?proof={}&didId={}",
+        proof.id, did.id
     );
 
     let resp = utils::client().post(url).send().await.unwrap();

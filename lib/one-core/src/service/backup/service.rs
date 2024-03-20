@@ -11,13 +11,13 @@ use crate::{
 };
 use anyhow::Context;
 use futures::{FutureExt, TryFutureExt};
-use tempfile::{tempfile, NamedTempFile};
+use tempfile::{tempfile_in, NamedTempFile};
 
 use super::{
     dto::{BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO},
     utils::{
         build_metadata_file_content, create_backup_history_event, create_zip,
-        get_metadata_from_zip, hash_reader, load_db_from_zip, map_error,
+        dir_path_from_file_path, get_metadata_from_zip, hash_reader, load_db_from_zip, map_error,
     },
     BackupService,
 };
@@ -41,12 +41,10 @@ impl BackupService {
         password: String,
         output_path: String,
     ) -> Result<BackupCreateResponseDTO, ServiceError> {
-        let mut db_copy = NamedTempFile::new()
-            .context("Failed to create db temp file")
-            .map_err(map_error)?;
+        let output_dir = dir_path_from_file_path(&output_path)?;
 
-        let zip_file = tempfile()
-            .context("Failed to create zip temp file")
+        let mut db_copy = NamedTempFile::new_in(&output_dir)
+            .context("Failed to create db temp file")
             .map_err(map_error)?;
 
         let db_metadata = self.backup_repository.copy_db_to(db_copy.path()).await?;
@@ -60,6 +58,10 @@ impl BackupService {
             .await?;
 
         let metadata_file = build_metadata_file_content(&mut db_copy, db_metadata.version)?;
+
+        let zip_file = tempfile_in(&output_dir)
+            .context("Failed to create zip temp file")
+            .map_err(map_error)?;
         let zip_file = create_zip(db_copy, metadata_file, zip_file)?;
         encrypt_file(&password, &output_path, zip_file)
             .context("Failed to encrypt db file")
@@ -81,7 +83,7 @@ impl BackupService {
                     .create_history(create_backup_history_event(
                         organisation,
                         HistoryAction::Created,
-                        serde_json::to_string(&unexportable).ok(),
+                        Some(unexportable.clone().into()),
                     ))
             })
             .await?;
@@ -100,16 +102,14 @@ impl BackupService {
         input_path: String,
         output_path: String,
     ) -> Result<MetadataDTO, ServiceError> {
+        let output_dir = dir_path_from_file_path(&output_path)?;
+
         let zip = File::open(input_path)
             .context("Failed to open backup")
             .map_err(map_error)?;
 
-        let mut decrypted_zip = tempfile()
+        let mut decrypted_zip = tempfile_in(&output_dir)
             .context("Failed to create zip temp file")
-            .map_err(map_error)?;
-
-        let mut decrypted_db = tempfile()
-            .context("Failed to create db temp file")
             .map_err(map_error)?;
 
         decrypt_file(&password, zip, &mut decrypted_zip)
@@ -117,6 +117,10 @@ impl BackupService {
             .map_err(map_error)?;
 
         let metadata = get_metadata_from_zip(&mut decrypted_zip)?;
+
+        let mut decrypted_db = tempfile_in(&output_dir)
+            .context("Failed to create db temp file")
+            .map_err(map_error)?;
         load_db_from_zip(&mut decrypted_zip, &mut decrypted_db)?;
 
         let hash = hash_reader(&mut decrypted_db)?;

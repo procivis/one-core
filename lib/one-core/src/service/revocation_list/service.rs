@@ -1,6 +1,5 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use shared_types::CredentialId;
-use std::str::FromStr;
 use time::OffsetDateTime;
 
 use crate::{
@@ -10,7 +9,10 @@ use crate::{
     },
     provider::{
         credential_formatter::error::FormatterError,
-        revocation::{self, lvvc::Status},
+        revocation::{
+            self,
+            lvvc::{dto::LvvcStatus, mapper::status_from_lvvc_claims},
+        },
     },
     service::{
         error::{EntityNotFoundError, MissingProviderError, ServiceError},
@@ -103,39 +105,43 @@ impl RevocationListService {
             .await
             .map_err(ServiceError::from)?;
 
-        let status = extracted_credential.claims.values.get("status").ok_or(
-            ServiceError::ValidationError("missing status claim in LVVC".to_string()),
-        )?;
-        let status_as_enum =
-            Status::from_str(status).map_err(|e| ServiceError::ValidationError(e.to_string()))?;
-
-        if status_as_enum == Status::Revoked {
-            return Ok(IssuerResponseDTO {
-                credential: credential_content.to_string(),
-                format,
-            });
+        let status = status_from_lvvc_claims(&extracted_credential.claims.values)?;
+        match status {
+            // ONE-1780: return current lvvc credential if not active
+            LvvcStatus::Revoked | LvvcStatus::Suspended { .. } => {
+                return Ok(IssuerResponseDTO {
+                    credential: credential_content.to_string(),
+                    format,
+                });
+            }
+            LvvcStatus::Accepted => {}
         }
 
         // If issuanceDate + credentialExpiry < now then a new VC of the LVVC credential needs to be created and saved in database.
-        let revocation: revocation::lvvc::Params = self
-            .config
-            .revocation
-            .get(&schema.revocation_method.to_string())?;
-        let expiry = revocation.credential_expiry;
+        let revocation_method = schema.revocation_method.to_string();
+        let revocation_params: revocation::lvvc::Params =
+            self.config.revocation.get(&revocation_method)?;
+        let expiry = revocation_params.credential_expiry;
 
         let issuance_date = extracted_credential
             .issued_at
             .ok_or(ServiceError::MappingError("issued_at is None".to_string()))?;
 
         if OffsetDateTime::now_utc() > issuance_date + expiry {
+            let revocation = self
+                .revocation_method_provider
+                .get_revocation_method(&revocation_method)
+                .ok_or(MissingProviderError::RevocationMethod(revocation_method))?;
+
             let lvvc = revocation::lvvc::create_lvvc_with_status(
                 &credential,
-                status_as_enum,
+                status,
                 &self.core_base_url,
                 expiry,
                 formatter,
                 self.lvvc_repository.clone(),
                 self.key_provider.clone(),
+                revocation.get_json_ld_context()?,
             )
             .await?;
 

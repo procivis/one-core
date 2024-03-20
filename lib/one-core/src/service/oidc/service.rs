@@ -6,7 +6,7 @@ use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
 };
 use crate::model::claim::{Claim, ClaimRelations};
-use crate::model::claim_schema::{ClaimSchema, ClaimSchemaId, ClaimSchemaRelations};
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{
     CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
     UpdateCredentialRequest,
@@ -21,7 +21,7 @@ use crate::model::proof::{
     Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
 };
 use crate::model::proof_schema::{
-    ProofSchemaClaim, ProofSchemaClaimRelations, ProofSchemaRelations,
+    ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 
 use crate::provider::credential_formatter::error::FormatterError;
@@ -214,7 +214,7 @@ impl OIDCService {
     ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let schema = self
+        let Some(schema) = self
             .credential_schema_repository
             .get_credential_schema(
                 credential_schema_id,
@@ -223,21 +223,19 @@ impl OIDCService {
                     ..Default::default()
                 },
             )
-            .await?;
-
-        let Some(schema) = schema else {
+            .await?
+        else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
         throw_if_credential_request_invalid(&schema, &request)?;
 
         let interaction_id = parse_access_token(access_token)?;
-        let interaction = self
+        let Some(interaction) = self
             .interaction_repository
             .get_interaction(&interaction_id, &InteractionRelations::default())
-            .await?;
-
-        let Some(interaction) = interaction else {
+            .await?
+        else {
             return Err(
                 BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
             );
@@ -303,7 +301,7 @@ impl OIDCService {
 
         let issued_credential = self
             .protocol_provider
-            .issue_credential(&credential.id)
+            .issue_credential(&credential.id, holder_did)
             .await?;
 
         Ok(OpenID4VCICredentialResponseDTO {
@@ -415,11 +413,11 @@ impl OIDCService {
                 &interaction_id,
                 &ProofRelations {
                     schema: Some(ProofSchemaRelations {
-                        claim_schemas: Some(ProofSchemaClaimRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            claim_schemas: Some(ProofSchemaClaimRelations::default()),
                             credential_schema: Some(CredentialSchemaRelations::default()),
                         }),
-                        organisation: Some(OrganisationRelations::default()),
-                        proof_inputs: None,
                     }),
                     interaction: Some(InteractionRelations::default()),
                     state: Some(ProofStateRelations::default()),
@@ -459,7 +457,12 @@ impl OIDCService {
                 &id,
                 &ProofRelations {
                     interaction: Some(InteractionRelations::default()),
-                    schema: Some(ProofSchemaRelations::default()),
+                    schema: Some(ProofSchemaRelations {
+                        proof_inputs: Some(ProofInputSchemaRelations {
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
                     state: Some(ProofStateRelations::default()),
                     ..Default::default()
                 },
@@ -482,17 +485,40 @@ impl OIDCService {
         let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
             "Proof schema not found".to_string(),
         ))?;
-        if let Some(validity_constraint) = proof_schema.validity_constraint {
-            let now = OffsetDateTime::now_utc();
-            interaction_data
+
+        let proof_schema_inputs = match proof_schema.input_schemas.as_ref() {
+            Some(input_schemas) if !input_schemas.is_empty() => input_schemas.to_vec(),
+            _ => {
+                return Err(ServiceError::MappingError(
+                    "input_schemas are missing".to_string(),
+                ))
+            }
+        };
+
+        if proof_schema_inputs.len()
+            != interaction_data
                 .presentation_definition
                 .input_descriptors
-                .iter_mut()
-                .for_each(|input_descriptor| {
+                .len()
+        {
+            return Err(ServiceError::Other(
+                "Proof schema inputs length doesn't match interaction data input descriptors length"
+                    .to_owned(),
+            ));
+        }
+
+        let now = OffsetDateTime::now_utc();
+        interaction_data
+            .presentation_definition
+            .input_descriptors
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, input_descriptor)| {
+                if let Some(validity_constraint) = proof_schema_inputs[i].validity_constraint {
                     input_descriptor.constraints.validity_credential_nbf =
                         Some(now.sub(Duration::seconds(validity_constraint)));
-                });
-        }
+                }
+            });
 
         Ok(interaction_data.presentation_definition)
     }
@@ -587,34 +613,12 @@ impl OIDCService {
             "missing proof schema".to_string(),
         ))?;
 
-        let proof_schema_claims =
-            proof_schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "missing proof schema claims".to_string(),
-                ))?;
-
-        let mut claim_to_credential_schema_mapping: HashMap<ClaimSchemaId, CredentialSchemaId> =
-            HashMap::new();
-        let mut expected_credential_claims: HashMap<CredentialSchemaId, Vec<&ProofSchemaClaim>> =
-            HashMap::new();
-        for proof_schema_claim in proof_schema_claims {
-            let credential_schema =
-                proof_schema_claim
-                    .credential_schema
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(
-                        "missing proof schema claim credential_schema".to_string(),
-                    ))?;
-
-            let entry = expected_credential_claims
-                .entry(credential_schema.id)
-                .or_default();
-            entry.push(proof_schema_claim);
-            claim_to_credential_schema_mapping
-                .insert(proof_schema_claim.schema.id, credential_schema.id);
-        }
+        let proof_schema_inputs = match proof_schema.input_schemas.as_ref() {
+            Some(input_schemas) if !input_schemas.is_empty() => input_schemas.to_vec(),
+            _ => {
+                return Err(ServiceError::Other("Missing proof input schema".to_owned()));
+            }
+        };
 
         let extracted_lvvcs = self
             .extract_lvvcs(&presentation_strings, presentation_submission)
@@ -643,6 +647,7 @@ impl OIDCService {
 
             let presentation_string_index =
                 vec_last_position_from_token_path(&presentation_submitted.path)?;
+
             let presentation_string = presentation_strings
                 .get(presentation_string_index)
                 .ok_or(OpenID4VCIError::InvalidRequest)?;
@@ -661,11 +666,36 @@ impl OIDCService {
                 .as_ref()
                 .ok_or(OpenID4VCIError::InvalidRequest)?;
 
+            // each descriptor contains only fields from a single credential_schema...
+            let first_claim_schema = input_descriptor
+                .constraints
+                .fields
+                // ... so one field is enough to find the proper credential_schema (and requested claims from that schema)
+                .first()
+                .ok_or(ServiceError::OpenID4VCError(
+                    OpenID4VCIError::InvalidRequest,
+                ))?;
+
+            let proof_schema_input = proof_schema_inputs
+                .iter()
+                .find(|input| {
+                    let Some(input_claim_schemas) = input.claim_schemas.as_ref() else {
+                        return false;
+                    };
+
+                    input_claim_schemas.iter().any(|input_claim_schema| {
+                        input_claim_schema.schema.id == first_claim_schema.id
+                    })
+                })
+                .ok_or(ServiceError::Other(
+                    "Missing proof input schema for credential schema".to_owned(),
+                ))?;
+
             let credential = validate_credential(
                 presentation,
                 path_nested,
                 &extracted_lvvcs,
-                proof_schema,
+                proof_schema_input,
                 &self.formatter_provider,
                 self.build_key_verification(KeyRole::AssertionMethod),
                 &self.revocation_method_provider,
@@ -676,12 +706,8 @@ impl OIDCService {
                 continue;
             }
 
-            let proved_claims: Vec<ValidatedProofClaimDTO> = validate_claims(
-                credential,
-                input_descriptor,
-                &claim_to_credential_schema_mapping,
-                &expected_credential_claims,
-            )?;
+            let proved_claims: Vec<ValidatedProofClaimDTO> =
+                validate_claims(credential, proof_schema_input)?;
 
             total_proved_claims.extend(proved_claims);
         }
@@ -718,10 +744,8 @@ impl OIDCService {
                 Ok(ProvedClaim {
                     value: proved_claim.value,
                     credential: proved_claim.credential,
-                    credential_schema: proved_claim.claim_schema.credential_schema.ok_or(
-                        ServiceError::MappingError("credential schema is None".to_string()),
-                    )?,
-                    claim_schema: proved_claim.claim_schema.schema,
+                    credential_schema: proved_claim.credential_schema,
+                    claim_schema: proved_claim.proof_input_claim.schema,
                 })
             })
             .collect::<Result<Vec<ProvedClaim>, ServiceError>>()?;

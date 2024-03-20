@@ -73,6 +73,9 @@ pub struct CredentialClaimSchemaResponseRestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    #[from(with_fn = convert_inner)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
 }
 
 pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumnRestEnum>;
@@ -117,4 +120,7 @@ pub struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[into(with_fn = convert_inner)]
+    pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
 }

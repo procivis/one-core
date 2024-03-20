@@ -1,8 +1,9 @@
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 
 use dto_mapper::From;
 
-use crate::model::organisation::{Organisation, OrganisationId};
+use crate::model::organisation::Organisation;
 
 #[derive(Clone, Debug, PartialEq, Eq, From)]
 #[from(Organisation)]
