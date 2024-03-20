@@ -47,7 +47,7 @@ fn initialize_core(
 
         Box::pin(async move {
             let db_url = format!("sqlite:{db_path}?mode=rwc");
-            let db_conn = sql_data_provider::db_conn(db_url)
+            let db_conn = sql_data_provider::db_conn(db_url, true)
                 .await
                 .map_err(|e| BindingError::DbErr(e.to_string()))?;
 

@@ -43,6 +43,7 @@ spec:
               {{ end }}
               - "--task"
               - "SUSPEND_CHECK"
+              - "--skip-migration"
             envFrom:
               - configMapRef:
                   name: {{ include "onecorechart.fullname" . }}

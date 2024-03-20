@@ -107,7 +107,7 @@ pub fn create_config(
 }
 
 pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
-    sql_data_provider::db_conn(&config.app.database_url)
+    sql_data_provider::db_conn(&config.app.database_url, true)
         .await
         .unwrap()
 }

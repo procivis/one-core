@@ -22,6 +22,10 @@ struct Cli {
     #[arg(short, long, value_name = "FILE")]
     config: Option<Vec<PathBuf>>,
 
+    /// Skip DB migration on startup
+    #[arg(long, action)]
+    skip_migration: bool,
+
     /// Specific task to run
     #[arg(long)]
     task: Option<String>,
@@ -48,9 +52,10 @@ fn main() {
         .build()
         .expect("Unable to create tokio runtime")
         .block_on(async {
-            let db_conn = sql_data_provider::db_conn(&app_config.app.database_url)
-                .await
-                .expect("Unable to establish database connection");
+            let db_conn =
+                sql_data_provider::db_conn(&app_config.app.database_url, !cli.skip_migration)
+                    .await
+                    .expect("Unable to establish database connection");
 
             let core = initialize_core(&app_config, db_conn);
 

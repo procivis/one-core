@@ -18,7 +18,7 @@ use crate::{
 
 #[tokio::test]
 async fn test_insert_lvvc() {
-    let db_conn = db_conn("sqlite::memory:").await.unwrap();
+    let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
     let provider = LvvcProvider::new(db_conn.clone());
 
     let credential_id = create_and_store_credential(&db_conn).await;
@@ -43,7 +43,7 @@ async fn test_insert_lvvc() {
 
 #[tokio::test]
 async fn test_get_latest_lvvc_by_credential_id() {
-    let db_conn = db_conn("sqlite::memory:").await.unwrap();
+    let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
     let provider = LvvcProvider::new(db_conn.clone());
 
     let credential_id = create_and_store_credential(&db_conn).await;
@@ -63,7 +63,7 @@ async fn test_get_latest_lvvc_by_credential_id() {
 
 #[tokio::test]
 async fn test_get_all_lvvc_by_credential_id() {
-    let db_conn = db_conn("sqlite::memory:").await.unwrap();
+    let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
     let provider = LvvcProvider::new(db_conn.clone());
 
     let credential_id = create_and_store_credential(&db_conn).await;
