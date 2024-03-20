@@ -178,10 +178,26 @@ dictionary CredentialSchemaListBindingDTO {
   u64 total_items;
 };
 
+enum CredentialListQueryExactColumnBindingEnum {
+  "Name"
+};
+
+enum SortDirection {
+  "Ascending", "Descending"
+};
+
+enum SortableCredentialColumnBindingEnum {
+  "CreatedDate", "SchemaName", "IssuerDid", "State"
+};
+
 dictionary CredentialListQueryBindingDTO {
   u32 page;
   u32 page_size;
+  SortableCredentialColumnBindingEnum? sort;
+  SortDirection? sort_direction;
   string organisation_id;
+  string? name;
+  sequence<CredentialListQueryExactColumnBindingEnum>? exact;
   CredentialRoleBindingDTO? role;
   sequence<string>? ids;
   sequence<CredentialStateBindingEnum>? status;
