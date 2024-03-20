@@ -1,0 +1,22 @@
+image:
+  tag: "v1.23.0"
+
+baseUrl: "https://core.trial.procivis-one.com"
+
+sentry:
+  env: "trial"
+
+ingress:
+  hosts:
+    - host: core.trial.procivis-one.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+configs:
+  - "config-procivis-base.yml"
+  - "config-procivis-server.yml"
+  - "config-procivis-server-trial.yml"
+
+imagePullSecrets:
+  - name: gitlab-credentials-demo-cluster
