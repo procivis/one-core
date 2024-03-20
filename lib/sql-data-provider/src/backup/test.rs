@@ -169,10 +169,10 @@ struct TestSetup {
 async fn setup_empty() -> TestSetup {
     let _db_holder = NamedTempFile::new().unwrap();
 
-    let db = db_conn(format!(
-        "sqlite:{}?mode=rw",
-        _db_holder.path().to_string_lossy()
-    ))
+    let db = db_conn(
+        format!("sqlite:{}?mode=rw", _db_holder.path().to_string_lossy()),
+        true,
+    )
     .await
     .unwrap();
 
@@ -503,9 +503,12 @@ async fn test_delete_unexportable_keys() {
         .await
         .unwrap();
 
-    let db_dump = db_conn(format!("sqlite:{}?mode=rw", temp.path().to_string_lossy()))
-        .await
-        .unwrap();
+    let db_dump = db_conn(
+        format!("sqlite:{}?mode=rw", temp.path().to_string_lossy()),
+        true,
+    )
+    .await
+    .unwrap();
     let keys = key::Entity::find().all(&db_dump).await.unwrap();
 
     let all_deleted = keys
@@ -543,9 +546,12 @@ async fn test_delete_unexportable_credentials() {
         .await
         .unwrap();
 
-    let db_dump = db_conn(format!("sqlite:{}?mode=rw", temp.path().to_string_lossy()))
-        .await
-        .unwrap();
+    let db_dump = db_conn(
+        format!("sqlite:{}?mode=rw", temp.path().to_string_lossy()),
+        true,
+    )
+    .await
+    .unwrap();
     let credentials = credential::Entity::find().all(&db_dump).await.unwrap();
 
     let all_deleted = credentials
@@ -582,9 +588,12 @@ async fn test_delete_unexportable_dids() {
         .await
         .unwrap();
 
-    let db_dump = db_conn(format!("sqlite:{}?mode=rw", temp.path().to_string_lossy()))
-        .await
-        .unwrap();
+    let db_dump = db_conn(
+        format!("sqlite:{}?mode=rw", temp.path().to_string_lossy()),
+        true,
+    )
+    .await
+    .unwrap();
     let dids = did::Entity::find().all(&db_dump).await.unwrap();
 
     let all_deleted = dids

@@ -210,10 +210,15 @@ impl DataRepository for DataLayer {
 }
 
 /// Connects to the database and runs the pending migrations (until we externalize them)
-pub async fn db_conn(database_url: impl Into<ConnectOptions>) -> Result<DatabaseConnection, DbErr> {
+pub async fn db_conn(
+    database_url: impl Into<ConnectOptions>,
+    with_migration: bool,
+) -> Result<DatabaseConnection, DbErr> {
     let db = sea_orm::Database::connect(database_url).await?;
 
-    Migrator::up(&db, None).await?;
+    if with_migration {
+        Migrator::up(&db, None).await?;
+    }
 
     Ok(db)
 }
