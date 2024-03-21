@@ -47,7 +47,6 @@ impl From<ServiceError> for BindingError {
                 }
                 error => Self::Unknown(error.to_string()),
             },
-            // todo: map the rest of the service errors
             error => Self::Unknown(error.to_string()),
         }
     }

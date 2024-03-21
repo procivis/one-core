@@ -56,7 +56,6 @@ impl CredentialFormatter for JsonLdClassic {
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
         let mut credential = json_ld::prepare_credential(
-            &self.base_url,
             credential,
             holder_did,
             additional_context,
@@ -262,6 +261,7 @@ impl JsonLdClassic {
             subject: Some(credential.credential_subject.id),
             claims,
             status: credential.credential_status,
+            credential_schema: credential.credential_schema,
         })
     }
 

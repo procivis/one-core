@@ -1,5 +1,6 @@
 mod client_metadata;
 mod create_revocation_list_entry_tests;
+mod get_credential_schema_tests;
 mod get_did_web_document_tests;
 mod get_json_ld_context;
 mod get_revocation_list_tests;

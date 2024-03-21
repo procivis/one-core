@@ -5,7 +5,7 @@ use serde_with::{serde_as, OneOrMany};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::model::{CredentialSchema, CredentialStatus};
 
 // The main credential
 #[serde_as]
@@ -25,6 +25,8 @@ pub struct LdCredential {
     pub credential_status: Vec<CredentialStatus>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proof: Option<LdProof>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_schema: Option<CredentialSchema>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

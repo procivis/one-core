@@ -47,10 +47,9 @@ impl JsonLdBbsplus {
         // Those fields have to be presented by holder for verifier.
         // It's not the same as 'required claim' for issuance.
         // Here we add everything that is mandatory which is everything except CredentialSubject.
-        let mandatory_pointers = prepare_mandatory_pointers(&credential.credential_status);
+        let mandatory_pointers = prepare_mandatory_pointers(&credential.status);
 
         let mut ld_credential = json_ld::prepare_credential(
-            &self.base_url,
             credential,
             holder_did,
             additional_context,

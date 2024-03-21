@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, OneOrMany};
 
-use crate::provider::credential_formatter::CredentialStatus;
+use crate::provider::credential_formatter::{model::CredentialSchema, CredentialStatus};
 
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize)]
@@ -16,6 +16,8 @@ pub struct VCContent {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[serde_as(as = "OneOrMany<_>")]
     pub credential_status: Vec<CredentialStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_schema: Option<CredentialSchema>,
 }
 
 // TODO: remove the presentation models, since only JWT formatted presentations are used

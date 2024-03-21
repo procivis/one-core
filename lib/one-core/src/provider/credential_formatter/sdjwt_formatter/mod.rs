@@ -233,6 +233,7 @@ impl SDJWTFormatter {
                 ),
             },
             status: jwt.payload.custom.vc.credential_status,
+            credential_schema: jwt.payload.custom.vc.credential_schema,
         })
     }
 
@@ -247,10 +248,9 @@ impl SDJWTFormatter {
         let hasher = self.crypto.get_hasher(algorithm)?;
 
         let vc = vc_from_credential(
-            credential.id,
+            credential,
             &hasher,
             &claims,
-            credential.credential_status,
             additional_context,
             additional_types,
             algorithm,

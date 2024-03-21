@@ -1124,17 +1124,13 @@ async fn test_submit_proof_failed_credential_suspended() {
                 issuer_did: Some(issuer_did_clone.to_owned()),
                 subject: Some(holder_did_clone.to_owned()),
                 claims: CredentialSubject {
-                    // submitted claims
                     values: HashMap::from([
-                        // ignored by verifier
                         ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        // required by verifier
                         ("required_key".to_owned(), "required_key_value".to_owned()),
-                        // optional
-                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
                     ]),
                 },
                 status: vec![],
+                credential_schema: None,
             })
         });
 
@@ -1183,14 +1179,9 @@ async fn test_submit_proof_failed_credential_suspended() {
                 issuer_did: Some(issuer_did_clone.to_owned()),
                 subject: Some(holder_did.to_owned()),
                 claims: CredentialSubject {
-                    // submitted claims
                     values: HashMap::from([
-                        // ignored by verifier
                         ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        // required by verifier
                         ("required_key".to_owned(), "required_key_value".to_owned()),
-                        // optional
-                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
                     ]),
                 },
                 status: vec![CredentialStatus {
@@ -1199,6 +1190,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                     status_purpose: None,
                     additional_fields: Default::default(),
                 }],
+                credential_schema: None,
             })
         });
 
