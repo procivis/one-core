@@ -16,6 +16,8 @@ use shared_types::{DidId, DidValue};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+pub const NESTED_CLAIM_MARKER: char = '/';
+
 pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListResponse<T> {
     GetListResponse::<T> {
         values: convert_inner(input.values),

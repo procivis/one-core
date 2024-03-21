@@ -1,10 +1,10 @@
 use shared_types::OrganisationId;
 
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::CredentialClaimSchemaRequestDTO;
 use crate::service::credential_schema::mapper::create_unique_name_check_request;
-use crate::service::credential_schema::NESTED_CLAIM_MARKER;
 use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::{
     config::validator::{

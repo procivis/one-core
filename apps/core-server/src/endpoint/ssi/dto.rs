@@ -26,6 +26,7 @@ use one_core::service::oidc::dto::{
 };
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
+    JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
 };
 use one_core::service::{
     oidc::{
@@ -460,6 +461,24 @@ pub struct JsonLDContextRestDTO {
 pub enum JsonLDEntityRestDTO {
     Reference(String),
     Inline(JsonLDInlineEntityRestDTO),
+    NestedObject(JsonLDNestedEntityRestDTO),
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(JsonLDNestedEntityDTO)]
+pub struct JsonLDNestedEntityRestDTO {
+    #[serde(rename = "@context")]
+    pub context: JsonLDNestedContextRestDTO,
+    #[serde(rename = "@id")]
+    pub id: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(JsonLDNestedContextDTO)]
+pub struct JsonLDNestedContextRestDTO {
+    #[serde(flatten)]
+    #[from(with_fn = convert_inner)]
+    pub entities: HashMap<String, JsonLDEntityRestDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

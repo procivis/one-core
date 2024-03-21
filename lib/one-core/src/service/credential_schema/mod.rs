@@ -11,8 +11,6 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
-const NESTED_CLAIM_MARKER: char = '/';
-
 #[derive(Clone)]
 pub struct CredentialSchemaService {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,

@@ -26,7 +26,18 @@ pub struct JsonLDContextDTO {
 pub enum JsonLDEntityDTO {
     Reference(String),
     Inline(JsonLDInlineEntityDTO),
+    NestedObject(JsonLDNestedEntityDTO),
     // TODO: nested claims (ONE-1317)
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct JsonLDNestedEntityDTO {
+    pub id: String,
+    pub context: JsonLDNestedContextDTO,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct JsonLDNestedContextDTO {
+    pub entities: HashMap<String, JsonLDEntityDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
