@@ -26,12 +26,6 @@ impl TryFrom<LdCredential> for DetailCredential {
     type Error = FormatterError;
 
     fn try_from(value: LdCredential) -> Result<Self, Self::Error> {
-        // TODO: ask Wojciech if it makes sense to remove this check
-        // let id = value
-        //     .id
-        //     .strip_prefix("urn:uuid:")
-        //     .ok_or(FormatterError::Failed("Invalid id format".to_owned()))?;
-
         let mut claims: HashMap<String, String> = HashMap::new();
 
         for (_, credential) in value.credential_subject.subject {
@@ -49,6 +43,7 @@ impl TryFrom<LdCredential> for DetailCredential {
             subject: Some(value.credential_subject.id),
             claims: CredentialSubject { values: claims },
             status: value.credential_status,
+            credential_schema: value.credential_schema,
         })
     }
 }

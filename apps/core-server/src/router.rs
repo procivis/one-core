@@ -258,6 +258,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route(
             "/ssi/context/v1/:id",
             get(ssi::controller::get_json_ld_context),
+        )
+        .route(
+            "/ssi/schema/v1/:id",
+            get(ssi::controller::get_credential_schema),
         );
 
     let technical_endpoints = Router::new()

@@ -1028,6 +1028,7 @@ async fn test_check_revocation_non_revocable() {
                     values: HashMap::default(),
                 },
                 status: vec![],
+                credential_schema: None,
             })
         });
 
@@ -1176,6 +1177,7 @@ async fn test_check_revocation_being_revoked() {
                     status_purpose: Some("purpose".to_string()),
                     additional_fields: HashMap::default(),
                 }],
+                credential_schema: None,
             })
         });
 

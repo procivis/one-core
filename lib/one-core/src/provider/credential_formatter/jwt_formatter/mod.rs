@@ -51,24 +51,20 @@ impl CredentialFormatter for JWTFormatter {
         _json_ld_context_url: Option<String>,
         _custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
-        let vc = format_vc(
-            credential.id.clone(),
-            credential.claims,
-            credential.credential_status,
-            additional_context,
-            additional_types,
-        );
-
         let issued_at = credential.issuance_date;
         let expires_at = issued_at.checked_add(credential.valid_for);
+        let credential_id = credential.id.clone();
+        let issuer = credential.issuer_did.to_string();
+
+        let vc = format_vc(credential, additional_context, additional_types);
 
         let payload = JWTPayload {
             issued_at: Some(issued_at),
             expires_at,
             invalid_before: issued_at.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            issuer: Some(credential.issuer_did.to_string()),
+            issuer: Some(issuer),
             subject: Some(holder_did.to_string()),
-            jwt_id: Some(credential.id),
+            jwt_id: Some(credential_id),
             custom: vc,
             nonce: None,
         };

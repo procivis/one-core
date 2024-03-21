@@ -13,6 +13,7 @@ pub struct DetailCredential {
     pub subject: Option<DidValue>,
     pub claims: CredentialSubject,
     pub status: Vec<CredentialStatus>,
+    pub credential_schema: Option<CredentialSchema>,
 }
 
 impl DetailCredential {
@@ -70,4 +71,26 @@ pub struct CredentialStatus {
     pub status_purpose: Option<String>,
     #[serde(flatten)]
     pub additional_fields: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchema {
+    // URI
+    pub id: String,
+    pub r#type: CredentialSchemaType,
+}
+
+impl CredentialSchema {
+    pub fn new(id: String) -> Self {
+        Self {
+            id,
+            r#type: CredentialSchemaType::ProcivisOneSchema2024,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum CredentialSchemaType {
+    ProcivisOneSchema2024,
 }

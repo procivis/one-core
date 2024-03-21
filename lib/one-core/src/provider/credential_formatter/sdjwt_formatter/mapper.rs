@@ -3,7 +3,8 @@ use std::sync::Arc;
 use crate::{
     crypto::{hasher::Hasher, CryptoProvider},
     provider::credential_formatter::{
-        jwt::mapper::string_to_b64url_string, Context, CredentialStatus, FormatterError,
+        jwt::mapper::string_to_b64url_string, model::CredentialSchema, Context, CredentialData,
+        FormatterError,
     },
 };
 
@@ -23,10 +24,9 @@ pub(super) fn claims_to_formatted_disclosure(
 }
 
 pub(super) fn vc_from_credential(
-    id: String,
+    credential: CredentialData,
     hasher: &Arc<dyn Hasher>,
     claims: &[String],
-    credential_status: Vec<CredentialStatus>,
     additional_context: Vec<String>,
     additional_types: Vec<String>,
     algorithm: &str,
@@ -48,15 +48,18 @@ pub(super) fn vc_from_credential(
         .chain(additional_types)
         .collect();
 
+    let credential_schema = credential.schema.id.map(CredentialSchema::new);
+
     Sdvc {
         vc: VCContent {
             context,
             r#type: types,
-            id: Some(id),
+            id: Some(credential.id),
             credential_subject: SDCredentialSubject {
                 claims: hashed_claims,
             },
-            credential_status,
+            credential_status: credential.status,
+            credential_schema,
         },
         hash_alg: Some(algorithm.to_owned()),
     }

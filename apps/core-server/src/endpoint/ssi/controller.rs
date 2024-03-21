@@ -8,6 +8,7 @@ use super::dto::{
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
 use crate::endpoint::ssi::dto::{
     DidDocumentRestDTO, OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
     OpenID4VCICredentialResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
@@ -736,4 +737,30 @@ pub(crate) async fn get_json_ld_context(
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/schema/v1/{id}",
+    params(
+        ("id" = Uuid, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = CredentialSchemaResponseRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn get_credential_schema(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<CredentialSchemaResponseRestDTO> {
+    let result = state
+        .core
+        .credential_schema_service
+        .get_credential_schema(&id)
+        .await;
+
+    OkOrErrorResponse::from_result(result, state, "getting credential schema")
 }

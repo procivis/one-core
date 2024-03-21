@@ -12,7 +12,10 @@ use time::OffsetDateTime;
 
 use crate::{crypto::CryptoProvider, provider::did_method::dto::DidDocumentDTO};
 
-use super::{error::FormatterError, AuthenticationFn, Context, CredentialData, VerificationFn};
+use super::{
+    error::FormatterError, model::CredentialSchema, AuthenticationFn, Context, CredentialData,
+    VerificationFn,
+};
 
 use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
 
@@ -24,7 +27,6 @@ mod test;
 type LdDataset = std::collections::HashSet<Spog<SimpleTerm<'static>>>;
 
 pub(super) fn prepare_credential(
-    base_url: &Option<String>,
     credential: CredentialData,
     holder_did: &DidValue,
     additional_context: Vec<String>,
@@ -32,22 +34,17 @@ pub(super) fn prepare_credential(
     json_ld_context_url: Option<String>,
     custom_subject_name: Option<String>,
 ) -> Result<LdCredential, FormatterError> {
-    let credential_schema = credential.credential_schema.ok_or_else(|| {
-        FormatterError::Failed(
-            "JSON_LD formatter is missing credential schema information".to_string(),
-        )
-    })?;
+    let credential_schema = credential.schema;
 
     let issuance_date = OffsetDateTime::now_utc();
 
     let mut context = prepare_context(additional_context);
     if let Some(json_ld_context_url) = json_ld_context_url {
         context.push(json_ld_context_url);
-    } else if let Some(base_url) = base_url {
-        context.push(format!(
-            "{base_url}/ssi/context/v1/{}",
-            credential_schema.id
-        ));
+    }
+
+    if let Some(credential_schema_context) = credential_schema.context {
+        context.push(credential_schema_context);
     }
 
     let ld_type = prepare_credential_type(&credential_schema.name, additional_types);
@@ -59,6 +56,8 @@ pub(super) fn prepare_credential(
         custom_subject_name,
     );
 
+    let credential_schema = credential_schema.id.map(CredentialSchema::new);
+
     Ok(LdCredential {
         context,
         id: credential.id,
@@ -66,8 +65,9 @@ pub(super) fn prepare_credential(
         issuer: credential.issuer_did,
         issuance_date,
         credential_subject,
-        credential_status: credential.credential_status,
+        credential_status: credential.status,
         proof: None,
+        credential_schema,
     })
 }
 

@@ -414,17 +414,19 @@ pub(crate) async fn create_lvvc_with_status(
     let lvvc_credential_id = Uuid::new_v4();
     let mut claims = vec![create_id_claim(base_url, credential.id)];
     claims.extend(create_status_claims(&status)?);
+
     let credential_data = CredentialData {
         id: format!("{base_url}/ssi/lvvc/v1/{lvvc_credential_id}"),
         issuance_date: OffsetDateTime::now_utc(),
         valid_for: credential_expiry,
         claims,
         issuer_did: issuer_did.did.to_owned(),
-        credential_schema: Some(CredentialSchemaData {
-            id: schema.id,
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: None,
+            context: None,
             name: schema.name.to_owned(),
-        }),
-        credential_status: vec![],
+        },
     };
 
     let formatted_credential = formatter

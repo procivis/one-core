@@ -23,7 +23,6 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use strum::Display;
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 use crate::{
     crypto::signer::error::SignerError,
@@ -45,12 +44,15 @@ pub struct CredentialData {
     pub valid_for: Duration,
     pub claims: Vec<(String, String)>,
     pub issuer_did: DidValue,
-    pub credential_schema: Option<CredentialSchemaData>,
-    pub credential_status: Vec<CredentialStatus>,
+    pub status: Vec<CredentialStatus>,
+    pub schema: CredentialSchemaData,
 }
 
 pub struct CredentialSchemaData {
-    pub id: Uuid,
+    // URI, optional for LVVC
+    pub id: Option<String>,
+    // optional for LVVC
+    pub context: Option<String>,
     pub name: String,
 }
 
@@ -189,11 +191,18 @@ impl CredentialData {
                 .map(|claim| (claim.schema.key, claim.value))
                 .collect(),
             issuer_did,
-            credential_schema: Some(CredentialSchemaData {
-                id: credential.schema.id,
+            schema: CredentialSchemaData {
+                id: Some(format!(
+                    "{core_base_url}/ssi/schema/v1/{}",
+                    credential.schema.id
+                )),
+                context: Some(format!(
+                    "{core_base_url}/ssi/context/v1/{}",
+                    credential.schema.id
+                )),
                 name: credential.schema.name,
-            }),
-            credential_status,
+            },
+            status: credential_status,
         })
     }
 }
