@@ -1,3 +1,4 @@
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::{
     model::{
         claim_schema::ClaimSchema,
@@ -7,13 +8,10 @@ use crate::{
         organisation::Organisation,
     },
     service::{
-        credential_schema::{
-            dto::{
-                CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
-                CredentialClaimSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
-                GetCredentialSchemaQueryDTO,
-            },
-            NESTED_CLAIM_MARKER,
+        credential_schema::dto::{
+            CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO,
+            CredentialClaimSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
+            GetCredentialSchemaQueryDTO,
         },
         error::{BusinessLogicError, ServiceError},
     },

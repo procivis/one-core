@@ -10,7 +10,9 @@ use crate::config::core_config::{FormatType, Params};
 use crate::config::ConfigValidationError;
 use crate::model::credential_schema::CredentialSchemaId;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError};
-use crate::service::ssi_issuer::mapper::credential_rejected_history_event;
+use crate::service::ssi_issuer::mapper::{
+    credential_rejected_history_event, generate_jsonld_context_response, get_url_with_fragment,
+};
 use crate::{
     model::{
         claim::ClaimRelations,
@@ -31,7 +33,6 @@ use crate::{
 use convert_case::{Case, Casing};
 use shared_types::{CredentialId, DidValue};
 use time::OffsetDateTime;
-use url::Url;
 
 impl SSIIssuerService {
     pub async fn issuer_connect(
@@ -329,18 +330,7 @@ impl SSIIssuerService {
         let schema_name = credential_schema.name.to_case(Case::Pascal);
         let credential_name = format!("{schema_name}Credential");
         let subject_name = format!("{schema_name}Subject");
-        let claims = claim_schemas
-            .iter()
-            .map(|claim_schema| {
-                Ok((
-                    claim_schema.schema.key.to_owned(),
-                    JsonLDEntityDTO::Reference(get_url_with_fragment(
-                        &base_url,
-                        &claim_schema.schema.key,
-                    )?),
-                ))
-            })
-            .collect::<Result<HashMap<String, JsonLDEntityDTO>, ServiceError>>()?;
+        let claims = generate_jsonld_context_response(claim_schemas, &base_url)?;
 
         Ok(JsonLDContextResponseDTO {
             context: JsonLDContextDTO {
@@ -367,10 +357,4 @@ impl SSIIssuerService {
             },
         })
     }
-}
-
-fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, ServiceError> {
-    let mut url = Url::parse(base_url).map_err(|e| ServiceError::MappingError(e.to_string()))?;
-    url.set_fragment(Some(fragment));
-    Ok(url.to_string())
 }

@@ -50,3 +50,63 @@ async fn test_get_json_ld_context_not_found() {
     // THEN
     assert_eq!(resp.status(), 404);
 }
+
+#[tokio::test]
+async fn test_get_json_ld_context_with_nested_claims_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let core_base_url = context.config.app.core_base_url;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_claims("test schema", &organisation, "NONE", Default::default())
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_json_ld_context(credential_schema.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["@context"]["TestSchemaCredential"]["@id"].assert_eq(&format!(
+        "{}/ssi/context/v1/{}#TestSchemaCredential",
+        core_base_url, credential_schema.id
+    ));
+    resp["@context"]["TestSchemaSubject"]["@id"].assert_eq(&format!(
+        "{}/ssi/context/v1/{}#TestSchemaSubject",
+        core_base_url, credential_schema.id
+    ));
+    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@id"].assert_eq(&format!(
+        "{}/ssi/context/v1/{}#address",
+        core_base_url, credential_schema.id
+    ));
+    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@context"]["street"].assert_eq(
+        &format!(
+            "{}/ssi/context/v1/{}#street",
+            core_base_url, credential_schema.id
+        ),
+    );
+    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@context"]["coordinates"]["@id"]
+        .assert_eq(&format!(
+            "{}/ssi/context/v1/{}#coordinates",
+            core_base_url, credential_schema.id
+        ));
+    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@context"]["coordinates"]
+        ["@context"]["x"]
+        .assert_eq(&format!(
+            "{}/ssi/context/v1/{}#x",
+            core_base_url, credential_schema.id
+        ));
+    resp["@context"]["TestSchemaSubject"]["@context"]["address"]["@context"]["coordinates"]
+        ["@context"]["y"]
+        .assert_eq(&format!(
+            "{}/ssi/context/v1/{}#y",
+            core_base_url, credential_schema.id
+        ));
+}

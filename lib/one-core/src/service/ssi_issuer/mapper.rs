@@ -1,9 +1,16 @@
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::Credential;
+use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::service::error::ServiceError;
+use crate::service::ssi_issuer::dto::{
+    JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
+};
 use shared_types::EntityId;
 use std::collections::HashMap;
 use time::OffsetDateTime;
+use url::Url;
 use uuid::Uuid;
 
 use super::dto::JsonLDContextDTO;
@@ -46,4 +53,57 @@ fn history_event(
         metadata: None,
         organisation,
     }
+}
+
+pub fn generate_jsonld_context_response(
+    claim_schemas: &Vec<CredentialSchemaClaim>,
+    base_url: &str,
+) -> Result<HashMap<String, JsonLDEntityDTO>, ServiceError> {
+    let mut entities: HashMap<String, JsonLDEntityDTO> = HashMap::new();
+    for claim_schema in claim_schemas {
+        if claim_schema.schema.data_type != "OBJECT" {
+            let key_parts: Vec<&str> = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
+            insert_claim(&mut entities, &key_parts, base_url, 0)?;
+        }
+    }
+    Ok(entities)
+}
+
+fn insert_claim(
+    current_claim: &mut HashMap<String, JsonLDEntityDTO>,
+    key_parts: &Vec<&str>,
+    base_url: &str,
+    index: usize,
+) -> Result<(), ServiceError> {
+    if index >= key_parts.len() {
+        return Ok(());
+    }
+
+    let part = key_parts[index].to_string();
+
+    let nested_claim = current_claim.entry(part.clone()).or_insert_with(|| {
+        JsonLDEntityDTO::NestedObject(JsonLDNestedEntityDTO {
+            id: format!("{base_url}#{part}"),
+            context: JsonLDNestedContextDTO {
+                entities: HashMap::new(),
+            },
+        })
+    });
+
+    if let JsonLDEntityDTO::NestedObject(nested) = nested_claim {
+        insert_claim(&mut nested.context.entities, key_parts, base_url, index + 1)?;
+    }
+
+    if index == key_parts.len() - 1 {
+        let reference_claim = JsonLDEntityDTO::Reference(get_url_with_fragment(base_url, &part)?);
+        current_claim.insert(part, reference_claim);
+    }
+
+    Ok(())
+}
+
+pub fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, ServiceError> {
+    let mut url = Url::parse(base_url).map_err(|e| ServiceError::MappingError(e.to_string()))?;
+    url.set_fragment(Some(fragment));
+    Ok(url.to_string())
 }
