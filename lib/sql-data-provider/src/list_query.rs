@@ -1,6 +1,6 @@
 use crate::mapper::order_from_sort_direction;
 use one_core::model::common::{ExactColumn, GetListQueryParams, SortDirection};
-use sea_orm::{entity::*, query::*, sea_query::SimpleExpr, EntityTrait, QueryOrder, QuerySelect};
+use sea_orm::{entity::*, query::*, sea_query::SimpleExpr};
 use std::str::FromStr;
 
 // column conversion

@@ -10,7 +10,7 @@ use one_core::model::{
 use sea_orm::{
     query::*,
     sea_query::{IntoCondition, SimpleExpr},
-    ColumnTrait, EntityTrait, QueryOrder, QuerySelect, RelationDef,
+    ColumnTrait, EntityTrait, RelationDef,
 };
 
 pub trait IntoSortingColumn {

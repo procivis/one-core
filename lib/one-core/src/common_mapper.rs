@@ -1,5 +1,3 @@
-use std::iter::IntoIterator;
-
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;

@@ -119,13 +119,6 @@ pub(crate) fn get_latest_state(credential: &Credential) -> Result<&CredentialSta
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        ops::{Add, Sub},
-        time::Duration,
-    };
-
-    use time::OffsetDateTime;
-
     use super::*;
 
     #[test]

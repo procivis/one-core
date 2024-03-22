@@ -88,7 +88,7 @@ pub fn key_providers_from_config(
     }
 
     for (key, value) in config.iter_mut() {
-        if let Some(entity) = providers.get(&key.to_string()) {
+        if let Some(entity) = providers.get(key) {
             value.capabilities = Some(json!(entity.get_capabilities()));
         }
     }

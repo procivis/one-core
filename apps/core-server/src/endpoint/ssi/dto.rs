@@ -49,7 +49,7 @@ use one_core::service::{
     ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
 };
 use serde::{Deserialize, Serialize};
-use serde_with::{self, json::JsonString};
+use serde_with::json::JsonString;
 use shared_types::{CredentialId, DidValue};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
