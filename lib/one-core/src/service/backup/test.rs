@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchemaClaim, WalletStorageTypeEnum};
+use crate::model::credential_schema::{CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum};
 use crate::{
     model::{
         backup::{Metadata, UnexportableEntities},
@@ -98,6 +98,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                 }),
+                layout_type: LayoutType::Card,
+                layout_properties: None,
             }),
             interaction: None,
             revocation_list: None,

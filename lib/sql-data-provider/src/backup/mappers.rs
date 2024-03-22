@@ -5,7 +5,7 @@ use one_core::{
     model::{
         claim::Claim,
         credential::Credential,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType},
         organisation::Organisation,
     },
     repository::error::DataLayerError,
@@ -76,6 +76,9 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                     created_date: value.organisation_created_date,
                     last_modified: value.organisation_last_modified,
                 }),
+                // todo: this should be fixed in another ticket
+                layout_type: LayoutType::Card,
+                layout_properties: None,
             }),
             interaction: None,
             revocation_list: None,

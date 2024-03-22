@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::{
     config::core_config::AppConfig,
@@ -171,6 +171,8 @@ pub fn dummy_credential() -> Credential {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
@@ -264,6 +266,8 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         revocation_method: "format".to_string(),
         claim_schemas: None,
         organisation: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
     }
 }
 

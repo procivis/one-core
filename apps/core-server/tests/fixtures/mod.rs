@@ -9,7 +9,8 @@ use one_core::model::credential::{
     CredentialStateRelations,
 };
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
+    WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
@@ -315,6 +316,8 @@ pub async fn create_credential_schema(
         format: "JWT".to_string(),
         revocation_method: revocation_method.to_owned(),
         claim_schemas: Some(claim_schemas),
+        layout_type: LayoutType::Card,
+        layout_properties: None,
     };
 
     data_layer
@@ -360,6 +363,8 @@ pub async fn create_credential_schema_with_claims(
         format: "JWT".to_string(),
         revocation_method: revocation_method.to_owned(),
         claim_schemas: Some(claim_schemas),
+        layout_type: LayoutType::Card,
+        layout_properties: None,
     };
 
     data_layer

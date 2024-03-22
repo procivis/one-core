@@ -36,7 +36,7 @@ use crate::{
             CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
+            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
             UpdateCredentialSchemaRequest,
         },
         did::{Did, DidRelations, DidType},
@@ -1015,6 +1015,9 @@ async fn create_and_store_credential_schema(
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(claim_schemas),
         organisation: Some(organisation),
+        // todo: this should be fixed in another ticket
+        layout_type: LayoutType::Card,
+        layout_properties: None,
     };
 
     let _ = repository

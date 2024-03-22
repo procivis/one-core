@@ -40,6 +40,8 @@ impl CredentialSchemaService {
         )
         .await?;
 
+        super::validator::check_claims_presence_in_layout_properties(&request)?;
+
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())

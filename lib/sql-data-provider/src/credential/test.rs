@@ -2,7 +2,7 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use one_core::model::credential_schema::WalletStorageTypeEnum;
+use one_core::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use one_core::model::list_filter::{ComparisonType, ValueComparison};
 use one_core::{
     model::{
@@ -110,6 +110,8 @@ async fn setup_empty() -> TestSetup {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
         }),
+        layout_type: LayoutType::Card,
+        layout_properties: None,
     };
 
     let did_id = &insert_did_key(

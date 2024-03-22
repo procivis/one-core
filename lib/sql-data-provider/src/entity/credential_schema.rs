@@ -1,7 +1,9 @@
 use dto_mapper::{From, Into};
-use one_core::model::credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum;
-use sea_orm::entity::prelude::*;
-use serde::Deserialize;
+use one_core::model::{
+    self, credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum,
+};
+use sea_orm::{entity::prelude::*, FromJsonQueryResult};
+use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 
@@ -17,8 +19,11 @@ pub struct Model {
     pub format: String,
     pub revocation_method: String,
     pub wallet_storage_type: Option<WalletStorageType>,
-
     pub organisation_id: OrganisationId,
+    #[sea_orm(column_type = "Text")]
+    pub layout_type: LayoutType,
+    #[sea_orm(column_type = "Json")]
+    pub layout_properties: Option<LayoutProperties>,
 }
 
 #[derive(
@@ -37,6 +42,35 @@ pub enum WalletStorageType {
     Hardware,
     #[sea_orm(string_value = "SOFTWARE")]
     Software,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "credential_schema_layout_type_enum"
+)]
+#[from(model::credential_schema::LayoutType)]
+#[into(model::credential_schema::LayoutType)]
+pub enum LayoutType {
+    #[sea_orm(string_value = "CARD")]
+    Card,
+    #[sea_orm(string_value = "DOCUMENT")]
+    Document,
+    #[sea_orm(string_value = "SINGLE_ATTRIBUTE")]
+    SingleAttribute,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult, From, Into)]
+#[from(model::credential_schema::LayoutProperties)]
+#[into(model::credential_schema::LayoutProperties)]
+pub struct LayoutProperties {
+    pub background_color: Option<String>,
+    pub background_image: Option<String>,
+    pub label_color: Option<String>,
+    pub label_image: Option<String>,
+    pub primary_attribute: Option<String>,
+    pub secondary_attribute: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

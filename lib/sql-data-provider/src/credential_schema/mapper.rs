@@ -37,6 +37,8 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             revocation_method: Set(value.revocation_method),
             organisation_id: Set(organisation_id),
             wallet_storage_type: Set(convert_inner(value.wallet_storage_type)),
+            layout_type: Set(value.layout_type.into()),
+            layout_properties: Set(convert_inner(value.layout_properties)),
         })
     }
 }
@@ -58,6 +60,8 @@ fn entity_model_to_credential_schema(
         revocation_method: value.revocation_method,
         claim_schemas: None,
         organisation,
+        layout_type: value.layout_type.into(),
+        layout_properties: convert_inner(value.layout_properties),
     })
 }
 
@@ -143,6 +147,8 @@ pub(crate) fn credential_schema_from_models(
             revocation_method: credential_schema.revocation_method,
             claim_schemas,
             organisation,
+            layout_type: credential_schema.layout_type.into(),
+            layout_properties: convert_inner(credential_schema.layout_properties),
         })
         .ok_or(DataLayerError::MappingError)
 }

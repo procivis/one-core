@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
-    WalletStorageTypeEnum,
+    LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -58,6 +58,8 @@ impl CredentialSchemasDB {
             format: "JWT".to_string(),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         };
 
         let id = self
@@ -149,6 +151,8 @@ impl CredentialSchemasDB {
             format: "JWT".to_string(),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         };
 
         let id = self
@@ -188,6 +192,8 @@ impl CredentialSchemasDB {
             format: "JWT".to_string(),
             revocation_method: "NONE".to_owned(),
             claim_schemas: Some(claim_schemas),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         };
 
         let id = self
@@ -232,6 +238,8 @@ impl CredentialSchemasDB {
             format: format.to_string(),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         };
 
         let id = self

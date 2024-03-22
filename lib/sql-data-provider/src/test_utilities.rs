@@ -11,6 +11,7 @@ use shared_types::{CredentialId, DidId, DidValue, EntityId, HistoryId, KeyId, Or
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::entity::credential_schema::LayoutType;
 use crate::entity::{proof_input_claim_schema, proof_input_schema};
 use crate::{
     db_conn,
@@ -107,6 +108,8 @@ pub async fn insert_credential_schema_to_database(
         organisation_id: Set(organisation_id),
         wallet_storage_type: Set(None),
         deleted_at: Set(deleted_at),
+        layout_type: Set(LayoutType::Card),
+        layout_properties: Set(None),
     }
     .insert(database)
     .await?;

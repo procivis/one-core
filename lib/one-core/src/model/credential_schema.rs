@@ -21,6 +21,8 @@ pub struct CredentialSchema {
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub layout_type: LayoutType,
+    pub layout_properties: Option<LayoutProperties>,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
@@ -50,6 +52,23 @@ pub enum SortableCredentialSchemaColumn {
 pub enum WalletStorageTypeEnum {
     Hardware,
     Software,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LayoutType {
+    Card,
+    Document,
+    SingleAttribute,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LayoutProperties {
+    pub background_color: Option<String>,
+    pub background_image: Option<String>,
+    pub label_color: Option<String>,
+    pub label_image: Option<String>,
+    pub primary_attribute: Option<String>,
+    pub secondary_attribute: Option<String>,
 }
 
 pub type GetCredentialSchemaList = GetListResponse<CredentialSchema>;

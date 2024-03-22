@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::ProofService;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::CredentialRelations;
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use crate::model::did::{KeyRole, RelatedKey};
 use crate::model::key::Key;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
@@ -162,6 +162,8 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     revocation_method: "NONE".to_string(),
                     claim_schemas: None,
                     organisation: None,
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
                 }),
             }]),
         }),
@@ -276,6 +278,8 @@ async fn test_get_proof_exists() {
                     revocation_method: "NONE".to_string(),
                     claim_schemas: None,
                     organisation: None,
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
                 }),
             }]),
         }),

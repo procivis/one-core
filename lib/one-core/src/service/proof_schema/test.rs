@@ -3,7 +3,7 @@ use crate::{
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         common::GetListResponse,
-        credential_schema::CredentialSchema,
+        credential_schema::{CredentialSchema, LayoutType},
         organisation::{Organisation, OrganisationRelations},
         proof_schema::{
             GetProofSchemaList, ProofInputSchemaRelations, ProofSchema, ProofSchemaRelations,
@@ -367,6 +367,8 @@ async fn test_create_proof_schema_success() {
                 wallet_storage_type: None,
                 claim_schemas: None,
                 organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
             };
 
             Ok(GetListResponse {

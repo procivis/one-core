@@ -2,9 +2,10 @@ use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
-use dto_mapper::From;
+use dto_mapper::{From, Into};
 
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model;
+use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use crate::model::{
     common::{GetListQueryParams, GetListResponse},
     credential_schema::{
@@ -69,6 +70,19 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub layout_type: LayoutType,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+}
+
+#[derive(Debug, Clone, Into)]
+#[into(model::credential_schema::LayoutProperties)]
+pub struct CredentialSchemaLayoutPropertiesRequestDTO {
+    pub background_color: Option<String>,
+    pub background_image: Option<String>,
+    pub label_color: Option<String>,
+    pub label_image: Option<String>,
+    pub primary_attribute: Option<String>,
+    pub secondary_attribute: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

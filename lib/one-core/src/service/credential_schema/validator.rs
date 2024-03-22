@@ -12,6 +12,7 @@ use crate::{
     },
     service::{credential_schema::dto::CreateCredentialSchemaRequestDTO, error::ServiceError},
 };
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 pub(crate) async fn credential_schema_already_exists(
@@ -40,6 +41,54 @@ pub(crate) fn validate_create_request(
     validate_format(&request.format, &config.format)?;
     validate_revocation(&request.revocation_method, &config.revocation)?;
     validate_nested_claim_schemas(&request.claims, config)?;
+
+    Ok(())
+}
+
+pub(crate) fn check_claims_presence_in_layout_properties(
+    request: &CreateCredentialSchemaRequestDTO,
+) -> Result<(), ServiceError> {
+    let primary_attribute = request
+        .layout_properties
+        .as_ref()
+        .and_then(|p| p.primary_attribute.as_ref());
+    let secondary_attribute = request
+        .layout_properties
+        .as_ref()
+        .and_then(|p| p.secondary_attribute.as_ref());
+
+    if primary_attribute.is_none() && secondary_attribute.is_none() {
+        return Ok(());
+    }
+
+    let mut contains_primary = primary_attribute.is_none();
+    let mut contains_secondary = secondary_attribute.is_none();
+
+    let mut claims = VecDeque::from_iter(request.claims.iter());
+
+    while let Some(claim) = claims.pop_front() {
+        if contains_primary && contains_secondary {
+            break;
+        }
+
+        if primary_attribute.is_some_and(|attr| attr == &claim.key) {
+            contains_primary = true;
+        }
+
+        if secondary_attribute.is_some_and(|attr| attr == &claim.key) {
+            contains_secondary = true;
+        }
+
+        claims.extend(claim.claims.iter());
+    }
+
+    if !contains_primary {
+        return Err(ValidationError::MissingLayoutPrimaryAttribute.into());
+    }
+
+    if !contains_secondary {
+        return Err(ValidationError::MissingLayoutSecondaryAttribute.into());
+    }
 
     Ok(())
 }

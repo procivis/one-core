@@ -12,7 +12,7 @@ use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
@@ -97,6 +97,8 @@ fn generic_credential_schema() -> CredentialSchema {
         revocation_method: "".to_string(),
         claim_schemas: None,
         organisation: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
     }
 }
 
@@ -971,6 +973,8 @@ async fn test_oidc_verifier_presentation_definition_success() {
                                 wallet_storage_type: None,
                                 claim_schemas: None,
                                 organisation: None,
+                                layout_type: LayoutType::Card,
+                                layout_properties: None,
                             }),
                         }]),
                     }),

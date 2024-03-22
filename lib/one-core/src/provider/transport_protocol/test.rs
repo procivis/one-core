@@ -11,7 +11,9 @@ use crate::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::{CredentialSchema, CredentialSchemaClaim, WalletStorageTypeEnum},
+        credential_schema::{
+            CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+        },
         did::{Did, DidType, KeyRole, RelatedKey},
         interaction::Interaction,
         key::Key,
@@ -234,6 +236,8 @@ fn dummy_credential() -> Credential {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
