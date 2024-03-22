@@ -11,9 +11,6 @@ use shared_types::DidValue;
 use time::Duration;
 
 use crate::crypto::CryptoProvider;
-use crate::provider::credential_formatter::sdjwt_formatter::model::{
-    DecomposedToken, Disclosure, Sdvc,
-};
 
 #[cfg(test)]
 mod test;

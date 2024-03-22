@@ -174,7 +174,11 @@ impl<T: for<'a> ToSchema<'a>> utoipa::IntoResponses for OkOrErrorResponse<VecRes
     fn responses() -> BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::Response>> {
         #[derive(utoipa::IntoResponses)]
         #[response(status = 200, description = "OK")]
-        struct SuccessResponse<T: for<'a> ToSchema<'a>>(#[to_schema] Vec<T>);
+        struct SuccessResponse<T: for<'a> ToSchema<'a>>(
+            #[to_schema]
+            #[allow(dead_code)]
+            Vec<T>,
+        );
 
         with_error_responses::<SuccessResponse<T>>()
     }

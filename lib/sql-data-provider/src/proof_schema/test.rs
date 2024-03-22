@@ -26,7 +26,7 @@ use one_core::{
 };
 use sea_orm::{ActiveModelTrait, Set, Unchanged};
 use shared_types::OrganisationId;
-use std::{boxed::Box, sync::Arc};
+use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 

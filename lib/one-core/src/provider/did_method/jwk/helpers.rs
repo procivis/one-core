@@ -40,19 +40,19 @@ pub(super) fn generate_document(did: &DidValue, jwk: PublicKeyJwkDTO) -> DidDocu
 
     match jwk.get_use() {
         Some(val) if val == SIG => {
-            template.authentication = urls.clone();
-            template.assertion_method = urls.clone();
-            template.capability_invocation = urls.clone();
+            template.authentication.clone_from(&urls);
+            template.assertion_method.clone_from(&urls);
+            template.capability_invocation.clone_from(&urls);
             template.capability_delegation = urls;
         }
         Some(val) if val == ENC => {
             template.key_agreement = urls;
         }
         _ => {
-            template.authentication = urls.clone();
-            template.assertion_method = urls.clone();
-            template.key_agreement = urls.clone();
-            template.capability_invocation = urls.clone();
+            template.authentication.clone_from(&urls);
+            template.assertion_method.clone_from(&urls);
+            template.key_agreement.clone_from(&urls);
+            template.capability_invocation.clone_from(&urls);
             template.capability_delegation = urls;
         }
     }

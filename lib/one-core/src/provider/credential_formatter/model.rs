@@ -18,7 +18,7 @@ pub struct DetailCredential {
 
 impl DetailCredential {
     pub fn is_lvvc(&self) -> bool {
-        self.claims.values.get("id").is_some() && self.claims.values.get("status").is_some()
+        self.claims.values.contains_key("id") && self.claims.values.contains_key("status")
     }
 }
 

@@ -2,7 +2,7 @@
 
 use error::{BindingError, NativeKeyStorageError};
 use one_core::config::core_config::{self, AppConfig, NoCustomConfig};
-use sql_data_provider::{self, DataLayer};
+use sql_data_provider::DataLayer;
 use std::sync::Arc;
 use utils::native_key_storage::NativeKeyStorageWrapper;
 

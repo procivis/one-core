@@ -189,12 +189,12 @@ impl JsonLdBbsplus {
                 ))?;
 
                 if subject.starts_with("_:") {
-                    *subject = identifier_map
+                    identifier_map
                         .get(subject.as_str())
                         .ok_or(FormatterError::CouldNotFormat(
                             "Canonical transformation failed".to_owned(),
                         ))?
-                        .to_owned();
+                        .clone_into(subject);
                 }
 
                 // Blank node will be detected here only if an entry contain any blank node.
@@ -207,7 +207,7 @@ impl JsonLdBbsplus {
                             "Canonical transformation failed".to_owned(),
                         ),
                     )?;
-                    *object = replacement.to_owned();
+                    replacement.clone_into(object);
                 }
                 Ok(parts.join(" "))
             })

@@ -30,7 +30,7 @@ use one_core::repository::DataRepository;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
-use sql_data_provider::{self, test_utilities::*, DataLayer, DbConn};
+use sql_data_provider::{test_utilities::*, DataLayer, DbConn};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
