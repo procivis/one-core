@@ -1,9 +1,10 @@
 use mockall::predicate::*;
 use std::sync::Arc;
+use std::vec;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use crate::{
     config::{core_config::CoreConfig, ConfigValidationError},
     model::{
@@ -32,6 +33,9 @@ use crate::{
         test_utilities::generic_config,
     },
 };
+
+use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
+use super::validator::check_claims_presence_in_layout_properties;
 
 fn setup_service(
     credential_schema_repository: MockCredentialSchemaRepository,
@@ -73,6 +77,8 @@ fn generic_credential_schema() -> CredentialSchema {
             created_date: now,
             last_modified: now,
         }),
+        layout_type: LayoutType::Card,
+        layout_properties: None,
     }
 }
 
@@ -329,6 +335,8 @@ async fn test_create_credential_schema_success() {
                 required: true,
                 claims: vec![],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await;
     assert!(result.is_ok());
@@ -418,6 +426,8 @@ async fn test_create_credential_schema_success_nested_claims() {
                     },
                 ],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await
         .unwrap();
@@ -446,6 +456,8 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
                 required: true,
                 claims: vec![],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await
         .unwrap_err();
@@ -492,6 +504,8 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
                     },
                 ],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await
         .unwrap_err();
@@ -525,6 +539,8 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
                 required: true,
                 claims: vec![],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await
         .unwrap_err();
@@ -561,6 +577,8 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
                     claims: vec![],
                 }],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await
         .unwrap_err();
@@ -619,6 +637,8 @@ async fn test_create_credential_schema_unique_name_error() {
                 required: true,
                 claims: vec![],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await;
     assert!(result.is_err_and(|e| matches!(
@@ -653,6 +673,8 @@ async fn test_create_credential_schema_fail_validation() {
                 required: true,
                 claims: vec![],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await;
     assert!(non_existing_format.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
@@ -670,6 +692,8 @@ async fn test_create_credential_schema_fail_validation() {
                 required: true,
                 claims: vec![],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await;
     assert!(non_existing_revocation_method
@@ -688,6 +712,8 @@ async fn test_create_credential_schema_fail_validation() {
                 required: true,
                 claims: vec![],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await;
     assert!(wrong_datatype.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
@@ -700,6 +726,8 @@ async fn test_create_credential_schema_fail_validation() {
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await;
     assert!(no_claims.is_err_and(|e| matches!(
@@ -756,6 +784,8 @@ async fn test_create_credential_schema_fail_missing_organisation() {
                 required: true,
                 claims: vec![],
             }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         })
         .await;
 
@@ -1165,4 +1195,145 @@ fn test_renest_claim_schemas_failed_missing_parent_claim_schema() {
             BusinessLogicError::MissingParentClaimSchema { .. }
         ))
     ));
+}
+
+#[test]
+fn test_claims_presence_in_layout_properties_validation_ok() {
+    let claims = vec![
+        CredentialClaimSchemaRequestDTO {
+            key: "claim1".to_owned(),
+            datatype: "STRING".to_owned(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "claim2".to_owned(),
+            datatype: "STRING".to_owned(),
+            required: true,
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "claim2-claim1".to_owned(),
+                datatype: "STRING".to_owned(),
+                required: true,
+                claims: vec![CredentialClaimSchemaRequestDTO {
+                    key: "claim2-claim1-claim1".to_owned(),
+                    datatype: "STRING".to_owned(),
+                    required: true,
+                    claims: vec![],
+                }],
+            }],
+        },
+    ];
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background_color: None,
+        background_image: None,
+        label_color: None,
+        label_image: None,
+        primary_attribute: Some("claim1".to_owned()),
+        secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims,
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(let Ok(()) = check_claims_presence_in_layout_properties(&request))
+}
+
+#[test]
+fn test_claims_presence_in_layout_properties_validation_missing_primary_attribute() {
+    let claims = vec![CredentialClaimSchemaRequestDTO {
+        key: "claim2".to_owned(),
+        datatype: "STRING".to_owned(),
+        required: true,
+        claims: vec![CredentialClaimSchemaRequestDTO {
+            key: "claim2-claim1".to_owned(),
+            datatype: "STRING".to_owned(),
+            required: true,
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "claim2-claim1-claim1".to_owned(),
+                datatype: "STRING".to_owned(),
+                required: true,
+                claims: vec![],
+            }],
+        }],
+    }];
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background_color: None,
+        background_image: None,
+        label_color: None,
+        label_image: None,
+        primary_attribute: Some("claim1".to_owned()),
+        secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims,
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::MissingLayoutPrimaryAttribute)) = check_claims_presence_in_layout_properties(&request)
+    )
+}
+
+#[test]
+fn test_claims_presence_in_layout_properties_validation_missing_secondary_attribute() {
+    let claims = vec![CredentialClaimSchemaRequestDTO {
+        key: "claim1".to_owned(),
+        datatype: "STRING".to_owned(),
+        required: true,
+        claims: vec![],
+    }];
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background_color: None,
+        background_image: None,
+        label_color: None,
+        label_image: None,
+        primary_attribute: Some("claim1".to_owned()),
+        secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims,
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::MissingLayoutSecondaryAttribute)) = check_claims_presence_in_layout_properties(&request)
+    )
+}
+
+#[test]
+fn test_claims_presence_in_layout_properties_validation_attributes_not_specified() {
+    let claims = vec![CredentialClaimSchemaRequestDTO {
+        key: "claim1".to_owned(),
+        datatype: "STRING".to_owned(),
+        required: true,
+        claims: vec![],
+    }];
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims,
+        layout_properties: None,
+        ..dummy_request()
+    };
+
+    assert2::assert!(let Ok(()) = check_claims_presence_in_layout_properties(&request))
+}
+
+fn dummy_request() -> CreateCredentialSchemaRequestDTO {
+    CreateCredentialSchemaRequestDTO {
+        name: "AnyName".to_owned(),
+        format: "AnyFormat".to_owned(),
+        revocation_method: "None".to_owned(),
+        organisation_id: Uuid::new_v4().into(),
+        claims: vec![],
+        wallet_storage_type: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+    }
 }

@@ -27,6 +27,7 @@ mod m20240307_103000_add_reactivated_history_action;
 mod m20240308_115228_add_metadata_to_history;
 mod m20240314_101347_recreate_proof_input_schema_and_proof_input_claim_schema_tables;
 mod m20240314_141907_remove_proof_schema_claim_schema_relation;
+mod m20240321_154846_add_layout_type_and_layout_properties_to_credential_schema;
 
 pub struct Migrator;
 
@@ -49,8 +50,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20240223_094129_validity_constraint_in_proof_schema::Migration),
             Box::new(m20240223_103849_add_backup_columns::Migration),
             Box::new(m20240229_134129_wallet_storage_type_credential_schema::Migration),
-            Box::new(m20240305_110029_suspend_credential_state::Migration),
             Box::new(m20240305_081435_proof_input_schema::Migration),
+            Box::new(m20240305_110029_suspend_credential_state::Migration),
             Box::new(m20240306_122440_add_backup_restored::Migration),
             Box::new(m20240306_124716_proof_input_claim_schema::Migration),
             Box::new(m20240307_071419_proof_input_claim_schema_required::Migration),
@@ -59,6 +60,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240308_115228_add_metadata_to_history::Migration),
             Box::new(m20240314_101347_recreate_proof_input_schema_and_proof_input_claim_schema_tables::Migration),
             Box::new(m20240314_141907_remove_proof_schema_claim_schema_relation::Migration),
+            Box::new(m20240321_154846_add_layout_type_and_layout_properties_to_credential_schema::Migration),
         ]
     }
 }

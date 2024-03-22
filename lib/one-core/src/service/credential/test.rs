@@ -1,5 +1,5 @@
 use super::CredentialService;
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use crate::provider::revocation::{CredentialRevocationState, RevocationMethodCapabilities};
 use crate::repository::lvvc_repository::MockLvvcRepository;
 use crate::service::credential::dto::SuspendCredentialRequestDTO;
@@ -158,6 +158,8 @@ fn generic_credential() -> Credential {
                 required: true,
             }]),
             organisation: Some(organisation),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         }),
         interaction: None,
         revocation_list: None,
@@ -208,6 +210,8 @@ fn generic_credential_list_entity() -> Credential {
             revocation_method: "NONE".to_string(),
             claim_schemas: None,
             organisation: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         }),
         interaction: None,
         revocation_list: None,

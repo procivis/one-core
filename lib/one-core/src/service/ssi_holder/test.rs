@@ -4,7 +4,7 @@ use mockall::predicate::eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use crate::provider::key_storage::{KeySecurity, KeyStorageCapabilities, MockKeyStorage};
 use crate::repository::mock::organisation_repository::MockOrganisationRepository;
 use crate::service::test_utilities::dummy_key;
@@ -764,6 +764,8 @@ fn dummy_credential() -> Credential {
             claim_schemas: None,
             organisation: None,
             deleted_at: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),

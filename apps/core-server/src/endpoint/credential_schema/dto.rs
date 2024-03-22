@@ -1,5 +1,6 @@
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into};
+use one_core::service::credential_schema;
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, CredentialSchemaListItemResponseDTO,
@@ -98,7 +99,7 @@ pub enum WalletStorageTypeRestEnum {
     Software,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, Into)]
 #[into(CreateCredentialSchemaRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCredentialSchemaRequestRestDTO {
@@ -112,6 +113,33 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
     #[into(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    #[serde(default)]
+    #[schema(default = CredentialSchemaLayoutType::default)]
+    pub layout_type: CredentialSchemaLayoutType,
+    #[into(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, Default)]
+#[serde(rename_all = "UPPERCASE")]
+#[into(one_core::model::credential_schema::LayoutType)]
+pub enum CredentialSchemaLayoutType {
+    #[default]
+    Card,
+    Document,
+    SingleAttribute,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]
+#[into(credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaLayoutPropertiesRequestRestDTO {
+    background_color: Option<String>,
+    background_image: Option<String>,
+    label_color: Option<String>,
+    label_image: Option<String>,
+    primary_attribute: Option<String>,
+    secondary_attribute: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]

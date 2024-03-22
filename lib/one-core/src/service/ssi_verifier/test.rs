@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::{
     model::{
         claim_schema::ClaimSchema,
-        credential_schema::CredentialSchema,
+        credential_schema::{CredentialSchema, LayoutType},
         did::{Did, DidRelations},
         organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
@@ -99,6 +99,8 @@ async fn test_connect_to_holder_succeeds() {
                             revocation_method: "format".to_string(),
                             claim_schemas: None,
                             organisation: None,
+                            layout_type: LayoutType::Card,
+                            layout_properties: None,
                         }),
                     }]),
                     ..dummy_proof_schema()
@@ -184,6 +186,8 @@ async fn test_connect_to_holder_succeeds_new_did() {
                             revocation_method: "format".to_string(),
                             claim_schemas: None,
                             organisation: None,
+                            layout_type: LayoutType::Card,
+                            layout_properties: None,
                         }),
                     }]),
                     ..dummy_proof_schema()

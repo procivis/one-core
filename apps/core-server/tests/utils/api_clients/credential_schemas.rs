@@ -26,7 +26,15 @@ impl CredentialSchemasApi {
           "format": "JWT",
           "name": name,
           "organisationId": organisation_id.into(),
-          "revocationMethod": "BITSTRINGSTATUSLIST"
+          "revocationMethod": "BITSTRINGSTATUSLIST",
+          "layoutType": "CARD",
+          "layoutProperties": {
+            "backgroundColor": "bg-color",
+            "backgroundImage": "bg-image",
+            "labelColor": "label-color",
+            "labelImage": "label-image",
+            "primaryAttribute": "firstName",
+          }
         });
 
         self.client.post("/api/credential-schema/v1", body).await

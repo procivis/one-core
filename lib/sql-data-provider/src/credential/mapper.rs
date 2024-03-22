@@ -3,7 +3,7 @@ use migration::IntoCondition;
 use one_core::{
     model::{
         credential::{Credential, CredentialState, SortableCredentialColumn},
-        credential_schema::CredentialSchema,
+        credential_schema::{CredentialSchema, LayoutType},
         did::Did,
         interaction::InteractionId,
         revocation_list::RevocationListId,
@@ -142,6 +142,9 @@ pub(super) fn credential_list_model_to_repository_model(
         revocation_method: credential.credential_schema_revocation_method,
         claim_schemas: None,
         organisation: None,
+        // todo: this should be fixed in another ticket
+        layout_type: LayoutType::Card,
+        layout_properties: None,
     };
 
     let issuer_did = match credential.issuer_did_id {

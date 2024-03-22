@@ -109,6 +109,8 @@ pub(super) fn from_create_request(
                 .collect(),
         ),
         organisation: Some(organisation),
+        layout_type: request.layout_type,
+        layout_properties: request.layout_properties.map(Into::into),
     })
 }
 

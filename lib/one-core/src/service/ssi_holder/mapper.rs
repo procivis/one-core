@@ -6,7 +6,7 @@ use crate::{
     model::{
         claim_schema::ClaimSchema,
         credential::Credential,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType},
         did::Did,
         history::{History, HistoryAction, HistoryEntityType},
         proof::Proof,
@@ -30,6 +30,8 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             deleted_at: value.deleted_at,
             claim_schemas: None,
             organisation: None, // response organisation is intentionally ignored (holder sets its local organisation)
+            layout_type: LayoutType::Card,
+            layout_properties: None,
         }
     }
 }

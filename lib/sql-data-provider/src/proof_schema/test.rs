@@ -1,6 +1,6 @@
 use super::ProofSchemaProvider;
 use crate::{entity::proof_schema, test_utilities::*};
-use one_core::model::credential_schema::WalletStorageTypeEnum;
+use one_core::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
 };
@@ -193,6 +193,8 @@ async fn test_create_proof_schema_already_exists() {
                     revocation_method: "NONE".to_string(),
                     claim_schemas: None,
                     organisation: None,
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
                 }),
             }]),
         })
@@ -283,6 +285,8 @@ async fn test_create_proof_schema_success() {
                     revocation_method: "NONE".to_string(),
                     claim_schemas: None,
                     organisation: None,
+                    layout_type: LayoutType::Card,
+                    layout_properties: None,
                 }),
             }]),
         })
@@ -492,6 +496,8 @@ async fn test_get_proof_schema_with_relations() {
                 revocation_method: "NONE".to_string(),
                 claim_schemas: None,
                 organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
             }))
         });
 
@@ -626,6 +632,8 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 revocation_method: "NONE".to_string(),
                 claim_schemas: None,
                 organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
             }))
         });
 
