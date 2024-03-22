@@ -375,6 +375,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::oidc_verifier_presentation_definition,
             endpoint::ssi::controller::oidc_client_metadata,
             endpoint::ssi::controller::get_json_ld_context,
+            endpoint::ssi::controller::get_credential_schema,
 
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_accept,
