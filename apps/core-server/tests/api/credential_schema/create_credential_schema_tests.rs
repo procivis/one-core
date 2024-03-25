@@ -1,3 +1,5 @@
+use one_core::model::credential_schema::CredentialSchemaType;
+
 use crate::utils::context::TestContext;
 use crate::utils::field_match::FieldHelpers;
 
@@ -17,12 +19,22 @@ async fn test_create_credential_schema_success() {
     assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
 
-    let credential_schema = context.db.credential_schemas.get(&resp["id"].parse()).await;
+    let id = resp["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+
     assert_eq!(credential_schema.name, "some credential schema");
     assert_eq!(credential_schema.revocation_method, "BITSTRINGSTATUSLIST");
     assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
     assert_eq!(credential_schema.format, "JWT");
     assert_eq!(credential_schema.claim_schemas.unwrap().len(), 1);
+    assert_eq!(
+        credential_schema.schema_id,
+        format!("{}/ssi/schema/v1/{id}", context.config.app.core_base_url)
+    );
+    assert_eq!(
+        credential_schema.schema_type,
+        CredentialSchemaType::ProcivisOneSchema2024
+    );
 }
 
 #[tokio::test]

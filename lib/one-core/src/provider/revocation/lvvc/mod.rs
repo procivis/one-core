@@ -425,6 +425,7 @@ pub(crate) async fn create_lvvc_with_status(
         schema: CredentialSchemaData {
             id: None,
             context: None,
+            r#type: None,
             name: schema.name.to_owned(),
         },
     };

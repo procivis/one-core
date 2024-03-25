@@ -4,8 +4,9 @@ use strum_macros::AsRefStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use dto_mapper::From;
+use dto_mapper::{From, Into};
 
+use crate::model;
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::list_filter::ValueComparison;
 use crate::{
@@ -76,6 +77,16 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub schema_type: CredentialSchemaType,
+    pub schema_id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, From, Into)]
+#[from(model::credential_schema::CredentialSchemaType)]
+#[into(model::credential_schema::CredentialSchemaType)]
+pub enum CredentialSchemaType {
+    ProcivisOneSchema2024,
+    FallbackSchema2024,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

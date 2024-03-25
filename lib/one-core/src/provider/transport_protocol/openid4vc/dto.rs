@@ -22,7 +22,7 @@ pub struct OpenID4VCIProof {
     pub jwt: String,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialDefinition {
     pub r#type: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,39 +30,39 @@ pub struct OpenID4VCICredentialDefinition {
     pub credential_subject: Option<OpenID4VCICredentialSubject>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialOfferCredentialDTO {
     pub format: String,
     pub credential_definition: OpenID4VCICredentialDefinition,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialOfferDTO {
     pub credential_issuer: String,
     pub credentials: Vec<OpenID4VCICredentialOfferCredentialDTO>,
     pub grants: OpenID4VCIGrants,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialSubject {
     #[serde(flatten)]
     pub keys: HashMap<String, OpenID4VCICredentialValueDetails>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialValueDetails {
     pub value: String,
     pub value_type: String,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCIGrants {
     #[serde(rename = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
     pub code: OpenID4VCIGrant,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCIGrant {
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,

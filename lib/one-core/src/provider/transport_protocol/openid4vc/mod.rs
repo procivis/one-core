@@ -36,8 +36,8 @@ use crate::{
             CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
-            UpdateCredentialSchemaRequest,
+            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
+            CredentialSchemaType, LayoutType, UpdateCredentialSchemaRequest,
         },
         did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
@@ -834,9 +834,10 @@ async fn handle_credential_invitation(
         .map_err(TransportProtocolError::HttpResponse)?;
 
     // OID4VC credential offer query param should always contain one credential for the moment
-    let credential = credential_offer.credentials.first().ok_or_else(|| {
-        TransportProtocolError::Failed("Credential offer is missing credentials".to_string())
-    })?;
+    let credential: &OpenID4VCICredentialOfferCredentialDTO =
+        credential_offer.credentials.first().ok_or_else(|| {
+            TransportProtocolError::Failed("Credential offer is missing credentials".to_string())
+        })?;
 
     let credential_schema_name = get_credential_schema_name(&issuer_metadata, credential)?;
 
@@ -861,14 +862,20 @@ async fn handle_credential_invitation(
 
     let credential_id = Uuid::new_v4().into();
 
+    let (schema_id, schema_type) = find_schema_data(&credential_offer);
+
     let (claims, credential_schema) =
         match deps
             .credential_schema_repository
-            .get_by_name_and_organisation(&credential_schema_name, organisation.id)
+            .get_by_schema_id_and_organisation(&schema_id, organisation.id)
             .await
             .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
         {
             Some(credential_schema) => {
+                if credential_schema.schema_type != schema_type {
+                    return Err(TransportProtocolError::IncorrectCredentialSchemaType);
+                }
+
                 let credential_schema = deps
                     .credential_schema_repository
                     .get_credential_schema(
@@ -949,6 +956,8 @@ async fn handle_credential_invitation(
                     claim_schemas,
                     organisation,
                     credential.wallet_storage_type.clone(),
+                    schema_type,
+                    schema_id,
                 )
                 .await
                 .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
@@ -965,6 +974,18 @@ async fn handle_credential_invitation(
         interaction_id,
         credentials: vec![credential],
     })
+}
+
+fn find_schema_data(
+    credential_offer: &OpenID4VCICredentialOfferDTO,
+) -> (String, CredentialSchemaType) {
+    match create_schema_id_from_issuer(&credential_offer.credential_issuer) {
+        None => (
+            Uuid::new_v4().to_string(),
+            CredentialSchemaType::FallbackSchema2024,
+        ),
+        Some(schema_id) => (schema_id, CredentialSchemaType::ProcivisOneSchema2024),
+    }
 }
 
 fn get_credential_schema_name(
@@ -994,6 +1015,7 @@ fn get_credential_schema_name(
     Ok(credential_schema_name)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn create_and_store_credential_schema(
     repository: &Arc<dyn CredentialSchemaRepository>,
     name: String,
@@ -1001,11 +1023,15 @@ async fn create_and_store_credential_schema(
     claim_schemas: Vec<CredentialSchemaClaim>,
     organisation: Organisation,
     wallet_storage_type: Option<WalletStorageTypeEnum>,
+    schema_type: CredentialSchemaType,
+    schema_id: String,
 ) -> Result<CredentialSchema, DataLayerError> {
     let now = OffsetDateTime::now_utc();
 
+    let id = Uuid::new_v4();
+
     let credential_schema = CredentialSchema {
-        id: Uuid::new_v4(),
+        id,
         deleted_at: None,
         created_date: now,
         last_modified: now,
@@ -1018,6 +1044,8 @@ async fn create_and_store_credential_schema(
         // todo: this should be fixed in another ticket
         layout_type: LayoutType::Card,
         layout_properties: None,
+        schema_type,
+        schema_id,
     };
 
     let _ = repository
@@ -1228,4 +1256,12 @@ async fn handle_proof_invitation(
         interaction_id,
         proof: Box::new(proof),
     })
+}
+
+fn create_schema_id_from_issuer(issuer: &str) -> Option<String> {
+    if issuer.contains("/ssi/oidc-issuer/v1/") {
+        return Some(issuer.replace("/ssi/oidc-issuer/v1/", "/ssi/schema/v1/"));
+    }
+
+    None
 }

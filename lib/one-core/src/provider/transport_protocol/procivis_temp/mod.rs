@@ -395,29 +395,34 @@ async fn handle_credential_invitation(
     organisation: Organisation,
     issuer_response: CredentialDetailResponseDTO,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
-    let credential_schema: CredentialSchema = issuer_response.schema.into();
+    let input_credential_schema: CredentialSchema = issuer_response.schema.into();
     let credential_schema = match deps
         .credential_schema_repository
-        .get_by_name_and_organisation(&credential_schema.name, organisation.id)
+        .get_by_schema_id_and_organisation(&input_credential_schema.schema_id, organisation.id)
         .await
         .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
     {
-        Some(credential_schema) => deps
-            .credential_schema_repository
-            .get_credential_schema(
-                &credential_schema.id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
-            .ok_or(TransportProtocolError::Failed(
-                "Credential schema error".to_string(),
-            ))?,
+        Some(credential_schema) => {
+            if credential_schema.schema_type != input_credential_schema.schema_type {
+                return Err(TransportProtocolError::IncorrectCredentialSchemaType);
+            }
+
+            deps.credential_schema_repository
+                .get_credential_schema(
+                    &credential_schema.id,
+                    &CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
+                .ok_or(TransportProtocolError::Failed(
+                    "Credential schema error".to_string(),
+                ))?
+        }
         None => {
-            let mut credential_schema = credential_schema;
+            let mut credential_schema = input_credential_schema;
             credential_schema.organisation = Some(organisation.to_owned());
             credential_schema.claim_schemas = Some(
                 issuer_response

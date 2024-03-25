@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::provider::credential_formatter::{
     jwt::Jwt,
-    model::{CredentialSchema, CredentialSubject, DetailCredential},
+    model::{CredentialSubject, DetailCredential},
     Context, CredentialData,
 };
 
@@ -23,8 +23,6 @@ pub(super) fn format_vc(
         .chain(additional_types)
         .collect();
 
-    let credential_schema = credential.schema.id.map(CredentialSchema::new);
-
     VC {
         vc: VCContent {
             context,
@@ -34,7 +32,7 @@ pub(super) fn format_vc(
                 values: HashMap::from_iter(credential.claims),
             },
             credential_status: credential.status,
-            credential_schema,
+            credential_schema: credential.schema.into(),
         },
     }
 }

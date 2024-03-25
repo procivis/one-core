@@ -6,7 +6,9 @@ use uuid::Uuid;
 
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum};
+use crate::model::credential_schema::{
+    CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
+};
 use crate::{
     model::{
         backup::{Metadata, UnexportableEntities},
@@ -100,6 +102,8 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 }),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
             }),
             interaction: None,
             revocation_list: None,

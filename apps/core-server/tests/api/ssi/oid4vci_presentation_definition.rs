@@ -54,15 +54,18 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         }
     });
 
+    let schema_id = Uuid::new_v4();
     let credential_schema = context
         .db
         .credential_schemas
         .create_with_claims(
+            &schema_id,
             "NewCredentialSchema",
             &organisation,
             "NONE",
             &new_claim_schemas,
             "JWT",
+            &schema_id.to_string(),
         )
         .await;
     let proof_input_schema =

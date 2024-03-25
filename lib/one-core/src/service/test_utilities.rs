@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use crate::model::proof_schema::ProofSchema;
 use crate::{
     config::core_config::AppConfig,
@@ -173,6 +173,8 @@ pub fn dummy_credential() -> Credential {
             }),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
@@ -268,6 +270,8 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         organisation: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_id: "CredentialSchemaId".to_owned(),
     }
 }
 

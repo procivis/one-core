@@ -3,7 +3,7 @@ use std::sync::Arc;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
-    LayoutType, WalletStorageTypeEnum,
+    CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -31,6 +31,7 @@ impl CredentialSchemasDB {
         revocation_method: &str,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
+        let id = Uuid::new_v4();
         let claim_schema = ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "firstName".to_string(),
@@ -44,7 +45,7 @@ impl CredentialSchemasDB {
         }];
 
         let credential_schema = CredentialSchema {
-            id: Uuid::new_v4(),
+            id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -60,6 +61,8 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: id.to_string(),
         };
 
         let id = self
@@ -136,8 +139,9 @@ impl CredentialSchemasDB {
             },
         ];
 
+        let id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
-            id: Uuid::new_v4(),
+            id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -153,6 +157,8 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: format!("ssi/schema/{id}"),
         };
 
         let id = self
@@ -181,8 +187,9 @@ impl CredentialSchemasDB {
             required: true,
         }];
 
+        let new_id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
-            id: Uuid::new_v4(),
+            id: new_id.to_owned(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             wallet_storage_type: None,
@@ -194,6 +201,8 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: new_id.to_string(),
         };
 
         let id = self
@@ -205,13 +214,16 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_with_claims(
         &self,
+        id: &Uuid,
         name: &str,
         organisation: &Organisation,
         revocation_method: &str,
         new_claim_schemas: &[(Uuid, &str, bool, &str)],
         format: &str,
+        schema_id: &str,
     ) -> CredentialSchema {
         let claim_schemas = new_claim_schemas
             .iter()
@@ -228,7 +240,7 @@ impl CredentialSchemasDB {
             .collect();
 
         let credential_schema = CredentialSchema {
-            id: Uuid::new_v4(),
+            id: id.to_owned(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             wallet_storage_type: None,
@@ -240,6 +252,8 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: schema_id.to_owned(),
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         };
 
         let id = self

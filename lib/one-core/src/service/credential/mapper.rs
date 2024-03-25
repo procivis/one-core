@@ -83,6 +83,8 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             revocation_method: value.revocation_method,
             wallet_storage_type: value.wallet_storage_type,
             organisation_id,
+            schema_type: value.schema_type.into(),
+            schema_id: value.schema_id,
         })
     }
 }

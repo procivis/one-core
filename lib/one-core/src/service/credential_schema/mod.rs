@@ -17,10 +17,12 @@ pub struct CredentialSchemaService {
     history_repository: Arc<dyn HistoryRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     config: Arc<core_config::CoreConfig>,
+    core_base_url: Option<String>,
 }
 
 impl CredentialSchemaService {
     pub fn new(
+        core_base_url: Option<String>,
         repository: Arc<dyn CredentialSchemaRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
@@ -31,6 +33,7 @@ impl CredentialSchemaService {
             history_repository,
             organisation_repository,
             config,
+            core_base_url,
         }
     }
 }

@@ -3,6 +3,8 @@ use shared_types::DidValue;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 
+use crate::model::credential_schema::CredentialSchemaType;
+
 #[derive(Debug, Clone)]
 pub struct DetailCredential {
     pub id: Option<String>,
@@ -82,15 +84,7 @@ pub struct CredentialSchema {
 }
 
 impl CredentialSchema {
-    pub fn new(id: String) -> Self {
-        Self {
-            id,
-            r#type: CredentialSchemaType::ProcivisOneSchema2024,
-        }
+    pub fn new(id: String, r#type: CredentialSchemaType) -> Self {
+        Self { id, r#type }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum CredentialSchemaType {
-    ProcivisOneSchema2024,
 }

@@ -5,7 +5,7 @@ use crate::{
     m20240116_153515_make_name_indexes_unique::UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX,
 };
 
-const UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT: &str =
+pub const UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT: &str =
     "index-CredentialSchema-OrganisationId-Name-DeletedAt_Unique";
 
 #[derive(DeriveMigrationName)]

@@ -5,7 +5,9 @@ use one_core::{
     model::{
         claim::Claim,
         credential::Credential,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType},
+        credential_schema::{
+            CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+        },
         organisation::Organisation,
     },
     repository::error::DataLayerError,
@@ -79,6 +81,8 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 // todo: this should be fixed in another ticket
                 layout_type: LayoutType::Card,
                 layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
             }),
             interaction: None,
             revocation_list: None,

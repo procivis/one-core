@@ -3,8 +3,7 @@ use std::sync::Arc;
 use crate::{
     crypto::{hasher::Hasher, CryptoProvider},
     provider::credential_formatter::{
-        jwt::mapper::string_to_b64url_string, model::CredentialSchema, Context, CredentialData,
-        FormatterError,
+        jwt::mapper::string_to_b64url_string, Context, CredentialData, FormatterError,
     },
 };
 
@@ -48,8 +47,6 @@ pub(super) fn vc_from_credential(
         .chain(additional_types)
         .collect();
 
-    let credential_schema = credential.schema.id.map(CredentialSchema::new);
-
     Sdvc {
         vc: VCContent {
             context,
@@ -59,7 +56,7 @@ pub(super) fn vc_from_credential(
                 claims: hashed_claims,
             },
             credential_status: credential.status,
-            credential_schema,
+            credential_schema: credential.schema.into(),
         },
         hash_alg: Some(algorithm.to_owned()),
     }

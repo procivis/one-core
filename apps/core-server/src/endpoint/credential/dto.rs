@@ -15,6 +15,7 @@ use one_core::service::credential::dto::CredentialListItemResponseDTO;
 use one_core::service::credential::dto::CredentialRequestClaimDTO;
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
 use one_core::service::credential::dto::CredentialRole;
+use one_core::service::credential::dto::CredentialSchemaType;
 use one_core::service::credential::dto::CredentialStateEnum;
 use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
 use one_core::service::credential::dto::DetailCredentialSchemaResponseDTO;
@@ -121,6 +122,15 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     pub organisation_id: Uuid,
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaTypeEnum,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[from(CredentialSchemaType)]
+pub enum CredentialSchemaTypeEnum {
+    ProcivisOneSchema2024,
+    FallbackSchema2024,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

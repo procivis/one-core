@@ -558,6 +558,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Cannot fetch credential offer or presentation definition")]
     BR_0086,
 
+    #[strum(to_string = "Incorrect credential schema type")]
+    BR_0087,
+
     #[strum(to_string = "Missing organisation")]
     BR_0088,
 
@@ -765,6 +768,7 @@ impl TransportProtocolError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
             TransportProtocolError::Failed(_) => ErrorCode::BR_0062,
+            TransportProtocolError::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
             TransportProtocolError::HttpRequestError(_) => ErrorCode::BR_0086,
             TransportProtocolError::HttpResponse(_) => ErrorCode::BR_0086,
             TransportProtocolError::JsonError(_) => ErrorCode::BR_0062,

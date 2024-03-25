@@ -1,6 +1,6 @@
 use super::CredentialSchemaProvider;
 use crate::{entity::credential_schema, list_query::from_pagination, test_utilities::*};
-use one_core::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use one_core::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use one_core::{
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
@@ -132,6 +132,8 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             organisation: Some(organisation.clone()),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
         },
         organisation,
         repository,
@@ -186,6 +188,8 @@ async fn test_create_credential_schema_success() {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
         })
         .await;
 

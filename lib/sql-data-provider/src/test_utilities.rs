@@ -11,7 +11,7 @@ use shared_types::{CredentialId, DidId, DidValue, EntityId, HistoryId, KeyId, Or
 use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::entity::credential_schema::LayoutType;
+use crate::entity::credential_schema::{CredentialSchemaType, LayoutType};
 use crate::entity::{proof_input_claim_schema, proof_input_schema};
 use crate::{
     db_conn,
@@ -98,8 +98,9 @@ pub async fn insert_credential_schema_to_database(
     format: &str,
     revocation_method: &str,
 ) -> Result<String, DbErr> {
+    let new_id = Uuid::new_v4().to_string();
     let schema = credential_schema::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(new_id.to_owned()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         format: Set(format.to_owned()),
@@ -110,6 +111,8 @@ pub async fn insert_credential_schema_to_database(
         deleted_at: Set(deleted_at),
         layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),
+        schema_type: Set(CredentialSchemaType::ProcivisOneSchema2024),
+        schema_id: Set(new_id),
     }
     .insert(database)
     .await?;

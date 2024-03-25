@@ -12,7 +12,8 @@ use crate::{
         claim_schema::ClaimSchema,
         credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
         credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+            CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+            WalletStorageTypeEnum,
         },
         did::{Did, DidType, KeyRole, RelatedKey},
         interaction::Interaction,
@@ -238,6 +239,8 @@ fn dummy_credential() -> Credential {
             }),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),

@@ -27,6 +27,7 @@ mod m20240307_103000_add_reactivated_history_action;
 mod m20240308_115228_add_metadata_to_history;
 mod m20240314_101347_recreate_proof_input_schema_and_proof_input_claim_schema_tables;
 mod m20240314_141907_remove_proof_schema_claim_schema_relation;
+mod m20240319_105859_typed_credential_schema;
 mod m20240321_154846_add_layout_type_and_layout_properties_to_credential_schema;
 
 pub struct Migrator;
@@ -61,6 +62,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240314_101347_recreate_proof_input_schema_and_proof_input_claim_schema_tables::Migration),
             Box::new(m20240314_141907_remove_proof_schema_claim_schema_relation::Migration),
             Box::new(m20240321_154846_add_layout_type_and_layout_properties_to_credential_schema::Migration),
+            Box::new(m20240319_105859_typed_credential_schema::Migration),
         ]
     }
 }

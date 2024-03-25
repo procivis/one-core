@@ -10,6 +10,7 @@ use one_core::{
     OneCore,
 };
 use std::{
+    env,
     io::Write,
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener},
     path::PathBuf,
@@ -34,6 +35,8 @@ fn main() {
 
     let app_config: AppConfig<ServerConfig> =
         core_config::AppConfig::from_files(&config_files).expect("Failed creating config");
+
+    env::set_var("MIGRATION_CORE_URL", &app_config.app.core_base_url);
 
     let _sentry_init_guard = initialize_sentry(&app_config.app);
 

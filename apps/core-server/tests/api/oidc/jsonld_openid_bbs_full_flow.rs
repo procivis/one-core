@@ -70,15 +70,18 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     proof_claim_schemas[0].2 = false; //Key is optional
     proof_claim_schemas[2].2 = false; //Address is optional
 
+    let schema_id = Uuid::new_v4();
     let credential_schema = server_context
         .db
         .credential_schemas
         .create_with_claims(
+            &schema_id,
             "Test",
             &server_organisation,
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_BBSPLUS",
+            &schema_id.to_string(),
         )
         .await;
 
@@ -208,16 +211,19 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
 
     let holder_remote_issuer_did = remote_issuer_did.unwrap();
 
+    let schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
         .db
         .credential_schemas
         .create_with_claims(
+            &schema_id,
             "Test",
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
             // This reflects latest changes - on the holder side we don't really know what's the correct format here
             "JSON_LD",
+            &schema_id.to_string(),
         )
         .await;
 
@@ -405,15 +411,19 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> =
         vec![(Uuid::new_v4(), "Key", true, "STRING")];
 
+    let schema_id = Uuid::new_v4();
+
     let credential_schema = server_context
         .db
         .credential_schemas
         .create_with_claims(
+            &schema_id,
             "Test",
             &server_organisation,
             "BITSTRINGSTATUSLIST",
             &new_claim_schemas,
             "JSON_LD_BBSPLUS",
+            &schema_id.to_string(),
         )
         .await;
 
