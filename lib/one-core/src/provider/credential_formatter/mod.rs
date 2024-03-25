@@ -26,17 +26,21 @@ use time::{Duration, OffsetDateTime};
 
 use crate::{
     crypto::signer::error::SignerError,
+    model::credential_schema::CredentialSchemaType,
     service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
 };
 
 use self::{
     error::FormatterError,
-    model::{CredentialPresentation, CredentialStatus, DetailCredential, Presentation},
+    model::{
+        CredentialPresentation, CredentialSchema, CredentialStatus, DetailCredential, Presentation,
+    },
 };
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
 
+#[derive(Debug)]
 pub struct CredentialData {
     // URI
     pub id: String,
@@ -48,12 +52,26 @@ pub struct CredentialData {
     pub schema: CredentialSchemaData,
 }
 
+#[derive(Debug)]
 pub struct CredentialSchemaData {
-    // URI, optional for LVVC
+    // todo: use an URI type
     pub id: Option<String>,
-    // optional for LVVC
+    pub r#type: Option<CredentialSchemaType>,
     pub context: Option<String>,
     pub name: String,
+}
+
+impl From<CredentialSchemaData> for Option<CredentialSchema> {
+    fn from(credential_schema: CredentialSchemaData) -> Self {
+        match credential_schema {
+            CredentialSchemaData {
+                id: Some(id),
+                r#type: Some(r#type),
+                ..
+            } => Some(CredentialSchema::new(id, r#type)),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Default, Serialize)]
@@ -191,18 +209,16 @@ impl CredentialData {
                 .map(|claim| (claim.schema.key, claim.value))
                 .collect(),
             issuer_did,
+            status: credential_status,
             schema: CredentialSchemaData {
-                id: Some(format!(
-                    "{core_base_url}/ssi/schema/v1/{}",
-                    credential.schema.id
-                )),
+                id: Some(credential.schema.schema_id),
+                r#type: Some(credential.schema.schema_type.into()),
                 context: Some(format!(
                     "{core_base_url}/ssi/context/v1/{}",
                     credential.schema.id
                 )),
                 name: credential.schema.name,
             },
-            status: credential_status,
         })
     }
 }

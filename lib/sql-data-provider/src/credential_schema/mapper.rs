@@ -39,11 +39,13 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             wallet_storage_type: Set(convert_inner(value.wallet_storage_type)),
             layout_type: Set(value.layout_type.into()),
             layout_properties: Set(convert_inner(value.layout_properties)),
+            schema_type: Set(value.schema_type.into()),
+            schema_id: Set(value.schema_id),
         })
     }
 }
 
-fn entity_model_to_credential_schema(
+pub(super) fn entity_model_to_credential_schema(
     value: credential_schema::Model,
     organisation: Option<Organisation>,
 ) -> Result<CredentialSchema, DataLayerError> {
@@ -62,6 +64,8 @@ fn entity_model_to_credential_schema(
         organisation,
         layout_type: value.layout_type.into(),
         layout_properties: convert_inner(value.layout_properties),
+        schema_type: value.schema_type.into(),
+        schema_id: value.schema_id,
     })
 }
 
@@ -149,6 +153,8 @@ pub(crate) fn credential_schema_from_models(
             organisation,
             layout_type: credential_schema.layout_type.into(),
             layout_properties: convert_inner(credential_schema.layout_properties),
+            schema_type: credential_schema.schema_type.into(),
+            schema_id: credential_schema.schema_id,
         })
         .ok_or(DataLayerError::MappingError)
 }

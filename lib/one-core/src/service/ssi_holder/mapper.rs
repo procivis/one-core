@@ -32,6 +32,8 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             organisation: None, // response organisation is intentionally ignored (holder sets its local organisation)
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: value.schema_id,
+            schema_type: value.schema_type.into(),
         }
     }
 }

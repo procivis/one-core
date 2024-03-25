@@ -2,7 +2,7 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use one_core::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use one_core::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use one_core::model::list_filter::{ComparisonType, ValueComparison};
 use one_core::{
     model::{
@@ -112,6 +112,8 @@ async fn setup_empty() -> TestSetup {
         }),
         layout_type: LayoutType::Card,
         layout_properties: None,
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_id: "CredentialSchemaId".to_owned(),
     };
 
     let did_id = &insert_did_key(

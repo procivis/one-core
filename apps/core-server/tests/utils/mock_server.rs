@@ -56,7 +56,13 @@ impl MockServer {
             .await;
     }
 
-    pub async fn temporary_issuer_connect(&self, protocol: &str, credential_id: impl Display) {
+    pub async fn temporary_issuer_connect(
+        &self,
+        protocol: &str,
+        credential_id: impl Display,
+        schema_id: impl Display,
+        schema_type: Option<&str>,
+    ) {
         Mock::given(method(Method::POST))
             .and(path("/ssi/temporary-issuer/v1/connect"))
             .and(query_param("protocol", protocol))
@@ -69,7 +75,7 @@ impl MockServer {
                                 "createdDate": "2023-11-08T15:46:14.997Z",
                                 "datatype": "STRING",
                                 "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-                                "key": "field",
+                                "key": "firstName",
                                 "lastModified": "2023-11-08T15:46:14.997Z",
                                 "required": true
                             },
@@ -95,11 +101,13 @@ impl MockServer {
                     "schema": {
                         "createdDate": "2023-11-08T15:46:14.997Z",
                         "format": "SDJWT",
-                        "id": "293d1376-62ea-4b0e-8c16-2dfe4f7ac0bd",
+                        "id": schema_id.to_string(),
                         "lastModified": "2023-11-08T15:46:14.997Z",
                         "name": "detox-e2e-revocable-12a4212d-9b28-4bb0-9640-23c938f8a8b1",
                         "organisationId": "2476ebaa-0108-413d-aa72-c2a6babd423f",
-                        "revocationMethod": "BITSTRINGSTATUSLIST"
+                        "revocationMethod": "BITSTRINGSTATUSLIST",
+                        "schemaId": schema_id.to_string(),
+                        "schemaType": schema_type.unwrap_or("ProcivisOneSchema2024"),
                     },
                     "state": "PENDING",
                     "role": "ISSUER",

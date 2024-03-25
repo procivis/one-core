@@ -24,6 +24,20 @@ pub struct Model {
     pub layout_type: LayoutType,
     #[sea_orm(column_type = "Json")]
     pub layout_properties: Option<LayoutProperties>,
+    pub schema_type: CredentialSchemaType,
+    pub schema_id: String,
+}
+
+#[derive(Debug, Clone, EnumIter, DeriveActiveEnum, From, Into, PartialEq, Eq)]
+#[sea_orm(rs_type = "String", db_type = "String(Some(1))")]
+#[from(model::credential_schema::CredentialSchemaType)]
+#[into(model::credential_schema::CredentialSchemaType)]
+pub enum CredentialSchemaType {
+    #[sea_orm(string_value = "ProcivisOneSchema2024")]
+    ProcivisOneSchema2024,
+
+    #[sea_orm(string_value = "FallbackSchema2024")]
+    FallbackSchema2024,
 }
 
 #[derive(

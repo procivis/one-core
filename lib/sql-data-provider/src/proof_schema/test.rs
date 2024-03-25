@@ -1,6 +1,6 @@
 use super::ProofSchemaProvider;
 use crate::{entity::proof_schema, test_utilities::*};
-use one_core::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use one_core::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchemaClaimRelations,
 };
@@ -195,6 +195,8 @@ async fn test_create_proof_schema_already_exists() {
                     organisation: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
+                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                    schema_id: "CredentialSchemaId".to_owned(),
                 }),
             }]),
         })
@@ -287,6 +289,8 @@ async fn test_create_proof_schema_success() {
                     organisation: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
+                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                    schema_id: "CredentialSchemaId".to_owned(),
                 }),
             }]),
         })
@@ -498,6 +502,8 @@ async fn test_get_proof_schema_with_relations() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
             }))
         });
 
@@ -634,6 +640,8 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: id.to_string(),
             }))
         });
 

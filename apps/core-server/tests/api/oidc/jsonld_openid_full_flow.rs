@@ -68,15 +68,18 @@ async fn test_openid4vc_jsonld_flow(
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> =
         vec![(Uuid::new_v4(), "Key", true, "STRING")];
 
+    let schema_id = Uuid::new_v4();
     let credential_schema = server_context
         .db
         .credential_schemas
         .create_with_claims(
+            &schema_id,
             "Test",
             &server_organisation,
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
+            &schema_id.to_string(),
         )
         .await;
 
@@ -181,15 +184,18 @@ async fn test_openid4vc_jsonld_flow(
     )
     .await;
 
+    let schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
         .db
         .credential_schemas
         .create_with_claims(
+            &schema_id,
             "Test",
             &holder_organisation,
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
+            &schema_id.to_string(),
         )
         .await;
 

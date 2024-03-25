@@ -12,10 +12,7 @@ use time::OffsetDateTime;
 
 use crate::{crypto::CryptoProvider, provider::did_method::dto::DidDocumentDTO};
 
-use super::{
-    error::FormatterError, model::CredentialSchema, AuthenticationFn, Context, CredentialData,
-    VerificationFn,
-};
+use super::{error::FormatterError, AuthenticationFn, Context, CredentialData, VerificationFn};
 
 use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
 
@@ -34,7 +31,7 @@ pub(super) fn prepare_credential(
     json_ld_context_url: Option<String>,
     custom_subject_name: Option<String>,
 ) -> Result<LdCredential, FormatterError> {
-    let credential_schema = credential.schema;
+    let credential_schema = &credential.schema;
 
     let issuance_date = OffsetDateTime::now_utc();
 
@@ -43,8 +40,8 @@ pub(super) fn prepare_credential(
         context.push(json_ld_context_url);
     }
 
-    if let Some(credential_schema_context) = credential_schema.context {
-        context.push(credential_schema_context);
+    if let Some(credential_schema_context) = &credential_schema.context {
+        context.push(credential_schema_context.to_owned());
     }
 
     let ld_type = prepare_credential_type(&credential_schema.name, additional_types);
@@ -56,8 +53,6 @@ pub(super) fn prepare_credential(
         custom_subject_name,
     );
 
-    let credential_schema = credential_schema.id.map(CredentialSchema::new);
-
     Ok(LdCredential {
         context,
         id: credential.id,
@@ -67,7 +62,7 @@ pub(super) fn prepare_credential(
         credential_subject,
         credential_status: credential.status,
         proof: None,
-        credential_schema,
+        credential_schema: credential.schema.into(),
     })
 }
 

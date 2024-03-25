@@ -12,7 +12,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, SqlErr, Unchanged,
 };
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, OrganisationId};
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -29,6 +29,8 @@ use crate::{
     list_query::SelectWithListQuery,
     mapper::to_data_layer_error,
 };
+
+use super::mapper::entity_model_to_credential_schema;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -230,5 +232,24 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         })?;
 
         Ok(())
+    }
+
+    async fn get_by_schema_id_and_organisation(
+        &self,
+        schema_id: &str,
+        organisation_id: OrganisationId,
+    ) -> Result<Option<CredentialSchema>, DataLayerError> {
+        let credential_schema = credential_schema::Entity::find()
+            .filter(credential_schema::Column::SchemaId.eq(schema_id))
+            .filter(credential_schema::Column::OrganisationId.eq(organisation_id))
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        let Some(credential_schema) = credential_schema else {
+            return Ok(None);
+        };
+
+        Ok(entity_model_to_credential_schema(credential_schema, None).ok())
     }
 }

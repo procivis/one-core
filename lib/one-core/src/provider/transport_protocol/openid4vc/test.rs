@@ -11,7 +11,7 @@ use wiremock::{
     Mock, MockServer, ResponseTemplate,
 };
 
-use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
 use crate::{
     crypto::MockCryptoProvider,
@@ -133,6 +133,8 @@ fn construct_proof_with_state() -> Proof {
                     organisation: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
+                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                    schema_id: "CredentialSchemaId".to_owned(),
                 }),
             }]),
         }),
@@ -221,6 +223,8 @@ fn generic_credential() -> Credential {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
         }),
         interaction: Some(Interaction {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),

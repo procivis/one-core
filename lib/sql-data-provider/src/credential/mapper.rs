@@ -140,6 +140,8 @@ pub(super) fn credential_list_model_to_repository_model(
         name: credential.credential_schema_name,
         format: credential.credential_schema_format,
         revocation_method: credential.credential_schema_revocation_method,
+        schema_type: credential.credential_schema_schema_type.into(),
+        schema_id: credential.credential_schema_schema_id,
         claim_schemas: None,
         organisation: None,
         // todo: this should be fixed in another ticket

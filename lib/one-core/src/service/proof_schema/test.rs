@@ -3,7 +3,7 @@ use crate::{
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
         common::GetListResponse,
-        credential_schema::{CredentialSchema, LayoutType},
+        credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType},
         organisation::{Organisation, OrganisationRelations},
         proof_schema::{
             GetProofSchemaList, ProofInputSchemaRelations, ProofSchema, ProofSchemaRelations,
@@ -369,6 +369,8 @@ async fn test_create_proof_schema_success() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
             };
 
             Ok(GetListResponse {

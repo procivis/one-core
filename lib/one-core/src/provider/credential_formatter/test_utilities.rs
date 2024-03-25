@@ -8,7 +8,7 @@ use crate::{
     model::did::DidType,
     service::{
         credential::dto::{
-            CredentialDetailResponseDTO, CredentialRole, CredentialStateEnum,
+            CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
             DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
         },
         credential_schema::dto::CredentialClaimSchemaDTO,
@@ -40,6 +40,8 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
             format: "Credential schema format".to_string(),
             revocation_method: "Credential schema revocation method".to_string(),
             organisation_id: id.into(),
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: "CredentialSchemaId".to_owned(),
         },
         issuer_did: Some(DidListItemResponseDTO {
             id: id.into(),

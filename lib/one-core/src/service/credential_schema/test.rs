@@ -4,7 +4,7 @@ use std::vec;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use crate::{
     config::{core_config::CoreConfig, ConfigValidationError},
     model::{
@@ -44,6 +44,7 @@ fn setup_service(
     config: CoreConfig,
 ) -> CredentialSchemaService {
     CredentialSchemaService::new(
+        Some("http://127.0.0.1:4321".to_string()),
         Arc::new(credential_schema_repository),
         Arc::new(history_repository),
         Arc::new(organisation_repository),
@@ -79,6 +80,8 @@ fn generic_credential_schema() -> CredentialSchema {
         }),
         layout_type: LayoutType::Card,
         layout_properties: None,
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_id: "CredentialSchemaId".to_owned(),
     }
 }
 

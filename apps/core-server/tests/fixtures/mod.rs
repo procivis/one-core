@@ -9,8 +9,8 @@ use one_core::model::credential::{
     CredentialStateRelations,
 };
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
@@ -318,6 +318,8 @@ pub async fn create_credential_schema(
         claim_schemas: Some(claim_schemas),
         layout_type: LayoutType::Card,
         layout_properties: None,
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_id: Uuid::new_v4().to_string(),
     };
 
     data_layer
@@ -365,6 +367,8 @@ pub async fn create_credential_schema_with_claims(
         claim_schemas: Some(claim_schemas),
         layout_type: LayoutType::Card,
         layout_properties: None,
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_id: Uuid::new_v4().to_string(),
     };
 
     data_layer

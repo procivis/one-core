@@ -31,6 +31,11 @@ impl CredentialSchemaService {
         &self,
         request: CreateCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchemaId, ServiceError> {
+        let core_base_url = self
+            .core_base_url
+            .as_ref()
+            .ok_or_else(|| ServiceError::Other("Missing core base_url".to_string()))?;
+
         super::validator::validate_create_request(&request, &self.config)?;
 
         super::validator::credential_schema_already_exists(
@@ -51,7 +56,7 @@ impl CredentialSchemaService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let credential_schema = from_create_request(request, organisation)?;
+        let credential_schema = from_create_request(request, organisation, core_base_url)?;
 
         let result = self
             .credential_schema_repository

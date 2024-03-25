@@ -3,7 +3,7 @@ use crate::{
     model::{
         claim_schema::ClaimSchema,
         common::ExactColumn,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaType},
         history::{History, HistoryAction, HistoryEntityType},
         organisation::Organisation,
     },
@@ -82,6 +82,7 @@ pub(super) fn create_unique_name_check_request(
 pub(super) fn from_create_request(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
+    core_base_url: &str,
 ) -> Result<CredentialSchema, ServiceError> {
     if request.claims.is_empty() {
         return Err(ServiceError::ValidationError(
@@ -93,8 +94,11 @@ pub(super) fn from_create_request(
 
     let claim_schemas = unnest_claim_schemas(request.claims);
 
+    let id = Uuid::new_v4();
+    let schema_id = format!("{core_base_url}/ssi/schema/v1/{id}");
+
     Ok(CredentialSchema {
-        id: Uuid::new_v4(),
+        id,
         deleted_at: None,
         created_date: now,
         last_modified: now,
@@ -111,6 +115,8 @@ pub(super) fn from_create_request(
         organisation: Some(organisation),
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_id,
     })
 }
 

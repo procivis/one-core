@@ -51,6 +51,8 @@ pub enum TransportProtocolError {
     MissingBaseUrl,
     #[error("Invalid request: `{0}`")]
     InvalidRequest(String),
+    #[error("Incorrect credential schema type")]
+    IncorrectCredentialSchemaType,
 }
 
 #[cfg_attr(test, mockall::automock)]

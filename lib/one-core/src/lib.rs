@@ -262,6 +262,7 @@ impl OneCore {
                 revocation_method_provider.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
+                core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_organisation_repository(),

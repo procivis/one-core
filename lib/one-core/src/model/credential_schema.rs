@@ -23,10 +23,18 @@ pub struct CredentialSchema {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
+    pub schema_type: CredentialSchemaType,
+    pub schema_id: String,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     pub organisation: Option<Organisation>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub enum CredentialSchemaType {
+    ProcivisOneSchema2024,
+    FallbackSchema2024,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

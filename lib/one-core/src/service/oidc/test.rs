@@ -12,7 +12,8 @@ use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
@@ -99,6 +100,8 @@ fn generic_credential_schema() -> CredentialSchema {
         organisation: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_id: "CredentialSchemaId".to_owned(),
     }
 }
 
@@ -975,6 +978,8 @@ async fn test_oidc_verifier_presentation_definition_success() {
                                 organisation: None,
                                 layout_type: LayoutType::Card,
                                 layout_properties: None,
+                                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                                schema_id: "CredentialSchemaId".to_owned(),
                             }),
                         }]),
                     }),

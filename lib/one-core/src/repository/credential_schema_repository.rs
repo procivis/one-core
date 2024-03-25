@@ -38,6 +38,12 @@ pub trait CredentialSchemaRepository: Send + Sync {
         &self,
         schema: UpdateCredentialSchemaRequest,
     ) -> Result<(), DataLayerError>;
+
+    async fn get_by_schema_id_and_organisation(
+        &self,
+        schema_id: &str,
+        organisation_id: OrganisationId,
+    ) -> Result<Option<CredentialSchema>, DataLayerError>;
 }
 
 impl dyn CredentialSchemaRepository {
