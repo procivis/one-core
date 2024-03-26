@@ -57,4 +57,10 @@ pub trait CredentialRepository: Send + Sync {
         claim_id: &ClaimId,
         relations: &CredentialRelations,
     ) -> Result<Option<Credential>, DataLayerError>;
+
+    async fn get_credentials_by_credential_schema_id(
+        &self,
+        schema_id: String,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError>;
 }

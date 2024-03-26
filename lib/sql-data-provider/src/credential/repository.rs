@@ -617,6 +617,32 @@ impl CredentialRepository for CredentialProvider {
         self.credentials_to_repository(credentials, relations).await
     }
 
+    async fn get_credentials_by_credential_schema_id(
+        &self,
+        schema_id: String,
+        relations: &CredentialRelations,
+    ) -> Result<Vec<Credential>, DataLayerError> {
+        let credentials = credential::Entity::find()
+            .join(
+                JoinType::InnerJoin,
+                credential::Relation::CredentialSchema
+                    .def()
+                    .on_condition(move |_left, _right| {
+                        Expr::col((
+                            credential_schema::Entity,
+                            credential_schema::Column::SchemaId,
+                        ))
+                        .eq(&schema_id)
+                        .into_condition()
+                    }),
+            )
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        self.credentials_to_repository(credentials, relations).await
+    }
+
     async fn get_credential_by_claim_id(
         &self,
         claim_id: &ClaimId,
