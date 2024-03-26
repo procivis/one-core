@@ -1,4 +1,4 @@
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
 use crate::model::{credential::Credential, credential_schema::CredentialSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use serde::{Deserialize, Serialize};
@@ -36,7 +36,7 @@ pub struct ConnectVerifierResponse {
     pub verifier_did: DidValue,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 /// deserializes matching `ProofRequestClaimRestDTO`
 pub struct ProofClaimSchema {
@@ -64,6 +64,8 @@ pub struct ProofCredentialSchema {
     pub format: String,
     pub revocation_method: String,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub schema_type: CredentialSchemaType,
+    pub schema_id: String,
 }
 
 #[derive(Clone, Debug)]

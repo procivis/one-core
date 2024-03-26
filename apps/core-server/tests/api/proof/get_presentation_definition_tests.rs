@@ -27,6 +27,8 @@ fn get_procivis_temporary_interaction_data(
              "name": "test",
              "format": "JWT",
              "revocationMethod": "NONE",
+             "schemaType": "ProcivisOneSchema2024",
+             "schemaId": credential_schema_id,
         }
     }])
     .to_string()
@@ -108,6 +110,101 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     assert_eq!(
         resp["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["keyMap"]
             [credential.id.to_string()]
+        .as_str()
+        .unwrap(),
+        "firstName".to_string()
+    );
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_procivis_temporary_with_match_multiple_schemas() {
+    // GIVEN
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url, None);
+    let db_conn = fixtures::create_db(&config).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let did = fixtures::create_did(&db_conn, &organisation, None).await;
+
+    let credential_schema_1 =
+        fixtures::create_credential_schema(&db_conn, "schema1", &organisation, "NONE").await;
+    let credential_schema_2 =
+        fixtures::create_credential_schema(&db_conn, "schema2", &organisation, "NONE").await;
+
+    let credential1 = fixtures::create_credential(
+        &db_conn,
+        &credential_schema_1,
+        CredentialStateEnum::Accepted,
+        &did,
+        "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
+    )
+    .await;
+
+    let _credential2 = fixtures::create_credential(
+        &db_conn,
+        &credential_schema_2,
+        CredentialStateEnum::Accepted,
+        &did,
+        "PROCIVIS_TEMPORARY",
+        TestingCredentialParams::default(),
+    )
+    .await;
+
+    let interaction = fixtures::create_interaction(
+        &db_conn,
+        "http://localhost",
+        &get_procivis_temporary_interaction_data("firstName".to_string(), credential_schema_1.id),
+    )
+    .await;
+    let proof = fixtures::create_proof(
+        &db_conn,
+        &did,
+        Some(&did),
+        None,
+        ProofStateEnum::Pending,
+        "PROCIVIS_TEMPORARY",
+        Some(&interaction),
+    )
+    .await;
+
+    // WHEN
+    let _handle = run_server(listener, config, &db_conn);
+    let url = format!(
+        "{base_url}/api/proof-request/v1/{}/presentation-definition",
+        proof.id
+    );
+
+    let resp = utils::client()
+        .get(url)
+        .bearer_auth("test")
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp: Value = resp.json().await.unwrap();
+
+    assert_eq!(resp["credentials"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        resp["requestGroups"][0]["id"].as_str().unwrap(),
+        proof.id.to_string()
+    );
+    assert_eq!(
+        resp["credentials"][0]["id"].as_str().unwrap(),
+        credential1.id.to_string()
+    );
+    assert!(resp["credentials"][0]["role"].is_string());
+    assert_eq!(
+        resp["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"][0]
+            .as_str()
+            .unwrap(),
+        credential1.id.to_string()
+    );
+    assert_eq!(
+        resp["requestGroups"][0]["requestedCredentials"][0]["fields"][0]["keyMap"]
+            [credential1.id.to_string()]
         .as_str()
         .unwrap(),
         "firstName".to_string()
@@ -267,6 +364,8 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
                  "name": "test",
                  "format": "JWT",
                  "revocationMethod": "NONE",
+                 "schemaType": "ProcivisOneSchema2024",
+                 "schemaId": credential_schema_1.id,
             }
         },
         {
@@ -283,6 +382,8 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
                  "name": "test",
                  "format": "JWT",
                  "revocationMethod": "NONE",
+                 "schemaType": "ProcivisOneSchema2024",
+                 "schemaId": credential_schema_2.id,
             }
         }])
         .to_string()

@@ -77,7 +77,9 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
                         "lastModified": "2023-11-15T11:59:13.924Z",
                         "name": "Schema1",
                         "format": "JWT",
-                        "revocationMethod": "NONE"
+                        "revocationMethod": "NONE",
+                        "schemaType": "ProcivisOneSchema2024",
+                        "schemaId": credential_schema.id
                     }
                 }
             ]

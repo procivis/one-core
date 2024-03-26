@@ -1,5 +1,6 @@
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into};
+use one_core::service::credential::dto::CredentialSchemaType;
 use one_core::service::credential_schema;
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
@@ -37,6 +38,8 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub revocation_method: String,
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

@@ -102,6 +102,85 @@ pub fn credential_model_to_credential_dto(
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))
 }
 
+pub async fn get_relevant_credentials_to_credential_schemas(
+    credential_repository: &Arc<dyn CredentialRepository>,
+    mut credential_groups: Vec<CredentialGroup>,
+    group_id_to_schema_id_mapping: HashMap<String, String>,
+) -> Result<(Vec<Credential>, Vec<CredentialGroup>), TransportProtocolError> {
+    let mut relevant_credentials: Vec<Credential> = Vec::new();
+    for group in &mut credential_groups {
+        let credential_schema_id =
+            group_id_to_schema_id_mapping
+                .get(&group.id)
+                .ok_or(TransportProtocolError::Failed(
+                    "Incorrect group id to credential schema id maping".to_owned(),
+                ))?;
+
+        let relevant_credentials_inner = credential_repository
+            .get_credentials_by_credential_schema_id(
+                credential_schema_id.to_owned(),
+                &CredentialRelations {
+                    state: Some(CredentialStateRelations::default()),
+                    issuer_did: Some(DidRelations::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(ClaimSchemaRelations::default()),
+                    }),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+        for credential in &relevant_credentials_inner {
+            let credential_state = credential
+                .state
+                .as_ref()
+                .ok_or(TransportProtocolError::Failed("state missing".to_string()))?
+                .first()
+                .ok_or(TransportProtocolError::Failed("state missing".to_string()))?;
+
+            // only consider credentials that have finished the issuance flow
+            if ![
+                CredentialStateEnum::Accepted,
+                CredentialStateEnum::Revoked,
+                CredentialStateEnum::Suspended,
+            ]
+            .contains(&credential_state.state)
+            {
+                continue;
+            }
+
+            let claim_schemas = credential
+                .claims
+                .as_ref()
+                .ok_or(TransportProtocolError::Failed("claims missing".to_string()))?
+                .iter()
+                .map(|claim| {
+                    claim
+                        .schema
+                        .as_ref()
+                        .ok_or(TransportProtocolError::Failed("schema missing".to_string()))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            if group.claims.iter().all(|requested_claim| {
+                claim_schemas
+                    .iter()
+                    .any(|claim_schema| requested_claim.key == claim_schema.key)
+            }) {
+                group.applicable_credentials.push(credential.to_owned());
+                relevant_credentials.push(credential.to_owned());
+            }
+        }
+    }
+
+    Ok((relevant_credentials, credential_groups))
+}
+
+// TODO: Remove in ONE-1924
 pub async fn get_relevant_credentials(
     credential_repository: &Arc<dyn CredentialRepository>,
     mut credential_groups: Vec<CredentialGroup>,

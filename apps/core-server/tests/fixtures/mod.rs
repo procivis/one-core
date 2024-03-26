@@ -305,8 +305,9 @@ pub async fn create_credential_schema(
         required: true,
     }];
 
+    let id = Uuid::new_v4();
     let credential_schema = CredentialSchema {
-        id: Uuid::new_v4(),
+        id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: name.to_owned(),
@@ -319,7 +320,7 @@ pub async fn create_credential_schema(
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        schema_id: Uuid::new_v4().to_string(),
+        schema_id: id.to_string(),
     };
 
     data_layer
@@ -353,9 +354,9 @@ pub async fn create_credential_schema_with_claims(
             required: required.to_owned(),
         })
         .collect();
-
+    let id = Uuid::new_v4();
     let credential_schema = CredentialSchema {
-        id: Uuid::new_v4(),
+        id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         wallet_storage_type: None,
@@ -368,7 +369,7 @@ pub async fn create_credential_schema_with_claims(
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        schema_id: Uuid::new_v4().to_string(),
+        schema_id: id.to_string(),
     };
 
     data_layer

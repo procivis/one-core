@@ -13,6 +13,7 @@ use crate::model::{
         SortableCredentialSchemaColumn,
     },
 };
+use crate::service::credential::dto::CredentialSchemaType;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, From)]
 #[from(CredentialSchema)]
@@ -29,6 +30,8 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

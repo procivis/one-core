@@ -1,7 +1,7 @@
 mod mapper;
 
 use async_trait::async_trait;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -29,10 +29,7 @@ use crate::{
                 ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
                 PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
             },
-            mapper::{
-                get_relevant_credentials, interaction_from_handle_invitation,
-                proof_from_handle_invitation,
-            },
+            mapper::{interaction_from_handle_invitation, proof_from_handle_invitation},
             TransportProtocol, TransportProtocolError,
         },
     },
@@ -45,6 +42,8 @@ use crate::{
         credential::dto::CredentialDetailResponseDTO, ssi_holder::dto::InvitationResponseDTO,
     },
 };
+
+use super::mapper::get_relevant_credentials_to_credential_schemas;
 
 const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
 
@@ -353,11 +352,9 @@ impl TransportProtocol for ProcivisTemp {
         proof: &Proof,
     ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
         let requested_claims = get_proof_claim_schemas_from_proof(proof)?;
-        let requested_claim_keys: Vec<String> = requested_claims
-            .iter()
-            .map(|claim_schema| claim_schema.key.to_owned())
-            .collect();
         let mut credential_groups: Vec<CredentialGroup> = vec![];
+        let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
+
         for requested_claim in requested_claims {
             let group_id = requested_claim.credential_schema.id;
             let credential_group_item = CredentialGroupItem {
@@ -365,12 +362,17 @@ impl TransportProtocol for ProcivisTemp {
                 key: requested_claim.key,
                 required: requested_claim.required,
             };
+
             if let Some(group) = credential_groups
                 .iter_mut()
                 .find(|group| group.id == group_id)
             {
                 group.claims.push(credential_group_item);
             } else {
+                group_id_to_schema_id.insert(
+                    group_id.clone(),
+                    requested_claim.credential_schema.schema_id,
+                );
                 credential_groups.push(CredentialGroup {
                     id: group_id,
                     claims: vec![credential_group_item],
@@ -379,12 +381,14 @@ impl TransportProtocol for ProcivisTemp {
                 });
             }
         }
-        let (credentials, credential_groups) = get_relevant_credentials(
+
+        let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
             &self.credential_repository,
             credential_groups,
-            requested_claim_keys,
+            group_id_to_schema_id,
         )
         .await?;
+
         presentation_definition_from_proof(proof, credentials, credential_groups)
     }
 }
