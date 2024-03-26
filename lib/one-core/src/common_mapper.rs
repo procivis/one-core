@@ -114,10 +114,10 @@ pub fn extracted_credential_to_model(
     claims: Vec<(String, ClaimSchema)>,
     issuer_did: Did,
     holder_did: Did,
-) -> Credential {
+) -> Result<Credential, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let credential_id = Uuid::new_v4().into();
-    Credential {
+    Ok(Credential {
         id: credential_id,
         created_date: now,
         issuance_date: now,
@@ -133,15 +133,17 @@ pub fn extracted_credential_to_model(
         claims: Some(
             claims
                 .into_iter()
-                .map(|(value, claim_schema)| Claim {
-                    id: ClaimId::new_v4(),
-                    credential_id,
-                    created_date: now,
-                    last_modified: now,
-                    value,
-                    schema: Some(claim_schema),
+                .map(|(value, claim_schema)| {
+                    Ok(Claim {
+                        id: ClaimId::new_v4(),
+                        credential_id,
+                        created_date: now,
+                        last_modified: now,
+                        value,
+                        schema: Some(claim_schema),
+                    })
                 })
-                .collect(),
+                .collect::<Result<Vec<Claim>, ServiceError>>()?,
         ),
         issuer_did: Some(issuer_did),
         holder_did: Some(holder_did),
@@ -151,5 +153,5 @@ pub fn extracted_credential_to_model(
         revocation_list: None,
         key: None,
         role: CredentialRole::Verifier,
-    }
+    })
 }

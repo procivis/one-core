@@ -306,7 +306,12 @@ pub(super) fn validate_claims(
             proved_claims.push(ValidatedProofClaimDTO {
                 proof_input_claim: expected_credential_claim.to_owned(),
                 credential: received_credential.to_owned(),
-                value: value.to_owned(),
+                value: value
+                    .as_str()
+                    .ok_or(ServiceError::MappingError(
+                        "claim value is not String".to_string(),
+                    ))?
+                    .to_string(),
                 credential_schema: credential_schema.to_owned(),
             })
         } else if expected_credential_claim.required {

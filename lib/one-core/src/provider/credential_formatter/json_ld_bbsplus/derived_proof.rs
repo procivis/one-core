@@ -12,6 +12,7 @@ use crate::provider::credential_formatter::json_ld;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::{
     BbsDerivedProofComponents, BbsProofComponents, CBOR_PREFIX_BASE, CBOR_PREFIX_DERIVED,
 };
+use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
 
 impl JsonLdBbsplus {
     pub(super) async fn derive_proof(
@@ -107,7 +108,7 @@ impl JsonLdBbsplus {
 
         // selectJsonLd - we just removed what's not disclosed. In our case
         // we can only disclose claims. The rest of the json is mandatory.
-        remove_undisclosed_keys(&mut revealed_document, &credential.disclosed_keys);
+        remove_undisclosed_keys(&mut revealed_document, &credential.disclosed_keys)?;
 
         let revealed_transformed = json_ld::canonize_any(&revealed_document).await?;
 
@@ -301,12 +302,6 @@ fn extract_proof_value_components(proof_value: &str) -> Result<BbsProofComponent
     verify_proof_components(&components)?;
 
     Ok(components)
-}
-
-fn remove_undisclosed_keys(revealed_ld: &mut LdCredential, disclosed_keys: &[String]) {
-    for values in revealed_ld.credential_subject.subject.values_mut() {
-        values.retain(|k, _| disclosed_keys.contains(k));
-    }
 }
 
 fn verify_proof_components(components: &BbsProofComponents) -> Result<(), FormatterError> {

@@ -21,6 +21,7 @@ mod base_proof;
 mod derived_proof;
 mod mapper;
 pub mod model;
+mod remove_undisclosed_keys;
 mod verify_proof;
 
 #[cfg(test)]

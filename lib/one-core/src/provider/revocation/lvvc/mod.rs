@@ -236,7 +236,7 @@ impl LvvcProvider {
             .extracted_lvvcs
             .iter()
             .find(|lvvc| {
-                if let Some(id) = lvvc.claims.values.get("id") {
+                if let Some((_, id)) = lvvc.claims.values.iter().find(|(key, _)| *key == "id") {
                     *id == *credential_id
                 } else {
                     false

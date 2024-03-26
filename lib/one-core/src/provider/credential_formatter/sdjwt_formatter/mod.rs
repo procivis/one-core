@@ -1,6 +1,5 @@
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
 
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -11,6 +10,10 @@ use shared_types::DidValue;
 use time::Duration;
 
 use crate::crypto::CryptoProvider;
+use crate::provider::credential_formatter::common::nest_claims;
+use crate::provider::credential_formatter::sdjwt_formatter::model::{
+    DecomposedToken, Disclosure, Sdvc,
+};
 
 #[cfg(test)]
 mod test;
@@ -223,11 +226,12 @@ impl SDJWTFormatter {
                 Err(err) => match err {},
             }),
             claims: CredentialSubject {
-                values: HashMap::from_iter(
+                values: nest_claims(
                     deserialized_disclosures
                         .into_iter()
-                        .map(|(dis, _, _)| (dis.key, dis.value)),
-                ),
+                        .map(|(dis, _, _)| (dis.key, dis.value))
+                        .collect::<Vec<(String, String)>>(),
+                )?,
             },
             status: jwt.payload.custom.vc.credential_status,
             credential_schema: jwt.payload.custom.vc.credential_schema,

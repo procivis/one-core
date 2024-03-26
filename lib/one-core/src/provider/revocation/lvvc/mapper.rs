@@ -1,5 +1,6 @@
-use shared_types::CredentialId;
 use std::collections::HashMap;
+
+use shared_types::CredentialId;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 use crate::provider::revocation::lvvc::LvvcStatus;
@@ -9,23 +10,32 @@ const SUSPEND_END_DATE_FORMAT: &[time::format_description::FormatItem<'static>] 
     time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z");
 
 pub(crate) fn status_from_lvvc_claims(
-    lvvc_claims: &HashMap<String, String>,
+    lvvc_claims: &HashMap<String, serde_json::Value>,
 ) -> Result<LvvcStatus, ServiceError> {
     let status = lvvc_claims
         .get("status")
         .ok_or(ServiceError::ValidationError(
             "missing status claim in LVVC".to_string(),
+        ))?
+        .as_str()
+        .ok_or(ServiceError::ValidationError(
+            "status claim in LVVC is not string".to_string(),
         ))?;
 
-    Ok(match status.as_str() {
+    Ok(match status {
         "ACCEPTED" => LvvcStatus::Accepted,
         "REVOKED" => LvvcStatus::Revoked,
         "SUSPENDED" => {
             let suspend_end_date = match lvvc_claims.get("suspendEndDate") {
                 None => None,
                 Some(date) => Some(
-                    OffsetDateTime::parse(date, &Rfc3339)
-                        .map_err(|e| ServiceError::ValidationError(e.to_string()))?,
+                    OffsetDateTime::parse(
+                        date.as_str().ok_or(ServiceError::ValidationError(
+                            "suspendEndDate claim in LVVC is not string".to_string(),
+                        ))?,
+                        &Rfc3339,
+                    )
+                    .map_err(|e| ServiceError::ValidationError(e.to_string()))?,
                 ),
             };
             LvvcStatus::Suspended { suspend_end_date }
@@ -71,6 +81,8 @@ fn suspend_end_date_claim(end_date: &OffsetDateTime) -> Result<(String, String),
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+    use std::collections::HashMap;
     use time::macros::datetime;
 
     use super::*;
@@ -111,29 +123,20 @@ mod tests {
     #[test]
     fn test_status_from_lvvc_claims() {
         assert_eq!(
-            status_from_lvvc_claims(&HashMap::from([(
-                "status".to_string(),
-                "ACCEPTED".to_string(),
-            )]))
-            .unwrap(),
+            status_from_lvvc_claims(&HashMap::from([("status".to_string(), json!("ACCEPTED"))]))
+                .unwrap(),
             LvvcStatus::Accepted
         );
 
         assert_eq!(
-            status_from_lvvc_claims(&HashMap::from([(
-                "status".to_string(),
-                "REVOKED".to_string(),
-            )]))
-            .unwrap(),
+            status_from_lvvc_claims(&HashMap::from([("status".to_string(), json!("REVOKED"))]))
+                .unwrap(),
             LvvcStatus::Revoked
         );
 
         assert_eq!(
-            status_from_lvvc_claims(&HashMap::from([(
-                "status".to_string(),
-                "SUSPENDED".to_string(),
-            )]))
-            .unwrap(),
+            status_from_lvvc_claims(&HashMap::from([("status".to_string(), json!("SUSPENDED"))]))
+                .unwrap(),
             LvvcStatus::Suspended {
                 suspend_end_date: None
             }
@@ -141,11 +144,8 @@ mod tests {
 
         assert_eq!(
             status_from_lvvc_claims(&HashMap::from([
-                ("status".to_string(), "SUSPENDED".to_string(),),
-                (
-                    "suspendEndDate".to_string(),
-                    "2005-04-02T21:37:00Z".to_string()
-                )
+                ("status".to_string(), json!("SUSPENDED")),
+                ("suspendEndDate".to_string(), json!("2005-04-02T21:37:00Z"))
             ]))
             .unwrap(),
             LvvcStatus::Suspended {

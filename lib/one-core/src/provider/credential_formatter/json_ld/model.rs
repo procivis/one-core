@@ -34,7 +34,7 @@ pub struct LdCredential {
 pub struct LdCredentialSubject {
     pub id: DidValue,
     #[serde(flatten)]
-    pub subject: HashMap<String, Claims>,
+    pub subject: HashMap<String, serde_json::Value>,
 }
 
 pub type Claims = HashMap<String, String>;

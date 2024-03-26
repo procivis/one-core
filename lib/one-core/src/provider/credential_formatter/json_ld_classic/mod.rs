@@ -242,14 +242,21 @@ impl JsonLdClassic {
         let subject = credential
             .credential_subject
             .subject
-            .into_iter()
+            .values()
             .next()
-            .ok_or(FormatterError::CouldNotExtractCredentials(
-                "Missing credential subject".to_string(),
+            .ok_or(FormatterError::JsonMapping(
+                "subject is not defined".to_string(),
+            ))?
+            .as_object()
+            .ok_or(FormatterError::JsonMapping(
+                "subject is not an Object".to_string(),
             ))?;
 
         let claims = CredentialSubject {
-            values: subject.1.into_iter().collect(),
+            values: subject
+                .into_iter()
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                .collect(),
         };
 
         Ok(DetailCredential {

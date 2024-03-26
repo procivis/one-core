@@ -27,5 +27,5 @@ pub struct ProofRequestClaimDTO {
 pub(super) struct ValidatedProofClaimDTO {
     pub claim_schema_id: ClaimSchemaId,
     pub credential: DetailCredential,
-    pub value: String,
+    pub value: (String, serde_json::Value),
 }

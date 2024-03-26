@@ -1,6 +1,8 @@
 pub mod error;
 pub mod model;
 
+mod common;
+
 // Implementations
 pub mod jwt;
 

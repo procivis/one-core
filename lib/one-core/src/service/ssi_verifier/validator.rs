@@ -240,27 +240,28 @@ pub(super) async fn validate_proof(
 
         let mut collected_proved_claims: Vec<ValidatedProofClaimDTO> = vec![];
         for requested_proof_claim in requested_proof_claims {
-            let value = credential
+            let found = credential
                 .claims
                 .values
                 .get(&requested_proof_claim.schema.key);
 
             // missing optional claim
-            if !requested_proof_claim.required && value.is_none() {
+            if !requested_proof_claim.required && found.is_none() {
                 continue;
             }
 
-            let value = value
-                .ok_or(ServiceError::ValidationError(format!(
-                    "Required credential key '{}' missing",
-                    &requested_proof_claim.schema.key
-                )))?
-                .to_owned();
+            let value = found.ok_or(ServiceError::ValidationError(format!(
+                "Required credential key '{}' missing",
+                &requested_proof_claim.schema.key
+            )))?;
 
             collected_proved_claims.push(ValidatedProofClaimDTO {
                 claim_schema_id: requested_proof_claim.schema.id,
                 credential: credential.to_owned(),
-                value,
+                value: (
+                    requested_proof_claim.schema.key.to_owned(),
+                    value.to_owned(),
+                ),
             });
         }
 
@@ -298,8 +299,8 @@ fn extract_matching_requested_schema(
                     received_credential
                         .claims
                         .values
-                        .keys()
-                        .any(|key| key == &required_claim_schema.schema.key)
+                        .iter()
+                        .any(|(key, _)| key == &required_claim_schema.schema.key)
                 })
         })
         .ok_or(ServiceError::ValidationError(

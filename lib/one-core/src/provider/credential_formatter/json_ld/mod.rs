@@ -1,4 +1,5 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use convert_case::{Case, Casing};
 use serde::Serialize;
@@ -10,6 +11,7 @@ use sophia_jsonld::{
 };
 use time::OffsetDateTime;
 
+use crate::provider::credential_formatter::common::nest_claims;
 use crate::{crypto::CryptoProvider, provider::did_method::dto::DidDocumentDTO};
 
 use super::{error::FormatterError, AuthenticationFn, Context, CredentialData, VerificationFn};
@@ -51,7 +53,7 @@ pub(super) fn prepare_credential(
         credential.claims,
         holder_did,
         custom_subject_name,
-    );
+    )?;
 
     Ok(LdCredential {
         context,
@@ -139,20 +141,19 @@ pub(super) fn prepare_credential_subject(
     claims: Vec<(String, String)>,
     holder_did: &DidValue,
     custom_subject_name: Option<String>,
-) -> LdCredentialSubject {
+) -> Result<LdCredentialSubject, FormatterError> {
     let credential_schema_name = credential_schema_name.to_case(Case::Pascal);
-
-    let mut subject = HashMap::new();
-    let claims = HashMap::from_iter(claims);
 
     let subject_name_base = custom_subject_name.unwrap_or(credential_schema_name);
 
-    subject.insert(format!("{}Subject", subject_name_base), claims);
-
-    LdCredentialSubject {
+    Ok(LdCredentialSubject {
         id: holder_did.clone(),
-        subject,
-    }
+        subject: HashMap::from([(
+            format!("{subject_name_base}Subject"),
+            serde_json::to_value(nest_claims(claims)?)
+                .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?,
+        )]),
+    })
 }
 
 pub(super) async fn prepare_proof_hash<T>(

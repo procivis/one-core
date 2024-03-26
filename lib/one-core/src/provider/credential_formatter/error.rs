@@ -1,3 +1,4 @@
+use jsonptr::MalformedPointerError;
 use thiserror::Error;
 
 use crate::crypto::error::CryptoProviderError;
@@ -34,6 +35,12 @@ pub enum FormatterError {
     CryptoError(#[from] CryptoProviderError),
     #[error("{formatter} formatter missing missing base url")]
     MissingBaseUrl { formatter: &'static str },
+    #[error("JSON mapping error: `{0}`")]
+    JsonMapping(String),
+    #[error("Jsonptr library malformed pointer error: `{0}`")]
+    JsonPtrMalformed(#[from] MalformedPointerError),
+    #[error("Jsonptr library error: `{0}`")]
+    JsonPtrError(#[from] jsonptr::Error),
 }
 
 #[derive(Debug, PartialEq, Eq, Error)]

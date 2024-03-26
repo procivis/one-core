@@ -20,8 +20,7 @@ impl CredentialsApi {
         credential_schema_id: impl Into<Uuid>,
         transport: impl Into<String>,
         issuer_did: impl Into<Uuid>,
-        claim_id: impl Into<Uuid>,
-        value: impl Into<String>,
+        claims: serde_json::Value,
         issuer_key: impl Into<Option<KeyId>>,
     ) -> Response {
         let body = json!({
@@ -29,12 +28,7 @@ impl CredentialsApi {
           "transport": transport.into(),
           "issuerDid": issuer_did.into(),
           "issuerKey": issuer_key.into(),
-          "claimValues": [
-                {
-                    "claimId": claim_id.into(),
-                    "value": value.into(),
-                }
-            ]
+          "claimValues": claims
         });
 
         self.client.post("/api/credential/v1", body).await
