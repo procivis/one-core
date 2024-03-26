@@ -5,11 +5,15 @@ use dto_mapper::convert_inner;
 use dto_mapper::{From, Into, TryInto};
 use one_core::model::common::ExactColumn;
 use one_core::model::credential::SortableCredentialColumn;
+use one_core::model::credential_schema::LayoutType;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
-use one_core::service::credential::dto::CredentialRole;
-use one_core::service::credential_schema::dto::GetCredentialSchemaListResponseDTO;
+use one_core::service::credential::dto::{CredentialRole, CredentialSchemaType};
+use one_core::service::credential_schema::dto::{
+    CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+    GetCredentialSchemaListResponseDTO,
+};
 use one_core::service::did::dto::DidListItemResponseDTO;
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
@@ -96,7 +100,7 @@ pub struct ListQueryBindingDTO {
 #[from(GetCredentialSchemaListResponseDTO)]
 pub struct CredentialSchemaListBindingDTO {
     #[from(with_fn = convert_inner)]
-    pub values: Vec<CredentialSchemaBindingDTO>,
+    pub values: Vec<CredentialSchemaListItemBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
 }
@@ -172,7 +176,7 @@ pub struct CredentialListItemBindingDTO {
     pub revocation_date: Option<String>,
     pub issuer_did: Option<String>,
     pub state: CredentialStateBindingEnum,
-    pub schema: CredentialSchemaBindingDTO,
+    pub schema: CredentialSchemaListItemBindingDTO,
     pub role: CredentialRoleBindingDTO,
     pub suspend_end_date: Option<String>,
 }
@@ -211,6 +215,26 @@ pub struct DidListItemBindingDTO {
 
 #[derive(Debug, Clone, From)]
 #[from(CredentialSchemaListItemResponseDTO)]
+pub struct CredentialSchemaListItemBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    pub name: String,
+    pub format: String,
+    pub revocation_method: String,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaTypeBindingEnum,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(CredentialSchemaDetailResponseDTO)]
 pub struct CredentialSchemaBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
@@ -223,6 +247,38 @@ pub struct CredentialSchemaBindingDTO {
     pub revocation_method: String,
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaTypeBindingEnum,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<LayoutTypeBindingEnum>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(CredentialSchemaLayoutPropertiesRequestDTO)]
+pub struct CredentialSchemaLayoutPropertiesBindingDTO {
+    pub background_color: Option<String>,
+    pub background_image: Option<String>,
+    pub label_color: Option<String>,
+    pub label_image: Option<String>,
+    pub primary_attribute: Option<String>,
+    pub secondary_attribute: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, From)]
+#[from(CredentialSchemaType)]
+pub enum CredentialSchemaTypeBindingEnum {
+    ProcivisOneSchema2024,
+    FallbackSchema2024,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(LayoutType)]
+pub enum LayoutTypeBindingEnum {
+    Card,
+    Document,
+    SingleAttribute,
 }
 
 #[derive(From, Clone, Debug)]

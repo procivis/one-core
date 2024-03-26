@@ -85,6 +85,8 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             organisation_id,
             schema_type: value.schema_type.into(),
             schema_id: value.schema_id,
+            layout_type: value.layout_type.into(),
+            layout_properties: convert_inner(value.layout_properties),
         })
     }
 }

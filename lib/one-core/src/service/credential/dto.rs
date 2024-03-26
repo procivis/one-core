@@ -7,8 +7,9 @@ use uuid::Uuid;
 use dto_mapper::{From, Into};
 
 use crate::model;
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use crate::model::list_filter::ValueComparison;
+use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO;
 use crate::{
     model::{
         common::GetListResponse,
@@ -77,8 +78,12 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    pub schema_type: CredentialSchemaType,
     pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub layout_type: Option<LayoutType>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, From, Into)]

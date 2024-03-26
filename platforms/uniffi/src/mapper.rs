@@ -112,6 +112,10 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             format: value.format,
             revocation_method: value.revocation_method,
             wallet_storage_type: convert_inner(value.wallet_storage_type),
+            schema_id: value.schema_id,
+            schema_type: value.schema_type.into(),
+            layout_type: convert_inner(value.layout_type),
+            layout_properties: convert_inner(value.layout_properties),
         }
     }
 }
