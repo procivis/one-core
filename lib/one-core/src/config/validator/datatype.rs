@@ -66,6 +66,10 @@ pub enum DatatypeValidationError {
     // enum
     #[error("Enum invalid value: `{0}`")]
     EnumInvalidValue(String),
+
+    // object
+    #[error("Object value should not be specified in request")]
+    ObjectValueShouldNotBeSpecifiedInRequest,
 }
 
 pub fn validate_datatypes<'a>(
@@ -261,7 +265,7 @@ fn validate_file(value: &str, params: FileParams) -> Result<(), DatatypeValidati
 struct ObjectParams {}
 
 fn validate_object(_value: &str, _params: ObjectParams) -> Result<(), DatatypeValidationError> {
-    todo!() // Todo (ONE-1321)
+    Err(DatatypeValidationError::ObjectValueShouldNotBeSpecifiedInRequest)
 }
 
 fn parse_min_max_date(value: &str) -> Result<OffsetDateTime, DatatypeValidationError> {

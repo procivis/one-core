@@ -796,7 +796,10 @@ impl FormatterError {
             | FormatterError::MissingIssuer
             | FormatterError::MissingClaim
             | FormatterError::CryptoError(_)
-            | FormatterError::MissingBaseUrl { .. } => ErrorCode::BR_0057,
+            | FormatterError::MissingBaseUrl { .. }
+            | FormatterError::JsonMapping(_)
+            | FormatterError::JsonPtrMalformed(_)
+            | FormatterError::JsonPtrError(_) => ErrorCode::BR_0057,
         }
     }
 }

@@ -57,6 +57,7 @@ pbkdf2                     = { version = "0.12", features = ["simple"] }
 futures.workspace          = true
 tracing.workspace          = true
 hex.workspace              = true
+jsonptr                    = { version = "0.4.7" }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

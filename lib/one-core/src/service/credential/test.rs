@@ -3,6 +3,7 @@ use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletSt
 use crate::provider::revocation::{CredentialRevocationState, RevocationMethodCapabilities};
 use crate::repository::lvvc_repository::MockLvvcRepository;
 use crate::service::credential::dto::SuspendCredentialRequestDTO;
+use crate::service::credential::validator::validate_create_request;
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -1033,7 +1034,7 @@ async fn test_check_revocation_non_revocable() {
                 issuer_did: None,
                 subject: None,
                 claims: CredentialSubject {
-                    values: HashMap::default(),
+                    values: Default::default(),
                 },
                 status: vec![],
                 credential_schema: None,
@@ -1177,7 +1178,7 @@ async fn test_check_revocation_being_revoked() {
                 issuer_did: None,
                 subject: None,
                 claims: CredentialSubject {
-                    values: HashMap::default(),
+                    values: Default::default(),
                 },
                 status: vec![CredentialStatus {
                     id: "id".to_string(),
@@ -2135,4 +2136,311 @@ async fn test_reactivate_credential_failed_cannot_reactivate_revoked_credential(
         result,
         ServiceError::BusinessLogic(BusinessLogicError::InvalidCredentialState { .. })
     ));
+}
+
+fn generate_credential_schema_with_claim_schemas(
+    claim_schemas: Vec<CredentialSchemaClaim>,
+) -> CredentialSchema {
+    let now = OffsetDateTime::now_utc();
+    CredentialSchema {
+        id: Uuid::new_v4(),
+        deleted_at: None,
+        created_date: now,
+        last_modified: now,
+        name: "nested".to_string(),
+        format: "".to_string(),
+        revocation_method: "".to_string(),
+        wallet_storage_type: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_id: "".to_string(),
+        claim_schemas: Some(claim_schemas),
+        organisation: None,
+    }
+}
+
+#[test]
+fn test_validate_create_request_all_nested_claims_are_required() {
+    let address_claim_id = Uuid::new_v4().into();
+    let location_claim_id = Uuid::new_v4().into();
+    let location_x_claim_id = Uuid::new_v4().into();
+    let location_y_claim_id = Uuid::new_v4().into();
+
+    let now = OffsetDateTime::now_utc();
+    let schema = generate_credential_schema_with_claim_schemas(vec![
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: address_claim_id,
+                key: "address".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_claim_id,
+                key: "location".to_string(),
+                data_type: "OBJECT".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_x_claim_id,
+                key: "location/x".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_y_claim_id,
+                key: "location/y".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+    ]);
+
+    validate_create_request(
+        "PROCIVIS_TEMPORARY",
+        &[
+            CredentialRequestClaimDTO {
+                claim_schema_id: address_claim_id,
+                value: "Somewhere".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: location_x_claim_id,
+                value: "123".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: location_y_claim_id,
+                value: "456".to_string(),
+            },
+        ],
+        &schema,
+        &generic_config().core,
+    )
+    .unwrap();
+}
+
+#[test]
+fn test_validate_create_request_all_optional_nested_object_with_required_claims() {
+    let address_claim_id = Uuid::new_v4().into();
+    let location_claim_id = Uuid::new_v4().into();
+    let location_x_claim_id = Uuid::new_v4().into();
+    let location_y_claim_id = Uuid::new_v4().into();
+
+    let now = OffsetDateTime::now_utc();
+    let schema = generate_credential_schema_with_claim_schemas(vec![
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: address_claim_id,
+                key: "address".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_claim_id,
+                key: "location".to_string(),
+                data_type: "OBJECT".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: false,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_x_claim_id,
+                key: "location/x".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_y_claim_id,
+                key: "location/y".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+    ]);
+
+    validate_create_request(
+        "PROCIVIS_TEMPORARY",
+        &[
+            CredentialRequestClaimDTO {
+                claim_schema_id: address_claim_id,
+                value: "Somewhere".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: location_x_claim_id,
+                value: "123".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: location_y_claim_id,
+                value: "456".to_string(),
+            },
+        ],
+        &schema,
+        &generic_config().core,
+    )
+    .unwrap();
+
+    validate_create_request(
+        "PROCIVIS_TEMPORARY",
+        &[CredentialRequestClaimDTO {
+            claim_schema_id: address_claim_id,
+            value: "Somewhere".to_string(),
+        }],
+        &schema,
+        &generic_config().core,
+    )
+    .unwrap();
+
+    let result = validate_create_request(
+        "PROCIVIS_TEMPORARY",
+        &[
+            CredentialRequestClaimDTO {
+                claim_schema_id: address_claim_id,
+                value: "Somewhere".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: location_x_claim_id,
+                value: "123".to_string(),
+            },
+        ],
+        &schema,
+        &generic_config().core,
+    );
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::CredentialMissingClaim { .. }
+        ))
+    ));
+}
+
+#[test]
+fn test_validate_create_request_all_required_nested_object_with_optional_claims() {
+    let address_claim_id = Uuid::new_v4().into();
+    let location_claim_id = Uuid::new_v4().into();
+    let location_x_claim_id = Uuid::new_v4().into();
+    let location_y_claim_id = Uuid::new_v4().into();
+
+    let now = OffsetDateTime::now_utc();
+    let schema = generate_credential_schema_with_claim_schemas(vec![
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: address_claim_id,
+                key: "address".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_claim_id,
+                key: "location".to_string(),
+                data_type: "OBJECT".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_x_claim_id,
+                key: "location/x".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: location_y_claim_id,
+                key: "location/y".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: false,
+        },
+    ]);
+
+    validate_create_request(
+        "PROCIVIS_TEMPORARY",
+        &[
+            CredentialRequestClaimDTO {
+                claim_schema_id: address_claim_id,
+                value: "Somewhere".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: location_x_claim_id,
+                value: "123".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: location_y_claim_id,
+                value: "456".to_string(),
+            },
+        ],
+        &schema,
+        &generic_config().core,
+    )
+    .unwrap();
+
+    let result = validate_create_request(
+        "PROCIVIS_TEMPORARY",
+        &[CredentialRequestClaimDTO {
+            claim_schema_id: address_claim_id,
+            value: "Somewhere".to_string(),
+        }],
+        &schema,
+        &generic_config().core,
+    );
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::CredentialMissingClaim { .. }
+        ))
+    ));
+
+    validate_create_request(
+        "PROCIVIS_TEMPORARY",
+        &[
+            CredentialRequestClaimDTO {
+                claim_schema_id: address_claim_id,
+                value: "Somewhere".to_string(),
+            },
+            CredentialRequestClaimDTO {
+                claim_schema_id: location_x_claim_id,
+                value: "123".to_string(),
+            },
+        ],
+        &schema,
+        &generic_config().core,
+    )
+    .unwrap();
 }

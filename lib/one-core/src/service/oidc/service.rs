@@ -802,7 +802,7 @@ impl OIDCService {
                 claims,
                 issuer_did,
                 holder_did,
-            );
+            )?;
 
             proof_claims.append(
                 &mut credential

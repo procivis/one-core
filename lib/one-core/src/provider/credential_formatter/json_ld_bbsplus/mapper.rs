@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::provider::credential_formatter::{
     error::FormatterError,
     json_ld::model::LdCredential,
@@ -26,14 +24,6 @@ impl TryFrom<LdCredential> for DetailCredential {
     type Error = FormatterError;
 
     fn try_from(value: LdCredential) -> Result<Self, Self::Error> {
-        let mut claims: HashMap<String, String> = HashMap::new();
-
-        for (_, credential) in value.credential_subject.subject {
-            for (key, value) in credential {
-                claims.insert(key, value);
-            }
-        }
-
         Ok(Self {
             id: Some(value.id),
             issued_at: Some(value.issuance_date),
@@ -41,7 +31,23 @@ impl TryFrom<LdCredential> for DetailCredential {
             invalid_before: None,
             issuer_did: Some(value.issuer),
             subject: Some(value.credential_subject.id),
-            claims: CredentialSubject { values: claims },
+            claims: CredentialSubject {
+                values: value
+                    .credential_subject
+                    .subject
+                    .values()
+                    .next()
+                    .ok_or(FormatterError::JsonMapping(
+                        "subject is not defined".to_string(),
+                    ))?
+                    .as_object()
+                    .ok_or(FormatterError::JsonMapping(
+                        "subject is not an Object".to_string(),
+                    ))?
+                    .into_iter()
+                    .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                    .collect(),
+            },
             status: value.credential_status,
             credential_schema: value.credential_schema,
         })

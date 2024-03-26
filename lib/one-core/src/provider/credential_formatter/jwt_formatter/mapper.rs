@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-
 use crate::provider::credential_formatter::{
+    common::nest_claims,
+    error::FormatterError,
     jwt::Jwt,
     model::{CredentialSubject, DetailCredential},
     Context, CredentialData,
@@ -12,7 +12,7 @@ pub(super) fn format_vc(
     credential: CredentialData,
     additional_context: Vec<String>,
     additional_types: Vec<String>,
-) -> VC {
+) -> Result<VC, FormatterError> {
     let context = vec![Context::CredentialsV1.to_string()]
         .into_iter()
         .chain(additional_context)
@@ -23,18 +23,18 @@ pub(super) fn format_vc(
         .chain(additional_types)
         .collect();
 
-    VC {
+    Ok(VC {
         vc: VCContent {
             context,
             r#type: types,
             id: Some(credential.id),
             credential_subject: CredentialSubject {
-                values: HashMap::from_iter(credential.claims),
+                values: nest_claims(credential.claims)?,
             },
             credential_status: credential.status,
             credential_schema: credential.schema.into(),
         },
-    }
+    })
 }
 
 impl From<Jwt<VC>> for DetailCredential {

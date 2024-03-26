@@ -56,7 +56,7 @@ impl CredentialFormatter for JWTFormatter {
         let credential_id = credential.id.clone();
         let issuer = credential.issuer_did.to_string();
 
-        let vc = format_vc(credential, additional_context, additional_types);
+        let vc = format_vc(credential, additional_context, additional_types)?;
 
         let payload = JWTPayload {
             issued_at: Some(issued_at),

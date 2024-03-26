@@ -1134,8 +1134,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 subject: Some(holder_did_clone.to_owned()),
                 claims: CredentialSubject {
                     values: HashMap::from([
-                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        ("unknown_key".to_string(), json!("unknown_key_value")),
+                        ("required_key".to_string(), json!("required_key_value")),
                     ]),
                 },
                 status: vec![],
@@ -1189,8 +1189,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 subject: Some(holder_did.to_owned()),
                 claims: CredentialSubject {
                     values: HashMap::from([
-                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        ("unknown_key".to_string(), json!("unknown_key_value")),
+                        ("required_key".to_string(), json!("required_key_value")),
                     ]),
                 },
                 status: vec![CredentialStatus {

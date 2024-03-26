@@ -1,5 +1,5 @@
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::{
+    common_mapper::NESTED_CLAIM_MARKER,
     model::{
         claim_schema::ClaimSchema,
         common::ExactColumn,

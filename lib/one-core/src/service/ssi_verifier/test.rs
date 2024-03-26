@@ -41,6 +41,7 @@ use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use mockall::predicate::eq;
+use serde_json::json;
 
 #[tokio::test]
 async fn test_connect_to_holder_succeeds() {
@@ -317,8 +318,8 @@ async fn test_submit_proof_succeeds() {
                 subject: Some(holder_did_clone.to_owned()),
                 claims: CredentialSubject {
                     values: HashMap::from([
-                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        ("required_key".to_owned(), "required_key_value".to_owned()),
+                        ("unknown_key".to_string(), json!("unknown_key_value")),
+                        ("required_key".to_string(), json!("required_key_value")),
                     ]),
                 },
                 status: vec![],
@@ -357,12 +358,8 @@ async fn test_submit_proof_succeeds() {
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([
-                        // ignored by verifier
-                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        // required by verifier
-                        ("required_key".to_owned(), "required_key_value".to_owned()),
-                        // optional
-                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                        ("unknown_key".to_string(), json!("unknown_key_value")),
+                        ("required_key".to_string(), json!("required_key_value")),
                     ]),
                 },
                 status: vec![],
@@ -534,12 +531,8 @@ async fn test_submit_proof_failed_credential_revoked() {
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([
-                        // ignored by verifier
-                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        // required by verifier
-                        ("required_key".to_owned(), "required_key_value".to_owned()),
-                        // optional
-                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                        ("unknown_key".to_string(), json!("unknown_key_value")),
+                        ("required_key".to_string(), json!("required_key_value")),
                     ]),
                 },
                 status: vec![],
@@ -578,12 +571,8 @@ async fn test_submit_proof_failed_credential_revoked() {
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([
-                        // ignored by verifier
-                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        // required by verifier
-                        ("required_key".to_owned(), "required_key_value".to_owned()),
-                        // optional
-                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                        ("unknown_key".to_string(), json!("unknown_key_value")),
+                        ("required_key".to_string(), json!("required_key_value")),
                     ]),
                 },
                 status: vec![CredentialStatus {
@@ -725,12 +714,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([
-                        // ignored by verifier
-                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        // required by verifier
-                        ("required_key".to_owned(), "required_key_value".to_owned()),
-                        // optional
-                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                        ("unknown_key".to_string(), json!("unknown_key_value")),
+                        ("required_key".to_string(), json!("required_key_value")),
                     ]),
                 },
                 status: vec![],
@@ -769,12 +754,8 @@ async fn test_submit_proof_failed_credential_suspended() {
                 claims: CredentialSubject {
                     // submitted claims
                     values: HashMap::from([
-                        // ignored by verifier
-                        ("unknown_key".to_owned(), "unknown_key_value".to_owned()),
-                        // required by verifier
-                        ("required_key".to_owned(), "required_key_value".to_owned()),
-                        // optional
-                        // ("optional_key".to_owned(), "optional_key_value".to_owned()),
+                        ("unknown_key".to_string(), json!("unknown_key_value")),
+                        ("required_key".to_string(), json!("required_key_value")),
                     ]),
                 },
                 status: vec![CredentialStatus {

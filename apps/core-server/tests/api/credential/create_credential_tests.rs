@@ -27,8 +27,12 @@ async fn test_create_credential_success() {
             credential_schema.id,
             "OPENID4VC",
             did.id,
-            claim_id,
-            "foo",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                }
+            ]),
             None,
         )
         .await;
@@ -43,6 +47,62 @@ async fn test_create_credential_success() {
         credential.state.unwrap()[0].state
     );
     assert_eq!(1, credential.claims.unwrap().len());
+    assert_eq!("OPENID4VC", credential.transport);
+}
+
+#[tokio::test]
+async fn test_create_credential_success_with_nested_claims() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_claims("test schema", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schemas = credential_schema.claim_schemas.unwrap();
+
+    let street_claim_id = claim_schemas[1].schema.id.to_owned();
+    let coordinate_x_claim_id = claim_schemas[3].schema.id.to_owned();
+    let coordinate_y_claim_id = claim_schemas[4].schema.id.to_owned();
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": street_claim_id.to_string(),
+                    "value": "foo",
+                },
+                {
+                    "claimId": coordinate_x_claim_id.to_string(),
+                    "value": "123",
+                },
+                {
+                    "claimId": coordinate_y_claim_id.to_string(),
+                    "value": "456",
+                },
+
+            ]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let credential = context.db.credentials.get(&resp["id"].parse()).await;
+    assert_eq!(
+        CredentialStateEnum::Created,
+        credential.state.unwrap()[0].state
+    );
+    assert_eq!(3, credential.claims.unwrap().len());
     assert_eq!("OPENID4VC", credential.transport);
 }
 
@@ -110,8 +170,12 @@ async fn test_create_credential_with_issuer_key() {
             credential_schema.id,
             "OPENID4VC",
             did.id,
-            claim_id,
-            "foo",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                }
+            ]),
             key3.id,
         )
         .await;
@@ -166,8 +230,12 @@ async fn test_fail_to_create_credential_invalid_key_role() {
             credential_schema.id,
             "OPENID4VC",
             did.id,
-            claim_id,
-            "foo",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                }
+            ]),
             key.id,
         )
         .await;
@@ -197,8 +265,12 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             credential_schema.id,
             "OPENID4VC",
             did.id,
-            claim_id,
-            "foo",
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": "foo",
+                }
+            ]),
             KeyId::from(Uuid::new_v4()),
         )
         .await;
@@ -231,8 +303,12 @@ async fn test_create_credential_with_big_picture_success() {
             credential_schema.id,
             "OPENID4VC",
             did.id,
-            claim_id,
-            format!("data:image/png;base64,{data}"),
+            serde_json::json!([
+                {
+                    "claimId": claim_id.to_string(),
+                    "value": format!("data:image/png;base64,{data}"),
+                }
+            ]),
             None,
         )
         .await;
@@ -248,4 +324,42 @@ async fn test_create_credential_with_big_picture_success() {
     );
     assert_eq!(1, credential.claims.unwrap().len());
     assert_eq!("OPENID4VC", credential.transport);
+}
+
+#[tokio::test]
+async fn test_create_credential_failed_specified_object_claim() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_claims("test schema", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schemas = credential_schema.claim_schemas.unwrap();
+
+    let object_claim_id = claim_schemas[0].schema.id.to_owned();
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .create(
+            credential_schema.id,
+            "OPENID4VC",
+            did.id,
+            serde_json::json!([
+                {
+                    "claimId": object_claim_id.to_string(),
+                    "value": "foo",
+                }
+            ]),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0061");
 }

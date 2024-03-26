@@ -45,7 +45,7 @@ pub struct VCCredentialSchemaResponse {
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSubject {
     #[serde(flatten)]
-    pub values: HashMap<String, String>,
+    pub values: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

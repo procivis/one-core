@@ -2,7 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
+use time::OffsetDateTime;
 
+use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};
+use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
 use crate::{
     crypto::MockCryptoProvider,
     provider::{
@@ -242,3 +245,114 @@ static TRANSFORMED_OWN: &str = "<did:key:z6Mkw6BZWh2yCJW3HJ9RuJfuFdSzmzRbgWgbzLn
 _:b0 <http://127.0.0.1:36585/ssi/context/v1/bb9c433c-3d35-437c-bfb7-919ae6da07aa#Address> \"test\" .
 _:b0 <http://127.0.0.1:36585/ssi/context/v1/bb9c433c-3d35-437c-bfb7-919ae6da07aa#Key> \"test\" .
 _:b0 <http://127.0.0.1:36585/ssi/context/v1/bb9c433c-3d35-437c-bfb7-919ae6da07aa#Name> \"test\" .";
+
+fn generate_ld_credential(subject_claims: serde_json::Value) -> LdCredential {
+    LdCredential {
+        context: vec![],
+        id: "".to_string(),
+        r#type: vec![],
+        issuer: "did:key:1234".to_string().into(),
+        issuance_date: OffsetDateTime::now_utc(),
+        credential_subject: LdCredentialSubject {
+            id: "did:key:1234".to_string().into(),
+            subject: HashMap::from([("credentialSubject".to_string(), subject_claims)]),
+        },
+        credential_status: vec![],
+        proof: None,
+        credential_schema: None,
+    }
+}
+
+#[test]
+fn test_remove_undisclosed_keys_group_allow_whole_object() {
+    let mut test_cred = generate_ld_credential(serde_json::json!({
+        "foo": {
+            "bar": 10,
+            "bar1": 11
+        }
+    }));
+
+    remove_undisclosed_keys(&mut test_cred, &["foo".to_string()]).unwrap();
+
+    let expected = serde_json::json!({
+        "foo": {
+            "bar": 10,
+            "bar1": 11
+        }
+    });
+
+    assert_eq!(
+        expected,
+        test_cred.credential_subject.subject["credentialSubject"]
+    );
+}
+
+#[test]
+fn test_remove_undisclosed_keys_group_allow_separate_claims() {
+    let mut test_cred = generate_ld_credential(serde_json::json!({
+        "foo": {
+            "bar": 10,
+            "bar1": 11
+        }
+    }));
+
+    remove_undisclosed_keys(&mut test_cred, &["foo/bar".to_string()]).unwrap();
+
+    let expected = serde_json::json!({
+        "foo": {
+            "bar": 10
+        }
+    });
+
+    assert_eq!(
+        expected,
+        test_cred.credential_subject.subject["credentialSubject"]
+    );
+}
+
+#[test]
+fn test_remove_undisclosed_keys_group_allow_none() {
+    let mut test_cred = generate_ld_credential(serde_json::json!({
+        "foo": {
+            "bar": 10,
+            "bar1": 11
+        }
+    }));
+
+    remove_undisclosed_keys(&mut test_cred, &["some_unrelated_claim".to_string()]).unwrap();
+
+    let expected = serde_json::json!({});
+
+    assert_eq!(
+        expected,
+        test_cred.credential_subject.subject["credentialSubject"]
+    );
+}
+
+#[test]
+fn test_remove_undisclosed_keys_group_allow_multiple_claims() {
+    let mut test_cred = generate_ld_credential(serde_json::json!({
+        "foo": {
+            "bar": 10,
+            "bar1": 11
+        }
+    }));
+
+    remove_undisclosed_keys(
+        &mut test_cred,
+        &["foo/bar".to_string(), "foo/bar1".to_string()],
+    )
+    .unwrap();
+
+    let expected = serde_json::json!({
+        "foo": {
+            "bar": 10,
+            "bar1": 11
+        }
+    });
+
+    assert_eq!(
+        expected,
+        test_cred.credential_subject.subject["credentialSubject"]
+    );
+}
