@@ -28,6 +28,11 @@ async fn test_get_credential_schema_success() {
     let resp = resp.json_value().await;
 
     resp["id"].assert_eq(&credential_schema.id);
+    resp["schemaId"].assert_eq(&credential_schema.id);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
     assert_eq!(resp["revocationMethod"], "STATUSLIST2021");
+    assert_eq!(resp["layoutType"], "CARD");
+    assert_eq!(resp["schemaType"], "ProcivisOneSchema2024");
+    assert_eq!(resp["layoutProperties"]["backgroundColor"], "#DA2727");
+    assert_eq!(resp["layoutProperties"]["backgroundImage"], "#DA2727");
 }

@@ -45,6 +45,10 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             organisation_id,
             claims: claim_schemas,
             wallet_storage_type: value.wallet_storage_type,
+            schema_id: value.schema_id,
+            schema_type: value.schema_type.into(),
+            layout_type: Some(value.layout_type),
+            layout_properties: value.layout_properties.map(|item| item.into()),
         })
     }
 }

@@ -40,6 +40,8 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<CredentialSchemaLayoutType>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -61,6 +63,12 @@ pub struct CredentialSchemaResponseRestDTO {
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<CredentialSchemaLayoutType>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -123,9 +131,10 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestRestDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, Default)]
-#[serde(rename_all = "UPPERCASE")]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into(one_core::model::credential_schema::LayoutType)]
+#[from(one_core::model::credential_schema::LayoutType)]
 pub enum CredentialSchemaLayoutType {
     #[default]
     Card,
@@ -133,8 +142,9 @@ pub enum CredentialSchemaLayoutType {
     SingleAttribute,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into, From)]
 #[into(credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO)]
+#[from(credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaLayoutPropertiesRequestRestDTO {
     background_color: Option<String>,

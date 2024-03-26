@@ -23,8 +23,8 @@ pub struct CredentialSchema {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
-    pub schema_type: CredentialSchemaType,
     pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
@@ -62,14 +62,14 @@ pub enum WalletStorageTypeEnum {
     Software,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
 pub enum LayoutType {
     Card,
     Document,
     SingleAttribute,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
 pub struct LayoutProperties {
     pub background_color: Option<String>,
     pub background_image: Option<String>,

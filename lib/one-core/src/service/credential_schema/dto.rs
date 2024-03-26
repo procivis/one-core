@@ -32,9 +32,10 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
+    pub layout_type: Option<LayoutType>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct CredentialSchemaDetailResponseDTO {
     pub id: CredentialSchemaId,
     pub created_date: OffsetDateTime,
@@ -45,6 +46,10 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub schema_id: String,
+    pub schema_type: CredentialSchemaType,
+    pub layout_type: Option<LayoutType>,
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -77,14 +82,22 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
-#[derive(Debug, Clone, Into)]
+#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[into(model::credential_schema::LayoutProperties)]
+#[from(model::credential_schema::LayoutProperties)]
 pub struct CredentialSchemaLayoutPropertiesRequestDTO {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub background_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub background_image: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub label_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub label_image: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub primary_attribute: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub secondary_attribute: Option<String>,
 }
 

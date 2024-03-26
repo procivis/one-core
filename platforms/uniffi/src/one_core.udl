@@ -65,6 +65,23 @@ enum WalletStorageTypeBindingEnum {
   "Hardware", "Software"
 };
 
+enum CredentialSchemaTypeBindingEnum {
+  "ProcivisOneSchema2024", "FallbackSchema2024"
+};
+
+enum LayoutTypeBindingEnum {
+  "Card", "Document", "SingleAttribute"
+};
+
+dictionary CredentialSchemaLayoutPropertiesBindingDTO {
+  string? background_color;
+  string? background_image;
+  string? label_color;
+  string? label_image;
+  string? primary_attribute;
+  string? secondary_attribute;
+};
+
 dictionary CredentialSchemaBindingDTO {
   string id;
   string created_date;
@@ -73,6 +90,23 @@ dictionary CredentialSchemaBindingDTO {
   string format;
   string revocation_method;
   WalletStorageTypeBindingEnum? wallet_storage_type;
+  string schema_id;
+  CredentialSchemaTypeBindingEnum schema_type;
+  LayoutTypeBindingEnum? layout_type;
+  CredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
+};
+
+dictionary CredentialSchemaListItemBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string name;
+  string format;
+  string revocation_method;
+  WalletStorageTypeBindingEnum? wallet_storage_type;
+  string schema_id;
+  CredentialSchemaTypeBindingEnum schema_type;
+  LayoutTypeBindingEnum? layout_type;
 };
 
 dictionary ClaimBindingDTO {
@@ -94,7 +128,7 @@ dictionary CredentialListItemBindingDTO {
   string? revocation_date;
   string? issuer_did;
   CredentialStateBindingEnum state;
-  CredentialSchemaBindingDTO schema;
+  CredentialSchemaListItemBindingDTO schema;
   CredentialRoleBindingDTO role;
   string? suspend_end_date;
 };
@@ -173,7 +207,7 @@ dictionary ListQueryBindingDTO {
 };
 
 dictionary CredentialSchemaListBindingDTO {
-  sequence<CredentialSchemaBindingDTO> values;
+  sequence<CredentialSchemaListItemBindingDTO> values;
   u64 total_pages;
   u64 total_items;
 };

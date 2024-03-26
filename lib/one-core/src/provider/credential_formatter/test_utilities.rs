@@ -5,7 +5,7 @@ use time::{macros::datetime, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
-    model::did::DidType,
+    model::{credential_schema::LayoutType, did::DidType},
     service::{
         credential::dto::{
             CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
@@ -42,6 +42,8 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
             organisation_id: id.into(),
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
+            layout_type: Some(LayoutType::Card),
+            layout_properties: None,
         },
         issuer_did: Some(DidListItemResponseDTO {
             id: id.into(),
