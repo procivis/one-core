@@ -1,6 +1,8 @@
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ExactColumn;
 use crate::dto::common::ListQueryParamsRest;
+use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestRestDTO;
+use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutType;
 use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
 use crate::endpoint::credential_schema::dto::{
     CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
@@ -125,6 +127,10 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaTypeEnum,
+    #[from(with_fn = convert_inner)]
+    pub layout_type: Option<CredentialSchemaLayoutType>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

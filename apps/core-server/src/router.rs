@@ -407,6 +407,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::credential::dto::CredentialRevocationCheckResponseRestDTO,
                 endpoint::credential::dto::CredentialStateRestEnum,
                 endpoint::credential::dto::CredentialRoleRestEnum,
+                endpoint::credential::dto::CredentialSchemaTypeEnum,
+                endpoint::credential::dto::CredentialDetailClaimValueResponseRestDTO,
                 endpoint::credential::dto::SuspendCredentialRequestRestDTO,
 
                 endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO,
@@ -506,6 +508,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::PublicKeyJwkEllipticDataRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkRsaDataRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkOctDataRestDTO,
+                endpoint::ssi::dto::JsonLDNestedEntityRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkMlweDataRestDTO,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
