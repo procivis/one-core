@@ -68,6 +68,7 @@ pub struct ProofListItemResponseDTO {
 pub struct ProofClaimDTO {
     pub schema: ProofClaimSchemaResponseDTO,
     pub value: Option<String>,
+    pub claims: Vec<ProofClaimDTO>,
 }
 
 #[derive(Clone, Debug)]

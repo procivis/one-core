@@ -512,9 +512,9 @@ impl OIDCService {
             .presentation_definition
             .input_descriptors
             .iter_mut()
-            .enumerate()
-            .for_each(|(i, input_descriptor)| {
-                if let Some(validity_constraint) = proof_schema_inputs[i].validity_constraint {
+            .zip(proof_schema_inputs)
+            .for_each(|(input_descriptor, proof_schema_input)| {
+                if let Some(validity_constraint) = proof_schema_input.validity_constraint {
                     input_descriptor.constraints.validity_credential_nbf =
                         Some(now.sub(Duration::seconds(validity_constraint)));
                 }
