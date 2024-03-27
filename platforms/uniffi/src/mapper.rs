@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use super::dto::{ClaimBindingDTO, CredentialSchemaBindingDTO};
+use super::dto::{ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingDTO};
 use crate::{
     dto::{
         CredentialDetailBindingDTO, CredentialListItemBindingDTO, DidRequestBindingDTO,
@@ -11,6 +11,7 @@ use crate::{
     HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
 use dto_mapper::convert_inner;
+use one_core::service::credential::dto::DetailCredentialClaimValueResponseDTO;
 use one_core::{
     model::did::DidType,
     service::{
@@ -126,7 +127,20 @@ impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
             id: value.schema.id.to_string(),
             key: value.schema.key,
             data_type: value.schema.datatype,
-            value: value.value,
+            value: value.value.into(),
+        }
+    }
+}
+
+impl From<DetailCredentialClaimValueResponseDTO> for ClaimValueBindingDTO {
+    fn from(value: DetailCredentialClaimValueResponseDTO) -> Self {
+        match value {
+            DetailCredentialClaimValueResponseDTO::String(value) => {
+                ClaimValueBindingDTO::String { value }
+            }
+            DetailCredentialClaimValueResponseDTO::Nested(value) => ClaimValueBindingDTO::Nested {
+                value: value.into_iter().map(|v| v.into()).collect(),
+            },
         }
     }
 }

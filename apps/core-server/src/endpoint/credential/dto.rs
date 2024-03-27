@@ -18,6 +18,7 @@ use one_core::service::credential::dto::CredentialRole;
 use one_core::service::credential::dto::CredentialSchemaType;
 use one_core::service::credential::dto::CredentialStateEnum;
 use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
+use one_core::service::credential::dto::DetailCredentialClaimValueResponseDTO;
 use one_core::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use one_core::service::credential::dto::SuspendCredentialRequestDTO;
 use serde::{Deserialize, Serialize};
@@ -138,7 +139,15 @@ pub enum CredentialSchemaTypeEnum {
 #[from(DetailCredentialClaimResponseDTO)]
 pub struct CredentialDetailClaimResponseRestDTO {
     pub schema: CredentialClaimSchemaResponseRestDTO,
-    pub value: String,
+    pub value: CredentialDetailClaimValueResponseRestDTO,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[from(DetailCredentialClaimValueResponseDTO)]
+#[serde(untagged)]
+pub enum CredentialDetailClaimValueResponseRestDTO {
+    String(String),
+    Nested(#[from(with_fn = convert_inner)] Vec<CredentialDetailClaimResponseRestDTO>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]

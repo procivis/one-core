@@ -94,11 +94,18 @@ pub enum CredentialSchemaType {
     FallbackSchema2024,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DetailCredentialClaimResponseDTO {
     pub schema: CredentialClaimSchemaDTO,
-    pub value: String,
+    pub value: DetailCredentialClaimValueResponseDTO,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum DetailCredentialClaimValueResponseDTO {
+    String(String),
+    Nested(Vec<DetailCredentialClaimResponseDTO>),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, From, AsRefStr)]

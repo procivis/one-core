@@ -1,6 +1,5 @@
 use dto_mapper::convert_inner;
 use dto_mapper::{From, Into};
-use one_core::service::credential::dto::CredentialSchemaType;
 use one_core::service::credential_schema;
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
@@ -42,6 +41,13 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From)]
+#[from(one_core::service::credential::dto::CredentialSchemaType)]
+pub enum CredentialSchemaType {
+    ProcivisOneSchema2024,
+    FallbackSchema2024,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
