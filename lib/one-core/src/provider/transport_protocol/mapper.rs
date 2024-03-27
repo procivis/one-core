@@ -6,7 +6,7 @@ use crate::model::{
     key::Key,
     proof::{self, Proof, ProofId, ProofStateEnum},
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::model::claim::ClaimRelations;
@@ -178,81 +178,6 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     }
 
     Ok((relevant_credentials, credential_groups))
-}
-
-// TODO: Remove in ONE-1924
-pub async fn get_relevant_credentials(
-    credential_repository: &Arc<dyn CredentialRepository>,
-    mut credential_groups: Vec<CredentialGroup>,
-    requested_claims: Vec<String>,
-) -> Result<(Vec<Credential>, Vec<CredentialGroup>), TransportProtocolError> {
-    let relevant_credentials = credential_repository
-        .get_credentials_by_claim_names(
-            requested_claims.clone(),
-            &CredentialRelations {
-                state: Some(CredentialStateRelations::default()),
-                issuer_did: Some(DidRelations::default()),
-                claims: Some(ClaimRelations {
-                    schema: Some(ClaimSchemaRelations::default()),
-                }),
-                schema: Some(CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
-                }),
-                ..Default::default()
-            },
-        )
-        .await
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-
-    let mut mentioned_credential_ids: HashSet<CredentialId> = HashSet::new();
-    for group in &mut credential_groups {
-        for credential in &relevant_credentials {
-            let credential_state = credential
-                .state
-                .as_ref()
-                .ok_or(TransportProtocolError::Failed("state missing".to_string()))?
-                .first()
-                .ok_or(TransportProtocolError::Failed("state missing".to_string()))?;
-
-            // only consider credentials that have finished the issuance flow
-            if credential_state.state != CredentialStateEnum::Accepted
-                && credential_state.state != CredentialStateEnum::Revoked
-                && credential_state.state != CredentialStateEnum::Suspended
-            {
-                continue;
-            }
-
-            let claim_schemas = credential
-                .claims
-                .as_ref()
-                .ok_or(TransportProtocolError::Failed("claims missing".to_string()))?
-                .iter()
-                .map(|claim| {
-                    claim
-                        .schema
-                        .as_ref()
-                        .ok_or(TransportProtocolError::Failed("schema missing".to_string()))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            if group.claims.iter().all(|requested_claim| {
-                claim_schemas
-                    .iter()
-                    .any(|claim_schema| requested_claim.key == claim_schema.key)
-            }) {
-                group.applicable_credentials.push(credential.to_owned());
-                mentioned_credential_ids.insert(credential.id);
-            }
-        }
-    }
-
-    Ok((
-        relevant_credentials
-            .into_iter()
-            .filter(|credential| mentioned_credential_ids.contains(&credential.id))
-            .collect(),
-        credential_groups,
-    ))
 }
 
 pub fn create_presentation_definition_field(

@@ -125,6 +125,13 @@ async fn test_openid4vc_jsonld_flow(
                 "constraints": {
                     "fields": [
                         {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema.schema_id
+                            }
+                        },
+                        {
                             "id": new_claim_schemas[0].0,
                             "path": ["$.credentialSubject.Key"],
                             "optional": false
@@ -195,7 +202,7 @@ async fn test_openid4vc_jsonld_flow(
             revocation_method,
             &new_claim_schemas,
             "JSON_LD_CLASSIC",
-            &schema_id.to_string(),
+            &credential_schema.schema_id,
         )
         .await;
 
@@ -268,6 +275,13 @@ async fn test_openid4vc_jsonld_flow(
                 "id": "input_0",
                 "constraints": {
                     "fields": [
+                        {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": holder_credential_schema.schema_id
+                            }
+                        },
                         {
                             "id": claims.first().unwrap().id,
                             "path": ["$.credentialSubject.Key"],
