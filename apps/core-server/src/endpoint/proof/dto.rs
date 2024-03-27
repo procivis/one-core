@@ -219,6 +219,8 @@ pub struct ProofDetailResponseRestDTO {
 pub struct ProofClaimRestDTO {
     pub schema: ProofClaimSchemaResponseRestDTO,
     pub value: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<ProofClaimRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

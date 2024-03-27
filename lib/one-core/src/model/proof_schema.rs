@@ -28,7 +28,7 @@ pub struct ProofSchema {
 pub struct ProofInputSchema {
     pub validity_constraint: Option<i64>,
 
-    //Relations
+    // Relations
     pub claim_schemas: Option<Vec<ProofInputClaimSchema>>,
     pub credential_schema: Option<CredentialSchema>,
 }
