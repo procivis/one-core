@@ -136,7 +136,7 @@ impl From<DetailCredentialClaimValueResponseDTO> for ClaimValueBindingDTO {
     fn from(value: DetailCredentialClaimValueResponseDTO) -> Self {
         match value {
             DetailCredentialClaimValueResponseDTO::String(value) => {
-                ClaimValueBindingDTO::String { value }
+                ClaimValueBindingDTO::Value { value }
             }
             DetailCredentialClaimValueResponseDTO::Nested(value) => ClaimValueBindingDTO::Nested {
                 value: value.into_iter().map(|v| v.into()).collect(),
