@@ -118,7 +118,7 @@ dictionary ClaimBindingDTO {
 
 [Enum]
 interface ClaimValueBindingDTO {
-  String(string value);
+  Value(string value);
   Nested(sequence<ClaimBindingDTO> value);
 };
 

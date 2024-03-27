@@ -298,7 +298,7 @@ pub struct ClaimBindingDTO {
 
 #[derive(Debug, Clone)]
 pub enum ClaimValueBindingDTO {
-    String { value: String },
+    Value { value: String },
     Nested { value: Vec<ClaimBindingDTO> },
 }
 
