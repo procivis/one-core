@@ -169,7 +169,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
             if group.claims.iter().all(|requested_claim| {
                 claim_schemas
                     .iter()
-                    .any(|claim_schema| requested_claim.key == claim_schema.key)
+                    .any(|claim_schema| claim_schema.key.starts_with(&requested_claim.key))
             }) {
                 group.applicable_credentials.push(credential.to_owned());
                 relevant_credentials.push(credential.to_owned());
