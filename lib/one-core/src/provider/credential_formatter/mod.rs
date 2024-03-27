@@ -18,6 +18,8 @@ pub mod status_list_jwt_formatter;
 pub(crate) mod provider;
 
 #[cfg(test)]
+mod test;
+#[cfg(test)]
 pub(crate) mod test_utilities;
 
 use async_trait::async_trait;
@@ -29,7 +31,13 @@ use time::{Duration, OffsetDateTime};
 use crate::{
     crypto::signer::error::SignerError,
     model::credential_schema::CredentialSchemaType,
-    service::{credential::dto::CredentialDetailResponseDTO, error::ServiceError},
+    service::{
+        credential::dto::{
+            CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+            DetailCredentialClaimValueResponseDTO,
+        },
+        error::ServiceError,
+    },
 };
 
 use self::{
@@ -205,11 +213,7 @@ impl CredentialData {
             id,
             issuance_date,
             valid_for,
-            claims: credential
-                .claims
-                .into_iter()
-                .map(|claim| (claim.schema.key, claim.value))
-                .collect(),
+            claims: map_claims(&credential.claims, ""),
             issuer_did,
             status: credential_status,
             schema: CredentialSchemaData {
@@ -223,4 +227,20 @@ impl CredentialData {
             },
         })
     }
+}
+
+fn map_claims(claims: &[DetailCredentialClaimResponseDTO], prefix: &str) -> Vec<(String, String)> {
+    let mut result = vec![];
+
+    claims.iter().for_each(|claim| match &claim.value {
+        DetailCredentialClaimValueResponseDTO::String(value) => {
+            result.push((format!("{prefix}{}", claim.schema.key), value.to_owned()));
+        }
+        DetailCredentialClaimValueResponseDTO::Nested(value) => {
+            let nested_claims = map_claims(value, &format!("{}/", claim.schema.key));
+            result.extend(nested_claims);
+        }
+    });
+
+    result
 }

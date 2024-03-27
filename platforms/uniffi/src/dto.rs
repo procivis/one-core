@@ -293,7 +293,13 @@ pub struct ClaimBindingDTO {
     pub id: String,
     pub key: String,
     pub data_type: String,
-    pub value: String,
+    pub value: ClaimValueBindingDTO,
+}
+
+#[derive(Debug, Clone)]
+pub enum ClaimValueBindingDTO {
+    String { value: String },
+    Nested { value: Vec<ClaimBindingDTO> },
 }
 
 pub enum HandleInvitationResponseBindingEnum {

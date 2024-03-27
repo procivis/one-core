@@ -3,7 +3,9 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::revocation::CredentialRevocationState;
+use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
 use crate::{
     model::{
         claim::Claim,
@@ -91,36 +93,122 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
     }
 }
 
+fn remove_first_nesting_layer(name: &str) -> String {
+    match name.find(NESTED_CLAIM_MARKER) {
+        Some(marker_pos) => name[marker_pos + 1..].to_string(),
+        None => name.to_string(),
+    }
+}
+
+pub(super) fn renest_claims(
+    claims: Vec<DetailCredentialClaimResponseDTO>,
+) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
+    let mut result = vec![];
+
+    // Iterate over all and copy all unnested claims to new vec
+    for claim in claims.iter() {
+        if claim.schema.key.find(NESTED_CLAIM_MARKER).is_none() {
+            result.push(claim.to_owned());
+        }
+    }
+
+    // Find all nested claims and move them to related entries in result vec
+    for mut claim in claims.into_iter() {
+        if claim.schema.key.find(NESTED_CLAIM_MARKER).is_some() {
+            let matching_entry = result
+                .iter_mut()
+                .find(|result_schema| {
+                    claim.schema.key.starts_with(&format!(
+                        "{}{NESTED_CLAIM_MARKER}",
+                        result_schema.schema.key
+                    ))
+                })
+                .ok_or(ServiceError::BusinessLogic(
+                    BusinessLogicError::MissingParentClaimSchema {
+                        claim_schema_id: claim.schema.id,
+                    },
+                ))?;
+            claim.schema.key = remove_first_nesting_layer(&claim.schema.key);
+
+            match &mut matching_entry.value {
+                DetailCredentialClaimValueResponseDTO::String(_value) => {
+                    matching_entry.value =
+                        DetailCredentialClaimValueResponseDTO::Nested(vec![claim]);
+                }
+                DetailCredentialClaimValueResponseDTO::Nested(nested) => {
+                    nested.push(claim);
+                }
+            }
+        }
+    }
+
+    // Repeat for all claims to nest all subclaims
+    result
+        .into_iter()
+        .map(|mut claim_schema| {
+            match &claim_schema.value {
+                DetailCredentialClaimValueResponseDTO::String(_value) => {}
+                DetailCredentialClaimValueResponseDTO::Nested(nested) => {
+                    claim_schema.value = DetailCredentialClaimValueResponseDTO::Nested(
+                        renest_claims(nested.to_owned())?,
+                    );
+                }
+            }
+            Ok(claim_schema)
+        })
+        .collect::<Result<Vec<DetailCredentialClaimResponseDTO>, _>>()
+}
+
 fn from_vec_claim(
     claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
-    claims
-        .into_iter()
-        .map(|claim| {
-            let claim_schema_id = claim
-                .schema
-                .ok_or(ServiceError::MappingError(
+    let claim_schemas =
+        credential_schema
+            .claim_schemas
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "claim_schemas is None".to_string(),
+            ))?;
+    let result = claim_schemas
+        .iter()
+        .map(|claim_schema| {
+            let claim = claims.iter().find(|claim| {
+                let schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
                     "claim_schema is None".to_string(),
-                ))?
-                .id;
-            let credential_claim_schema = credential_schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "claim_schemas is None".to_string(),
-                ))?
-                .iter()
-                .find(|claim_schema| claim_schema.schema.id == claim_schema_id)
-                .ok_or(ServiceError::MappingError(
-                    "claim_schema missing".to_string(),
-                ))?;
-            Ok::<DetailCredentialClaimResponseDTO, ServiceError>(DetailCredentialClaimResponseDTO {
-                schema: credential_claim_schema.to_owned().into(),
-                value: claim.value,
-            })
+                ));
+                if let Ok(schema) = schema {
+                    schema.id == claim_schema.schema.id
+                } else {
+                    false
+                }
+            });
+
+            match claim {
+                None => {
+                    // None means schema is an Object or schema is not required
+                    if !claim_schema.required {
+                        return Ok(None);
+                    }
+
+                    Ok(Some(DetailCredentialClaimResponseDTO {
+                        schema: claim_schema.to_owned().into(),
+                        value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
+                    }))
+                }
+                Some(claim) => Ok(Some(DetailCredentialClaimResponseDTO {
+                    schema: claim_schema.to_owned().into(),
+                    value: DetailCredentialClaimValueResponseDTO::String(claim.value.to_owned()),
+                })),
+            }
         })
-        .collect::<Result<Vec<_>, _>>()
+        .collect::<Result<Vec<Option<_>>, ServiceError>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+    let nested = renest_claims(result)?;
+    Ok(nested)
 }
 
 impl TryFrom<Credential> for CredentialListItemResponseDTO {

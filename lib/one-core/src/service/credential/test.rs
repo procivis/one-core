@@ -2,8 +2,13 @@ use super::CredentialService;
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use crate::provider::revocation::{CredentialRevocationState, RevocationMethodCapabilities};
 use crate::repository::lvvc_repository::MockLvvcRepository;
-use crate::service::credential::dto::SuspendCredentialRequestDTO;
+use crate::service::credential::dto::{
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+    SuspendCredentialRequestDTO,
+};
+use crate::service::credential::mapper::renest_claims;
 use crate::service::credential::validator::validate_create_request;
+use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -2443,4 +2448,130 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
         &generic_config().core,
     )
     .unwrap();
+}
+
+#[test]
+fn test_renest_claims_success_single_claim_and_layer() {
+    let now = OffsetDateTime::now_utc();
+
+    let uuid_location = Uuid::new_v4().into();
+    let uuid_location_x = Uuid::new_v4().into();
+
+    let request = vec![
+        DetailCredentialClaimResponseDTO {
+            schema: CredentialClaimSchemaDTO {
+                id: uuid_location,
+                created_date: now,
+                last_modified: now,
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![],
+            },
+            value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
+        },
+        DetailCredentialClaimResponseDTO {
+            schema: CredentialClaimSchemaDTO {
+                id: uuid_location_x,
+                created_date: now,
+                last_modified: now,
+                key: "location/x".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            },
+            value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
+        },
+    ];
+
+    let expected = vec![DetailCredentialClaimResponseDTO {
+        schema: CredentialClaimSchemaDTO {
+            id: uuid_location,
+            created_date: now,
+            last_modified: now,
+            key: "location".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        value: DetailCredentialClaimValueResponseDTO::Nested(vec![
+            DetailCredentialClaimResponseDTO {
+                schema: CredentialClaimSchemaDTO {
+                    id: uuid_location_x,
+                    created_date: now,
+                    last_modified: now,
+                    key: "x".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    claims: vec![],
+                },
+                value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
+            },
+        ]),
+    }];
+
+    assert_eq!(expected, renest_claims(request).unwrap());
+}
+
+#[test]
+fn test_renest_claims_success_multiple_claims_and_layers() {
+    let now = OffsetDateTime::now_utc();
+
+    let uuid_location = Uuid::new_v4().into();
+    let uuid_location_x = Uuid::new_v4().into();
+
+    let request = vec![
+        DetailCredentialClaimResponseDTO {
+            schema: CredentialClaimSchemaDTO {
+                id: uuid_location,
+                created_date: now,
+                last_modified: now,
+                key: "location".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![],
+            },
+            value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
+        },
+        DetailCredentialClaimResponseDTO {
+            schema: CredentialClaimSchemaDTO {
+                id: uuid_location_x,
+                created_date: now,
+                last_modified: now,
+                key: "location/x".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            },
+            value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
+        },
+    ];
+
+    let expected = vec![DetailCredentialClaimResponseDTO {
+        schema: CredentialClaimSchemaDTO {
+            id: uuid_location,
+            created_date: now,
+            last_modified: now,
+            key: "location".to_string(),
+            datatype: "OBJECT".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        value: DetailCredentialClaimValueResponseDTO::Nested(vec![
+            DetailCredentialClaimResponseDTO {
+                schema: CredentialClaimSchemaDTO {
+                    id: uuid_location_x,
+                    created_date: now,
+                    last_modified: now,
+                    key: "x".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    claims: vec![],
+                },
+                value: DetailCredentialClaimValueResponseDTO::String("123".to_string()),
+            },
+        ]),
+    }];
+
+    assert_eq!(expected, renest_claims(request).unwrap());
 }

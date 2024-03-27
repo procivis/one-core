@@ -4,6 +4,7 @@ use shared_types::DidValue;
 use time::{macros::datetime, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
 use crate::{
     model::{credential_schema::LayoutType, did::DidType},
     service::{
@@ -66,7 +67,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
                     required: true,
                     claims: vec![],
                 },
-                value: "John".to_string(),
+                value: DetailCredentialClaimValueResponseDTO::String("John".to_string()),
             },
             DetailCredentialClaimResponseDTO {
                 schema: CredentialClaimSchemaDTO {
@@ -78,7 +79,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
                     required: true,
                     claims: vec![],
                 },
-                value: "42".to_string(),
+                value: DetailCredentialClaimValueResponseDTO::String("42".to_string()),
             },
         ],
         redirect_uri: None,

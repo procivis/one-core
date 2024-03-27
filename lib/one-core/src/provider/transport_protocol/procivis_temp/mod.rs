@@ -10,6 +10,7 @@ use self::mapper::{
     get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
     remote_did_from_value,
 };
+use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
 use crate::{
     model::{
         claim::{Claim, ClaimId},
@@ -503,11 +504,20 @@ async fn handle_credential_invitation(
                     .iter()
                     .find(|claim| claim.schema.key == claim_schema.schema.key)
                 {
+                    let value = match &value.value {
+                        DetailCredentialClaimValueResponseDTO::String(value) => {
+                            Ok(value.to_owned())
+                        }
+                        DetailCredentialClaimValueResponseDTO::Nested(_) => Err(
+                            TransportProtocolError::Failed("claim value is not String".to_string()),
+                        ),
+                    }?;
+
                     Ok(Some(Claim {
                         id: ClaimId::new_v4(),
                         credential_id,
                         schema: Some(claim_schema.schema.to_owned()),
-                        value: value.value.to_owned(),
+                        value,
                         created_date: now,
                         last_modified: now,
                     }))

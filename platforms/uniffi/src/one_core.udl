@@ -113,7 +113,13 @@ dictionary ClaimBindingDTO {
   string id;
   string key;
   string data_type;
-  string value;
+  ClaimValueBindingDTO value;
+};
+
+[Enum]
+interface ClaimValueBindingDTO {
+  String(string value);
+  Nested(sequence<ClaimBindingDTO> value);
 };
 
 enum CredentialRoleBindingDTO {
