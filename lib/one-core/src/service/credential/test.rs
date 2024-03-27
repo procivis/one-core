@@ -2575,3 +2575,84 @@ fn test_renest_claims_success_multiple_claims_and_layers() {
 
     assert_eq!(expected, renest_claims(request).unwrap());
 }
+
+#[tokio::test]
+async fn test_get_credential_success_with_non_required_nested_object() {
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential_schema_repository = MockCredentialSchemaRepository::default();
+    let did_repository = MockDidRepository::default();
+    let revocation_method_provider = MockRevocationMethodProvider::default();
+
+    let now = OffsetDateTime::now_utc();
+
+    let location_claim_schema = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "location".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: now,
+        last_modified: now,
+    };
+    let location_x_claim_schema = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "location/X".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: now,
+        last_modified: now,
+    };
+
+    let mut credential = generic_credential();
+
+    *credential
+        .schema
+        .as_mut()
+        .unwrap()
+        .claim_schemas
+        .as_mut()
+        .unwrap() = vec![
+        CredentialSchemaClaim {
+            schema: location_claim_schema,
+            required: false,
+        },
+        CredentialSchemaClaim {
+            schema: location_x_claim_schema.to_owned(),
+            required: false,
+        },
+    ];
+
+    *credential.claims.as_mut().unwrap() = vec![Claim {
+        id: Uuid::new_v4(),
+        credential_id: credential.id,
+        created_date: now,
+        last_modified: now,
+        value: "123".to_string(),
+        schema: Some(location_x_claim_schema.clone()),
+    }];
+
+    {
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credential()
+            .times(1)
+            .with(eq(clone.id), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+
+    let service = setup_service(Repositories {
+        credential_repository,
+        credential_schema_repository,
+        did_repository,
+        revocation_method_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.get_credential(&credential.id).await.unwrap();
+    assert_eq!(credential.id, result.id);
+    assert_eq!(None, result.revocation_date);
+    assert_eq!(1, result.claims.len());
+    assert_eq!("location", result.claims[0].schema.key);
+    assert!(matches!(
+        result.claims[0].value,
+        DetailCredentialClaimValueResponseDTO::Nested(_)
+    ));
+}
