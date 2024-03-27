@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::core_config::DatatypeType;
 use crate::model::proof::ProofId;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::transport_protocol::dto::{
@@ -351,7 +353,7 @@ pub(super) fn get_credential_offer_url(
 pub(super) fn create_claims_from_credential_definition(
     credential_id: CredentialId,
     credential_definition: &OpenID4VCICredentialDefinition,
-) -> Result<Vec<(CredentialSchemaClaim, Claim)>, TransportProtocolError> {
+) -> Result<(Vec<CredentialSchemaClaim>, Vec<Claim>), TransportProtocolError> {
     let credential_subject =
         credential_definition
             .credential_subject
@@ -361,7 +363,10 @@ pub(super) fn create_claims_from_credential_definition(
             ))?;
 
     let now = OffsetDateTime::now_utc();
-    let mut result: Vec<(CredentialSchemaClaim, Claim)> = vec![];
+    let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
+    let mut claims: Vec<Claim> = vec![];
+    let mut object_claim_schemas: Vec<&str> = vec![];
+
     for (key, value_details) in credential_subject.keys.iter() {
         let new_schema_claim = CredentialSchemaClaim {
             schema: ClaimSchema {
@@ -383,10 +388,32 @@ pub(super) fn create_claims_from_credential_definition(
             schema: Some(new_schema_claim.schema.to_owned()),
         };
 
-        result.push((new_schema_claim, claim));
+        claim_schemas.push(new_schema_claim);
+        claims.push(claim);
+
+        if key.contains(NESTED_CLAIM_MARKER) {
+            if let Some((object_path, _)) = key.rsplit_once(NESTED_CLAIM_MARKER) {
+                if !object_claim_schemas.contains(&object_path) {
+                    object_claim_schemas.push(object_path)
+                };
+            }
+        }
     }
 
-    Ok(result)
+    for object_claim in object_claim_schemas {
+        claim_schemas.push(CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: object_claim.into(),
+                data_type: DatatypeType::Object.to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: false,
+        })
+    }
+
+    Ok((claim_schemas, claims))
 }
 
 pub(super) fn create_presentation_submission(
