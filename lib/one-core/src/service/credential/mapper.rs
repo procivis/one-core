@@ -143,7 +143,7 @@ pub(super) fn renest_claims(
     }
 
     // Repeat for all claims to nest all subclaims
-    result
+    let mut nested = result
         .into_iter()
         .map(|mut claim_schema| {
             match &claim_schema.value {
@@ -156,7 +156,17 @@ pub(super) fn renest_claims(
             }
             Ok(claim_schema)
         })
-        .collect::<Result<Vec<DetailCredentialClaimResponseDTO>, _>>()
+        .collect::<Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError>>()?;
+
+    // Remove empty non-required object claims
+    nested.retain(|element| match &element.value {
+        DetailCredentialClaimValueResponseDTO::Nested(value) => {
+            element.schema.required || !value.is_empty()
+        }
+        _ => true,
+    });
+
+    Ok(nested)
 }
 
 fn from_vec_claim(
@@ -185,27 +195,17 @@ fn from_vec_claim(
             });
 
             match claim {
-                None => {
-                    // None means schema is an Object or schema is not required
-                    if !claim_schema.required {
-                        return Ok(None);
-                    }
-
-                    Ok(Some(DetailCredentialClaimResponseDTO {
-                        schema: claim_schema.to_owned().into(),
-                        value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
-                    }))
-                }
-                Some(claim) => Ok(Some(DetailCredentialClaimResponseDTO {
+                None => Ok(DetailCredentialClaimResponseDTO {
+                    schema: claim_schema.to_owned().into(),
+                    value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
+                }),
+                Some(claim) => Ok(DetailCredentialClaimResponseDTO {
                     schema: claim_schema.to_owned().into(),
                     value: DetailCredentialClaimValueResponseDTO::String(claim.value.to_owned()),
-                })),
+                }),
             }
         })
-        .collect::<Result<Vec<Option<_>>, ServiceError>>()?
-        .into_iter()
-        .flatten()
-        .collect();
+        .collect::<Result<Vec<_>, ServiceError>>()?;
 
     let nested = renest_claims(result)?;
     Ok(nested)
