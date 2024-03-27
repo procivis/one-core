@@ -42,6 +42,7 @@ use one_core::service::{
         model::{
             OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
             OpenID4VPPresentationDefinitionConstraintField,
+            OpenID4VPPresentationDefinitionConstraintFieldFilter,
             OpenID4VPPresentationDefinitionInputDescriptor,
         },
     },
@@ -518,9 +519,22 @@ pub struct OpenID4VPPresentationDefinitionConstraintRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionConstraintField)]
 pub struct OpenID4VPPresentationDefinitionConstraintFieldRestDTO {
-    pub id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    pub id: Option<Uuid>,
     pub path: Vec<String>,
-    pub optional: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optional: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilterRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPPresentationDefinitionConstraintFieldFilter)]
+pub struct OpenID4VPPresentationDefinitionConstraintFieldFilterRestDTO {
+    pub r#type: String,
+    pub r#const: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

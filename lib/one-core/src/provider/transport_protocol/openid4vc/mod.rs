@@ -79,7 +79,7 @@ use crate::{
 use crate::{
     model::credential_schema::WalletStorageTypeEnum,
     model::proof_schema::ProofInputSchemaRelations,
-    provider::transport_protocol::mapper::get_relevant_credentials,
+    provider::transport_protocol::mapper::get_relevant_credentials_to_credential_schemas,
 };
 use crate::{
     model::key::Key,
@@ -621,29 +621,44 @@ impl TransportProtocol for OpenID4VC {
                     "presentation_definition is None".to_string(),
                 ))?;
 
-        let mut requested_claims = vec![];
-
         let mut credential_groups: Vec<CredentialGroup> = vec![];
+        let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
 
         for input_descriptor in presentation_definition.input_descriptors {
-            let mut requested_claims_for_input = vec![];
-            for field in input_descriptor.constraints.fields {
-                let field_name = get_claim_name_by_json_path(&field.path)?;
-                requested_claims.push(field_name);
-                requested_claims_for_input.push(field);
-            }
-
             let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
 
+            let mut fields = input_descriptor.constraints.fields;
+
+            let schema_id_filter_index = fields
+                .iter()
+                .position(|field| {
+                    field.filter.is_some()
+                        && field.path.contains(&"$.credentialSchema.id".to_string())
+                })
+                .ok_or(TransportProtocolError::Failed(
+                    "schema_id filter not found".to_string(),
+                ))?;
+
+            let schema_id_filter = fields.remove(schema_id_filter_index).filter.ok_or(
+                TransportProtocolError::Failed("schema_id filter not found".to_string()),
+            )?;
+
+            group_id_to_schema_id.insert(input_descriptor.id.clone(), schema_id_filter.r#const);
             credential_groups.push(CredentialGroup {
                 id: input_descriptor.id,
-                claims: requested_claims_for_input
+                claims: fields
                     .iter()
+                    .filter(|requested| requested.id.is_some())
                     .map(|requested_claim| {
                         Ok(CredentialGroupItem {
-                            id: requested_claim.id.to_string(),
+                            id: requested_claim
+                                .id
+                                .ok_or(TransportProtocolError::Failed(
+                                    "requested_claim id is None".to_string(),
+                                ))?
+                                .to_string(),
                             key: get_claim_name_by_json_path(&requested_claim.path)?,
-                            required: !requested_claim.optional,
+                            required: !requested_claim.optional.is_some_and(|optional| optional),
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?,
@@ -651,10 +666,10 @@ impl TransportProtocol for OpenID4VC {
                 validity_credential_nbf,
             });
         }
-        let (credentials, credential_groups) = get_relevant_credentials(
+        let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
             &self.credential_repository,
             credential_groups,
-            requested_claims,
+            group_id_to_schema_id,
         )
         .await?;
         presentation_definition_from_interaction_data(proof.id, credentials, credential_groups)

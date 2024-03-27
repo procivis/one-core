@@ -34,7 +34,14 @@ pub struct OpenID4VPPresentationDefinitionConstraint {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraintField {
-    pub id: ClaimSchemaId,
+    pub id: Option<ClaimSchemaId>,
     pub path: Vec<String>,
-    pub optional: bool,
+    pub optional: Option<bool>,
+    pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilter>,
+}
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct OpenID4VPPresentationDefinitionConstraintFieldFilter {
+    pub r#type: String,
+    pub r#const: String,
 }

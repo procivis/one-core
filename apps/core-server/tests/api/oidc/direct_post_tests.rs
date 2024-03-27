@@ -95,6 +95,13 @@ async fn test_direct_post_one_credential_correct() {
                 "constraints": {
                     "fields": [
                         {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema.schema_id
+                            }
+                        },
+                        {
                             "id": new_claim_schemas[0].0,
                             "path": ["$.credentialSubject.cat1"],
                             "optional": false
@@ -400,6 +407,13 @@ async fn test_direct_post_multiple_presentations() {
                 "constraints": {
                     "fields": [
                         {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema1.schema_id
+                            }
+                        },
+                        {
                             "id": credential1_claims[0].0,
                             "path": ["$.credentialSubject.name1"],
                             "optional": false
@@ -412,6 +426,13 @@ async fn test_direct_post_multiple_presentations() {
                 "constraints": {
                     "fields": [
                         {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema2.schema_id
+                            }
+                        },
+                        {
                             "id": credential2_claims[0].0,
                             "path": ["$.credentialSubject.pet1"],
                             "optional": false
@@ -423,6 +444,13 @@ async fn test_direct_post_multiple_presentations() {
                 "id": "input_2",
                 "constraints": {
                     "fields": [
+                        {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema3.schema_id
+                            }
+                        },
                         {
                             "id": credential3_claims[0].0,
                             "path": ["$.credentialSubject.cat1"],

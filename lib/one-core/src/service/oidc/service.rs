@@ -666,12 +666,20 @@ impl OIDCService {
                 .as_ref()
                 .ok_or(OpenID4VCIError::InvalidRequest)?;
 
-            // each descriptor contains only fields from a single credential_schema...
-            let first_claim_schema = input_descriptor
+            // ONE-1924: there must be a specific schemaId filter
+            let schema_id_filter = input_descriptor
                 .constraints
                 .fields
-                // ... so one field is enough to find the proper credential_schema (and requested claims from that schema)
-                .first()
+                .iter()
+                .find(|field| {
+                    field.filter.is_some()
+                        && field.path.contains(&"$.credentialSchema.id".to_string())
+                })
+                .ok_or(ServiceError::OpenID4VCError(
+                    OpenID4VCIError::InvalidRequest,
+                ))?
+                .filter
+                .as_ref()
                 .ok_or(ServiceError::OpenID4VCError(
                     OpenID4VCIError::InvalidRequest,
                 ))?;
@@ -679,13 +687,10 @@ impl OIDCService {
             let proof_schema_input = proof_schema_inputs
                 .iter()
                 .find(|input| {
-                    let Some(input_claim_schemas) = input.claim_schemas.as_ref() else {
-                        return false;
-                    };
-
-                    input_claim_schemas.iter().any(|input_claim_schema| {
-                        input_claim_schema.schema.id == first_claim_schema.id
-                    })
+                    input
+                        .credential_schema
+                        .as_ref()
+                        .is_some_and(|schema| schema.schema_id == schema_id_filter.r#const)
                 })
                 .ok_or(ServiceError::Other(
                     "Missing proof input schema for credential schema".to_owned(),

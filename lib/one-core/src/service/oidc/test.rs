@@ -47,6 +47,7 @@ use crate::service::oidc::mapper::vec_last_position_from_token_path;
 use crate::service::oidc::model::{
     OpenID4VPInteractionContent, OpenID4VPPresentationDefinition,
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
 };
 use crate::service::oidc::OIDCService;
@@ -914,9 +915,10 @@ async fn test_oidc_verifier_presentation_definition_success() {
                 constraints: OpenID4VPPresentationDefinitionConstraint {
                     validity_credential_nbf: None,
                     fields: vec![OpenID4VPPresentationDefinitionConstraintField {
-                        id: Uuid::new_v4().into(),
+                        id: Some(Uuid::new_v4().into()),
                         path: vec!["123".to_string()],
-                        optional: false,
+                        optional: Some(false),
+                        filter: None,
                     }],
                 },
             }],
@@ -1024,6 +1026,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
 
     let claim_id = Uuid::new_v4().into();
+    let credential_schema = dummy_credential_schema();
     let interaction_data = OpenID4VPInteractionContent {
         nonce: nonce.to_owned(),
         presentation_definition: OpenID4VPPresentationDefinition {
@@ -1031,11 +1034,23 @@ async fn test_submit_proof_failed_credential_suspended() {
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
                 id: "input_0".to_string(),
                 constraints: OpenID4VPPresentationDefinitionConstraint {
-                    fields: vec![OpenID4VPPresentationDefinitionConstraintField {
-                        id: claim_id,
-                        path: vec!["$.vc.credentialSubject.string".to_string()],
-                        optional: false,
-                    }],
+                    fields: vec![
+                        OpenID4VPPresentationDefinitionConstraintField {
+                            id: None,
+                            path: vec!["$.credentialSchema.id".to_string()],
+                            optional: None,
+                            filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
+                                r#type: "string".to_string(),
+                                r#const: credential_schema.schema_id.to_owned(),
+                            }),
+                        },
+                        OpenID4VPPresentationDefinitionConstraintField {
+                            id: Some(claim_id),
+                            path: vec!["$.vc.credentialSubject.string".to_string()],
+                            optional: Some(false),
+                            filter: None,
+                        },
+                    ],
                     validity_credential_nbf: None,
                 },
             }],
@@ -1061,7 +1076,6 @@ async fn test_submit_proof_failed_credential_suspended() {
         })
         .once()
         .return_once(move |_, _| {
-            let credential_schema = dummy_credential_schema();
             Ok(Some(Proof {
                 id: proof_id,
                 verifier_did: Some(Did {
@@ -1256,6 +1270,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         })
         .await
         .unwrap_err();
+
     assert!(matches!(
         err,
         ServiceError::BusinessLogic(BusinessLogicError::CredentialIsRevokedOrSuspended)

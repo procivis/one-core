@@ -22,7 +22,7 @@ use crate::{
         claim::Claim,
         claim_schema::ClaimSchema,
         credential::Credential,
-        credential_schema::{CredentialSchemaClaim, CredentialSchemaId},
+        credential_schema::{CredentialSchema, CredentialSchemaClaim},
         interaction::InteractionId,
         proof::Proof,
     },
@@ -34,6 +34,7 @@ use crate::{
             OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPInteractionData,
             OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
             OpenID4VPPresentationDefinitionConstraintField,
+            OpenID4VPPresentationDefinitionConstraintFieldFilter,
             OpenID4VPPresentationDefinitionInputDescriptor,
         },
         TransportProtocolError,
@@ -165,7 +166,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
         "Proof schema not found".to_string(),
     ))?;
     // using vec to keep the original order of claims/credentials in the proof request
-    let requested_credentials: Vec<(CredentialSchemaId, Option<Vec<ProofInputClaimSchema>>)> =
+    let requested_credentials: Vec<(CredentialSchema, Option<Vec<ProofInputClaimSchema>>)> =
         match proof_schema.input_schemas.as_ref() {
             Some(proof_input) if !proof_input.is_empty() => proof_input
                 .iter()
@@ -184,7 +185,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
                             .collect()
                     });
 
-                    Some((credential_schema.id, claims))
+                    Some((credential_schema.to_owned(), claims))
                 })
                 .collect(),
 
@@ -200,9 +201,10 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
         input_descriptors: requested_credentials
             .into_iter()
             .enumerate()
-            .map(|(index, (_credential_schema_id, claim_schemas))| {
+            .map(|(index, (credential_schema, claim_schemas))| {
                 create_open_id_for_vp_presentation_definition_input_descriptor(
                     index,
+                    credential_schema,
                     claim_schemas.unwrap_or_default(),
                 )
             })
@@ -212,19 +214,33 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
 
 pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     index: usize,
+    credential_schema: CredentialSchema,
     claim_schemas: Vec<ProofInputClaimSchema>,
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, TransportProtocolError> {
+    let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
+        id: None,
+        path: vec!["$.credentialSchema.id".to_string()],
+        optional: None,
+        filter: Some(OpenID4VPPresentationDefinitionConstraintFieldFilter {
+            r#type: "string".to_string(),
+            r#const: credential_schema.schema_id,
+        }),
+    };
+
+    let mut fields = vec![schema_id_field];
+    fields.extend(claim_schemas.iter().map(|claim| {
+        OpenID4VPPresentationDefinitionConstraintField {
+            id: Some(claim.schema.id),
+            path: vec![format!("$.vc.credentialSubject.{}", claim.schema.key)],
+            optional: Some(!claim.required),
+            filter: None,
+        }
+    }));
+
     Ok(OpenID4VPPresentationDefinitionInputDescriptor {
-        id: format!("input_{}", index),
+        id: format!("input_{index}"),
         constraints: OpenID4VPPresentationDefinitionConstraint {
-            fields: claim_schemas
-                .iter()
-                .map(|claim| OpenID4VPPresentationDefinitionConstraintField {
-                    id: claim.schema.id,
-                    path: vec![format!("$.vc.credentialSubject.{}", claim.schema.key)],
-                    optional: !claim.required,
-                })
-                .collect(),
+            fields,
             validity_credential_nbf: None,
         },
     })

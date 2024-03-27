@@ -127,6 +127,13 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                 "constraints": {
                     "fields": [
                         {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema.schema_id
+                            }
+                        },
+                        {
                             "id": new_claim_schemas[0].0,
                             "path": ["$.credentialSubject.Key"],
                             "optional": true
@@ -223,7 +230,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
             &new_claim_schemas,
             // This reflects latest changes - on the holder side we don't really know what's the correct format here
             "JSON_LD",
-            &schema_id.to_string(),
+            &credential_schema.schema_id,
         )
         .await;
 
@@ -297,6 +304,13 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                 "id": "input_0",
                 "constraints": {
                     "fields": [
+                        {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": holder_credential_schema.schema_id
+                            }
+                        },
                         {
                             "id": claims[1].id,
                             "path": ["$.credentialSubject.Name"],

@@ -79,7 +79,7 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
                         "format": "JWT",
                         "revocationMethod": "NONE",
                         "schemaType": "ProcivisOneSchema2024",
-                        "schemaId": credential_schema.id
+                        "schemaId": credential_schema.schema_id
                     }
                 }
             ]
@@ -269,6 +269,13 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
                             "id":"input_0",
                             "constraints":{
                                 "fields":[
+                                    {
+                                        "path":["$.credentialSchema.id"],
+                                        "filter": {
+                                            "type": "string",
+                                            "const": credential_schema.schema_id
+                                        }
+                                    },
                                     {
                                         "id": claims[0].id,
                                         "path":["$.vc.credentialSubject.firstName"],

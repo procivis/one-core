@@ -1,5 +1,5 @@
 use one_core::model::proof::ProofStateEnum;
-use one_core::model::{credential::CredentialStateEnum, credential_schema::CredentialSchemaId};
+use one_core::model::{credential::CredentialStateEnum, credential_schema::CredentialSchema};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
@@ -11,7 +11,7 @@ use crate::{
 
 fn get_procivis_temporary_interaction_data(
     key: String,
-    credential_schema_id: CredentialSchemaId,
+    credential_schema: &CredentialSchema,
 ) -> Vec<u8> {
     json!([{
         "id": Uuid::new_v4().to_string(),
@@ -21,14 +21,14 @@ fn get_procivis_temporary_interaction_data(
         "datatype": "STRING",
         "required": true,
         "credentialSchema": {
-             "id": credential_schema_id,
+             "id": credential_schema.id,
              "createdDate": "2023-06-09T14:19:57.000Z",
              "lastModified": "2023-06-09T14:19:57.000Z",
              "name": "test",
              "format": "JWT",
              "revocationMethod": "NONE",
              "schemaType": "ProcivisOneSchema2024",
-             "schemaId": credential_schema_id,
+             "schemaId": credential_schema.schema_id,
         }
     }])
     .to_string()
@@ -60,7 +60,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match() {
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_procivis_temporary_interaction_data("firstName".to_string(), credential_schema.id),
+        &get_procivis_temporary_interaction_data("firstName".to_string(), &credential_schema),
     )
     .await;
     let proof = fixtures::create_proof(
@@ -154,7 +154,7 @@ async fn test_get_presentation_definition_procivis_temporary_with_match_multiple
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_procivis_temporary_interaction_data("firstName".to_string(), credential_schema_1.id),
+        &get_procivis_temporary_interaction_data("firstName".to_string(), &credential_schema_1),
     )
     .await;
     let proof = fixtures::create_proof(
@@ -227,7 +227,7 @@ async fn test_get_presentation_definition_procivis_temporary_no_match() {
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_procivis_temporary_interaction_data("test".to_string(), credential_schema.id),
+        &get_procivis_temporary_interaction_data("test".to_string(), &credential_schema),
     )
     .await;
     let proof = fixtures::create_proof(
@@ -476,7 +476,7 @@ async fn test_get_presentation_definition_procivis_temporary_multiple_credential
     );
 }
 
-fn get_open_id_interaction_data() -> Vec<u8> {
+fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8> {
     json!({
         "response_type": "vp_token",
         "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
@@ -512,6 +512,13 @@ fn get_open_id_interaction_data() -> Vec<u8> {
                     "id": "input_0",
                     "constraints": {
                         "fields": [
+                            {
+                                "path":["$.credentialSchema.id"],
+                                "filter": {
+                                    "type": "string",
+                                    "const": credential_schema.schema_id
+                                }
+                            },
                             {
                                 "id": "2c99eaf6-1b23-4554-afb5-464f92103bf3",
                                 "path": [
@@ -554,7 +561,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_open_id_interaction_data(),
+        &get_open_id_interaction_data(&credential_schema),
     )
     .await;
     let proof = fixtures::create_proof(
@@ -619,10 +626,12 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let db_conn = fixtures::create_db(&config).await;
     let organisation = fixtures::create_organisation(&db_conn).await;
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
+    let credential_schema =
+        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
     let interaction = fixtures::create_interaction(
         &db_conn,
         "http://localhost",
-        &get_open_id_interaction_data(),
+        &get_open_id_interaction_data(&credential_schema),
     )
     .await;
     let proof = fixtures::create_proof(
@@ -781,6 +790,13 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                         "constraints": {
                             "fields": [
                                 {
+                                    "path":["$.credentialSchema.id"],
+                                    "filter": {
+                                        "type": "string",
+                                        "const": credential_schema_1.schema_id
+                                    }
+                                },
+                                {
                                     "id": "109562f7-2374-4b84-ab84-67709ad25f92",
                                     "path": [
                                         "$.vc.credentialSubject.first_f0"
@@ -801,6 +817,13 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                         "id": "input_1",
                         "constraints": {
                             "fields": [
+                                {
+                                    "path":["$.credentialSchema.id"],
+                                    "filter": {
+                                        "type": "string",
+                                        "const": credential_schema_2.schema_id
+                                    }
+                                },
                                 {
                                     "id": "a50ff87a-fedc-4650-8b69-044bd8411f8c",
                                     "path": [
