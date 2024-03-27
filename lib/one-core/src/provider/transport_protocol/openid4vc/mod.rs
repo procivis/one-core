@@ -960,9 +960,7 @@ async fn handle_credential_invitation(
                     create_claims_from_credential_definition(
                         credential_id,
                         &credential.credential_definition,
-                    )?
-                    .into_iter()
-                    .unzip();
+                    )?;
 
                 let credential_schema = create_and_store_credential_schema(
                     &deps.credential_schema_repository,
