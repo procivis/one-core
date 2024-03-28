@@ -1,4 +1,7 @@
 use super::ProofSchemaService;
+use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaRelations};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
+use crate::service::test_utilities::generic_config;
 use crate::{
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
@@ -49,6 +52,7 @@ fn setup_service(
         credential_schema_repository: Arc::new(credential_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
         history_repository: Arc::new(history_repository),
+        config: Arc::new(generic_config().core),
     }
 }
 
@@ -68,7 +72,10 @@ async fn test_get_proof_schema_exists() {
                     organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(Default::default()),
-                        credential_schema: Some(Default::default()),
+                        credential_schema: Some(CredentialSchemaRelations {
+                            claim_schemas: Some(ClaimSchemaRelations::default()),
+                            ..Default::default()
+                        }),
                     }),
                 }),
             )
@@ -667,4 +674,101 @@ fn generic_proof_schema() -> ProofSchema {
         }),
         input_schemas: Some(vec![]),
     }
+}
+
+#[tokio::test]
+async fn test_get_proof_schema_success_nested_claims() {
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+
+    let now = OffsetDateTime::now_utc();
+    let location_claim_schema = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "location".to_string(),
+        data_type: "OBJECT".to_string(),
+        created_date: now,
+        last_modified: now,
+    };
+    let location_x_claim_schema = ClaimSchema {
+        id: Uuid::new_v4().into(),
+        key: "location/X".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: now,
+        last_modified: now,
+    };
+
+    let mut proof_schema = generic_proof_schema();
+    proof_schema.input_schemas = Some(vec![ProofInputSchema {
+        validity_constraint: None,
+        claim_schemas: Some(vec![ProofInputClaimSchema {
+            schema: location_x_claim_schema.to_owned(),
+            required: true,
+            order: 0,
+        }]),
+        credential_schema: Some(CredentialSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "".to_string(),
+            format: "".to_string(),
+            revocation_method: "".to_string(),
+            wallet_storage_type: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: "".to_string(),
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            claim_schemas: Some(vec![
+                CredentialSchemaClaim {
+                    schema: location_claim_schema,
+                    required: true,
+                },
+                CredentialSchemaClaim {
+                    schema: location_x_claim_schema.to_owned(),
+                    required: true,
+                },
+            ]),
+            organisation: None,
+        }),
+    }]);
+
+    {
+        let res_clone = proof_schema.clone();
+        proof_schema_repository
+            .expect_get_proof_schema()
+            .times(1)
+            .with(
+                eq(proof_schema.id.to_owned()),
+                eq(ProofSchemaRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                    proof_inputs: Some(ProofInputSchemaRelations {
+                        claim_schemas: Some(Default::default()),
+                        credential_schema: Some(CredentialSchemaRelations {
+                            claim_schemas: Some(ClaimSchemaRelations::default()),
+                            ..Default::default()
+                        }),
+                    }),
+                }),
+            )
+            .returning(move |_id, _relations| Ok(Some(res_clone.clone())));
+    }
+
+    let service = setup_service(
+        proof_schema_repository,
+        MockClaimSchemaRepository::default(),
+        MockCredentialSchemaRepository::default(),
+        MockOrganisationRepository::default(),
+    );
+
+    let result = service.get_proof_schema(&proof_schema.id).await.unwrap();
+    assert_eq!(result.id, proof_schema.id);
+    assert_eq!(1, result.proof_input_schemas.len());
+    assert_eq!(1, result.proof_input_schemas[0].claim_schemas.len());
+    assert_eq!(
+        "location",
+        result.proof_input_schemas[0].claim_schemas[0].key
+    );
+    assert_eq!(
+        "X",
+        result.proof_input_schemas[0].claim_schemas[0].claims[0].key
+    );
 }

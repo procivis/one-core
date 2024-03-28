@@ -111,6 +111,9 @@ pub struct ProofClaimSchemaResponseRestDTO {
     pub key: String,
     #[schema(example = "STRING")]
     pub data_type: String,
+    #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub claims: Vec<ProofClaimSchemaResponseRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
