@@ -194,16 +194,13 @@ pub fn create_presentation_definition_field(
                 "credential claims is None".to_string(),
             ))?
         {
-            if claim
-                .schema
-                .as_ref()
-                .ok_or(TransportProtocolError::Failed(
-                    "claim schema is None".to_string(),
-                ))?
-                .key
-                == key
-            {
+            let claim_schema = claim.schema.as_ref().ok_or(TransportProtocolError::Failed(
+                "claim schema is None".to_string(),
+            ))?;
+
+            if claim_schema.key.starts_with(&key) {
                 key_map.insert(credential.id.to_string(), key.clone());
+                break;
             }
         }
     }
