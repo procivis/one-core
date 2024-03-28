@@ -307,10 +307,13 @@ impl SSIHolderService {
                     "claim_schema missing".to_string(),
                 ))?;
 
-                if submitted_keys.contains(&claim_schema.key)
-                    && submitted_claims.iter().all(|c| c.id != claim.id)
-                {
-                    submitted_claims.push(claim.to_owned());
+                for key in &submitted_keys {
+                    // handle nested path by checking the root
+                    if claim_schema.key.starts_with(key)
+                        && submitted_claims.iter().all(|c| c.id != claim.id)
+                    {
+                        submitted_claims.push(claim.to_owned());
+                    }
                 }
             }
 
