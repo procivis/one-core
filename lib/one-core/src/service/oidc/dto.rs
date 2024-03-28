@@ -177,5 +177,5 @@ pub(super) struct ValidatedProofClaimDTO {
     pub proof_input_claim: ProofInputClaimSchema,
     pub credential: DetailCredential,
     pub credential_schema: CredentialSchema,
-    pub value: String,
+    pub value: serde_json::Value,
 }

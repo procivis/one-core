@@ -1,6 +1,7 @@
 mod mapper;
 
 use async_trait::async_trait;
+use shared_types::CredentialId;
 use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
 use url::Url;
@@ -10,7 +11,11 @@ use self::mapper::{
     get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
     remote_did_from_value,
 };
-use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
+use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::service::credential::dto::{
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+};
 use crate::{
     model::{
         claim::{Claim, ClaimId},
@@ -491,47 +496,19 @@ async fn handle_credential_invitation(
     // create credential
     let credential_id = issuer_response.id;
     let incoming_claims = issuer_response.claims;
-    let claims = credential_schema
-        .claim_schemas
-        .as_ref()
-        .ok_or(TransportProtocolError::Failed(
-            "claim_schemas is None".to_string(),
-        ))?
-        .iter()
-        .map(
-            |claim_schema| -> Result<Option<Claim>, TransportProtocolError> {
-                if let Some(value) = incoming_claims
-                    .iter()
-                    .find(|claim| claim.schema.key == claim_schema.schema.key)
-                {
-                    let value = match &value.value {
-                        DetailCredentialClaimValueResponseDTO::String(value) => {
-                            Ok(value.to_owned())
-                        }
-                        DetailCredentialClaimValueResponseDTO::Nested(_) => Err(
-                            TransportProtocolError::Failed("claim value is not String".to_string()),
-                        ),
-                    }?;
 
-                    Ok(Some(Claim {
-                        id: ClaimId::new_v4(),
-                        credential_id,
-                        schema: Some(claim_schema.schema.to_owned()),
-                        value,
-                        created_date: now,
-                        last_modified: now,
-                    }))
-                } else if claim_schema.required {
-                    Err(TransportProtocolError::Failed(format!(
-                        "Validation Error. Claim key {} missing",
-                        &claim_schema.schema.key
-                    )))
-                } else {
-                    Ok(None) // missing optional claim
-                }
-            },
-        )
-        .collect::<Result<Vec<Option<Claim>>, TransportProtocolError>>()?
+    let claim_schemas =
+        credential_schema
+            .claim_schemas
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "claim_schemas is None".to_string(),
+            ))?;
+
+    let claims = incoming_claims
+        .iter()
+        .map(|value| unnest_incoming_claim(credential_id, value, claim_schemas, now, ""))
+        .collect::<Result<Vec<Vec<_>>, TransportProtocolError>>()?
         .into_iter()
         .flatten()
         .collect();
@@ -559,10 +536,58 @@ async fn handle_credential_invitation(
         revocation_list: None,
         key: None,
     };
+
     Ok(InvitationResponseDTO::Credential {
         credentials: vec![credential],
         interaction_id,
     })
+}
+
+fn unnest_incoming_claim(
+    credential_id: CredentialId,
+    incoming_claim: &DetailCredentialClaimResponseDTO,
+    claim_schemas: &[CredentialSchemaClaim],
+    now: OffsetDateTime,
+    prefix: &str,
+) -> Result<Vec<Claim>, TransportProtocolError> {
+    match &incoming_claim.value {
+        DetailCredentialClaimValueResponseDTO::String(value) => {
+            let expected_key = format!("{prefix}{}", incoming_claim.schema.key);
+
+            let current_claim_schema = claim_schemas
+                .iter()
+                .find(|claim_schema| claim_schema.schema.key == expected_key)
+                .ok_or(TransportProtocolError::Failed(format!(
+                    "missing claim schema with key {expected_key}",
+                )))?;
+            Ok(vec![Claim {
+                id: ClaimId::new_v4(),
+                credential_id,
+                schema: Some(current_claim_schema.schema.to_owned()),
+                value: value.to_owned(),
+                created_date: now,
+                last_modified: now,
+            }])
+        }
+        DetailCredentialClaimValueResponseDTO::Nested(value) => {
+            let result = value
+                .iter()
+                .map(|value| {
+                    unnest_incoming_claim(
+                        credential_id,
+                        value,
+                        claim_schemas,
+                        now,
+                        &format!("{}{NESTED_CLAIM_MARKER}", incoming_claim.schema.key),
+                    )
+                })
+                .collect::<Result<Vec<Vec<_>>, TransportProtocolError>>()?
+                .into_iter()
+                .flatten()
+                .collect();
+            Ok(result)
+        }
+    }
 }
 
 async fn handle_proof_invitation(

@@ -330,21 +330,9 @@ impl SSIVerifierService {
 
         let mut proof_claims: Vec<Claim> = vec![];
         for (_, credential_claims) in claims_per_credential {
-            let claims: Vec<(String, ClaimSchema)> = credential_claims
+            let claims: Vec<(serde_json::Value, ClaimSchema)> = credential_claims
                 .iter()
-                .map(|claim| {
-                    Ok((
-                        claim
-                            .value
-                            .1
-                            .as_str()
-                            .ok_or(ServiceError::MappingError(
-                                "claim value is not String".to_string(),
-                            ))?
-                            .to_string(),
-                        claim.claim_schema.to_owned(),
-                    ))
-                })
+                .map(|claim| Ok((claim.value.1.to_owned(), claim.claim_schema.to_owned())))
                 .collect::<Result<Vec<_>, ServiceError>>()?;
 
             let first_claim = credential_claims
@@ -366,6 +354,7 @@ impl SSIVerifierService {
             .await?;
 
             let credential = extracted_credential_to_model(
+                &[],
                 first_claim.credential_schema.to_owned(),
                 claims,
                 issuer_did,

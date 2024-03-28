@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
@@ -27,6 +28,7 @@ use crate::util::oidc::{
     map_from_oidc_vp_format_to_core,
 };
 
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use time::{Duration, OffsetDateTime};
 
 use super::dto::ValidatedProofClaimDTO;
@@ -274,6 +276,44 @@ pub(super) async fn validate_credential(
     Ok(credential)
 }
 
+fn resolve_claim<'a>(
+    claim_name: &str,
+    claims: &'a HashMap<String, serde_json::Value>,
+) -> Result<Option<&'a serde_json::Value>, ServiceError> {
+    // Simplest case - claim is not nested
+    if let Some(value) = claims.get(claim_name) {
+        return Ok(Some(value));
+    }
+
+    match claim_name.split_once(NESTED_CLAIM_MARKER) {
+        None => Ok(None),
+        Some((prefix, rest)) => match claims.get(prefix) {
+            None => Ok(None),
+            Some(value) => resolve_claim_inner(rest, value),
+        },
+    }
+}
+
+fn resolve_claim_inner<'a>(
+    claim_name: &str,
+    claims: &'a serde_json::Value,
+) -> Result<Option<&'a serde_json::Value>, ServiceError> {
+    if let Some(value) = claims.get(claim_name) {
+        return Ok(Some(value));
+    }
+
+    let (prefix, rest) =
+        claim_name
+            .split_once(NESTED_CLAIM_MARKER)
+            .ok_or(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            ))?;
+    match claims.get(prefix) {
+        None => Ok(None),
+        Some(value) => resolve_claim_inner(rest, value),
+    }
+}
+
 pub(super) fn validate_claims(
     received_credential: DetailCredential,
     //descriptor: &OpenID4VPPresentationDefinitionInputDescriptor,
@@ -294,24 +334,18 @@ pub(super) fn validate_claims(
             .ok_or(ServiceError::OpenID4VCError(
                 OpenID4VCIError::InvalidRequest,
             ))?;
-
     let mut proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
+
     for expected_credential_claim in expected_credential_claims {
-        if let Some(value) = received_credential
-            .claims
-            .values
-            .get(&expected_credential_claim.schema.key)
-        {
+        if let Some(value) = resolve_claim(
+            &expected_credential_claim.schema.key,
+            &received_credential.claims.values,
+        )? {
             // Expected claim present in the presentation
             proved_claims.push(ValidatedProofClaimDTO {
                 proof_input_claim: expected_credential_claim.to_owned(),
                 credential: received_credential.to_owned(),
-                value: value
-                    .as_str()
-                    .ok_or(ServiceError::MappingError(
-                        "claim value is not String".to_string(),
-                    ))?
-                    .to_string(),
+                value: value.to_owned(),
                 credential_schema: credential_schema.to_owned(),
             })
         } else if expected_credential_claim.required {
@@ -324,7 +358,6 @@ pub(super) fn validate_claims(
             continue;
         }
     }
-
     Ok(proved_claims)
 }
 

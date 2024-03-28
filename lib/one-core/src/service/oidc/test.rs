@@ -50,6 +50,7 @@ use crate::service::oidc::model::{
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
 };
+use crate::service::oidc::validator::validate_claims;
 use crate::service::oidc::OIDCService;
 use crate::service::test_utilities::*;
 
@@ -1275,4 +1276,131 @@ async fn test_submit_proof_failed_credential_suspended() {
         err,
         ServiceError::BusinessLogic(BusinessLogicError::CredentialIsRevokedOrSuspended)
     ));
+}
+
+fn generic_detail_credential() -> DetailCredential {
+    let holder_did: DidValue = "did:holder".parse().unwrap();
+    let issuer_did: DidValue = "did:issuer".parse().unwrap();
+
+    DetailCredential {
+        id: None,
+        issued_at: Some(OffsetDateTime::now_utc()),
+        expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+        invalid_before: Some(OffsetDateTime::now_utc()),
+        issuer_did: Some(issuer_did),
+        subject: Some(holder_did),
+        claims: CredentialSubject {
+            values: HashMap::new(),
+        },
+        status: vec![],
+        credential_schema: None,
+    }
+}
+
+fn generic_proof_input_schema() -> ProofInputSchema {
+    let now = OffsetDateTime::now_utc();
+
+    ProofInputSchema {
+        validity_constraint: Some(100),
+        claim_schemas: None,
+        credential_schema: Some(CredentialSchema {
+            id: Uuid::new_v4(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "None".to_string(),
+            wallet_storage_type: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: "".to_string(),
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            claim_schemas: None,
+            organisation: None,
+        }),
+    }
+}
+
+#[test]
+fn test_validate_claims_success_nested_claims() {
+    let mut detail_credential = generic_detail_credential();
+    detail_credential.claims.values = HashMap::from([(
+        "location".to_string(),
+        json!({
+            "X": "123",
+            "Y": "456"
+        }),
+    )]);
+
+    let mut proof_input_schema = generic_proof_input_schema();
+    proof_input_schema.claim_schemas = Some(vec![
+        ProofInputClaimSchema {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "location/X".to_owned(),
+                data_type: "STRING".to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            },
+            required: true,
+            order: 0,
+        },
+        ProofInputClaimSchema {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "location/Y".to_owned(),
+                data_type: "STRING".to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            },
+            required: true,
+            order: 0,
+        },
+    ]);
+
+    validate_claims(detail_credential, &proof_input_schema).unwrap();
+}
+
+#[test]
+fn test_validate_claims_failed_malformed_claim() {
+    let mut detail_credential = generic_detail_credential();
+    detail_credential.claims.values = HashMap::from([(
+        "location/".to_string(),
+        json!({
+            "X": "123",
+            "Y": "456"
+        }),
+    )]);
+
+    let mut proof_input_schema = generic_proof_input_schema();
+    proof_input_schema.claim_schemas = Some(vec![
+        ProofInputClaimSchema {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "location/X".to_owned(),
+                data_type: "STRING".to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            },
+            required: true,
+            order: 0,
+        },
+        ProofInputClaimSchema {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "location/Y".to_owned(),
+                data_type: "STRING".to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+            },
+            required: true,
+            order: 0,
+        },
+    ]);
+
+    matches!(
+        validate_claims(detail_credential, &proof_input_schema,).unwrap_err(),
+        ServiceError::OpenID4VCError(OpenID4VCIError::InvalidRequest)
+    );
 }

@@ -416,7 +416,10 @@ impl OIDCService {
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations::default()),
+                            credential_schema: Some(CredentialSchemaRelations {
+                                claim_schemas: Some(ClaimSchemaRelations::default()),
+                                ..Default::default()
+                            }),
                         }),
                     }),
                     interaction: Some(InteractionRelations::default()),
@@ -736,10 +739,30 @@ impl OIDCService {
         let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
             "proof schema is None".to_string(),
         ))?;
+        let claim_schemas = proof_schema
+            .input_schemas
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "input schemas is None".to_string(),
+            ))?
+            .first()
+            .ok_or(ServiceError::MappingError(
+                "input schemas are empty".to_string(),
+            ))?
+            .credential_schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "credential_schema is None".to_string(),
+            ))?
+            .claim_schemas
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "claim schemas is None".to_string(),
+            ))?;
 
         struct ProvedClaim {
             claim_schema: ClaimSchema,
-            value: String,
+            value: serde_json::Value,
             credential: DetailCredential,
             credential_schema: CredentialSchema,
         }
@@ -766,7 +789,7 @@ impl OIDCService {
 
         let mut proof_claims: Vec<Claim> = vec![];
         for (_, credential_claims) in claims_per_credential {
-            let claims: Vec<(String, ClaimSchema)> = credential_claims
+            let claims: Vec<(serde_json::Value, ClaimSchema)> = credential_claims
                 .iter()
                 .map(|claim| (claim.value.to_owned(), claim.claim_schema.to_owned()))
                 .collect();
@@ -803,6 +826,7 @@ impl OIDCService {
             .await?;
 
             let credential = extracted_credential_to_model(
+                claim_schemas,
                 first_claim.credential_schema.to_owned(),
                 claims,
                 issuer_did,
