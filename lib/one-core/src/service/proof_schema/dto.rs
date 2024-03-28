@@ -20,6 +20,7 @@ pub struct ProofClaimSchemaResponseDTO {
     pub required: bool,
     pub key: String,
     pub data_type: String,
+    pub claims: Vec<ProofClaimSchemaResponseDTO>,
 }
 
 #[derive(Clone, Debug)]

@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::revocation::CredentialRevocationState;
+use crate::service::common_mapper::remove_first_nesting_layer;
 use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
 use crate::{
     model::{
@@ -90,13 +91,6 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             layout_type: value.layout_type.into(),
             layout_properties: convert_inner(value.layout_properties),
         })
-    }
-}
-
-fn remove_first_nesting_layer(name: &str) -> String {
-    match name.find(NESTED_CLAIM_MARKER) {
-        Some(marker_pos) => name[marker_pos + 1..].to_string(),
-        None => name.to_string(),
     }
 }
 

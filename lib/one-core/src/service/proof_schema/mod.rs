@@ -1,3 +1,4 @@
+use crate::config::core_config;
 use crate::repository::{
     claim_schema_repository::ClaimSchemaRepository,
     credential_schema_repository::CredentialSchemaRepository,
@@ -19,6 +20,7 @@ pub struct ProofSchemaService {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     history_repository: Arc<dyn HistoryRepository>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 impl ProofSchemaService {
@@ -28,6 +30,7 @@ impl ProofSchemaService {
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         history_repository: Arc<dyn HistoryRepository>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             proof_schema_repository,
@@ -35,6 +38,7 @@ impl ProofSchemaService {
             organisation_repository,
             history_repository,
             credential_schema_repository,
+            config,
         }
     }
 }

@@ -282,6 +282,7 @@ impl OneCore {
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),
+                config.clone(),
             ),
             proof_service: ProofService::new(
                 data_provider.get_credential_repository(),

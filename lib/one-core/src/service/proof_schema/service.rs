@@ -10,6 +10,7 @@ use super::{
     validator::{proof_schema_name_already_exists, validate_create_request},
     ProofSchemaService,
 };
+use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
 use crate::{
     common_mapper::list_response_into,
     model::{
@@ -46,7 +47,10 @@ impl ProofSchemaService {
                     organisation: Some(OrganisationRelations::default()),
                     proof_inputs: Some(ProofInputSchemaRelations {
                         claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                        credential_schema: Some(CredentialSchemaRelations::default()),
+                        credential_schema: Some(CredentialSchemaRelations {
+                            claim_schemas: Some(ClaimSchemaRelations::default()),
+                            ..Default::default()
+                        }),
                     }),
                 },
             )
@@ -57,7 +61,7 @@ impl ProofSchemaService {
             return Err(EntityNotFoundError::ProofSchema(*id).into());
         }
 
-        result.try_into()
+        convert_proof_schema_to_response(result, &self.config.datatype)
     }
 
     /// Returns list of proof schemas according to query
