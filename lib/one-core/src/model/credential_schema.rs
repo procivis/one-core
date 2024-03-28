@@ -63,6 +63,7 @@ pub enum WalletStorageTypeEnum {
 }
 
 #[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LayoutType {
     Card,
     Document,
