@@ -178,11 +178,10 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
                     let claims = input.claim_schemas.as_ref().map(|schemas| {
                         schemas
                             .iter()
-                            .enumerate()
-                            .map(|(i, credential_claim_schema)| ProofInputClaimSchema {
-                                order: i as u32,
-                                required: credential_claim_schema.required,
-                                schema: credential_claim_schema.schema.to_owned(),
+                            .map(|claim_schema| ProofInputClaimSchema {
+                                order: claim_schema.order,
+                                required: claim_schema.required,
+                                schema: claim_schema.schema.to_owned(),
                             })
                             .collect()
                     });
