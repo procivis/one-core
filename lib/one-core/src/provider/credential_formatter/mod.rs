@@ -237,7 +237,7 @@ fn map_claims(claims: &[DetailCredentialClaimResponseDTO], prefix: &str) -> Vec<
             result.push((format!("{prefix}{}", claim.schema.key), value.to_owned()));
         }
         DetailCredentialClaimValueResponseDTO::Nested(value) => {
-            let nested_claims = map_claims(value, &format!("{}/", claim.schema.key));
+            let nested_claims = map_claims(value, &format!("{prefix}{}/", claim.schema.key));
             result.extend(nested_claims);
         }
     });
