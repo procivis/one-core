@@ -1,7 +1,10 @@
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
 
 use async_trait::async_trait;
+use serde::Deserialize;
+use serde_with::serde_as;
 use shared_types::DidValue;
+use time::Duration;
 
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
@@ -12,6 +15,16 @@ use super::{
 };
 
 pub struct MdocFormatter {}
+
+#[derive(Deserialize)]
+#[serde_as]
+#[serde(rename_all = "camelCase")]
+pub struct Params {
+    #[serde_as(as = "DurationSeconds<u64>")]
+    pub mso_expires_in: Duration,
+    #[serde_as(as = "DurationSeconds<u64>")]
+    pub mso_expected_update_in: Duration,
+}
 
 #[async_trait]
 impl CredentialFormatter for MdocFormatter {
@@ -75,7 +88,13 @@ impl CredentialFormatter for MdocFormatter {
     }
 
     fn get_capabilities(&self) -> FormatterCapabilities {
-        FormatterCapabilities::default()
+        FormatterCapabilities {
+            features: vec!["SELECTIVE_DISCLOSURE".to_string()],
+            issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec!["NONE".to_string()],
+            signing_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
+        }
     }
 
     async fn extract_presentation_unverified(

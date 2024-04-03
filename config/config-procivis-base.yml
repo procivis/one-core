@@ -27,8 +27,10 @@ format:
     type: "MDOC"
     display: "format.mdoc"
     order: 4
-    disabled: true
-    params: null
+    params:
+      public:
+        msoExpiresIn: 259200 # 72h in seconds
+        msoExpectedUpdateIn: 86400 # 24h in seconds
 exchange:
   PROCIVIS_TEMPORARY:
     display: "exchange.procivis"
