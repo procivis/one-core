@@ -84,6 +84,23 @@ fn setup_service(repositories: Repositories) -> CredentialService {
     )
 }
 
+fn generic_formatter_capabilities() -> FormatterCapabilities {
+    FormatterCapabilities {
+        signing_key_algorithms: vec!["EDDSA".to_string()],
+        features: vec![],
+        issuance_exchange_protocols: vec![
+            "OPENID4VC".to_string(),
+            "PROCIVIS_TEMPORARY".to_string(),
+        ],
+        proof_exchange_protocols: vec!["OPENID4VC".to_string(), "PROCIVIS_TEMPORARY".to_string()],
+        revocation_methods: vec![
+            "NONE".to_string(),
+            "BITSTRINGSTATUSLIST".to_string(),
+            "LVVC".to_string(),
+        ],
+    }
+}
+
 fn generic_credential() -> Credential {
     let now = OffsetDateTime::now_utc();
 
@@ -706,10 +723,7 @@ async fn test_create_credential_success() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_string()],
-            features: vec![],
-        });
+        .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
@@ -855,10 +869,7 @@ async fn test_create_credential_one_required_claim_missing() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_string()],
-            features: vec![],
-        });
+        .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
@@ -1306,10 +1317,7 @@ async fn test_create_credential_key_with_issuer_key() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_string()],
-            features: vec![],
-        });
+        .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
@@ -1420,10 +1428,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_string()],
-            features: vec![],
-        });
+        .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
@@ -1504,10 +1509,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_string()],
-            features: vec![],
-        });
+        .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
@@ -1572,10 +1574,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_string()],
-            features: vec![],
-        });
+        .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
@@ -1657,10 +1656,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_string()],
-            features: vec![],
-        });
+        .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
@@ -1742,10 +1738,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            signing_key_algorithms: vec!["EDDSA".to_string()],
-            features: vec![],
-        });
+        .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider

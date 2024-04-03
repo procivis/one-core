@@ -198,6 +198,19 @@ impl CredentialFormatter for JsonLdClassic {
         FormatterCapabilities {
             signing_key_algorithms: vec!["EDDSA".to_owned(), "ES256".to_owned()],
             features: vec![],
+            issuance_exchange_protocols: vec![
+                "OPENID4VC".to_string(),
+                "PROCIVIS_TEMPORARY".to_string(),
+            ],
+            proof_exchange_protocols: vec![
+                "OPENID4VC".to_string(),
+                "PROCIVIS_TEMPORARY".to_string(),
+            ],
+            revocation_methods: vec![
+                "NONE".to_string(),
+                "BITSTRINGSTATUSLIST".to_string(),
+                "LVVC".to_string(),
+            ],
         }
     }
 

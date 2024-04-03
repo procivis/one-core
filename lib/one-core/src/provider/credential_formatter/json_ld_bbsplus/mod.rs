@@ -118,6 +118,19 @@ impl CredentialFormatter for JsonLdBbsplus {
         FormatterCapabilities {
             signing_key_algorithms: vec!["BBS_PLUS".to_owned()],
             features: vec!["SELECTIVE_DISCLOSURE".to_owned()],
+            issuance_exchange_protocols: vec![
+                "OPENID4VC".to_string(),
+                "PROCIVIS_TEMPORARY".to_string(),
+            ],
+            proof_exchange_protocols: vec![
+                "OPENID4VC".to_string(),
+                "PROCIVIS_TEMPORARY".to_string(),
+            ],
+            revocation_methods: vec![
+                "NONE".to_string(),
+                "BITSTRINGSTATUSLIST".to_string(),
+                "LVVC".to_string(),
+            ],
         }
     }
 
