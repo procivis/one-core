@@ -335,8 +335,8 @@ impl JsonLdBbsplus {
             hmac_key: hmac_key.to_owned(),
             mandatory_pointers: mandatory_pointers.to_owned(),
         };
-
-        let mut cbor_components = serde_cbor::to_vec(&bbs_components).map_err(|e| {
+        let mut cbor_components = Vec::new();
+        ciborium::ser::into_writer(&bbs_components, &mut cbor_components).map_err(|e| {
             FormatterError::CouldNotFormat(format!("CBOR serialization failed: {}", e))
         })?;
         proof_value.append(&mut cbor_components);

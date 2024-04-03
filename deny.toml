@@ -28,8 +28,7 @@ yanked        = "deny"
 
 ignore = [
     { id = "RUSTSEC-2023-0055", reason = "no safe upgrade available, hard to replace dependency of JSON-LD" },
-    { id = "RUSTSEC-2023-0071", reason = "no safe upgrade available, can be avoided by not using RSA in mysql server" },
-    { id = "RUSTSEC-2021-0127", reason = "unmaintained only, alternative ciborium is being evaluated" },
+    { id = "RUSTSEC-2023-0071", reason = "no safe upgrade available, can be avoided by not using RSA in mysql server" }
 ]
 
 # This section is considered when running `cargo deny check licenses`
