@@ -40,12 +40,12 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
                     "fields": [
                         {
                             "id": new_claim_schemas[0].0,
-                            "path": ["$.credentialSubject.cat1"],
+                            "path": ["$.vc.credentialSubject.cat1"],
                             "optional": false
                         },
                         {
                             "id": new_claim_schemas[1].0,
-                            "path": ["$.credentialSubject.cat2"],
+                            "path": ["$.vc.credentialSubject.cat2"],
                             "optional": false
                         }
                     ]
@@ -163,12 +163,12 @@ async fn test_get_presentation_definition_success() {
                 "fields": [
                     {
                         "id": new_claim_schemas[0].0,
-                        "path": ["$.credentialSubject.cat1"],
+                        "path": ["$.vc.credentialSubject.cat1"],
                         "optional": false
                     },
                     {
                         "id": new_claim_schemas[1].0,
-                        "path": ["$.credentialSubject.cat2"],
+                        "path": ["$.vc.credentialSubject.cat2"],
                         "optional": false
                     }
                 ],

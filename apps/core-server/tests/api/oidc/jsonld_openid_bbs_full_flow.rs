@@ -135,17 +135,17 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                         },
                         {
                             "id": new_claim_schemas[0].0,
-                            "path": ["$.credentialSubject.Key"],
+                            "path": ["$.vc.credentialSubject.Key"],
                             "optional": true
                         },
                         {
                             "id": new_claim_schemas[1].0,
-                            "path": ["$.credentialSubject.Name"],
+                            "path": ["$.vc.credentialSubject.Name"],
                             "optional": true
                         },
                         {
                             "id": new_claim_schemas[2].0,
-                            "path": ["$.credentialSubject.Address"],
+                            "path": ["$.vc.credentialSubject.Address"],
                             "optional": true
                         }
                     ]
@@ -313,12 +313,12 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                         },
                         {
                             "id": claims[1].id,
-                            "path": ["$.credentialSubject.Name"],
+                            "path": ["$.vc.credentialSubject.Name"],
                             "optional": true
                         },
                         {
                             "id": claims[2].id,
-                            "path": ["$.credentialSubject.Address"],
+                            "path": ["$.vc.credentialSubject.Address"],
                             "optional": true
                         }
                     ]
