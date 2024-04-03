@@ -221,6 +221,24 @@ pub fn proof_schema_from_create_request(
         }
     }
 
+    proof_schema_claims
+        .values()
+        .try_for_each(|credential_claims| {
+            credential_claims.iter().try_for_each(|claim| {
+                let Some((prefix, _)) = claim.schema.key.rsplit_once(NESTED_CLAIM_MARKER) else {
+                    return Ok(());
+                };
+
+                credential_claims
+                    .iter()
+                    .find(|other_claim| other_claim.schema.key == prefix)
+                    .map(|_| ())
+                    .ok_or(BusinessLogicError::MissingParentClaimSchema {
+                        claim_schema_id: claim.schema.id,
+                    })
+            })
+        })?;
+
     let input_schemas = request
         .proof_input_schemas
         .into_iter()

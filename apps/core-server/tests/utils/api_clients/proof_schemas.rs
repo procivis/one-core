@@ -1,5 +1,5 @@
-use one_core::model::credential_schema::CredentialSchema;
 use serde_json::json;
+use shared_types::ClaimSchemaId;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -17,10 +17,9 @@ impl ProofSchemasApi {
         &self,
         name: &str,
         organisation_id: impl Into<Uuid>,
-        credential_schema: &CredentialSchema,
+        claims: impl Iterator<Item = (ClaimSchemaId, bool)>,
+        credential_schema_id: impl Into<Uuid>,
     ) -> Response {
-        let claim = &credential_schema.claim_schemas.as_ref().unwrap()[0];
-
         let body = json!({
           "expireDuration": 0,
           "name": name,
@@ -28,13 +27,13 @@ impl ProofSchemasApi {
           "proofInputSchemas": [
             {
               "validityConstraint": 10,
-              "claimSchemas": [
+              "claimSchemas": claims.map(|(id, required)| json!(
                 {
-                  "id": claim.schema.id,
-                  "required": claim.required
+                    "id": id,
+                    "required": required
                 }
-              ],
-              "credentialSchemaId": credential_schema.id,
+              )).collect::<Vec<_>>(),
+              "credentialSchemaId": credential_schema_id.into(),
             }
           ]
         });
@@ -44,9 +43,7 @@ impl ProofSchemasApi {
 
     pub async fn delete(&self, proof_schema_id: impl Into<Uuid>) -> Response {
         let proof_schema_id = proof_schema_id.into();
-
         let url = format!("/api/proof-schema/v1/{proof_schema_id}");
-
         self.client.delete(&url).await
     }
 }
