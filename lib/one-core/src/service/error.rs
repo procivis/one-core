@@ -296,11 +296,11 @@ pub enum ValidationError {
     #[error("Key not found")]
     KeyNotFound,
 
-    #[error("Primary layout attribute doesn't exists")]
-    MissingLayoutPrimaryAttribute,
+    #[error("Layout attribute doesn't exists: `{0}`")]
+    MissingLayoutAttribute(String),
 
-    #[error("Secondary layout attribute doesn't exists")]
-    MissingLayoutSecondaryAttribute,
+    #[error("Attribute combination not allowed")]
+    AttributeCombinationNotAllowed,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -620,6 +620,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Primary/Secondary attribute does not exists")]
     BR_0105,
+
+    #[strum(to_string = "Attribute combination not allowed")]
+    BR_0118,
 }
 
 impl From<FormatError> for ServiceError {
@@ -758,8 +761,8 @@ impl ValidationError {
             ValidationError::CredentialSchemaMissingNestedClaims(_) => ErrorCode::BR_0106,
             ValidationError::CredentialSchemaNestedClaimsShouldBeEmpty(_) => ErrorCode::BR_0107,
             ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
-            ValidationError::MissingLayoutPrimaryAttribute
-            | ValidationError::MissingLayoutSecondaryAttribute => ErrorCode::BR_0105,
+            ValidationError::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
+            ValidationError::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
         }
     }
 }

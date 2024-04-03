@@ -33,6 +33,5 @@ async fn test_get_credential_schema_success() {
     assert_eq!(resp["revocationMethod"], "STATUSLIST2021");
     assert_eq!(resp["layoutType"], "CARD");
     assert_eq!(resp["schemaType"], "ProcivisOneSchema2024");
-    assert_eq!(resp["layoutProperties"]["backgroundColor"], "#DA2727");
-    assert_eq!(resp["layoutProperties"]["backgroundImage"], "#DA2727");
+    assert_eq!(resp["layoutProperties"]["background"]["color"], "#DA2727");
 }

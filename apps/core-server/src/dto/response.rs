@@ -8,7 +8,7 @@ use super::error::{Cause, ErrorCode, ErrorResponseRestDTO};
 use crate::router::AppState;
 use one_core::{
     provider::credential_formatter::error::FormatterError,
-    service::error::{MissingProviderError, ServiceError},
+    service::error::{self, MissingProviderError, ServiceError},
 };
 
 #[derive(utoipa::IntoResponses)]
@@ -38,7 +38,8 @@ impl ErrorResponse {
         let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
         match error {
             ServiceError::EntityNotFound(_) => Self::NotFound(response),
-            ServiceError::MissingProvider(MissingProviderError::DidMethod(_)) => {
+            ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
+            | ServiceError::Validation(error::ValidationError::MissingLayoutAttribute(_)) => {
                 Self::NotFound(response)
             }
             ServiceError::Validation(_)

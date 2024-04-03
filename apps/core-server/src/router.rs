@@ -418,7 +418,11 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
                 endpoint::credential_schema::dto::WalletStorageTypeRestEnum,
                 endpoint::credential_schema::dto::CredentialSchemaLayoutType,
-                endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestRestDTO,
+                endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRestDTO,
+                endpoint::credential_schema::dto::CredentialSchemaBackgroundPropertiesRestDTO,
+                endpoint::credential_schema::dto::CredentialSchemaLogoPropertiesRestDTO,
+                endpoint::credential_schema::dto::CredentialSchemaCodePropertiesRestDTO,
+                endpoint::credential_schema::dto::CredentialSchemaCodeTypeRestEnum,
                 endpoint::credential_schema::dto::CredentialSchemaType,
 
                 endpoint::did::dto::CreateDidRequestRestDTO,

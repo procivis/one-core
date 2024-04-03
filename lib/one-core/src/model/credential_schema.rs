@@ -72,12 +72,38 @@ pub enum LayoutType {
 
 #[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
 pub struct LayoutProperties {
-    pub background_color: Option<String>,
-    pub background_image: Option<String>,
-    pub label_color: Option<String>,
-    pub label_image: Option<String>,
+    pub background: Option<BackgroundProperties>,
+    pub logo: Option<LogoProperties>,
     pub primary_attribute: Option<String>,
     pub secondary_attribute: Option<String>,
+    pub picture_attribute: Option<String>,
+    pub code: Option<CodeProperties>,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+pub struct BackgroundProperties {
+    pub color: Option<String>,
+    pub image: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+pub struct LogoProperties {
+    pub font_color: Option<String>,
+    pub background_color: Option<String>,
+    pub image: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+pub struct CodeProperties {
+    pub attribute: String,
+    pub r#type: CodeTypeEnum,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+pub enum CodeTypeEnum {
+    Barcode,
+    Mrz,
+    QrCode,
 }
 
 pub type GetCredentialSchemaList = GetListResponse<CredentialSchema>;

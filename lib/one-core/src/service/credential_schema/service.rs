@@ -46,6 +46,8 @@ impl CredentialSchemaService {
         .await?;
 
         super::validator::check_claims_presence_in_layout_properties(&request)?;
+        super::validator::check_background_properties(&request)?;
+        super::validator::check_logo_properties(&request)?;
 
         let organisation = self
             .organisation_repository

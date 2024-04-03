@@ -11,7 +11,9 @@ use one_core::service::backup::dto::{
 };
 use one_core::service::credential::dto::{CredentialRole, CredentialSchemaType};
 use one_core::service::credential_schema::dto::{
-    CredentialSchemaDetailResponseDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaDetailResponseDTO,
+    CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
     GetCredentialSchemaListResponseDTO,
 };
 use one_core::service::did::dto::DidListItemResponseDTO;
@@ -258,12 +260,45 @@ pub struct CredentialSchemaBindingDTO {
 #[derive(Debug, Clone, From)]
 #[from(CredentialSchemaLayoutPropertiesRequestDTO)]
 pub struct CredentialSchemaLayoutPropertiesBindingDTO {
-    pub background_color: Option<String>,
-    pub background_image: Option<String>,
-    pub label_color: Option<String>,
-    pub label_image: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub background: Option<CredentialSchemaBackgroundPropertiesBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub logo: Option<CredentialSchemaLogoPropertiesBindingDTO>,
     pub primary_attribute: Option<String>,
     pub secondary_attribute: Option<String>,
+    pub picture_attribute: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub code: Option<CredentialSchemaCodePropertiesBindingDTO>,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(CredentialSchemaBackgroundPropertiesRequestDTO)]
+pub struct CredentialSchemaBackgroundPropertiesBindingDTO {
+    pub color: Option<String>,
+    pub image: Option<String>,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(CredentialSchemaLogoPropertiesRequestDTO)]
+pub struct CredentialSchemaLogoPropertiesBindingDTO {
+    pub font_color: Option<String>,
+    pub background_color: Option<String>,
+    pub image: Option<String>,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(CredentialSchemaCodePropertiesRequestDTO)]
+pub struct CredentialSchemaCodePropertiesBindingDTO {
+    pub attribute: String,
+    pub r#type: CredentialSchemaCodeTypeBindingDTO,
+}
+
+#[derive(Debug, Clone, From)]
+#[from(CredentialSchemaCodeTypeEnum)]
+pub enum CredentialSchemaCodeTypeBindingDTO {
+    Barcode,
+    Mrz,
+    QrCode,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, From)]

@@ -5,6 +5,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::service::credential_schema::dto::{
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
+};
 use crate::{
     config::{core_config::CoreConfig, ConfigValidationError},
     model::{
@@ -35,7 +39,9 @@ use crate::{
 };
 
 use super::dto::CredentialSchemaLayoutPropertiesRequestDTO;
-use super::validator::check_claims_presence_in_layout_properties;
+use super::validator::{
+    check_background_properties, check_claims_presence_in_layout_properties, check_logo_properties,
+};
 
 fn setup_service(
     credential_schema_repository: MockCredentialSchemaRepository,
@@ -1217,20 +1223,37 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
                 key: "claim2-claim1".to_owned(),
                 datatype: "STRING".to_owned(),
                 required: true,
-                claims: vec![CredentialClaimSchemaRequestDTO {
-                    key: "claim2-claim1-claim1".to_owned(),
-                    datatype: "STRING".to_owned(),
-                    required: true,
-                    claims: vec![],
-                }],
+                claims: vec![
+                    CredentialClaimSchemaRequestDTO {
+                        key: "claim2-claim1-claim1".to_owned(),
+                        datatype: "STRING".to_owned(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaRequestDTO {
+                        key: "claim2-claim1-claim2".to_owned(),
+                        datatype: "STRING".to_owned(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaRequestDTO {
+                        key: "claim2-claim1-claim3".to_owned(),
+                        datatype: "STRING".to_owned(),
+                        required: true,
+                        claims: vec![],
+                    },
+                ],
             }],
         },
     ];
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
-        background_color: None,
-        background_image: None,
-        label_color: None,
-        label_image: None,
+        background: None,
+        logo: None,
+        picture_attribute: Some("claim2-claim1-claim3".to_owned()),
+        code: Some(CredentialSchemaCodePropertiesRequestDTO {
+            attribute: "claim2-claim1-claim2".to_owned(),
+            r#type: CredentialSchemaCodeTypeEnum::Barcode,
+        }),
         primary_attribute: Some("claim1".to_owned()),
         secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
     });
@@ -1263,10 +1286,10 @@ fn test_claims_presence_in_layout_properties_validation_missing_primary_attribut
         }],
     }];
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
-        background_color: None,
-        background_image: None,
-        label_color: None,
-        label_image: None,
+        background: None,
+        logo: None,
+        picture_attribute: None,
+        code: None,
         primary_attribute: Some("claim1".to_owned()),
         secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
     });
@@ -1278,7 +1301,263 @@ fn test_claims_presence_in_layout_properties_validation_missing_primary_attribut
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::MissingLayoutPrimaryAttribute)) = check_claims_presence_in_layout_properties(&request)
+        let Err(ServiceError::Validation(ValidationError::MissingLayoutAttribute(_))) = check_claims_presence_in_layout_properties(&request)
+    )
+}
+
+#[test]
+fn test_background_attributes_combination_failed_both() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: Some(CredentialSchemaBackgroundPropertiesRequestDTO {
+            color: Some("Color".to_owned()),
+            image: Some("Image".to_owned()),
+        }),
+        logo: None,
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_background_properties(&request)
+    )
+}
+
+#[test]
+fn test_background_attributes_combination_failed_none() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: Some(CredentialSchemaBackgroundPropertiesRequestDTO {
+            color: None,
+            image: None,
+        }),
+        logo: None,
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_background_properties(&request)
+    )
+}
+
+#[test]
+fn test_background_attributes_combination_ok_image() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: Some(CredentialSchemaBackgroundPropertiesRequestDTO {
+            color: None,
+            image: Some("Image".to_owned()),
+        }),
+        logo: None,
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Ok(()) = check_background_properties(&request)
+    )
+}
+
+#[test]
+fn test_background_attributes_combination_ok_color() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: Some(CredentialSchemaBackgroundPropertiesRequestDTO {
+            color: Some("Color".to_owned()),
+            image: None,
+        }),
+        logo: None,
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Ok(()) = check_background_properties(&request)
+    )
+}
+
+#[test]
+fn test_logo_attributes_combination_ok_background_plus_font() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: None,
+        logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
+            font_color: Some("Color".to_owned()),
+            background_color: Some("Color".to_owned()),
+            image: None,
+        }),
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Ok(()) = check_logo_properties(&request)
+    )
+}
+
+#[test]
+fn test_logo_attributes_combination_ok_image() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: None,
+        logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
+            font_color: None,
+            background_color: None,
+            image: Some("Image".to_owned()),
+        }),
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Ok(()) = check_logo_properties(&request)
+    )
+}
+
+#[test]
+fn test_logo_attributes_combination_mix1_fail() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: None,
+        logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
+            font_color: None,
+            background_color: Some("Color".to_owned()),
+            image: Some("Image".to_owned()),
+        }),
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_logo_properties(&request)
+    )
+}
+
+#[test]
+fn test_logo_attributes_combination_mix2_fail() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: None,
+        logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
+            font_color: Some("Color".to_owned()),
+            background_color: None,
+            image: Some("Image".to_owned()),
+        }),
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_logo_properties(&request)
+    )
+}
+
+#[test]
+fn test_logo_attributes_combination_mix3_fail() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: None,
+        logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
+            font_color: Some("Color".to_owned()),
+            background_color: None,
+            image: None,
+        }),
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_logo_properties(&request)
+    )
+}
+
+#[test]
+fn test_logo_attributes_combination_empty_fail() {
+    let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
+        background: None,
+        logo: Some(CredentialSchemaLogoPropertiesRequestDTO {
+            font_color: None,
+            background_color: None,
+            image: None,
+        }),
+        picture_attribute: None,
+        code: None,
+        primary_attribute: None,
+        secondary_attribute: None,
+    });
+
+    let request = CreateCredentialSchemaRequestDTO {
+        claims: Vec::new(),
+        layout_properties,
+        ..dummy_request()
+    };
+
+    assert2::assert!(
+        let Err(ServiceError::Validation(ValidationError::AttributeCombinationNotAllowed)) = check_logo_properties(&request)
     )
 }
 
@@ -1291,10 +1570,10 @@ fn test_claims_presence_in_layout_properties_validation_missing_secondary_attrib
         claims: vec![],
     }];
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
-        background_color: None,
-        background_image: None,
-        label_color: None,
-        label_image: None,
+        background: None,
+        logo: None,
+        picture_attribute: None,
+        code: None,
         primary_attribute: Some("claim1".to_owned()),
         secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
     });
@@ -1306,7 +1585,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_secondary_attrib
     };
 
     assert2::assert!(
-        let Err(ServiceError::Validation(ValidationError::MissingLayoutSecondaryAttribute)) = check_claims_presence_in_layout_properties(&request)
+        let Err(ServiceError::Validation(ValidationError::MissingLayoutAttribute(_))) = check_claims_presence_in_layout_properties(&request)
     )
 }
 
