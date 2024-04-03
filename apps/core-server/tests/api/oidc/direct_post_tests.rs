@@ -103,12 +103,12 @@ async fn test_direct_post_one_credential_correct() {
                         },
                         {
                             "id": new_claim_schemas[0].0,
-                            "path": ["$.credentialSubject.cat1"],
+                            "path": ["$.vc.credentialSubject.cat1"],
                             "optional": false
                         },
                         {
                             "id": new_claim_schemas[1].0,
-                            "path": ["$.credentialSubject.cat2"],
+                            "path": ["$.vc.credentialSubject.cat2"],
                             "optional": true
                         }
                     ]
@@ -237,12 +237,12 @@ async fn test_direct_post_one_credential_missing_required_claim() {
                     "fields": [
                         {
                             "id": new_claim_schemas[0].0,
-                            "path": ["$.credentialSubject.cat1"],
+                            "path": ["$.vc.credentialSubject.cat1"],
                             "optional": false
                         },
                         {
                             "id": new_claim_schemas[1].0,
-                            "path": ["$.credentialSubject.cat2"],
+                            "path": ["$.vc.credentialSubject.cat2"],
                             "optional": false
                         }
                     ]
@@ -415,7 +415,7 @@ async fn test_direct_post_multiple_presentations() {
                         },
                         {
                             "id": credential1_claims[0].0,
-                            "path": ["$.credentialSubject.name1"],
+                            "path": ["$.vc.credentialSubject.name1"],
                             "optional": false
                         },
                     ]
@@ -434,7 +434,7 @@ async fn test_direct_post_multiple_presentations() {
                         },
                         {
                             "id": credential2_claims[0].0,
-                            "path": ["$.credentialSubject.pet1"],
+                            "path": ["$.vc.credentialSubject.pet1"],
                             "optional": false
                         },
                     ]
@@ -453,12 +453,12 @@ async fn test_direct_post_multiple_presentations() {
                         },
                         {
                             "id": credential3_claims[0].0,
-                            "path": ["$.credentialSubject.cat1"],
+                            "path": ["$.vc.credentialSubject.cat1"],
                             "optional": false
                         },
                         {
                             "id": credential3_claims[1].0,
-                            "path": ["$.credentialSubject.cat2"],
+                            "path": ["$.vc.credentialSubject.cat2"],
                             "optional": true
                         },
                     ]

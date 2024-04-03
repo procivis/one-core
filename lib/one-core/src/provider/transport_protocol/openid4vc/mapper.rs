@@ -152,8 +152,7 @@ pub(crate) fn get_claim_name_by_json_path(
     Ok(path
         .first()
         .ok_or(TransportProtocolError::Failed("No path".to_string()))?
-        .split('.')
-        .last()
+        .strip_prefix("$.vc.credentialSubject.")
         .ok_or(TransportProtocolError::Failed(
             "Invalid json path".to_string(),
         ))?

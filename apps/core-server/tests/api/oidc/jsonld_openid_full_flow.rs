@@ -133,7 +133,7 @@ async fn test_openid4vc_jsonld_flow(
                         },
                         {
                             "id": new_claim_schemas[0].0,
-                            "path": ["$.credentialSubject.Key"],
+                            "path": ["$.vc.credentialSubject.Key"],
                             "optional": false
                         }
                     ]
@@ -284,7 +284,7 @@ async fn test_openid4vc_jsonld_flow(
                         },
                         {
                             "id": claims.first().unwrap().id,
-                            "path": ["$.credentialSubject.Key"],
+                            "path": ["$.vc.credentialSubject.Key"],
                             "optional": false
                         }
                     ]

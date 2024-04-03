@@ -708,7 +708,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
     let did = fixtures::create_did(&db_conn, &organisation, None).await;
 
     let claim_schemas_1: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "first_f0", true, "STRING"),
+        (Uuid::new_v4(), "first.f0", true, "STRING"),
         (Uuid::new_v4(), "first_f1", false, "STRING"),
     ];
     let credential_schema_1 = fixtures::create_credential_schema_with_claims(
@@ -799,7 +799,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                                 {
                                     "id": "109562f7-2374-4b84-ab84-67709ad25f92",
                                     "path": [
-                                        "$.vc.credentialSubject.first_f0"
+                                        "$.vc.credentialSubject.first.f0"
                                     ],
                                     "optional": false
                                 },
@@ -901,11 +901,11 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                         "fields": [
                             {
                                 "id": "109562f7-2374-4b84-ab84-67709ad25f92",
-                                "name": "first_f0",
+                                "name": "first.f0",
                                 "purpose": null,
                                 "required": true,
                                 "keyMap": {
-                                    credential_1.id.to_string(): "first_f0"
+                                    credential_1.id.to_string(): "first.f0"
                                 }
                             },
                             {
