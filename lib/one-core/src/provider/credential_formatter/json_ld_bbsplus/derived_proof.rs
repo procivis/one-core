@@ -167,9 +167,10 @@ pub(super) fn serialize_derived_proof_value(
         presentation_header: presentation_header.to_owned(),
     };
 
-    let mut cbor_components = serde_cbor::to_vec(&bbs_derive_components).map_err(|e| {
-        FormatterError::CouldNotExtractCredentials(format!("CBOR serialization failed: {}", e))
-    })?;
+    let mut cbor_components = Vec::new();
+    ciborium::ser::into_writer(&bbs_derive_components, &mut cbor_components)
+        .map_err(|e| FormatterError::CouldNotFormat(format!("CBOR serialization failed: {}", e)))?;
+
     proof_value.append(&mut cbor_components);
 
     // For multibase output
@@ -291,7 +292,7 @@ fn extract_proof_value_components(proof_value: &str) -> Result<BbsProofComponent
         ));
     }
 
-    let components: BbsProofComponents = serde_cbor::from_slice(&proof_decoded.as_slice()[3..])
+    let components: BbsProofComponents = ciborium::de::from_reader(&proof_decoded.as_slice()[3..])
         .map_err(|e| {
             FormatterError::CouldNotExtractCredentials(format!(
                 "CBOR deserialization failed: {}",

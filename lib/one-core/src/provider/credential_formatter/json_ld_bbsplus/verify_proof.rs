@@ -161,7 +161,7 @@ fn extract_proof_value_components(
     }
 
     let components: BbsDerivedProofComponents =
-        serde_cbor::from_slice(&proof_decoded.as_slice()[3..]).map_err(|e| {
+        ciborium::de::from_reader(&proof_decoded.as_slice()[3..]).map_err(|e| {
             FormatterError::CouldNotVerify(format!("CBOR deserialization failed: {}", e))
         })?;
 
