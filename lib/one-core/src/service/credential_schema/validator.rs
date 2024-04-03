@@ -45,6 +45,46 @@ pub(crate) fn validate_create_request(
     Ok(())
 }
 
+pub(crate) fn check_background_properties(
+    request: &CreateCredentialSchemaRequestDTO,
+) -> Result<(), ServiceError> {
+    let background = request
+        .layout_properties
+        .as_ref()
+        .and_then(|p| p.background.as_ref());
+
+    if let Some(background) = background {
+        match (background.color.as_ref(), background.image.as_ref()) {
+            (Some(_), None) | (None, Some(_)) => return Ok(()),
+            _ => return Err(ValidationError::AttributeCombinationNotAllowed.into()),
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn check_logo_properties(
+    request: &CreateCredentialSchemaRequestDTO,
+) -> Result<(), ServiceError> {
+    let logo = request
+        .layout_properties
+        .as_ref()
+        .and_then(|p| p.logo.as_ref());
+
+    if let Some(logo) = logo {
+        match (
+            logo.background_color.as_ref(),
+            logo.font_color.as_ref(),
+            logo.image.as_ref(),
+        ) {
+            (Some(_), Some(_), None) | (None, None, Some(_)) => return Ok(()),
+            _ => return Err(ValidationError::AttributeCombinationNotAllowed.into()),
+        }
+    }
+
+    Ok(())
+}
+
 pub(crate) fn check_claims_presence_in_layout_properties(
     request: &CreateCredentialSchemaRequestDTO,
 ) -> Result<(), ServiceError> {
@@ -56,40 +96,51 @@ pub(crate) fn check_claims_presence_in_layout_properties(
         .layout_properties
         .as_ref()
         .and_then(|p| p.secondary_attribute.as_ref());
+    let picture_attribute = request
+        .layout_properties
+        .as_ref()
+        .and_then(|p| p.picture_attribute.as_ref());
+    let code_attribute = request
+        .layout_properties
+        .as_ref()
+        .and_then(|p| p.code.as_ref())
+        .map(|c| &c.attribute);
 
-    if primary_attribute.is_none() && secondary_attribute.is_none() {
+    if primary_attribute.is_none()
+        && secondary_attribute.is_none()
+        && picture_attribute.is_none()
+        && code_attribute.is_none()
+    {
         return Ok(());
     }
 
-    let mut contains_primary = primary_attribute.is_none();
-    let mut contains_secondary = secondary_attribute.is_none();
+    let mut claims_under_collection = VecDeque::from_iter(request.claims.iter());
+    let mut claims = VecDeque::new();
 
-    let mut claims = VecDeque::from_iter(request.claims.iter());
-
-    while let Some(claim) = claims.pop_front() {
-        if contains_primary && contains_secondary {
-            break;
-        }
-
-        if primary_attribute.is_some_and(|attr| attr == &claim.key) {
-            contains_primary = true;
-        }
-
-        if secondary_attribute.is_some_and(|attr| attr == &claim.key) {
-            contains_secondary = true;
-        }
-
-        claims.extend(claim.claims.iter());
+    // Collect all claims
+    while let Some(claim) = claims_under_collection.pop_front() {
+        claims_under_collection.extend(claim.claims.iter());
+        claims.push_back(claim);
     }
 
-    if !contains_primary {
-        return Err(ValidationError::MissingLayoutPrimaryAttribute.into());
-    }
+    handle_attribute_claim_validation(primary_attribute, &claims, "Primary")?;
+    handle_attribute_claim_validation(secondary_attribute, &claims, "Secondary")?;
+    handle_attribute_claim_validation(picture_attribute, &claims, "Picture")?;
+    handle_attribute_claim_validation(code_attribute, &claims, "Code attribute")?;
 
-    if !contains_secondary {
-        return Err(ValidationError::MissingLayoutSecondaryAttribute.into());
-    }
+    Ok(())
+}
 
+fn handle_attribute_claim_validation(
+    primary_attribute: Option<&String>,
+    claims: &VecDeque<&CredentialClaimSchemaRequestDTO>,
+    attribute_name: &str,
+) -> Result<(), ServiceError> {
+    if let Some(attribute) = primary_attribute {
+        if !claims.iter().any(|c| &c.key == attribute) {
+            return Err(ValidationError::MissingLayoutAttribute(attribute_name.to_owned()).into());
+        }
+    }
     Ok(())
 }
 

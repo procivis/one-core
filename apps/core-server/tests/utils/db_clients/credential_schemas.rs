@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
-    CredentialSchemaType, LayoutProperties, LayoutType, WalletStorageTypeEnum,
+    BackgroundProperties, CredentialSchema, CredentialSchemaClaim, CredentialSchemaId,
+    CredentialSchemaRelations, CredentialSchemaType, LayoutProperties, LayoutType,
+    WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -61,12 +62,15 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
-                background_color: Some("#DA2727".to_owned()),
-                background_image: Some("#DA2727".to_owned()),
-                label_color: Some("#DA2727".to_owned()),
-                label_image: Some("#DA2727".to_owned()),
                 primary_attribute: None,
                 secondary_attribute: None,
+                background: Some(BackgroundProperties {
+                    color: Some("#DA2727".to_owned()),
+                    image: None,
+                }),
+                logo: None,
+                picture_attribute: None,
+                code: None,
             }),
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: id.to_string(),

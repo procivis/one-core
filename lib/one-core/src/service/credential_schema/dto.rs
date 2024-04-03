@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
-use dto_mapper::{From, Into};
+use dto_mapper::{convert_inner, From, Into};
 
 use crate::model;
 use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
@@ -82,29 +82,73 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[into(model::credential_schema::LayoutProperties)]
-#[from(model::credential_schema::LayoutProperties)]
-pub struct CredentialSchemaLayoutPropertiesRequestDTO {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub background_color: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub background_image: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub label_color: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub label_image: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub primary_attribute: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub secondary_attribute: Option<String>,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct CredentialClaimSchemaRequestDTO {
     pub key: String,
     pub datatype: String,
     pub required: bool,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[into(model::credential_schema::LayoutProperties)]
+#[from(model::credential_schema::LayoutProperties)]
+pub struct CredentialSchemaLayoutPropertiesRequestDTO {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub background: Option<CredentialSchemaBackgroundPropertiesRequestDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub logo: Option<CredentialSchemaLogoPropertiesRequestDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub primary_attribute: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub secondary_attribute: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub picture_attribute: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub code: Option<CredentialSchemaCodePropertiesRequestDTO>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[into(model::credential_schema::BackgroundProperties)]
+#[from(model::credential_schema::BackgroundProperties)]
+pub struct CredentialSchemaBackgroundPropertiesRequestDTO {
+    pub color: Option<String>,
+    pub image: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[into(model::credential_schema::LogoProperties)]
+#[from(model::credential_schema::LogoProperties)]
+pub struct CredentialSchemaLogoPropertiesRequestDTO {
+    pub font_color: Option<String>,
+    pub background_color: Option<String>,
+    pub image: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[into(model::credential_schema::CodeProperties)]
+#[from(model::credential_schema::CodeProperties)]
+pub struct CredentialSchemaCodePropertiesRequestDTO {
+    pub attribute: String,
+    pub r#type: CredentialSchemaCodeTypeEnum,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[into(model::credential_schema::CodeTypeEnum)]
+#[from(model::credential_schema::CodeTypeEnum)]
+pub enum CredentialSchemaCodeTypeEnum {
+    Barcode,
+    Mrz,
+    QrCode,
 }

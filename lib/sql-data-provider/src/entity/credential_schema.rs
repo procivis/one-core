@@ -1,4 +1,4 @@
-use dto_mapper::{From, Into};
+use dto_mapper::{convert_inner, From, Into};
 use one_core::model::{
     self, credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum,
 };
@@ -79,12 +79,53 @@ pub enum LayoutType {
 #[from(model::credential_schema::LayoutProperties)]
 #[into(model::credential_schema::LayoutProperties)]
 pub struct LayoutProperties {
-    pub background_color: Option<String>,
-    pub background_image: Option<String>,
-    pub label_color: Option<String>,
-    pub label_image: Option<String>,
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub background: Option<BackgroundProperties>,
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub logo: Option<LogoProperties>,
     pub primary_attribute: Option<String>,
     pub secondary_attribute: Option<String>,
+    pub picture_attribute: Option<String>,
+    #[from(with_fn = convert_inner)]
+    #[into(with_fn = convert_inner)]
+    pub code: Option<CodeProperties>,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, From, Into)]
+#[from(model::credential_schema::BackgroundProperties)]
+#[into(model::credential_schema::BackgroundProperties)]
+pub struct BackgroundProperties {
+    pub color: Option<String>,
+    pub image: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, From, Into)]
+#[from(model::credential_schema::LogoProperties)]
+#[into(model::credential_schema::LogoProperties)]
+pub struct LogoProperties {
+    pub font_color: Option<String>,
+    pub background_color: Option<String>,
+    pub image: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, From, Into)]
+#[from(model::credential_schema::CodeProperties)]
+#[into(model::credential_schema::CodeProperties)]
+pub struct CodeProperties {
+    pub attribute: String,
+    pub r#type: CodeTypeEnum,
+}
+
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, From, Into)]
+#[from(model::credential_schema::CodeTypeEnum)]
+#[into(model::credential_schema::CodeTypeEnum)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CodeTypeEnum {
+    Barcode,
+    Mrz,
+    QrCode,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

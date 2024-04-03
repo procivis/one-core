@@ -74,12 +74,32 @@ enum LayoutTypeBindingEnum {
 };
 
 dictionary CredentialSchemaLayoutPropertiesBindingDTO {
-  string? background_color;
-  string? background_image;
-  string? label_color;
-  string? label_image;
+  CredentialSchemaBackgroundPropertiesBindingDTO? background;
+  CredentialSchemaLogoPropertiesBindingDTO? logo;
   string? primary_attribute;
   string? secondary_attribute;
+  string? picture_attribute;
+  CredentialSchemaCodePropertiesBindingDTO? code;
+};
+
+dictionary CredentialSchemaBackgroundPropertiesBindingDTO {
+  string? color;
+  string? image;
+};
+
+dictionary CredentialSchemaLogoPropertiesBindingDTO {
+  string? font_color;
+  string? background_color;
+  string? image;
+};
+
+dictionary CredentialSchemaCodePropertiesBindingDTO {
+  string attribute;
+  CredentialSchemaCodeTypeBindingDTO type;
+};
+
+enum CredentialSchemaCodeTypeBindingDTO {
+  "Barcode", "Mrz", "QrCode"
 };
 
 dictionary CredentialSchemaBindingDTO {
