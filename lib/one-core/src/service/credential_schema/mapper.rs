@@ -1,3 +1,4 @@
+use crate::config::core_config::FormatType;
 use crate::{
     common_mapper::NESTED_CLAIM_MARKER,
     model::{
@@ -87,6 +88,7 @@ pub(super) fn from_create_request(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
     core_base_url: &str,
+    format_type: FormatType,
 ) -> Result<CredentialSchema, ServiceError> {
     if request.claims.is_empty() {
         return Err(ServiceError::ValidationError(
@@ -99,7 +101,14 @@ pub(super) fn from_create_request(
     let claim_schemas = unnest_claim_schemas(request.claims);
 
     let id = Uuid::new_v4();
-    let schema_id = format!("{core_base_url}/ssi/schema/v1/{id}");
+
+    let schema_id = request
+        .schema_id
+        .unwrap_or(format!("{core_base_url}/ssi/schema/v1/{id}"));
+    let schema_type = match format_type {
+        FormatType::Mdoc => CredentialSchemaType::Mdoc,
+        _ => CredentialSchemaType::ProcivisOneSchema2024,
+    };
 
     Ok(CredentialSchema {
         id,
@@ -119,7 +128,7 @@ pub(super) fn from_create_request(
         organisation: Some(organisation),
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+        schema_type,
         schema_id,
     })
 }

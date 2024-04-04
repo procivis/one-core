@@ -38,6 +38,9 @@ pub enum CredentialSchemaType {
 
     #[sea_orm(string_value = "FallbackSchema2024")]
     FallbackSchema2024,
+
+    #[sea_orm(string_value = "mdoc")]
+    Mdoc,
 }
 
 #[derive(

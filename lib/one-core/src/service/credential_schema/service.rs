@@ -62,7 +62,9 @@ impl CredentialSchemaService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let credential_schema = from_create_request(request, organisation, core_base_url)?;
+        let format_type = self.config.format.get_fields(&request.format)?.r#type;
+        let credential_schema =
+            from_create_request(request, organisation, core_base_url, format_type)?;
 
         let result = self
             .credential_schema_repository

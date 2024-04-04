@@ -82,6 +82,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub schema_id: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

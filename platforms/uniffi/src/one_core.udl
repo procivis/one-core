@@ -66,7 +66,7 @@ enum WalletStorageTypeBindingEnum {
 };
 
 enum CredentialSchemaTypeBindingEnum {
-  "ProcivisOneSchema2024", "FallbackSchema2024"
+  "ProcivisOneSchema2024", "FallbackSchema2024", "Mdoc"
 };
 
 enum LayoutTypeBindingEnum {
