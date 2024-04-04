@@ -2,10 +2,11 @@ use shared_types::OrganisationId;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::CredentialClaimSchemaRequestDTO;
 use crate::service::credential_schema::mapper::create_unique_name_check_request;
-use crate::service::error::{BusinessLogicError, ValidationError};
+use crate::service::error::{BusinessLogicError, MissingProviderError, ValidationError};
 use crate::{
     config::validator::{
         datatype::validate_datatypes, format::validate_format, revocation::validate_revocation,
@@ -32,6 +33,7 @@ pub(crate) async fn credential_schema_already_exists(
 pub(crate) fn validate_create_request(
     request: &CreateCredentialSchemaRequestDTO,
     config: &CoreConfig,
+    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
 ) -> Result<(), ServiceError> {
     // at least one claim must be declared
     if request.claims.is_empty() {
@@ -41,6 +43,7 @@ pub(crate) fn validate_create_request(
     validate_format(&request.format, &config.format)?;
     validate_revocation(&request.revocation_method, &config.revocation)?;
     validate_nested_claim_schemas(&request.claims, config)?;
+    validate_revocation_method_is_compatible_with_format(request, config, formatter_provider)?;
 
     Ok(())
 }
@@ -214,4 +217,26 @@ fn gather_claim_schemas<'a>(
         .flat_map(|f| gather_claim_schemas(&f.claims));
 
     Box::new(claim_schemas.iter().chain(nested))
+}
+
+fn validate_revocation_method_is_compatible_with_format(
+    request: &CreateCredentialSchemaRequestDTO,
+    config: &CoreConfig,
+    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
+) -> Result<(), ServiceError> {
+    let formatter = formatter_provider
+        .get_formatter(&request.format)
+        .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
+
+    let revocation_method = config.revocation.get_fields(&request.revocation_method)?;
+
+    if !formatter
+        .get_capabilities()
+        .revocation_methods
+        .contains(&revocation_method.r#type.to_string())
+    {
+        return Err(BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat.into());
+    }
+
+    Ok(())
 }
