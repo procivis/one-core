@@ -231,6 +231,9 @@ pub enum BusinessLogicError {
 
     #[error("Incompatible issuance transport protocol")]
     IncompatibleIssuanceTransportProtocol,
+
+    #[error("Incompatible proof transport protocol")]
+    IncompatibleProofTransportProtocol,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -633,6 +636,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Incompatible issuance transport protocol")]
     BR_0111,
 
+    #[strum(to_string = "Incompatible proof transport protocol")]
+    BR_0112,
+
     #[strum(to_string = "Attribute combination not allowed")]
     BR_0118,
 }
@@ -750,6 +756,7 @@ impl BusinessLogicError {
                 ErrorCode::BR_0110
             }
             BusinessLogicError::IncompatibleIssuanceTransportProtocol => ErrorCode::BR_0111,
+            BusinessLogicError::IncompatibleProofTransportProtocol => ErrorCode::BR_0112,
         }
     }
 }
