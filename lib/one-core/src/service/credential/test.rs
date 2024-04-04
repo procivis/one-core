@@ -809,7 +809,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
 }
 
 #[tokio::test]
-async fn test_create_credential_one_required_claim_missing() {
+async fn test_create_credential_one_required_claim_missing_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut did_repository = MockDidRepository::default();
@@ -868,14 +868,12 @@ async fn test_create_credential_one_required_claim_missing() {
     let mut formatter = MockCredentialFormatter::default();
     formatter
         .expect_get_capabilities()
-        .once()
         .return_once(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_formatter()
-        .once()
-        .with(eq(credential_schema.format))
+        .with(eq(credential_schema.format.to_owned()))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let service = setup_service(Repositories {
@@ -892,6 +890,91 @@ async fn test_create_credential_one_required_claim_missing() {
         .schema
         .id
         .to_owned();
+    let create_request_template = CreateCredentialRequestDTO {
+        credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+        issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+        issuer_key: None,
+        transport: "PROCIVIS_TEMPORARY".to_string(),
+        claim_values: vec![],
+        redirect_uri: None,
+    };
+
+    // create a credential with required claims only succeeds
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: required_claim_schema_id,
+                value: "value".to_string(),
+            }],
+            ..create_request_template
+        })
+        .await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_create_credential_one_required_claim_missing_fail_required_claim_not_provided() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    let credential_schema = CredentialSchema {
+        claim_schemas: Some(vec![
+            CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "required".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                },
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    key: "optional".to_string(),
+                    data_type: "STRING".to_string(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                },
+                required: false,
+            },
+        ]),
+        ..credential.schema.clone().unwrap()
+    };
+
+    {
+        let issuer_did = credential.issuer_did.clone().unwrap();
+        let credential_schema_clone = credential_schema.clone();
+        did_repository
+            .expect_get_did()
+            .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+    }
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .return_once(generic_formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .with(eq(credential_schema.format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let service = setup_service(Repositories {
+        credential_schema_repository,
+        did_repository,
+        formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
     let optional_claim_schema_id = credential_schema.claim_schemas.as_ref().unwrap()[1]
         .schema
         .id
@@ -921,18 +1004,6 @@ async fn test_create_credential_one_required_claim_missing() {
             ValidationError::CredentialMissingClaim { .. }
         ))
     ));
-
-    // create a credential with required claims only succeeds
-    let result = service
-        .create_credential(CreateCredentialRequestDTO {
-            claim_values: vec![CredentialRequestClaimDTO {
-                claim_schema_id: required_claim_schema_id,
-                value: "value".to_string(),
-            }],
-            ..create_request_template
-        })
-        .await;
-    assert!(result.is_ok());
 }
 
 #[tokio::test]
@@ -959,9 +1030,21 @@ async fn test_create_credential_schema_deleted() {
             .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
     }
 
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .return_once(generic_formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .with(eq(credential_schema.format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
         credential_schema_repository,
         did_repository,
+        formatter_provider,
         revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
@@ -1781,6 +1864,78 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
 }
 
 #[tokio::test]
+async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    {
+        let issuer_did = credential.issuer_did.clone().unwrap();
+        let credential_schema = credential.schema.clone().unwrap();
+
+        did_repository
+            .expect_get_did()
+            .times(1)
+            .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .returning(move |_, _| Ok(Some(credential_schema.clone())));
+    }
+
+    let mut formatter_capabilities = generic_formatter_capabilities();
+    formatter_capabilities.issuance_exchange_protocols = vec!["OPENID4VC".to_string()];
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let service = setup_service(Repositories {
+        credential_schema_repository,
+        did_repository,
+        formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+            issuer_key: None,
+            transport: "PROCIVIS_TEMPORARY".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: credential.claims.as_ref().unwrap()[0]
+                    .schema
+                    .as_ref()
+                    .unwrap()
+                    .id
+                    .to_owned(),
+                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+            }],
+            redirect_uri: None,
+        })
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::IncompatibleIssuanceTransportProtocol
+        ))
+    ));
+}
+
+#[tokio::test]
 async fn test_revoke_credential_success_with_accepted_credential() {
     let now = OffsetDateTime::now_utc();
 
@@ -2226,6 +2381,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
             },
         ],
         &schema,
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -2299,6 +2455,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             },
         ],
         &schema,
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -2310,6 +2467,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             value: "Somewhere".to_string(),
         }],
         &schema,
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -2327,6 +2485,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
             },
         ],
         &schema,
+        &generic_formatter_capabilities(),
         &generic_config().core,
     );
     assert!(matches!(
@@ -2405,6 +2564,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             },
         ],
         &schema,
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();
@@ -2416,6 +2576,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             value: "Somewhere".to_string(),
         }],
         &schema,
+        &generic_formatter_capabilities(),
         &generic_config().core,
     );
     assert!(matches!(
@@ -2438,6 +2599,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
             },
         ],
         &schema,
+        &generic_formatter_capabilities(),
         &generic_config().core,
     )
     .unwrap();

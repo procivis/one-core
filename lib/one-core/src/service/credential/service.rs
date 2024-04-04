@@ -107,10 +107,17 @@ impl CredentialService {
                 "claim_schemas is None".to_string(),
             ))?;
 
+        let formatter_capabilities = self
+            .formatter_provider
+            .get_formatter(&schema.format)
+            .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?
+            .get_capabilities();
+
         super::validator::validate_create_request(
             &request.transport,
             &request.claim_values,
             &schema,
+            &formatter_capabilities,
             &self.config,
         )?;
 
@@ -121,16 +128,11 @@ impl CredentialService {
             &claim_schemas,
         )?;
 
-        let formatter_signing_key_algorithms = self
-            .formatter_provider
-            .get_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?
-            .get_capabilities()
-            .signing_key_algorithms;
-
         let valid_keys_filter = |entry: &&RelatedKey| {
             entry.role == KeyRole::AssertionMethod
-                && formatter_signing_key_algorithms.contains(&entry.key.key_type)
+                && formatter_capabilities
+                    .signing_key_algorithms
+                    .contains(&entry.key.key_type)
         };
 
         let did_keys = issuer_did
