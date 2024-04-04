@@ -11,7 +11,9 @@ use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletSt
 use crate::model::did::{KeyRole, RelatedKey};
 use crate::model::key::Key;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
+use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentialFormatter};
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::provider::transport_protocol::MockTransportProtocol;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -56,6 +58,7 @@ struct Repositories {
     pub interaction_repository: MockInteractionRepository,
     pub credential_repository: MockCredentialRepository,
     pub history_repository: MockHistoryRepository,
+    pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockTransportProtocolProvider,
     pub config: CoreConfig,
 }
@@ -68,6 +71,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.did_repository),
         Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
+        Arc::new(repositories.credential_formatter_provider),
         Arc::new(repositories.protocol_provider),
         Arc::new(repositories.config),
     )
@@ -107,6 +111,31 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         holder_did: None,
         verifier_key: None,
         interaction: None,
+    }
+}
+
+fn generic_proof_input_schema() -> ProofInputSchema {
+    let now = OffsetDateTime::now_utc();
+
+    ProofInputSchema {
+        validity_constraint: None,
+        claim_schemas: None,
+        credential_schema: Some(CredentialSchema {
+            id: Default::default(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: "schema".to_string(),
+            format: "JWT".to_string(),
+            revocation_method: "NONE".to_string(),
+            wallet_storage_type: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: "".to_string(),
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            claim_schemas: None,
+            organisation: None,
+        }),
     }
 }
 
@@ -491,7 +520,7 @@ async fn test_create_proof_without_related_key() {
                 name: "proof schema".to_string(),
                 expire_duration: 0,
                 organisation: None,
-                input_schemas: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
 
@@ -531,6 +560,24 @@ async fn test_create_proof_without_related_key() {
             }))
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    let transport_copy = transport.to_owned();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![transport_copy],
+            revocation_methods: vec![],
+            signing_key_algorithms: vec![],
+        });
+    credential_formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
     let proof_id = ProofId::new_v4();
     let mut proof_repository = MockProofRepository::default();
     proof_repository
@@ -539,15 +586,11 @@ async fn test_create_proof_without_related_key() {
         .withf(move |proof| proof.transport == transport)
         .returning(move |_| Ok(proof_id));
 
-    let interaction_repository = MockInteractionRepository::default();
-    let credential_repository = MockCredentialRepository::default();
-
     let service = setup_service(Repositories {
-        credential_repository,
         proof_repository,
         did_repository,
         proof_schema_repository,
-        interaction_repository,
+        credential_formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -582,7 +625,7 @@ async fn test_create_proof_with_related_key() {
                 name: "proof schema".to_string(),
                 expire_duration: 0,
                 organisation: None,
-                input_schemas: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
 
@@ -620,6 +663,24 @@ async fn test_create_proof_with_related_key() {
             }))
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    let transport_copy = transport.to_owned();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(move || FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![transport_copy],
+            revocation_methods: vec![],
+            signing_key_algorithms: vec![],
+        });
+    credential_formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
     let proof_id = ProofId::new_v4();
     let mut proof_repository = MockProofRepository::default();
     proof_repository
@@ -628,15 +689,11 @@ async fn test_create_proof_with_related_key() {
         .withf(move |proof| proof.transport == transport)
         .returning(move |_| Ok(proof_id));
 
-    let interaction_repository = MockInteractionRepository::default();
-    let credential_repository = MockCredentialRepository::default();
-
     let service = setup_service(Repositories {
-        credential_repository,
         proof_repository,
         did_repository,
         proof_schema_repository,
-        interaction_repository,
+        credential_formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -670,7 +727,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
                 name: "proof schema".to_string(),
                 expire_duration: 0,
                 organisation: None,
-                input_schemas: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
 
@@ -695,14 +752,27 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
             }))
         });
 
-    let interaction_repository = MockInteractionRepository::default();
-    let credential_repository = MockCredentialRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![transport],
+            revocation_methods: vec![],
+            signing_key_algorithms: vec![],
+        });
+    credential_formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
 
     let service = setup_service(Repositories {
-        credential_repository,
         did_repository,
         proof_schema_repository,
-        interaction_repository,
+        credential_formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -711,6 +781,66 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
     assert!(matches!(
         result.unwrap_err(),
         ServiceError::Validation(ValidationError::InvalidKey(_))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_proof_failed_incompatible_transport() {
+    let transport = "PROCIVIS_TEMPORARY".to_string();
+    let request = CreateProofRequestDTO {
+        proof_schema_id: Uuid::new_v4(),
+        verifier_did_id: Uuid::new_v4().into(),
+        transport: transport.to_owned(),
+        redirect_uri: None,
+        verifier_key: None,
+    };
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .times(1)
+        .withf(move |id, _| &request.proof_schema_id == id)
+        .returning(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: None,
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
+            }))
+        });
+
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec![],
+            signing_key_algorithms: vec![],
+        });
+    credential_formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let service = setup_service(Repositories {
+        proof_schema_repository,
+        credential_formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.create_proof(request.to_owned()).await;
+    assert!(matches!(
+        result.unwrap_err(),
+        ServiceError::BusinessLogic(BusinessLogicError::IncompatibleProofTransportProtocol)
     ));
 }
 
@@ -739,7 +869,7 @@ async fn test_create_proof_did_deactivated_error() {
                 name: "proof schema".to_string(),
                 expire_duration: 0,
                 organisation: None,
-                input_schemas: None,
+                input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
 
@@ -764,9 +894,27 @@ async fn test_create_proof_did_deactivated_error() {
             }))
         });
 
+    let mut formatter = MockCredentialFormatter::default();
+    let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![transport],
+            revocation_methods: vec![],
+            signing_key_algorithms: vec![],
+        });
+    credential_formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
     let service = setup_service(Repositories {
         did_repository,
         proof_schema_repository,
+        credential_formatter_provider,
         config: generic_config().core,
         ..Default::default()
     });

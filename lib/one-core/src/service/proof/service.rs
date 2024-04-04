@@ -9,6 +9,7 @@ use super::{
     },
     ProofService,
 };
+use crate::service::proof::validator::validate_format_and_transport_protocol_compatibility;
 use crate::{
     common_mapper::list_response_try_into,
     common_validator::throw_if_latest_proof_state_not_eq,
@@ -180,7 +181,16 @@ impl ProofService {
         let proof_schema_id = request.proof_schema_id;
         let proof_schema = self
             .proof_schema_repository
-            .get_proof_schema(&proof_schema_id, &ProofSchemaRelations::default())
+            .get_proof_schema(
+                &proof_schema_id,
+                &ProofSchemaRelations {
+                    organisation: None,
+                    proof_inputs: Some(ProofInputSchemaRelations {
+                        claim_schemas: None,
+                        credential_schema: Some(CredentialSchemaRelations::default()),
+                    }),
+                },
+            )
             .await?
             .ok_or(BusinessLogicError::MissingProofSchema { proof_schema_id })?;
 
@@ -188,6 +198,13 @@ impl ProofService {
         if proof_schema.deleted_at.is_some() {
             return Err(BusinessLogicError::ProofSchemaDeleted { proof_schema_id }.into());
         }
+
+        validate_format_and_transport_protocol_compatibility(
+            &request.transport,
+            &self.config,
+            &proof_schema,
+            &self.credential_formatter_provider,
+        )?;
 
         let Some(verifier_did) = self
             .did_repository

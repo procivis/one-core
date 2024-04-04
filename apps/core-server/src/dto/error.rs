@@ -107,6 +107,7 @@ pub enum ErrorCode {
     BR_0109,
     BR_0110,
     BR_0111,
+    BR_0112,
     BR_0118,
 }
 
