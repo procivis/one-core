@@ -9,6 +9,7 @@ use crate::service::credential::dto::{
 use crate::service::credential::mapper::renest_claims;
 use crate::service::credential::validator::validate_create_request;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::test_utilities::generic_formatter_capabilities;
 use crate::{
     config::core_config::CoreConfig,
     model::{
@@ -29,7 +30,7 @@ use crate::{
         credential_formatter::{
             model::{CredentialStatus, CredentialSubject, DetailCredential},
             provider::MockCredentialFormatterProvider,
-            FormatterCapabilities, MockCredentialFormatter,
+            MockCredentialFormatter,
         },
         revocation::{provider::MockRevocationMethodProvider, MockRevocationMethod},
         transport_protocol::{provider::MockTransportProtocolProvider, MockTransportProtocol},
@@ -82,23 +83,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
     )
-}
-
-fn generic_formatter_capabilities() -> FormatterCapabilities {
-    FormatterCapabilities {
-        signing_key_algorithms: vec!["EDDSA".to_string()],
-        features: vec![],
-        issuance_exchange_protocols: vec![
-            "OPENID4VC".to_string(),
-            "PROCIVIS_TEMPORARY".to_string(),
-        ],
-        proof_exchange_protocols: vec!["OPENID4VC".to_string(), "PROCIVIS_TEMPORARY".to_string()],
-        revocation_methods: vec![
-            "NONE".to_string(),
-            "BITSTRINGSTATUSLIST".to_string(),
-            "LVVC".to_string(),
-        ],
-    }
 }
 
 fn generic_credential() -> Credential {

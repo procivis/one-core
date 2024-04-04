@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::credential_formatter::FormatterCapabilities;
 use crate::{
     config::core_config::AppConfig,
     model::{
@@ -39,6 +40,14 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 display: 'display'
                 order: 1
                 params: null
+            MDOC:
+              type: 'MDOC'
+              display: 'format.mdoc'
+              order: 4
+              params:
+                public:
+                  msoExpiresIn: 259200 # 72h in seconds
+                  msoExpectedUpdateIn: 86400 # 24h in seconds
         exchange:
             PROCIVIS_TEMPORARY:
                 display: 'display'
@@ -282,5 +291,22 @@ pub fn dummy_claim_schema() -> ClaimSchema {
         data_type: "data type".to_string(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
+    }
+}
+
+pub fn generic_formatter_capabilities() -> FormatterCapabilities {
+    FormatterCapabilities {
+        signing_key_algorithms: vec!["EDDSA".to_string()],
+        features: vec![],
+        issuance_exchange_protocols: vec![
+            "OPENID4VC".to_string(),
+            "PROCIVIS_TEMPORARY".to_string(),
+        ],
+        proof_exchange_protocols: vec!["OPENID4VC".to_string(), "PROCIVIS_TEMPORARY".to_string()],
+        revocation_methods: vec![
+            "NONE".to_string(),
+            "BITSTRINGSTATUSLIST".to_string(),
+            "LVVC".to_string(),
+        ],
     }
 }

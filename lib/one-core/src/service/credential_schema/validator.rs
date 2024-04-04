@@ -1,7 +1,7 @@
 use shared_types::OrganisationId;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::CredentialClaimSchemaRequestDTO;
@@ -44,6 +44,7 @@ pub(crate) fn validate_create_request(
     validate_revocation(&request.revocation_method, &config.revocation)?;
     validate_nested_claim_schemas(&request.claims, config)?;
     validate_revocation_method_is_compatible_with_format(request, config, formatter_provider)?;
+    validate_mdoc_claim_types(request, config)?;
 
     Ok(())
 }
@@ -236,6 +237,25 @@ fn validate_revocation_method_is_compatible_with_format(
         .contains(&revocation_method.r#type.to_string())
     {
         return Err(BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat.into());
+    }
+
+    Ok(())
+}
+
+fn validate_mdoc_claim_types(
+    request: &CreateCredentialSchemaRequestDTO,
+    config: &CoreConfig,
+) -> Result<(), ServiceError> {
+    let format_type = config.format.get_fields(&request.format)?.r#type;
+    if format_type != FormatType::Mdoc {
+        return Ok(());
+    }
+
+    for claim in &request.claims {
+        let data_type = config.datatype.get_fields(&claim.datatype)?.r#type;
+        if data_type != DatatypeType::Object {
+            return Err(BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed.into());
+        }
     }
 
     Ok(())

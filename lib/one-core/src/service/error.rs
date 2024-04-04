@@ -234,6 +234,9 @@ pub enum BusinessLogicError {
 
     #[error("Incompatible proof transport protocol")]
     IncompatibleProofTransportProtocol,
+
+    #[error("Invalid claim type (mdoc top level only objects allowed)")]
+    InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -639,6 +642,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Incompatible proof transport protocol")]
     BR_0112,
 
+    #[strum(to_string = "Invalid claim type (mdoc top level only objects allowed)")]
+    BR_0117,
+
     #[strum(to_string = "Attribute combination not allowed")]
     BR_0118,
 }
@@ -757,6 +763,9 @@ impl BusinessLogicError {
             }
             BusinessLogicError::IncompatibleIssuanceTransportProtocol => ErrorCode::BR_0111,
             BusinessLogicError::IncompatibleProofTransportProtocol => ErrorCode::BR_0112,
+            BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => {
+                ErrorCode::BR_0117
+            }
         }
     }
 }

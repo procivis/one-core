@@ -11,6 +11,7 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
 };
+use crate::service::test_utilities::generic_formatter_capabilities;
 use crate::{
     config::{core_config::CoreConfig, ConfigValidationError},
     model::{
@@ -935,6 +936,67 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
         result,
         ServiceError::BusinessLogic(
             BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat
+        )
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object() {
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(generic_formatter_capabilities);
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        formatter_provider,
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "MDOC".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![
+                CredentialClaimSchemaRequestDTO {
+                    key: "test".to_string(),
+                    datatype: "OBJECT".to_string(),
+                    required: true,
+                    claims: vec![CredentialClaimSchemaRequestDTO {
+                        key: "nested".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    }],
+                },
+                CredentialClaimSchemaRequestDTO {
+                    key: "test2".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    claims: vec![],
+                },
+            ],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::BusinessLogic(
+            BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed
         )
     ));
 }
