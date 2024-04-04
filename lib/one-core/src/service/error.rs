@@ -225,6 +225,9 @@ pub enum BusinessLogicError {
 
     #[error("Credential state is Revoked or Suspended and cannot be shared")]
     CredentialIsRevokedOrSuspended,
+
+    #[error("Revocation method not compatible with selected format")]
+    RevocationMethodNotCompatibleWithSelectedFormat,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -606,6 +609,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Missing proof input schemas")]
     BR_0104,
 
+    #[strum(to_string = "Primary/Secondary attribute does not exists")]
+    BR_0105,
+
     #[strum(to_string = "Missing nested claims")]
     BR_0106,
 
@@ -618,8 +624,8 @@ pub enum ErrorCode {
     #[strum(to_string = "Missing parent claim schema")]
     BR_0109,
 
-    #[strum(to_string = "Primary/Secondary attribute does not exists")]
-    BR_0105,
+    #[strum(to_string = "Revocation method not compatible")]
+    BR_0110,
 
     #[strum(to_string = "Attribute combination not allowed")]
     BR_0118,
@@ -734,6 +740,9 @@ impl BusinessLogicError {
                 ErrorCode::BR_0098
             }
             BusinessLogicError::CredentialIsRevokedOrSuspended => ErrorCode::BR_0099,
+            BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat => {
+                ErrorCode::BR_0110
+            }
         }
     }
 }

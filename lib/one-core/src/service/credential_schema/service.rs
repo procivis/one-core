@@ -36,7 +36,11 @@ impl CredentialSchemaService {
             .as_ref()
             .ok_or_else(|| ServiceError::Other("Missing core base_url".to_string()))?;
 
-        super::validator::validate_create_request(&request, &self.config)?;
+        super::validator::validate_create_request(
+            &request,
+            &self.config,
+            &self.formatter_provider,
+        )?;
 
         super::validator::credential_schema_already_exists(
             &self.credential_schema_repository,

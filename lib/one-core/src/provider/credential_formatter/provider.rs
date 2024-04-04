@@ -17,7 +17,7 @@ use super::json_ld_classic::JsonLdClassic;
 use super::CredentialFormatter;
 
 #[cfg_attr(test, mockall::automock)]
-pub(crate) trait CredentialFormatterProvider: Send + Sync {
+pub trait CredentialFormatterProvider: Send + Sync {
     fn get_formatter(&self, formatter_id: &str) -> Option<Arc<dyn CredentialFormatter>>;
 }
 

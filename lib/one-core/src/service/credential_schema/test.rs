@@ -5,6 +5,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentialFormatter};
 use crate::service::credential_schema::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
@@ -47,6 +49,7 @@ fn setup_service(
     credential_schema_repository: MockCredentialSchemaRepository,
     history_repository: MockHistoryRepository,
     organisation_repository: MockOrganisationRepository,
+    formatter_provider: MockCredentialFormatterProvider,
     config: CoreConfig,
 ) -> CredentialSchemaService {
     CredentialSchemaService::new(
@@ -54,6 +57,7 @@ fn setup_service(
         Arc::new(credential_schema_repository),
         Arc::new(history_repository),
         Arc::new(organisation_repository),
+        Arc::new(formatter_provider),
         Arc::new(config),
     )
 }
@@ -96,6 +100,7 @@ async fn test_get_credential_schema_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
+
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
@@ -115,6 +120,7 @@ async fn test_get_credential_schema_success() {
         repository,
         history_repository,
         organisation_repository,
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -145,6 +151,7 @@ async fn test_get_credential_schema_deleted() {
         repository,
         history_repository,
         organisation_repository,
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -181,6 +188,7 @@ async fn test_get_credential_schema_fail() {
         repository,
         history_repository,
         organisation_repository,
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -216,6 +224,7 @@ async fn test_get_credential_schema_list_success() {
         repository,
         history_repository,
         organisation_repository,
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -267,6 +276,7 @@ async fn test_delete_credential_schema() {
         repository,
         history_repository,
         organisation_repository,
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -279,6 +289,8 @@ async fn test_create_credential_schema_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut history_repository = MockHistoryRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     history_repository
         .expect_create_history()
@@ -324,10 +336,26 @@ async fn test_create_credential_schema_success() {
             .returning(move |_| Ok(clone.clone()));
     }
 
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec!["NONE".to_string()],
+            signing_key_algorithms: vec![],
+        });
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
+        formatter_provider,
         generic_config().core,
     );
 
@@ -357,6 +385,8 @@ async fn test_create_credential_schema_success_nested_claims() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut history_repository = MockHistoryRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     history_repository
         .expect_create_history()
@@ -402,10 +432,26 @@ async fn test_create_credential_schema_success_nested_claims() {
             .returning(move |_| Ok(clone.clone()));
     }
 
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec!["NONE".to_string()],
+            signing_key_algorithms: vec![],
+        });
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
+        formatter_provider,
         generic_config().core,
     );
 
@@ -449,6 +495,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -484,6 +531,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -532,6 +580,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -565,6 +614,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
         MockCredentialSchemaRepository::default(),
         MockHistoryRepository::default(),
         MockOrganisationRepository::default(),
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -601,6 +651,8 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
 async fn test_create_credential_schema_unique_name_error() {
     let mut repository = MockCredentialSchemaRepository::default();
     let history_repository = MockHistoryRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let now = OffsetDateTime::now_utc();
     let organisation = Organisation {
@@ -626,10 +678,26 @@ async fn test_create_credential_schema_unique_name_error() {
             .returning(move |_| Ok(response.clone()));
     }
 
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec!["NONE".to_string()],
+            signing_key_algorithms: vec![],
+        });
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
     let service = setup_service(
         repository,
         history_repository,
         MockOrganisationRepository::default(),
+        formatter_provider,
         generic_config().core,
     );
 
@@ -666,6 +734,7 @@ async fn test_create_credential_schema_fail_validation() {
         repository,
         history_repository,
         organisation_repository,
+        MockCredentialFormatterProvider::default(),
         generic_config().core,
     );
 
@@ -750,6 +819,8 @@ async fn test_create_credential_schema_fail_missing_organisation() {
     let mut repository = MockCredentialSchemaRepository::default();
     let history_repository = MockHistoryRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let response = GetCredentialSchemaList {
         values: vec![
@@ -773,10 +844,26 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             .returning(move |_| Ok(clone.clone()));
     }
 
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec!["NONE".to_string()],
+            signing_key_algorithms: vec![],
+        });
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
     let service = setup_service(
         repository,
         history_repository,
         organisation_repository,
+        formatter_provider,
         generic_config().core,
     );
 
@@ -802,6 +889,54 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         e,
         ServiceError::BusinessLogic(BusinessLogicError::MissingOrganisation(_))
     )));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_fail_incompatible_revocation_and_format() {
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(FormatterCapabilities::default);
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        formatter_provider,
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "test".to_string(),
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::BusinessLogic(
+            BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat
+        )
+    ));
 }
 
 #[tokio::test]
