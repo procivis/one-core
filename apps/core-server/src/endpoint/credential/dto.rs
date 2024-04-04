@@ -138,6 +138,8 @@ pub struct CredentialDetailSchemaResponseRestDTO {
 pub enum CredentialSchemaTypeEnum {
     ProcivisOneSchema2024,
     FallbackSchema2024,
+    #[serde(rename = "mdoc")]
+    Mdoc,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

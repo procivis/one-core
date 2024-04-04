@@ -49,6 +49,8 @@ pub struct CredentialSchemaListItemResponseRestDTO {
 pub enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
+    #[serde(rename = "mdoc")]
+    Mdoc,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -136,6 +138,7 @@ pub struct CreateCredentialSchemaRequestRestDTO {
     pub layout_type: CredentialSchemaLayoutType,
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+    pub schema_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From, Default)]

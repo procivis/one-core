@@ -314,6 +314,7 @@ pub enum CredentialSchemaCodeTypeBindingDTO {
 pub enum CredentialSchemaTypeBindingEnum {
     ProcivisOneSchema2024,
     FallbackSchema2024,
+    Mdoc,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From)]

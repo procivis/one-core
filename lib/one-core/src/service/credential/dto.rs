@@ -92,6 +92,7 @@ pub struct DetailCredentialSchemaResponseDTO {
 pub enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
+    Mdoc,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -329,7 +329,13 @@ async fn test_create_credential_schema_success() {
         repository
             .expect_create_credential_schema()
             .times(1)
-            .returning(move |_| Ok(schema_id.to_owned()));
+            .returning(move |request| {
+                assert_eq!(
+                    CredentialSchemaType::ProcivisOneSchema2024,
+                    request.schema_type
+                );
+                Ok(schema_id.to_owned())
+            });
         let clone = response.clone();
         repository
             .expect_get_credential_schema_list()
@@ -375,10 +381,118 @@ async fn test_create_credential_schema_success() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await;
     assert!(result.is_ok());
     assert_eq!(schema_id, result.unwrap());
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut history_repository = MockHistoryRepository::default();
+    let mut organisation_repository = MockOrganisationRepository::default();
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    history_repository
+        .expect_create_history()
+        .times(1)
+        .returning(|history| Ok(history.id));
+
+    let now = OffsetDateTime::now_utc();
+    let organisation = Organisation {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+    };
+    let schema_id = Uuid::new_v4();
+
+    let response = GetCredentialSchemaList {
+        values: vec![
+            generic_credential_schema(),
+            generic_credential_schema(),
+            generic_credential_schema(),
+        ],
+        total_pages: 0,
+        total_items: 0,
+    };
+
+    let custom_schema_id = "custom_schema_id";
+    {
+        let organisation = organisation.clone();
+        organisation_repository
+            .expect_get_organisation()
+            .times(1)
+            .with(
+                eq(organisation.id.to_owned()),
+                eq(OrganisationRelations::default()),
+            )
+            .returning(move |_, _| Ok(Some(organisation.clone())));
+        repository
+            .expect_create_credential_schema()
+            .times(1)
+            .returning(move |request| {
+                assert_eq!(custom_schema_id, request.schema_id);
+                assert_eq!(CredentialSchemaType::Mdoc, request.schema_type);
+                Ok(schema_id.to_owned())
+            });
+        let clone = response.clone();
+        repository
+            .expect_get_credential_schema_list()
+            .times(1)
+            .returning(move |_| Ok(clone.clone()));
+    }
+
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| FormatterCapabilities {
+            features: vec![],
+            issuance_exchange_protocols: vec![],
+            proof_exchange_protocols: vec![],
+            revocation_methods: vec!["NONE".to_string()],
+            signing_key_algorithms: vec![],
+        });
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let service = setup_service(
+        repository,
+        history_repository,
+        organisation_repository,
+        formatter_provider,
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "MDOC".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: organisation.id.to_owned(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "test".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![CredentialClaimSchemaRequestDTO {
+                    key: "X".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    claims: vec![],
+                }],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: Some(custom_schema_id.to_string()),
+        })
+        .await
+        .unwrap();
+    assert_eq!(schema_id, result);
 }
 
 #[tokio::test]
@@ -484,6 +598,7 @@ async fn test_create_credential_schema_success_nested_claims() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await
         .unwrap();
@@ -515,6 +630,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await
         .unwrap_err();
@@ -564,6 +680,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await
         .unwrap_err();
@@ -600,6 +717,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await
         .unwrap_err();
@@ -639,6 +757,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await
         .unwrap_err();
@@ -717,6 +836,7 @@ async fn test_create_credential_schema_unique_name_error() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await;
     assert!(result.is_err_and(|e| matches!(
@@ -754,6 +874,7 @@ async fn test_create_credential_schema_fail_validation() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await;
     assert!(non_existing_format.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
@@ -773,6 +894,7 @@ async fn test_create_credential_schema_fail_validation() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await;
     assert!(non_existing_revocation_method
@@ -793,6 +915,7 @@ async fn test_create_credential_schema_fail_validation() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await;
     assert!(wrong_datatype.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
@@ -807,6 +930,7 @@ async fn test_create_credential_schema_fail_validation() {
             claims: vec![],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await;
     assert!(no_claims.is_err_and(|e| matches!(
@@ -883,6 +1007,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await;
 
@@ -929,6 +1054,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
             }],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await
         .unwrap_err();
@@ -990,6 +1116,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
             ],
             layout_type: LayoutType::Card,
             layout_properties: None,
+            schema_id: None,
         })
         .await
         .unwrap_err();
@@ -1814,5 +1941,6 @@ fn dummy_request() -> CreateCredentialSchemaRequestDTO {
         wallet_storage_type: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
+        schema_id: None,
     }
 }
