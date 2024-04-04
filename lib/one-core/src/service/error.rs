@@ -228,6 +228,9 @@ pub enum BusinessLogicError {
 
     #[error("Revocation method not compatible with selected format")]
     RevocationMethodNotCompatibleWithSelectedFormat,
+
+    #[error("Incompatible issuance transport protocol")]
+    IncompatibleIssuanceTransportProtocol,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -627,6 +630,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Revocation method not compatible")]
     BR_0110,
 
+    #[strum(to_string = "Incompatible issuance transport protocol")]
+    BR_0111,
+
     #[strum(to_string = "Attribute combination not allowed")]
     BR_0118,
 }
@@ -743,6 +749,7 @@ impl BusinessLogicError {
             BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat => {
                 ErrorCode::BR_0110
             }
+            BusinessLogicError::IncompatibleIssuanceTransportProtocol => ErrorCode::BR_0111,
         }
     }
 }

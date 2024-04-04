@@ -1,5 +1,6 @@
 use crate::config::core_config::DatatypeType;
 use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::provider::credential_formatter::FormatterCapabilities;
 use crate::{
     config::{
         core_config::CoreConfig,
@@ -16,9 +17,15 @@ pub(crate) fn validate_create_request(
     transport: &str,
     claims: &[CredentialRequestClaimDTO],
     schema: &CredentialSchema,
+    formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
     validate_exchange_type(transport, &config.exchange)?;
+    validate_format_and_transport_protocol_compatibility(
+        transport,
+        formatter_capabilities,
+        config,
+    )?;
 
     // ONE-843: cannot create credential based on deleted schema
     if schema.deleted_at.is_some() {
@@ -122,4 +129,21 @@ fn adapt_required_state_based_on_claim_presence(
     })?;
 
     Ok(result)
+}
+
+fn validate_format_and_transport_protocol_compatibility(
+    transport: &str,
+    formatter_capabilities: &FormatterCapabilities,
+    config: &CoreConfig,
+) -> Result<(), ServiceError> {
+    let exchange_protocol = config.exchange.get_fields(transport)?;
+
+    if !formatter_capabilities
+        .issuance_exchange_protocols
+        .contains(&exchange_protocol.r#type.to_string())
+    {
+        return Err(BusinessLogicError::IncompatibleIssuanceTransportProtocol.into());
+    }
+
+    Ok(())
 }
