@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
-    BackgroundProperties, CredentialSchema, CredentialSchemaClaim, CredentialSchemaId,
-    CredentialSchemaRelations, CredentialSchemaType, LayoutProperties, LayoutType,
-    WalletStorageTypeEnum,
+    BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
+    CredentialSchemaId, CredentialSchemaRelations, CredentialSchemaType, LayoutProperties,
+    LayoutType, LogoProperties, WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -62,15 +62,22 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
-                primary_attribute: None,
-                secondary_attribute: None,
+                primary_attribute: Some("firstName".to_owned()),
+                secondary_attribute: Some("firstName".to_owned()),
                 background: Some(BackgroundProperties {
                     color: Some("#DA2727".to_owned()),
                     image: None,
                 }),
-                logo: None,
-                picture_attribute: None,
-                code: None,
+                logo: Some(LogoProperties {
+                    font_color: Some("#DA2727".to_owned()),
+                    background_color: Some("#DA2727".to_owned()),
+                    image: None,
+                }),
+                picture_attribute: Some("firstName".to_owned()),
+                code: Some(CodeProperties {
+                    attribute: "firstName".to_owned(),
+                    r#type: CodeTypeEnum::Barcode,
+                }),
             }),
             schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: id.to_string(),

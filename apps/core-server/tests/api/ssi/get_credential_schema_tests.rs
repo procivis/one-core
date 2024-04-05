@@ -31,4 +31,15 @@ async fn test_get_credential_schema_success() {
     assert_eq!(resp["claims"].as_array().unwrap().len(), 1);
     assert_eq!(resp["revocationMethod"], "LVVC");
     assert_eq!(resp["organisationId"], organisation.id.to_string());
+    assert_eq!(resp["layoutProperties"]["background"]["color"], "#DA2727");
+    assert_eq!(resp["layoutProperties"]["primaryAttribute"], "firstName");
+    assert_eq!(resp["layoutProperties"]["secondaryAttribute"], "firstName");
+    assert_eq!(resp["layoutProperties"]["logo"]["fontColor"], "#DA2727");
+    assert_eq!(
+        resp["layoutProperties"]["logo"]["backgroundColor"],
+        "#DA2727"
+    );
+    assert_eq!(resp["layoutProperties"]["pictureAttribute"], "firstName");
+    assert_eq!(resp["layoutProperties"]["code"]["attribute"], "firstName");
+    assert_eq!(resp["layoutProperties"]["code"]["type"], "BARCODE");
 }
