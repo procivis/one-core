@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialId, DidId, KeyId, OrganisationId};
-use strum_macros::AsRefStr;
+use strum_macros::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -132,6 +132,13 @@ pub enum CredentialStateEnum {
     Error,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, EnumString, Display)]
+#[serde(rename_all = "camelCase")]
+pub enum CredentialListIncludeEntityTypeEnum {
+    #[strum(serialize = "layoutProperties")]
+    LayoutProperties,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CredentialFilterValue {
     Name(StringMatch),
@@ -145,7 +152,8 @@ pub enum CredentialFilterValue {
 impl ListFilterValue for CredentialFilterValue {}
 
 pub type GetCredentialListResponseDTO = GetListResponse<CredentialListItemResponseDTO>;
-pub type GetCredentialQueryDTO = ListQuery<SortableCredentialColumn, CredentialFilterValue>;
+pub type GetCredentialQueryDTO =
+    ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialRequestDTO {

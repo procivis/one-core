@@ -12,8 +12,18 @@ use crate::{dto::common::ListQueryParamsRest, serialize::front_time};
 
 use super::mapper::convert_history_metadata;
 
-pub type GetHistoryQuery =
-    ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;
+pub type GetHistoryQuery = ListQueryParamsRest<
+    HistoryFilterQueryParamsRest,
+    SortableHistoryColumnRestDTO,
+    HistoryListIncludeEntityTypeRestEnum,
+>;
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(one_core::service::history::dto::HistoryListIncludeEntityTypeEnum)]
+pub enum HistoryListIncludeEntityTypeRestEnum {
+    Nothing,
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize, ToSchema)]
 pub enum HistoryMetadataRest {

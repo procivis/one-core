@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
+use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 
@@ -36,7 +37,7 @@ async fn test_get_list_credential_success() {
     let resp = context
         .api
         .credentials
-        .list(0, 8, &organisation.id, None, None, None)
+        .list(0, 8, &organisation.id, None, None, None, None)
         .await;
 
     // THEN
@@ -46,6 +47,7 @@ async fn test_get_list_credential_success() {
     assert_eq!(resp["totalItems"], 14);
     assert_eq!(resp["totalPages"], 2);
     assert_eq!(resp["values"].as_array().unwrap().len(), 8);
+    assert!(resp["values"][0]["schema"]["layoutProperties"].is_null());
 }
 
 #[tokio::test]
@@ -91,7 +93,7 @@ async fn test_get_list_credential_deleted_credentials_are_not_returned() {
     let resp = context
         .api
         .credentials
-        .list(0, 8, &organisation.id, None, None, None)
+        .list(0, 8, &organisation.id, None, None, None, None)
         .await;
 
     // THEN
@@ -139,7 +141,7 @@ async fn test_get_list_credential_filter_by_role() {
         let resp = context
             .api
             .credentials
-            .list(0, 10, &organisation.id, Some(role), None, None)
+            .list(0, 10, &organisation.id, Some(role), None, None, None)
             .await;
 
         // THEN
@@ -166,7 +168,7 @@ async fn test_fail_to_get_list_credential_filter_by_invalid_role() {
     let resp = context
         .api
         .credentials
-        .list(0, 10, &organisation.id, Some("foo"), None, None)
+        .list(0, 10, &organisation.id, Some("foo"), None, None, None)
         .await;
 
     // THEN
@@ -217,7 +219,7 @@ async fn test_get_list_credential_filter_by_name() {
     let resp = context
         .api
         .credentials
-        .list(0, 10, &organisation.id, None, Some("test 1"), None)
+        .list(0, 10, &organisation.id, None, Some("test 1"), None, None)
         .await;
 
     // THEN
@@ -263,7 +265,7 @@ async fn test_get_list_credential_filter_by_ids() {
     let resp = context
         .api
         .credentials
-        .list(0, 10, &organisation.id, None, None, Some(credentials))
+        .list(0, 10, &organisation.id, None, None, Some(credentials), None)
         .await;
 
     // THEN
@@ -286,4 +288,68 @@ async fn test_get_list_credential_filter_by_ids() {
     assert_eq!(credentials.len(), 3);
 
     assert_eq!(expected_credentials, credentials);
+}
+
+#[tokio::test]
+async fn test_get_list_credential_include_layout_properties_success() {
+    // GIVEN
+    let (context, organisation, did, _) = TestContext::new_with_did().await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    for _ in 1..15 {
+        context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &did,
+                "PROCIVIS_TEMPORARY",
+                TestingCredentialParams::default(),
+            )
+            .await;
+    }
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            8,
+            &organisation.id,
+            None,
+            None,
+            None,
+            Some(vec![CredentialListIncludeEntityTypeEnum::LayoutProperties]),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 14);
+    assert_eq!(resp["totalPages"], 2);
+    assert_eq!(resp["values"].as_array().unwrap().len(), 8);
+    assert_eq!(
+        resp["values"][0]["schema"]["layoutProperties"]["background"]["color"],
+        "#DA2727"
+    );
+    assert_eq!(
+        resp["values"][0]["schema"]["layoutProperties"]["primaryAttribute"],
+        "firstName"
+    );
+    assert_eq!(
+        resp["values"][0]["schema"]["layoutProperties"]["secondaryAttribute"],
+        "firstName"
+    );
+    assert_eq!(
+        resp["values"][0]["schema"]["layoutProperties"]["logo"]["fontColor"],
+        "#DA2727"
+    );
 }

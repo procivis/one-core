@@ -78,6 +78,7 @@ impl OneCoreBinding {
                         direction: convert_inner(query.sort_direction),
                     }),
                     filtering: Some(condition),
+                    include: query.include.map(convert_inner),
                 })
                 .await?
                 .into())

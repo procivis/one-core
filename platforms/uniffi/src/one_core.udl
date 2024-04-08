@@ -250,6 +250,10 @@ enum SortableCredentialColumnBindingEnum {
   "CreatedDate", "SchemaName", "IssuerDid", "State"
 };
 
+enum CredentialListIncludeEntityTypeBindingEnum {
+  "LayoutProperties"
+};
+
 dictionary CredentialListQueryBindingDTO {
   u32 page;
   u32 page_size;
@@ -261,6 +265,7 @@ dictionary CredentialListQueryBindingDTO {
   CredentialRoleBindingDTO? role;
   sequence<string>? ids;
   sequence<CredentialStateBindingEnum>? status;
+  sequence<CredentialListIncludeEntityTypeBindingEnum>? include;
 };
 
 dictionary CredentialListBindingDTO {

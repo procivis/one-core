@@ -2,7 +2,7 @@ use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::Display;
 use time::OffsetDateTime;
 
-use crate::service::credential::dto::CredentialFilterValue;
+use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
 
 use super::{
     claim::{Claim, ClaimRelations},
@@ -80,7 +80,8 @@ pub enum SortableCredentialColumn {
 }
 
 pub type GetCredentialList = GetListResponse<Credential>;
-pub type GetCredentialQuery = ListQuery<SortableCredentialColumn, CredentialFilterValue>;
+pub type GetCredentialQuery =
+    ListQuery<SortableCredentialColumn, CredentialFilterValue, CredentialListIncludeEntityTypeEnum>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateCredentialRequest {

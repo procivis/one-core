@@ -2,7 +2,7 @@ use sea_orm::FromQueryResult;
 use shared_types::{CredentialId, DidId, DidValue};
 use time::OffsetDateTime;
 
-use crate::entity::credential_schema::{CredentialSchemaType, WalletStorageType};
+use crate::entity::credential_schema::{CredentialSchemaType, LayoutProperties, WalletStorageType};
 use crate::entity::{credential, credential_state, did::DidType};
 
 #[derive(FromQueryResult)]
@@ -25,6 +25,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_revocation_method: String,
     pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
     pub credential_schema_schema_id: String,
+    pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
     pub credential_schema_schema_type: CredentialSchemaType,
     pub credential_state_created_date: OffsetDateTime,
     pub credential_state_state: credential_state::CredentialState,

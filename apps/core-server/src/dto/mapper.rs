@@ -16,13 +16,21 @@ use super::{
     error::{Cause, ErrorCode, ErrorResponseRestDTO},
 };
 
-impl<FilterRest, SortableColumnRest, SortableColumn, Filter: ListFilterValue>
-    From<ListQueryParamsRest<FilterRest, SortableColumnRest>> for ListQuery<SortableColumn, Filter>
+impl<
+        FilterRest,
+        SortableColumnRest,
+        SortableColumn,
+        Filter: ListFilterValue,
+        IncludeRest,
+        Include,
+    > From<ListQueryParamsRest<FilterRest, SortableColumnRest, IncludeRest>>
+    for ListQuery<SortableColumn, Filter, Include>
 where
     FilterRest: IntoParams + Into<ListFilterCondition<Filter>>,
     SortableColumnRest: for<'a> ToSchema<'a> + Into<SortableColumn>,
+    IncludeRest: for<'a> ToSchema<'a> + Into<Include>,
 {
-    fn from(value: ListQueryParamsRest<FilterRest, SortableColumnRest>) -> Self {
+    fn from(value: ListQueryParamsRest<FilterRest, SortableColumnRest, IncludeRest>) -> Self {
         Self {
             pagination: Some(ListPagination {
                 page: value.page,
@@ -33,21 +41,23 @@ where
                 direction: convert_inner(value.sort_direction),
             }),
             filtering: Some(value.filter.into()),
+            include: value.include.map(convert_inner),
         }
     }
 }
 
 // Custom definition of IntoParams for the ListQueryParamsRest in order to flatten the filter params in swagger-ui
-impl<Filter, SortColumn> IntoParams for ListQueryParamsRest<Filter, SortColumn>
+impl<Filter, SortColumn, Include> IntoParams for ListQueryParamsRest<Filter, SortColumn, Include>
 where
     Filter: IntoParams,
     SortColumn: for<'a> ToSchema<'a>,
+    Include: for<'a> ToSchema<'a>,
 {
     fn into_params(
         _parameter_in_provider: impl Fn() -> Option<ParameterIn>,
     ) -> Vec<utoipa::openapi::path::Parameter> {
         let mut params =
-            PartialQueryParamsRest::<SortColumn>::into_params(|| Some(ParameterIn::Query));
+            PartialQueryParamsRest::<SortColumn, Include>::into_params(|| Some(ParameterIn::Query));
         params.append(&mut Filter::into_params(|| Some(ParameterIn::Query)));
         params
     }
@@ -57,13 +67,16 @@ where
 #[derive(Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
-struct PartialQueryParamsRest<SortColumn: for<'a> ToSchema<'a>> {
+struct PartialQueryParamsRest<SortColumn: for<'a> ToSchema<'a>, Include: for<'a> ToSchema<'a>> {
     pub page: u32,
     pub page_size: u32,
 
     #[param(inline)]
     pub sort: Option<SortColumn>,
     pub sort_direction: Option<SortDirection>,
+
+    #[param(inline, rename = "include[]")]
+    pub include: Option<Vec<Include>>,
 }
 
 impl From<&ServiceError> for ErrorResponseRestDTO {

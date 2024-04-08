@@ -131,6 +131,7 @@ pub(super) fn credential_list_model_to_repository_model(
     credential: CredentialListEntityModel,
 ) -> Result<Credential, DataLayerError> {
     let schema_id = Uuid::from_str(&credential.credential_schema_id)?;
+
     let schema = CredentialSchema {
         id: schema_id,
         deleted_at: credential.credential_schema_deleted_at,
@@ -146,7 +147,9 @@ pub(super) fn credential_list_model_to_repository_model(
         organisation: None,
         // todo: this should be fixed in another ticket
         layout_type: LayoutType::Card,
-        layout_properties: None,
+        layout_properties: credential
+            .credential_schema_schema_layout_properties
+            .map(|layout_properties| layout_properties.into()),
     };
 
     let issuer_did = match credential.issuer_did_id {
