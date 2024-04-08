@@ -32,22 +32,23 @@ pub trait IntoJoinCondition: Clone + ListFilterValue {
     fn get_join(self) -> Vec<JoinRelation>;
 }
 
-pub trait SelectWithFilterJoin<SortableColumn, JoinValue>
+pub trait SelectWithFilterJoin<SortableColumn, JoinValue, Include>
 where
     SortableColumn: IntoSortingColumn,
     JoinValue: IntoJoinCondition,
 {
     /// applies all `query` declared constraits (Joining, sorting and pagination) on the query
-    fn with_filter_join(self, query: &ListQuery<SortableColumn, JoinValue>) -> Self;
+    fn with_filter_join(self, query: &ListQuery<SortableColumn, JoinValue, Include>) -> Self;
 }
 
-impl<T, SortableColumn, JoinValue> SelectWithFilterJoin<SortableColumn, JoinValue> for Select<T>
+impl<T, SortableColumn, JoinValue, Include> SelectWithFilterJoin<SortableColumn, JoinValue, Include>
+    for Select<T>
 where
     T: EntityTrait,
     SortableColumn: IntoSortingColumn,
     JoinValue: IntoJoinCondition,
 {
-    fn with_filter_join(self, query: &ListQuery<SortableColumn, JoinValue>) -> Select<T> {
+    fn with_filter_join(self, query: &ListQuery<SortableColumn, JoinValue, Include>) -> Select<T> {
         let mut result = self;
 
         if let Some(filter) = &query.filtering {
@@ -99,22 +100,23 @@ fn get_join_condition<JoinValue: IntoJoinCondition>(
     result
 }
 
-pub trait SelectWithListQuery<SortableColumn, FilterValue>
+pub trait SelectWithListQuery<SortableColumn, FilterValue, Include>
 where
     SortableColumn: IntoSortingColumn,
     FilterValue: IntoFilterCondition,
 {
     /// applies all `query` declared constraits (filtering, sorting and pagination) on the query
-    fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue>) -> Self;
+    fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue, Include>) -> Self;
 }
 
-impl<T, SortableColumn, FilterValue> SelectWithListQuery<SortableColumn, FilterValue> for Select<T>
+impl<T, SortableColumn, FilterValue, Include>
+    SelectWithListQuery<SortableColumn, FilterValue, Include> for Select<T>
 where
     T: EntityTrait,
     SortableColumn: IntoSortingColumn,
     FilterValue: IntoFilterCondition,
 {
-    fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue>) -> Select<T> {
+    fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue, Include>) -> Select<T> {
         let mut result = self;
 
         if let Some(filter) = &query.filtering {

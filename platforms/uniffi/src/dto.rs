@@ -9,6 +9,7 @@ use one_core::model::credential_schema::LayoutType;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
+use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_core::service::credential::dto::{CredentialRole, CredentialSchemaType};
 use one_core::service::credential_schema::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
@@ -142,6 +143,13 @@ pub struct CredentialListQueryBindingDTO {
     pub role: Option<CredentialRoleBindingDTO>,
     pub ids: Option<Vec<String>>,
     pub status: Option<Vec<CredentialStateBindingEnum>>,
+    pub include: Option<Vec<CredentialListIncludeEntityTypeBindingEnum>>,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(CredentialListIncludeEntityTypeEnum)]
+pub enum CredentialListIncludeEntityTypeBindingEnum {
+    LayoutProperties,
 }
 
 #[derive(From)]

@@ -40,6 +40,8 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From)]

@@ -372,6 +372,7 @@ async fn test_get_credential_list_success() {
             filtering: Some(
                 CredentialFilterValue::OrganisationId(Uuid::new_v4().into()).condition(),
             ),
+            include: None,
         })
         .await;
 

@@ -60,7 +60,11 @@ pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
 
 #[derive(Clone, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct ListQueryParamsRest<Filter: IntoParams, SortColumn: for<'a> ToSchema<'a>> {
+pub struct ListQueryParamsRest<
+    Filter: IntoParams,
+    SortColumn: for<'a> ToSchema<'a>,
+    Include: for<'a> ToSchema<'a>,
+> {
     // pagination
     pub page: u32,
     pub page_size: u32,
@@ -72,6 +76,8 @@ pub struct ListQueryParamsRest<Filter: IntoParams, SortColumn: for<'a> ToSchema<
     // filtering
     #[serde(flatten)]
     pub filter: Filter,
+
+    pub include: Option<Vec<Include>>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, Into)]

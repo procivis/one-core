@@ -508,6 +508,7 @@ async fn test_get_credential_list_success() {
                 CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
                     .condition(),
             ),
+            include: None,
         })
         .await;
     assert!(credentials.is_ok());
@@ -567,6 +568,7 @@ async fn test_get_credential_list_success_verify_state_sorting() {
                 CredentialFilterValue::OrganisationId(credential_schema.organisation.unwrap().id)
                     .condition(),
             ),
+            include: None,
         })
         .await;
     let credentials = credentials.unwrap();

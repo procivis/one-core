@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use serde_json::json;
 use shared_types::{CredentialId, KeyId};
 use uuid::Uuid;
@@ -33,7 +34,7 @@ impl CredentialsApi {
 
         self.client.post("/api/credential/v1", body).await
     }
-
+    #[allow(clippy::too_many_arguments)]
     pub async fn list(
         &self,
         page: u64,
@@ -42,6 +43,7 @@ impl CredentialsApi {
         role: Option<&str>,
         name: Option<&str>,
         ids: Option<&[CredentialId]>,
+        include: Option<Vec<CredentialListIncludeEntityTypeEnum>>,
     ) -> Response {
         let mut url = format!(
             "/api/credential/v1?page={page}&pageSize={size}&organisationId={organisation_id}"
@@ -57,7 +59,11 @@ impl CredentialsApi {
                 url += &format!("&ids[]={id}")
             }
         }
-
+        if let Some(include) = include {
+            for item in include {
+                url += &format!("&include[]={item}")
+            }
+        }
         self.client.get(&url).await
     }
 

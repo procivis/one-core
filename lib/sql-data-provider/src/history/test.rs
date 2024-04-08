@@ -267,6 +267,7 @@ fn history_list_query_with_filter(
             ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation_id)),
             ListFilterCondition::Value(value),
         ])),
+        include: None,
     }
 }
 
@@ -336,6 +337,7 @@ async fn test_get_history_list_simple() {
             filtering: Some(ListFilterCondition::Value(
                 HistoryFilterValue::OrganisationId(organisation.id),
             )),
+            include: None,
         })
         .await
         .unwrap();

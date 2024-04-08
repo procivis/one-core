@@ -184,9 +184,18 @@ pub struct CredentialsFilterQueryParamsRest {
     #[param(inline, rename = "status[]")]
     pub status: Option<Vec<CredentialStateRestEnum>>,
 }
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum)]
+pub enum CredentialListIncludeEntityTypeRestEnum {
+    LayoutProperties,
+}
 
-pub type GetCredentialQuery =
-    ListQueryParamsRest<CredentialsFilterQueryParamsRest, SortableCredentialColumnRestEnum>;
+pub type GetCredentialQuery = ListQueryParamsRest<
+    CredentialsFilterQueryParamsRest,
+    SortableCredentialColumnRestEnum,
+    CredentialListIncludeEntityTypeRestEnum,
+>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]

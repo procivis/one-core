@@ -15,6 +15,7 @@ use crate::{
 };
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
+use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_core::{
     model::{
         claim::{Claim, ClaimId, ClaimRelations},
@@ -248,7 +249,7 @@ impl CredentialProvider {
 }
 
 fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credential::Entity> {
-    credential::Entity::find()
+    let query = credential::Entity::find()
         .select_only()
         .columns([
             credential::Column::Id,
@@ -354,7 +355,17 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
         .with_list_query(&query_params)
         // fallback ordering
         .order_by_desc(credential::Column::CreatedDate)
-        .order_by_desc(credential::Column::Id)
+        .order_by_desc(credential::Column::Id);
+
+    if let Some(include) = query_params.include {
+        if include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties) {
+            return query.column_as(
+                credential_schema::Column::LayoutProperties,
+                "credential_schema_schema_layout_properties",
+            );
+        }
+    }
+    query
 }
 
 #[autometrics]

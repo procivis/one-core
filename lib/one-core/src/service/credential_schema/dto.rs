@@ -33,6 +33,8 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
+    #[from(with_fn = convert_inner)]
+    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
 #[derive(Clone, Debug)]
