@@ -19,6 +19,7 @@ use crate::endpoint::{
     credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
 };
 use crate::router::AppState;
+use axum::http::header;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -710,7 +711,7 @@ pub(crate) async fn ssi_issuer_submit(
         ("id" = String, Path, description = "context id or credentialSchemaId")
     ),
     responses(
-        (status = 200, description = "OK", body = JsonLDContextResponseRestDTO),
+        (status = 200, description = "OK", body = JsonLDContextResponseRestDTO, content_type = "application/ld+json"),
         (status = 404, description = "Credential schema not found"),
         (status = 500, description = "Server error"),
     ),
@@ -725,6 +726,7 @@ pub(crate) async fn get_json_ld_context(
     match result {
         Ok(value) => (
             StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/ld+json")],
             Json(JsonLDContextResponseRestDTO::from(value)),
         )
             .into_response(),
