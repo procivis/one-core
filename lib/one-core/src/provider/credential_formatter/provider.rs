@@ -75,7 +75,10 @@ pub(crate) fn credential_formatters_from_config(
                     key_algorithm_provider.clone(),
                 )) as _
             }
-            FormatType::Mdoc => Arc::new(MdocFormatter::new()) as _,
+            FormatType::Mdoc => {
+                let params = config.get(name)?;
+                Arc::new(MdocFormatter::new(params, did_method_provider.clone())) as _
+            }
         };
         formatters.insert(name.to_owned(), formatter);
     }

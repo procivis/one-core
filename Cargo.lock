@@ -940,6 +940,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "coset"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77c7f688ee58418b8614848a05bf392cc622f92451e79998c131b9d22c91abd9"
+dependencies = [
+ "ciborium",
+ "ciborium-io",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1766,6 +1776,12 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "hex-literal"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
 
 [[package]]
 name = "hkdf"
@@ -2770,6 +2786,7 @@ dependencies = [
  "ciborium",
  "cocoon",
  "convert_case",
+ "coset",
  "ct-codecs",
  "dto_mapper",
  "ed25519-compact",
@@ -2779,7 +2796,9 @@ dependencies = [
  "fmap",
  "futures",
  "hex",
+ "hex-literal",
  "hmac 0.12.1",
+ "indexmap 2.2.6",
  "indoc",
  "jsonptr",
  "mockall",
