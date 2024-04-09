@@ -70,7 +70,7 @@ impl JsonLdBbsplus {
         let grouped = self.create_grouped_transformation(&transformed)?;
 
         let mut proof_config = json_ld::prepare_proof_config(
-            "authentication",
+            "assertionMethod",
             "bbs-2023",
             ld_credential.context.clone(),
             &did_document,
