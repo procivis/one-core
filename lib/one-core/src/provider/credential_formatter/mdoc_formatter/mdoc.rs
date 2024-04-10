@@ -19,6 +19,7 @@ type DateTimeCborTag = Required<String, 0>;
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IssuerSigned {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name_spaces: Option<Namespaces>,
     pub issuer_auth: IssuerAuth,
 }
@@ -164,7 +165,9 @@ pub enum DigestAlgorithm {
 #[serde(rename_all = "camelCase")]
 pub struct DeviceKeyInfo {
     pub device_key: DeviceKey,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub key_authorizations: Option<KeyAuthorizations>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub key_info: Option<KeyInfo>,
 }
 
@@ -196,8 +199,10 @@ impl TryFrom<ciborium::Value> for DeviceKey {
 #[serde(rename_all = "camelCase")]
 pub struct KeyAuthorizations {
     // authorized namespaces
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name_spaces: Option<Vec<String>>,
     // authorized data elements
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub data_elements: Option<IndexMap<String, Vec<String>>>,
 }
 
@@ -211,6 +216,7 @@ pub struct ValidityInfo {
     pub signed: DateTime,
     pub valid_from: DateTime,
     pub valid_until: DateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_update: Option<DateTime>,
 }
 
