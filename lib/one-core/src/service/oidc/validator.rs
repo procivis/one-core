@@ -73,24 +73,44 @@ pub(crate) fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,
     request: &OpenID4VCICredentialRequestDTO,
 ) -> Result<(), ServiceError> {
-    if !schema
-        .format
-        .starts_with(&map_from_oidc_format_to_core(&request.format)?)
-    {
+    let requested_format = map_from_oidc_format_to_core(&request.format)?;
+
+    if !schema.format.starts_with(&requested_format) {
         return Err(ServiceError::OpenID4VCError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         ));
     }
 
-    if !request
-        .credential_definition
-        .r#type
-        .contains(&"VerifiableCredential".to_string())
-    {
-        return Err(ServiceError::OpenID4VCError(
-            OpenID4VCIError::UnsupportedCredentialType,
-        ));
-    }
+    match requested_format.as_str() {
+        "MDOC" => {
+            if let Some(doctype) = &request.doctype {
+                if &schema.schema_id != doctype {
+                    return Err(ServiceError::OpenID4VCError(
+                        OpenID4VCIError::UnsupportedCredentialType,
+                    ));
+                }
+            } else {
+                return Err(ServiceError::OpenID4VCError(
+                    OpenID4VCIError::InvalidRequest,
+                ));
+            }
+        }
+        _ => {
+            if !request
+                .credential_definition
+                .as_ref()
+                .ok_or(ServiceError::OpenID4VCError(
+                    OpenID4VCIError::InvalidRequest,
+                ))?
+                .r#type
+                .contains(&"VerifiableCredential".to_string())
+            {
+                return Err(ServiceError::OpenID4VCError(
+                    OpenID4VCIError::UnsupportedCredentialType,
+                ));
+            }
+        }
+    };
 
     Ok(())
 }

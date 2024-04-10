@@ -122,7 +122,10 @@ pub struct OpenID4VCICredentialDefinitionRequestDTO {
 #[derive(Clone, Debug, Serialize)]
 pub struct OpenID4VCICredentialRequestDTO {
     pub format: String,
-    pub credential_definition: OpenID4VCICredentialDefinitionRequestDTO,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doctype: Option<String>,
     pub proof: OpenID4VCIProofRequestDTO,
 }
 

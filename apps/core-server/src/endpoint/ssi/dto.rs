@@ -150,11 +150,14 @@ pub struct OpenID4VCICredentialDefinitionRequestRestDTO {
     pub r#type: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCICredentialRequestDTO)]
 pub struct OpenID4VCICredentialRequestRestDTO {
     pub format: String,
-    pub credential_definition: OpenID4VCICredentialDefinitionRequestRestDTO,
+    #[into(with_fn = convert_inner)]
+    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestRestDTO>,
+    #[into(with_fn = convert_inner)]
+    pub doctype: Option<String>,
     pub proof: OpenID4VCIProofRequestRestDTO,
 }
 
