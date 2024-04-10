@@ -336,7 +336,7 @@ impl TransportProtocol for OpenID4VC {
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let body = OpenID4VCICredential {
-            format: format.clone(),
+            format,
             credential_definition: OpenID4VCICredentialDefinition {
                 r#type: vec!["VerifiableCredential".to_string()],
                 credential_subject: None,

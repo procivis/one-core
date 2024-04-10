@@ -512,9 +512,10 @@ async fn test_oidc_create_credential_success() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 format: "jwt_vc_json".to_string(),
-                credential_definition: OpenID4VCICredentialDefinitionRequestDTO {
+                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
-                },
+                }),
+                doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "jwt".to_string(),
                     jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImRpZDprZXk6MTIzNCJ9.eyJhdWQiOiIxMjM0NTY3ODkwIn0.y9vUcoVsVgIt96oO28qpyCqCpc2Mr2Qztligw2PBaYI".to_string(),
@@ -526,6 +527,111 @@ async fn test_oidc_create_credential_success() {
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!("jwt_vc_json", result.format);
+    assert_eq!("xyz", result.credential);
+}
+
+#[tokio::test]
+async fn test_oidc_create_credential_success_mdoc() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+    let mut transport_provider = MockTransportProtocolProvider::default();
+    let mut did_repository = MockDidRepository::default();
+    let now = OffsetDateTime::now_utc();
+
+    let schema = CredentialSchema {
+        format: "MDOC".to_string(),
+        schema_id: "test.doctype".to_owned(),
+        ..generic_credential_schema()
+    };
+    let credential = dummy_credential(CredentialStateEnum::Pending, true);
+    let holder_did_id: DidId = Uuid::new_v4().into();
+    {
+        let clone = schema.clone();
+        repository
+            .expect_get_credential_schema()
+            .times(1)
+            .with(eq(schema.id.to_owned()), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credentials_by_interaction_id()
+            .once()
+            .return_once(move |_, _| Ok(vec![clone]));
+
+        interaction_repository
+            .expect_get_interaction()
+            .once()
+            .return_once(|_, _| Ok(Some(dummy_interaction(true, None))));
+
+        transport_provider
+            .expect_issue_credential()
+            .once()
+            .return_once(|_, _| {
+                Ok(SubmitIssuerResponse {
+                    credential: "xyz".to_string(),
+                    format: "mso_mdoc".to_string(),
+                    redirect_uri: None,
+                })
+            });
+
+        did_repository
+            .expect_get_did_by_value()
+            .times(1)
+            .returning(move |did_value, _| {
+                Ok(Some(Did {
+                    id: holder_did_id,
+                    created_date: now,
+                    last_modified: now,
+                    name: "verifier".to_string(),
+                    did: did_value.clone(),
+                    did_type: DidType::Remote,
+                    did_method: "KEY".to_string(),
+                    organisation: None,
+                    keys: None,
+                    deactivated: false,
+                }))
+            });
+
+        credential_repository
+            .expect_update_credential()
+            .once()
+            .withf(move |request| {
+                request.id == credential.id && request.holder_did_id == Some(holder_did_id)
+            })
+            .returning(move |_| Ok(()));
+    }
+
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        credential_repository,
+        interaction_repository,
+        config: generic_config().core,
+        transport_provider,
+        did_repository,
+        ..Default::default()
+    });
+
+    let result = service
+        .oidc_create_credential(
+            &schema.id,
+            "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            OpenID4VCICredentialRequestDTO {
+                format: "mso_mdoc".to_string(),
+                credential_definition: None,
+                doctype: Some(schema.schema_id),
+                proof: OpenID4VCIProofRequestDTO {
+                    proof_type: "jwt".to_string(),
+                    jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImRpZDprZXk6MTIzNCJ9.eyJhdWQiOiIxMjM0NTY3ODkwIn0.y9vUcoVsVgIt96oO28qpyCqCpc2Mr2Qztligw2PBaYI".to_string(),
+                },
+            },
+        )
+        .await;
+
+    assert!(result.is_ok());
+    let result = result.unwrap();
+    assert_eq!("mso_mdoc", result.format);
     assert_eq!("xyz", result.credential);
 }
 
@@ -554,9 +660,10 @@ async fn test_oidc_create_credential_format_invalid() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 format: "some_string".to_string(),
-                credential_definition: OpenID4VCICredentialDefinitionRequestDTO {
+                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
-                },
+                }),
+                doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "".to_string(),
                     jwt: "".to_string(),
@@ -599,9 +706,10 @@ async fn test_oidc_create_credential_format_invalid_for_credential_schema() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 format: "vc+sd-jwt".to_string(),
-                credential_definition: OpenID4VCICredentialDefinitionRequestDTO {
+                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
-                },
+                }),
+                doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "".to_string(),
                     jwt: "".to_string(),
@@ -644,9 +752,10 @@ async fn test_oidc_create_credential_format_invalid_credential_definition() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 format: "jwt_vc_json".to_string(),
-                credential_definition: OpenID4VCICredentialDefinitionRequestDTO {
+                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["some string".to_string()],
-                },
+                }),
+                doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "".to_string(),
                     jwt: "".to_string(),
@@ -689,9 +798,10 @@ async fn test_oidc_create_credential_format_invalid_bearer_token() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             OpenID4VCICredentialRequestDTO {
                 format: "jwt_vc_json".to_string(),
-                credential_definition: OpenID4VCICredentialDefinitionRequestDTO {
+                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
-                },
+                }),
+                doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "".to_string(),
                     jwt: "".to_string(),
@@ -743,9 +853,10 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 format: "jwt_vc_json".to_string(),
-                credential_definition: OpenID4VCICredentialDefinitionRequestDTO {
+                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
-                },
+                }),
+                doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "".to_string(),
                     jwt: "".to_string(),
@@ -797,9 +908,10 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.123",
             OpenID4VCICredentialRequestDTO {
                 format: "jwt_vc_json".to_string(),
-                credential_definition: OpenID4VCICredentialDefinitionRequestDTO {
+                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
-                },
+                }),
+                doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "".to_string(),
                     jwt: "".to_string(),
@@ -856,9 +968,10 @@ async fn test_oidc_create_credential_access_token_expired() {
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
                 format: "jwt_vc_json".to_string(),
-                credential_definition: OpenID4VCICredentialDefinitionRequestDTO {
+                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
                     r#type: vec!["VerifiableCredential".to_string()],
-                },
+                }),
+                doctype: None,
                 proof: OpenID4VCIProofRequestDTO {
                     proof_type: "".to_string(),
                     jwt: "".to_string(),
