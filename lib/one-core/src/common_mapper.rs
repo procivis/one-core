@@ -17,6 +17,13 @@ use uuid::Uuid;
 
 pub const NESTED_CLAIM_MARKER: char = '/';
 
+pub(crate) fn remove_first_nesting_layer(name: &str) -> String {
+    match name.find(NESTED_CLAIM_MARKER) {
+        Some(marker_pos) => name[marker_pos + 1..].to_string(),
+        None => name.to_string(),
+    }
+}
+
 pub fn list_response_into<T, F: Into<T>>(input: GetListResponse<F>) -> GetListResponse<T> {
     GetListResponse::<T> {
         values: convert_inner(input.values),

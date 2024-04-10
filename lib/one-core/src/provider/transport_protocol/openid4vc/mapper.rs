@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::DatatypeType;
+use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::model::proof::ProofId;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::transport_protocol::dto::{
@@ -14,6 +14,9 @@ use crate::provider::transport_protocol::dto::{
 };
 use crate::provider::transport_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
+};
+use crate::provider::transport_protocol::openid4vc::dto::{
+    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
 };
 use crate::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, PresentationSubmissionDescriptorDTO,
@@ -285,6 +288,7 @@ pub(crate) fn create_credential_offer(
     base_url: Option<String>,
     interaction_id: &InteractionId,
     credential: &Credential,
+    config: &CoreConfig,
 ) -> Result<OpenID4VCICredentialOfferDTO, TransportProtocolError> {
     let credential_schema = credential
         .schema
@@ -300,35 +304,191 @@ pub(crate) fn create_credential_offer(
 
     let url = get_url(base_url)?;
 
+    let format_type = config
+        .format
+        .get_fields(&credential_schema.format)
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+        .r#type;
+
+    let credentials = match format_type {
+        FormatType::Mdoc => credentials_format_mdoc(credential_schema, claims, config),
+        _ => credentials_format_others(credential_schema, claims),
+    }?;
+
     Ok(OpenID4VCICredentialOfferDTO {
         credential_issuer: format!("{}/ssi/oidc-issuer/v1/{}", url, credential_schema.id),
-        credentials: vec![OpenID4VCICredentialOfferCredentialDTO {
-            wallet_storage_type: credential_schema.wallet_storage_type.clone(),
-            format: map_core_to_oidc_format(&credential_schema.format)
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
-            credential_definition: OpenID4VCICredentialDefinition {
-                r#type: vec!["VerifiableCredential".to_string()],
-                credential_subject: Some(OpenID4VCICredentialSubject {
-                    keys: HashMap::from_iter(claims.iter().filter_map(|claim| {
-                        claim.schema.as_ref().map(|schema| {
-                            (
-                                schema.key.clone(),
-                                OpenID4VCICredentialValueDetails {
-                                    value: claim.value.clone(),
-                                    value_type: schema.data_type.clone(),
-                                },
-                            )
-                        })
-                    })),
-                }),
-            },
-        }],
+        credentials,
         grants: OpenID4VCIGrants {
             code: OpenID4VCIGrant {
                 pre_authorized_code: interaction_id.to_string(),
             },
         },
     })
+}
+
+fn credentials_format_mdoc(
+    credential_schema: &CredentialSchema,
+    claims: &[Claim],
+    config: &CoreConfig,
+) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, TransportProtocolError> {
+    let claims = prepare_claims(credential_schema, claims, config)?;
+
+    Ok(vec![OpenID4VCICredentialOfferCredentialDTO {
+        wallet_storage_type: credential_schema.wallet_storage_type.clone(),
+        format: map_core_to_oidc_format(&credential_schema.format)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+        credential_definition: None,
+        doctype: Some(credential_schema.schema_id.to_owned()),
+        claims: Some(claims),
+    }])
+}
+
+pub(super) fn prepare_claims(
+    credential_schema: &CredentialSchema,
+    claims: &[Claim],
+    config: &CoreConfig,
+) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, TransportProtocolError> {
+    let object_types = config
+        .datatype
+        .iter()
+        .filter_map(|(name, fields)| {
+            if fields.r#type == DatatypeType::Object {
+                Some(name)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<&str>>();
+
+    // Copy value claims to result
+    let mut result = claims
+        .iter()
+        .map(|claim| {
+            let schema = claim.schema.as_ref().ok_or(TransportProtocolError::Failed(
+                "claim_schema is None".to_string(),
+            ))?;
+            Ok((
+                schema.key.to_owned(),
+                OpenID4VCICredentialOfferClaim {
+                    value: OpenID4VCICredentialOfferClaimValue::String(claim.value.to_owned()),
+                    value_type: schema.data_type.to_owned(),
+                },
+            ))
+        })
+        .collect::<Result<HashMap<String, OpenID4VCICredentialOfferClaim>, TransportProtocolError>>(
+        )?;
+
+    // Copy object claims from credential schema
+    let object_claims = credential_schema
+        .claim_schemas
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed(
+            "claim_schemas is None".to_string(),
+        ))?
+        .iter()
+        .filter_map(|schema| {
+            let is_object = object_types.contains(&schema.schema.data_type.as_str());
+            if is_object {
+                Some(Ok((
+                    schema.schema.key.to_owned(),
+                    OpenID4VCICredentialOfferClaim {
+                        value: OpenID4VCICredentialOfferClaimValue::Nested(Default::default()),
+                        value_type: schema.schema.data_type.to_owned(),
+                    },
+                )))
+            } else {
+                None
+            }
+        })
+        .collect::<Result<HashMap<String, OpenID4VCICredentialOfferClaim>, TransportProtocolError>>(
+        )?;
+    result.extend(object_claims);
+
+    nest_claims(result)
+}
+
+fn nest_claims(
+    claims: HashMap<String, OpenID4VCICredentialOfferClaim>,
+) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, TransportProtocolError> {
+    // Copy unnested claims
+    let mut result = claims
+        .iter()
+        .filter_map(|(key, value)| {
+            if key.find(NESTED_CLAIM_MARKER).is_none() {
+                Some((key.to_owned(), value.to_owned()))
+            } else {
+                None
+            }
+        })
+        .collect::<HashMap<String, OpenID4VCICredentialOfferClaim>>();
+
+    // Copy nested claims into parent claims
+    claims.into_iter().try_for_each(|(key, value)| {
+        if let Some(index) = key.find(NESTED_CLAIM_MARKER) {
+            let prefix = &key[0..index];
+            let entry = result
+                .get_mut(prefix)
+                .ok_or(TransportProtocolError::Failed(
+                    "failed to find parent claim".to_string(),
+                ))?;
+            match &mut entry.value {
+                OpenID4VCICredentialOfferClaimValue::Nested(map) => {
+                    map.insert(remove_first_nesting_layer(&key), value);
+                }
+                OpenID4VCICredentialOfferClaimValue::String(_) => {
+                    return Err(TransportProtocolError::Failed(
+                        "found parent OBJECT claim of String value type".to_string(),
+                    ));
+                }
+            }
+        }
+
+        Ok::<(), TransportProtocolError>(())
+    })?;
+
+    // Repeat for each nested claim
+    result
+        .into_iter()
+        .map(|(key, value)| match value.value {
+            OpenID4VCICredentialOfferClaimValue::Nested(map) => Ok((
+                key,
+                OpenID4VCICredentialOfferClaim {
+                    value: OpenID4VCICredentialOfferClaimValue::Nested(nest_claims(map)?),
+                    value_type: value.value_type,
+                },
+            )),
+            OpenID4VCICredentialOfferClaimValue::String(_) => Ok((key, value)),
+        })
+        .collect::<Result<HashMap<_, _>, _>>()
+}
+
+fn credentials_format_others(
+    credential_schema: &CredentialSchema,
+    claims: &[Claim],
+) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, TransportProtocolError> {
+    Ok(vec![OpenID4VCICredentialOfferCredentialDTO {
+        wallet_storage_type: credential_schema.wallet_storage_type.clone(),
+        format: map_core_to_oidc_format(&credential_schema.format)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+        credential_definition: Some(OpenID4VCICredentialDefinition {
+            r#type: vec!["VerifiableCredential".to_string()],
+            credential_subject: Some(OpenID4VCICredentialSubject {
+                keys: HashMap::from_iter(claims.iter().filter_map(|claim| {
+                    claim.schema.as_ref().map(|schema| {
+                        (
+                            schema.key.clone(),
+                            OpenID4VCICredentialValueDetails {
+                                value: claim.value.clone(),
+                                value_type: schema.data_type.clone(),
+                            },
+                        )
+                    })
+                })),
+            }),
+        }),
+        doctype: None,
+        claims: Default::default(),
+    }])
 }
 
 pub(super) fn get_credential_offer_url(

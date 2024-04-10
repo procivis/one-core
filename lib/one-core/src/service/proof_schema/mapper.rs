@@ -4,7 +4,7 @@ use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
     ProofInputSchemaResponseDTO, ProofSchemaId,
 };
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::ExactColumn;
@@ -13,7 +13,6 @@ use crate::model::credential_schema::{
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
-use crate::service::common_mapper::remove_first_nesting_layer;
 use crate::service::error::BusinessLogicError;
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
 use crate::{

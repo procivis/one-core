@@ -15,9 +15,10 @@ use one_core::provider::did_method::dto::PublicKeyJwkMlweDataDTO;
 use one_core::provider::did_method::dto::PublicKeyJwkOctDataDTO;
 use one_core::provider::did_method::dto::PublicKeyJwkRsaDataDTO;
 use one_core::provider::transport_protocol::openid4vc::dto::{
-    OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferCredentialDTO,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
-    OpenID4VCIGrant, OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPFormat,
+    OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferClaim,
+    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails, OpenID4VCIGrant,
+    OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPFormat,
 };
 use one_core::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
@@ -36,8 +37,9 @@ use one_core::service::{
             OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
             OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-            OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIProofRequestDTO,
-            OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+            OpenID4VCIIssuerMetadataMdocClaimsResponseDTO,
+            OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
+            OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
         },
         model::{
             OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
@@ -103,7 +105,14 @@ pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
 #[from(OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
-    pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    pub claims: Option<OpenID4VCIIssuerMetadataMdocClaimsResponseRestDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    pub credential_definition: Option<OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doctype: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
@@ -121,6 +130,23 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
 #[from(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO)]
 pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO {
     pub r#type: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[from(OpenID4VCIIssuerMetadataMdocClaimsResponseDTO)]
+pub struct OpenID4VCIIssuerMetadataMdocClaimsResponseRestDTO {
+    #[serde(flatten)]
+    #[from(with_fn = convert_inner)]
+    pub values: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[from(OpenID4VCIIssuerMetadataMdocClaimsValuesDTO)]
+pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
+    #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub value: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>,
+    pub value_type: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
@@ -408,9 +434,30 @@ pub struct OpenID4VCIGrantRestDTO {
 #[from(OpenID4VCICredentialOfferCredentialDTO)]
 pub struct OpenID4VCICredentialOfferCredentialRestDTO {
     pub format: String,
-    pub credential_definition: OpenID4VCICredentialDefinitionRestDTO,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    pub credential_definition: Option<OpenID4VCICredentialDefinitionRestDTO>,
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doctype: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner_of_inner)]
+    pub claims: Option<HashMap<String, OpenID4VCICredentialOfferClaimDTO>>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialOfferClaim)]
+pub struct OpenID4VCICredentialOfferClaimDTO {
+    pub value: OpenID4VCICredentialOfferClaimValueDTO,
+    pub value_type: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(untagged)]
+pub enum OpenID4VCICredentialOfferClaimValueDTO {
+    Nested(HashMap<String, OpenID4VCICredentialOfferClaimDTO>),
+    String(String),
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

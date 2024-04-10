@@ -81,7 +81,7 @@ impl OIDCService {
             .get_credential_schema_base_url(credential_schema_id)
             .await?;
 
-        create_issuer_metadata_response(base_url, schema)
+        create_issuer_metadata_response(base_url, schema, &self.config)
     }
 
     pub async fn oidc_get_client_metadata(
@@ -127,7 +127,13 @@ impl OIDCService {
     ) -> Result<(String, CredentialSchema), ServiceError> {
         let schema = self
             .credential_schema_repository
-            .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
+            .get_credential_schema(
+                credential_schema_id,
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations::default()),
+                    ..Default::default()
+                },
+            )
             .await?;
 
         let Some(schema) = schema else {
@@ -163,7 +169,10 @@ impl OIDCService {
                         schema: Some(ClaimSchemaRelations::default()),
                     }),
                     state: Some(CredentialStateRelations::default()),
-                    schema: Some(CredentialSchemaRelations::default()),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        ..Default::default()
+                    }),
                     interaction: Some(InteractionRelations::default()),
                     ..Default::default()
                 },
@@ -180,7 +189,6 @@ impl OIDCService {
         if credential.transport != "OPENID4VC" {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
-
         let credential_schema = credential
             .schema
             .as_ref()
@@ -203,6 +211,7 @@ impl OIDCService {
             self.core_base_url.to_owned(),
             &interaction.id,
             &credential,
+            &self.config,
         )?)
     }
 

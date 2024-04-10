@@ -9,11 +9,11 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
-use crate::model::claim_schema::ClaimSchema;
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::interaction::Interaction;
@@ -39,9 +39,9 @@ use crate::repository::mock::proof_repository::MockProofRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCIError, OpenID4VCIProofRequestDTO,
-    OpenID4VCITokenRequestDTO, OpenID4VPDirectPostRequestDTO, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCIError, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VPDirectPostRequestDTO,
+    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
 };
 use crate::service::oidc::mapper::vec_last_position_from_token_path;
 use crate::service::oidc::model::{
@@ -159,7 +159,10 @@ async fn test_get_issuer_metadata_jwt() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let schema = generic_credential_schema();
-    let relations = CredentialSchemaRelations::default();
+    let relations = CredentialSchemaRelations {
+        claim_schemas: Some(ClaimSchemaRelations::default()),
+        ..Default::default()
+    };
     {
         let clone = schema.clone();
         repository
@@ -189,7 +192,10 @@ async fn test_get_issuer_metadata_sd_jwt() {
 
     let mut schema = generic_credential_schema();
     schema.format = "SDJWT".to_string();
-    let relations = CredentialSchemaRelations::default();
+    let relations = CredentialSchemaRelations {
+        claim_schemas: Some(ClaimSchemaRelations::default()),
+        ..Default::default()
+    };
     {
         let clone = schema.clone();
         repository
@@ -204,12 +210,82 @@ async fn test_get_issuer_metadata_sd_jwt() {
         config: generic_config().core,
         ..Default::default()
     });
-    let result = service.oidc_get_issuer_metadata(&schema.id).await;
-    assert!(result.is_ok());
-    let result = result.unwrap();
+    let result = service.oidc_get_issuer_metadata(&schema.id).await.unwrap();
     let credential = result.credentials_supported[0].to_owned();
     assert_eq!("vc+sd-jwt".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
+}
+
+#[tokio::test]
+async fn test_get_issuer_metadata_mdoc() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let credential_repository = MockCredentialRepository::default();
+
+    let mut schema = generic_credential_schema();
+    schema.format = "MDOC".to_string();
+    let now = OffsetDateTime::now_utc();
+    schema.claim_schemas = Some(vec![
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "location".to_string(),
+                data_type: "OBJECT".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "location/X".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+    ]);
+
+    let relations = CredentialSchemaRelations {
+        claim_schemas: Some(ClaimSchemaRelations::default()),
+        ..Default::default()
+    };
+    {
+        let clone = schema.clone();
+        repository
+            .expect_get_credential_schema()
+            .times(1)
+            .with(eq(schema.id.to_owned()), eq(relations))
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        credential_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+    let result = service.oidc_get_issuer_metadata(&schema.id).await.unwrap();
+    let credential = result.credentials_supported[0].to_owned();
+    assert_eq!("mso_mdoc".to_string(), credential.format);
+    assert_eq!(schema.name, credential.display.unwrap()[0].name);
+    let claims = credential.claims.unwrap().values;
+    assert_eq!(
+        HashMap::from([(
+            "location".to_string(),
+            OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
+                value: HashMap::from([(
+                    "X".to_string(),
+                    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
+                        value: Default::default(),
+                        value_type: "STRING".to_string(),
+                    }
+                )]),
+                value_type: "OBJECT".to_string(),
+            }
+        )]),
+        claims
+    );
 }
 
 #[tokio::test]
@@ -218,15 +294,16 @@ async fn test_service_discovery() {
     let credential_repository = MockCredentialRepository::default();
 
     let schema = generic_credential_schema();
+    let relations = CredentialSchemaRelations {
+        claim_schemas: Some(ClaimSchemaRelations::default()),
+        ..Default::default()
+    };
     {
         let clone = schema.clone();
         repository
             .expect_get_credential_schema()
             .times(1)
-            .with(
-                eq(schema.id.to_owned()),
-                eq(CredentialSchemaRelations::default()),
-            )
+            .with(eq(schema.id.to_owned()), eq(relations))
             .returning(move |_, _| Ok(Some(clone.clone())));
     }
     let service = setup_service(Mocks {
