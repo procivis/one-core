@@ -1,6 +1,6 @@
 use crate::config::core_config::FormatType;
 use crate::{
-    common_mapper::NESTED_CLAIM_MARKER,
+    common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER},
     model::{
         claim_schema::ClaimSchema,
         common::ExactColumn,
@@ -166,13 +166,6 @@ fn from_jwt_request_claim_schema(
             last_modified: now,
         },
         required: claim_schema.required,
-    }
-}
-
-fn remove_first_nesting_layer(name: &str) -> String {
-    match name.find(NESTED_CLAIM_MARKER) {
-        Some(marker_pos) => name[marker_pos + 1..].to_string(),
-        None => name.to_string(),
     }
 }
 

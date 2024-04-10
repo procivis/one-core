@@ -3,9 +3,8 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::provider::revocation::CredentialRevocationState;
-use crate::service::common_mapper::remove_first_nesting_layer;
 use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
 use crate::{
     model::{

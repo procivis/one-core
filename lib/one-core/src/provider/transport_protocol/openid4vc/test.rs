@@ -13,6 +13,11 @@ use wiremock::{
 
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
+use crate::provider::transport_protocol::openid4vc::dto::{
+    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
+};
+use crate::provider::transport_protocol::openid4vc::mapper::prepare_claims;
+use crate::service::test_utilities::generic_config;
 use crate::{
     crypto::MockCryptoProvider,
     model::{
@@ -83,6 +88,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
             presentation_definition_by_value: None,
             allow_insecure_http_transport: Some(true),
         }),
+        Arc::new(generic_config().core),
     )
 }
 
@@ -244,9 +250,13 @@ async fn test_generate_offer() {
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential();
 
-    let offer =
-        super::mapper::create_credential_offer(Some(base_url), &interaction_id, &credential)
-            .unwrap();
+    let offer = super::mapper::create_credential_offer(
+        Some(base_url),
+        &interaction_id,
+        &credential,
+        &generic_config().core,
+    )
+    .unwrap();
 
     assert_eq!(
         serde_json::json!(&offer),
@@ -264,7 +274,7 @@ async fn test_generate_offer() {
             }],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
-            },
+            }
         })
     )
 }
@@ -694,6 +704,103 @@ fn test_serialize_and_deserialize_interaction_data() {
         serde_qs::from_str(&query_with_presentation_definition_uri).unwrap();
     let json = serde_json::to_string(&data).unwrap();
     let _data_from_json: OpenID4VPInteractionData = serde_json::from_str(&json).unwrap();
+}
+
+#[test]
+fn test_prepare_claims_success_nested() {
+    let now = OffsetDateTime::now_utc();
+    let claim_schemas = vec![
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                    .unwrap()
+                    .into(),
+                key: "location".to_string(),
+                data_type: "OBJECT".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
+                    .unwrap()
+                    .into(),
+                key: "location/X".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: true,
+        },
+    ];
+
+    let claims = vec![Claim {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966").unwrap(),
+        credential_id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        value: "123".to_string(),
+        schema: Some(claim_schemas[1].schema.to_owned()),
+    }];
+
+    let mut credential_schema = generic_credential().schema.unwrap();
+    credential_schema.claim_schemas = Some(claim_schemas);
+
+    let result = prepare_claims(&credential_schema, &claims, &generic_config().core).unwrap();
+    assert_eq!(
+        HashMap::from([(
+            "location".to_string(),
+            OpenID4VCICredentialOfferClaim {
+                value: OpenID4VCICredentialOfferClaimValue::Nested(HashMap::from([(
+                    "X".to_string(),
+                    OpenID4VCICredentialOfferClaim {
+                        value: OpenID4VCICredentialOfferClaimValue::String("123".to_string()),
+                        value_type: "STRING".to_string(),
+                    }
+                )])),
+                value_type: "OBJECT".to_string(),
+            }
+        )]),
+        result
+    );
+}
+
+#[test]
+fn test_prepare_claims_success_failed_missing_credential_schema_parent_claim_schema() {
+    let now = OffsetDateTime::now_utc();
+    let claim_schemas = vec![CredentialSchemaClaim {
+        schema: ClaimSchema {
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
+                .unwrap()
+                .into(),
+            key: "location/X".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: now,
+            last_modified: now,
+        },
+        required: true,
+    }];
+
+    let claims = vec![Claim {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966").unwrap(),
+        credential_id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
+            .unwrap()
+            .into(),
+        created_date: now,
+        last_modified: now,
+        value: "123".to_string(),
+        schema: Some(claim_schemas[0].schema.to_owned()),
+    }];
+
+    let mut credential_schema = generic_credential().schema.unwrap();
+    credential_schema.claim_schemas = Some(claim_schemas);
+
+    let result = prepare_claims(&credential_schema, &claims, &generic_config().core).unwrap_err();
+    assert!(matches!(result, TransportProtocolError::Failed(_)));
 }
 
 #[test]

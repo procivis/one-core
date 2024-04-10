@@ -35,10 +35,17 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         leeway: 60
+            SDJWT:
+                type: 'SDJWT'
+                display: 'format.sdjwt'
+                order: 1
+                params:
+                    public:
+                        leeway: 60
             JSON_LD_CLASSIC:
                 type: 'JSON_LD_CLASSIC'
                 display: 'display'
-                order: 1
+                order: 2
                 params: null
             MDOC:
               type: 'MDOC'

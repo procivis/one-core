@@ -33,8 +33,25 @@ pub struct OpenID4VCICredentialDefinition {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialOfferCredentialDTO {
     pub format: String,
-    pub credential_definition: OpenID4VCICredentialDefinition,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_definition: Option<OpenID4VCICredentialDefinition>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub doctype: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claims: Option<HashMap<String, OpenID4VCICredentialOfferClaim>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct OpenID4VCICredentialOfferClaim {
+    pub value: OpenID4VCICredentialOfferClaimValue,
+    pub value_type: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum OpenID4VCICredentialOfferClaimValue {
+    Nested(HashMap<String, OpenID4VCICredentialOfferClaim>),
+    String(String),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

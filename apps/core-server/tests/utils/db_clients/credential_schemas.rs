@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Default, Clone)]
 pub struct TestingCreateSchemaParams {
+    pub format: Option<String>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
@@ -57,7 +58,7 @@ impl CredentialSchemasDB {
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: "JWT".to_string(),
+            format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -170,7 +171,7 @@ impl CredentialSchemasDB {
             ),
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: "JWT".to_string(),
+            format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,

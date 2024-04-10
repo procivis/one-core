@@ -6,7 +6,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::{
     config::{
-        core_config::{ExchangeConfig, ExchangeType},
+        core_config::{CoreConfig, ExchangeType},
         ConfigValidationError,
     },
     crypto::CryptoProvider,
@@ -144,7 +144,7 @@ pub fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>(
 }
 
 pub(crate) fn transport_protocol_providers_from_config(
-    config: &ExchangeConfig,
+    config: Arc<CoreConfig>,
     core_base_url: Option<String>,
     crypto: Arc<dyn CryptoProvider>,
     data_provider: Arc<dyn DataRepository>,
@@ -154,7 +154,7 @@ pub(crate) fn transport_protocol_providers_from_config(
 ) -> Result<HashMap<String, Arc<dyn TransportProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn TransportProtocol>> = HashMap::new();
 
-    for (name, fields) in config.iter() {
+    for (name, fields) in config.exchange.iter() {
         match fields.r#type {
             ExchangeType::ProcivisTemporary => {
                 let protocol = Arc::new(ProcivisTemp::new(
@@ -170,7 +170,7 @@ pub(crate) fn transport_protocol_providers_from_config(
                 providers.insert(name.to_string(), protocol);
             }
             ExchangeType::OpenId4Vc => {
-                let params = config.get(name)?;
+                let params = config.exchange.get(name)?;
 
                 let protocol = Arc::new(OpenID4VC::new(
                     core_base_url.clone(),
@@ -184,6 +184,7 @@ pub(crate) fn transport_protocol_providers_from_config(
                     key_provider.clone(),
                     crypto.clone(),
                     params,
+                    config.clone(),
                 ));
 
                 providers.insert(name.to_string(), protocol);

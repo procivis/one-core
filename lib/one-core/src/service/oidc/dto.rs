@@ -1,5 +1,6 @@
 use dto_mapper::Into;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -25,7 +26,9 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
     pub format: String,
-    pub credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+    pub claims: Option<OpenID4VCIIssuerMetadataMdocClaimsResponseDTO>,
+    pub credential_definition: Option<OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO>,
+    pub doctype: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
@@ -33,6 +36,19 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
     pub name: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OpenID4VCIIssuerMetadataMdocClaimsResponseDTO {
+    #[serde(flatten)]
+    pub values: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
+    #[serde(default)]
+    pub value: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
+    pub value_type: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

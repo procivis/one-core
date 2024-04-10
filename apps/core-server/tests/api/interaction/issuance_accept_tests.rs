@@ -429,6 +429,7 @@ async fn test_fail_issuance_accept_procivis_temp_wallet_storage_type_not_met() {
             "NONE",
             TestingCreateSchemaParams {
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                ..Default::default()
             },
         )
         .await;
@@ -1015,6 +1016,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             "NONE",
             TestingCreateSchemaParams {
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                ..Default::default()
             },
         )
         .await;

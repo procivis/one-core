@@ -180,7 +180,7 @@ impl OneCore {
         let config = Arc::new(core_config);
 
         let transport_protocols = transport_protocol_providers_from_config(
-            &config.exchange,
+            config.clone(),
             core_base_url.clone(),
             crypto.clone(),
             data_provider.clone(),

@@ -1,4 +1,6 @@
-use crate::model::credential_schema::CredentialSchema;
+use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::config::core_config::{CoreConfig, FormatType};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::service::error::ServiceError;
 use crate::service::oidc::{
@@ -11,29 +13,138 @@ use crate::service::oidc::{
     model::OpenID4VPInteractionContent,
 };
 use crate::util::oidc::map_core_to_oidc_format;
+use std::collections::HashMap;
 use std::str::FromStr;
 use uuid::Uuid;
 
-use super::dto::OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO;
+use super::dto::{
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIIssuerMetadataMdocClaimsResponseDTO, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
+};
 
 pub(super) fn create_issuer_metadata_response(
     base_url: String,
     schema: CredentialSchema,
+    config: &CoreConfig,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
+    let format = config.format.get_fields(&schema.format)?;
+
+    let credentials_supported = match format.r#type {
+        FormatType::Mdoc => credentials_supported_mdoc(schema),
+        _ => credentials_supported_others(schema),
+    }?;
+
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: base_url.to_owned(),
         credential_endpoint: format!("{base_url}/credential"),
-        credentials_supported: vec![OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
+        credentials_supported,
+    })
+}
+
+fn credentials_supported_mdoc(
+    schema: CredentialSchema,
+) -> Result<Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO>, ServiceError> {
+    let claim_schema_values = schemas_to_values(schema.claim_schemas.ok_or(
+        ServiceError::MappingError("claim_schemas is None".to_string()),
+    )?)?;
+
+    Ok(vec![
+        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
             wallet_storage_type: schema.wallet_storage_type,
             format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
-            credential_definition: OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
-                r#type: vec!["VerifiableCredential".to_string()],
-            },
+            claims: Some(OpenID4VCIIssuerMetadataMdocClaimsResponseDTO {
+                values: claim_schema_values,
+            }),
+            credential_definition: None,
+            doctype: Some(schema.schema_id),
             display: Some(vec![
                 OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
             ]),
-        }],
-    })
+        },
+    ])
+}
+
+fn nest_schemas(
+    schemas: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
+) -> Result<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>, ServiceError> {
+    // Copy non-nested schemas to new buffer
+    let mut result: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO> = schemas
+        .iter()
+        .filter_map(|(key, value)| {
+            if key.find(NESTED_CLAIM_MARKER).is_some() {
+                None
+            } else {
+                Some((key.to_owned(), value.to_owned()))
+            }
+        })
+        .collect();
+
+    // Assign nested schemas to mentioned buffer
+    schemas.iter().try_for_each(|(key, value)| {
+        if let Some(index) = key.find(NESTED_CLAIM_MARKER) {
+            let prefix = &key[0..index];
+            let entry = result.get_mut(prefix).ok_or(ServiceError::MappingError(
+                "failed to find parent claim schema".to_string(),
+            ))?;
+            entry
+                .value
+                .insert(remove_first_nesting_layer(key), value.to_owned());
+        }
+
+        Ok::<(), ServiceError>(())
+    })?;
+
+    // Redo for every nesting
+    result
+        .into_iter()
+        .map(|(key, value)| {
+            Ok((
+                key,
+                OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
+                    value: nest_schemas(value.value)?,
+                    value_type: value.value_type,
+                },
+            ))
+        })
+        .collect::<Result<_, ServiceError>>()
+}
+
+fn schemas_to_values(
+    schemas: Vec<CredentialSchemaClaim>,
+) -> Result<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>, ServiceError> {
+    let result = schemas
+        .into_iter()
+        .map(|schema| {
+            (
+                schema.schema.key.to_owned(),
+                OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
+                    value: Default::default(),
+                    value_type: schema.schema.data_type,
+                },
+            )
+        })
+        .collect();
+
+    nest_schemas(result)
+}
+
+fn credentials_supported_others(
+    schema: CredentialSchema,
+) -> Result<Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO>, ServiceError> {
+    Ok(vec![
+        OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
+            wallet_storage_type: schema.wallet_storage_type,
+            format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
+            claims: None,
+            credential_definition: Some(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
+                r#type: vec!["VerifiableCredential".to_string()],
+            }),
+            doctype: None,
+            display: Some(vec![
+                OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO { name: schema.name },
+            ]),
+        },
+    ])
 }
 
 pub(super) fn create_service_discovery_response(
