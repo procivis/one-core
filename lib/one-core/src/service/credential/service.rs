@@ -726,6 +726,11 @@ impl CredentialService {
         let detected_state =
             credential_revocation_state_to_model_state(worst_revocation_state.to_owned());
 
+        let suspend_end_date = match worst_revocation_state {
+            CredentialRevocationState::Suspended { suspend_end_date } => suspend_end_date,
+            _ => None,
+        };
+
         // update local credential state if change detected
         if current_state != detected_state {
             self.credential_repository
@@ -734,7 +739,7 @@ impl CredentialService {
                     state: Some(CredentialState {
                         created_date: OffsetDateTime::now_utc(),
                         state: detected_state.to_owned(),
-                        suspend_end_date: None,
+                        suspend_end_date,
                     }),
                     credential: None,
                     holder_did_id: None,
