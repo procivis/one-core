@@ -422,7 +422,7 @@ async fn handle_credential_invitation(
                     &credential_schema.id,
                     &CredentialSchemaRelations {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
-                        ..Default::default()
+                        organisation: Some(Default::default()),
                     },
                 )
                 .await

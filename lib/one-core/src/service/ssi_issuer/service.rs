@@ -148,7 +148,10 @@ impl SSIIssuerService {
                 credential_id,
                 &CredentialRelations {
                     state: Some(CredentialStateRelations::default()),
-                    issuer_did: Some(DidRelations::default()),
+                    issuer_did: Some(DidRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     schema: Some(CredentialSchemaRelations {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()

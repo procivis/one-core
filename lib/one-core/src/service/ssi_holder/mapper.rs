@@ -1,4 +1,3 @@
-use shared_types::EntityId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -7,7 +6,6 @@ use crate::{
         claim_schema::ClaimSchema,
         credential::Credential,
         credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType},
-        did::Did,
         history::{History, HistoryAction, HistoryEntityType},
         proof::Proof,
     },
@@ -54,92 +52,63 @@ impl From<CredentialClaimSchemaDTO> for CredentialSchemaClaim {
 }
 
 pub(super) fn credential_offered_history_event(credential: &Credential) -> History {
-    history_event(
-        credential.id.into(),
-        credential.holder_did.as_ref(),
-        HistoryEntityType::Credential,
-        HistoryAction::Offered,
-    )
+    credential_history_event(credential, HistoryAction::Offered)
 }
 
 pub(super) fn credential_pending_history_event(credential: &Credential) -> History {
-    history_event(
-        credential.id.into(),
-        credential.holder_did.as_ref(),
-        HistoryEntityType::Credential,
-        HistoryAction::Pending,
-    )
+    credential_history_event(credential, HistoryAction::Pending)
 }
 
 pub(super) fn credential_accepted_history_event(credential: &Credential) -> History {
-    history_event(
-        credential.id.into(),
-        credential.holder_did.as_ref(),
-        HistoryEntityType::Credential,
-        HistoryAction::Accepted,
-    )
+    credential_history_event(credential, HistoryAction::Accepted)
 }
 
 pub(super) fn credential_rejected_history_event(credential: &Credential) -> History {
-    history_event(
-        credential.id.into(),
-        credential.holder_did.as_ref(),
-        HistoryEntityType::Credential,
-        HistoryAction::Rejected,
-    )
+    credential_history_event(credential, HistoryAction::Rejected)
 }
 
 pub(super) fn proof_requested_history_event(proof: &Proof) -> History {
-    history_event(
-        proof.id.into(),
-        proof.holder_did.as_ref(),
-        HistoryEntityType::Proof,
-        HistoryAction::Requested,
-    )
+    proof_history_event(proof, HistoryAction::Requested)
 }
 
 pub(super) fn proof_pending_history_event(proof: &Proof) -> History {
-    history_event(
-        proof.id.into(),
-        proof.holder_did.as_ref(),
-        HistoryEntityType::Proof,
-        HistoryAction::Pending,
-    )
+    proof_history_event(proof, HistoryAction::Pending)
 }
 
 pub(crate) fn proof_rejected_history_event(proof: &Proof) -> History {
-    history_event(
-        proof.id.into(),
-        proof.holder_did.as_ref(),
-        HistoryEntityType::Proof,
-        HistoryAction::Rejected,
-    )
+    proof_history_event(proof, HistoryAction::Rejected)
 }
 
 pub(crate) fn proof_accepted_history_event(proof: &Proof) -> History {
-    history_event(
-        proof.id.into(),
-        proof.holder_did.as_ref(),
-        HistoryEntityType::Proof,
-        HistoryAction::Accepted,
-    )
+    proof_history_event(proof, HistoryAction::Accepted)
 }
 
-fn history_event(
-    entity_id: EntityId,
-    holder_did: Option<&Did>,
-    entity_type: HistoryEntityType,
-    action: HistoryAction,
-) -> History {
-    let organisation = holder_did.and_then(|did| did.organisation.clone());
-
+fn credential_history_event(credential: &Credential, action: HistoryAction) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action,
-        entity_id: entity_id.into(),
-        entity_type,
+        entity_id: Some(credential.id.into()),
+        entity_type: HistoryEntityType::Credential,
         metadata: None,
-        organisation,
+        organisation: credential
+            .schema
+            .as_ref()
+            .and_then(|schema| schema.organisation.to_owned()),
+    }
+}
+
+fn proof_history_event(proof: &Proof, action: HistoryAction) -> History {
+    History {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        action,
+        entity_id: Some(proof.id.into()),
+        entity_type: HistoryEntityType::Proof,
+        metadata: None,
+        organisation: proof
+            .holder_did
+            .as_ref()
+            .and_then(|did| did.organisation.to_owned()),
     }
 }

@@ -563,6 +563,10 @@ impl SSIHolderService {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
+                    schema: Some(CredentialSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
