@@ -41,7 +41,6 @@ use one_core::{
         credential::dto::{
             CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
         },
-        credential_schema::dto::CredentialSchemaListItemResponseDTO,
         history::dto::GetHistoryListResponseDTO,
     },
 };
@@ -103,7 +102,7 @@ pub struct ListQueryBindingDTO {
 #[from(GetCredentialSchemaListResponseDTO)]
 pub struct CredentialSchemaListBindingDTO {
     #[from(with_fn = convert_inner)]
-    pub values: Vec<CredentialSchemaListItemBindingDTO>,
+    pub values: Vec<CredentialSchemaBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
 }
@@ -186,7 +185,7 @@ pub struct CredentialListItemBindingDTO {
     pub revocation_date: Option<String>,
     pub issuer_did: Option<String>,
     pub state: CredentialStateBindingEnum,
-    pub schema: CredentialSchemaListItemBindingDTO,
+    pub schema: CredentialSchemaBindingDTO,
     pub role: CredentialRoleBindingDTO,
     pub suspend_end_date: Option<String>,
 }
@@ -221,26 +220,6 @@ pub struct DidListItemBindingDTO {
     pub did_type: DidTypeBindingEnum,
     pub did_method: String,
     pub deactivated: bool,
-}
-
-#[derive(Debug, Clone, From)]
-#[from(CredentialSchemaListItemResponseDTO)]
-pub struct CredentialSchemaListItemBindingDTO {
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub id: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub created_date: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub last_modified: String,
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
-    pub schema_id: String,
-    pub schema_type: CredentialSchemaTypeBindingEnum,
-    #[from(with_fn = convert_inner)]
-    pub layout_type: Option<LayoutTypeBindingEnum>,
 }
 
 #[derive(Debug, Clone, From)]
