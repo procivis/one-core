@@ -695,3 +695,15 @@ fn test_serialize_and_deserialize_interaction_data() {
     let json = serde_json::to_string(&data).unwrap();
     let _data_from_json: OpenID4VPInteractionData = serde_json::from_str(&json).unwrap();
 }
+
+#[test]
+fn test_get_parent_claim_paths() {
+    use super::mapper::get_parent_claim_paths;
+
+    assert!(get_parent_claim_paths("").is_empty());
+    assert!(get_parent_claim_paths("this_is_not_yellow").is_empty());
+    assert_eq!(
+        vec!["this", "this/is", "this/is/yellow"],
+        get_parent_claim_paths("this/is/yellow/man")
+    );
+}

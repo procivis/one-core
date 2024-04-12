@@ -390,10 +390,10 @@ pub(super) fn create_claims_from_credential_definition(
         claims.push(claim);
 
         if key.contains(NESTED_CLAIM_MARKER) {
-            if let Some((object_path, _)) = key.rsplit_once(NESTED_CLAIM_MARKER) {
-                if !object_claim_schemas.contains(&object_path) {
-                    object_claim_schemas.push(object_path)
-                };
+            for parent_claim in get_parent_claim_paths(key) {
+                if !object_claim_schemas.contains(&parent_claim) {
+                    object_claim_schemas.push(parent_claim);
+                }
             }
         }
     }
@@ -449,4 +449,17 @@ pub(super) fn create_presentation_submission(
             })
             .collect::<Result<_, _>>()?,
     })
+}
+
+pub(super) fn get_parent_claim_paths(path: &str) -> Vec<&str> {
+    path.char_indices()
+        .filter_map(|(index, value)| {
+            if value == NESTED_CLAIM_MARKER {
+                Some(index)
+            } else {
+                None
+            }
+        })
+        .map(|index| &path[0..index])
+        .collect::<Vec<&str>>()
 }

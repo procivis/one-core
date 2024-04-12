@@ -380,6 +380,147 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 }
 
 #[tokio::test]
+async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_double_layered_nested_claims(
+) {
+    let mock_server = MockServer::start().await;
+    let (context, organistion) = TestContext::new_with_organisation().await;
+
+    let credential_id = Uuid::new_v4();
+    let credential_issuer = format!("{}/ssi/oidc-issuer/v1/{credential_id}", mock_server.uri());
+    let credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credentials": [
+            {
+                "wallet_storage_type": "SOFTWARE",
+                "format": "vc+sd-jwt",
+                "credential_definition": {
+                    "type": [
+                        "VerifiableCredential"
+                    ],
+                    "credentialSubject": {
+                        "address/location/position/x": {
+                            "value": "xyy",
+                            "value_type": "STRING"
+                        }
+                    }
+                }
+            }
+        ],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740"
+            }
+        }
+    });
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_id}/.well-known/openid-credential-issuer"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credentials_supported": [
+                    {
+                        "credential_definition": {
+                            "type": [
+                                "VerifiableCredential"
+                            ]
+                        },
+                        "format": "vc+sd-jwt",
+                    }
+                ]
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let token_endpoint = format!("{credential_issuer}/token");
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_id}/.well-known/openid-configuration"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "id_token_signing_alg_values_supported": [],
+                "issuer": credential_issuer,
+                "jwks_uri": format!("{credential_issuer}/jwks"),
+                "response_types_supported": [
+                    "token"
+                ],
+                "subject_types_supported": [
+                    "public"
+                ],
+                "token_endpoint": token_endpoint
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+    .and(path(format!("/ssi/oidc-issuer/v1/{credential_id}/token")))
+    .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+        {
+            "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
+            "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            "token_type": "bearer"
+        }
+    )))
+    .expect(1)
+    .mount(&mock_server).await;
+
+    // WHEN
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organistion.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+
+    let credential = context
+        .db
+        .credentials
+        .get(&resp["credentialIds"][0].parse())
+        .await;
+    let claim_schema_keys: Vec<String> = credential
+        .schema
+        .unwrap()
+        .claim_schemas
+        .unwrap()
+        .iter()
+        .map(|claim_schema| claim_schema.schema.key.to_owned())
+        .collect();
+    assert_eq!(
+        vec![
+            "address/location/position/x",
+            "address",
+            "address/location",
+            "address/location/position",
+        ],
+        claim_schema_keys
+    );
+}
+
+#[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_matching_succeeds() {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation().await;
