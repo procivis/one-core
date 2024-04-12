@@ -35,6 +35,19 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
             credential_id,
             credential_schema_id,
             None,
+            json!([
+                {
+                    "schema": {
+                        "createdDate": "2023-11-08T15:46:14.997Z",
+                        "datatype": "STRING",
+                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                        "key": "firstName",
+                        "lastModified": "2023-11-08T15:46:14.997Z",
+                        "required": true
+                    },
+                    "value": "aae"
+                }
+            ]),
         )
         .await;
 
@@ -60,6 +73,98 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
     assert_eq!(
         schema.schema_type,
         CredentialSchemaType::ProcivisOneSchema2024
+    );
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+}
+
+#[tokio::test]
+async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_claims() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+    let credential_id = Uuid::new_v4();
+    let credential_schema_id = Uuid::new_v4();
+
+    context
+        .server_mock
+        .temporary_issuer_connect(
+            "PROCIVIS_TEMPORARY",
+            credential_id,
+            credential_schema_id,
+            None,
+            json!([
+                {
+                    "schema": {
+                        "createdDate": "2023-11-08T15:46:14.997Z",
+                        "datatype": "OBJECT",
+                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                        "key": "location",
+                        "lastModified": "2023-11-08T15:46:14.997Z",
+                        "required": true
+                    },
+                    "value": [
+                        {
+                            "schema": {
+                                "createdDate": "2023-11-08T15:46:14.997Z",
+                                "datatype": "OBJECT",
+                                "id": "48db4654-01c4-4a43-9df4-300f1f425c41",
+                                "key": "coordinates",
+                                "lastModified": "2023-11-08T15:46:14.997Z",
+                                "required": true
+                            },
+                            "value": [
+                                {
+                                    "schema": {
+                                        "createdDate": "2023-11-08T15:46:14.997Z",
+                                        "datatype": "STRING",
+                                        "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
+                                        "key": "X",
+                                        "lastModified": "2023-11-08T15:46:14.997Z",
+                                        "required": true
+                                    },
+                                    "value": "123"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]),
+        )
+        .await;
+
+    // WHEN
+    let url = format!(
+        "{}/ssi/temporary-issuer/v1/connect?protocol=PROCIVIS_TEMPORARY&credential={credential_id}",
+        context.server_mock.uri()
+    );
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, &url)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let stored_credential = context.db.credentials.get(&credential_id.into()).await;
+
+    let schema = stored_credential.schema.unwrap();
+
+    assert_eq!(schema.schema_id, credential_schema_id.to_string());
+    assert_eq!(
+        schema.schema_type,
+        CredentialSchemaType::ProcivisOneSchema2024
+    );
+    let schema_keys: Vec<String> = schema
+        .claim_schemas
+        .unwrap()
+        .into_iter()
+        .map(|schema| schema.schema.key)
+        .collect();
+    assert_eq!(
+        vec!["location", "location/coordinates", "location/coordinates/X"],
+        schema_keys
     );
 
     let resp = resp.json_value().await;
@@ -102,6 +207,19 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_match_existi
             credential_id,
             credential_schema.id,
             None,
+            json!([
+                {
+                    "schema": {
+                        "createdDate": "2023-11-08T15:46:14.997Z",
+                        "datatype": "STRING",
+                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                        "key": "firstName",
+                        "lastModified": "2023-11-08T15:46:14.997Z",
+                        "required": true
+                    },
+                    "value": "aae"
+                }
+            ]),
         )
         .await;
 
@@ -160,6 +278,19 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_match_existi
             credential_id,
             credential_schema.id,
             Some("IncorrectSchemaType"),
+            json!([
+                {
+                    "schema": {
+                        "createdDate": "2023-11-08T15:46:14.997Z",
+                        "datatype": "STRING",
+                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                        "key": "firstName",
+                        "lastModified": "2023-11-08T15:46:14.997Z",
+                        "required": true
+                    },
+                    "value": "aae"
+                }
+            ]),
         )
         .await;
 

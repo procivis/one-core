@@ -12,6 +12,7 @@ use self::mapper::{
     remote_did_from_value,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -434,13 +435,11 @@ async fn handle_credential_invitation(
         None => {
             let mut credential_schema = input_credential_schema;
             credential_schema.organisation = Some(organisation.to_owned());
-            credential_schema.claim_schemas = Some(
-                issuer_response
-                    .claims
-                    .iter()
-                    .map(|claim| claim.schema.to_owned().into())
-                    .collect(),
-            );
+            credential_schema.claim_schemas = Some(extract_claim_schemas_from_incoming_claims(
+                &issuer_response.claims,
+                OffsetDateTime::now_utc(),
+                "",
+            )?);
 
             let _ = deps
                 .credential_schema_repository
@@ -543,6 +542,39 @@ async fn handle_credential_invitation(
     })
 }
 
+fn extract_claim_schemas_from_incoming_claims(
+    incoming_claims: &[DetailCredentialClaimResponseDTO],
+    now: OffsetDateTime,
+    prefix: &str,
+) -> Result<Vec<CredentialSchemaClaim>, TransportProtocolError> {
+    let mut result = vec![];
+
+    incoming_claims.iter().try_for_each(|incoming_claim| {
+        result.push(CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: incoming_claim.schema.id,
+                key: format!("{prefix}{}", incoming_claim.schema.key.to_owned()),
+                data_type: incoming_claim.schema.datatype.to_owned(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: incoming_claim.schema.required,
+        });
+
+        if let DetailCredentialClaimValueResponseDTO::Nested(value) = &incoming_claim.value {
+            result.extend(extract_claim_schemas_from_incoming_claims(
+                value,
+                now,
+                &format!("{prefix}{}{NESTED_CLAIM_MARKER}", incoming_claim.schema.key),
+            )?);
+        }
+
+        Ok(())
+    })?;
+
+    Ok(result)
+}
+
 fn unnest_incoming_claim(
     credential_id: CredentialId,
     incoming_claim: &DetailCredentialClaimResponseDTO,
@@ -578,7 +610,7 @@ fn unnest_incoming_claim(
                         value,
                         claim_schemas,
                         now,
-                        &format!("{}{NESTED_CLAIM_MARKER}", incoming_claim.schema.key),
+                        &format!("{prefix}{}{NESTED_CLAIM_MARKER}", incoming_claim.schema.key),
                     )
                 })
                 .collect::<Result<Vec<Vec<_>>, TransportProtocolError>>()?

@@ -62,6 +62,7 @@ impl MockServer {
         credential_id: impl Display,
         schema_id: impl Display,
         schema_type: Option<&str>,
+        claims: serde_json::Value,
     ) {
         Mock::given(method(Method::POST))
             .and(path("/ssi/temporary-issuer/v1/connect"))
@@ -69,19 +70,7 @@ impl MockServer {
             .and(query_param("credential", credential_id.to_string()))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
-                    "claims": [
-                        {
-                            "schema": {
-                                "createdDate": "2023-11-08T15:46:14.997Z",
-                                "datatype": "STRING",
-                                "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-                                "key": "firstName",
-                                "lastModified": "2023-11-08T15:46:14.997Z",
-                                "required": true
-                            },
-                            "value": "aae"
-                        }
-                    ],
+                    "claims": claims,
                     "createdDate": "2023-11-09T08:39:16.459Z",
                     "id": credential_id.to_string(),
                     "issuanceDate": "2023-11-09T08:39:16.459Z",
