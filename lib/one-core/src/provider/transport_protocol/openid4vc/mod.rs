@@ -38,7 +38,7 @@ use crate::{
         },
         credential_schema::{
             CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-            CredentialSchemaType, LayoutType, UpdateCredentialSchemaRequest,
+            CredentialSchemaType, LayoutProperties, LayoutType, UpdateCredentialSchemaRequest,
         },
         did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
@@ -683,6 +683,7 @@ impl TransportProtocol for OpenID4VC {
         presentation_definition_from_interaction_data(proof.id, credentials, credential_groups)
     }
 }
+
 async fn clear_previous_interaction(
     interaction_repository: &Arc<dyn InteractionRepository>,
     interaction: &Option<Interaction>,
@@ -977,6 +978,16 @@ async fn handle_credential_invitation(
                     )?,
                 )?;
 
+            let layout = if schema_type == CredentialSchemaType::ProcivisOneSchema2024 {
+                resolve_layout_data(&schema_id).await.map_err(|err| {
+                    TransportProtocolError::Failed(format!(
+                        "Failed resolving layout information from schema_id {err}"
+                    ))
+                })?
+            } else {
+                Layout::default()
+            };
+
             let credential_schema = create_and_store_credential_schema(
                 &deps.credential_schema_repository,
                 credential_schema_name,
@@ -986,6 +997,7 @@ async fn handle_credential_invitation(
                 credential.wallet_storage_type.clone(),
                 schema_type,
                 schema_id,
+                layout,
             )
             .await
             .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
@@ -1057,6 +1069,7 @@ async fn create_and_store_credential_schema(
     wallet_storage_type: Option<WalletStorageTypeEnum>,
     schema_type: CredentialSchemaType,
     schema_id: String,
+    layout: Layout,
 ) -> Result<CredentialSchema, DataLayerError> {
     let now = OffsetDateTime::now_utc();
 
@@ -1073,9 +1086,8 @@ async fn create_and_store_credential_schema(
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(claim_schemas),
         organisation: Some(organisation),
-        // todo: this should be fixed in another ticket
-        layout_type: LayoutType::Card,
-        layout_properties: None,
+        layout_type: layout.layout_type,
+        layout_properties: layout.layout_properties,
         schema_type,
         schema_id,
     };
@@ -1085,6 +1097,30 @@ async fn create_and_store_credential_schema(
         .await?;
 
     Ok(credential_schema)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Layout {
+    layout_type: LayoutType,
+    layout_properties: Option<LayoutProperties>,
+}
+
+impl Default for Layout {
+    fn default() -> Self {
+        Self {
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+        }
+    }
+}
+
+async fn resolve_layout_data(schema_id: &str) -> Result<Layout, reqwest::Error> {
+    reqwest::get(schema_id)
+        .await?
+        .error_for_status()?
+        .json()
+        .await
 }
 
 async fn create_and_store_interaction(

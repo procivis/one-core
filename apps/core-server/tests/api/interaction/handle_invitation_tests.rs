@@ -388,8 +388,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
     let mock_server = MockServer::start().await;
     let (context, organistion) = TestContext::new_with_organisation().await;
 
-    let credential_id = Uuid::new_v4();
-    let credential_issuer = format!("{}/ssi/oidc-issuer/v1/{credential_id}", mock_server.uri());
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/oidc-issuer/v1/{credential_schema_id}",
+        mock_server.uri()
+    );
     let credential_offer = json!({
         "credential_issuer": credential_issuer,
         "credentials": [
@@ -418,7 +421,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_id}/.well-known/openid-credential-issuer"
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -444,7 +447,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_id}/.well-known/openid-configuration"
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-configuration"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -469,7 +472,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         .await;
 
     Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_id}/token")))
+    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!(
         {
             "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
@@ -479,6 +482,15 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
     )))
     .expect(1)
     .mount(&mock_server).await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "layoutType": "CARD",
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
 
     // WHEN
     let credential_offer = serde_json::to_string(&credential_offer).unwrap();
@@ -516,8 +528,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
     let mock_server = MockServer::start().await;
     let (context, organistion) = TestContext::new_with_organisation().await;
 
-    let credential_id = Uuid::new_v4();
-    let credential_issuer = format!("{}/ssi/oidc-issuer/v1/{credential_id}", mock_server.uri());
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/oidc-issuer/v1/{credential_schema_id}",
+        mock_server.uri()
+    );
     let credential_offer = json!({
         "credential_issuer": credential_issuer,
         "credentials": [
@@ -546,7 +561,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_id}/.well-known/openid-credential-issuer"
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-credential-issuer"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -572,7 +587,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/oidc-issuer/v1/{credential_id}/.well-known/openid-configuration"
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/.well-known/openid-configuration"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -597,7 +612,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .await;
 
     Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_id}/token")))
+    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
     .respond_with(ResponseTemplate::new(200).set_body_json(json!(
         {
             "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
@@ -607,6 +622,15 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
     )))
     .expect(1)
     .mount(&mock_server).await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "layoutType": "CARD",
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
 
     // WHEN
     let credential_offer = serde_json::to_string(&credential_offer).unwrap();
@@ -909,6 +933,15 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
             "/ssi/oidc-issuer/v1/{credential_schema_id}/offer/{credential_id}"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "layoutType": "CARD",
+        })))
         .expect(1)
         .mount(&mock_server)
         .await;
