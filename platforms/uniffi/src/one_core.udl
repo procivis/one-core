@@ -116,19 +116,6 @@ dictionary CredentialSchemaBindingDTO {
   CredentialSchemaLayoutPropertiesBindingDTO? layout_properties;
 };
 
-dictionary CredentialSchemaListItemBindingDTO {
-  string id;
-  string created_date;
-  string last_modified;
-  string name;
-  string format;
-  string revocation_method;
-  WalletStorageTypeBindingEnum? wallet_storage_type;
-  string schema_id;
-  CredentialSchemaTypeBindingEnum schema_type;
-  LayoutTypeBindingEnum? layout_type;
-};
-
 dictionary ClaimBindingDTO {
   string id;
   string key;
@@ -154,7 +141,7 @@ dictionary CredentialListItemBindingDTO {
   string? revocation_date;
   string? issuer_did;
   CredentialStateBindingEnum state;
-  CredentialSchemaListItemBindingDTO schema;
+  CredentialSchemaBindingDTO schema;
   CredentialRoleBindingDTO role;
   string? suspend_end_date;
 };
@@ -233,7 +220,7 @@ dictionary ListQueryBindingDTO {
 };
 
 dictionary CredentialSchemaListBindingDTO {
-  sequence<CredentialSchemaListItemBindingDTO> values;
+  sequence<CredentialSchemaBindingDTO> values;
   u64 total_pages;
   u64 total_items;
 };

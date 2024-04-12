@@ -11,7 +11,10 @@ use crate::{
     HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
 use dto_mapper::convert_inner;
-use one_core::service::credential::dto::DetailCredentialClaimValueResponseDTO;
+use one_core::service::{
+    credential::dto::DetailCredentialClaimValueResponseDTO,
+    credential_schema::dto::CredentialSchemaListItemResponseDTO,
+};
 use one_core::{
     model::did::DidType,
     service::{
@@ -231,6 +234,24 @@ impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
             entity_type: value.entity_type.into(),
             metadata: convert_inner(value.metadata),
             organisation_id: value.organisation_id.to_string(),
+        }
+    }
+}
+
+impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
+    fn from(value: CredentialSchemaListItemResponseDTO) -> Self {
+        Self {
+            id: value.id.to_string(),
+            created_date: value.created_date.format_timestamp(),
+            last_modified: value.last_modified.format_timestamp(),
+            name: value.name,
+            format: value.format,
+            revocation_method: value.revocation_method,
+            wallet_storage_type: convert_inner(value.wallet_storage_type),
+            schema_id: value.schema_id,
+            schema_type: value.schema_type.into(),
+            layout_type: convert_inner(value.layout_type),
+            layout_properties: convert_inner(value.layout_properties),
         }
     }
 }
