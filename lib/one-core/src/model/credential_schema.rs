@@ -37,6 +37,14 @@ pub enum CredentialSchemaType {
     FallbackSchema2024,
     Mdoc,
 }
+impl CredentialSchemaType {
+    pub(crate) fn supports_custom_layout(&self) -> bool {
+        match self {
+            CredentialSchemaType::ProcivisOneSchema2024 => true,
+            CredentialSchemaType::FallbackSchema2024 | CredentialSchemaType::Mdoc => false,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CredentialSchemaClaim {
@@ -71,7 +79,8 @@ pub enum LayoutType {
     SingleAttribute,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct LayoutProperties {
     pub background: Option<BackgroundProperties>,
     pub logo: Option<LogoProperties>,
@@ -81,26 +90,30 @@ pub struct LayoutProperties {
     pub code: Option<CodeProperties>,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct BackgroundProperties {
     pub color: Option<String>,
     pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct LogoProperties {
     pub font_color: Option<String>,
     pub background_color: Option<String>,
     pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct CodeProperties {
     pub attribute: String,
     pub r#type: CodeTypeEnum,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CodeTypeEnum {
     Barcode,
     Mrz,
