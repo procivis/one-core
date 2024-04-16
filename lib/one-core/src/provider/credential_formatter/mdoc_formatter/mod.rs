@@ -190,7 +190,7 @@ impl CredentialFormatter for MdocFormatter {
         FormatterCapabilities {
             features: vec!["SELECTIVE_DISCLOSURE".to_string()],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
-            proof_exchange_protocols: vec![],
+            proof_exchange_protocols: vec!["OPENID4VC".to_string()],
             revocation_methods: vec!["NONE".to_string()],
             signing_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
         }
