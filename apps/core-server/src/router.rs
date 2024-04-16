@@ -517,6 +517,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::PublicKeyJwkRsaDataRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkOctDataRestDTO,
                 endpoint::ssi::dto::JsonLDNestedEntityRestDTO,
+                endpoint::ssi::dto::JsonLDNestedContextRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkMlweDataRestDTO,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
