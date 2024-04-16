@@ -26,7 +26,7 @@ use crate::{
         interaction::{InteractionId, InteractionRelations},
         key::KeyRelations,
         organisation::OrganisationRelations,
-        proof::{ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
+        proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
     },
     provider::{
         credential_formatter::model::CredentialPresentation,
@@ -198,8 +198,8 @@ impl SSIHolderService {
             .get_did(
                 &submission.did_id,
                 &DidRelations {
+                    organisation: Some(Default::default()),
                     keys: Some(Default::default()),
-                    ..Default::default()
                 },
             )
             .await?
@@ -398,7 +398,7 @@ impl SSIHolderService {
 
         if submit_result.is_ok() {
             self.proof_repository
-                .set_proof_holder_did(&proof.id, did)
+                .set_proof_holder_did(&proof.id, did.to_owned())
                 .await?;
 
             self.proof_repository
@@ -425,7 +425,10 @@ impl SSIHolderService {
         if submit_result.is_ok() {
             let _ = self
                 .history_repository
-                .create_history(proof_accepted_history_event(&proof))
+                .create_history(proof_accepted_history_event(&Proof {
+                    holder_did: Some(did),
+                    ..proof
+                }))
                 .await;
         }
 

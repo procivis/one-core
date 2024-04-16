@@ -26,7 +26,7 @@ impl From<UnexportableEntitiesResponseDTO> for HistoryMetadata {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct History {
     pub id: HistoryId,
     pub created_date: OffsetDateTime,
