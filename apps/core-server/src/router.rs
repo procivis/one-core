@@ -497,6 +497,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::OpenID4VPDirectPostResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VPPresentationDefinitionResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VPPresentationDefinitionInputDescriptorRestDTO,
+                endpoint::ssi::dto::OpenID4VPPresentationDefinitionInputDescriptorFormatRestDTO,
                 endpoint::ssi::dto::OpenID4VPPresentationDefinitionConstraintRestDTO,
                 endpoint::ssi::dto::OpenID4VPPresentationDefinitionConstraintFieldRestDTO,
                 endpoint::ssi::dto::OpenID4VPPresentationDefinitionConstraintFieldFilterRestDTO,

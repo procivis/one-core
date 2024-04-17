@@ -526,6 +526,11 @@ fn get_open_id_interaction_data(credential_schema: &CredentialSchema) -> Vec<u8>
             "id": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
             "input_descriptors": [
                 {
+                    "format": {
+                        "jwt_vc_json": {
+                            "alg": ["EdDSA", "ES256"]
+                        }
+                    },
                     "id": "input_0",
                     "constraints": {
                         "fields": [
@@ -830,6 +835,11 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                 "id": "30622803-c01a-4b24-9843-1aa4306510cb",
                 "input_descriptors": [
                     {
+                        "format": {
+                            "jwt_vc_json": {
+                                "alg": ["EdDSA", "ES256"]
+                            }
+                        },
                         "id": "input_0",
                         "constraints": {
                             "fields": [
@@ -858,6 +868,11 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
                         }
                     },
                     {
+                        "format": {
+                            "jwt_vc_json": {
+                                "alg": ["EdDSA", "ES256"]
+                            }
+                        },
                         "id": "input_1",
                         "constraints": {
                             "fields": [

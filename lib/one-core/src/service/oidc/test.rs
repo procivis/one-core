@@ -56,6 +56,7 @@ use crate::service::oidc::model::{
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
+    OpenID4VPPresentationDefinitionInputDescriptorFormat,
 };
 use crate::service::oidc::validator::validate_claims;
 use crate::service::oidc::OIDCService;
@@ -1098,6 +1099,16 @@ fn test_vec_last_position_from_token_path() {
     assert!(vec_last_position_from_token_path("$[ABC]").is_err());
 }
 
+fn jwt_format_map() -> HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat> {
+    HashMap::from([(
+        "jwt_vc_json".to_string(),
+        OpenID4VPPresentationDefinitionInputDescriptorFormat {
+            alg: vec!["EdDSA".to_string(), "ES256".to_string()],
+            proof_type: vec![],
+        },
+    )])
+}
+
 #[tokio::test]
 async fn test_oidc_verifier_presentation_definition_success() {
     let mut proof_repository = MockProofRepository::default();
@@ -1109,6 +1120,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
         presentation_definition: OpenID4VPPresentationDefinition {
             id: Uuid::new_v4(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
+                format: jwt_format_map(),
                 id: "123".to_string(),
                 constraints: OpenID4VPPresentationDefinitionConstraint {
                     validity_credential_nbf: None,
@@ -1117,6 +1129,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                         path: vec!["123".to_string()],
                         optional: Some(false),
                         filter: None,
+                        intent_to_retain: None,
                     }],
                 },
             }],
@@ -1230,6 +1243,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         presentation_definition: OpenID4VPPresentationDefinition {
             id: interaction_id.to_owned(),
             input_descriptors: vec![OpenID4VPPresentationDefinitionInputDescriptor {
+                format: jwt_format_map(),
                 id: "input_0".to_string(),
                 constraints: OpenID4VPPresentationDefinitionConstraint {
                     fields: vec![
@@ -1241,12 +1255,14 @@ async fn test_submit_proof_failed_credential_suspended() {
                                 r#type: "string".to_string(),
                                 r#const: credential_schema.schema_id.to_owned(),
                             }),
+                            intent_to_retain: None,
                         },
                         OpenID4VPPresentationDefinitionConstraintField {
                             id: Some(claim_id),
                             path: vec!["$.vc.credentialSubject.string".to_string()],
                             optional: Some(false),
                             filter: None,
+                            intent_to_retain: None,
                         },
                     ],
                     validity_credential_nbf: None,

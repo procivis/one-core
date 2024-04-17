@@ -600,7 +600,7 @@ impl TransportProtocol for OpenID4VC {
 
         // Pass the expected presentation content to interaction for verification
         let presentation_definition =
-            create_open_id_for_vp_presentation_definition(interaction_id, &proof)?;
+            create_open_id_for_vp_presentation_definition(interaction_id, &proof, &self.config)?;
         let interaction_content = OpenID4VPInteractionContent {
             nonce: self.crypto.generate_alphanumeric(32),
             presentation_definition,
@@ -629,6 +629,7 @@ impl TransportProtocol for OpenID4VC {
                 .presentation_definition_by_value
                 .is_some_and(|value| value),
             &self.key_algorithm_provider,
+            &self.config,
         )?;
 
         Ok(format!("openid4vp://?{encoded_offer}"))

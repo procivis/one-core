@@ -35,6 +35,11 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         "presentation_definition": {
             "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
             "input_descriptors": [{
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
                 "id": "input_0",
                 "constraints": {
                     "fields": [
@@ -158,6 +163,11 @@ async fn test_get_presentation_definition_success() {
     let expected = json!({
         "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
         "input_descriptors": [{
+            "format": {
+                "jwt_vc_json": {
+                    "alg": ["EdDSA", "ES256"]
+                }
+            },
             "id": "input_0",
             "constraints": {
                 "fields": [

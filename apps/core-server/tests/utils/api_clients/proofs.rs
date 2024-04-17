@@ -61,4 +61,9 @@ impl ProofsApi {
 
         self.client.get(&url).await
     }
+
+    pub async fn share(&self, id: impl Display) -> Response {
+        let url = format!("/api/proof-request/v1/{id}/share");
+        self.client.post(&url, None).await
+    }
 }

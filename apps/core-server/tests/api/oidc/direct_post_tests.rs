@@ -91,6 +91,11 @@ async fn test_direct_post_one_credential_correct() {
         "presentation_definition": {
             "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
             "input_descriptors": [{
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
                 "id": "input_0",
                 "constraints": {
                     "fields": [
@@ -232,6 +237,11 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         "presentation_definition": {
             "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
             "input_descriptors": [{
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
                 "id": "input_0",
                 "constraints": {
                     "fields": [
@@ -403,6 +413,11 @@ async fn test_direct_post_multiple_presentations() {
             "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
             "input_descriptors": [
             {
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
                 "id": "input_0",
                 "constraints": {
                     "fields": [
@@ -422,6 +437,11 @@ async fn test_direct_post_multiple_presentations() {
                 }
             },
             {
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
                 "id": "input_1",
                 "constraints": {
                     "fields": [
@@ -441,6 +461,11 @@ async fn test_direct_post_multiple_presentations() {
                 }
             },
             {
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
                 "id": "input_2",
                 "constraints": {
                     "fields": [
