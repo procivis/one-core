@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use shared_types::ClaimSchemaId;
+use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -22,9 +23,19 @@ pub struct OpenID4VPPresentationDefinition {
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptor {
+    pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
     pub id: String,
     pub constraints: OpenID4VPPresentationDefinitionConstraint,
 }
+
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub struct OpenID4VPPresentationDefinitionInputDescriptorFormat {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub alg: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub proof_type: Vec<String>,
+}
+
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
@@ -38,6 +49,8 @@ pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub path: Vec<String>,
     pub optional: Option<bool>,
     pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilter>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub intent_to_retain: Option<bool>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]

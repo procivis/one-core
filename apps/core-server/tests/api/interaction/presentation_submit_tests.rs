@@ -279,6 +279,11 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
                     "input_descriptors":
                     [
                         {
+                            "format": {
+                                "jwt_vc_json": {
+                                    "alg": ["EdDSA", "ES256"]
+                                }
+                            },
                             "id":"input_0",
                             "constraints":{
                                 "fields":[

@@ -22,7 +22,7 @@ use crate::provider::transport_protocol::mapper::{
 };
 use crate::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
-    OpenID4VPClientMetadataJwkDTO,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPPresentationDefinitionInputDescriptorFormat,
 };
 use crate::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, PresentationSubmissionDescriptorDTO,
@@ -53,6 +53,7 @@ use crate::{
     util::oidc::map_core_to_oidc_format,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     base_url: Option<String>,
     interaction_id: InteractionId,
@@ -61,6 +62,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     client_metadata_by_value: bool,
     presentation_definition_by_value: bool,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+    config: &CoreConfig,
 ) -> Result<String, TransportProtocolError> {
     let encryption_key_jwk = get_encryption_key_jwk_from_proof(&proof, key_algorithm_provider)
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
@@ -68,7 +70,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
         serde_json::to_string(&create_open_id_for_vp_client_metadata(encryption_key_jwk))
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
     let presentation_definition = serde_json::to_string(
-        &create_open_id_for_vp_presentation_definition(interaction_id, &proof)?,
+        &create_open_id_for_vp_presentation_definition(interaction_id, &proof, config)?,
     )
     .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
     let base_url = get_url(base_url)?;
@@ -175,6 +177,7 @@ pub(crate) fn get_claim_name_by_json_path(
 pub(crate) fn create_open_id_for_vp_presentation_definition(
     interaction_id: InteractionId,
     proof: &Proof,
+    config: &CoreConfig,
 ) -> Result<OpenID4VPPresentationDefinition, TransportProtocolError> {
     let proof_schema = proof.schema.as_ref().ok_or(TransportProtocolError::Failed(
         "Proof schema not found".to_string(),
@@ -219,16 +222,22 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
                     index,
                     credential_schema,
                     claim_schemas.unwrap_or_default(),
+                    config,
                 )
             })
             .collect::<Result<Vec<_>, _>>()?,
     })
 }
 
+fn is_level_two(claim_schema_key: &str) -> bool {
+    claim_schema_key.matches(NESTED_CLAIM_MARKER).count() == 1
+}
+
 pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     index: usize,
     credential_schema: CredentialSchema,
     claim_schemas: Vec<ProofInputClaimSchema>,
+    config: &CoreConfig,
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, TransportProtocolError> {
     let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
         id: None,
@@ -238,25 +247,83 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
             r#type: "string".to_string(),
             r#const: credential_schema.schema_id,
         }),
+        intent_to_retain: None,
     };
 
+    let format_type = config
+        .format
+        .get_fields(&credential_schema.format)
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+        .r#type;
+
+    let intent_to_retain = match format_type {
+        FormatType::Mdoc => Some(true),
+        _ => None,
+    };
+
+    let constraint_fields = claim_schemas
+        .iter()
+        .filter(|claim| format_type != FormatType::Mdoc || is_level_two(&claim.schema.key))
+        .map(|claim| {
+            Ok(OpenID4VPPresentationDefinitionConstraintField {
+                id: Some(claim.schema.id),
+                path: vec![format_path(&claim.schema.key, format_type)?],
+                optional: Some(!claim.required),
+                filter: None,
+                intent_to_retain,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
     let mut fields = vec![schema_id_field];
-    fields.extend(claim_schemas.iter().map(|claim| {
-        OpenID4VPPresentationDefinitionConstraintField {
-            id: Some(claim.schema.id),
-            path: vec![format!("$.vc.credentialSubject.{}", claim.schema.key)],
-            optional: Some(!claim.required),
-            filter: None,
-        }
-    }));
+    fields.extend(constraint_fields);
 
     Ok(OpenID4VPPresentationDefinitionInputDescriptor {
+        format: create_format_map(format_type)?,
         id: format!("input_{index}"),
         constraints: OpenID4VPPresentationDefinitionConstraint {
             fields,
             validity_credential_nbf: None,
         },
     })
+}
+
+fn format_path(claim_key: &str, format_type: FormatType) -> Result<String, TransportProtocolError> {
+    match format_type {
+        FormatType::Mdoc => match claim_key.split_once(NESTED_CLAIM_MARKER) {
+            None => Ok(format!("$['{claim_key}']")),
+            Some((namespace, key)) => Ok(format!("$['{namespace}']['{key}']")),
+        },
+        _ => Ok(format!("$.vc.credentialSubject.{}", claim_key)),
+    }
+}
+
+fn create_format_map(
+    format_type: FormatType,
+) -> Result<
+    HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
+    TransportProtocolError,
+> {
+    match format_type {
+        FormatType::Jwt | FormatType::Sdjwt | FormatType::Mdoc => {
+            let key = map_core_to_oidc_format(&format_type.to_string())
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            Ok(HashMap::from([(
+                key,
+                OpenID4VPPresentationDefinitionInputDescriptorFormat {
+                    alg: vec!["EdDSA".to_string(), "ES256".to_string()],
+                    proof_type: vec![],
+                },
+            )]))
+        }
+        FormatType::JsonLdClassic | FormatType::JsonLdBbsplus => Ok(HashMap::from([(
+            "ldp_vc".to_string(),
+            OpenID4VPPresentationDefinitionInputDescriptorFormat {
+                alg: vec![],
+                proof_type: vec!["DataIntegrityProof".to_string()],
+            },
+        )])),
+    }
 }
 
 pub fn create_open_id_for_vp_client_metadata(key: PublicKeyWithJwk) -> OpenID4VPClientMetadata {

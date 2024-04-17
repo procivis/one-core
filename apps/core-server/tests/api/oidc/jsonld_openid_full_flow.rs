@@ -121,6 +121,13 @@ async fn test_openid4vc_jsonld_flow(
         "presentation_definition": {
             "id": interaction_id.to_string(),
             "input_descriptors": [{
+                "format": {
+                    "ldp_vc": {
+                        "proof_type": [
+                            "DataIntegrityProof"
+                        ]
+                    }
+                },
                 "id": "input_0",
                 "constraints": {
                     "fields": [
@@ -287,6 +294,13 @@ async fn test_openid4vc_jsonld_flow(
         "presentation_definition": {
             "id": interaction.id,
             "input_descriptors": [{
+                "format": {
+                    "ldp_vc": {
+                        "proof_type": [
+                            "DataIntegrityProof"
+                        ]
+                    }
+                },
                 "id": "input_0",
                 "constraints": {
                     "fields": [

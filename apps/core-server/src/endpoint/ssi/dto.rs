@@ -46,6 +46,7 @@ use one_core::service::{
             OpenID4VPPresentationDefinitionConstraintField,
             OpenID4VPPresentationDefinitionConstraintFieldFilter,
             OpenID4VPPresentationDefinitionInputDescriptor,
+            OpenID4VPPresentationDefinitionInputDescriptorFormat,
         },
     },
     ssi_issuer::dto::IssuerResponseDTO,
@@ -552,8 +553,19 @@ pub struct OpenID4VPPresentationDefinitionResponseRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VPPresentationDefinitionInputDescriptor)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptorRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub format: HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormatRestDTO>,
     pub id: String,
     pub constraints: OpenID4VPPresentationDefinitionConstraintRestDTO,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPPresentationDefinitionInputDescriptorFormat)]
+pub struct OpenID4VPPresentationDefinitionInputDescriptorFormatRestDTO {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub alg: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub proof_type: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -578,6 +590,8 @@ pub struct OpenID4VPPresentationDefinitionConstraintFieldRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub filter: Option<OpenID4VPPresentationDefinitionConstraintFieldFilterRestDTO>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub intent_to_retain: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
