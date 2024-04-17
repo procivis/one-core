@@ -238,6 +238,16 @@ async fn test_openid4vc_jsonld_flow(
         "client_id_scheme": "redirect_uri",
         "client_id": format!("{base_url}/ssi/oidc-verifier/v1/response"),
         "client_metadata": {
+            "jwks": [
+                {
+                    "crv": "P-256",
+                    "kid": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",
+                    "kty": "EC",
+                    "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
+                    "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",
+                    "use": "enc"
+                }
+            ],
             "vp_formats": {
                 "vc+sd-jwt": {
                     "alg": [
@@ -260,6 +270,11 @@ async fn test_openid4vc_jsonld_flow(
                     ]
                 },
                 "ldp_vp": {
+                    "alg": [
+                        "EdDSA"
+                    ]
+                },
+                "mso_mdoc": {
                     "alg": [
                         "EdDSA"
                     ]

@@ -3,15 +3,19 @@ use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::model::did::{Did, DidRelations, DidType};
+use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::organisation::Organisation;
+use crate::model::proof::Proof;
+use crate::provider::did_method::dto::PublicKeyJwkDTO;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
-use crate::service::error::BusinessLogicError;
+use crate::service::error::{BusinessLogicError, MissingProviderError};
 use crate::{model::common::GetListResponse, service::error::ServiceError};
 use dto_mapper::{convert_inner, try_convert_inner};
 use serde::{Deserialize, Deserializer};
-use shared_types::{CredentialId, DidId, DidValue};
+use shared_types::{CredentialId, DidId, DidValue, KeyId};
+use std::sync::Arc;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -225,5 +229,50 @@ pub fn extracted_credential_to_model(
         revocation_list: None,
         key: None,
         role: CredentialRole::Verifier,
+    })
+}
+
+pub struct PublicKeyWithJwk {
+    pub key_id: KeyId,
+    pub jwk: PublicKeyJwkDTO,
+}
+
+pub fn get_encryption_key_jwk_from_proof(
+    proof: &Proof,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
+) -> Result<PublicKeyWithJwk, ServiceError> {
+    let verifier_did = proof
+        .verifier_did
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "verifier_did is None".to_string(),
+        ))?;
+
+    let verifier_key = proof
+        .verifier_key
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "verifier_key is None".to_string(),
+        ))
+        .and_then(|value| verifier_did.find_key(&value.id, KeyRole::KeyAgreement));
+
+    let encryption_key = match verifier_key {
+        Ok(key) => Ok(key),
+        Err(ServiceError::Validation(_) | ServiceError::MappingError(_)) => {
+            verifier_did.find_key_by_role(KeyRole::KeyAgreement)
+        }
+        Err(error) => Err(error),
+    }?
+    .to_owned();
+
+    let key_algorithm = key_algorithm_provider
+        .get_key_algorithm(&encryption_key.key_type)
+        .ok_or(MissingProviderError::KeyAlgorithm(
+            encryption_key.key_type.to_owned(),
+        ))?;
+
+    Ok(PublicKeyWithJwk {
+        key_id: encryption_key.id,
+        jwk: key_algorithm.bytes_to_jwk(&encryption_key.public_key)?,
     })
 }

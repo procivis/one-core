@@ -186,6 +186,7 @@ impl OneCore {
             data_provider.clone(),
             formatter_provider.clone(),
             key_provider.clone(),
+            key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
         )?;
 

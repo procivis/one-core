@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
+use crate::provider::did_method::dto::PublicKeyJwkDTO;
 use crate::{
     common_mapper::deserialize_with_serde_json,
     model::{credential_schema::WalletStorageTypeEnum, interaction::InteractionId},
 };
 use serde::{Deserialize, Serialize};
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 
@@ -87,13 +88,23 @@ pub struct OpenID4VCIGrant {
     pub pre_authorized_code: String,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPClientMetadata {
+    pub jwks: Vec<OpenID4VPClientMetadataJwkDTO>,
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
     pub client_id_scheme: String,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct OpenID4VPClientMetadataJwkDTO {
+    #[serde(rename = "kid")]
+    pub key_id: KeyId,
+    #[serde(flatten)]
+    pub jwk: PublicKeyJwkDTO,
+    pub r#use: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPFormat {
     pub alg: Vec<String>,
 }
