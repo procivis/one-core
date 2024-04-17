@@ -1544,24 +1544,24 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
             datatype: "STRING".to_owned(),
             required: true,
             claims: vec![CredentialClaimSchemaRequestDTO {
-                key: "claim2-claim1".to_owned(),
+                key: "claim21".to_owned(),
                 datatype: "STRING".to_owned(),
                 required: true,
                 claims: vec![
                     CredentialClaimSchemaRequestDTO {
-                        key: "claim2-claim1-claim1".to_owned(),
+                        key: "claim211".to_owned(),
                         datatype: "STRING".to_owned(),
                         required: true,
                         claims: vec![],
                     },
                     CredentialClaimSchemaRequestDTO {
-                        key: "claim2-claim1-claim2".to_owned(),
+                        key: "claim212".to_owned(),
                         datatype: "STRING".to_owned(),
                         required: true,
                         claims: vec![],
                     },
                     CredentialClaimSchemaRequestDTO {
-                        key: "claim2-claim1-claim3".to_owned(),
+                        key: "claim213".to_owned(),
                         datatype: "STRING".to_owned(),
                         required: true,
                         claims: vec![],
@@ -1573,13 +1573,13 @@ fn test_claims_presence_in_layout_properties_validation_ok() {
     let layout_properties = Some(CredentialSchemaLayoutPropertiesRequestDTO {
         background: None,
         logo: None,
-        picture_attribute: Some("claim2-claim1-claim3".to_owned()),
+        picture_attribute: Some("claim2/claim21/claim213".to_owned()),
         code: Some(CredentialSchemaCodePropertiesRequestDTO {
-            attribute: "claim2-claim1-claim2".to_owned(),
+            attribute: "claim2/claim21/claim212".to_owned(),
             r#type: CredentialSchemaCodeTypeEnum::Barcode,
         }),
         primary_attribute: Some("claim1".to_owned()),
-        secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
+        secondary_attribute: Some("claim2/claim21/claim211".to_owned()),
     });
 
     let request = CreateCredentialSchemaRequestDTO {
@@ -1598,11 +1598,11 @@ fn test_claims_presence_in_layout_properties_validation_missing_primary_attribut
         datatype: "STRING".to_owned(),
         required: true,
         claims: vec![CredentialClaimSchemaRequestDTO {
-            key: "claim2-claim1".to_owned(),
+            key: "claim21".to_owned(),
             datatype: "STRING".to_owned(),
             required: true,
             claims: vec![CredentialClaimSchemaRequestDTO {
-                key: "claim2-claim1-claim1".to_owned(),
+                key: "claim211".to_owned(),
                 datatype: "STRING".to_owned(),
                 required: true,
                 claims: vec![],
@@ -1615,7 +1615,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_primary_attribut
         picture_attribute: None,
         code: None,
         primary_attribute: Some("claim1".to_owned()),
-        secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
+        secondary_attribute: Some("claim2/claim21/claim211".to_owned()),
     });
 
     let request = CreateCredentialSchemaRequestDTO {
@@ -1899,7 +1899,7 @@ fn test_claims_presence_in_layout_properties_validation_missing_secondary_attrib
         picture_attribute: None,
         code: None,
         primary_attribute: Some("claim1".to_owned()),
-        secondary_attribute: Some("claim2-claim1-claim1".to_owned()),
+        secondary_attribute: Some("other-claim".to_owned()),
     });
 
     let request = CreateCredentialSchemaRequestDTO {

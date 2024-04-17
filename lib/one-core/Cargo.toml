@@ -59,7 +59,7 @@ futures.workspace          = true
 tracing.workspace          = true
 hex.workspace              = true
 jsonptr                    = { version = "0.4.7" }
-indexmap = { version = "2.2.6", features = ["serde"] }
+indexmap                   = { version = "2.2.6", features = ["serde"] }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }
@@ -69,7 +69,8 @@ tokio              = { workspace = true, features = ["rt-multi-thread", "macros"
 assert2            = { version = "0.3" }
 indoc              = { version = "2.0" }
 rusty-fork         = { version = "0.3" }
-hex-literal        = "0.4.1"
+hex-literal        = "0.4"
+maplit             = "1.0"
 
 [build-dependencies]
 shadow-rs.workspace = true

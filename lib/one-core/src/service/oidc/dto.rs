@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use dto_mapper::Into;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use thiserror::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;

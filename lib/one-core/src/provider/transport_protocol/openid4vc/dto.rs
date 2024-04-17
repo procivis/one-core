@@ -12,7 +12,8 @@ use url::Url;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCICredential {
     pub format: String,
-    pub credential_definition: OpenID4VCICredentialDefinition,
+    pub credential_definition: Option<OpenID4VCICredentialDefinition>,
+    pub doctype: Option<String>,
     pub proof: OpenID4VCIProof,
 }
 
@@ -49,6 +50,7 @@ pub struct OpenID4VCICredentialOfferClaim {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
 pub enum OpenID4VCICredentialOfferClaimValue {
     Nested(HashMap<String, OpenID4VCICredentialOfferClaim>),
     String(String),
@@ -67,7 +69,7 @@ pub struct OpenID4VCICredentialSubject {
     pub keys: HashMap<String, OpenID4VCICredentialValueDetails>,
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VCICredentialValueDetails {
     pub value: String,
     pub value_type: String,

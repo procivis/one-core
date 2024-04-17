@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use coset::iana::{self, EnumI64};
-use coset::{CoseKey, CoseKeyBuilder, Header, HeaderBuilder, ProtectedHeader};
+use coset::{CoseKey, CoseKeyBuilder, Header, HeaderBuilder, Label, ProtectedHeader};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use indexmap::IndexMap;
 use rand::RngCore;
@@ -12,6 +14,7 @@ use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
+use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
@@ -24,7 +27,8 @@ use self::mdoc::{
     MobileSecurityObjectVersion, Namespace, Namespaces, ValidityInfo, ValueDigests,
 };
 
-use super::model::{CredentialPresentation, Presentation};
+use super::common::nest_claims;
+use super::model::{CredentialPresentation, CredentialSchema, CredentialSubject, Presentation};
 use super::{
     AuthenticationFn, CredentialData, CredentialFormatter, FormatterCapabilities, VerificationFn,
 };
@@ -99,7 +103,7 @@ impl CredentialFormatter for MdocFormatter {
         };
 
         let digest_algorithm = DigestAlgorithm::Sha256;
-        let payload = MobileSecurityObject {
+        let mso = MobileSecurityObject {
             version: MobileSecurityObjectVersion::V1_0,
             digest_algorithm,
             value_digests: try_build_value_digests(&namespaces, digest_algorithm)?,
@@ -107,7 +111,7 @@ impl CredentialFormatter for MdocFormatter {
             doc_type: credential_schema_id,
             validity_info,
         };
-        let payload = MobileSecurityObjectBytes(payload)
+        let mso = MobileSecurityObjectBytes(mso)
             .to_cbor_bytes()
             .map_err(|err| {
                 FormatterError::Failed(format!(
@@ -122,7 +126,7 @@ impl CredentialFormatter for MdocFormatter {
         let cose_sign1 = CoseSign1Builder::new()
             .protected(algorithm_header)
             .unprotected(x5chain_header)
-            .payload(payload)
+            .payload(mso)
             .try_create_signature_with_provider(&[], &*auth_fn)
             .await
             .map_err(|err| FormatterError::CouldNotSign(err.to_string()))?
@@ -151,9 +155,38 @@ impl CredentialFormatter for MdocFormatter {
 
     async fn extract_credentials_unverified(
         &self,
-        _token: &str,
+        token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        todo!()
+        let token = Base64UrlSafeNoPadding::decode_to_vec(token, None)
+            .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?;
+
+        let issuer_signed: IssuerSigned = ciborium::from_reader(&token[..]).map_err(|err| {
+            FormatterError::Failed(format!("Issuer signed decoding failed: {err}"))
+        })?;
+
+        let issuer_did = extract_did_from_x5chain_header(&issuer_signed.issuer_auth);
+        let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
+        let Some(namespaces) = issuer_signed.name_spaces else {
+            return Err(FormatterError::Failed(
+                "IssuerSigned object is missing namespaces".to_owned(),
+            ));
+        };
+        let claims = try_extract_claims(namespaces)?;
+
+        Ok(DetailCredential {
+            id: None,
+            issued_at: Some(mso.validity_info.valid_from.into()),
+            expires_at: Some(mso.validity_info.valid_until.into()),
+            invalid_before: None,
+            issuer_did,
+            subject: None,
+            claims: CredentialSubject { values: claims },
+            status: vec![],
+            credential_schema: Some(CredentialSchema {
+                id: mso.doc_type,
+                r#type: CredentialSchemaType::Mdoc,
+            }),
+        })
     }
 
     async fn format_presentation(
@@ -239,11 +272,11 @@ fn try_build_namespaces(claims: Vec<(String, String)>) -> Result<Namespaces, For
 }
 
 fn build_x5chain_header(issuer_did: DidValue) -> Header {
-    let x5chain_label = coset::iana::HeaderParameter::X5Chain;
+    let x5chain_label = coset::iana::HeaderParameter::X5Chain.to_i64();
     let x5chain_value = ciborium::Value::Bytes(issuer_did.to_string().into_bytes());
 
     HeaderBuilder::new()
-        .value(x5chain_label.to_i64(), x5chain_value)
+        .value(x5chain_label, x5chain_value)
         .build()
 }
 
@@ -263,6 +296,45 @@ fn try_build_algorithm_header(algorithm: &str) -> Result<ProtectedHeader, Format
         original_data: None,
         header: algorithm_header,
     })
+}
+
+fn extract_did_from_x5chain_header(IssuerAuth(cose_sign1): &IssuerAuth) -> Option<DidValue> {
+    let x5chain_label = Label::Int(coset::iana::HeaderParameter::X5Chain.to_i64());
+
+    cose_sign1
+        .unprotected
+        .rest
+        .iter()
+        .find(|(label, _)| label == &x5chain_label)
+        .and_then(|(_, value)| {
+            let value = value.as_bytes()?;
+            let value = String::from_utf8_lossy(value);
+
+            let value = match DidValue::from_str(&value) {
+                Ok(v) => v,
+                Err(err) => match err {},
+            };
+
+            Some(value)
+        })
+}
+
+fn try_extract_mobile_security_object(
+    IssuerAuth(cose_sign1): &IssuerAuth,
+) -> Result<MobileSecurityObject, FormatterError> {
+    let Some(payload) = &cose_sign1.payload else {
+        return Err(FormatterError::Failed(
+            "IssuerAuth doesn't contain payload".to_owned(),
+        ));
+    };
+
+    let MobileSecurityObjectBytes(mso) = ciborium::from_reader(&payload[..]).map_err(|err| {
+        FormatterError::Failed(format!(
+            "IssuerAuth payload cannot be converted to MSO: {err}"
+        ))
+    })?;
+
+    Ok(mso)
 }
 
 fn try_build_value_digests(
@@ -343,4 +415,25 @@ async fn try_build_cose_key(
     };
 
     Ok(cose_key)
+}
+
+fn try_extract_claims(
+    namespaces: Namespaces,
+) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
+    let mut claims = vec![];
+
+    for (root, inner_claims) in namespaces {
+        for IssuerSignedItemBytes(claim) in inner_claims {
+            let path = format!("{root}/{}", claim.element_identifier);
+            let value = claim.element_value.into_text().map_err(|err| {
+                FormatterError::Failed(format!(
+                    "Expected String value for key `{path}` got {err:?}"
+                ))
+            })?;
+
+            claims.push((path, value))
+        }
+    }
+
+    nest_claims(claims)
 }

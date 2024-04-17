@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use coset::{KeyType, Label, RegisteredLabelWithPrivate};
 use hex_literal::hex;
+use maplit::hashmap;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -310,4 +311,126 @@ async fn test_credential_formatting_ok_for_es256() {
 
     let y_label = Label::Int(iana::Ec2KeyParameter::Y as _);
     assert_eq!(b"yabc", params[&y_label].as_bytes().unwrap().as_slice());
+}
+
+#[tokio::test]
+async fn test_unverified_credential_extraction() {
+    // arrange
+    let issuer_did: DidValue = "issuer-did".parse().unwrap();
+
+    let issuance_date = OffsetDateTime::now_utc();
+    let valid_for = time::Duration::seconds(10);
+
+    let credential_data = CredentialData {
+        id: Uuid::new_v4().to_string(),
+        issuance_date,
+        valid_for,
+        claims: vec![("a/b/c".to_string(), "15".to_string())],
+        issuer_did: issuer_did.clone(),
+        status: vec![],
+        schema: CredentialSchemaData {
+            id: Some("doctype".to_string()),
+            r#type: None,
+            context: None,
+            name: "credential-schema-name".to_string(),
+        },
+    };
+
+    let holder_did: DidValue = "holder-did".parse().unwrap();
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+
+    did_method_provider
+        .expect_resolve()
+        .withf({
+            let holder_did = holder_did.clone();
+
+            move |did| did == &holder_did
+        })
+        .returning(|holder_did| {
+            Ok(DidDocumentDTO {
+                context: json!({}),
+                id: holder_did.to_owned(),
+                verification_method: vec![DidVerificationMethodDTO {
+                    id: "did-vm-id".to_string(),
+                    r#type: "did-vm-type".to_string(),
+                    controller: "did-vm-controller".to_string(),
+                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                        r#use: None,
+                        crv: "P-256".to_string(),
+                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
+                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
+                    }),
+                }],
+                authentication: None,
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                rest: json!({}),
+            })
+        });
+
+    let params = Params {
+        mso_expires_in: time::Duration::seconds(10),
+        mso_expected_update_in: time::Duration::days(10),
+    };
+    let algorithm = "ES256";
+
+    let formatter = MdocFormatter::new(params, Arc::new(did_method_provider));
+
+    let mut auth_fn = MockSignatureProvider::new();
+    auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
+
+    let formatted_credential = formatter
+        .format_credentials(
+            credential_data,
+            &holder_did,
+            algorithm,
+            vec![],
+            vec![],
+            Box::new(auth_fn),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+
+    // act
+    let credential = formatter
+        .extract_credentials_unverified(&formatted_credential)
+        .await
+        .unwrap();
+
+    // assert
+    assert_eq!(issuer_did, credential.issuer_did.unwrap());
+
+    assert_eq!(
+        CredentialSchema {
+            id: "doctype".to_owned(),
+            r#type: CredentialSchemaType::Mdoc
+        },
+        credential.credential_schema.unwrap()
+    );
+
+    assert_eq!(
+        issuance_date.replace_microsecond(0).unwrap(),
+        credential.issued_at.unwrap()
+    );
+
+    assert_eq!(
+        (issuance_date + valid_for).replace_microsecond(0).unwrap(),
+        credential.expires_at.unwrap()
+    );
+
+    assert_eq!(
+        hashmap! {
+            "a".into() => json!({
+                "b": {
+                    "c": "15",
+                }
+            })
+        },
+        credential.claims.values
+    )
 }
