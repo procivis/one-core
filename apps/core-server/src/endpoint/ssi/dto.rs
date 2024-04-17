@@ -144,7 +144,7 @@ pub struct OpenID4VCIIssuerMetadataMdocClaimsResponseRestDTO {
 #[from(OpenID4VCIIssuerMetadataMdocClaimsValuesDTO)]
 pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
     #[from(with_fn = convert_inner)]
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    #[serde(skip_serializing_if = "HashMap::is_empty", default)]
     pub value: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>,
     pub value_type: String,
 }

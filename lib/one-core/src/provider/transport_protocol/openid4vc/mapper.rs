@@ -510,22 +510,14 @@ pub(super) fn get_credential_offer_url(
 
 pub(super) fn create_claims_from_credential_definition(
     credential_id: CredentialId,
-    credential_definition: &OpenID4VCICredentialDefinition,
+    claim_keys: &HashMap<String, OpenID4VCICredentialValueDetails>,
 ) -> Result<(Vec<CredentialSchemaClaim>, Vec<Claim>), TransportProtocolError> {
-    let credential_subject =
-        credential_definition
-            .credential_subject
-            .as_ref()
-            .ok_or(TransportProtocolError::Failed(
-                "Missing credential_subject".to_string(),
-            ))?;
-
     let now = OffsetDateTime::now_utc();
     let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
     let mut claims: Vec<Claim> = vec![];
     let mut object_claim_schemas: Vec<&str> = vec![];
 
-    for (key, value_details) in credential_subject.keys.iter() {
+    for (key, value_details) in claim_keys {
         let new_schema_claim = CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: Uuid::new_v4().into(),

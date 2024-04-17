@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::{str::FromStr, sync::Arc};
 
+use maplit::hashmap;
 use mockall::{predicate, Sequence};
 use time::OffsetDateTime;
 use url::Url;
@@ -13,9 +14,7 @@ use wiremock::{
 
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
-use crate::provider::transport_protocol::openid4vc::dto::{
-    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
-};
+use crate::provider::transport_protocol::openid4vc::dto::OpenID4VCICredentialValueDetails;
 use crate::provider::transport_protocol::openid4vc::mapper::prepare_claims;
 use crate::service::test_utilities::generic_config;
 use crate::{
@@ -52,7 +51,8 @@ use crate::{
     service::ssi_holder::dto::InvitationResponseDTO,
 };
 
-use super::{OpenID4VC, OpenID4VCParams};
+use super::dto::{OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue};
+use super::{build_claims_keys_for_mdoc, OpenID4VC, OpenID4VCParams};
 
 #[derive(Default)]
 struct TestInputs {
@@ -813,4 +813,58 @@ fn test_get_parent_claim_paths() {
         vec!["this", "this/is", "this/is/yellow"],
         get_parent_claim_paths("this/is/yellow/man")
     );
+}
+
+#[test]
+fn test_build_claims_keys_for_mdoc_converts_to_credential_subjects_compatible_claim_keys() {
+    let claims = [
+        (hashmap! {}, hashmap! {}),
+        (
+            hashmap! {
+                "age".into() => OpenID4VCICredentialOfferClaim {
+                    value_type: "INTEGER".into(),
+                    value: OpenID4VCICredentialOfferClaimValue::String("55".into()),
+                },
+                "address".into() => OpenID4VCICredentialOfferClaim {
+                    value_type: "OBJECT".into(),
+                    value: OpenID4VCICredentialOfferClaimValue::Nested(hashmap! {
+                        "streetName".into() => OpenID4VCICredentialOfferClaim {
+                            value: OpenID4VCICredentialOfferClaimValue::String("Via Roma".into()),
+                            value_type: "STRING".into(),
+                        },
+                    }),
+                },
+                "company".into() => OpenID4VCICredentialOfferClaim {
+                    value_type: "OBJECT".into(),
+                    value: OpenID4VCICredentialOfferClaimValue::Nested(hashmap! {
+                        "name".into() => OpenID4VCICredentialOfferClaim {
+                            value_type: "STRING".into(),
+                            value: OpenID4VCICredentialOfferClaimValue::String("Procivis".into()),
+                        },
+                        "address".into() => OpenID4VCICredentialOfferClaim {
+                            value_type: "OBJECT".into(),
+                            value: OpenID4VCICredentialOfferClaimValue::Nested(hashmap! {
+                                "streetName".into() => OpenID4VCICredentialOfferClaim {
+                                    value: OpenID4VCICredentialOfferClaimValue::String("Deitzingerstrasse 22".into()),
+                                    value_type: "STRING".into(),
+                                },
+                            }),
+                        },
+                    }),
+                }
+            },
+            // expected
+            hashmap! {
+                "age".into() => OpenID4VCICredentialValueDetails { value: "55".into(), value_type: "INTEGER".into() },
+                "address/streetName".into() => OpenID4VCICredentialValueDetails { value: "Via Roma".into(), value_type: "STRING".into() },
+                "company/name".into() => OpenID4VCICredentialValueDetails { value: "Procivis".into(), value_type: "STRING".into() },
+                "company/address/streetName".into() => OpenID4VCICredentialValueDetails { value: "Deitzingerstrasse 22".into(), value_type: "STRING".into() }
+            },
+        ),
+    ];
+
+    for (input, expected) in claims {
+        let res = build_claims_keys_for_mdoc(&input);
+        assert_eq!(expected, res);
+    }
 }

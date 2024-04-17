@@ -75,7 +75,7 @@ pub struct CredentialStatus {
     pub additional_fields: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CredentialSchema {
     // URI

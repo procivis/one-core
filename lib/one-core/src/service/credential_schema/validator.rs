@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use shared_types::OrganisationId;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
@@ -13,8 +15,6 @@ use crate::{
     },
     service::{credential_schema::dto::CreateCredentialSchemaRequestDTO, error::ServiceError},
 };
-use std::collections::VecDeque;
-use std::sync::Arc;
 
 pub(crate) async fn credential_schema_already_exists(
     repository: &Arc<dyn CredentialSchemaRepository>,
@@ -118,14 +118,7 @@ pub(crate) fn check_claims_presence_in_layout_properties(
         return Ok(());
     }
 
-    let mut claims_under_collection = VecDeque::from_iter(request.claims.iter());
-    let mut claims = VecDeque::new();
-
-    // Collect all claims
-    while let Some(claim) = claims_under_collection.pop_front() {
-        claims_under_collection.extend(claim.claims.iter());
-        claims.push_back(claim);
-    }
+    let claims = get_all_claim_paths(&request.claims);
 
     handle_attribute_claim_validation(primary_attribute, &claims, "Primary")?;
     handle_attribute_claim_validation(secondary_attribute, &claims, "Secondary")?;
@@ -135,13 +128,43 @@ pub(crate) fn check_claims_presence_in_layout_properties(
     Ok(())
 }
 
+fn get_all_claim_paths(claims: &[CredentialClaimSchemaRequestDTO]) -> Vec<String> {
+    fn compute_paths<'a>(
+        claims: &'a [CredentialClaimSchemaRequestDTO],
+        current_path: &mut Vec<&'a str>,
+        all_paths: &mut Vec<String>,
+    ) {
+        if claims.is_empty() {
+            let path = current_path.join("/");
+            all_paths.push(path);
+
+            return;
+        }
+
+        for claim in claims {
+            current_path.push(&claim.key);
+
+            compute_paths(&claim.claims, current_path, all_paths);
+
+            current_path.pop();
+        }
+    }
+
+    let mut current_path = vec![];
+    let mut all_paths = Vec::with_capacity(claims.len());
+
+    compute_paths(claims, &mut current_path, &mut all_paths);
+
+    all_paths
+}
+
 fn handle_attribute_claim_validation(
-    primary_attribute: Option<&String>,
-    claims: &VecDeque<&CredentialClaimSchemaRequestDTO>,
+    attribute: Option<&String>,
+    claims: &[String],
     attribute_name: &str,
 ) -> Result<(), ServiceError> {
-    if let Some(attribute) = primary_attribute {
-        if !claims.iter().any(|c| &c.key == attribute) {
+    if let Some(attribute) = attribute {
+        if !claims.iter().any(|c| c == attribute) {
             return Err(ValidationError::MissingLayoutAttribute(attribute_name.to_owned()).into());
         }
     }

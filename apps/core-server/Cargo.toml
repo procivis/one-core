@@ -57,6 +57,7 @@ sql-data-provider     = { version = "0.1.0", path = "../../lib/sql-data-provider
 rand.workspace        = true
 rand_chacha.workspace = true
 indoc                 = { version = "2.0" }
+maplit                = "1.0"
 
 [lints]
 workspace = true

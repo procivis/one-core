@@ -253,6 +253,12 @@ impl TryFrom<DateTimeCborTag> for DateTime {
     }
 }
 
+impl From<DateTime> for OffsetDateTime {
+    fn from(value: DateTime) -> Self {
+        value.0
+    }
+}
+
 // using custom type since when serializing ciborium doesn't understand if a Vec<u8> is Value::Bytes(..) or Value::Array(Value)
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(transparent)]
