@@ -48,7 +48,7 @@ async fn test_get_client_metadata() {
             ProofStateEnum::Pending,
             "OPENID4VC",
             None,
-            key,
+            key.to_owned(),
         )
         .await;
 
@@ -61,6 +61,16 @@ async fn test_get_client_metadata() {
     assert_eq!(
         resp,
         serde_json::json!({
+            "jwks": [
+                {
+                    "crv": "P-256",
+                    "kid": key.id,
+                    "kty": "EC",
+                    "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
+                    "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",
+                    "use": "enc"
+                }
+            ],
             "client_id_scheme": "redirect_uri",
             "vp_formats": {
                 "jwt_vc_json": {
@@ -73,6 +83,9 @@ async fn test_get_client_metadata() {
                     "alg": ["EdDSA", "ES256", "BLS12-381G1-SHA256"]
                 },
                 "ldp_vp": {
+                    "alg": ["EdDSA", "ES256"]
+                },
+                "mso_mdoc": {
                     "alg": ["EdDSA", "ES256"]
                 },
                 "vc+sd-jwt": {

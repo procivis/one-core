@@ -13,8 +13,16 @@ use wiremock::{
 };
 
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::model::did::{KeyRole, RelatedKey};
+use crate::model::key::Key;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
+use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::transport_protocol::openid4vc::dto::OpenID4VCICredentialValueDetails;
+use crate::provider::transport_protocol::openid4vc::dto::{
+    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
+};
 use crate::provider::transport_protocol::openid4vc::mapper::prepare_claims;
 use crate::service::test_utilities::generic_config;
 use crate::{
@@ -51,7 +59,6 @@ use crate::{
     service::ssi_holder::dto::InvitationResponseDTO,
 };
 
-use super::dto::{OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue};
 use super::{build_claims_keys_for_mdoc, OpenID4VC, OpenID4VCParams};
 
 #[derive(Default)]
@@ -64,6 +71,7 @@ struct TestInputs {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_provider: MockKeyProvider,
+    pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub crypto: MockCryptoProvider,
     pub params: Option<OpenID4VCParams>,
 }
@@ -79,6 +87,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.key_provider),
+        Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.crypto),
         inputs.params.unwrap_or(OpenID4VCParams {
             pre_authorized_code_expires_in: 10,
@@ -93,6 +102,8 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
 }
 
 fn construct_proof_with_state() -> Proof {
+    let now = OffsetDateTime::now_utc();
+
     Proof {
         id: Uuid::new_v4(),
         created_date: OffsetDateTime::now_utc(),
@@ -145,7 +156,41 @@ fn construct_proof_with_state() -> Proof {
             }]),
         }),
         claims: None,
-        verifier_did: None,
+        verifier_did: Some(Did {
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
+                .unwrap()
+                .into(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation: Some(Organisation {
+                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                    .unwrap()
+                    .into(),
+                created_date: now,
+                last_modified: now,
+            }),
+            did: "did1".parse().unwrap(),
+            did_type: DidType::Remote,
+            did_method: "KEY".to_string(),
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::KeyAgreement,
+                key: Key {
+                    id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                        .unwrap()
+                        .into(),
+                    created_date: now,
+                    last_modified: now,
+                    public_key: vec![],
+                    name: "verifier_key1".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            }]),
+            deactivated: false,
+        }),
         holder_did: None,
         verifier_key: None,
         interaction: None,
@@ -405,6 +450,8 @@ async fn test_generate_share_proof_open_id_flow_success() {
 
     let mut proof_repository = MockProofRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
     let mut seq = Sequence::new();
 
@@ -414,6 +461,18 @@ async fn test_generate_share_proof_open_id_flow_success() {
         .once()
         .in_sequence(&mut seq)
         .returning(move |_, _| Ok(Some(proof_moved.clone())));
+
+    key_algorithm.expect_bytes_to_jwk().return_once(|_| {
+        Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+            r#use: None,
+            crv: "123".to_string(),
+            x: "456".to_string(),
+            y: None,
+        }))
+    });
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .return_once(|_| Some(Arc::new(key_algorithm)));
 
     interaction_repository
         .expect_create_interaction()
@@ -439,6 +498,7 @@ async fn test_generate_share_proof_open_id_flow_success() {
     let protocol = setup_protocol(TestInputs {
         proof_repository,
         interaction_repository,
+        key_algorithm_provider,
         crypto,
         ..Default::default()
     });
@@ -475,6 +535,7 @@ async fn test_handle_invitation_proof_success() {
     });
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        jwks: vec![],
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
             OpenID4VPFormat {
@@ -543,6 +604,7 @@ async fn test_handle_invitation_proof_failed() {
 
     let client_metadata_uri = "https://127.0.0.1/client_metadata_uri";
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        jwks: vec![],
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
             OpenID4VPFormat {
@@ -603,6 +665,7 @@ async fn test_handle_invitation_proof_failed() {
     assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
 
     let metadata_missing_jwt_vp_json = serde_json::to_string(&OpenID4VPClientMetadata {
+        jwks: vec![],
         vp_formats: Default::default(),
         client_id_scheme: "redirect_uri".to_string(),
     })
@@ -673,6 +736,7 @@ async fn test_handle_invitation_proof_failed() {
 #[test]
 fn test_serialize_and_deserialize_interaction_data() {
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        jwks: vec![],
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
             OpenID4VPFormat {

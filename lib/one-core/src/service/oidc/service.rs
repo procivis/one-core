@@ -1,6 +1,7 @@
 use crate::common_mapper::{
-    extracted_credential_to_model, get_exchange_param_pre_authorization_expires_in,
-    get_exchange_param_token_expires_in, get_or_create_did,
+    extracted_credential_to_model, get_encryption_key_jwk_from_proof,
+    get_exchange_param_pre_authorization_expires_in, get_exchange_param_token_expires_in,
+    get_or_create_did,
 };
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
@@ -14,7 +15,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaId, CredentialSchemaRelations,
 };
-use crate::model::did::KeyRole;
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
@@ -24,6 +25,7 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 
+use crate::model::key::KeyRelations;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::transport_protocol::openid4vc::dto::{
@@ -96,6 +98,11 @@ impl OIDCService {
                 &id,
                 &ProofRelations {
                     state: Some(Default::default()),
+                    verifier_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
+                    verifier_key: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -105,7 +112,9 @@ impl OIDCService {
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_transport_type(&self.config, &proof.transport)?;
 
-        Ok(create_open_id_for_vp_client_metadata())
+        Ok(create_open_id_for_vp_client_metadata(
+            get_encryption_key_jwk_from_proof(&proof, &self.key_algorithm_provider)?,
+        ))
     }
 
     pub async fn oidc_service_discovery(

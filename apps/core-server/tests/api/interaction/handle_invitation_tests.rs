@@ -987,6 +987,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
     let (context, organistion) = TestContext::new_with_organisation().await;
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        jwks: vec![],
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
             OpenID4VPFormat {
@@ -1041,6 +1042,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
     let (context, organistion) = TestContext::new_with_organisation().await;
 
     let client_metadata = serde_json::to_string(&OpenID4VPClientMetadata {
+        jwks: vec![],
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
             OpenID4VPFormat {

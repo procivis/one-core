@@ -76,6 +76,10 @@ impl TestContext {
                             role: KeyRole::Authentication,
                             key: key.to_owned(),
                         },
+                        RelatedKey {
+                            role: KeyRole::KeyAgreement,
+                            key: key.to_owned(),
+                        },
                     ]),
                     ..Default::default()
                 },

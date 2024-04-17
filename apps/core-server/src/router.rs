@@ -510,6 +510,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::JsonLDInlineEntityRestDTO,
                 endpoint::ssi::dto::OpenID4VPFormatRestDTO,
                 endpoint::ssi::dto::OpenID4VPClientMetadataResponseRestDTO,
+                endpoint::ssi::dto::OpenID4VPClientMetadataJwkRestDTO,
                 endpoint::ssi::dto::DidDocumentRestDTO,
                 endpoint::ssi::dto::DidVerificationMethodRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkRestDTO,

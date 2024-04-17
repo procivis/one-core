@@ -1,12 +1,17 @@
 use shared_types::CredentialId;
 use std::collections::HashMap;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::common_mapper::{
+    get_encryption_key_jwk_from_proof, remove_first_nesting_layer, PublicKeyWithJwk,
+    NESTED_CLAIM_MARKER,
+};
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
 use crate::model::proof::ProofId;
 use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::transport_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -17,6 +22,7 @@ use crate::provider::transport_protocol::mapper::{
 };
 use crate::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
+    OpenID4VPClientMetadataJwkDTO,
 };
 use crate::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, PresentationSubmissionDescriptorDTO,
@@ -54,9 +60,13 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     proof: Proof,
     client_metadata_by_value: bool,
     presentation_definition_by_value: bool,
+    key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
 ) -> Result<String, TransportProtocolError> {
-    let client_metadata = serde_json::to_string(&create_open_id_for_vp_client_metadata())
+    let encryption_key_jwk = get_encryption_key_jwk_from_proof(&proof, key_algorithm_provider)
         .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    let client_metadata =
+        serde_json::to_string(&create_open_id_for_vp_client_metadata(encryption_key_jwk))
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
     let presentation_definition = serde_json::to_string(
         &create_open_id_for_vp_presentation_definition(interaction_id, &proof)?,
     )
@@ -249,8 +259,13 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     })
 }
 
-pub fn create_open_id_for_vp_client_metadata() -> OpenID4VPClientMetadata {
+pub fn create_open_id_for_vp_client_metadata(key: PublicKeyWithJwk) -> OpenID4VPClientMetadata {
     OpenID4VPClientMetadata {
+        jwks: vec![OpenID4VPClientMetadataJwkDTO {
+            key_id: key.key_id,
+            jwk: key.jwk,
+            r#use: "enc".to_string(),
+        }],
         vp_formats: create_open_id_for_vp_formats(),
         client_id_scheme: "redirect_uri".to_string(),
     }
@@ -274,7 +289,8 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat
             ],
         },
     );
-    formats.insert("vc+sd-jwt".to_owned(), algorithms);
+    formats.insert("vc+sd-jwt".to_owned(), algorithms.clone());
+    formats.insert("mso_mdoc".to_owned(), algorithms);
     formats
 }
 

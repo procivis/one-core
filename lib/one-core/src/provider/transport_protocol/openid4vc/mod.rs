@@ -27,6 +27,8 @@ use super::{
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
 };
 use crate::config::core_config;
+use crate::model::key::KeyRelations;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::{
     crypto::CryptoProvider,
     model::{
@@ -118,6 +120,7 @@ pub(crate) struct OpenID4VC {
     interaction_repository: Arc<dyn InteractionRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     base_url: Option<String>,
     crypto: Arc<dyn CryptoProvider>,
@@ -148,6 +151,7 @@ impl OpenID4VC {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         crypto: Arc<dyn CryptoProvider>,
         params: OpenID4VCParams,
         config: Arc<core_config::CoreConfig>,
@@ -162,6 +166,7 @@ impl OpenID4VC {
             formatter_provider,
             revocation_provider,
             key_provider,
+            key_algorithm_provider,
             client: reqwest::Client::new(),
             crypto,
             params,
@@ -576,6 +581,11 @@ impl TransportProtocol for OpenID4VC {
                         }),
                         ..Default::default()
                     }),
+                    verifier_key: Some(KeyRelations::default()),
+                    verifier_did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
@@ -618,6 +628,7 @@ impl TransportProtocol for OpenID4VC {
             self.params
                 .presentation_definition_by_value
                 .is_some_and(|value| value),
+            &self.key_algorithm_provider,
         )?;
 
         Ok(format!("openid4vp://?{encoded_offer}"))
@@ -635,10 +646,8 @@ impl TransportProtocol for OpenID4VC {
                 .ok_or(TransportProtocolError::Failed(
                     "presentation_definition is None".to_string(),
                 ))?;
-
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
-
         for input_descriptor in presentation_definition.input_descriptors {
             let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
 

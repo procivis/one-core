@@ -4,6 +4,7 @@ use self::dto::{
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::{
     config::{
         core_config::{CoreConfig, ExchangeType},
@@ -139,10 +140,10 @@ pub fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>(
         .ok_or(TransportProtocolError::Failed(
             "interaction data is missing".to_string(),
         ))?;
-
     serde_json::from_slice(data).map_err(TransportProtocolError::JsonError)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn transport_protocol_providers_from_config(
     config: Arc<CoreConfig>,
     core_base_url: Option<String>,
@@ -150,6 +151,7 @@ pub(crate) fn transport_protocol_providers_from_config(
     data_provider: Arc<dyn DataRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 ) -> Result<HashMap<String, Arc<dyn TransportProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn TransportProtocol>> = HashMap::new();
@@ -182,6 +184,7 @@ pub(crate) fn transport_protocol_providers_from_config(
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     key_provider.clone(),
+                    key_algorithm_provider.clone(),
                     crypto.clone(),
                     params,
                     config.clone(),

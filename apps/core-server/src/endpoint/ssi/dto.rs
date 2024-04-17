@@ -18,7 +18,7 @@ use one_core::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferClaim,
     OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails, OpenID4VCIGrant,
-    OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPFormat,
+    OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
 };
 use one_core::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
@@ -53,7 +53,7 @@ use one_core::service::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
-use shared_types::{CredentialId, DidValue};
+use shared_types::{CredentialId, DidValue, KeyId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -597,6 +597,18 @@ pub struct OpenID4VPFormatRestDTO {
 #[from(OpenID4VPClientMetadata)]
 pub struct OpenID4VPClientMetadataResponseRestDTO {
     #[from(with_fn = convert_inner)]
+    pub jwks: Vec<OpenID4VPClientMetadataJwkRestDTO>,
+    #[from(with_fn = convert_inner)]
     pub vp_formats: HashMap<String, OpenID4VPFormatRestDTO>,
     pub client_id_scheme: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VPClientMetadataJwkDTO)]
+pub struct OpenID4VPClientMetadataJwkRestDTO {
+    #[serde(rename = "kid")]
+    pub key_id: KeyId,
+    #[serde(flatten)]
+    pub jwk: PublicKeyJwkRestDTO,
+    pub r#use: String,
 }

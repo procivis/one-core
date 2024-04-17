@@ -15,8 +15,10 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     LayoutType, WalletStorageTypeEnum,
 };
-use crate::model::did::{Did, DidType};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::Interaction;
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofState, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::provider::credential_formatter::model::{
@@ -25,11 +27,16 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
+use crate::provider::transport_protocol::openid4vc::dto::{
+    OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
+};
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
@@ -1592,5 +1599,151 @@ fn test_validate_claims_failed_malformed_claim() {
     matches!(
         validate_claims(detail_credential, &proof_input_schema,).unwrap_err(),
         ServiceError::OpenID4VCError(OpenID4VCIError::InvalidRequest)
+    );
+}
+
+#[tokio::test]
+async fn test_get_client_metadata_success() {
+    let mut proof_repository = MockProofRepository::default();
+    let mut key_algorithm = MockKeyAlgorithm::default();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
+
+    let now = OffsetDateTime::now_utc();
+    let proof_id = Uuid::new_v4();
+    let proof = Proof {
+        id: proof_id,
+        created_date: now,
+        last_modified: now,
+        issuance_date: now,
+        transport: "OPENID4VC".to_string(),
+        redirect_uri: None,
+        state: Some(vec![ProofState {
+            created_date: now,
+            last_modified: now,
+            state: ProofStateEnum::Pending,
+        }]),
+        schema: None,
+        claims: None,
+        verifier_did: Some(Did {
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
+                .unwrap()
+                .into(),
+            created_date: now,
+            last_modified: now,
+            name: "did1".to_string(),
+            organisation: Some(Organisation {
+                id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                    .unwrap()
+                    .into(),
+                created_date: now,
+                last_modified: now,
+            }),
+            did: "did1".parse().unwrap(),
+            did_type: DidType::Remote,
+            did_method: "KEY".to_string(),
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::KeyAgreement,
+                key: Key {
+                    id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                        .unwrap()
+                        .into(),
+                    created_date: now,
+                    last_modified: now,
+                    public_key: vec![],
+                    name: "verifier_key1".to_string(),
+                    key_reference: vec![],
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: "EDDSA".to_string(),
+                    organisation: None,
+                },
+            }]),
+            deactivated: false,
+        }),
+        holder_did: None,
+        verifier_key: None,
+        interaction: None,
+    };
+    {
+        proof_repository
+            .expect_get_proof()
+            .times(1)
+            .return_once(move |_, _| Ok(Some(proof)));
+
+        key_algorithm.expect_bytes_to_jwk().return_once(|_| {
+            Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+                r#use: None,
+                crv: "123".to_string(),
+                x: "456".to_string(),
+                y: None,
+            }))
+        });
+        key_algorithm_provider
+            .expect_get_key_algorithm()
+            .return_once(|_| Some(Arc::new(key_algorithm)));
+    }
+    let service = setup_service(Mocks {
+        key_algorithm_provider,
+        proof_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+    let result = service.oidc_get_client_metadata(proof_id).await.unwrap();
+    assert_eq!(
+        OpenID4VPClientMetadata {
+            jwks: vec![OpenID4VPClientMetadataJwkDTO {
+                key_id: "c322aa7f-9803-410d-b891-939b279fb965".parse().unwrap(),
+                jwk: PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+                    r#use: None,
+                    crv: "123".to_string(),
+                    x: "456".to_string(),
+                    y: None,
+                }),
+                r#use: "enc".to_string(),
+            }],
+            vp_formats: HashMap::from([
+                (
+                    "jwt_vp_json".to_string(),
+                    OpenID4VPFormat {
+                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    }
+                ),
+                (
+                    "ldp_vc".to_string(),
+                    OpenID4VPFormat {
+                        alg: vec![
+                            "EdDSA".to_string(),
+                            "ES256".to_string(),
+                            "BLS12-381G1-SHA256".to_string()
+                        ]
+                    }
+                ),
+                (
+                    "vc+sd-jwt".to_string(),
+                    OpenID4VPFormat {
+                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    }
+                ),
+                (
+                    "jwt_vc_json".to_string(),
+                    OpenID4VPFormat {
+                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    }
+                ),
+                (
+                    "mso_mdoc".to_string(),
+                    OpenID4VPFormat {
+                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    }
+                ),
+                (
+                    "ldp_vp".to_string(),
+                    OpenID4VPFormat {
+                        alg: vec!["EdDSA".to_string(), "ES256".to_string()]
+                    }
+                ),
+            ]),
+            client_id_scheme: "redirect_uri".to_string(),
+        },
+        result
     );
 }
