@@ -6,8 +6,11 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::CoreConfig;
+use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::CredentialRelations;
-use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::model::credential_schema::{
+    CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
+};
 use crate::model::did::{KeyRole, RelatedKey};
 use crate::model::key::Key;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
@@ -307,7 +310,16 @@ async fn test_get_proof_exists() {
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
                     revocation_method: "NONE".to_string(),
-                    claim_schemas: None,
+                    claim_schemas: Some(vec![CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: Uuid::new_v4().into(),
+                            key: "ClaimKey".to_owned(),
+                            data_type: "STRING".to_owned(),
+                            created_date: OffsetDateTime::now_utc(),
+                            last_modified: OffsetDateTime::now_utc(),
+                        },
+                        required: true,
+                    }]),
                     organisation: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
@@ -337,7 +349,6 @@ async fn test_get_proof_exists() {
         let res_clone = proof.clone();
         proof_repository
             .expect_get_proof()
-            .times(1)
             .with(
                 eq(proof.id.to_owned()),
                 eq(ProofRelations {
@@ -345,7 +356,10 @@ async fn test_get_proof_exists() {
                         organisation: Some(OrganisationRelations::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations::default()),
+                            credential_schema: Some(CredentialSchemaRelations {
+                                claim_schemas: Some(ClaimSchemaRelations::default()),
+                                organisation: None,
+                            }),
                         }),
                     }),
                     state: Some(ProofStateRelations::default()),

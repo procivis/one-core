@@ -9,7 +9,6 @@ use super::{
     },
     ProofService,
 };
-use crate::service::proof::validator::validate_format_and_transport_protocol_compatibility;
 use crate::{
     common_mapper::list_response_try_into,
     common_validator::throw_if_latest_proof_state_not_eq,
@@ -37,6 +36,10 @@ use crate::{
         ValidationError,
     },
 };
+use crate::{
+    model::claim_schema::ClaimSchemaRelations,
+    service::proof::validator::validate_format_and_transport_protocol_compatibility,
+};
 use time::OffsetDateTime;
 
 impl ProofService {
@@ -55,7 +58,10 @@ impl ProofService {
                         organisation: Some(Default::default()),
                         proof_inputs: Some(ProofInputSchemaRelations {
                             claim_schemas: Some(ProofSchemaClaimRelations::default()),
-                            credential_schema: Some(CredentialSchemaRelations::default()),
+                            credential_schema: Some(CredentialSchemaRelations {
+                                claim_schemas: Some(ClaimSchemaRelations::default()),
+                                organisation: None,
+                            }),
                         }),
                     }),
                     state: Some(Default::default()),

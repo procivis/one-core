@@ -204,6 +204,18 @@ impl From<ProofInputClaimSchema> for ProofClaimSchemaResponseDTO {
     }
 }
 
+impl From<CredentialSchemaClaim> for ProofClaimSchemaResponseDTO {
+    fn from(value: CredentialSchemaClaim) -> Self {
+        Self {
+            id: value.schema.id,
+            required: value.required,
+            key: value.schema.key,
+            data_type: value.schema.data_type,
+            claims: vec![],
+        }
+    }
+}
+
 pub fn create_unique_name_check_request(
     name: &str,
     organisation_id: OrganisationId,
