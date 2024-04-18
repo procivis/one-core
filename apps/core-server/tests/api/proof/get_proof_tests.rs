@@ -21,9 +21,10 @@ async fn test_get_proof_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create_with_nested_claims("test", &organisation, "NONE", Default::default())
         .await;
 
+    // Select a root claim.
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
 
     let proof_schema = context
@@ -99,6 +100,101 @@ async fn test_get_proof_success() {
     );
     let claim_item = &resp["proofInputs"][0]["claims"][0];
     claim_item["schema"]["id"].assert_eq(&claim_schema.id);
+    assert!(claim_item["value"].is_null());
+}
+
+#[tokio::test]
+async fn test_get_proof_detached_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_claims("test", &organisation, "NONE", Default::default())
+        .await;
+
+    //Select 2nd claim - a nested object
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[2].schema;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            },
+        )
+        .await;
+
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
+    let did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &did,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            "OPENID4VC",
+            None,
+            verifier_key,
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.proofs.get(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp["id"].assert_eq(&proof.id);
+    resp["organisationId"].assert_eq(&organisation.id);
+    resp["schema"]["id"].assert_eq(&proof_schema.id);
+
+    assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
+    //Both nested claims are there and the object claim is properly nested.
+    assert_eq!(
+        resp["proofInputs"][0]["claims"][0]["claims"][0]["claims"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    let claim_item = &resp["proofInputs"][0]["claims"][0]["claims"][0];
+    claim_item["schema"]["id"].assert_eq(&claim_schema.id);
+    assert_eq!(claim_item["schema"]["key"].as_str(), Some("coordinates"));
     assert!(claim_item["value"].is_null());
 }
 
