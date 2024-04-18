@@ -75,7 +75,7 @@ impl super::DidMethod for KeyDidMethod {
             .key_algorithm_provider
             .get_key_algorithm(key_type)
             .ok_or(DidMethodError::KeyAlgorithmNotFound)?
-            .bytes_to_jwk(&decoded.decoded_multibase)
+            .bytes_to_jwk(&decoded.decoded_multibase, None)
             .map_err(|_| {
                 DidMethodError::ResolutionError("Could not create jwk representation".to_string())
             })?;

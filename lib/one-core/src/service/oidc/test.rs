@@ -1669,9 +1669,9 @@ async fn test_get_client_metadata_success() {
             .times(1)
             .return_once(move |_, _| Ok(Some(proof)));
 
-        key_algorithm.expect_bytes_to_jwk().return_once(|_| {
+        key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
             Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
-                r#use: None,
+                r#use: Some("enc".to_string()),
                 crv: "123".to_string(),
                 x: "456".to_string(),
                 y: None,
@@ -1693,12 +1693,11 @@ async fn test_get_client_metadata_success() {
             jwks: vec![OpenID4VPClientMetadataJwkDTO {
                 key_id: "c322aa7f-9803-410d-b891-939b279fb965".parse().unwrap(),
                 jwk: PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
-                    r#use: None,
+                    r#use: Some("enc".to_string()),
                     crv: "123".to_string(),
                     x: "456".to_string(),
                     y: None,
                 }),
-                r#use: "enc".to_string(),
             }],
             vp_formats: HashMap::from([
                 (

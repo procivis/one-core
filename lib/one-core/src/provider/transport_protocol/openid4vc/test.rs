@@ -462,7 +462,7 @@ async fn test_generate_share_proof_open_id_flow_success() {
         .in_sequence(&mut seq)
         .returning(move |_, _| Ok(Some(proof_moved.clone())));
 
-    key_algorithm.expect_bytes_to_jwk().return_once(|_| {
+    key_algorithm.expect_bytes_to_jwk().return_once(|_, _| {
         Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
             r#use: None,
             crv: "123".to_string(),

@@ -54,9 +54,13 @@ impl KeyAlgorithm for Eddsa {
         }
     }
 
-    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError> {
+    fn bytes_to_jwk(
+        &self,
+        bytes: &[u8],
+        r#use: Option<String>,
+    ) -> Result<PublicKeyJwkDTO, ServiceError> {
         Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
-            r#use: None,
+            r#use,
             crv: "Ed25519".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(bytes)
                 .map_err(|e| ServiceError::MappingError(e.to_string()))?,

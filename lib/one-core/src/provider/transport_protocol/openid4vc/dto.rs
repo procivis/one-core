@@ -101,7 +101,6 @@ pub struct OpenID4VPClientMetadataJwkDTO {
     pub key_id: KeyId,
     #[serde(flatten)]
     pub jwk: PublicKeyJwkDTO,
-    pub r#use: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]

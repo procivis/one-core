@@ -50,9 +50,13 @@ impl KeyAlgorithm for MlDsa {
         }
     }
 
-    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError> {
+    fn bytes_to_jwk(
+        &self,
+        bytes: &[u8],
+        r#use: Option<String>,
+    ) -> Result<PublicKeyJwkDTO, ServiceError> {
         Ok(PublicKeyJwkDTO::Mlwe(PublicKeyJwkMlweDataDTO {
-            r#use: None,
+            r#use,
             alg: self.get_signer_algorithm_id(),
             x: Base64UrlSafeNoPadding::encode_to_string(bytes)
                 .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?,

@@ -57,12 +57,15 @@ async fn test_did_key_resolve_details_eddsa() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
         .expect_bytes_to_jwk()
-        .with(predicate::eq(vec![
-            59, 106, 39, 188, 206, 182, 164, 45, 98, 163, 168, 208, 42, 111, 13, 115, 101, 50, 21,
-            119, 29, 226, 67, 166, 58, 192, 72, 161, 139, 89, 218, 41,
-        ]))
+        .with(
+            predicate::eq(vec![
+                59, 106, 39, 188, 206, 182, 164, 45, 98, 163, 168, 208, 42, 111, 13, 115, 101, 50,
+                21, 119, 29, 226, 67, 166, 58, 192, 72, 161, 139, 89, 218, 41,
+            ]),
+            predicate::eq(None),
+        )
         .once()
-        .returning(|_| {
+        .returning(|_, _| {
             Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
                 r#use: None,
                 crv: "Ed25519".to_owned(),
@@ -139,12 +142,15 @@ async fn test_did_key_resolve_details_es256() {
     let mut key_algorithm = MockKeyAlgorithm::default();
     key_algorithm
         .expect_bytes_to_jwk()
-        .with(predicate::eq(vec![
-            3, 138, 10, 197, 154, 45, 48, 134, 232, 161, 42, 120, 253, 71, 115, 166, 213, 42, 12,
-            166, 30, 246, 193, 65, 158, 21, 160, 91, 204, 109, 175, 206, 123,
-        ]))
+        .with(
+            predicate::eq(vec![
+                3, 138, 10, 197, 154, 45, 48, 134, 232, 161, 42, 120, 253, 71, 115, 166, 213, 42,
+                12, 166, 30, 246, 193, 65, 158, 21, 160, 91, 204, 109, 175, 206, 123,
+            ]),
+            predicate::eq(None),
+        )
         .once()
-        .returning(|_| {
+        .returning(|_, _| {
             Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
                 r#use: None,
                 crv: "P-256".to_string(),
@@ -227,9 +233,9 @@ async fn test_did_key_resolve_details_bbs() {
             152, 10, 127, 44, 123, 237, 92, 150, 96, 142, 68, 59, 10, 197, 182, 240, 220, 155, 63,
             2, 91, 184, 58, 105, 21, 246, 9, 155, 38, 204, 181, 96, 93, 171, 183, 181, 113, 206,
             206, 146
-        ]))
+        ]), predicate::eq(None))
         .once()
-        .returning(|_| {
+        .returning(|_, _| {
             Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
                 r#use: None,
                 crv: "Bls12381G2".to_string(),

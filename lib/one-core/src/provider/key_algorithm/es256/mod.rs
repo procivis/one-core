@@ -52,7 +52,11 @@ impl KeyAlgorithm for Es256 {
         GeneratedKey { public, private }
     }
 
-    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError> {
+    fn bytes_to_jwk(
+        &self,
+        bytes: &[u8],
+        r#use: Option<String>,
+    ) -> Result<PublicKeyJwkDTO, ServiceError> {
         let pk = p256::PublicKey::from_sec1_bytes(bytes)
             .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
         let encoded_point = pk.to_encoded_point(false);
@@ -63,7 +67,7 @@ impl KeyAlgorithm for Es256 {
             .y()
             .ok_or(ServiceError::KeyAlgorithmError("Y is missing".to_string()))?;
         Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
-            r#use: None,
+            r#use,
             crv: "P-256".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(x)
                 .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?,
