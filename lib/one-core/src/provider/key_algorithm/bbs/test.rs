@@ -34,5 +34,5 @@ fn test_jwk_to_bytes() {
 fn test_bytes_to_jwk() {
     let TestData { jwk, serialized } = get_test_key();
     let alg = BBS;
-    assert_eq!(alg.bytes_to_jwk(&serialized).unwrap(), jwk)
+    assert_eq!(alg.bytes_to_jwk(&serialized, None).unwrap(), jwk)
 }

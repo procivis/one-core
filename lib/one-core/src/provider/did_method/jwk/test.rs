@@ -187,14 +187,17 @@ async fn test_fail_to_resolve_jwk_did_invalid_jwk_format() {
 #[tokio::test]
 async fn test_create_did_jwk_success() {
     let mut key_algorithm = MockKeyAlgorithm::default();
-    key_algorithm.expect_bytes_to_jwk().once().returning(|_| {
-        Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
-            r#use: None,
-            crv: "crv".to_string(),
-            x: "x".to_string(),
-            y: None,
-        }))
-    });
+    key_algorithm
+        .expect_bytes_to_jwk()
+        .once()
+        .returning(|_, _| {
+            Ok(PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                r#use: None,
+                crv: "crv".to_string(),
+                x: "x".to_string(),
+                y: None,
+            }))
+        });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
     key_algorithm_provider

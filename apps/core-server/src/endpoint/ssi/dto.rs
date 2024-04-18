@@ -610,5 +610,4 @@ pub struct OpenID4VPClientMetadataJwkRestDTO {
     pub key_id: KeyId,
     #[serde(flatten)]
     pub jwk: PublicKeyJwkRestDTO,
-    pub r#use: String,
 }

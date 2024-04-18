@@ -39,7 +39,11 @@ pub trait KeyAlgorithm: Send + Sync {
     /// generate a new in-memory key-pair
     fn generate_key_pair(&self) -> GeneratedKey;
 
-    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError>;
+    fn bytes_to_jwk(
+        &self,
+        bytes: &[u8],
+        r#use: Option<String>,
+    ) -> Result<PublicKeyJwkDTO, ServiceError>;
 
     fn jwk_to_bytes(&self, jwk: &PublicKeyJwkDTO) -> Result<Vec<u8>, ServiceError>;
 }

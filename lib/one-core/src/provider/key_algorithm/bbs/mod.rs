@@ -31,7 +31,11 @@ impl KeyAlgorithm for BBS {
         GeneratedKey { public, private }
     }
 
-    fn bytes_to_jwk(&self, bytes: &[u8]) -> Result<PublicKeyJwkDTO, ServiceError> {
+    fn bytes_to_jwk(
+        &self,
+        bytes: &[u8],
+        r#use: Option<String>,
+    ) -> Result<PublicKeyJwkDTO, ServiceError> {
         let public = blstrs::G2Affine::from_compressed(bytes.try_into().map_err(|_| {
             ServiceError::KeyAlgorithmError("Couldn't parse public key".to_string())
         })?);
@@ -46,7 +50,7 @@ impl KeyAlgorithm for BBS {
         let x = &pk_uncompressed[..96];
         let y = &pk_uncompressed[96..];
         Ok(PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
-            r#use: None,
+            r#use,
             crv: "Bls12381G2".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(x)
                 .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?,

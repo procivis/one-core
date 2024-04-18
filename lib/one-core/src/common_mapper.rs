@@ -273,6 +273,6 @@ pub fn get_encryption_key_jwk_from_proof(
 
     Ok(PublicKeyWithJwk {
         key_id: encryption_key.id,
-        jwk: key_algorithm.bytes_to_jwk(&encryption_key.public_key)?,
+        jwk: key_algorithm.bytes_to_jwk(&encryption_key.public_key, Some("enc".to_string()))?,
     })
 }
