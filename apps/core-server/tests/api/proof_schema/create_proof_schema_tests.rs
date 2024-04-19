@@ -93,7 +93,7 @@ async fn test_create_nested_proof_schema_success() {
 }
 
 #[tokio::test]
-async fn test_fail_to_create_nested_proof_schema_without_object_claim() {
+async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation().await;
 
@@ -124,7 +124,7 @@ async fn test_fail_to_create_nested_proof_schema_without_object_claim() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 201);
 }
 
 #[tokio::test]

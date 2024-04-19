@@ -46,4 +46,10 @@ impl ProofSchemasApi {
         let url = format!("/api/proof-schema/v1/{proof_schema_id}");
         self.client.delete(&url).await
     }
+
+    pub async fn get(&self, proof_schema_id: impl Into<Uuid>) -> Response {
+        let proof_schema_id = proof_schema_id.into();
+        let url = format!("/api/proof-schema/v1/{proof_schema_id}");
+        self.client.get(&url).await
+    }
 }
