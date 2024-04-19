@@ -330,6 +330,39 @@ dictionary DidRequestBindingDTO {
   record<string, string> params;
 };
 
+enum SortableDidColumnBindingEnum {
+  "Name", "CreatedDate", "Method", "Type", "Did", "Deactivated"
+};
+
+enum ExactDidFilterColumnBindingEnum {
+  "Name", "Did"
+};
+
+enum KeyRoleBindingEnum {
+  "Authentication", "AssertionMethod", "KeyAgreement", "CapabilityInvocation", "CapabilityDelegation"
+};
+
+dictionary DidListQueryBindingDTO {
+  u32 page;
+  u32 page_size;
+  SortableDidColumnBindingEnum? sort;
+  SortDirection? sort_direction;
+  string organisation_id;
+  string? name;
+  string? did;
+  DidTypeBindingEnum? type;
+  boolean? deactivated;
+  sequence<ExactDidFilterColumnBindingEnum>? exact;
+  sequence<string>? key_algorithms;
+  sequence<KeyRoleBindingEnum>? key_roles;
+};
+
+dictionary DidListBindingDTO {
+  sequence<DidListItemBindingDTO> values;
+  u64 total_pages;
+  u64 total_items;
+};
+
 dictionary CredentialRevocationCheckResponseBindingDTO {
   string credential_id;
   CredentialStateBindingEnum status;
@@ -450,6 +483,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   string create_did(DidRequestBindingDTO request);
+
+  [Throws=BindingError]
+  DidListBindingDTO get_dids(DidListQueryBindingDTO query);
 
   [Throws=BindingError]
   HandleInvitationResponseBindingEnum handle_invitation(string url, string organisation_id);
