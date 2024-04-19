@@ -89,6 +89,32 @@ fn append_object_claim_schemas(
     credential_claim_schemas: &[CredentialSchemaClaim],
     datatype_config: &DatatypeConfig,
 ) -> Result<Vec<ProofClaimSchemaResponseDTO>, ServiceError> {
+    let mut nested_claim_schemas: Vec<_> = claim_schemas
+        .iter()
+        .filter(|cs| is_object(&cs.data_type, datatype_config).unwrap_or(false))
+        .flat_map(|os| {
+            // Add all nested claims for object
+            credential_claim_schemas
+                .iter()
+                .filter(|claim| {
+                    claim
+                        .schema
+                        .key
+                        .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", os.key))
+                })
+                .map(|child_claim| ProofClaimSchemaResponseDTO {
+                    id: child_claim.schema.id,
+                    required: child_claim.required,
+                    key: child_claim.schema.key.to_owned(),
+                    data_type: child_claim.schema.data_type.to_owned(),
+                    claims: vec![],
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+
+    claim_schemas.append(&mut nested_claim_schemas);
+
     credential_claim_schemas.iter().try_for_each(|value| {
         if is_object(&value.schema.data_type, datatype_config)? {
             claim_schemas.push(ProofClaimSchemaResponseDTO {
@@ -110,11 +136,14 @@ fn nest_claim_schemas(
     claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
     datatype_config: &DatatypeConfig,
 ) -> Result<Vec<ProofClaimSchemaResponseDTO>, ServiceError> {
-    let mut result = vec![];
+    let mut result: Vec<ProofClaimSchemaResponseDTO> = vec![];
 
     // Iterate over all and copy all unnested claim schemas to new vec
     for claim_schema in claim_schemas.iter() {
-        if claim_schema.key.find(NESTED_CLAIM_MARKER).is_none() {
+        if claim_schema.key.find(NESTED_CLAIM_MARKER).is_none()
+        // Ignore duplicates - if a child claim is requested along with it's parent
+            && !result.iter().any(|c| c.key == claim_schema.key)
+        {
             result.push(claim_schema.to_owned());
         }
     }
@@ -219,24 +248,6 @@ pub fn proof_schema_from_create_request(
             }
         }
     }
-
-    proof_schema_claims
-        .values()
-        .try_for_each(|credential_claims| {
-            credential_claims.iter().try_for_each(|claim| {
-                let Some((prefix, _)) = claim.schema.key.rsplit_once(NESTED_CLAIM_MARKER) else {
-                    return Ok(());
-                };
-
-                credential_claims
-                    .iter()
-                    .find(|other_claim| other_claim.schema.key == prefix)
-                    .map(|_| ())
-                    .ok_or(BusinessLogicError::MissingParentClaimSchema {
-                        claim_schema_id: claim.schema.id,
-                    })
-            })
-        })?;
 
     let input_schemas = request
         .proof_input_schemas
