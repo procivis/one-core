@@ -2,6 +2,7 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::service::test_utilities::generic_config;
 use crate::{
     model::{
         credential::{Credential, CredentialRole},
@@ -40,6 +41,7 @@ fn setup_protocol(base_url: Option<String>, repositories: Repositories) -> Proci
         Arc::new(repositories.did_repository),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.key_provider),
+        Arc::new(generic_config().core),
     )
 }
 

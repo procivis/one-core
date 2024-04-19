@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
@@ -29,6 +30,7 @@ use super::{
 use crate::config::core_config;
 use crate::model::key::KeyRelations;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::service::error::ServiceError;
 use crate::{
     crypto::CryptoProvider,
     model::{
@@ -649,7 +651,13 @@ impl TransportProtocol for OpenID4VC {
                 ))?;
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
+
+        let mut allowed_oidc_formats = HashSet::new();
+
         for input_descriptor in presentation_definition.input_descriptors {
+            input_descriptor.format.keys().for_each(|key| {
+                allowed_oidc_formats.insert(key.to_owned());
+            });
             let validity_credential_nbf = input_descriptor.constraints.validity_credential_nbf;
 
             let mut fields = input_descriptor.constraints.fields;
@@ -691,10 +699,28 @@ impl TransportProtocol for OpenID4VC {
                 validity_credential_nbf,
             });
         }
+
+        let mut allowed_schema_formats = HashSet::new();
+        allowed_oidc_formats
+            .iter()
+            .try_for_each(|oidc_format| {
+                let schema_type = map_from_oidc_format_to_core(oidc_format)?;
+
+                self.config.format.iter().for_each(|(key, fields)| {
+                    if fields.r#type.to_string().starts_with(&schema_type) {
+                        allowed_schema_formats.insert(key);
+                    }
+                });
+                Ok(())
+            })
+            .map_err(|e: ServiceError| TransportProtocolError::Failed(e.to_string()))?;
+
         let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
             &self.credential_repository,
             credential_groups,
             group_id_to_schema_id,
+            &allowed_schema_formats,
+            &self.config.format,
         )
         .await?;
         presentation_definition_from_interaction_data(proof.id, credentials, credential_groups)
