@@ -261,7 +261,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route(
             "/ssi/schema/v1/:id",
-            get(ssi::controller::get_credential_schema),
+            get(ssi::controller::ssi_get_credential_schema),
         );
 
     let technical_endpoints = Router::new()
@@ -375,7 +375,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::oidc_verifier_presentation_definition,
             endpoint::ssi::controller::oidc_client_metadata,
             endpoint::ssi::controller::get_json_ld_context,
-            endpoint::ssi::controller::get_credential_schema,
+            endpoint::ssi::controller::ssi_get_credential_schema,
 
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_accept,

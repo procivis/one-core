@@ -6,6 +6,7 @@ use dto_mapper::{From, Into, TryInto};
 use one_core::model::common::ExactColumn;
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::model::credential_schema::LayoutType;
+use one_core::model::did::{KeyRole, SortableDidColumn};
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
@@ -17,7 +18,7 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
     GetCredentialSchemaListResponseDTO,
 };
-use one_core::service::did::dto::DidListItemResponseDTO;
+use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
@@ -158,6 +159,59 @@ pub struct CredentialListBindingDTO {
     pub values: Vec<CredentialListItemBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
+}
+
+#[derive(From)]
+#[from(GetDidListResponseDTO)]
+pub struct DidListBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub values: Vec<DidListItemBindingDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(SortableDidColumn)]
+pub enum SortableDidColumnBindingEnum {
+    Name,
+    CreatedDate,
+    Method,
+    Type,
+    Did,
+    Deactivated,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExactDidFilterColumnBindingEnum {
+    Name,
+    Did,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(KeyRole)]
+pub enum KeyRoleBindingEnum {
+    Authentication,
+    AssertionMethod,
+    KeyAgreement,
+    CapabilityInvocation,
+    CapabilityDelegation,
+}
+
+pub struct DidListQueryBindingDTO {
+    pub page: u32,
+    pub page_size: u32,
+
+    pub sort: Option<SortableDidColumnBindingEnum>,
+    pub sort_direction: Option<SortDirection>,
+
+    pub organisation_id: String,
+    pub name: Option<String>,
+    pub did: Option<String>,
+    pub r#type: Option<DidTypeBindingEnum>,
+    pub deactivated: Option<bool>,
+    pub exact: Option<Vec<ExactDidFilterColumnBindingEnum>>,
+    pub key_algorithms: Option<Vec<String>>,
+    pub key_roles: Option<Vec<KeyRoleBindingEnum>>,
 }
 
 #[derive(Debug, Clone)]

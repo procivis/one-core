@@ -754,7 +754,7 @@ pub(crate) async fn get_json_ld_context(
     ),
     tag = "ssi",
 )]
-pub(crate) async fn get_credential_schema(
+pub(crate) async fn ssi_get_credential_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<CredentialSchemaResponseRestDTO> {
