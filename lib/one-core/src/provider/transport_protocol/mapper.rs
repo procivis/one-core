@@ -6,9 +6,11 @@ use crate::model::{
     key::Key,
     proof::{self, Proof, ProofId, ProofStateEnum},
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::core_config::{FormatConfig, FormatType};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialStateRelations};
@@ -106,6 +108,8 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     credential_repository: &Arc<dyn CredentialRepository>,
     mut credential_groups: Vec<CredentialGroup>,
     group_id_to_schema_id_mapping: HashMap<String, String>,
+    allowed_schema_formats: &HashSet<&str>,
+    format_config: &FormatConfig,
 ) -> Result<(Vec<Credential>, Vec<CredentialGroup>), TransportProtocolError> {
     let mut relevant_credentials: Vec<Credential> = Vec::new();
     for group in &mut credential_groups {
@@ -113,7 +117,7 @@ pub async fn get_relevant_credentials_to_credential_schemas(
             group_id_to_schema_id_mapping
                 .get(&group.id)
                 .ok_or(TransportProtocolError::Failed(
-                    "Incorrect group id to credential schema id maping".to_owned(),
+                    "Incorrect group id to credential schema id mapping".to_owned(),
                 ))?;
 
         let relevant_credentials_inner = credential_repository
@@ -136,6 +140,18 @@ pub async fn get_relevant_credentials_to_credential_schemas(
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         for credential in &relevant_credentials_inner {
+            let schema = credential
+                .schema
+                .as_ref()
+                .ok_or(TransportProtocolError::Failed("schema missing".to_string()))?;
+
+            if !allowed_schema_formats
+                .iter()
+                .any(|allowed_schema_format| allowed_schema_format.starts_with(&schema.format))
+            {
+                continue;
+            }
+
             let credential_state = credential
                 .state
                 .as_ref()
@@ -151,6 +167,14 @@ pub async fn get_relevant_credentials_to_credential_schemas(
             ]
             .contains(&credential_state.state)
             {
+                continue;
+            }
+
+            if !mdoc_verify_if_only_second_level_claims_are_present(
+                &group.claims,
+                &schema.format,
+                format_config,
+            ) {
                 continue;
             }
 
@@ -178,6 +202,24 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     }
 
     Ok((relevant_credentials, credential_groups))
+}
+
+fn mdoc_verify_if_only_second_level_claims_are_present(
+    claims: &[CredentialGroupItem],
+    format: &str,
+    config: &FormatConfig,
+) -> bool {
+    let is_mdoc = config.iter().any(|(_, fields)| {
+        fields.r#type.to_string().starts_with(format) && fields.r#type == FormatType::Mdoc
+    });
+    if !is_mdoc {
+        return true;
+    }
+
+    let level_different_than_two = claims
+        .iter()
+        .any(|claim| claim.key.matches(NESTED_CLAIM_MARKER).count() != 1);
+    !level_different_than_two
 }
 
 pub fn create_presentation_definition_field(

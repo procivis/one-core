@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::{collections::HashMap, sync::Arc};
 
 use serde_json::{json, Value};
@@ -5,6 +6,11 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::provider::credential_formatter::test_utilities::get_dummy_date;
+use crate::provider::transport_protocol::dto::{CredentialGroup, CredentialGroupItem};
+use crate::provider::transport_protocol::mapper::get_relevant_credentials_to_credential_schemas;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::service::test_utilities::generic_config;
 use crate::{
     config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params},
     model::{
@@ -206,7 +212,7 @@ fn dummy_credential() -> Credential {
             schema: Some(ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),
-                data_type: "data type".to_string(),
+                data_type: "STRING".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
             }),
@@ -220,13 +226,13 @@ fn dummy_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             name: "schema".to_string(),
-            format: "format".to_string(),
+            format: "JWT".to_string(),
             revocation_method: "revocation method".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,
                     key: "key".to_string(),
-                    data_type: "data type".to_string(),
+                    data_type: "STRING".to_string(),
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                 },
@@ -267,4 +273,235 @@ fn dummy_did() -> Did {
         organisation: None,
         deactivated: false,
     }
+}
+
+#[tokio::test]
+async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
+    let mut credential_repository = MockCredentialRepository::new();
+    let mut credential = dummy_credential();
+    credential
+        .state
+        .as_mut()
+        .unwrap()
+        .first_mut()
+        .unwrap()
+        .state = CredentialStateEnum::Accepted;
+
+    let credential_copy = credential.to_owned();
+    credential_repository
+        .expect_get_credentials_by_credential_schema_id()
+        .return_once(|_, _| Ok(vec![credential_copy]));
+
+    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
+    let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
+        &repository,
+        vec![CredentialGroup {
+            id: "input_0".to_string(),
+            claims: vec![CredentialGroupItem {
+                id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
+                key: "key".to_string(),
+                required: true,
+            }],
+            applicable_credentials: vec![],
+            validity_credential_nbf: None,
+        }],
+        HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
+        &HashSet::from(["JWT"]),
+        &generic_config().core.format,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(1, result_credentials.len());
+    assert_eq!(credential.id, result_credentials[0].id);
+}
+
+#[tokio::test]
+async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state() {
+    let mut credential_repository = MockCredentialRepository::new();
+    let credential = dummy_credential();
+
+    let credential_copy = credential.to_owned();
+    credential_repository
+        .expect_get_credentials_by_credential_schema_id()
+        .return_once(|_, _| Ok(vec![credential_copy]));
+
+    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
+    let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
+        &repository,
+        vec![CredentialGroup {
+            id: "input_0".to_string(),
+            claims: vec![CredentialGroupItem {
+                id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
+                key: "key".to_string(),
+                required: true,
+            }],
+            applicable_credentials: vec![],
+            validity_credential_nbf: None,
+        }],
+        HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
+        &HashSet::from(["JWT"]),
+        &generic_config().core.format,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(0, result_credentials.len());
+}
+
+#[tokio::test]
+async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_allowed() {
+    let mut credential_repository = MockCredentialRepository::new();
+    let mut credential = dummy_credential();
+    credential
+        .state
+        .as_mut()
+        .unwrap()
+        .first_mut()
+        .unwrap()
+        .state = CredentialStateEnum::Accepted;
+
+    let credential_copy = credential.to_owned();
+    credential_repository
+        .expect_get_credentials_by_credential_schema_id()
+        .return_once(|_, _| Ok(vec![credential_copy]));
+
+    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
+    let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
+        &repository,
+        vec![CredentialGroup {
+            id: "input_0".to_string(),
+            claims: vec![CredentialGroupItem {
+                id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
+                key: "key".to_string(),
+                required: true,
+            }],
+            applicable_credentials: vec![],
+            validity_credential_nbf: None,
+        }],
+        HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
+        &HashSet::from(["SDJWT"]),
+        &generic_config().core.format,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(0, result_credentials.len());
+}
+
+fn mdoc_credential() -> Credential {
+    let mut credential = dummy_credential();
+
+    let new_claim_schemas = [
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespace".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        },
+        ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "namespace/name".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+        },
+    ];
+
+    credential
+        .state
+        .as_mut()
+        .unwrap()
+        .first_mut()
+        .unwrap()
+        .state = CredentialStateEnum::Accepted;
+    let schema = credential.schema.as_mut().unwrap();
+    schema.format = "MDOC".to_string();
+    *schema.claim_schemas.as_mut().unwrap() = vec![
+        CredentialSchemaClaim {
+            schema: new_claim_schemas[0].to_owned(),
+            required: true,
+        },
+        CredentialSchemaClaim {
+            schema: new_claim_schemas[1].to_owned(),
+            required: true,
+        },
+    ];
+    *credential.claims.as_mut().unwrap() = vec![Claim {
+        id: Uuid::new_v4(),
+        credential_id: credential.id.to_owned(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        value: "john".to_string(),
+        schema: Some(new_claim_schemas[1].to_owned()),
+    }];
+
+    credential
+}
+
+#[tokio::test]
+async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
+    let mut credential_repository = MockCredentialRepository::new();
+    let credential = mdoc_credential();
+
+    let credential_copy = credential.to_owned();
+    credential_repository
+        .expect_get_credentials_by_credential_schema_id()
+        .return_once(|_, _| Ok(vec![credential_copy]));
+
+    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
+    let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
+        &repository,
+        vec![CredentialGroup {
+            id: "input_0".to_string(),
+            claims: vec![CredentialGroupItem {
+                id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
+                key: "namespace/name".to_string(),
+                required: true,
+            }],
+            applicable_credentials: vec![],
+            validity_credential_nbf: None,
+        }],
+        HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
+        &HashSet::from(["MDOC"]),
+        &generic_config().core.format,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(1, result_credentials.len());
+}
+
+#[tokio::test]
+async fn test_get_relevant_credentials_to_credential_schemas_failed_first_level_selected() {
+    let mut credential_repository = MockCredentialRepository::new();
+    let credential = mdoc_credential();
+
+    let credential_copy = credential.to_owned();
+    credential_repository
+        .expect_get_credentials_by_credential_schema_id()
+        .return_once(|_, _| Ok(vec![credential_copy]));
+
+    let repository: Arc<dyn CredentialRepository> = Arc::new(credential_repository);
+    let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
+        &repository,
+        vec![CredentialGroup {
+            id: "input_0".to_string(),
+            claims: vec![CredentialGroupItem {
+                id: "2ec8b9c0-ccbf-4000-a6a2-63491992291d".to_string(),
+                key: "namespace".to_string(),
+                required: true,
+            }],
+            applicable_credentials: vec![],
+            validity_credential_nbf: None,
+        }],
+        HashMap::from([("input_0".to_string(), "schema_id".to_string())]),
+        &HashSet::from(["MDOC"]),
+        &generic_config().core.format,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(0, result_credentials.len());
 }

@@ -2,6 +2,7 @@ mod mapper;
 
 use async_trait::async_trait;
 use shared_types::CredentialId;
+use std::collections::HashSet;
 use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
 use url::Url;
@@ -12,8 +13,10 @@ use self::mapper::{
     remote_did_from_value,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::provider::transport_protocol::dto::ProofClaimSchema;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
@@ -63,6 +66,7 @@ pub(crate) struct ProcivisTemp {
     did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    config: Arc<CoreConfig>,
 }
 
 impl ProcivisTemp {
@@ -75,6 +79,7 @@ impl ProcivisTemp {
         did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -85,6 +90,7 @@ impl ProcivisTemp {
             did_repository,
             formatter_provider,
             key_provider,
+            config,
         }
     }
 }
@@ -362,6 +368,22 @@ impl TransportProtocol for ProcivisTemp {
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
 
+        let interaction = proof
+            .interaction
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "interaction is None".to_string(),
+            ))?;
+        let proof_claim_schemas: Vec<ProofClaimSchema> =
+            serde_json::from_slice(interaction.data.as_ref().ok_or(
+                TransportProtocolError::Failed("interaction.data is None".to_string()),
+            )?)
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let allowed_formats: HashSet<&str> = proof_claim_schemas
+            .iter()
+            .map(|proof_claim_schema| proof_claim_schema.credential_schema.format.as_str())
+            .collect();
+
         for requested_claim in requested_claims {
             let group_id = requested_claim.credential_schema.id;
             let credential_group_item = CredentialGroupItem {
@@ -393,6 +415,8 @@ impl TransportProtocol for ProcivisTemp {
             &self.credential_repository,
             credential_groups,
             group_id_to_schema_id,
+            &allowed_formats,
+            &self.config.format,
         )
         .await?;
 
