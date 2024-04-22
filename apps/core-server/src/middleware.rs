@@ -55,15 +55,9 @@ pub async fn sentry_layer(
         let response = next.run(request).await;
 
         let status = response.status();
-        let server_error = status.is_server_error();
-        if server_error || status.is_client_error() {
-            let level = if server_error {
-                Level::Error
-            } else {
-                Level::Warning
-            };
+        if status.is_server_error() {
             sentry::capture_event(Event {
-                level,
+                level: Level::Error,
                 message: Some(format!("[{}] {method_path}", status.as_u16())),
                 ..Default::default()
             });
