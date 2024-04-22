@@ -1,3 +1,4 @@
+use dto_mapper::convert_inner;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -23,13 +24,13 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             last_modified: value.last_modified,
             name: value.name,
             format: value.format,
-            wallet_storage_type: None,
+            wallet_storage_type: value.wallet_storage_type,
             revocation_method: value.revocation_method,
             deleted_at: value.deleted_at,
             claim_schemas: None,
             organisation: None, // response organisation is intentionally ignored (holder sets its local organisation)
-            layout_type: LayoutType::Card,
-            layout_properties: None,
+            layout_type: value.layout_type.unwrap_or(LayoutType::Card),
+            layout_properties: convert_inner(value.layout_properties),
             schema_id: value.schema_id,
             schema_type: value.schema_type.into(),
         }
