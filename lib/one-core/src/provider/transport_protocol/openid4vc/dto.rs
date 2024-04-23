@@ -90,6 +90,7 @@ pub struct OpenID4VCIGrant {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VPClientMetadata {
+    #[serde(default)]
     pub jwks: Vec<OpenID4VPClientMetadataJwkDTO>,
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
     pub client_id_scheme: String,
