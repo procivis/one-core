@@ -9,6 +9,7 @@ pub mod credential_state;
 pub mod did;
 pub mod history;
 pub mod interaction;
+pub mod json_ld_context;
 pub mod key;
 pub mod key_did;
 pub mod lvvc;

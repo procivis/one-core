@@ -1,4 +1,4 @@
-use shared_types::{ClaimId, ClaimSchemaId};
+use shared_types::{ClaimId, ClaimSchemaId, JsonLdContextId};
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -12,7 +12,7 @@ use time::{macros::datetime, Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::credential_schema::{CredentialSchemaType, LayoutType};
-use crate::entity::{proof_input_claim_schema, proof_input_schema};
+use crate::entity::{json_ld_context, proof_input_claim_schema, proof_input_schema};
 use crate::{
     db_conn,
     entity::{
@@ -466,6 +466,36 @@ pub async fn get_interaction(
     id: &InteractionId,
 ) -> Result<interaction::Model, DbErr> {
     interaction::Entity::find_by_id(id.to_string())
+        .one(database)
+        .await?
+        .ok_or(DbErr::RecordNotFound(String::default()))
+}
+
+pub async fn insert_json_ld_context(
+    database: &DatabaseConnection,
+    context: &[u8],
+    url: &str,
+    hit_counter: u32,
+) -> Result<JsonLdContextId, DbErr> {
+    let json_ld_context = json_ld_context::ActiveModel {
+        id: Set(Uuid::new_v4().into()),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        url: Set(url.to_string()),
+        context: Set(context.to_owned()),
+        hit_counter: Set(hit_counter),
+    }
+    .insert(database)
+    .await?;
+
+    Ok(json_ld_context.id)
+}
+
+pub async fn get_json_ld_context(
+    database: &DatabaseConnection,
+    id: &JsonLdContextId,
+) -> Result<json_ld_context::Model, DbErr> {
+    json_ld_context::Entity::find_by_id(id)
         .one(database)
         .await?
         .ok_or(DbErr::RecordNotFound(String::default()))

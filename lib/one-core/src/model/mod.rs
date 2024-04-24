@@ -7,6 +7,7 @@ pub mod credential_schema;
 pub mod did;
 pub mod history;
 pub mod interaction;
+pub mod json_ld_context;
 pub mod key;
 pub mod list_filter;
 pub mod list_query;
