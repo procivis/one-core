@@ -8,6 +8,7 @@ use interaction::InteractionProvider;
 use lvvc::LvvcProvider;
 use migration::{Migrator, MigratorTrait};
 use one_core::repository::backup_repository::BackupRepository;
+use one_core::repository::json_ld_context_repository::JsonLdContextRepository;
 use one_core::repository::lvvc_repository::LvvcRepository;
 use one_core::repository::{
     claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
@@ -26,6 +27,7 @@ use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::history::HistoryProvider;
+use crate::json_ld_context::JsonLdContextProvider;
 use crate::key::KeyProvider;
 use crate::revocation_list::RevocationListProvider;
 
@@ -45,6 +47,7 @@ pub mod credential_schema;
 pub mod did;
 pub mod history;
 pub mod interaction;
+pub mod json_ld_context;
 pub mod key;
 pub mod lvvc;
 pub mod organisation;
@@ -68,6 +71,7 @@ pub struct DataLayer {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     key_repository: Arc<dyn KeyRepository>,
+    json_ld_context_repository: Arc<dyn JsonLdContextRepository>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
@@ -99,6 +103,8 @@ impl DataLayer {
             db: db.clone(),
             organisation_repository: organisation_repository.clone(),
         });
+
+        let json_ld_context_repository = Arc::new(JsonLdContextProvider { db: db.clone() });
 
         let history_repository = Arc::new(HistoryProvider { db: db.clone() });
 
@@ -148,6 +154,7 @@ impl DataLayer {
             credential_repository,
             credential_schema_repository,
             key_repository,
+            json_ld_context_repository,
             history_repository,
             proof_schema_repository,
             proof_repository,
@@ -185,6 +192,9 @@ impl DataRepository for DataLayer {
     }
     fn get_history_repository(&self) -> Arc<dyn HistoryRepository> {
         self.history_repository.clone()
+    }
+    fn get_json_ld_context_repository(&self) -> Arc<dyn JsonLdContextRepository> {
+        self.json_ld_context_repository.clone()
     }
     fn get_key_repository(&self) -> Arc<dyn KeyRepository> {
         self.key_repository.clone()
