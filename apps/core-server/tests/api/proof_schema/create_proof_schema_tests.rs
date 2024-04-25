@@ -294,3 +294,43 @@ async fn test_create_proof_schema_with_the_same_name_and_organisation_as_deleted
     // THEN
     assert_eq!(resp.status(), 201);
 }
+
+#[tokio::test]
+async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    context
+        .db
+        .credential_schemas
+        .delete(&credential_schema.id)
+        .await;
+
+    let claims = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .iter()
+        .map(|v| (v.schema.id, v.required));
+
+    // WHEN
+    let resp = context
+        .api
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            organisation.id,
+            claims,
+            credential_schema.id,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+}
