@@ -3,6 +3,7 @@ use one_core::model::{
     did::{KeyRole, RelatedKey},
     proof::ProofStateEnum,
 };
+use validator::ValidateLength;
 
 use crate::{
     fixtures::TestingDidParams,
@@ -100,7 +101,7 @@ async fn test_get_proof_success() {
     );
     let claim_item = &resp["proofInputs"][0]["claims"][0];
     claim_item["schema"]["id"].assert_eq(&claim_schema.id);
-    assert!(claim_item["value"].is_null());
+    assert_eq!(claim_item["value"].as_array().length(), Some(2));
 }
 
 #[tokio::test]
@@ -186,16 +187,15 @@ async fn test_get_proof_detached_success() {
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
     //Both nested claims are there and the object claim is properly nested.
     assert_eq!(
-        resp["proofInputs"][0]["claims"][0]["claims"][0]["claims"]
+        resp["proofInputs"][0]["claims"][0]["value"][0]["value"]
             .as_array()
             .unwrap()
             .len(),
         2
     );
-    let claim_item = &resp["proofInputs"][0]["claims"][0]["claims"][0];
+    let claim_item = &resp["proofInputs"][0]["claims"][0]["value"][0];
     claim_item["schema"]["id"].assert_eq(&claim_schema.id);
     assert_eq!(claim_item["schema"]["key"].as_str(), Some("coordinates"));
-    assert!(claim_item["value"].is_null());
 }
 
 #[tokio::test]
@@ -286,10 +286,10 @@ async fn test_get_proof_with_nested_claims() {
     let root_claims = resp["proofInputs"][0]["claims"].as_array().unwrap();
     assert_eq!(root_claims.len(), 1);
 
-    let address_claims = root_claims[0]["claims"].as_array().unwrap();
+    let address_claims = root_claims[0]["value"].as_array().unwrap();
     assert_eq!(address_claims.len(), 2);
 
-    let coordinates_claims = address_claims[1]["claims"].as_array().unwrap();
+    let coordinates_claims = address_claims[1]["value"].as_array().unwrap();
     assert_eq!(coordinates_claims.len(), 2);
 }
 
