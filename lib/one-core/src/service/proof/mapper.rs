@@ -218,7 +218,24 @@ pub fn get_verifier_proof_detail(proof: Proof) -> Result<ProofDetailResponseDTO,
                 });
 
                 input_claim_schemas.extend(object_nested_claims);
-                let mut proof_input_claims: Vec<ProofClaimDTO> = Vec::new();
+                let mut proof_input_claims: Vec<_> = input_claim_schemas
+                    .iter()
+                    .filter(|claim_schema| !claim_schema.schema.key.contains(NESTED_CLAIM_MARKER))
+                    .map(|claim_schema| {
+                        let claim = claims.iter().find(|c| {
+                            c.claim
+                                .schema
+                                .as_ref()
+                                .is_some_and(|s| s.id == claim_schema.schema.id)
+                        });
+
+                        ProofClaimDTO {
+                            schema: claim_schema.clone().into(),
+                            value: claim
+                                .map(|c| ProofClaimValueDTO::Value(c.claim.value.to_string())),
+                        }
+                    })
+                    .collect();
 
                 input_claim_schemas
                     .iter()

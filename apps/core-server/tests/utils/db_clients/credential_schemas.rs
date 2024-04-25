@@ -189,6 +189,113 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
+    pub async fn create_with_nested_claims_and_root_field(
+        &self,
+        name: &str,
+        organisation: &Organisation,
+        revocation_method: &str,
+        params: TestingCreateSchemaParams,
+    ) -> CredentialSchema {
+        let claim_schema_name = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "name".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_address = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_address_street = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address/street".to_string(),
+            data_type: "STRING".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_address_coordinates = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates".to_string(),
+            data_type: "OBJECT".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_address_coordinates_x = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates/x".to_string(),
+            data_type: "NUMBER".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schema_address_coordinates_y = ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: "address/coordinates/y".to_string(),
+            data_type: "NUMBER".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+        };
+        let claim_schemas = vec![
+            CredentialSchemaClaim {
+                schema: claim_schema_name.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address_street.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address_coordinates.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address_coordinates_x.to_owned(),
+                required: true,
+            },
+            CredentialSchemaClaim {
+                schema: claim_schema_address_coordinates_y.to_owned(),
+                required: true,
+            },
+        ];
+
+        let id = Uuid::new_v4();
+        let credential_schema = CredentialSchema {
+            id,
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            name: name.to_owned(),
+            wallet_storage_type: Some(
+                params
+                    .wallet_storage_type
+                    .unwrap_or(WalletStorageTypeEnum::Software),
+            ),
+            organisation: Some(organisation.clone()),
+            deleted_at: None,
+            format: params.format.unwrap_or("JWT".to_string()),
+            revocation_method: revocation_method.to_owned(),
+            claim_schemas: Some(claim_schemas),
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_id: format!("ssi/schema/{id}"),
+        };
+
+        let id = self
+            .repository
+            .create_credential_schema(credential_schema)
+            .await
+            .unwrap();
+
+        self.get(&id).await
+    }
+
     pub async fn create_with_picture_claim(
         &self,
         name: &str,
