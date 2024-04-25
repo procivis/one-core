@@ -17,8 +17,8 @@ use one_core::provider::transport_protocol::dto::{
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
 use one_core::service::proof::dto::{
-    CreateProofRequestDTO, ProofClaimDTO, ProofDetailResponseDTO, ProofInputDTO,
-    ProofListItemResponseDTO,
+    CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
+    ProofInputDTO, ProofListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, KeyId};
@@ -218,9 +218,16 @@ pub struct ProofDetailResponseRestDTO {
 #[from(ProofClaimDTO)]
 pub struct ProofClaimRestDTO {
     pub schema: ProofClaimSchemaResponseRestDTO,
-    pub value: Option<String>,
     #[from(with_fn = convert_inner)]
-    pub claims: Vec<ProofClaimRestDTO>,
+    pub value: Option<ProofClaimValueRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[from(ProofClaimValueDTO)]
+#[serde(untagged)]
+pub enum ProofClaimValueRestDTO {
+    Value(String),
+    Claims(#[from(with_fn = convert_inner)] Vec<ProofClaimRestDTO>),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
