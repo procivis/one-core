@@ -55,8 +55,6 @@ pub struct ConfigBindingDTO {
     #[from(with_fn = serialize_config_entity)]
     pub exchange: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
-    pub transport: HashMap<String, String>,
-    #[from(with_fn = serialize_config_entity)]
     pub revocation: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub did: HashMap<String, String>,

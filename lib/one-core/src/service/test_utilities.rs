@@ -69,12 +69,6 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                     public:
                         preAuthorizedCodeExpiresIn: 300
                         tokenExpiresIn: 86400
-        transport:
-            HTTP:
-                type: 'HTTP'
-                display: 'transport.http'
-                order: 0
-                params: null
         revocation:
             NONE:
                 display: 'revocation.none'

@@ -1,6 +1,5 @@
 format: {}
 exchange: {}
-transport: {}
 revocation: {}
 did: {}
 keyAlgorithm: {}

@@ -51,12 +51,6 @@ exchange:
     order: 2
     disabled: true
     params: null
-transport:
-  HTTP:
-    type: "HTTP"
-    display: "transport.http"
-    order: 0
-    params: null
 revocation:
   NONE:
     display: "revocation.none"

@@ -35,7 +35,6 @@ fn convert_internal_structure_to_dto() {
         r#"{
   "format": {},
   "exchange": {},
-  "transport": {},
   "revocation": {},
   "did": {},
   "datatype": {
@@ -84,7 +83,6 @@ fn do_not_serialize_private_parameters() {
         r#"{
   "format": {},
   "exchange": {},
-  "transport": {},
   "revocation": {},
   "did": {},
   "datatype": {

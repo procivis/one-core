@@ -39,7 +39,6 @@ pub struct AppConfig<Custom> {
 pub struct CoreConfig {
     pub(crate) format: FormatConfig,
     pub(crate) exchange: ExchangeConfig,
-    pub(crate) transport: TransportConfig,
     pub(crate) revocation: RevocationConfig,
     pub(crate) did: DidConfig,
     pub(crate) datatype: DatatypeConfig,
