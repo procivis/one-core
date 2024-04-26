@@ -1,4 +1,3 @@
-use crate::service::did::dto::DidListIncludeEntityTypeEnum;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -125,7 +124,7 @@ impl ListFilterValue for DidFilterValue {}
 
 pub type GetDidList = GetListResponse<Did>;
 
-pub type DidListQuery = ListQuery<SortableDidColumn, DidFilterValue, DidListIncludeEntityTypeEnum>;
+pub type DidListQuery = ListQuery<SortableDidColumn, DidFilterValue>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct DidRelations {

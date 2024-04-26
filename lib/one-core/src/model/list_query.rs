@@ -3,8 +3,11 @@ use super::{
     list_filter::{ListFilterCondition, ListFilterValue},
 };
 
+#[derive(Clone, Debug, Default)]
+pub struct NoInclude {}
+
 #[derive(Clone, Debug)]
-pub struct ListQuery<SortableColumn, FV: ListFilterValue, Include> {
+pub struct ListQuery<SortableColumn, FV: ListFilterValue, Include = NoInclude> {
     pub pagination: Option<ListPagination>,
     pub sorting: Option<ListSorting<SortableColumn>>,
     pub filtering: Option<ListFilterCondition<FV>>,

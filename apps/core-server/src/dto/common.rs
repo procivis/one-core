@@ -58,12 +58,21 @@ pub struct GetListQueryParams<T: for<'a> ToSchema<'a>> {
     pub ids: Option<Vec<Uuid>>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+pub struct NoIncludesSupported {}
+
+impl From<NoIncludesSupported> for one_core::model::list_query::NoInclude {
+    fn from(_: NoIncludesSupported) -> Self {
+        Self {}
+    }
+}
+
 #[derive(Clone, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListQueryParamsRest<
     Filter: IntoParams,
     SortColumn: for<'a> ToSchema<'a>,
-    Include: for<'a> ToSchema<'a>,
+    Include: for<'a> ToSchema<'a> = NoIncludesSupported,
 > {
     // pagination
     pub page: u32,

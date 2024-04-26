@@ -14,18 +14,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-pub type GetDidQuery = ListQueryParamsRest<
-    DidFilterQueryParamsRest,
-    SortableDidColumnRestDTO,
-    DidListIncludeEntityTypeRestEnum,
->;
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
-#[into(one_core::service::did::dto::DidListIncludeEntityTypeEnum)]
-pub enum DidListIncludeEntityTypeRestEnum {
-    Nothing,
-}
+pub type GetDidQuery = ListQueryParamsRest<DidFilterQueryParamsRest, SortableDidColumnRestDTO>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

@@ -65,10 +65,6 @@ pub struct CreateDidRequestDTO {
     pub params: Option<serde_json::Value>,
 }
 
-pub enum DidListIncludeEntityTypeEnum {
-    Nothing,
-}
-
 #[derive(Clone, Debug)]
 pub struct CreateDidRequestKeysDTO {
     pub authentication: Vec<KeyId>,
