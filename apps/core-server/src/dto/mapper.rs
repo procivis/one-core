@@ -7,7 +7,10 @@ use one_core::{
     service::error::ServiceError,
 };
 use serde::Deserialize;
-use utoipa::{openapi::path::ParameterIn, IntoParams, ToSchema};
+use utoipa::{
+    openapi::{path::ParameterIn, RefOr, Schema},
+    IntoParams, ToSchema,
+};
 
 use crate::dto::common::ListQueryParamsRest;
 
@@ -58,6 +61,17 @@ where
     ) -> Vec<utoipa::openapi::path::Parameter> {
         let mut params =
             PartialQueryParamsRest::<SortColumn, Include>::into_params(|| Some(ParameterIn::Query));
+
+        // remove empty include[] params
+        params.retain(|param| {
+            if let Some(RefOr::T(Schema::Array(array))) = &param.schema {
+                if let RefOr::T(Schema::Object(obj)) = array.items.as_ref() {
+                    return obj.enum_values.is_some();
+                }
+            }
+            true
+        });
+
         params.append(&mut Filter::into_params(|| Some(ParameterIn::Query)));
         params
     }

@@ -17,12 +17,6 @@ pub enum HistoryMetadataResponse {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum HistoryListIncludeEntityTypeEnum {
-    Nothing,
-}
-
 pub struct HistoryResponseDTO {
     pub created_date: OffsetDateTime,
     pub id: HistoryId,

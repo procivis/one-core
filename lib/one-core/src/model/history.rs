@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::service::history::dto::HistoryListIncludeEntityTypeEnum;
 use crate::{
     model::{
         common::GetListResponse,
@@ -103,5 +102,4 @@ pub enum HistorySearchEnum {
 impl ListFilterValue for HistoryFilterValue {}
 
 pub type GetHistoryList = GetListResponse<History>;
-pub type HistoryListQuery =
-    ListQuery<SortableHistoryColumn, HistoryFilterValue, HistoryListIncludeEntityTypeEnum>;
+pub type HistoryListQuery = ListQuery<SortableHistoryColumn, HistoryFilterValue>;
