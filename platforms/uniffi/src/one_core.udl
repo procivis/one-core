@@ -49,7 +49,6 @@ dictionary VersionBindingDTO {
 dictionary ConfigBindingDTO {
   record<string, string> format;
   record<string, string> exchange;
-  record<string, string> transport;
   record<string, string> revocation;
   record<string, string> did;
   record<string, string> datatype;

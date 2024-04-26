@@ -56,12 +56,6 @@ rusty_fork_test! {
                         public:
                             preAuthorizedCodeExpiresIn: 300
                             tokenExpiresIn: 86400
-            transport:
-                HTTP:
-                    type: 'HTTP'
-                    display: 'transport.http'
-                    order: 0
-                    params: null
             revocation:
                 NONE:
                     display: 'revocation.none'
