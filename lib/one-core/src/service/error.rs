@@ -237,6 +237,9 @@ pub enum BusinessLogicError {
 
     #[error("Invalid claim type (mdoc top level only objects allowed)")]
     InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
+
+    #[error("Claim schema key exceeded max length (255)")]
+    ClaimSchemaKeyTooLong,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -647,6 +650,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Attribute combination not allowed")]
     BR_0118,
+
+    #[strum(to_string = "Claim schema key exceeded max length (255)")]
+    BR_0126,
 }
 
 impl From<FormatError> for ServiceError {
@@ -766,6 +772,7 @@ impl BusinessLogicError {
             BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => {
                 ErrorCode::BR_0117
             }
+            BusinessLogicError::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
         }
     }
 }

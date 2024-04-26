@@ -40,6 +40,7 @@ pub(crate) fn validate_create_request(
         return Err(ValidationError::CredentialSchemaMissingClaims.into());
     }
 
+    validate_key_lengths(&request.claims, 0)?;
     validate_format(&request.format, &config.format)?;
     validate_revocation(&request.revocation_method, &config.revocation)?;
     validate_nested_claim_schemas(&request.claims, config)?;
@@ -282,4 +283,20 @@ fn validate_mdoc_claim_types(
     }
 
     Ok(())
+}
+
+fn validate_key_lengths(
+    claims: &[CredentialClaimSchemaRequestDTO],
+    prefix_length: usize,
+) -> Result<(), ServiceError> {
+    const MAX_KEY_LENGTH: usize = 255;
+    const NESTED_CLAIM_MARKER_LENGTH: usize = 1;
+
+    claims.iter().try_for_each(|claim| {
+        if claim.key.len() + prefix_length > MAX_KEY_LENGTH {
+            return Err(BusinessLogicError::ClaimSchemaKeyTooLong.into());
+        }
+
+        validate_key_lengths(&claim.claims, claim.key.len() + NESTED_CLAIM_MARKER_LENGTH)
+    })
 }
