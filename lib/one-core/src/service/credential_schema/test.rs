@@ -1129,6 +1129,101 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
 }
 
 #[tokio::test]
+async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
+    let service = setup_service(
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        Default::default(),
+        generic_config().core,
+    );
+
+    let str_of_len_256 = "a".repeat(256);
+    let str_of_len_128 = "a".repeat(128);
+    let unicode_str_of_len_130_but_byte_len_of_260 = "é".repeat(130);
+
+    let first_level_fail = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: str_of_len_256,
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+        })
+        .await;
+    assert!(matches!(
+        first_level_fail,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::ClaimSchemaKeyTooLong
+        ))
+    ));
+
+    let nested_fail = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: str_of_len_128.to_owned(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![CredentialClaimSchemaRequestDTO {
+                    key: str_of_len_128,
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    claims: vec![],
+                }],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+        })
+        .await;
+    assert!(matches!(
+        nested_fail,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::ClaimSchemaKeyTooLong
+        ))
+    ));
+
+    let unicode_len_fail = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: unicode_str_of_len_130_but_byte_len_of_260,
+                datatype: "STRING".to_string(),
+                required: true,
+                claims: vec![],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+        })
+        .await;
+    assert!(matches!(
+        unicode_len_fail,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::ClaimSchemaKeyTooLong
+        ))
+    ));
+}
+
+#[tokio::test]
 async fn test_unnest_claim_schemas_from_request_no_nested_claims() {
     let request = vec![CredentialClaimSchemaRequestDTO {
         key: "test".to_string(),
