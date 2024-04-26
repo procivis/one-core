@@ -15,6 +15,7 @@ use uuid::Uuid;
 pub struct TestingCreateSchemaParams {
     pub format: Option<String>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub schema_type: Option<CredentialSchemaType>,
 }
 
 pub struct CredentialSchemasDB {
@@ -80,7 +81,9 @@ impl CredentialSchemasDB {
                     r#type: CodeTypeEnum::Barcode,
                 }),
             }),
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_type: params
+                .schema_type
+                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: id.to_string(),
         };
 
@@ -176,7 +179,9 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_type: params
+                .schema_type
+                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: format!("ssi/schema/{id}"),
         };
 
@@ -283,7 +288,9 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            schema_type: params
+                .schema_type
+                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: format!("ssi/schema/{id}"),
         };
 

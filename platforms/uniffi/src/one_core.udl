@@ -65,8 +65,12 @@ enum WalletStorageTypeBindingEnum {
   "Hardware", "Software"
 };
 
-enum CredentialSchemaTypeBindingEnum {
-  "ProcivisOneSchema2024", "FallbackSchema2024", "Mdoc"
+[Enum]
+interface CredentialSchemaTypeBindingEnum {
+  ProcivisOneSchema2024();
+  FallbackSchema2024();
+  Mdoc();
+  Other(string value);
 };
 
 enum LayoutTypeBindingEnum {

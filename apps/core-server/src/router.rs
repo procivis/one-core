@@ -407,7 +407,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::credential::dto::CredentialRevocationCheckResponseRestDTO,
                 endpoint::credential::dto::CredentialStateRestEnum,
                 endpoint::credential::dto::CredentialRoleRestEnum,
-                endpoint::credential::dto::CredentialSchemaTypeEnum,
                 endpoint::credential::dto::CredentialDetailClaimValueResponseRestDTO,
                 endpoint::credential::dto::SuspendCredentialRequestRestDTO,
 

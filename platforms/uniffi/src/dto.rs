@@ -11,7 +11,7 @@ use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
 use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
-use one_core::service::credential::dto::{CredentialRole, CredentialSchemaType};
+use one_core::service::credential::dto::CredentialRole;
 use one_core::service::credential_schema::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaDetailResponseDTO,
@@ -342,12 +342,12 @@ pub enum CredentialSchemaCodeTypeBindingDTO {
     QrCode,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, From)]
-#[from(CredentialSchemaType)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CredentialSchemaTypeBindingEnum {
-    ProcivisOneSchema2024,
-    FallbackSchema2024,
-    Mdoc,
+    ProcivisOneSchema2024 {},
+    FallbackSchema2024 {},
+    Mdoc {},
+    Other { value: String },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From)]

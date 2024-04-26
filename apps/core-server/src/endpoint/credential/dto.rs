@@ -3,6 +3,7 @@ use crate::dto::common::ExactColumn;
 use crate::dto::common::ListQueryParamsRest;
 use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRestDTO;
 use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutType;
+use crate::endpoint::credential_schema::dto::CredentialSchemaType;
 use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
 use crate::endpoint::credential_schema::dto::{
     CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
@@ -17,7 +18,6 @@ use one_core::service::credential::dto::CredentialListItemResponseDTO;
 use one_core::service::credential::dto::CredentialRequestClaimDTO;
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
 use one_core::service::credential::dto::CredentialRole;
-use one_core::service::credential::dto::CredentialSchemaType;
 use one_core::service::credential::dto::CredentialStateEnum;
 use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
 use one_core::service::credential::dto::DetailCredentialClaimValueResponseDTO;
@@ -126,20 +126,11 @@ pub struct CredentialDetailSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub schema_id: String,
-    pub schema_type: CredentialSchemaTypeEnum,
+    pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[from(CredentialSchemaType)]
-pub enum CredentialSchemaTypeEnum {
-    ProcivisOneSchema2024,
-    FallbackSchema2024,
-    #[serde(rename = "mdoc")]
-    Mdoc,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
