@@ -93,6 +93,8 @@ pub enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
     Mdoc,
+    #[serde(untagged)]
+    Other(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

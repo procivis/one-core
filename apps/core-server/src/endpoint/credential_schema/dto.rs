@@ -51,6 +51,8 @@ pub enum CredentialSchemaType {
     FallbackSchema2024,
     #[serde(rename = "mdoc")]
     Mdoc,
+    #[serde(untagged)]
+    Other(String),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

@@ -8,11 +8,11 @@ use crate::{
         ProofRequestBindingDTO,
     },
     utils::{into_id, TimestampFormat},
-    HistoryListItemBindingDTO, HistoryMetadataBinding,
+    CredentialSchemaTypeBindingEnum, HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
 use dto_mapper::convert_inner;
 use one_core::service::{
-    credential::dto::DetailCredentialClaimValueResponseDTO,
+    credential::dto::{CredentialSchemaType, DetailCredentialClaimValueResponseDTO},
     credential_schema::dto::CredentialSchemaListItemResponseDTO,
 };
 use one_core::{
@@ -252,6 +252,17 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
             schema_type: value.schema_type.into(),
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
+        }
+    }
+}
+
+impl From<CredentialSchemaType> for CredentialSchemaTypeBindingEnum {
+    fn from(value: CredentialSchemaType) -> Self {
+        match value {
+            CredentialSchemaType::ProcivisOneSchema2024 => Self::ProcivisOneSchema2024 {},
+            CredentialSchemaType::FallbackSchema2024 => Self::FallbackSchema2024 {},
+            CredentialSchemaType::Mdoc => Self::Mdoc {},
+            CredentialSchemaType::Other(value) => Self::Other { value },
         }
     }
 }

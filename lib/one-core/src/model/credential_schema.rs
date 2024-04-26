@@ -36,12 +36,16 @@ pub enum CredentialSchemaType {
     ProcivisOneSchema2024,
     FallbackSchema2024,
     Mdoc,
+    #[serde(untagged)]
+    Other(String),
 }
+
 impl CredentialSchemaType {
     pub(crate) fn supports_custom_layout(&self) -> bool {
         match self {
-            CredentialSchemaType::ProcivisOneSchema2024 => true,
-            CredentialSchemaType::FallbackSchema2024 | CredentialSchemaType::Mdoc => false,
+            Self::ProcivisOneSchema2024 => true,
+            Self::FallbackSchema2024 | Self::Mdoc => false,
+            Self::Other(_) => false,
         }
     }
 }
