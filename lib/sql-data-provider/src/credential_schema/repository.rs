@@ -250,6 +250,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             return Ok(None);
         };
 
-        Ok(entity_model_to_credential_schema(credential_schema, None).ok())
+        Ok(entity_model_to_credential_schema(credential_schema, true).ok())
     }
 }

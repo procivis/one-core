@@ -47,7 +47,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
 
 pub(super) fn entity_model_to_credential_schema(
     value: credential_schema::Model,
-    organisation: Option<Organisation>,
+    skip_layout_properties: bool,
 ) -> Result<CredentialSchema, DataLayerError> {
     let id = Uuid::from_str(&value.id)?;
 
@@ -61,9 +61,13 @@ pub(super) fn entity_model_to_credential_schema(
         wallet_storage_type: convert_inner(value.wallet_storage_type),
         revocation_method: value.revocation_method,
         claim_schemas: None,
-        organisation,
+        organisation: None,
         layout_type: value.layout_type.into(),
-        layout_properties: convert_inner(value.layout_properties),
+        layout_properties: if skip_layout_properties {
+            None
+        } else {
+            convert_inner(value.layout_properties)
+        },
         schema_type: value.schema_type.into(),
         schema_id: value.schema_id,
     })
@@ -77,7 +81,7 @@ pub(crate) fn create_list_response(
     GetCredentialSchemaList {
         values: credential_schemas
             .into_iter()
-            .filter_map(|item| entity_model_to_credential_schema(item, None).ok())
+            .filter_map(|item| entity_model_to_credential_schema(item, true).ok())
             .collect(),
         total_pages: calculate_pages_count(items_count, limit),
         total_items: items_count,
