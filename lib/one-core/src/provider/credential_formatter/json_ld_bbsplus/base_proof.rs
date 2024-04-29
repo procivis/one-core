@@ -61,7 +61,8 @@ impl JsonLdBbsplus {
         let hmac_key = self.crypto.generate_bytes(32);
 
         // We are getting a string from normalization so we operate on it.
-        let canonical = json_ld::canonize_any(&ld_credential).await?;
+        let canonical =
+            json_ld::canonize_any(&ld_credential, self.caching_loader.to_owned()).await?;
 
         let identifier_map = self.create_blank_node_identifier_map(&canonical, &hmac_key)?;
 
@@ -77,7 +78,8 @@ impl JsonLdBbsplus {
         )
         .await?;
 
-        let canonical_proof_config = json_ld::canonize_any(&proof_config).await?;
+        let canonical_proof_config =
+            json_ld::canonize_any(&proof_config, self.caching_loader.to_owned()).await?;
 
         let hash_data = self.prepare_proof_hashes(&canonical_proof_config, &grouped)?;
 

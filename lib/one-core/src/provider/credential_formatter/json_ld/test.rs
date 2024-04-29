@@ -1,6 +1,7 @@
 use serde_json::json;
 
 use crate::provider::credential_formatter::json_ld;
+use crate::provider::credential_formatter::test_utilities::prepare_caching_loader;
 
 #[tokio::test]
 async fn test_canonize_any() {
@@ -56,7 +57,9 @@ async fn test_canonize_any() {
           }
     );
 
-    let result = json_ld::canonize_any(&json).await.unwrap();
+    let result = json_ld::canonize_any(&json, prepare_caching_loader())
+        .await
+        .unwrap();
     assert_eq!(result, CANONICAL);
 }
 
@@ -111,7 +114,9 @@ async fn test_canonize_any_example_8() {
         }
     );
 
-    let result = json_ld::canonize_any(&json).await.unwrap();
+    let result = json_ld::canonize_any(&json, prepare_caching_loader())
+        .await
+        .unwrap();
     assert_eq!(result, CANONICAL_EXAMPLE_8);
 }
 
@@ -141,7 +146,9 @@ async fn test_canonize_any_example_8_proof() {
       }
     );
 
-    let result = json_ld::canonize_any(&json).await.unwrap();
+    let result = json_ld::canonize_any(&json, prepare_caching_loader())
+        .await
+        .unwrap();
     assert_eq!(result, CANONICAL_EXAMPLE_8_PROOF);
 }
 

@@ -41,7 +41,8 @@ impl JsonLdBbsplus {
         ld_credential.proof = None;
         ld_proof.proof_value = None;
 
-        let canonical_proof_config = json_ld::canonize_any(&ld_proof).await?;
+        let canonical_proof_config =
+            json_ld::canonize_any(&ld_proof, self.caching_loader.to_owned()).await?;
 
         let hashing_function = "sha-256";
         let hasher = self.crypto.get_hasher(hashing_function).map_err(|_| {
@@ -58,7 +59,8 @@ impl JsonLdBbsplus {
             decompress_label_map(&proof_components.compressed_label_map);
 
         // We are getting a string from normalization so we operate on it.
-        let canonical = json_ld::canonize_any(&ld_credential).await?;
+        let canonical =
+            json_ld::canonize_any(&ld_credential, self.caching_loader.to_owned()).await?;
 
         let transformed = self.transform_canonical(&identifier_map, &canonical)?;
 

@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use time::Duration;
 
+use crate::config::core_config::JsonLdContextConfig;
 use crate::provider::key_storage::key_providers_from_config;
 use crate::provider::key_storage::provider::KeyProviderImpl;
 use crate::provider::key_storage::KeyStorage;
@@ -87,6 +89,7 @@ impl OneCore {
         mut core_config: CoreConfig,
         core_base_url: Option<String>,
         secure_element_key_storage: Option<Arc<dyn NativeKeyStorage>>,
+        json_ld_context_config: Option<JsonLdContextConfig>,
     ) -> Result<OneCore, ConfigError> {
         // For now we will just put them here.
         // We will introduce a builder later.
@@ -126,17 +129,6 @@ impl OneCore {
         )?;
         let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
 
-        let credential_formatters = credential_formatters_from_config(
-            &mut core_config.format,
-            crypto.clone(),
-            core_base_url.clone(),
-            did_method_provider.clone(),
-            key_algorithm_provider.clone(),
-        )?;
-
-        let formatter_provider =
-            Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
-
         let client = reqwest::Client::new();
 
         let exportable_storages = key_providers
@@ -151,6 +143,23 @@ impl OneCore {
             .collect();
 
         let data_provider = data_provider_creator(exportable_storages);
+
+        let json_ld_context_config = json_ld_context_config.unwrap_or(JsonLdContextConfig {
+            cache_refresh_timeout: Duration::seconds(86400),
+            cache_size: 100,
+        });
+        let credential_formatters = credential_formatters_from_config(
+            &mut core_config,
+            json_ld_context_config,
+            crypto.clone(),
+            core_base_url.clone(),
+            did_method_provider.clone(),
+            key_algorithm_provider.clone(),
+            data_provider.get_json_ld_context_repository(),
+        )?;
+
+        let formatter_provider =
+            Arc::new(CredentialFormatterProviderImpl::new(credential_formatters));
 
         let revocation_methods = crate::provider::revocation::provider::from_config(
             &mut core_config.revocation,

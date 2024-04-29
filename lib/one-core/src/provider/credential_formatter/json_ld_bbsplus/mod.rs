@@ -1,15 +1,18 @@
-use serde::Deserialize;
-
 use std::sync::Arc;
 use std::vec;
 
+use async_trait::async_trait;
+use serde::Deserialize;
+use shared_types::DidValue;
+
+use crate::config::core_config::JsonLdContextConfig;
 use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use async_trait::async_trait;
-use shared_types::DidValue;
+use crate::repository::json_ld_context_repository::JsonLdContextRepository;
 
 use super::json_ld::model::LdCredential;
 use super::model::{CredentialPresentation, Presentation};
@@ -34,6 +37,7 @@ pub struct JsonLdBbsplus {
     pub crypto: Arc<dyn CryptoProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    pub caching_loader: CachingLoader,
     params: Params,
 }
 
@@ -152,8 +156,10 @@ impl JsonLdBbsplus {
         params: Params,
         crypto: Arc<dyn CryptoProvider>,
         base_url: Option<String>,
+        json_ld_context_config: JsonLdContextConfig,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        json_ld_context_repository: Arc<dyn JsonLdContextRepository>,
     ) -> Self {
         Self {
             params,
@@ -161,6 +167,12 @@ impl JsonLdBbsplus {
             base_url,
             did_method_provider,
             key_algorithm_provider,
+            caching_loader: CachingLoader {
+                cache_size: json_ld_context_config.cache_size,
+                cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
+                client: Default::default(),
+                json_ld_context_repository,
+            },
         }
     }
 }

@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use serde_json::json;
 
-use crate::config::core_config::{FormatConfig, FormatType};
+use crate::config::core_config::{CoreConfig, FormatType, JsonLdContextConfig};
 use crate::config::ConfigError;
 use crate::crypto::CryptoProvider;
 
@@ -11,6 +11,7 @@ use crate::provider::credential_formatter::mdoc_formatter::MdocFormatter;
 use crate::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::repository::json_ld_context_repository::JsonLdContextRepository;
 
 use super::json_ld_bbsplus::JsonLdBbsplus;
 use super::json_ld_classic::JsonLdClassic;
@@ -38,45 +39,51 @@ impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
 }
 
 pub(crate) fn credential_formatters_from_config(
-    config: &mut FormatConfig,
+    config: &mut CoreConfig,
+    json_ld_context_config: JsonLdContextConfig,
     crypto: Arc<dyn CryptoProvider>,
     core_base_url: Option<String>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    json_ld_context_repository: Arc<dyn JsonLdContextRepository>,
 ) -> Result<HashMap<String, Arc<dyn CredentialFormatter>>, ConfigError> {
     let mut formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
 
-    for (name, field) in config.iter() {
+    for (name, field) in config.format.iter() {
         let formatter = match &field.r#type {
             FormatType::Jwt => {
-                let params = config.get(name)?;
+                let params = config.format.get(name)?;
                 Arc::new(JWTFormatter::new(params)) as _
             }
             FormatType::Sdjwt => {
-                let params = config.get(name)?;
+                let params = config.format.get(name)?;
                 Arc::new(SDJWTFormatter::new(params, crypto.clone())) as _
             }
             FormatType::JsonLdClassic => {
-                let params = config.get(name)?;
+                let params = config.format.get(name)?;
                 Arc::new(JsonLdClassic::new(
                     params,
                     crypto.clone(),
                     core_base_url.clone(),
+                    json_ld_context_config.to_owned(),
                     did_method_provider.clone(),
+                    json_ld_context_repository.clone(),
                 )) as _
             }
             FormatType::JsonLdBbsplus => {
-                let params = config.get(name)?;
+                let params = config.format.get(name)?;
                 Arc::new(JsonLdBbsplus::new(
                     params,
                     crypto.clone(),
                     core_base_url.clone(),
+                    json_ld_context_config.to_owned(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
+                    json_ld_context_repository.clone(),
                 )) as _
             }
             FormatType::Mdoc => {
-                let params = config.get(name)?;
+                let params = config.format.get(name)?;
                 Arc::new(MdocFormatter::new(
                     params,
                     did_method_provider.clone(),
@@ -87,7 +94,7 @@ pub(crate) fn credential_formatters_from_config(
         formatters.insert(name.to_owned(), formatter);
     }
 
-    for (key, value) in config.iter_mut() {
+    for (key, value) in config.format.iter_mut() {
         if let Some(entity) = formatters.get(key) {
             value.capabilities = Some(json!(entity.get_capabilities()));
         }

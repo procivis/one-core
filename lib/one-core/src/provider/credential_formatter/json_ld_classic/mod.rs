@@ -6,8 +6,11 @@ use serde::Deserialize;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
+use crate::config::core_config::JsonLdContextConfig;
 use crate::crypto::CryptoProvider;
+use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::repository::json_ld_context_repository::JsonLdContextRepository;
 
 use super::error::FormatterError;
 use super::json_ld::{self, model::*};
@@ -22,6 +25,7 @@ pub struct JsonLdClassic {
     pub base_url: Option<String>,
     pub crypto: Arc<dyn CryptoProvider>,
     pub did_method_provider: Arc<dyn DidMethodProvider>,
+    pub caching_loader: CachingLoader,
     params: Params,
 }
 
@@ -82,7 +86,13 @@ impl CredentialFormatter for JsonLdClassic {
         )
         .await?;
 
-        let proof_hash = json_ld::prepare_proof_hash(&credential, &self.crypto, &proof).await?;
+        let proof_hash = json_ld::prepare_proof_hash(
+            &credential,
+            &self.crypto,
+            &proof,
+            self.caching_loader.to_owned(),
+        )
+        .await?;
 
         let signed_proof = json_ld::sign_proof_hash(&proof_hash, auth_fn).await?;
 
@@ -169,7 +179,13 @@ impl CredentialFormatter for JsonLdClassic {
         )
         .await?;
 
-        let proof_hash = json_ld::prepare_proof_hash(&presentation, &self.crypto, &proof).await?;
+        let proof_hash = json_ld::prepare_proof_hash(
+            &presentation,
+            &self.crypto,
+            &proof,
+            self.caching_loader.to_owned(),
+        )
+        .await?;
 
         let signed_proof = json_ld::sign_proof_hash(&proof_hash, auth_fn).await?;
 
@@ -231,13 +247,21 @@ impl JsonLdClassic {
         params: Params,
         crypto: Arc<dyn CryptoProvider>,
         base_url: Option<String>,
+        json_ld_context_config: JsonLdContextConfig,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        json_ld_context_repository: Arc<dyn JsonLdContextRepository>,
     ) -> Self {
         Self {
             params,
             crypto,
             base_url,
             did_method_provider,
+            caching_loader: CachingLoader {
+                cache_size: json_ld_context_config.cache_size,
+                cache_refresh_timeout: json_ld_context_config.cache_refresh_timeout,
+                client: Default::default(),
+                json_ld_context_repository,
+            },
         }
     }
 
@@ -250,8 +274,13 @@ impl JsonLdClassic {
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
         if let Some(verification_fn) = verification_fn {
-            json_ld::verify_credential_signature(credential.clone(), verification_fn, &self.crypto)
-                .await?;
+            json_ld::verify_credential_signature(
+                credential.clone(),
+                verification_fn,
+                &self.crypto,
+                self.caching_loader.to_owned(),
+            )
+            .await?;
         }
 
         // We only take first subject now as one credential only contains one credential schema
@@ -301,6 +330,7 @@ impl JsonLdClassic {
                 presentation.clone(),
                 verification_fn,
                 &self.crypto,
+                self.caching_loader.to_owned(),
             )
             .await?;
         }

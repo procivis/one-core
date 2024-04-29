@@ -47,7 +47,8 @@ impl JsonLdBbsplus {
         let hmac_key = proof_components.hmac_key;
 
         // We are getting a string from normalization so we operate on it.
-        let canonical = json_ld::canonize_any(&ld_credential).await?;
+        let canonical =
+            json_ld::canonize_any(&ld_credential, self.caching_loader.to_owned()).await?;
 
         let identifier_map = self.create_blank_node_identifier_map(&canonical, &hmac_key)?;
 
@@ -110,7 +111,8 @@ impl JsonLdBbsplus {
         // we can only disclose claims. The rest of the json is mandatory.
         remove_undisclosed_keys(&mut revealed_document, &credential.disclosed_keys)?;
 
-        let revealed_transformed = json_ld::canonize_any(&revealed_document).await?;
+        let revealed_transformed =
+            json_ld::canonize_any(&revealed_document, self.caching_loader.to_owned()).await?;
 
         let compressed_verifier_label_map =
             create_compressed_verifier_label_map(&revealed_transformed, &identifier_map)?;
