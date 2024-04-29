@@ -233,3 +233,6 @@ task:
     display: "task.suspendCheck"
     order: 0
     params: null
+jsonLdContext:
+  cacheRefreshTimeout: 86400
+  cacheSize: 1000

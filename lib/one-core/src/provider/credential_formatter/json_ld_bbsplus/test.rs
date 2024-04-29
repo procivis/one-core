@@ -6,6 +6,9 @@ use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::json_ld::model::{LdCredential, LdCredentialSubject};
 use crate::provider::credential_formatter::json_ld_bbsplus::remove_undisclosed_keys::remove_undisclosed_keys;
+use crate::provider::credential_formatter::test_utilities::{
+    prepare_json_ld_context_config, prepare_json_ld_context_repository,
+};
 use crate::{
     crypto::MockCryptoProvider,
     provider::{
@@ -38,8 +41,10 @@ async fn test_canonize_any() {
         Params {},
         Arc::new(crypto),
         Some("base".to_owned()),
+        prepare_json_ld_context_config(),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
+        Arc::new(prepare_json_ld_context_repository()),
     );
 
     let hmac_key = [
@@ -78,8 +83,10 @@ async fn test_transform_canonized() {
         Params {},
         Arc::new(crypto),
         Some("base".to_owned()),
+        prepare_json_ld_context_config(),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
+        Arc::new(prepare_json_ld_context_repository()),
     );
 
     let bnode_ident_map = HashMap::from([
@@ -124,8 +131,10 @@ async fn test_transform_grouped() {
         Params {},
         Arc::new(crypto),
         Some("base".to_owned()),
+        prepare_json_ld_context_config(),
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
+        Arc::new(prepare_json_ld_context_repository()),
     );
 
     let transformed_lines = &TRANSFORMED_OWN

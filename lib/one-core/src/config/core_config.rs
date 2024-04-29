@@ -16,6 +16,7 @@ use figment::providers::Json;
 
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
+use serde_with::{serde_as, DurationSeconds};
 use strum_macros::{Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
@@ -45,6 +46,15 @@ pub struct CoreConfig {
     pub(crate) key_algorithm: KeyAlgorithmConfig,
     pub(crate) key_storage: KeyStorageConfig,
     pub(crate) task: TaskConfig,
+}
+
+#[serde_as]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonLdContextConfig {
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub cache_refresh_timeout: time::Duration,
+    pub cache_size: u32,
 }
 
 #[derive(Debug)]

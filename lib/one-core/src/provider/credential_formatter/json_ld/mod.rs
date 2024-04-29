@@ -6,18 +6,20 @@ use serde::Serialize;
 use shared_types::DidValue;
 use sophia_api::{quad::Spog, source::QuadSource, term::SimpleTerm};
 use sophia_c14n::rdfc10;
-use sophia_jsonld::{
-    loader::HttpLoader, loader_factory::DefaultLoaderFactory, JsonLdOptions, JsonLdParser,
-};
+use sophia_jsonld::loader::NoLoader;
+use sophia_jsonld::loader_factory::DefaultLoaderFactory;
+use sophia_jsonld::{JsonLdOptions, JsonLdParser};
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::common::nest_claims;
+use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
 use crate::{crypto::CryptoProvider, provider::did_method::dto::DidDocumentDTO};
 
 use super::{error::FormatterError, AuthenticationFn, Context, CredentialData, VerificationFn};
 
 use self::model::{LdCredential, LdCredentialSubject, LdPresentation, LdProof};
 
+pub mod caching_loader;
 pub mod model;
 
 #[cfg(test)]
@@ -160,13 +162,14 @@ pub(super) async fn prepare_proof_hash<T>(
     object: &T,
     crypto: &Arc<dyn CryptoProvider>,
     proof: &LdProof,
+    caching_loader: CachingLoader,
 ) -> Result<Vec<u8>, FormatterError>
 where
     T: Serialize,
 {
-    let transformed_document = canonize_any(object).await?;
+    let transformed_document = canonize_any(object, caching_loader.clone()).await?;
 
-    let transformed_proof_config = canonize_any(proof).await?;
+    let transformed_proof_config = canonize_any(proof, caching_loader).await?;
 
     let hashing_function = "sha-256";
     let hasher = crypto.get_hasher(hashing_function).map_err(|_| {
@@ -233,14 +236,18 @@ pub(super) async fn verify_proof_signature(
     Ok(())
 }
 
-pub(super) async fn canonize_any<T>(json_ld: &T) -> Result<String, FormatterError>
+pub(super) async fn canonize_any<T>(
+    json_ld: &T,
+    caching_loader: CachingLoader,
+) -> Result<String, FormatterError>
 where
     T: Serialize,
 {
     let content_str = serde_json::to_string(&json_ld)
         .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
 
-    let options: JsonLdOptions<DefaultLoaderFactory<HttpLoader>> = JsonLdOptions::default();
+    let options = JsonLdOptions::<DefaultLoaderFactory<NoLoader>>::default()
+        .with_document_loader(caching_loader);
 
     let parser = JsonLdParser::new_with_options(options);
 
@@ -268,6 +275,7 @@ pub(super) async fn verify_credential_signature(
     mut ld_credential: LdCredential,
     verification_fn: VerificationFn,
     crypto: &Arc<dyn CryptoProvider>,
+    caching_loader: CachingLoader,
 ) -> Result<(), FormatterError> {
     let mut proof = ld_credential
         .proof
@@ -284,7 +292,7 @@ pub(super) async fn verify_credential_signature(
     proof.proof_value = None;
     ld_credential.proof = None;
 
-    let proof_hash = prepare_proof_hash(&ld_credential, crypto, &proof).await?;
+    let proof_hash = prepare_proof_hash(&ld_credential, crypto, &proof, caching_loader).await?;
     verify_proof_signature(
         &proof_hash,
         &proof_value,
@@ -302,6 +310,7 @@ pub(super) async fn verify_presentation_signature(
     mut presentation: LdPresentation,
     verification_fn: VerificationFn,
     crypto: &Arc<dyn CryptoProvider>,
+    caching_loader: CachingLoader,
 ) -> Result<(), FormatterError> {
     let mut proof = presentation
         .proof
@@ -318,7 +327,7 @@ pub(super) async fn verify_presentation_signature(
     proof.proof_value = None;
     presentation.proof = None;
 
-    let proof_hash = prepare_proof_hash(&presentation, crypto, &proof).await?;
+    let proof_hash = prepare_proof_hash(&presentation, crypto, &proof, caching_loader).await?;
     verify_proof_signature(
         &proof_hash,
         &proof_value,

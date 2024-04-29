@@ -6,3 +6,5 @@ keyStorage:
     params:
       private:
         aliasPrefix: "ch.procivis.one.wallet.keys"
+jsonLdContext:
+  cacheSize: 100
