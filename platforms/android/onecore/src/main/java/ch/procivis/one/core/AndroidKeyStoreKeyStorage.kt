@@ -45,8 +45,6 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
 
             var strongbox = false
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                builder.setUnlockedDeviceRequired(true)
-
                 strongbox = this.context.packageManager
                     .hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)
 
@@ -81,7 +79,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
                 )
 
                 if (!keyInfo.isInsideSecureHardware) {
-                    throw NativeKeyStorageException.KeyGenerationFailure("No HW backing");
+                    throw NativeKeyStorageException.Unsupported();
                 }
             }
 

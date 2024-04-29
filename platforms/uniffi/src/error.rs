@@ -1,7 +1,7 @@
 use one_core::{
     config::{ConfigError, ConfigParsingError},
     provider::transport_protocol::TransportProtocolError,
-    service::error::{BusinessLogicError, ServiceError},
+    service::error::{BusinessLogicError, ServiceError, ValidationError},
 };
 use thiserror::Error;
 
@@ -32,6 +32,10 @@ impl From<ServiceError> for BindingError {
         match &error {
             ServiceError::EntityNotFound(error) => Self::NotFound(error.to_string()),
             ServiceError::ValidationError(_) => Self::ValidationError(error.to_string()),
+            ServiceError::Validation(e) => match e {
+                ValidationError::UnsupportedKeyOperation => Self::NotSupported(error.to_string()),
+                error => Self::ValidationError(error.to_string()),
+            },
             ServiceError::ConfigValidationError(_) => {
                 Self::ConfigValidationError(error.to_string())
             }
@@ -82,6 +86,8 @@ pub enum NativeKeyStorageError {
     KeyGenerationFailure { reason: String },
     #[error("Failed to crate signature: {reason:?}")]
     SignatureFailure { reason: String },
+    #[error("Unsupported")]
+    Unsupported,
     #[error("Unknown error: {reason:?}")]
     Unknown { reason: String },
 }
@@ -90,6 +96,17 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for NativeKeyStorageError {
     fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
         Self::Unknown {
             reason: e.to_string(),
+        }
+    }
+}
+
+impl From<NativeKeyStorageError> for ServiceError {
+    fn from(error: NativeKeyStorageError) -> Self {
+        match &error {
+            NativeKeyStorageError::Unsupported => {
+                Self::Validation(ValidationError::UnsupportedKeyOperation)
+            }
+            _ => Self::Other(error.to_string()),
         }
     }
 }

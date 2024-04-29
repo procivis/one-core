@@ -11,7 +11,7 @@ impl one_core::provider::key_storage::secure_element::NativeKeyStorage for Nativ
         Ok(self
             .0
             .generate_key(key_alias)
-            .map_err(|e| ServiceError::Other(e.to_string()))?
+            .map_err(ServiceError::from)?
             .into())
     }
 
