@@ -8,6 +8,10 @@ import LocalAuthentication
 
 class SecureEnclaveKeyStorage: NativeKeyStorage {
     func generateKey(keyAlias: String) throws -> GeneratedKeyBindingDto {
+        if (!SecureEnclave.isAvailable) {
+            throw NativeKeyStorageError.Unsupported;
+        }
+        
         do {
             let accessControl = SecAccessControlCreateWithFlags(
                 kCFAllocatorDefault,
@@ -32,6 +36,10 @@ class SecureEnclaveKeyStorage: NativeKeyStorage {
     }
     
     func sign(keyReference: Data, message: Data) throws -> Data {
+        if (!SecureEnclave.isAvailable) {
+            throw NativeKeyStorageError.Unsupported;
+        }
+        
         do {
             let privateKey = try SecureEnclave.P256.Signing.PrivateKey(dataRepresentation: keyReference, authenticationContext: LAContext());
             let signature = try privateKey.signature(for: message);

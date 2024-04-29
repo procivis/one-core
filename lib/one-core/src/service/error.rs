@@ -268,6 +268,9 @@ pub enum ValidationError {
     #[error("Unsupported key type: {key_type}")]
     UnsupportedKeyType { key_type: String },
 
+    #[error("Unsupported key operation")]
+    UnsupportedKeyOperation,
+
     #[error("DID: Invalid key number")]
     DidInvalidKeyNumber,
 
@@ -793,6 +796,7 @@ impl ValidationError {
             ValidationError::InvalidKey(_) => ErrorCode::BR_0096,
             ValidationError::BBSNotSupported => ErrorCode::BR_0091,
             ValidationError::InvalidKeyStorage(_) => ErrorCode::BR_0041,
+            ValidationError::UnsupportedKeyOperation => ErrorCode::BR_0041,
             ValidationError::InvalidDatatype { .. } => ErrorCode::BR_0061,
             ValidationError::DidNotFound => ErrorCode::BR_0024,
             ValidationError::KeyNotFound => ErrorCode::BR_0037,

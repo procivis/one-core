@@ -20,6 +20,7 @@ enum BindingError {
 interface NativeKeyStorageError {
   KeyGenerationFailure(string reason);
   SignatureFailure(string reason);
+  Unsupported();
   Unknown(string reason);
 };
 
