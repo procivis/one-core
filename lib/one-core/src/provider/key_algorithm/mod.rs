@@ -11,6 +11,7 @@ use bbs::BBS;
 use eddsa::Eddsa;
 use es256::Es256;
 use ml_dsa::MlDsa;
+use zeroize::Zeroizing;
 
 use crate::{
     config::{
@@ -46,6 +47,16 @@ pub trait KeyAlgorithm: Send + Sync {
     ) -> Result<PublicKeyJwkDTO, ServiceError>;
 
     fn jwk_to_bytes(&self, jwk: &PublicKeyJwkDTO) -> Result<Vec<u8>, ServiceError>;
+
+    fn private_key_as_jwk(
+        &self,
+        _secret_key: Zeroizing<Vec<u8>>,
+    ) -> Result<Zeroizing<String>, ServiceError> {
+        Err(ServiceError::KeyAlgorithmError(format!(
+            "unsupported operation for {}",
+            std::any::type_name::<Self>()
+        )))
+    }
 }
 
 pub fn key_algorithms_from_config(

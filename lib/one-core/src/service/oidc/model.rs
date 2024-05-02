@@ -9,7 +9,7 @@ use crate::common_mapper::deserialize_with_serde_json;
 // Equivalent of transport_protocol/openid4vc/model.rs for deserialization
 // to avoid dependency to the transport protocol itself
 #[derive(Clone, Deserialize, Serialize, Debug)]
-pub(super) struct OpenID4VPInteractionContent {
+pub struct OpenID4VPInteractionContent {
     pub nonce: String,
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub presentation_definition: OpenID4VPPresentationDefinition,

@@ -91,7 +91,9 @@ async fn test_get_client_metadata() {
                 "vc+sd-jwt": {
                     "alg": ["EdDSA", "ES256"]
                 }
-            }
+            },
+            "authorization_encrypted_response_alg": "ECDH-ES",
+            "authorization_encrypted_response_enc": "A256GCM"
         })
     );
 }

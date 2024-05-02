@@ -61,6 +61,7 @@ impl CredentialsDB {
             .as_ref()
             .unwrap()
             .iter()
+            .filter(|claim_schema| claim_schema.schema.data_type != "OBJECT")
             .map(move |claim_schema| Claim {
                 id: Uuid::new_v4(),
                 credential_id,

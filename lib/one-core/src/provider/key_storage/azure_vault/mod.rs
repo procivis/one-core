@@ -14,6 +14,7 @@ use mapper::{
     create_generate_key_request, create_get_token_request, create_sign_request,
     public_key_from_components,
 };
+use zeroize::Zeroizing;
 
 use crate::{
     crypto::{
@@ -129,6 +130,10 @@ impl KeyStorage for AzureVaultKeyProvider {
             .map_err(|e| SignerError::CouldNotSign(e.to_string()))?;
 
         Ok(decoded)
+    }
+
+    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, ServiceError> {
+        unimplemented!()
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {

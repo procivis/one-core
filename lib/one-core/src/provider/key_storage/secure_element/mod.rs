@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use shared_types::KeyId;
 use std::sync::Arc;
+use zeroize::Zeroizing;
 
 use crate::{
     crypto::signer::error::SignerError,
@@ -44,6 +45,10 @@ impl KeyStorage for SecureElementKeyProvider {
 
     async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         self.native_storage.sign(&key.key_reference, message)
+    }
+
+    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, ServiceError> {
+        unimplemented!()
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {

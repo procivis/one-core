@@ -31,8 +31,9 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential, FormatPresentationCtx,
-    FormatterCapabilities, FormatterError, Presentation, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential, ExtractCredentialsCtx,
+    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, FormatterError,
+    Presentation, VerificationFn,
 };
 
 pub struct SDJWTFormatter {
@@ -98,6 +99,7 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         token: &str,
         verification: VerificationFn,
+        _ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(token, Some(verification))
             .await
@@ -126,6 +128,7 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         token: &str,
         verification: VerificationFn,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         // Build fails if verification fails
         let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, Some(verification)).await?;
@@ -181,6 +184,7 @@ impl CredentialFormatter for SDJWTFormatter {
     async fn extract_presentation_unverified(
         &self,
         token: &str,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         let jwt: Jwt<Sdvp> = Jwt::build_from_token(token, None).await?;
 

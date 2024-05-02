@@ -1,5 +1,6 @@
 use elliptic_curve::{generic_array::GenericArray, sec1::EncodedPoint};
 use serde::Deserialize;
+use zeroize::Zeroizing;
 
 use super::KeyAlgorithm;
 use crate::crypto::signer::error::SignerError;
@@ -100,5 +101,15 @@ impl KeyAlgorithm for Es256 {
         } else {
             Err(ServiceError::KeyAlgorithmError("invalid kty".to_string()))
         }
+    }
+
+    fn private_key_as_jwk(
+        &self,
+        secret_key: Zeroizing<Vec<u8>>,
+    ) -> Result<Zeroizing<String>, ServiceError> {
+        let secret_key = p256::SecretKey::from_slice(&secret_key)
+            .map_err(|err| ServiceError::Other(format!("Failed parsing key from bytes {err}")))?;
+
+        Ok(secret_key.to_jwk_string())
     }
 }

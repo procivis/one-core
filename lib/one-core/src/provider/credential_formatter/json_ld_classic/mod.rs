@@ -13,8 +13,8 @@ use super::error::FormatterError;
 use super::json_ld::{self, model::*};
 use super::model::{CredentialPresentation, CredentialSubject, DetailCredential, Presentation};
 use super::{
-    AuthenticationFn, Context, CredentialData, CredentialFormatter, FormatPresentationCtx,
-    FormatterCapabilities, VerificationFn,
+    AuthenticationFn, Context, CredentialData, CredentialFormatter, ExtractCredentialsCtx,
+    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, VerificationFn,
 };
 
 #[allow(dead_code)]
@@ -99,6 +99,7 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         credential: &str,
         verification_fn: VerificationFn,
+        _ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(credential, Some(verification_fn))
             .await
@@ -185,6 +186,7 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         json_ld: &str,
         verification_fn: VerificationFn,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         self.extract_presentation_internal(json_ld, Some(verification_fn))
             .await
@@ -217,6 +219,7 @@ impl CredentialFormatter for JsonLdClassic {
     async fn extract_presentation_unverified(
         &self,
         json_ld: &str,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         self.extract_presentation_internal(json_ld, None).await
     }

@@ -15,10 +15,12 @@ use one_core::provider::did_method::dto::PublicKeyJwkMlweDataDTO;
 use one_core::provider::did_method::dto::PublicKeyJwkOctDataDTO;
 use one_core::provider::did_method::dto::PublicKeyJwkRsaDataDTO;
 use one_core::provider::transport_protocol::openid4vc::dto::{
-    OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferClaim,
-    OpenID4VCICredentialOfferCredentialDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails, OpenID4VCIGrant,
-    OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VCICredentialDefinition,
+    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferCredentialDTO,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
+    OpenID4VCIGrant, OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
+    OpenID4VPFormat,
 };
 use one_core::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
@@ -305,16 +307,42 @@ pub enum OpenID4VCIErrorRestEnum {
     VCFormatsNotSupported,
 }
 
-#[serde_with::serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
 #[into(OpenID4VPDirectPostRequestDTO)]
 pub struct OpenID4VPDirectPostRequestRestDTO {
+    #[into(with_fn = convert_inner)]
+    #[serde(flatten)]
+    pub presentation_submission: Option<InternalPresentationSubmissionMappingRestDTO>,
+    #[schema(example = "<jwt/sdjwt token>")]
+    #[into(with_fn = convert_inner)]
+    pub vp_token: Option<String>,
+    #[schema(example = "<UUID>")]
+    #[into(with_fn = convert_inner)]
+    pub state: Option<Uuid>,
+    #[into(with_fn = convert_inner)]
+    pub response: Option<String>,
+}
+
+impl From<InternalPresentationSubmissionMappingRestDTO> for PresentationSubmissionMappingDTO {
+    fn from(value: InternalPresentationSubmissionMappingRestDTO) -> Self {
+        Self {
+            id: value.presentation_submission.id,
+            definition_id: value.presentation_submission.definition_id,
+            descriptor_map: value
+                .presentation_submission
+                .descriptor_map
+                .into_iter()
+                .map(|p| p.into())
+                .collect(),
+        }
+    }
+}
+
+#[serde_with::serde_as]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+pub struct InternalPresentationSubmissionMappingRestDTO {
     #[serde_as(as = "JsonString")]
     pub presentation_submission: PresentationSubmissionMappingRestDTO,
-    #[schema(example = "<jwt/sdjwt token>")]
-    pub vp_token: String,
-    #[schema(example = "<UUID>")]
-    pub state: Uuid,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
@@ -615,6 +643,11 @@ pub struct OpenID4VPClientMetadataResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub vp_formats: HashMap<String, OpenID4VPFormatRestDTO>,
     pub client_id_scheme: String,
+    #[from(with_fn = convert_inner)]
+    pub authorization_encrypted_response_alg: Option<OID4VPAuthorizationEncryptedResponseAlgorithm>,
+    #[from(with_fn = convert_inner)]
+    pub authorization_encrypted_response_enc:
+        Option<OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -624,4 +657,17 @@ pub struct OpenID4VPClientMetadataJwkRestDTO {
     pub key_id: KeyId,
     #[serde(flatten)]
     pub jwk: PublicKeyJwkRestDTO,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema, From)]
+#[from(AuthorizationEncryptedResponseAlgorithm)]
+pub enum OID4VPAuthorizationEncryptedResponseAlgorithm {
+    #[serde(rename = "ECDH-ES")]
+    EcdhEs,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]
+#[from(AuthorizationEncryptedResponseContentEncryptionAlgorithm)]
+pub enum OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm {
+    A256GCM,
 }

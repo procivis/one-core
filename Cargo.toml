@@ -43,7 +43,7 @@ url                = { version = "2.5", features = ["serde"] }
 utoipa             = { version = "4.2", default-features = false }
 sea-orm            = { version = "0.12", default-features = false }
 elliptic-curve     = { version = "0.13" }
-p256               = { version = "0.13", features = ["arithmetic"] }
+p256               = { version = "0.13", features = ["arithmetic", "jwk"] }
 fmap               = { version = "0.8" }
 rand               = { version = "0.8" }
 rand_chacha        = { version = "0.3" }

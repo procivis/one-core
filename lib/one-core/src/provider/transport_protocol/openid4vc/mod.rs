@@ -19,7 +19,7 @@ use self::{
         create_open_id_for_vp_presentation_definition, create_presentation_submission,
         get_credential_offer_url,
     },
-    model::{HolderInteractionData, MdocJwePayload, OpenID4VCIInteractionContent},
+    model::{HolderInteractionData, JwePayload, OpenID4VCIInteractionContent},
 };
 use super::{
     deserialize_interaction_data,
@@ -105,7 +105,7 @@ mod test;
 
 pub mod dto;
 pub(crate) mod mapper;
-mod model;
+pub mod model;
 mod validator;
 
 const CREDENTIAL_OFFER_URL_SCHEME: &str = "openid-credential-offer";
@@ -309,7 +309,7 @@ impl TransportProtocol for OpenID4VC {
                 .await
                 .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
-            let payload = MdocJwePayload {
+            let payload = JwePayload {
                 iss: holder_did.did.clone(),
                 aud: response_uri.clone(),
                 exp: (OffsetDateTime::now_utc() + Duration::minutes(10)),

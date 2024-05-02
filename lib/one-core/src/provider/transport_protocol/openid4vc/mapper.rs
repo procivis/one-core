@@ -53,7 +53,10 @@ use crate::{
     util::oidc::map_core_to_oidc_format,
 };
 
-use super::dto::{JweContentEncryptionAlgorithm, JweKeyManagementAlgorithm};
+use super::dto::{
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+};
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
@@ -166,14 +169,35 @@ pub(super) fn presentation_definition_from_interaction_data(
 pub(crate) fn get_claim_name_by_json_path(
     path: &[String],
 ) -> Result<String, TransportProtocolError> {
-    Ok(path
-        .first()
-        .ok_or(TransportProtocolError::Failed("No path".to_string()))?
-        .strip_prefix("$.vc.credentialSubject.")
-        .ok_or(TransportProtocolError::Failed(
-            "Invalid json path".to_string(),
-        ))?
-        .to_string())
+    const VC_CREDENTIAL_PREFIX: &str = "$.vc.credentialSubject.";
+
+    match path.first() {
+        Some(vc) if vc.starts_with(VC_CREDENTIAL_PREFIX) => {
+            Ok(vc[VC_CREDENTIAL_PREFIX.len()..].to_owned())
+        }
+
+        Some(subscript_path) if subscript_path.starts_with("$['") => {
+            let path: Vec<&str> = subscript_path
+                .split(['$', '[', ']', '\''])
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            let json_pointer_path = path.join("/");
+
+            if json_pointer_path.is_empty() {
+                return Err(TransportProtocolError::Failed(format!(
+                    "Invalid json path: {subscript_path}"
+                )));
+            }
+
+            Ok(json_pointer_path)
+        }
+        Some(other) => Err(TransportProtocolError::Failed(format!(
+            "Invalid json path: {other}"
+        ))),
+
+        None => Err(TransportProtocolError::Failed("No path".to_string())),
+    }
 }
 
 pub(crate) fn create_open_id_for_vp_presentation_definition(
@@ -336,8 +360,10 @@ pub fn create_open_id_for_vp_client_metadata(key: PublicKeyWithJwk) -> OpenID4VP
         }],
         vp_formats: create_open_id_for_vp_formats(),
         client_id_scheme: "redirect_uri".to_string(),
-        authorization_encrypted_response_alg: Some(JweKeyManagementAlgorithm::EcdhEs),
-        authorization_encrypted_response_enc: Some(JweContentEncryptionAlgorithm::A256GCM),
+        authorization_encrypted_response_alg: Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs),
+        authorization_encrypted_response_enc: Some(
+            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
+        ),
     }
 }
 // TODO: This method needs to be refactored as soon as we have a new config value access and remove the static values from this method

@@ -52,6 +52,7 @@ pub fn map_from_oidc_format_to_core_real(
                 OpenID4VCIError::UnsupportedCredentialFormat,
             )),
         },
+        "mso_mdoc" => Ok("MDOC".to_string()),
         _ => Err(ServiceError::OpenID4VCError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         )),
@@ -62,6 +63,7 @@ pub fn map_from_oidc_vp_format_to_core(format: &str) -> Result<String, ServiceEr
     match format {
         "jwt_vp_json" => Ok("JWT".to_string()),
         "ldp_vp" => Ok("JSON_LD_CLASSIC".to_string()),
+        "mso_mdoc" => Ok("MDOC".to_string()),
         _ => Err(ServiceError::OpenID4VCError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         )),

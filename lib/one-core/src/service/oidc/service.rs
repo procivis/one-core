@@ -25,16 +25,22 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 
-use crate::model::key::KeyRelations;
+use crate::model::key::{Key, KeyRelations};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::credential_formatter::{ExtractCredentialsCtx, ExtractPresentationCtx};
+use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferDTO, OpenID4VPClientMetadata,
 };
 use crate::provider::transport_protocol::openid4vc::mapper::{
     create_credential_offer, create_open_id_for_vp_client_metadata,
 };
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::provider::transport_protocol::openid4vc::model::JwePayload;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+};
 use crate::service::oidc::dto::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
     PresentationSubmissionMappingDTO,
@@ -61,7 +67,10 @@ use crate::service::oidc::{
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_real;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
-use shared_types::CredentialId;
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
+use josekit::jwe::{JweDecrypter, JweHeader};
+use shared_types::{CredentialId, DidValue, KeyId};
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::str::FromStr;
@@ -423,7 +432,9 @@ impl OIDCService {
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let interaction_id = request.state;
+        let unpacked_request = self.unpack_direct_post_request(request).await?;
+
+        let interaction_id = unpacked_request.state;
 
         let proof = self
             .proof_repository
@@ -453,7 +464,10 @@ impl OIDCService {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
-        match self.process_proof_submission(request, &proof).await {
+        match self
+            .process_proof_submission(unpacked_request, &proof)
+            .await
+        {
             Ok(proved_claims) => {
                 let redirect_uri = proof.redirect_uri.to_owned();
                 self.accept_proof(proof, proved_claims).await?;
@@ -604,7 +618,7 @@ impl OIDCService {
 
     async fn process_proof_submission(
         &self,
-        submission: OpenID4VPDirectPostRequestDTO,
+        submission: RequestData,
         proof: &Proof,
     ) -> Result<Vec<ValidatedProofClaimDTO>, ServiceError> {
         let interaction = proof
@@ -618,15 +632,18 @@ impl OIDCService {
 
         let presentation_submission = &submission.presentation_submission;
 
-        if presentation_submission.definition_id != submission.state.to_string() {
+        let definition_id = presentation_submission.definition_id.clone();
+        let vp_token = submission.vp_token;
+        let state = submission.state;
+
+        if definition_id != state.to_string() {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
 
-        let presentation_strings: Vec<String> = if submission.vp_token.starts_with('[') {
-            serde_json::from_str(&submission.vp_token)
-                .map_err(|_| OpenID4VCIError::InvalidRequest)?
+        let presentation_strings: Vec<String> = if vp_token.starts_with('[') {
+            serde_json::from_str(&vp_token).map_err(|_| OpenID4VCIError::InvalidRequest)?
         } else {
-            vec![submission.vp_token]
+            vec![vp_token]
         };
 
         // collect expected credentials
@@ -673,12 +690,31 @@ impl OIDCService {
                 .get(presentation_string_index)
                 .ok_or(OpenID4VCIError::InvalidRequest)?;
 
+            let context = if &presentation_submitted.format == "mso_mdoc" {
+                let mut ctx = ExtractPresentationCtx::from(interaction_data.clone());
+                if let Some(mdoc_generated_nonce) = submission.mdoc_generated_nonce.clone() {
+                    ctx = ctx.with_mdoc_generated_nonce(mdoc_generated_nonce);
+                }
+                if let Some(holder_did) = submission.holder_did.clone() {
+                    ctx = ctx.with_holder_did(holder_did);
+                }
+
+                ctx
+            } else {
+                ExtractPresentationCtx::empty()
+            };
+
+            let credential_context = ExtractCredentialsCtx {
+                holder_did: context.get_holder_did(),
+            };
+
             let presentation = validate_presentation(
                 presentation_string,
                 &interaction_data.nonce,
                 &presentation_submitted.format,
                 &self.formatter_provider,
                 self.build_key_verification(KeyRole::Authentication),
+                context,
             )
             .await?;
 
@@ -725,6 +761,7 @@ impl OIDCService {
                 &self.formatter_provider,
                 self.build_key_verification(KeyRole::AssertionMethod),
                 &self.revocation_method_provider,
+                credential_context,
             )
             .await?;
 
@@ -896,4 +933,114 @@ impl OIDCService {
             .await
             .map_err(ServiceError::from)
     }
+
+    async fn unpack_direct_post_request(
+        &self,
+        request: OpenID4VPDirectPostRequestDTO,
+    ) -> Result<RequestData, ServiceError> {
+        match request {
+            OpenID4VPDirectPostRequestDTO {
+                presentation_submission: Some(presentation_submission),
+                vp_token: Some(vp_token),
+                state: Some(state),
+                response: None,
+            } => Ok(RequestData {
+                presentation_submission,
+                vp_token,
+                state,
+                mdoc_generated_nonce: None,
+                holder_did: None,
+            }),
+            OpenID4VPDirectPostRequestDTO {
+                response: Some(jwe),
+                ..
+            } => {
+                let jwe_header = extract_jwe_header(&jwe).map_err(|err| {
+                    ServiceError::Other(format!("Failed parsing JWE header: {err}"))
+                })?;
+
+                let key_id = jwe_header.key_id().ok_or_else(|| {
+                    ServiceError::ValidationError("JWE header is missing key_id".to_string())
+                })?;
+                let key_id = KeyId::from_str(key_id).map_err(|err| {
+                    ServiceError::ValidationError(format!("JWE key_id value invalid format: {err}"))
+                })?;
+
+                let key = self
+                    .key_repository
+                    .get_key(&key_id, &KeyRelations::default())
+                    .await?
+                    .ok_or_else(|| {
+                        ServiceError::ValidationError("Invalid JWE key_id".to_string())
+                    })?;
+
+                let decrypter = build_jwe_decrypter(&*self.key_provider, &key)?;
+
+                let (payload, _) = josekit::jwe::deserialize_compact(&jwe, &decrypter).unwrap();
+
+                let payload = JwePayload::try_from_json_base64_decode(&payload).map_err(|err| {
+                    ServiceError::Other(format!("Failed deserializing JWE payload: {err}"))
+                })?;
+
+                let mdoc_generated_nonce = jwe_header
+                    .agreement_partyuinfo()
+                    .and_then(|nonce| String::from_utf8(nonce).ok());
+
+                Ok(RequestData {
+                    presentation_submission: payload.presentation_submission,
+                    vp_token: payload.vp_token,
+                    state: payload.state.parse()?,
+                    mdoc_generated_nonce,
+                    holder_did: Some(payload.iss),
+                })
+            }
+            _ => Err(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            )),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct RequestData {
+    pub presentation_submission: PresentationSubmissionMappingDTO,
+    pub vp_token: String,
+    pub state: Uuid,
+    pub mdoc_generated_nonce: Option<String>,
+    pub holder_did: Option<DidValue>,
+}
+
+fn extract_jwe_header(jwe: &str) -> Result<JweHeader, anyhow::Error> {
+    let header_b64 = jwe
+        .split(|c| c == '.')
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("Invalid JWE"))?;
+
+    let header = Base64UrlSafeNoPadding::decode_to_vec(header_b64, None)?;
+    let map: serde_json::Map<String, serde_json::Value> = serde_json::from_slice(&header)?;
+
+    Ok(JweHeader::from_map(map)?)
+}
+
+fn build_jwe_decrypter(
+    key_provider: &dyn KeyProvider,
+    key: &Key,
+) -> Result<impl JweDecrypter, ServiceError> {
+    let key_storage = key_provider
+        .get_key_storage(&key.storage_type)
+        .ok_or_else(|| MissingProviderError::KeyStorage(key.storage_type.clone()))?;
+
+    let jwk = key_storage.secret_key_as_jwk(key)?;
+    let mut jwk = josekit::jwk::Jwk::from_bytes(jwk.as_bytes())
+        .map_err(|err| ServiceError::MappingError(format!("Failed constructing JWK {err}")))?;
+
+    if let Some("Ed25519") = jwk.curve() {
+        jwk = jwk.into_x25519().map_err(|err| {
+            ServiceError::KeyAlgorithmError(format!("Cannot convert Ed25519 into X25519: {err}"))
+        })?;
+    };
+
+    EcdhEsJweAlgorithm::EcdhEs
+        .decrypter_from_jwk(&jwk)
+        .map_err(|err| ServiceError::Other(format!("Failed constructing EcdhEs decrypter: {err}")))
 }

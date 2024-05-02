@@ -18,7 +18,7 @@ pub type DeviceSignedItems = IndexMap<DataElementIdentifier, DataElementValue>;
 
 pub type ValueDigests = IndexMap<Namespace, DigestIDs>;
 
-pub type DigestIDs = IndexMap<u64, Bstr>;
+pub type DigestIDs = IndexMap<u64, Bstr>; // latter is the sha result
 
 pub type DocumentError = IndexMap<DocType, ErrorCode>;
 pub type Errors = IndexMap<Namespace, ErrorItems>;
@@ -63,7 +63,7 @@ pub struct IssuerSigned {
 #[serde(rename_all = "camelCase")]
 pub struct IssuerSignedItem {
     #[serde(rename = "digestID")]
-    pub digest_id: u64,
+    pub digest_id: u64, // Compare with namespace
     pub random: Bstr,
     pub element_identifier: DataElementIdentifier,
     pub element_value: DataElementValue,

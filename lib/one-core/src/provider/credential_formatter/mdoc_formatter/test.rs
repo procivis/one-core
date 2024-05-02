@@ -221,10 +221,11 @@ async fn test_credential_formatting_ok_for_es256() {
     let params = Params {
         mso_expires_in: time::Duration::seconds(10),
         mso_expected_update_in: time::Duration::days(10),
+        leeway: 60_u64,
     };
     let algorithm = "ES256";
 
-    let formatter = MdocFormatter::new(params, Arc::new(did_method_provider));
+    let formatter = MdocFormatter::new(params, Arc::new(did_method_provider), None);
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
@@ -365,10 +366,11 @@ async fn test_unverified_credential_extraction() {
     let params = Params {
         mso_expires_in: time::Duration::seconds(10),
         mso_expected_update_in: time::Duration::days(10),
+        leeway: 60_u64,
     };
     let algorithm = "ES256";
 
-    let formatter = MdocFormatter::new(params, Arc::new(did_method_provider));
+    let formatter = MdocFormatter::new(params, Arc::new(did_method_provider), None);
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));

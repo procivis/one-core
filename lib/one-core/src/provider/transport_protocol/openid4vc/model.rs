@@ -1,5 +1,5 @@
 use anyhow::Context;
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
@@ -18,7 +18,7 @@ pub(super) struct OpenID4VCIInteractionContent {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub(super) struct OpenID4VPInteractionContent {
+pub struct OpenID4VPInteractionContent {
     pub nonce: String,
     pub presentation_definition: OpenID4VPPresentationDefinition,
 }
@@ -33,7 +33,7 @@ pub(super) struct HolderInteractionData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MdocJwePayload {
+pub struct JwePayload {
     pub iss: DidValue,
     pub aud: Url,
     #[serde(with = "unix_timestamp")]
@@ -43,11 +43,21 @@ pub struct MdocJwePayload {
     pub state: String,
 }
 
-impl MdocJwePayload {
+impl JwePayload {
     pub(crate) fn try_into_json_base64_encode(&self) -> anyhow::Result<String> {
         let payload = serde_json::to_vec(self).context("MdocJwePayload serialization failed")?;
         let payload = Base64UrlSafeNoPadding::encode_to_string(payload)
             .context("MdocJwePayload base64 encoding failed")?;
+
+        Ok(payload)
+    }
+
+    pub(crate) fn try_from_json_base64_decode(payload: &[u8]) -> anyhow::Result<Self> {
+        let payload = Base64UrlSafeNoPadding::decode_to_vec(payload, None)
+            .context("MdocJwePayload base64 decoding failed")?;
+
+        let payload =
+            serde_json::from_slice(&payload).context("MdocJwePayload deserialization failed")?;
 
         Ok(payload)
     }

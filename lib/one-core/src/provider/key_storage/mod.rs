@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use serde::Serialize;
 use serde_json::json;
+use zeroize::Zeroizing;
 
 use self::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
 use super::key_algorithm::provider::KeyAlgorithmProvider;
@@ -44,7 +45,11 @@ pub struct GeneratedKey {
 #[async_trait::async_trait]
 pub trait KeyStorage: Send + Sync {
     async fn generate(&self, key_id: &KeyId, key_type: &str) -> Result<GeneratedKey, ServiceError>;
+
     async fn sign(&self, key: &Key, message: &[u8]) -> Result<Vec<u8>, SignerError>;
+
+    fn secret_key_as_jwk(&self, key: &Key) -> Result<Zeroizing<String>, ServiceError>;
+
     fn get_capabilities(&self) -> KeyStorageCapabilities;
 }
 

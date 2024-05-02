@@ -14,8 +14,8 @@ use shared_types::DidValue;
 use super::json_ld::model::LdCredential;
 use super::model::{CredentialPresentation, Presentation};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, FormatPresentationCtx,
-    FormatterCapabilities, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialFormatter, ExtractCredentialsCtx,
+    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, VerificationFn,
 };
 
 mod base_proof;
@@ -71,6 +71,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         credential: &str,
         verification_fn: VerificationFn,
+        _ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
         self.verify(credential, verification_fn).await
     }
@@ -107,6 +108,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         _json_ld: &str,
         _verification_fn: VerificationFn,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         unimplemented!()
     }
@@ -138,6 +140,7 @@ impl CredentialFormatter for JsonLdBbsplus {
     async fn extract_presentation_unverified(
         &self,
         _token: &str,
+        _context: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError> {
         unimplemented!()
     }

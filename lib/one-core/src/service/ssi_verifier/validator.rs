@@ -7,7 +7,10 @@ use crate::{
         proof_schema::{ProofInputClaimSchema, ProofSchema},
     },
     provider::{
-        credential_formatter::{model::DetailCredential, provider::CredentialFormatterProvider},
+        credential_formatter::{
+            model::DetailCredential, provider::CredentialFormatterProvider, ExtractCredentialsCtx,
+            ExtractPresentationCtx,
+        },
         did_method::provider::DidMethodProvider,
         key_algorithm::provider::KeyAlgorithmProvider,
         revocation::{
@@ -53,7 +56,11 @@ pub(super) async fn validate_proof(
         .ok_or(MissingProviderError::Formatter(formatter.to_owned()))?;
 
     let presentation = presentation_formatter
-        .extract_presentation(presentation, key_verification_presentation.clone())
+        .extract_presentation(
+            presentation,
+            key_verification_presentation.clone(),
+            ExtractPresentationCtx::empty(),
+        )
         .await?;
 
     // Check if presentation is expired
@@ -158,7 +165,11 @@ pub(super) async fn validate_proof(
             .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 
         let credential = credential_formatter
-            .extract_credentials(&credential, key_verification_credentials.clone())
+            .extract_credentials(
+                &credential,
+                key_verification_credentials.clone(),
+                ExtractCredentialsCtx::default(),
+            )
             .await?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.
