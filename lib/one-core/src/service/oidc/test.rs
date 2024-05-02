@@ -31,11 +31,13 @@ use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticData
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::openid4vc::dto::{
-    JweContentEncryptionAlgorithm, JweKeyManagementAlgorithm, OpenID4VPClientMetadata,
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
 };
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
@@ -43,6 +45,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::mock::key_repository::MockKeyRepository;
 use crate::repository::mock::proof_repository::MockProofRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::oidc::dto::{
@@ -69,6 +72,8 @@ struct Mocks {
     pub credential_repository: MockCredentialRepository,
     pub proof_repository: MockProofRepository,
     pub interaction_repository: MockInteractionRepository,
+    pub key_repository: MockKeyRepository,
+    pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
     pub transport_provider: MockTransportProtocolProvider,
     pub did_repository: MockDidRepository,
@@ -85,6 +90,8 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Arc::new(mocks.credential_schema_repository),
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.proof_repository),
+        Arc::new(mocks.key_repository),
+        Arc::new(mocks.key_provider),
         Arc::new(mocks.interaction_repository),
         Arc::new(mocks.config),
         Arc::new(mocks.transport_provider),
@@ -1377,7 +1384,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     formatter
         .expect_extract_presentation_unverified()
         .once()
-        .returning(move |_| {
+        .returning(move |_, _| {
             Ok(Presentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -1393,7 +1400,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     formatter
         .expect_extract_presentation()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(Presentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -1408,7 +1415,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     formatter
         .expect_extract_credentials()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(DetailCredential {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -1467,7 +1474,7 @@ async fn test_submit_proof_failed_credential_suspended() {
 
     let err = service
         .oidc_verifier_direct_post(OpenID4VPDirectPostRequestDTO {
-            presentation_submission: PresentationSubmissionMappingDTO {
+            presentation_submission: Some(PresentationSubmissionMappingDTO {
                 id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
                 definition_id: interaction_id.to_string(),
                 descriptor_map: vec![PresentationSubmissionDescriptorDTO {
@@ -1479,9 +1486,10 @@ async fn test_submit_proof_failed_credential_suspended() {
                         path: "$.vp.verifiableCredential[0]".to_string(),
                     }),
                 }],
-            },
-            vp_token: vp_token.to_string(),
-            state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
+            }),
+            vp_token: Some(vp_token.to_string()),
+            state: Some("a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap()),
+            response: None,
         })
         .await
         .unwrap_err();
@@ -1759,8 +1767,12 @@ async fn test_get_client_metadata_success() {
                 ),
             ]),
             client_id_scheme: "redirect_uri".to_string(),
-            authorization_encrypted_response_alg: Some(JweKeyManagementAlgorithm::EcdhEs),
-            authorization_encrypted_response_enc: Some(JweContentEncryptionAlgorithm::A256GCM),
+            authorization_encrypted_response_alg: Some(
+                AuthorizationEncryptedResponseAlgorithm::EcdhEs
+            ),
+            authorization_encrypted_response_enc: Some(
+                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM
+            ),
         },
         result
     );

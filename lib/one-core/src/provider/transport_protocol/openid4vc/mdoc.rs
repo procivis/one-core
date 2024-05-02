@@ -9,18 +9,19 @@ use josekit::{
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-use crate::provider::did_method::dto::PublicKeyJwkDTO;
+use crate::provider::{did_method::dto::PublicKeyJwkDTO, key_algorithm::eddsa::JwkEddsaExt};
 
 use super::{
     dto::{
-        JweContentEncryptionAlgorithm, JweKeyManagementAlgorithm, OpenID4VPClientMetadata,
+        AuthorizationEncryptedResponseAlgorithm,
+        AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
         OpenID4VPClientMetadataJwkDTO,
     },
-    model::MdocJwePayload,
+    model::JwePayload,
 };
 
 pub(crate) fn build_jwe(
-    payload: MdocJwePayload,
+    payload: JwePayload,
     client_metadata: OpenID4VPClientMetadata,
     mdoc_generated_nonce: &str,
     nonce: &str, // nonce from the authorization request object
@@ -50,15 +51,17 @@ fn build_ecdh_es_encrypter(
         .as_ref()
         .zip(verifier_metadata.authorization_encrypted_response_enc.as_ref())
     {
-        None => return Err(anyhow!("Verifier must provide `authorization_encrypted_response_alg` and `authorization_encrypted_response_enc` parameters when using JWE encrypted authorization response")),
-        Some((JweKeyManagementAlgorithm::EcdhEs, JweContentEncryptionAlgorithm::A256GCM)) => {}
+        None => return Err(anyhow!("Verifier must provide `authorization_encrypted_response_alg` and `authorization_encrypted_response_enc` parameters when for encrypted authorization response")),
+        Some((AuthorizationEncryptedResponseAlgorithm::EcdhEs, AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM)) => {}
     }
 
     let key = key_from_verifier_metadata(verifier_metadata)?;
 
     let mut header = JweHeader::new();
     header.set_key_id(key.key_id.to_string());
-    header.set_content_encryption(JweContentEncryptionAlgorithm::A256GCM.to_string());
+    header.set_content_encryption(
+        AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM.to_string(),
+    );
     // apu param
     header.set_agreement_partyuinfo(mdoc_generated_nonce);
     // apv param
@@ -89,6 +92,12 @@ fn build_jwk(key: OpenID4VPClientMetadataJwkDTO) -> anyhow::Result<Jwk> {
             let mut jwk = Jwk::new("OKP");
             jwk.set_curve(okp.crv);
             jwk.set_parameter("x", Some(okp.x.into()))?;
+
+            if let Some("Ed25519") = jwk.curve() {
+                jwk = jwk
+                    .into_x25519()
+                    .context("Cannot convert Ed25519 into X25519")?;
+            }
 
             Ok(jwk)
         }

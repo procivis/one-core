@@ -1,4 +1,5 @@
 use shared_types::KeyId;
+use zeroize::Zeroizing;
 
 use crate::provider::key_storage::KeyStorageCapabilities;
 use crate::{
@@ -23,6 +24,10 @@ impl KeyStorage for PKCS11KeyProvider {
         _key_type: &str,
     ) -> Result<GeneratedKey, ServiceError> {
         todo!()
+    }
+
+    fn secret_key_as_jwk(&self, _key: &Key) -> Result<Zeroizing<String>, ServiceError> {
+        unimplemented!()
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {

@@ -11,7 +11,9 @@ use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{DetailCredential, Presentation};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::TokenVerifier;
+use crate::provider::credential_formatter::{
+    ExtractCredentialsCtx, ExtractPresentationCtx, TokenVerifier,
+};
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
@@ -147,7 +149,7 @@ pub(super) async fn peek_presentation(
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let presentation = formatter
-        .extract_presentation_unverified(presentation_string)
+        .extract_presentation_unverified(presentation_string, ExtractPresentationCtx::empty())
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractPresentation(_)) {
@@ -166,6 +168,7 @@ pub(super) async fn validate_presentation(
     oidc_format: &str,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<dyn TokenVerifier>,
+    context: ExtractPresentationCtx,
 ) -> Result<Presentation, ServiceError> {
     let format = map_from_oidc_vp_format_to_core(oidc_format)?;
     let formatter = formatter_provider
@@ -173,7 +176,7 @@ pub(super) async fn validate_presentation(
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let presentation = formatter
-        .extract_presentation(presentation_string, key_verification)
+        .extract_presentation(presentation_string, key_verification, context)
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractPresentation(_)) {
@@ -199,6 +202,7 @@ pub(super) async fn validate_presentation(
     Ok(presentation)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn validate_credential(
     presentation: Presentation,
     path_nested: &NestedPresentationSubmissionDescriptorDTO,
@@ -207,6 +211,7 @@ pub(super) async fn validate_credential(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<KeyVerification>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
+    credential_context: ExtractCredentialsCtx,
 ) -> Result<DetailCredential, ServiceError> {
     let holder_did = presentation
         .issuer_did
@@ -228,7 +233,7 @@ pub(super) async fn validate_credential(
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let credential = formatter
-        .extract_credentials(credential, key_verification)
+        .extract_credentials(credential, key_verification, credential_context)
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractCredentials(_)) {
@@ -322,15 +327,12 @@ fn resolve_claim_inner<'a>(
         return Ok(Some(value));
     }
 
-    let (prefix, rest) =
-        claim_name
-            .split_once(NESTED_CLAIM_MARKER)
-            .ok_or(ServiceError::OpenID4VCError(
-                OpenID4VCIError::InvalidRequest,
-            ))?;
-    match claims.get(prefix) {
+    match claim_name.split_once(NESTED_CLAIM_MARKER) {
+        Some((prefix, rest)) => match claims.get(prefix) {
+            None => Ok(None),
+            Some(value) => resolve_claim_inner(rest, value),
+        },
         None => Ok(None),
-        Some(value) => resolve_claim_inner(rest, value),
     }
 }
 
@@ -357,10 +359,11 @@ pub(super) fn validate_claims(
     let mut proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
 
     for expected_credential_claim in expected_credential_claims {
-        if let Some(value) = resolve_claim(
+        let resolved = resolve_claim(
             &expected_credential_claim.schema.key,
             &received_credential.claims.values,
-        )? {
+        );
+        if let Some(value) = resolved? {
             // Expected claim present in the presentation
             proved_claims.push(ValidatedProofClaimDTO {
                 proof_input_claim: expected_credential_claim.to_owned(),

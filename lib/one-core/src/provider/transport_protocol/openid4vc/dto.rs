@@ -97,14 +97,15 @@ pub struct OpenID4VPClientMetadata {
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
     pub client_id_scheme: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authorization_encrypted_response_alg: Option<JweKeyManagementAlgorithm>,
+    pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub authorization_encrypted_response_enc: Option<JweContentEncryptionAlgorithm>,
+    pub authorization_encrypted_response_enc:
+        Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
 }
 
 // https://datatracker.ietf.org/doc/html/rfc7518#section-4.1
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display)]
-pub enum JweKeyManagementAlgorithm {
+pub enum AuthorizationEncryptedResponseAlgorithm {
     // Elliptic Curve Diffie-Hellman Ephemeral Static key agreement using Concat KDF
     #[serde(rename = "ECDH-ES")]
     #[strum(serialize = "ECDH-ES")]
@@ -113,7 +114,7 @@ pub enum JweKeyManagementAlgorithm {
 
 // https://datatracker.ietf.org/doc/html/rfc7518#section-5.1
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display)]
-pub enum JweContentEncryptionAlgorithm {
+pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
     // AES GCM using 256-bit key
     A256GCM,
 }

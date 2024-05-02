@@ -218,7 +218,7 @@ fn mdoc_verify_if_only_second_level_claims_are_present(
 
     let level_different_than_two = claims
         .iter()
-        .any(|claim| claim.key.matches(NESTED_CLAIM_MARKER).count() != 1);
+        .any(|claim| claim.key.matches(NESTED_CLAIM_MARKER).count() == 0);
     !level_different_than_two
 }
 

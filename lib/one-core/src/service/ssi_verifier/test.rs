@@ -331,7 +331,7 @@ async fn test_submit_proof_succeeds() {
     formatter
         .expect_extract_presentation()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(Presentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -347,7 +347,7 @@ async fn test_submit_proof_succeeds() {
     formatter
         .expect_extract_credentials()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(DetailCredential {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -544,7 +544,7 @@ async fn test_submit_proof_failed_credential_revoked() {
     formatter
         .expect_extract_presentation()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(Presentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -560,7 +560,7 @@ async fn test_submit_proof_failed_credential_revoked() {
     formatter
         .expect_extract_credentials()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(DetailCredential {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -727,7 +727,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     formatter
         .expect_extract_presentation()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(Presentation {
                 id: Some("presentation id".to_string()),
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -743,7 +743,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     formatter
         .expect_extract_credentials()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(DetailCredential {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),

@@ -58,6 +58,8 @@ rand.workspace        = true
 rand_chacha.workspace = true
 indoc                 = { version = "2.0" }
 maplit                = "1.0"
+hex-literal           = "0.4"
+p256.workspace        = true
 
 [lints]
 workspace = true

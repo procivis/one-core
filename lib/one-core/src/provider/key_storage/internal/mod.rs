@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use cocoon::MiniCocoon;
 use rand::RngCore;
 use rand::SeedableRng;
@@ -5,7 +7,7 @@ use rand_chacha::ChaCha20Rng;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use shared_types::KeyId;
-use std::sync::Arc;
+use zeroize::Zeroizing;
 
 use crate::crypto::signer::error::SignerError;
 use crate::model::key::Key;
@@ -74,6 +76,24 @@ impl KeyStorage for InternalKeyProvider {
                 &self.encryption_key,
             )?,
         })
+    }
+
+    fn secret_key_as_jwk(&self, key: &Key) -> Result<Zeroizing<String>, ServiceError> {
+        let private_key = decrypt_if_password_is_provided(&key.key_reference, &self.encryption_key)
+            .map(Zeroizing::new)
+            .map_err(|err| {
+                ServiceError::KeyStorageError(anyhow::anyhow!("Decryption failed: {err}"))
+            })?;
+
+        let key_type = &key.key_type;
+        let provider = self
+            .key_algorithm_provider
+            .get_key_algorithm(key_type)
+            .ok_or_else(|| ValidationError::InvalidKeyAlgorithm(key_type.to_owned()))?;
+
+        provider
+            .private_key_as_jwk(private_key)
+            .map_err(|err| ServiceError::KeyStorageError(err.into()))
     }
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {

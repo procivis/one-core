@@ -87,6 +87,30 @@ impl SSIApi {
         self.client.post(&url, body).await
     }
 
+    pub async fn issuer_create_credential_mdoc(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+        doctype: &str,
+        jwt: &str,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let url = format!("/ssi/oidc-issuer/v1/{credential_schema_id}/credential");
+
+        let body = json!({
+            "format": "mso_mdoc",
+            "credential_definition": {
+                "type": ["VerifiableCredential"]
+            },
+            "proof": {
+                "proof_type": "jwt",
+                "jwt": jwt
+            },
+            "doctype": doctype
+        });
+
+        self.client.post(&url, body).await
+    }
+
     pub async fn openid_credential_issuer(
         &self,
         credential_schema_id: impl Into<Uuid>,

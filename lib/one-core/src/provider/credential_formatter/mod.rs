@@ -49,6 +49,7 @@ use self::{
 };
 
 use super::transport_protocol::openid4vc::dto::OpenID4VPInteractionData;
+use crate::service::oidc::model::OpenID4VPInteractionContent;
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
@@ -132,6 +133,66 @@ pub trait SignatureProvider: Send + Sync {
 }
 
 #[derive(Debug, Default)]
+pub struct ExtractCredentialsCtx {
+    pub holder_did: Option<DidValue>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ExtractPresentationCtx {
+    nonce: Option<String>,
+    mdoc_generated_nonce: Option<String>,
+    issuance_date: Option<OffsetDateTime>,
+    expiration_date: Option<OffsetDateTime>,
+    holder_did: Option<DidValue>,
+}
+
+impl ExtractPresentationCtx {
+    pub fn empty() -> Self {
+        Self::default()
+    }
+
+    pub fn with_mdoc_generated_nonce(mut self, mdoc_generated_nonce: String) -> Self {
+        self.mdoc_generated_nonce = Some(mdoc_generated_nonce);
+
+        self
+    }
+
+    pub fn with_issuance_date(mut self, issuance_date: OffsetDateTime) -> Self {
+        self.issuance_date = Some(issuance_date);
+
+        self
+    }
+
+    pub fn with_expiration_date(mut self, expiration_date: OffsetDateTime) -> Self {
+        self.issuance_date = Some(expiration_date);
+
+        self
+    }
+
+    pub fn with_holder_did(mut self, holder_did: DidValue) -> Self {
+        self.holder_did = Some(holder_did);
+
+        self
+    }
+
+    pub fn get_holder_did(&self) -> Option<DidValue> {
+        self.holder_did.clone()
+    }
+}
+
+impl From<OpenID4VPInteractionContent> for ExtractPresentationCtx {
+    fn from(data: OpenID4VPInteractionContent) -> Self {
+        Self {
+            nonce: Some(data.nonce),
+            mdoc_generated_nonce: None,
+            issuance_date: None,
+            expiration_date: None,
+            holder_did: None,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct FormatPresentationCtx {
     nonce: Option<String>,
     mdoc_generated_nonce: Option<String>,
@@ -188,6 +249,7 @@ pub trait CredentialFormatter: Send + Sync {
         &self,
         credentials: &str,
         verification: Box<dyn TokenVerifier>,
+        ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError>;
 
     async fn format_credential_presentation(
@@ -213,11 +275,13 @@ pub trait CredentialFormatter: Send + Sync {
         &self,
         token: &str,
         verification: Box<dyn TokenVerifier>,
+        ctx: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError>;
 
     async fn extract_presentation_unverified(
         &self,
         token: &str,
+        ctx: ExtractPresentationCtx,
     ) -> Result<Presentation, FormatterError>;
 
     fn get_leeway(&self) -> u64;

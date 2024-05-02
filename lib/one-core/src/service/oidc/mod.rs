@@ -4,12 +4,14 @@ use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 
 pub mod dto;
@@ -24,6 +26,8 @@ pub struct OIDCService {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
     proof_repository: Arc<dyn ProofRepository>,
+    key_repository: Arc<dyn KeyRepository>,
+    key_provider: Arc<dyn KeyProvider>,
     interaction_repository: Arc<dyn InteractionRepository>,
     config: Arc<core_config::CoreConfig>,
     protocol_provider: Arc<dyn TransportProtocolProvider>,
@@ -41,6 +45,8 @@ impl OIDCService {
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
         proof_repository: Arc<dyn ProofRepository>,
+        key_repository: Arc<dyn KeyRepository>,
+        key_provider: Arc<dyn KeyProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
         config: Arc<core_config::CoreConfig>,
         protocol_provider: Arc<dyn TransportProtocolProvider>,
@@ -55,6 +61,8 @@ impl OIDCService {
             credential_schema_repository,
             credential_repository,
             proof_repository,
+            key_repository,
+            key_provider,
             interaction_repository,
             config,
             protocol_provider,

@@ -154,9 +154,10 @@ pub struct OpenID4VCIProofRequestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct OpenID4VPDirectPostRequestDTO {
-    pub presentation_submission: PresentationSubmissionMappingDTO,
-    pub vp_token: String,
-    pub state: Uuid,
+    pub presentation_submission: Option<PresentationSubmissionMappingDTO>,
+    pub vp_token: Option<String>,
+    pub state: Option<Uuid>,
+    pub response: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
