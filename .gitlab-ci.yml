@@ -294,6 +294,23 @@ upload_sdk_artifacts:
         =========================
       EOM
 
+generate_binding_files:
+  stage: sdk_build
+  needs:
+    - build
+    - tests
+  script:
+    - makers generateuniffi_android
+    - makers generateuniffi_ios
+  artifacts:
+    paths:
+      - target/uniffi/android/java/uniffi/one_core/one_core.kt
+      - target/uniffi/ios/one_core.swift
+    expire_in: 10 days
+  extends:
+    - .only_main_or_tag_manual
+
+
 test_e2e:
   stage: e2e_tests
   needs:
@@ -377,7 +394,7 @@ dependency_track:upload-bom:
     - cyclonedx-cli merge --input-files ${FILES} --input-format=json --output-format=json --group apps > ${SBOM_FILE_PATH}
     - file_content=$(base64 -i $SBOM_FILE_PATH)
     - >
-      curl -v -X PUT \
+      curl -v --fail -X PUT \
         -H "Content-Type: application/json" \
         -H "X-API-Key: ${DEPENDENCY_TRACK_API_KEY}" \
         --data @- ${D_TRACK_PATH} <<EOF
