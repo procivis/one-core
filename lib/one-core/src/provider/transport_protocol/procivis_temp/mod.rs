@@ -16,6 +16,7 @@ use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::provider::credential_formatter::FormatPresentationCtx;
 use crate::provider::transport_protocol::dto::ProofClaimSchema;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -237,7 +238,13 @@ impl TransportProtocol for ProcivisTemp {
             .collect();
 
         let presentation = presentation_formatter
-            .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, None)
+            .format_presentation(
+                &tokens,
+                &holder_did.did,
+                &key.key_type,
+                auth_fn,
+                FormatPresentationCtx::empty(),
+            )
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 

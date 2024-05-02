@@ -1,3 +1,4 @@
+use std::any::type_name;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -6,13 +7,15 @@ use async_trait::async_trait;
 use coset::iana::{self, EnumI64};
 use coset::{CoseKey, CoseKeyBuilder, Header, HeaderBuilder, Label, ProtectedHeader};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use rand::RngCore;
-use serde::Deserialize;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSeconds};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 
 use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -22,15 +25,17 @@ use crate::provider::did_method::provider::DidMethodProvider;
 
 use self::cose::CoseSign1Builder;
 use self::mdoc::{
-    Bstr, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs, IssuerAuth, IssuerSigned,
-    IssuerSignedItem, IssuerSignedItemBytes, MobileSecurityObject, MobileSecurityObjectBytes,
-    MobileSecurityObjectVersion, Namespace, Namespaces, ValidityInfo, ValueDigests,
+    Bstr, Bytes, CoseSign1, DateTime, DeviceAuth, DeviceAuthentication, DeviceKey, DeviceKeyInfo,
+    DeviceResponse, DeviceResponseVersion, DeviceSigned, DigestAlgorithm, DigestIDs, Document,
+    IssuerSigned, IssuerSignedItem, MobileSecurityObject, MobileSecurityObjectVersion, Namespace,
+    Namespaces, OID4VPHandover, SessionTranscript, ValidityInfo, ValueDigests,
 };
 
 use super::common::nest_claims;
 use super::model::{CredentialPresentation, CredentialSchema, CredentialSubject, Presentation};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, FormatterCapabilities, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialFormatter, FormatPresentationCtx,
+    FormatterCapabilities, SignatureProvider, VerificationFn,
 };
 
 mod cose;
@@ -111,7 +116,7 @@ impl CredentialFormatter for MdocFormatter {
             doc_type: credential_schema_id,
             validity_info,
         };
-        let mso = MobileSecurityObjectBytes(mso)
+        let mso = Bytes::<MobileSecurityObject>(mso)
             .to_cbor_bytes()
             .map_err(|err| {
                 FormatterError::Failed(format!(
@@ -134,15 +139,10 @@ impl CredentialFormatter for MdocFormatter {
 
         let issuer_signed = IssuerSigned {
             name_spaces: Some(namespaces),
-            issuer_auth: IssuerAuth(cose_sign1),
+            issuer_auth: CoseSign1(cose_sign1),
         };
 
-        let issuer_signed = issuer_signed.to_cbor().map_err(|err| {
-            FormatterError::Failed(format!("CBOR serialization failed for IssuerSigned: {err}"))
-        })?;
-
-        Base64UrlSafeNoPadding::encode_to_string(issuer_signed)
-            .map_err(|err| FormatterError::Failed(format!("Base64 encoding failed: {err}")))
+        encode_cbor_base64(issuer_signed)
     }
 
     async fn extract_credentials(
@@ -191,13 +191,60 @@ impl CredentialFormatter for MdocFormatter {
 
     async fn format_presentation(
         &self,
-        _tokens: &[String],
+        tokens: &[String],
         _holder_did: &DidValue,
-        _algorithm: &str,
-        _auth_fn: AuthenticationFn,
-        _nonce: Option<String>,
+        algorithm: &str,
+        auth_fn: AuthenticationFn,
+        context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
-        todo!()
+        let FormatPresentationCtx {
+            nonce: Some(nonce),
+            mdoc_generated_nonce: Some(mdoc_generated_nonce),
+            client_id: Some(client_id),
+            response_uri: Some(response_uri),
+        } = context
+        else {
+            return Err(FormatterError::Failed(format!(
+                "Cannot format mdoc presentation invalid context `{context:?}`. All fields must be present."
+            )));
+        };
+
+        let mut documents = Vec::with_capacity(tokens.len());
+        for token in tokens {
+            let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
+            let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
+            let doc_type = mso.doc_type;
+
+            let device_signed = try_build_device_signed(
+                &*auth_fn,
+                algorithm,
+                &nonce,
+                &mdoc_generated_nonce,
+                &doc_type,
+                &client_id,
+                &response_uri,
+            )
+            .await?;
+
+            let document = Document {
+                doc_type,
+                issuer_signed,
+                device_signed,
+                errors: None,
+            };
+
+            documents.push(document);
+        }
+
+        let device_response = DeviceResponse {
+            version: DeviceResponseVersion::V1_0,
+            documents: Some(documents),
+            document_errors: None,
+            // this will be != 0 if document errors is not None
+            status: 0,
+        };
+
+        encode_cbor_base64(device_response)
     }
 
     async fn extract_presentation(
@@ -208,11 +255,42 @@ impl CredentialFormatter for MdocFormatter {
         todo!()
     }
 
+    // Extract issuer_signed, keep only the claims that the verifier asked for, re-encode issuer_signed that back to the same format
     async fn format_credential_presentation(
         &self,
-        _credential: CredentialPresentation,
+        credential: CredentialPresentation,
     ) -> Result<String, FormatterError> {
-        todo!()
+        let mut issuer_signed: IssuerSigned = decode_cbor_base64(&credential.token)?;
+
+        let Some(namespaces) = issuer_signed.name_spaces.as_mut() else {
+            return Err(FormatterError::Failed(
+                "IssuerSigned object is missing namespaces".to_owned(),
+            ));
+        };
+
+        let (root_keys, suffix_paths): (IndexSet<_>, IndexSet<_>) = credential
+            .disclosed_keys
+            .iter()
+            .filter_map(|key| key.split_once('/'))
+            .unzip();
+
+        // keep only the claims that we were asked for
+        namespaces.retain(|root, claims| {
+            if !root_keys.contains(root.as_str()) {
+                return false;
+            }
+
+            claims.retain(|claim| suffix_paths.contains(&claim.0.element_identifier.as_str()));
+            !claims.is_empty()
+        });
+
+        if namespaces.is_empty() {
+            return Err(FormatterError::Failed(
+                "No matching claims were found in namespaces".to_owned(),
+            ));
+        }
+
+        encode_cbor_base64(issuer_signed)
     }
 
     fn get_leeway(&self) -> u64 {
@@ -237,8 +315,53 @@ impl CredentialFormatter for MdocFormatter {
     }
 }
 
+async fn try_build_device_signed(
+    auth_fn: &dyn SignatureProvider,
+    algorithm: &str,
+    nonce: &str,
+    mdoc_generated_nonce: &str,
+    doctype: &str,
+    client_id: &Url,
+    response_uri: &Url,
+) -> Result<DeviceSigned, FormatterError> {
+    let session_transcript = SessionTranscript {
+        handover: OID4VPHandover::compute(client_id, response_uri, nonce, mdoc_generated_nonce),
+    };
+    let device_namespaces_bytes = Bytes([].into());
+
+    let device_auth = DeviceAuthentication {
+        session_transcript: Bytes(session_transcript),
+        doctype: doctype.to_owned(),
+        device_namespaces: device_namespaces_bytes.clone(),
+    };
+    let device_auth_bytes = Bytes(device_auth).to_cbor_bytes().map_err(|err| {
+        FormatterError::Failed(format!(
+            "CBOR serialization failed for DeviceAuthentication: {err}"
+        ))
+    })?;
+
+    let algorithm_header = try_build_algorithm_header(algorithm)?;
+    let cose_sign1 = CoseSign1Builder::new()
+        .protected(algorithm_header)
+        .try_create_detached_signature_with_provider(&device_auth_bytes, &[], auth_fn)
+        .await
+        .map_err(|err| FormatterError::CouldNotSign(err.to_string()))?
+        .build();
+
+    let device_auth = DeviceAuth {
+        device_signature: Some(cose_sign1.into()),
+    };
+
+    let device_signed = DeviceSigned {
+        name_spaces: device_namespaces_bytes,
+        device_auth,
+    };
+
+    Ok(device_signed)
+}
+
 fn try_build_namespaces(claims: Vec<(String, String)>) -> Result<Namespaces, FormatterError> {
-    let mut namespaces = IndexMap::<String, Vec<IssuerSignedItemBytes>>::new();
+    let mut namespaces = Namespaces::new();
 
     for (digest_id, (path, value)) in claims.into_iter().enumerate() {
         let (namespace, name) = path.split_once('/').ok_or_else(|| {
@@ -265,7 +388,7 @@ fn try_build_namespaces(claims: Vec<(String, String)>) -> Result<Namespaces, For
         namespaces
             .entry(namespace.to_owned())
             .or_default()
-            .push(IssuerSignedItemBytes(signed_item));
+            .push(Bytes::<IssuerSignedItem>(signed_item));
     }
 
     Ok(namespaces)
@@ -298,7 +421,7 @@ fn try_build_algorithm_header(algorithm: &str) -> Result<ProtectedHeader, Format
     })
 }
 
-fn extract_did_from_x5chain_header(IssuerAuth(cose_sign1): &IssuerAuth) -> Option<DidValue> {
+fn extract_did_from_x5chain_header(CoseSign1(cose_sign1): &CoseSign1) -> Option<DidValue> {
     let x5chain_label = Label::Int(coset::iana::HeaderParameter::X5Chain.to_i64());
 
     cose_sign1
@@ -320,7 +443,7 @@ fn extract_did_from_x5chain_header(IssuerAuth(cose_sign1): &IssuerAuth) -> Optio
 }
 
 fn try_extract_mobile_security_object(
-    IssuerAuth(cose_sign1): &IssuerAuth,
+    CoseSign1(cose_sign1): &CoseSign1,
 ) -> Result<MobileSecurityObject, FormatterError> {
     let Some(payload) = &cose_sign1.payload else {
         return Err(FormatterError::Failed(
@@ -328,11 +451,12 @@ fn try_extract_mobile_security_object(
         ));
     };
 
-    let MobileSecurityObjectBytes(mso) = ciborium::from_reader(&payload[..]).map_err(|err| {
-        FormatterError::Failed(format!(
-            "IssuerAuth payload cannot be converted to MSO: {err}"
-        ))
-    })?;
+    let Bytes::<MobileSecurityObject>(mso) =
+        ciborium::from_reader(&payload[..]).map_err(|err| {
+            FormatterError::Failed(format!(
+                "IssuerAuth payload cannot be converted to MSO: {err}"
+            ))
+        })?;
 
     Ok(mso)
 }
@@ -352,8 +476,8 @@ fn try_build_value_digests(
     for (namespace, signed_items) in namespaces {
         let digest_ids = value_digests.entry(namespace.to_owned()).or_default();
 
-        for signed_item_bytes @ IssuerSignedItemBytes(item) in signed_items {
-            let item_as_cbor = signed_item_bytes.to_embedded_cbor().map_err(|err| {
+        for signed_item_bytes @ Bytes::<IssuerSignedItem>(item) in signed_items {
+            let item_as_cbor = signed_item_bytes.to_cbor_bytes().map_err(|err| {
                 FormatterError::Failed(format!(
                     "Failed encoding signed item as embedded CBOR : {err}"
                 ))
@@ -423,7 +547,7 @@ fn try_extract_claims(
     let mut claims = vec![];
 
     for (root, inner_claims) in namespaces {
-        for IssuerSignedItemBytes(claim) in inner_claims {
+        for Bytes::<IssuerSignedItem>(claim) in inner_claims {
             let path = format!("{root}/{}", claim.element_identifier);
             let value = claim.element_value.into_text().map_err(|err| {
                 FormatterError::Failed(format!(
@@ -436,4 +560,28 @@ fn try_extract_claims(
     }
 
     nest_claims(claims)
+}
+
+fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {
+    let type_name = type_name::<T>();
+    let mut bytes = vec![];
+
+    ciborium::ser::into_writer(&t, &mut bytes).map_err(|err| {
+        FormatterError::Failed(format!("CBOR serialization of `{type_name}` failed: {err}"))
+    })?;
+
+    Base64UrlSafeNoPadding::encode_to_string(bytes)
+        .map_err(|err| FormatterError::Failed(format!("Base64 encoding failed: {err}")))
+}
+
+fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, FormatterError> {
+    let bytes = Base64UrlSafeNoPadding::decode_to_vec(s, None)
+        .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?;
+
+    let type_name = type_name::<T>();
+    ciborium::de::from_reader(&bytes[..]).map_err(|err| {
+        FormatterError::Failed(format!(
+            "CBOR deserialization into `{type_name}` failed: {err}"
+        ))
+    })
 }

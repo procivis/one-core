@@ -31,8 +31,8 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential, FormatterCapabilities,
-    FormatterError, Presentation, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential, FormatPresentationCtx,
+    FormatterCapabilities, FormatterError, Presentation, VerificationFn,
 };
 
 pub struct SDJWTFormatter {
@@ -116,7 +116,7 @@ impl CredentialFormatter for SDJWTFormatter {
         _holder_did: &DidValue,
         _algorithm: &str,
         _auth_fn: AuthenticationFn,
-        _nonce: Option<String>,
+        _context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         // for presentation the JWT formatter is used
         unreachable!()

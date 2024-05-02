@@ -29,29 +29,29 @@ fn convert_internal_structure_to_dto() {
     );
 
     let output = ConfigDTO::try_from(&config).unwrap();
-    let text_output = serde_json::to_string_pretty(&output).unwrap();
+    let output = serde_json::to_value(&output).unwrap();
 
     assert_eq!(
-        r#"{
-  "format": {},
-  "exchange": {},
-  "revocation": {},
-  "did": {},
-  "datatype": {
-    "STRING": {
-      "disabled": null,
-      "display": "display",
-      "order": null,
-      "params": {
-        "autocomplete": false
-      },
-      "type": "STRING"
-    }
-  },
-  "keyAlgorithm": {},
-  "keyStorage": {}
-}"#,
-        text_output
+        json!({
+          "format": {},
+          "exchange": {},
+          "revocation": {},
+          "did": {},
+          "datatype": {
+            "STRING": {
+              "disabled": null,
+              "display": "display",
+              "order": null,
+              "params": {
+                "autocomplete": false
+              },
+              "type": "STRING"
+            }
+          },
+          "keyAlgorithm": {},
+          "keyStorage": {}
+        }),
+        output
     );
 }
 
@@ -77,26 +77,26 @@ fn do_not_serialize_private_parameters() {
     );
 
     let output = ConfigDTO::try_from(&config).unwrap();
-    let text_output = serde_json::to_string_pretty(&output).unwrap();
+    let output = serde_json::to_value(&output).unwrap();
 
     assert_eq!(
-        r#"{
-  "format": {},
-  "exchange": {},
-  "revocation": {},
-  "did": {},
-  "datatype": {
-    "STRING": {
-      "disabled": null,
-      "display": "display",
-      "order": null,
-      "params": {},
-      "type": "STRING"
-    }
-  },
-  "keyAlgorithm": {},
-  "keyStorage": {}
-}"#,
-        text_output
+        json!({
+          "format": {},
+          "exchange": {},
+          "revocation": {},
+          "did": {},
+          "datatype": {
+            "STRING": {
+              "disabled": null,
+              "display": "display",
+              "order": null,
+              "params": {},
+              "type": "STRING"
+            }
+          },
+          "keyAlgorithm": {},
+          "keyStorage": {}
+        }),
+        output
     );
 }

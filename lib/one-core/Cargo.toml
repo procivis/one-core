@@ -60,6 +60,7 @@ tracing.workspace          = true
 hex.workspace              = true
 jsonptr                    = { version = "0.4.7" }
 indexmap                   = { version = "2.2.6", features = ["serde"] }
+josekit                    = { version = "0.8", features = ["vendored"] }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

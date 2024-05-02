@@ -1,67 +1,62 @@
-use ciborium::tag::Required;
-use coset::{AsCborValue, CoseKey, CoseSign1};
+use ciborium::{cbor, tag::Required, Value};
+use coset::AsCborValue;
 use indexmap::IndexMap;
-use serde::{ser, Deserialize, Serialize, Serializer};
+use serde::{
+    de::{self, DeserializeOwned},
+    ser, Deserialize, Serialize, Serializer,
+};
+use sha2::{Digest, Sha256};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use url::Url;
 
 pub type Namespace = String;
 
-pub type Namespaces = IndexMap<Namespace, Vec<IssuerSignedItemBytes>>;
+pub type Namespaces = IndexMap<Namespace, Vec<Bytes<IssuerSignedItem>>>;
+
+pub type DeviceNamespaces = IndexMap<Namespace, DeviceSignedItems>;
+pub type DeviceSignedItems = IndexMap<DataElementIdentifier, DataElementValue>;
 
 pub type ValueDigests = IndexMap<Namespace, DigestIDs>;
 
 pub type DigestIDs = IndexMap<u64, Bstr>;
 
-type EmbeddedCborTag = Required<Bstr, 24>;
+pub type DocumentError = IndexMap<DocType, ErrorCode>;
+pub type Errors = IndexMap<Namespace, ErrorItems>;
+pub type ErrorItems = IndexMap<DataElementIdentifier, ErrorCode>;
+pub type DocType = String;
+pub type ErrorCode = i64;
 
-type DateTimeCborTag = Required<String, 0>;
+pub type DataElementIdentifier = String;
+// DataElementValue = any
+pub type DataElementValue = ciborium::Value;
+
+const EMBEDDED_CBOR_TAG: u64 = 24;
+const DATE_TIME_CBOR_TAG: u64 = 0;
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceResponse {
+    pub version: DeviceResponseVersion,
+    pub documents: Option<Vec<Document>>,
+    pub document_errors: Option<Vec<DocumentError>>,
+    pub status: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Document {
+    pub doc_type: DocType,
+    pub issuer_signed: IssuerSigned,
+    pub device_signed: DeviceSigned,
+    pub errors: Option<Errors>,
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct IssuerSigned {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name_spaces: Option<Namespaces>,
-    pub issuer_auth: IssuerAuth,
-}
-impl IssuerSigned {
-    pub(crate) fn to_cbor(&self) -> Result<Vec<u8>, ciborium::ser::Error<std::io::Error>> {
-        let mut output = vec![];
-        ciborium::into_writer(self, &mut output)?;
-
-        Ok(output)
-    }
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(try_from = "EmbeddedCborTag")]
-pub struct IssuerSignedItemBytes(pub IssuerSignedItem);
-
-impl IssuerSignedItemBytes {
-    pub(crate) fn to_embedded_cbor(&self) -> Result<Vec<u8>, ciborium::ser::Error<std::io::Error>> {
-        let mut output = vec![];
-        ciborium::into_writer(self, &mut output)?;
-
-        Ok(output)
-    }
-}
-
-impl Serialize for IssuerSignedItemBytes {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serialize_embedded_cbor(&self.0, serializer)
-    }
-}
-
-impl TryFrom<EmbeddedCborTag> for IssuerSignedItemBytes {
-    type Error = ciborium::de::Error<std::io::Error>;
-
-    fn try_from(Required(Bstr(value)): EmbeddedCborTag) -> Result<Self, Self::Error> {
-        let signed_item: IssuerSignedItem = ciborium::from_reader(value.as_slice())?;
-
-        Ok(Self(signed_item))
-    }
+    pub issuer_auth: CoseSign1,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -70,66 +65,55 @@ pub struct IssuerSignedItem {
     #[serde(rename = "digestID")]
     pub digest_id: u64,
     pub random: Bstr,
-    pub element_identifier: String,
-    // DataElementValue = any
-    pub element_value: ciborium::Value,
+    pub element_identifier: DataElementIdentifier,
+    pub element_value: DataElementValue,
 }
 
-// The payload for CoseSign1 is MobileSecurityObjectBytes
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(try_from = "ciborium::Value")]
-pub struct IssuerAuth(pub CoseSign1);
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceSigned {
+    pub name_spaces: Bytes<DeviceNamespaces>,
+    pub device_auth: DeviceAuth,
+}
 
-impl Serialize for IssuerAuth {
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceAuth {
+    pub device_signature: Option<CoseSign1>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct CoseSign1(pub coset::CoseSign1);
+
+impl From<coset::CoseSign1> for CoseSign1 {
+    fn from(cose_sign1: coset::CoseSign1) -> Self {
+        Self(cose_sign1)
+    }
+}
+
+impl Serialize for CoseSign1 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let issuer_auth = self.0.clone().to_cbor_value().map_err(ser::Error::custom)?;
-
-        issuer_auth.serialize(serializer)
+        self.0
+            .clone()
+            .to_cbor_value()
+            .map_err(ser::Error::custom)?
+            .serialize(serializer)
     }
 }
 
-impl TryFrom<ciborium::Value> for IssuerAuth {
-    type Error = coset::CoseError;
-
-    fn try_from(value: ciborium::Value) -> Result<Self, Self::Error> {
-        let sign = CoseSign1::from_cbor_value(value)?;
-
-        Ok(Self(sign))
-    }
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(try_from = "EmbeddedCborTag")]
-pub struct MobileSecurityObjectBytes(pub MobileSecurityObject);
-
-impl MobileSecurityObjectBytes {
-    pub(crate) fn to_cbor_bytes(&self) -> Result<Vec<u8>, ciborium::ser::Error<std::io::Error>> {
-        let mut output = vec![];
-        ciborium::into_writer(self, &mut output)?;
-
-        Ok(output)
-    }
-}
-
-impl Serialize for MobileSecurityObjectBytes {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<'de> Deserialize<'de> for CoseSign1 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        S: Serializer,
+        D: de::Deserializer<'de>,
     {
-        serialize_embedded_cbor(&self.0, serializer)
-    }
-}
+        let value = ciborium::Value::deserialize(deserializer)?;
 
-impl TryFrom<EmbeddedCborTag> for MobileSecurityObjectBytes {
-    type Error = ciborium::de::Error<std::io::Error>;
-
-    fn try_from(Required(Bstr(value)): EmbeddedCborTag) -> Result<Self, Self::Error> {
-        let mso: MobileSecurityObject = ciborium::from_reader(value.as_slice())?;
-
-        Ok(Self(mso))
+        coset::CoseSign1::from_cbor_value(value)
+            .map(CoseSign1)
+            .map_err(de::Error::custom)
     }
 }
 
@@ -147,6 +131,12 @@ pub struct MobileSecurityObject {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum MobileSecurityObjectVersion {
+    #[serde(rename = "1.0")]
+    V1_0,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub enum DeviceResponseVersion {
     #[serde(rename = "1.0")]
     V1_0,
 }
@@ -173,7 +163,7 @@ pub struct DeviceKeyInfo {
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(try_from = "ciborium::Value")]
-pub struct DeviceKey(pub CoseKey);
+pub struct DeviceKey(pub coset::CoseKey);
 
 impl Serialize for DeviceKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -190,7 +180,7 @@ impl TryFrom<ciborium::Value> for DeviceKey {
     type Error = coset::CoseError;
 
     fn try_from(value: ciborium::Value) -> Result<Self, Self::Error> {
-        let key = CoseKey::from_cbor_value(value)?;
+        let key = coset::CoseKey::from_cbor_value(value)?;
         Ok(Self(key))
     }
 }
@@ -221,8 +211,7 @@ pub struct ValidityInfo {
 }
 
 // datetime for cbor should be in RFC-3339 format as String
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(try_from = "DateTimeCborTag")]
+#[derive(Debug, PartialEq)]
 pub struct DateTime(pub OffsetDateTime);
 
 impl Serialize for DateTime {
@@ -231,25 +220,28 @@ impl Serialize for DateTime {
         S: Serializer,
     {
         //Should be serialized as Rfc3339 without fraction seconds
-        let datetime = self
-            .0
+        self.0
             .replace_microsecond(0)
             // SAFETY: 0 is a valid microsecond
             .unwrap()
             .format(&Rfc3339)
-            .map_err(ser::Error::custom)?;
-
-        ciborium::tag::Required::<_, 0>(datetime).serialize(serializer)
+            .map(ciborium::tag::Required::<String, DATE_TIME_CBOR_TAG>)
+            .map_err(ser::Error::custom)?
+            .serialize(serializer)
     }
 }
 
-impl TryFrom<DateTimeCborTag> for DateTime {
-    type Error = time::Error;
+impl<'de> Deserialize<'de> for DateTime {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        let datetime =
+            ciborium::tag::Required::<String, DATE_TIME_CBOR_TAG>::deserialize(deserializer)?;
 
-    fn try_from(value: DateTimeCborTag) -> Result<Self, Self::Error> {
-        let datetime = OffsetDateTime::parse(&value.0, &Rfc3339)?;
-
-        Ok(Self(datetime))
+        OffsetDateTime::parse(&datetime.0, &Rfc3339)
+            .map(DateTime)
+            .map_err(de::Error::custom)
     }
 }
 
@@ -259,29 +251,154 @@ impl From<DateTime> for OffsetDateTime {
     }
 }
 
-// using custom type since when serializing ciborium doesn't understand if a Vec<u8> is Value::Bytes(..) or Value::Array(Value)
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(transparent)]
+// using custom type since ciborium doesn't understand if a Vec<u8> is Value::Bytes(..) or Value::Array(Value)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(from = "Vec<u8>", into = "ciborium::Value")]
 pub struct Bstr(pub Vec<u8>);
 
-impl Serialize for Bstr {
+impl From<Bstr> for ciborium::Value {
+    fn from(Bstr(value): Bstr) -> Self {
+        Self::Bytes(value)
+    }
+}
+
+impl From<Vec<u8>> for Bstr {
+    fn from(value: Vec<u8>) -> Self {
+        Self(value)
+    }
+}
+
+// used in DeviceSigned as detached payload
+// should be serialized as cbor array: DeviceAuthentication = ["DeviceAuthentication", SessionTranscriptBytes, DocType; DeviceNameSpaceBytes]
+#[derive(Debug, PartialEq)]
+pub struct DeviceAuthentication {
+    pub session_transcript: Bytes<SessionTranscript>,
+    pub doctype: DocType,
+    pub device_namespaces: Bytes<DeviceNamespaces>,
+}
+
+impl Serialize for DeviceAuthentication {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        ciborium::Value::Bytes(self.0.to_vec()).serialize(serializer)
+        cbor!([
+            "DeviceAuthentication",
+            self.session_transcript,
+            self.doctype,
+            self.device_namespaces,
+        ])
+        .map_err(ser::Error::custom)?
+        .serialize(serializer)
     }
 }
 
-fn serialize_embedded_cbor<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+//  SessionTranscript = [
+//       DeviceEngagementBytes = null,
+//       EReaderKeyBytes = null,
+//       OID4VPHandover
+//     ]
+#[derive(Debug, PartialEq)]
+pub struct SessionTranscript {
+    pub handover: OID4VPHandover,
+}
+
+impl Serialize for SessionTranscript {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        cbor!([Value::Null, Value::Null, self.handover])
+            .map_err(ser::Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+//  OID4VPHandover = [
+//    clientIdHash,
+//    responseUriHash,
+//    nonce
+//  ]
+#[derive(Debug, PartialEq)]
+pub struct OID4VPHandover {
+    client_id_hash: Bstr,
+    response_uri_hash: Bstr,
+    nonce: String,
+}
+
+impl OID4VPHandover {
+    pub(crate) fn compute(
+        client_id: &Url,
+        response_uri: &Url,
+        nonce: &str,
+        mdoc_generated_nonce: &str,
+    ) -> Self {
+        let client_id_hash =
+            Sha256::digest([client_id.as_str(), mdoc_generated_nonce].concat()).to_vec();
+        let response_uri_hash =
+            Sha256::digest([response_uri.as_str(), mdoc_generated_nonce].concat()).to_vec();
+
+        Self {
+            client_id_hash: Bstr(client_id_hash),
+            response_uri_hash: Bstr(response_uri_hash),
+            nonce: nonce.to_owned(),
+        }
+    }
+}
+
+impl Serialize for OID4VPHandover {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        cbor!([self.client_id_hash, self.response_uri_hash, self.nonce])
+            .map_err(ser::Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+// Wrapper when T needs to get serialized as "#6.24(bstr .cbor T)" as required by the spec
+#[derive(Debug, PartialEq, Clone)]
+pub struct Bytes<T>(pub T);
+
+impl<T> Bytes<T> {
+    pub(crate) fn to_cbor_bytes(&self) -> Result<Vec<u8>, ciborium::ser::Error<std::io::Error>>
+    where
+        Self: Serialize,
+    {
+        let mut output = vec![];
+        ciborium::into_writer(self, &mut output)?;
+
+        Ok(output)
+    }
+}
+
+impl<T: Serialize> Serialize for Bytes<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut t = vec![];
+        ciborium::into_writer(&self.0, &mut t).map_err(ser::Error::custom)?;
+
+        let tagged_value = Required::<_, EMBEDDED_CBOR_TAG>(Bstr(t));
+
+        tagged_value.serialize(serializer)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for Bytes<T>
 where
-    T: Serialize,
-    S: Serializer,
+    T: DeserializeOwned,
 {
-    let mut embedded_cbor = vec![];
-    ciborium::into_writer(value, &mut embedded_cbor).map_err(ser::Error::custom)?;
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let Required(Bstr(embedded_cbor)) =
+            Required::<_, EMBEDDED_CBOR_TAG>::deserialize(deserializer)?;
+        let t: T = ciborium::from_reader(&embedded_cbor[..]).map_err(de::Error::custom)?;
 
-    let embedded_cbor = ciborium::Value::Bytes(embedded_cbor);
-
-    Required::<_, 24>(embedded_cbor).serialize(serializer)
+        Ok(Self(t))
+    }
 }

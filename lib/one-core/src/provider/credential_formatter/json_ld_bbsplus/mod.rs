@@ -14,7 +14,8 @@ use shared_types::DidValue;
 use super::json_ld::model::LdCredential;
 use super::model::{CredentialPresentation, Presentation};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, FormatterCapabilities, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialFormatter, FormatPresentationCtx,
+    FormatterCapabilities, VerificationFn,
 };
 
 mod base_proof;
@@ -97,7 +98,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         _holder_did: &DidValue,
         _algorithm: &str,
         _auth_fn: AuthenticationFn,
-        _nonce: Option<String>,
+        _context: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         unimplemented!()
     }

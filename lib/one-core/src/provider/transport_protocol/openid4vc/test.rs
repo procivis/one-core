@@ -24,6 +24,7 @@ use crate::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
 };
 use crate::provider::transport_protocol::openid4vc::mapper::prepare_claims;
+use crate::provider::transport_protocol::TransportProtocol;
 use crate::service::test_utilities::generic_config;
 use crate::{
     crypto::MockCryptoProvider,
@@ -47,7 +48,7 @@ use crate::{
                 OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPInteractionData,
                 OpenID4VPPresentationDefinition,
             },
-            TransportProtocol, TransportProtocolError,
+            TransportProtocolError,
         },
     },
     repository::{
@@ -543,6 +544,8 @@ async fn test_handle_invitation_proof_success() {
             },
         )]),
         client_id_scheme: "redirect_uri".to_string(),
+        authorization_encrypted_response_alg: None,
+        authorization_encrypted_response_enc: None,
     })
     .unwrap();
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
@@ -612,6 +615,8 @@ async fn test_handle_invitation_proof_failed() {
             },
         )]),
         client_id_scheme: "redirect_uri".to_string(),
+        authorization_encrypted_response_alg: None,
+        authorization_encrypted_response_enc: None,
     })
     .unwrap();
     let presentation_definition_uri = "https://127.0.0.1/presentation_definition_uri";
@@ -668,6 +673,8 @@ async fn test_handle_invitation_proof_failed() {
         jwks: vec![],
         vp_formats: Default::default(),
         client_id_scheme: "redirect_uri".to_string(),
+        authorization_encrypted_response_alg: None,
+        authorization_encrypted_response_enc: None,
     })
     .unwrap();
     let missing_metadata_field = Url::parse(&format!("openid4vp://?response_type=some_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}", nonce, callback_url, metadata_missing_jwt_vp_json, callback_url, presentation_definition)).unwrap();
@@ -744,6 +751,8 @@ fn test_serialize_and_deserialize_interaction_data() {
             },
         )]),
         client_id_scheme: "redirect_uri".to_string(),
+        authorization_encrypted_response_alg: None,
+        authorization_encrypted_response_enc: None,
     })
     .unwrap();
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {

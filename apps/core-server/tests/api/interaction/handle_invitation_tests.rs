@@ -995,6 +995,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
             },
         )]),
         client_id_scheme: "redirect_uri".to_string(),
+        authorization_encrypted_response_alg: None,
+        authorization_encrypted_response_enc: None,
     })
     .unwrap();
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
@@ -1050,6 +1052,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
             },
         )]),
         client_id_scheme: "redirect_uri".to_string(),
+        authorization_encrypted_response_alg: None,
+        authorization_encrypted_response_enc: None,
     })
     .unwrap();
     let presentation_definition = serde_json::to_string(&OpenID4VPPresentationDefinition {
