@@ -53,6 +53,8 @@ use crate::{
     util::oidc::map_core_to_oidc_format,
 };
 
+use super::dto::{JweContentEncryptionAlgorithm, JweKeyManagementAlgorithm};
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     base_url: Option<String>,
@@ -334,6 +336,8 @@ pub fn create_open_id_for_vp_client_metadata(key: PublicKeyWithJwk) -> OpenID4VP
         }],
         vp_formats: create_open_id_for_vp_formats(),
         client_id_scheme: "redirect_uri".to_string(),
+        authorization_encrypted_response_alg: Some(JweKeyManagementAlgorithm::EcdhEs),
+        authorization_encrypted_response_enc: Some(JweContentEncryptionAlgorithm::A256GCM),
     }
 }
 // TODO: This method needs to be refactored as soon as we have a new config value access and remove the static values from this method

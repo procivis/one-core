@@ -19,7 +19,7 @@ use self::{
         create_open_id_for_vp_presentation_definition, create_presentation_submission,
         get_credential_offer_url,
     },
-    model::{HolderInteractionData, OpenID4VCIInteractionContent},
+    model::{HolderInteractionData, MdocJwePayload, OpenID4VCIInteractionContent},
 };
 use super::{
     deserialize_interaction_data,
@@ -27,10 +27,10 @@ use super::{
     mapper::interaction_from_handle_invitation,
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
 };
-use crate::config::core_config;
 use crate::model::key::KeyRelations;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError;
+use crate::{config::core_config, provider::credential_formatter::FormatPresentationCtx};
 use crate::{
     crypto::CryptoProvider,
     model::{
@@ -99,6 +99,7 @@ use crate::{
     util::oidc::detect_correct_format,
 };
 
+mod mdoc;
 #[cfg(test)]
 mod test;
 
@@ -244,11 +245,25 @@ impl TransportProtocol for OpenID4VC {
             .map(|presented_credential| presented_credential.presentation.to_owned())
             .collect();
 
-        // temporary support for JWK presentation issuance.
-        let (format, oidc_format) = if tokens.iter().any(|t| t.starts_with('{')) {
-            ("JSON_LD_CLASSIC", "ldp_vp")
-        } else {
-            ("JWT", "jwt_vp_json")
+        let formats: HashSet<&str> = credential_presentations
+            .iter()
+            .map(|presented_credential| presented_credential.credential_schema.format.as_str())
+            .collect();
+
+        let (format, oidc_format) = match () {
+            _ if formats.contains("MDOC") => {
+                if formats.len() > 1 {
+                    return Err(TransportProtocolError::Failed(
+                        "Currently for a proof MDOC cannot be used with other formats".to_string(),
+                    ));
+                };
+
+                ("MDOC", "mso_mdoc")
+            }
+            _ if formats.contains("JSON_LD_CLASSIC") || formats.contains("JSON_LD_BBSPLUS") => {
+                ("JSON_LD_CLASSIC", "ldp_vp")
+            }
+            _ => ("JWT", "jwt_vp_json"),
         };
 
         let presentation_formatter = self
@@ -267,31 +282,75 @@ impl TransportProtocol for OpenID4VC {
             oidc_format,
         )?;
 
-        let vp_token = presentation_formatter
-            .format_presentation(
-                &tokens,
-                &holder_did.did,
-                &key.key_type,
-                auth_fn,
-                Some(interaction_data.nonce),
-            )
-            .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        let response_uri = interaction_data.response_uri.clone();
+        let mut params: HashMap<&str, String> = HashMap::new();
 
-        let mut params = HashMap::new();
-        params.insert("vp_token", vp_token);
-        params.insert(
-            "presentation_submission",
-            serde_json::to_string(&presentation_submission)
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
-        );
-        if let Some(state) = interaction_data.state {
-            params.insert("state", state);
+        if format == "MDOC" {
+            let mdoc_generated_nonce = mdoc::generate_nonce();
+
+            let ctx = FormatPresentationCtx::from(interaction_data.clone())
+                .with_mdoc_generated_nonce(mdoc_generated_nonce.clone());
+
+            let client_metadata =
+                interaction_data
+                    .client_metadata
+                    .ok_or(TransportProtocolError::Failed(
+                        "Missing client_metadata for MDOC openid4vp".to_string(),
+                    ))?;
+
+            let state = interaction_data
+                .state
+                .ok_or(TransportProtocolError::Failed(
+                    "Missing state in openid4vp".to_string(),
+                ))?;
+
+            let vp_token = presentation_formatter
+                .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
+                .await
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+            let payload = MdocJwePayload {
+                iss: holder_did.did.clone(),
+                aud: response_uri.clone(),
+                exp: (OffsetDateTime::now_utc() + Duration::minutes(10)),
+                vp_token,
+                presentation_submission,
+                state,
+            };
+
+            let response = mdoc::build_jwe(
+                payload,
+                client_metadata,
+                &mdoc_generated_nonce,
+                &interaction_data.nonce,
+            )
+            .map_err(|err| {
+                TransportProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
+            })?;
+
+            params.insert("response", response);
+        } else {
+            let ctx = FormatPresentationCtx::empty().with_nonce(interaction_data.nonce);
+
+            let vp_token = presentation_formatter
+                .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
+                .await
+                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+            params.insert("vp_token", vp_token);
+            params.insert(
+                "presentation_submission",
+                serde_json::to_string(&presentation_submission)
+                    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+            );
+            if let Some(state) = interaction_data.state {
+                params.insert("state", state);
+            }
         }
 
         let response = self
             .client
-            .post(interaction_data.response_uri)
+            .post(response_uri)
             .form(&params)
             .send()
             .await

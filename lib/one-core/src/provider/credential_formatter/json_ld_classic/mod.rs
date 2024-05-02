@@ -13,8 +13,8 @@ use super::error::FormatterError;
 use super::json_ld::{self, model::*};
 use super::model::{CredentialPresentation, CredentialSubject, DetailCredential, Presentation};
 use super::{
-    AuthenticationFn, Context, CredentialData, CredentialFormatter, FormatterCapabilities,
-    VerificationFn,
+    AuthenticationFn, Context, CredentialData, CredentialFormatter, FormatPresentationCtx,
+    FormatterCapabilities, VerificationFn,
 };
 
 #[allow(dead_code)]
@@ -117,7 +117,7 @@ impl CredentialFormatter for JsonLdClassic {
         holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
-        nonce: Option<String>,
+        FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         let issuance_date = OffsetDateTime::now_utc();
 

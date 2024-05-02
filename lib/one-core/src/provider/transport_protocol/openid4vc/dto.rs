@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+use shared_types::{ClaimSchemaId, KeyId};
+use strum::Display;
+use time::OffsetDateTime;
+use url::Url;
+
 use crate::provider::did_method::dto::PublicKeyJwkDTO;
 use crate::{
     common_mapper::deserialize_with_serde_json,
     model::{credential_schema::WalletStorageTypeEnum, interaction::InteractionId},
 };
-use serde::{Deserialize, Serialize};
-use shared_types::{ClaimSchemaId, KeyId};
-use time::OffsetDateTime;
-use url::Url;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCICredential {
@@ -94,6 +96,26 @@ pub struct OpenID4VPClientMetadata {
     pub jwks: Vec<OpenID4VPClientMetadataJwkDTO>,
     pub vp_formats: HashMap<String, OpenID4VPFormat>,
     pub client_id_scheme: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authorization_encrypted_response_alg: Option<JweKeyManagementAlgorithm>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub authorization_encrypted_response_enc: Option<JweContentEncryptionAlgorithm>,
+}
+
+// https://datatracker.ietf.org/doc/html/rfc7518#section-4.1
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display)]
+pub enum JweKeyManagementAlgorithm {
+    // Elliptic Curve Diffie-Hellman Ephemeral Static key agreement using Concat KDF
+    #[serde(rename = "ECDH-ES")]
+    #[strum(serialize = "ECDH-ES")]
+    EcdhEs,
+}
+
+// https://datatracker.ietf.org/doc/html/rfc7518#section-5.1
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display)]
+pub enum JweContentEncryptionAlgorithm {
+    // AES GCM using 256-bit key
+    A256GCM,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]

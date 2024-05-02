@@ -64,4 +64,28 @@ impl CoseSign1Builder {
 
         Ok(self.signature(sig_data))
     }
+
+    pub async fn try_create_detached_signature_with_provider(
+        self,
+        payload: &[u8],
+        external_aad: &[u8],
+        signer: &dyn SignatureProvider,
+    ) -> Result<Self, SignerError> {
+        if self.0.payload.is_some() {
+            return Err(SignerError::CouldNotSign(
+                "For detached mode payload should not be set".to_string(),
+            ));
+        }
+
+        let sig_data = coset::sig_structure_data(
+            SignatureContext::CoseSign1,
+            self.0.protected.clone(),
+            None,
+            external_aad,
+            payload,
+        );
+        let sig_data = signer.sign(&sig_data).await?;
+
+        Ok(self.signature(sig_data))
+    }
 }

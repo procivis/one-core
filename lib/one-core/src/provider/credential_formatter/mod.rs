@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use strum::Display;
 use time::{Duration, OffsetDateTime};
+use url::Url;
 
 use crate::{
     crypto::signer::error::SignerError,
@@ -46,6 +47,8 @@ use self::{
         CredentialPresentation, CredentialSchema, CredentialStatus, DetailCredential, Presentation,
     },
 };
+
+use super::transport_protocol::openid4vc::dto::OpenID4VPInteractionData;
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
 pub type VerificationFn = Box<dyn TokenVerifier>;
@@ -128,6 +131,43 @@ pub trait SignatureProvider: Send + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
 }
 
+#[derive(Debug, Default)]
+pub struct FormatPresentationCtx {
+    nonce: Option<String>,
+    mdoc_generated_nonce: Option<String>,
+    client_id: Option<Url>,
+    response_uri: Option<Url>,
+}
+
+impl FormatPresentationCtx {
+    pub fn empty() -> Self {
+        Self::default()
+    }
+
+    pub fn with_nonce(mut self, nonce: String) -> Self {
+        self.nonce = Some(nonce);
+
+        self
+    }
+
+    pub fn with_mdoc_generated_nonce(mut self, mdoc_generated_nonce: String) -> Self {
+        self.mdoc_generated_nonce = Some(mdoc_generated_nonce);
+
+        self
+    }
+}
+
+impl From<OpenID4VPInteractionData> for FormatPresentationCtx {
+    fn from(data: OpenID4VPInteractionData) -> Self {
+        Self {
+            nonce: Some(data.nonce),
+            client_id: Some(data.client_id),
+            response_uri: Some(data.response_uri),
+            mdoc_generated_nonce: None,
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
@@ -166,7 +206,7 @@ pub trait CredentialFormatter: Send + Sync {
         holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
-        nonce: Option<String>,
+        ctx: FormatPresentationCtx,
     ) -> Result<String, FormatterError>;
 
     async fn extract_presentation(

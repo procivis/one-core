@@ -308,7 +308,7 @@ impl SSIHolderService {
                 ))?;
 
                 for key in &submitted_keys {
-                    // handle nested path by checking the root
+                    // handle nested path by checking the prefix
                     if claim_schema.key.starts_with(key)
                         && submitted_claims.iter().all(|c| c.id != claim.id)
                     {

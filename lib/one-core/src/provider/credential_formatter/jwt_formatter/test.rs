@@ -235,7 +235,7 @@ async fn test_format_presentation() {
             &"holder_did".parse().unwrap(),
             "algorithm",
             Box::new(auth_fn),
-            None,
+            Default::default(),
         )
         .await;
 

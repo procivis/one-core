@@ -18,8 +18,8 @@ use super::{
     error::FormatterError,
     jwt::model::JWTPayload,
     model::{CredentialPresentation, DetailCredential, Presentation},
-    AuthenticationFn, Context, CredentialData, CredentialFormatter, FormatterCapabilities,
-    VerificationFn,
+    AuthenticationFn, Context, CredentialData, CredentialFormatter, FormatPresentationCtx,
+    FormatterCapabilities, VerificationFn,
 };
 
 pub struct JWTFormatter {
@@ -107,7 +107,7 @@ impl CredentialFormatter for JWTFormatter {
         holder_did: &DidValue,
         algorithm: &str,
         auth_fn: AuthenticationFn,
-        nonce: Option<String>,
+        FormatPresentationCtx { nonce, .. }: FormatPresentationCtx,
     ) -> Result<String, FormatterError> {
         let vp: VP = format_payload(tokens);
 

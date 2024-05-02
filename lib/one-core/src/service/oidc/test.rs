@@ -35,7 +35,8 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
 use crate::provider::transport_protocol::openid4vc::dto::{
-    OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
+    JweContentEncryptionAlgorithm, JweKeyManagementAlgorithm, OpenID4VPClientMetadata,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
 };
 use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -1758,6 +1759,8 @@ async fn test_get_client_metadata_success() {
                 ),
             ]),
             client_id_scheme: "redirect_uri".to_string(),
+            authorization_encrypted_response_alg: Some(JweKeyManagementAlgorithm::EcdhEs),
+            authorization_encrypted_response_enc: Some(JweContentEncryptionAlgorithm::A256GCM),
         },
         result
     );
