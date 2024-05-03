@@ -142,7 +142,9 @@ impl BBSSigner {
         .map_err(|e| SignerError::CouldNotVerify(e.to_string()))?;
 
         if !verified {
-            return Err(SignerError::CouldNotVerify("Verification error".to_owned()));
+            return Err(SignerError::CouldNotVerify(
+                "Bbs proof verification error".to_owned(),
+            ));
         }
 
         Ok(())
