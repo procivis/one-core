@@ -9,6 +9,7 @@ use crate::{
 use async_trait::async_trait;
 use shared_types::DidValue;
 use std::sync::Arc;
+use tracing::info;
 
 #[derive(Clone)]
 pub(crate) struct KeyVerification {
@@ -51,12 +52,16 @@ impl TokenVerifier for KeyVerification {
             key_id_list.first().ok_or(SignerError::MissingKey)?
         };
 
+        info!("Verification method_id: {method_id}");
         let method = did_document
             .verification_method
             .iter()
             .find(|method| method.id == method_id)
             .ok_or(SignerError::MissingKey)?;
 
+        info!("Verification method: {:#?}", method);
+
+        info!("Verification algorithm: {algorithm}");
         let alg = self
             .key_algorithm_provider
             .get_key_algorithm(algorithm)
