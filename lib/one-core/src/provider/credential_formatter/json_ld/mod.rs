@@ -231,7 +231,7 @@ pub(super) async fn verify_proof_signature(
             &signature,
         )
         .await
-        .map_err(|_| FormatterError::CouldNotVerify("Verification error".to_string()))?;
+        .map_err(|e| FormatterError::CouldNotVerify(format!("Verification error: {e}")))?;
 
     Ok(())
 }
