@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
+use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
-use uuid::Uuid;
+
+use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
 
 use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
-use super::common::{GetListQueryParams, GetListResponse};
+use super::common::GetListResponse;
+use super::list_query::ListQuery;
 use super::organisation::{Organisation, OrganisationRelations};
 
-pub type CredentialSchemaId = Uuid;
 pub type CredentialSchemaName = String;
 pub type CredentialFormat = String;
 pub type RevocationMethod = String;
@@ -125,11 +127,11 @@ pub enum CodeTypeEnum {
 }
 
 pub type GetCredentialSchemaList = GetListResponse<CredentialSchema>;
-pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumn>;
+pub type GetCredentialSchemaQuery =
+    ListQuery<SortableCredentialSchemaColumn, CredentialSchemaFilterValue>;
 
-#[derive(Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
-
     pub revocation_method: Option<RevocationMethod>,
 }

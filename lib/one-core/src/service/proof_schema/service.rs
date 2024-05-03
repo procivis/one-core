@@ -10,14 +10,12 @@ use super::{
     validator::{proof_schema_name_already_exists, validate_create_request},
     ProofSchemaService,
 };
-use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
 use crate::{
     common_mapper::list_response_into,
     model::{
         claim_schema::ClaimSchemaRelations,
-        credential_schema::{
-            CredentialSchemaId, CredentialSchemaRelations, GetCredentialSchemaQuery,
-        },
+        credential_schema::{CredentialSchemaRelations, GetCredentialSchemaQuery},
+        list_filter::ListFilterValue,
         organisation::OrganisationRelations,
         proof_schema::{
             ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -26,7 +24,14 @@ use crate::{
     repository::error::DataLayerError,
     service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
 };
-use shared_types::ClaimSchemaId;
+use crate::{
+    model::list_query::ListPagination,
+    service::{
+        credential_schema::dto::CredentialSchemaFilterValue,
+        proof_schema::mapper::convert_proof_schema_to_response,
+    },
+};
+use shared_types::{ClaimSchemaId, CredentialSchemaId};
 use time::OffsetDateTime;
 
 impl ProofSchemaService {
@@ -136,14 +141,16 @@ impl ProofSchemaService {
         let credential_schemas = self
             .credential_schema_repository
             .get_credential_schema_list(GetCredentialSchemaQuery {
-                page: 0,
-                page_size: 1000,
-                sort: None,
-                sort_direction: None,
-                name: None,
-                organisation_id: request.organisation_id,
-                exact: None,
-                ids: Some(credential_schema_ids),
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: expected_credential_schemas as u32,
+                }),
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
+                        .condition()
+                        & CredentialSchemaFilterValue::CredentialSchemaIds(credential_schema_ids),
+                ),
+                ..Default::default()
             })
             .await?
             .values;

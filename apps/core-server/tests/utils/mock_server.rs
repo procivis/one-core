@@ -1,8 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
-use shared_types::DidValue;
-use uuid::Uuid;
+use shared_types::{CredentialSchemaId, DidValue};
 use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, ResponseTemplate};
@@ -126,7 +125,7 @@ impl MockServer {
             .await;
     }
 
-    pub async fn json_ld_context(&self, schema_id: &Uuid, schema_name_pascal: &str) {
+    pub async fn json_ld_context(&self, schema_id: &CredentialSchemaId, schema_name_pascal: &str) {
         Mock::given(method(Method::GET))
             .and(path(format!("/ssi/context/v1/{schema_id}")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use super::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
@@ -8,7 +9,6 @@ use crate::common_mapper::get_or_create_did;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::config::core_config::{FormatType, Params};
 use crate::config::ConfigValidationError;
-use crate::model::credential_schema::CredentialSchemaId;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError};
 use crate::service::ssi_issuer::mapper::{
     credential_rejected_history_event, generate_jsonld_context_response, get_url_with_fragment,
@@ -31,7 +31,7 @@ use crate::{
     },
 };
 use convert_case::{Case, Casing};
-use shared_types::{CredentialId, DidValue};
+use shared_types::{CredentialId, CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
 
 impl SSIIssuerService {
@@ -218,7 +218,7 @@ impl SSIIssuerService {
         match id {
             "lvvc.json" => self.get_json_ld_context_for_lvvc().await,
             id => {
-                let credential_schema_id = CredentialSchemaId::parse_str(id).map_err(|_| {
+                let credential_schema_id = CredentialSchemaId::from_str(id).map_err(|_| {
                     ServiceError::from(BusinessLogicError::GeneralInputValidationError)
                 })?;
                 self.get_json_ld_context_for_credential_schema(credential_schema_id)

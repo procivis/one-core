@@ -1,15 +1,19 @@
 use mockall::predicate::*;
+use shared_types::CredentialSchemaId;
 use std::sync::Arc;
 use std::vec;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentialFormatter};
 use crate::service::credential_schema::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
-    CredentialSchemaCodeTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
+    CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
+    CredentialSchemaLogoPropertiesRequestDTO,
 };
 use crate::service::test_utilities::generic_formatter_capabilities;
 use crate::{
@@ -66,7 +70,7 @@ fn setup_service(
 fn generic_credential_schema() -> CredentialSchema {
     let now = OffsetDateTime::now_utc();
     CredentialSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: now,
         last_modified: now,
@@ -231,14 +235,14 @@ async fn test_get_credential_schema_list_success() {
 
     let result = service
         .get_credential_schema_list(GetCredentialSchemaQueryDTO {
-            page: 0,
-            page_size: 5,
-            sort: None,
-            sort_direction: None,
-            exact: None,
-            name: None,
-            organisation_id: Uuid::new_v4().into(),
-            ids: None,
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(Uuid::new_v4().into()).condition(),
+            ),
+            ..Default::default()
         })
         .await;
 
@@ -257,7 +261,7 @@ async fn test_delete_credential_schema() {
     let mut history_repository = MockHistoryRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
 
-    let schema_id = Uuid::new_v4();
+    let schema_id: CredentialSchemaId = Uuid::new_v4().into();
 
     repository
         .expect_get_credential_schema()
@@ -266,7 +270,7 @@ async fn test_delete_credential_schema() {
     repository
         .expect_delete_credential_schema()
         .times(1)
-        .with(eq(schema_id.to_owned()))
+        .with(eq(schema_id))
         .returning(move |_| Ok(()));
 
     history_repository
@@ -304,7 +308,7 @@ async fn test_create_credential_schema_success() {
         created_date: now,
         last_modified: now,
     };
-    let schema_id = Uuid::new_v4();
+    let schema_id: CredentialSchemaId = Uuid::new_v4().into();
 
     let response = GetCredentialSchemaList {
         values: vec![
@@ -334,7 +338,7 @@ async fn test_create_credential_schema_success() {
                     CredentialSchemaType::ProcivisOneSchema2024,
                     request.schema_type
                 );
-                Ok(schema_id.to_owned())
+                Ok(schema_id)
             });
         let clone = response.clone();
         repository
@@ -407,7 +411,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         created_date: now,
         last_modified: now,
     };
-    let schema_id = Uuid::new_v4();
+    let schema_id: CredentialSchemaId = Uuid::new_v4().into();
 
     let response = GetCredentialSchemaList {
         values: vec![
@@ -539,7 +543,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         repository
             .expect_create_credential_schema()
             .times(1)
-            .returning(move |_| Ok(schema_id.to_owned()));
+            .returning(move |_| Ok(schema_id.into()));
         let clone = response.clone();
         repository
             .expect_get_credential_schema_list()
@@ -602,7 +606,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         })
         .await
         .unwrap();
-    assert_eq!(schema_id, result);
+    assert_eq!(schema_id, result.into());
 }
 
 #[tokio::test]

@@ -1,12 +1,16 @@
 use dto_mapper::convert_inner;
-use sea_orm::sea_query::SimpleExpr;
+use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
+use sea_orm::sea_query::{query::IntoCondition, SimpleExpr};
 use sea_orm::ActiveValue::Set;
-use sea_orm::IntoSimpleExpr;
+use sea_orm::{ColumnTrait, IntoSimpleExpr};
 use std::str::FromStr;
 
 use uuid::Uuid;
 
 use crate::common::calculate_pages_count;
+use crate::list_query_generic::{
+    get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
+};
 
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList,
@@ -17,6 +21,39 @@ use one_core::repository::error::DataLayerError;
 
 use crate::entity::{claim_schema, credential_schema, credential_schema_claim_schema};
 use crate::list_query::GetEntityColumn;
+
+impl IntoSortingColumn for SortableCredentialSchemaColumn {
+    fn get_column(&self) -> SimpleExpr {
+        match self {
+            Self::CreatedDate => credential_schema::Column::CreatedDate.into_simple_expr(),
+            Self::Name => credential_schema::Column::Name.into_simple_expr(),
+            Self::Format => credential_schema::Column::Format.into_simple_expr(),
+        }
+    }
+}
+
+impl IntoFilterCondition for CredentialSchemaFilterValue {
+    fn get_condition(self) -> sea_orm::Condition {
+        match self {
+            Self::Name(string_match) => {
+                get_string_match_condition(credential_schema::Column::Name, string_match)
+            }
+            Self::SchemaId(string_match) => {
+                get_string_match_condition(credential_schema::Column::SchemaId, string_match)
+            }
+            Self::Format(string_match) => {
+                get_string_match_condition(credential_schema::Column::Format, string_match)
+            }
+            Self::OrganisationId(organisation_id) => get_equals_condition(
+                credential_schema::Column::OrganisationId,
+                organisation_id.to_string(),
+            ),
+            Self::CredentialSchemaIds(ids) => credential_schema::Column::Id
+                .is_in(ids.iter())
+                .into_condition(),
+        }
+    }
+}
 
 impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
     type Error = DataLayerError;
@@ -52,7 +89,7 @@ pub(super) fn entity_model_to_credential_schema(
     let id = Uuid::from_str(&value.id)?;
 
     Ok(CredentialSchema {
-        id,
+        id: id.into(),
         deleted_at: value.deleted_at,
         created_date: value.created_date,
         last_modified: value.last_modified,
@@ -145,7 +182,7 @@ pub(crate) fn credential_schema_from_models(
     Uuid::from_str(&credential_schema.id)
         .ok()
         .map(|id| CredentialSchema {
-            id,
+            id: id.into(),
             deleted_at: credential_schema.deleted_at,
             created_date: credential_schema.created_date,
             last_modified: credential_schema.last_modified,

@@ -3,11 +3,12 @@ use std::sync::Arc;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
-    CredentialSchemaId, CredentialSchemaRelations, CredentialSchemaType, LayoutProperties,
-    LayoutType, LogoProperties, WalletStorageTypeEnum,
+    CredentialSchemaRelations, CredentialSchemaType, LayoutProperties, LayoutType, LogoProperties,
+    WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use shared_types::CredentialSchemaId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -48,7 +49,7 @@ impl CredentialSchemasDB {
         }];
 
         let credential_schema = CredentialSchema {
-            id,
+            id: id.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -163,7 +164,7 @@ impl CredentialSchemasDB {
 
         let id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
-            id,
+            id: id.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -272,7 +273,7 @@ impl CredentialSchemasDB {
 
         let id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
-            id,
+            id: id.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
@@ -322,7 +323,7 @@ impl CredentialSchemasDB {
 
         let new_id = Uuid::new_v4();
         let credential_schema = CredentialSchema {
-            id: new_id.to_owned(),
+            id: new_id.into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             wallet_storage_type: None,
@@ -373,7 +374,7 @@ impl CredentialSchemasDB {
             .collect();
 
         let credential_schema = CredentialSchema {
-            id: id.to_owned(),
+            id: id.to_owned().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             wallet_storage_type: None,

@@ -220,7 +220,7 @@ fn dummy_credential() -> Credential {
         issuer_did: None,
         holder_did: None,
         schema: Some(CredentialSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),

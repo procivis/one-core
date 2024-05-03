@@ -90,7 +90,7 @@ async fn test_connect_to_holder_succeeds() {
                             order: 0,
                         }]),
                         credential_schema: Some(CredentialSchema {
-                            id: Uuid::new_v4(),
+                            id: Uuid::new_v4().into(),
                             deleted_at: None,
                             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                             created_date: OffsetDateTime::now_utc(),
@@ -179,7 +179,7 @@ async fn test_connect_to_holder_succeeds_new_did() {
                             order: 0,
                         }]),
                         credential_schema: Some(CredentialSchema {
-                            id: Uuid::new_v4(),
+                            id: Uuid::new_v4().into(),
                             deleted_at: None,
                             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                             created_date: OffsetDateTime::now_utc(),

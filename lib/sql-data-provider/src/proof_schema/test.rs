@@ -183,7 +183,7 @@ async fn test_create_proof_schema_already_exists() {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     deleted_at: None,
                     wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                     created_date: get_dummy_date(),

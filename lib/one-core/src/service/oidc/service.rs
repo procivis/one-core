@@ -12,9 +12,7 @@ use crate::model::credential::{
     CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
     UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaId, CredentialSchemaRelations,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -70,7 +68,7 @@ use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
-use shared_types::{CredentialId, DidValue, KeyId};
+use shared_types::{CredentialId, CredentialSchemaId, DidValue, KeyId};
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::str::FromStr;

@@ -38,7 +38,7 @@ pub fn test_credential_detail_response_dto() -> CredentialDetailResponseDTO {
         state: CredentialStateEnum::Created,
         last_modified: get_dummy_date(),
         schema: DetailCredentialSchemaResponseDTO {
-            id,
+            id: id.into(),
             created_date: get_dummy_date(),
             deleted_at: None,
             last_modified: get_dummy_date(),

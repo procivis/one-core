@@ -152,7 +152,7 @@ fn generic_credential() -> Credential {
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
             last_modified: now,
@@ -209,7 +209,7 @@ fn generic_credential_list_entity() -> Credential {
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
             last_modified: now,
@@ -779,7 +779,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
 
     let result = service
         .create_credential(CreateCredentialRequestDTO {
-            credential_schema_id: Uuid::new_v4(),
+            credential_schema_id: Uuid::new_v4().into(),
             issuer_did: did_id.into(),
             issuer_key: None,
             transport: "PROCIVIS_TEMPORARY".to_string(),
@@ -2281,7 +2281,7 @@ fn generate_credential_schema_with_claim_schemas(
 ) -> CredentialSchema {
     let now = OffsetDateTime::now_utc();
     CredentialSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: now,
         last_modified: now,

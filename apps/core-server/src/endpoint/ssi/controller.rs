@@ -30,9 +30,8 @@ use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use headers::Authorization;
-use one_core::model::credential_schema::CredentialSchemaId;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use shared_types::{CredentialId, DidId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId};
 use uuid::Uuid;
 
 #[utoipa::path(
@@ -162,7 +161,7 @@ pub(crate) async fn get_lvvc_by_credential_id(
     get,
     path = "/ssi/oidc-issuer/v1/{id}/.well-known/openid-credential-issuer",
     params(
-        ("id" = Uuid, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VCIIssuerMetadataResponseRestDTO),
@@ -173,7 +172,7 @@ pub(crate) async fn get_lvvc_by_credential_id(
 )]
 pub(crate) async fn oidc_get_issuer_metadata(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state.core.oidc_service.oidc_get_issuer_metadata(&id).await;
 
@@ -202,7 +201,7 @@ pub(crate) async fn oidc_get_issuer_metadata(
     get,
     path = "/ssi/oidc-issuer/v1/{id}/.well-known/openid-configuration",
     params(
-        ("id" = Uuid, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VCIDiscoveryResponseRestDTO),
@@ -213,7 +212,7 @@ pub(crate) async fn oidc_get_issuer_metadata(
 )]
 pub(crate) async fn oidc_service_discovery(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state.core.oidc_service.oidc_service_discovery(&id).await;
 
@@ -296,7 +295,7 @@ pub(crate) async fn oidc_get_credential_offer(
     path = "/ssi/oidc-issuer/v1/{id}/token",
     request_body(content = OpenID4VCITokenRequestRestDTO, description = "Token request", content_type = "application/x-www-form-urlencoded"),
     params(
-        ("id" = Uuid, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VCITokenResponseRestDTO),
@@ -309,7 +308,7 @@ pub(crate) async fn oidc_get_credential_offer(
 )]
 pub(crate) async fn oidc_create_token(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
     WithRejection(Form(request), _): WithRejection<
         Form<OpenID4VCITokenRequestRestDTO>,
         ErrorResponseRestDTO,
@@ -355,7 +354,7 @@ pub(crate) async fn oidc_create_token(
     path = "/ssi/oidc-issuer/v1/{id}/credential",
     request_body(content = OpenID4VCICredentialRequestRestDTO, description = "Credential request"),
     params(
-        ("id" = Uuid, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VCICredentialResponseRestDTO),
@@ -371,7 +370,10 @@ pub(crate) async fn oidc_create_token(
 )]
 pub(crate) async fn oidc_create_credential(
     state: State<AppState>,
-    WithRejection(Path(credential_schema_id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(credential_schema_id), _): WithRejection<
+        Path<CredentialSchemaId>,
+        ErrorResponseRestDTO,
+    >,
     WithRejection(TypedHeader(token), _): WithRejection<
         TypedHeader<headers::Authorization<Bearer>>,
         ErrorResponseRestDTO,
@@ -745,7 +747,7 @@ pub(crate) async fn get_json_ld_context(
     get,
     path = "/ssi/schema/v1/{id}",
     params(
-        ("id" = Uuid, Path, description = "Credential schema id")
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
         (status = 200, description = "OK", body = CredentialSchemaResponseRestDTO),
@@ -756,7 +758,7 @@ pub(crate) async fn get_json_ld_context(
 )]
 pub(crate) async fn ssi_get_credential_schema(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<CredentialSchemaResponseRestDTO> {
     let result = state
         .core

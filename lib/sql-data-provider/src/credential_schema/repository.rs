@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::{
     model::credential_schema::{
-        CredentialSchema, CredentialSchemaClaim, CredentialSchemaId, CredentialSchemaRelations,
+        CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
         GetCredentialSchemaList, GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
     },
     repository::{credential_schema_repository::CredentialSchemaRepository, error::DataLayerError},
@@ -12,7 +12,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
     QueryOrder, SqlErr, Unchanged,
 };
-use shared_types::{ClaimSchemaId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -26,7 +26,7 @@ use crate::{
         CredentialSchemaProvider,
     },
     entity::{claim_schema, credential_schema, credential_schema_claim_schema, organisation},
-    list_query::SelectWithListQuery,
+    list_query_generic::SelectWithListQuery,
     mapper::to_data_layer_error,
 };
 
@@ -72,7 +72,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .map_err(|e| DataLayerError::Db(e.into()))?;
         }
 
-        Ok(Uuid::from_str(&credential_schema.id)?)
+        Ok(Uuid::from_str(&credential_schema.id)?.into())
     }
 
     async fn delete_credential_schema(
@@ -178,19 +178,14 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         &self,
         query_params: GetCredentialSchemaQuery,
     ) -> Result<GetCredentialSchemaList, DataLayerError> {
-        let limit: u64 = query_params.page_size as u64;
+        let limit = query_params
+            .pagination
+            .as_ref()
+            .map(|pagination| pagination.page_size as _);
 
         let query = credential_schema::Entity::find()
             .filter(credential_schema::Column::DeletedAt.is_null())
-            .with_organisation_id(&query_params, &credential_schema::Column::OrganisationId)
-            .with_ids(&query_params, &credential_schema::Column::Id)
-            .with_list_query(
-                &query_params,
-                &Some(vec![
-                    credential_schema::Column::Name,
-                    credential_schema::Column::Format,
-                ]),
-            )
+            .with_list_query(&query_params)
             .order_by_desc(credential_schema::Column::CreatedDate)
             .order_by_desc(credential_schema::Column::Id);
 
@@ -205,7 +200,11 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        Ok(create_list_response(credential_schemas, limit, items_count))
+        Ok(create_list_response(
+            credential_schemas,
+            limit.unwrap_or(0),
+            items_count,
+        ))
     }
 
     async fn update_credential_schema(

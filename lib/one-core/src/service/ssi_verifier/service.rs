@@ -15,7 +15,7 @@ use crate::{
     model::{
         claim::Claim,
         claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, CredentialSchemaId, CredentialSchemaRelations},
+        credential_schema::{CredentialSchema, CredentialSchemaRelations},
         did::{Did, DidRelations},
         interaction::InteractionRelations,
         organisation::OrganisationRelations,
@@ -31,7 +31,7 @@ use crate::{
         ssi_validator::validate_config_entity_presence,
     },
 };
-use shared_types::DidValue;
+use shared_types::{CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
 
 impl SSIVerifierService {

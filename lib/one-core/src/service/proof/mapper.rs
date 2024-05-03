@@ -3,7 +3,7 @@ use super::dto::{
     ProofInputDTO, ProofListItemResponseDTO,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaId};
+use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -17,6 +17,7 @@ use crate::{
     service::error::ServiceError,
 };
 use dto_mapper::convert_inner;
+use shared_types::CredentialSchemaId;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;

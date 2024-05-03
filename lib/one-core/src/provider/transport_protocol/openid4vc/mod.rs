@@ -1244,7 +1244,7 @@ async fn create_and_store_credential_schema(
     let id = Uuid::new_v4();
 
     let credential_schema = CredentialSchema {
-        id,
+        id: id.into(),
         deleted_at: None,
         created_date: now,
         last_modified: now,
