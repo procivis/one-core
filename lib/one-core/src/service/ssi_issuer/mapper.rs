@@ -8,6 +8,7 @@ use crate::service::ssi_issuer::dto::{
     JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
 };
 use shared_types::EntityId;
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use url::Url;
@@ -81,14 +82,17 @@ fn insert_claim(
 
     let part = key_parts[index].to_string();
 
-    let nested_claim = current_claim.entry(part.clone()).or_insert_with(|| {
-        JsonLDEntityDTO::NestedObject(JsonLDNestedEntityDTO {
-            id: format!("{base_url}#{part}"),
-            context: JsonLDNestedContextDTO {
-                entities: HashMap::new(),
-            },
-        })
-    });
+    let nested_claim = match current_claim.entry(part.clone()) {
+        Entry::Occupied(entry) => entry.into_mut(),
+        Entry::Vacant(entry) => {
+            entry.insert(JsonLDEntityDTO::NestedObject(JsonLDNestedEntityDTO {
+                id: get_url_with_fragment(base_url, &part)?,
+                context: JsonLDNestedContextDTO {
+                    entities: HashMap::new(),
+                },
+            }))
+        }
+    };
 
     if let JsonLDEntityDTO::NestedObject(nested) = nested_claim {
         insert_claim(&mut nested.context.entities, key_parts, base_url, index + 1)?;
