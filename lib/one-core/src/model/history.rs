@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId, EntityId, HistoryId, OrganisationId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::{
     model::{
         common::GetListResponse,
-        credential_schema::CredentialSchemaId,
         list_filter::{ListFilterValue, ValueComparison},
         list_query::ListQuery,
     },

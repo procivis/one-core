@@ -5,14 +5,14 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaDetailResponseDTO, CredentialSchemaListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
+use crate::dto::common::ListQueryParamsRest;
 use crate::serialize::{front_time, front_time_option};
-
-use crate::dto::common::GetListQueryParams;
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
@@ -101,7 +101,31 @@ pub struct CredentialClaimSchemaResponseRestDTO {
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
 }
 
-pub type GetCredentialSchemaQuery = GetListQueryParams<SortableCredentialSchemaColumnRestEnum>;
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum CredentialSchemasExactColumn {
+    Name,
+    SchemaId,
+    Format,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemasFilterQueryParamsRest {
+    pub organisation_id: OrganisationId,
+    pub name: Option<String>,
+    #[param(inline, rename = "exact[]")]
+    pub exact: Option<Vec<CredentialSchemasExactColumn>>,
+    #[param(inline, rename = "ids[]")]
+    pub ids: Option<Vec<CredentialSchemaId>>,
+    pub schema_id: Option<String>,
+    pub format: Option<String>,
+}
+
+pub type GetCredentialSchemaQuery = ListQueryParamsRest<
+    CredentialSchemasFilterQueryParamsRest,
+    SortableCredentialSchemaColumnRestEnum,
+>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]

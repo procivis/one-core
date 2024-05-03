@@ -8,9 +8,7 @@ use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::ExactColumn;
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaId,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
 use crate::service::error::BusinessLogicError;
@@ -20,7 +18,7 @@ use crate::{
     service::error::ServiceError,
 };
 use dto_mapper::convert_inner;
-use shared_types::OrganisationId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 

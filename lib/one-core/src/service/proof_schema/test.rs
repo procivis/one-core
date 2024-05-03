@@ -31,6 +31,7 @@ use crate::{
     },
 };
 use mockall::{predicate::*, PredicateBooleanExt};
+use shared_types::CredentialSchemaId;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -356,11 +357,10 @@ async fn test_create_proof_schema_success() {
             }))
         });
 
-    let credential_schema_id = Uuid::new_v4();
+    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     credential_schema_repository
         .expect_get_credential_schema_list()
-        .withf(move |input| input.ids.as_ref().unwrap().contains(&credential_schema_id))
         .times(1)
         .returning(move |_| {
             let schema = CredentialSchema {
@@ -454,7 +454,7 @@ async fn test_create_proof_schema_unique_name_error() {
         expire_duration: 0,
         organisation_id,
         proof_input_schemas: vec![ProofInputSchemaRequestDTO {
-            credential_schema_id: Uuid::new_v4(),
+            credential_schema_id: Uuid::new_v4().into(),
             validity_constraint: None,
             claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                 id: claim_schema_id,
@@ -547,7 +547,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
             expire_duration: 0,
             organisation_id,
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
-                credential_schema_id: Uuid::new_v4(),
+                credential_schema_id: Uuid::new_v4().into(),
                 validity_constraint: None,
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                     id: claim_schema_id,
@@ -580,7 +580,7 @@ async fn test_create_proof_schema_no_claims() {
             expire_duration: 0,
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
-                credential_schema_id: Uuid::new_v4(),
+                credential_schema_id: Uuid::new_v4().into(),
                 validity_constraint: None,
                 claim_schemas: vec![],
             }],
@@ -609,7 +609,7 @@ async fn test_create_proof_schema_no_required_claims() {
             expire_duration: 0,
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
-                credential_schema_id: Uuid::new_v4(),
+                credential_schema_id: Uuid::new_v4().into(),
                 validity_constraint: None,
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                     id: Uuid::new_v4().into(),
@@ -645,7 +645,7 @@ async fn test_create_proof_schema_duplicit_claims() {
             expire_duration: 0,
             organisation_id: Uuid::new_v4().into(),
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
-                credential_schema_id: Uuid::new_v4(),
+                credential_schema_id: Uuid::new_v4().into(),
                 validity_constraint: None,
                 claim_schemas: vec![claim_schema.clone(), claim_schema],
             }],
@@ -705,7 +705,7 @@ async fn test_get_proof_schema_success_nested_claims() {
             order: 0,
         }]),
         credential_schema: Some(CredentialSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
             last_modified: now,

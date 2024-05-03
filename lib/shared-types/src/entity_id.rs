@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     macros::{impls_for_seaorm_newtype, impls_for_uuid_newtype},
-    CredentialId, DidId, KeyId, OrganisationId,
+    CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -28,6 +28,7 @@ macro_rules! impl_from_other_type {
 }
 
 impl_from_other_type!(CredentialId);
+impl_from_other_type!(CredentialSchemaId);
 impl_from_other_type!(DidId);
 impl_from_other_type!(KeyId);
 impl_from_other_type!(OrganisationId);

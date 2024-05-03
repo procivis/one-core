@@ -1,6 +1,7 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use shared_types::CredentialSchemaId;
 use uuid::Uuid;
 
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemaResponseDTO};
@@ -21,7 +22,7 @@ use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
     path = "/api/credential-schema/v1/{id}",
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = Uuid, Path, description = "Schema id")
+        ("id" = CredentialSchemaId, Path, description = "Schema id")
     ),
     tag = "credential_schema_management",
     security(
@@ -30,7 +31,7 @@ use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
 )]
 pub(crate) async fn delete_credential_schema(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> EmptyOrErrorResponse {
     let result = state
         .core
@@ -45,7 +46,7 @@ pub(crate) async fn delete_credential_schema(
     path = "/api/credential-schema/v1/{id}",
     responses(OkOrErrorResponse<CredentialSchemaResponseRestDTO>),
     params(
-        ("id" = Uuid, Path, description = "Schema id")
+        ("id" = CredentialSchemaId, Path, description = "Schema id")
     ),
     tag = "credential_schema_management",
     security(
@@ -54,7 +55,7 @@ pub(crate) async fn delete_credential_schema(
 )]
 pub(crate) async fn get_credential_schema(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<CredentialSchemaResponseRestDTO> {
     let result = state
         .core
@@ -110,5 +111,5 @@ pub(crate) async fn post_credential_schema(
         .credential_schema_service
         .create_credential_schema(request.into())
         .await;
-    CreatedOrErrorResponse::from_result(result, state, "creating credential schema")
+    CreatedOrErrorResponse::from_result(result.map(Uuid::from), state, "creating credential schema")
 }

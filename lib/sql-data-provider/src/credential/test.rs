@@ -1,4 +1,5 @@
 use std::ops::Add;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
@@ -29,7 +30,7 @@ use one_core::{
     service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO},
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
-use shared_types::CredentialId;
+use shared_types::{CredentialId, CredentialSchemaId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -48,7 +49,7 @@ async fn setup_empty() -> TestSetup {
 
     let organisation_id = insert_organisation_to_database(&db, None).await.unwrap();
 
-    let credential_schema_id = Uuid::parse_str(
+    let credential_schema_id = CredentialSchemaId::from_str(
         &insert_credential_schema_to_database(
             &db,
             None,

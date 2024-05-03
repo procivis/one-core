@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use uuid::Uuid;
 
 use one_core::{
@@ -13,7 +15,9 @@ use one_core::{
     },
     repository::history_repository::HistoryRepository,
 };
-use shared_types::{ClaimId, ClaimSchemaId, CredentialId, DidId, OrganisationId};
+use shared_types::{
+    ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, OrganisationId,
+};
 
 use crate::{entity::key_did::KeyRole, history::HistoryProvider, test_utilities::*};
 
@@ -424,7 +428,9 @@ async fn test_get_history_list_schema_joins_credentials() {
     let result = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::CredentialSchemaId(Uuid::parse_str(&credential_schema_id).unwrap()),
+            HistoryFilterValue::CredentialSchemaId(
+                CredentialSchemaId::from_str(&credential_schema_id).unwrap(),
+            ),
         ))
         .await
         .unwrap();
@@ -446,7 +452,9 @@ async fn test_get_history_list_joins_schema_credential_claim_and_proof() {
     let result = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::CredentialSchemaId(Uuid::parse_str(&credential_schema_id).unwrap()),
+            HistoryFilterValue::CredentialSchemaId(
+                CredentialSchemaId::from_str(&credential_schema_id).unwrap(),
+            ),
         ))
         .await
         .unwrap();
@@ -499,7 +507,7 @@ async fn test_get_history_list_entity_of_another_type_should_not_get_fetched() {
     let should_be_empty = provider
         .get_history_list(history_list_query_with_filter(
             organisation.id,
-            HistoryFilterValue::CredentialSchemaId(did_id.to_owned().into()),
+            HistoryFilterValue::CredentialSchemaId(CredentialSchemaId::from(Uuid::from(did_id))),
         ))
         .await
         .unwrap();

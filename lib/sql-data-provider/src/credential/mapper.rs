@@ -1,5 +1,4 @@
 use dto_mapper::convert_inner;
-use migration::IntoCondition;
 use one_core::{
     model::{
         credential::{Credential, CredentialState, SortableCredentialColumn},
@@ -11,7 +10,10 @@ use one_core::{
     repository::error::DataLayerError,
     service::credential::dto::CredentialFilterValue,
 };
-use sea_orm::{sea_query::SimpleExpr, ColumnTrait, IntoSimpleExpr, Set};
+use sea_orm::{
+    sea_query::{query::IntoCondition, SimpleExpr},
+    ColumnTrait, IntoSimpleExpr, Set,
+};
 use shared_types::{CredentialId, DidId, KeyId};
 use std::str::FromStr;
 use uuid::Uuid;
@@ -133,7 +135,7 @@ pub(super) fn credential_list_model_to_repository_model(
     let schema_id = Uuid::from_str(&credential.credential_schema_id)?;
 
     let schema = CredentialSchema {
-        id: schema_id,
+        id: schema_id.into(),
         deleted_at: credential.credential_schema_deleted_at,
         created_date: credential.credential_schema_created_date,
         last_modified: credential.credential_schema_last_modified,

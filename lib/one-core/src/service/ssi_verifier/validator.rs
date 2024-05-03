@@ -2,7 +2,7 @@ use super::dto::ValidatedProofClaimDTO;
 use crate::{
     common_validator::{validate_expiration_time, validate_issuance_time},
     model::{
-        credential_schema::{CredentialSchema, CredentialSchemaId},
+        credential_schema::CredentialSchema,
         did::{Did, KeyRole},
         proof_schema::{ProofInputClaimSchema, ProofSchema},
     },
@@ -22,6 +22,7 @@ use crate::{
     util::{key_verification::KeyVerification, oidc::map_from_oidc_format_to_core_real},
 };
 
+use shared_types::CredentialSchemaId;
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,

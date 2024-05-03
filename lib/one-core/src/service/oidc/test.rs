@@ -106,7 +106,7 @@ fn setup_service(mocks: Mocks) -> OIDCService {
 fn generic_credential_schema() -> CredentialSchema {
     let now = OffsetDateTime::now_utc();
     CredentialSchema {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: now,
         last_modified: now,
@@ -1187,7 +1187,9 @@ async fn test_oidc_verifier_presentation_definition_success() {
                                 order: 0,
                             }]),
                             credential_schema: Some(CredentialSchema {
-                                id: Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap(),
+                                id: Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                                    .unwrap()
+                                    .into(),
                                 deleted_at: None,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
@@ -1526,7 +1528,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
         validity_constraint: Some(100),
         claim_schemas: None,
         credential_schema: Some(CredentialSchema {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
             last_modified: now,

@@ -39,13 +39,13 @@ use sea_orm::{
     FromQueryResult, JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
     Select, Set, SqlErr, Unchanged,
 };
-use shared_types::{CredentialId, DidId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId};
 use std::{str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 async fn get_credential_schema(
-    schema_id: &Uuid,
+    schema_id: &CredentialSchemaId,
     relations: &Option<CredentialSchemaRelations>,
     repository: Arc<dyn CredentialSchemaRepository>,
 ) -> Result<Option<CredentialSchema>, DataLayerError> {
@@ -138,7 +138,7 @@ impl CredentialProvider {
 
         let schema_id = Uuid::from_str(&credential.credential_schema_id)?;
         let schema = get_credential_schema(
-            &schema_id,
+            &schema_id.into(),
             &relations.schema.to_owned(),
             self.credential_schema_repository.clone(),
         )

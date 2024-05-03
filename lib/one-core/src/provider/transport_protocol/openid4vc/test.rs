@@ -139,7 +139,7 @@ fn construct_proof_with_state() -> Proof {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -260,7 +260,9 @@ fn generic_credential() -> Credential {
         }),
         holder_did: None,
         schema: Some(CredentialSchema {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                .unwrap()
+                .into(),
             deleted_at: None,
             created_date: now,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),

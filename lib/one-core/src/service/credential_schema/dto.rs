@@ -1,16 +1,17 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{ClaimSchemaId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 
 use dto_mapper::{convert_inner, From, Into};
 
 use crate::model;
 use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListQuery;
 use crate::model::{
-    common::{GetListQueryParams, GetListResponse},
+    common::GetListResponse,
     credential_schema::{
-        CredentialFormat, CredentialSchema, CredentialSchemaId, RevocationMethod,
-        SortableCredentialSchemaColumn,
+        CredentialFormat, CredentialSchema, RevocationMethod, SortableCredentialSchemaColumn,
     },
 };
 use crate::service::credential::dto::CredentialSchemaType;
@@ -69,8 +70,20 @@ pub struct CredentialClaimSchemaDTO {
     pub claims: Vec<CredentialClaimSchemaDTO>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CredentialSchemaFilterValue {
+    Name(StringMatch),
+    OrganisationId(OrganisationId),
+    SchemaId(StringMatch),
+    Format(StringMatch),
+    CredentialSchemaIds(Vec<CredentialSchemaId>),
+}
+
+impl ListFilterValue for CredentialSchemaFilterValue {}
+
 pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaListItemResponseDTO>;
-pub type GetCredentialSchemaQueryDTO = GetListQueryParams<SortableCredentialSchemaColumn>;
+pub type GetCredentialSchemaQueryDTO =
+    ListQuery<SortableCredentialSchemaColumn, CredentialSchemaFilterValue>;
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaRequestDTO {

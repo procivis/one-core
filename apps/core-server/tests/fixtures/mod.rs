@@ -311,7 +311,7 @@ pub async fn create_credential_schema(
 
     let id = Uuid::new_v4();
     let credential_schema = CredentialSchema {
-        id,
+        id: id.into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: name.to_owned(),
@@ -360,7 +360,7 @@ pub async fn create_credential_schema_with_claims(
         .collect();
     let id = Uuid::new_v4();
     let credential_schema = CredentialSchema {
-        id,
+        id: id.into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         wallet_storage_type: None,

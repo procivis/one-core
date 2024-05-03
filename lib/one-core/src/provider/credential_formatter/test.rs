@@ -27,7 +27,7 @@ fn generate_credential_detail_response(
         state: CredentialStateEnum::Created,
         last_modified: now,
         schema: DetailCredentialSchemaResponseDTO {
-            id: Default::default(),
+            id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
             deleted_at: None,

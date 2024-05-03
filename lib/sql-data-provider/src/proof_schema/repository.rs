@@ -21,7 +21,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, Set,
     TransactionTrait, Unchanged,
 };
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, CredentialSchemaId};
 use std::str::FromStr;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -255,7 +255,7 @@ impl ProofSchemaProvider {
         credential_schema_id: String,
         credential_schema_relations: &CredentialSchemaRelations,
     ) -> Result<CredentialSchema, DataLayerError> {
-        let credential_schema_id = Uuid::from_str(&credential_schema_id)?;
+        let credential_schema_id = CredentialSchemaId::from_str(&credential_schema_id)?;
 
         self.credential_schema_repository
             .get_credential_schema(&credential_schema_id, credential_schema_relations)

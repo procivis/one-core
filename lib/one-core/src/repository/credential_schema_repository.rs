@@ -1,13 +1,15 @@
-use std::vec;
+use shared_types::{CredentialSchemaId, OrganisationId};
 
-use shared_types::OrganisationId;
-
-use crate::model::{
-    common::ExactColumn,
-    credential_schema::{
-        CredentialSchema, CredentialSchemaId, CredentialSchemaRelations, GetCredentialSchemaList,
-        GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+use crate::{
+    model::{
+        credential_schema::{
+            CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList,
+            GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+        },
+        list_filter::{ListFilterValue, StringMatch, StringMatchType},
+        list_query::ListPagination,
     },
+    service::credential_schema::dto::CredentialSchemaFilterValue,
 };
 
 use super::error::DataLayerError;
@@ -54,14 +56,18 @@ impl dyn CredentialSchemaRepository {
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let mut schema = self
             .get_credential_schema_list(GetCredentialSchemaQuery {
-                page: 0,
-                page_size: 1,
-                organisation_id,
-                name: Some(name.to_owned()),
-                exact: Some(vec![ExactColumn::Name]),
-                sort: None,
-                sort_direction: None,
-                ids: None,
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 1,
+                }),
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                        & CredentialSchemaFilterValue::Name(StringMatch {
+                            r#match: StringMatchType::Equals,
+                            value: name.to_owned(),
+                        }),
+                ),
+                ..Default::default()
             })
             .await?;
 

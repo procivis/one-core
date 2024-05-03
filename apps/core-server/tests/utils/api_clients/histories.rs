@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
-use one_core::model::credential_schema::CredentialSchemaId;
-use shared_types::HistoryId;
+use shared_types::{CredentialSchemaId, HistoryId};
 
 use super::{HttpClient, Response};
 

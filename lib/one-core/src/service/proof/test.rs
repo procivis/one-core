@@ -124,7 +124,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
         validity_constraint: None,
         claim_schemas: None,
         credential_schema: Some(CredentialSchema {
-            id: Default::default(),
+            id: Uuid::new_v4().into(),
             deleted_at: None,
             created_date: now,
             last_modified: now,
@@ -184,7 +184,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     wallet_storage_type: Some(WalletStorageTypeEnum::Software),
@@ -302,7 +302,7 @@ async fn test_get_proof_exists() {
                     order: 0,
                 }]),
                 credential_schema: Some(CredentialSchema {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     wallet_storage_type: Some(WalletStorageTypeEnum::Software),

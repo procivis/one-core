@@ -1,8 +1,9 @@
+use shared_types::CredentialSchemaId;
+
 use crate::{
     common_mapper::list_response_into,
     model::{
-        claim_schema::ClaimSchemaRelations,
-        credential_schema::{CredentialSchemaId, CredentialSchemaRelations},
+        claim_schema::ClaimSchemaRelations, credential_schema::CredentialSchemaRelations,
         organisation::OrganisationRelations,
     },
     repository::error::DataLayerError,

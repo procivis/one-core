@@ -25,6 +25,7 @@ use one_core::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use one_core::service::credential::dto::SuspendCredentialRequestDTO;
 use serde::{Deserialize, Serialize};
 use shared_types::CredentialId;
+use shared_types::CredentialSchemaId;
 use shared_types::KeyId;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
@@ -205,7 +206,7 @@ pub enum SortableCredentialColumnRestEnum {
 #[into(CreateCredentialRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCredentialRequestRestDTO {
-    pub credential_schema_id: Uuid,
+    pub credential_schema_id: CredentialSchemaId,
     pub issuer_did: Uuid,
     pub issuer_key: Option<KeyId>,
     pub transport: String,

@@ -64,7 +64,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             issuer_did: None,
             holder_did: None,
             schema: Some(CredentialSchema {
-                id: Uuid::from_str(&value.credential_schema_id)?,
+                id: Uuid::from_str(&value.credential_schema_id)?.into(),
                 deleted_at: value.credential_schema_deleted_at,
                 created_date: value.credential_schema_created_date,
                 last_modified: value.credential_schema_last_modified,

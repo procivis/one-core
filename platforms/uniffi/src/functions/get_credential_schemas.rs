@@ -2,7 +2,10 @@ use crate::{
     error::BindingError, utils::into_id, CredentialSchemaListBindingDTO, ListQueryBindingDTO,
     OneCoreBinding,
 };
-use one_core::service::credential_schema::dto::GetCredentialSchemaQueryDTO;
+use one_core::{
+    model::{list_filter::ListFilterValue, list_query::ListPagination},
+    service::credential_schema::dto::{CredentialSchemaFilterValue, GetCredentialSchemaQueryDTO},
+};
 
 impl OneCoreBinding {
     pub fn get_credential_schemas(
@@ -14,14 +17,17 @@ impl OneCoreBinding {
             Ok(core
                 .credential_schema_service
                 .get_credential_schema_list(GetCredentialSchemaQueryDTO {
-                    page: query.page,
-                    page_size: query.page_size,
-                    sort: None,
-                    sort_direction: None,
-                    name: None,
-                    organisation_id: into_id(&query.organisation_id)?,
-                    exact: None,
-                    ids: None,
+                    pagination: Some(ListPagination {
+                        page: query.page,
+                        page_size: query.page_size,
+                    }),
+                    filtering: Some(
+                        CredentialSchemaFilterValue::OrganisationId(into_id(
+                            &query.organisation_id,
+                        )?)
+                        .condition(),
+                    ),
+                    ..Default::default()
                 })
                 .await?
                 .into())

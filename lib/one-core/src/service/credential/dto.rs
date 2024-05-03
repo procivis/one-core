@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{ClaimSchemaId, CredentialId, DidId, KeyId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId};
 use strum_macros::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use dto_mapper::{From, Into};
 
@@ -14,7 +13,7 @@ use crate::{
     model::{
         common::GetListResponse,
         credential::SortableCredentialColumn,
-        credential_schema::{CredentialFormat, CredentialSchemaId, RevocationMethod},
+        credential_schema::{CredentialFormat, RevocationMethod},
         list_filter::{ListFilterValue, StringMatch},
         list_query::ListQuery,
     },
@@ -160,7 +159,7 @@ pub type GetCredentialQueryDTO =
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialRequestDTO {
-    pub credential_schema_id: Uuid,
+    pub credential_schema_id: CredentialSchemaId,
     pub issuer_did: DidId,
     pub issuer_key: Option<KeyId>,
     pub transport: String,

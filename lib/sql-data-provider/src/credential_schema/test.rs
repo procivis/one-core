@@ -1,6 +1,11 @@
 use super::CredentialSchemaProvider;
-use crate::{entity::credential_schema, list_query::from_pagination, test_utilities::*};
-use one_core::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::{entity::credential_schema, test_utilities::*};
+use one_core::model::credential_schema::{
+    CredentialSchemaType, GetCredentialSchemaQuery, LayoutType, WalletStorageTypeEnum,
+};
+use one_core::model::list_filter::ListFilterValue;
+use one_core::model::list_query::ListPagination;
+use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use one_core::{
     model::{
         claim_schema::{ClaimSchema, ClaimSchemaRelations},
@@ -20,6 +25,8 @@ use one_core::{
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
+use shared_types::CredentialSchemaId;
+use std::str::FromStr;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -71,7 +78,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         ..
     } = setup_empty(repositories).await;
 
-    let credential_schema_id = Uuid::parse_str(
+    let credential_schema_id = CredentialSchemaId::from_str(
         &insert_credential_schema_to_database(
             &db,
             None,
@@ -150,7 +157,7 @@ async fn test_create_credential_schema_success() {
         ..
     } = setup_empty(Repositories::default()).await;
 
-    let credential_schema_id = Uuid::new_v4();
+    let credential_schema_id: CredentialSchemaId = Uuid::new_v4().into();
     let claim_schemas = vec![
         CredentialSchemaClaim {
             schema: ClaimSchema {
@@ -243,7 +250,16 @@ async fn test_get_credential_schema_list_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema_list(from_pagination(0, 5, organisation.id))
+        .get_credential_schema_list(GetCredentialSchemaQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+            ),
+            ..Default::default()
+        })
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -272,7 +288,16 @@ async fn test_get_credential_schema_list_deleted_schema() {
     .unwrap();
 
     let result = repository
-        .get_credential_schema_list(from_pagination(0, 1, organisation.id))
+        .get_credential_schema_list(GetCredentialSchemaQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 1,
+            }),
+            filtering: Some(
+                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+            ),
+            ..Default::default()
+        })
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -420,7 +445,10 @@ async fn test_get_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema(&Uuid::new_v4(), &CredentialSchemaRelations::default())
+        .get_credential_schema(
+            &Uuid::new_v4().into(),
+            &CredentialSchemaRelations::default(),
+        )
         .await;
     assert!(matches!(result, Ok(None)));
 }
@@ -451,7 +479,9 @@ async fn test_delete_credential_schema_success() {
 async fn test_delete_credential_schema_not_found() {
     let TestSetup { repository, .. } = setup_empty(Repositories::default()).await;
 
-    let result = repository.delete_credential_schema(&Uuid::new_v4()).await;
+    let result = repository
+        .delete_credential_schema(&Uuid::new_v4().into())
+        .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
 

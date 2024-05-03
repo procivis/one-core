@@ -1,9 +1,10 @@
 use crate::config::core_config::FormatType;
+use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
+use crate::model::list_query::ListPagination;
 use crate::{
     common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER},
     model::{
         claim_schema::ClaimSchema,
-        common::ExactColumn,
         credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaType},
         history::{History, HistoryAction, HistoryEntityType},
         organisation::Organisation,
@@ -21,6 +22,8 @@ use dto_mapper::convert_inner;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::dto::CredentialSchemaFilterValue;
 
 impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
     type Error = ServiceError;
@@ -73,14 +76,18 @@ pub(super) fn create_unique_name_check_request(
     organisation_id: OrganisationId,
 ) -> Result<GetCredentialSchemaQueryDTO, ServiceError> {
     Ok(GetCredentialSchemaQueryDTO {
-        page: 0,
-        page_size: 1,
-        sort: None,
-        sort_direction: None,
-        name: Some(name.to_string()),
-        exact: Some(vec![ExactColumn::Name]),
-        organisation_id,
-        ids: None,
+        pagination: Some(ListPagination {
+            page: 0,
+            page_size: 1,
+        }),
+        filtering: Some(
+            CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                & CredentialSchemaFilterValue::Name(StringMatch {
+                    r#match: StringMatchType::Equals,
+                    value: name.to_owned(),
+                }),
+        ),
+        ..Default::default()
     })
 }
 
@@ -111,7 +118,7 @@ pub(super) fn from_create_request(
     };
 
     Ok(CredentialSchema {
-        id,
+        id: id.into(),
         deleted_at: None,
         created_date: now,
         last_modified: now,

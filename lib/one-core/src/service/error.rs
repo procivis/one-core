@@ -1,4 +1,4 @@
-use shared_types::{ClaimSchemaId, CredentialId, HistoryId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, HistoryId, OrganisationId};
 use shared_types::{DidId, DidValue, KeyId};
 use strum_macros::Display;
 use thiserror::Error;
@@ -7,7 +7,6 @@ use uuid::Uuid;
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
 use crate::model::credential::CredentialStateEnum;
-use crate::model::credential_schema::CredentialSchemaId;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofId;
 use crate::model::proof::ProofStateEnum;
