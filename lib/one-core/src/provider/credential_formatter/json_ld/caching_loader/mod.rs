@@ -31,8 +31,6 @@ pub enum CachingLoaderError {
     CannotParseLastModifiedHeader,
     #[error("HTTP error: received 3xx status code when 2xx was expected")]
     ReceivedStatus3xxInsteadOf2xx,
-    #[error("HTTP error: received status 304 without Last-Modified header")]
-    ReceivedStatus304WithoutLastModifiedHeader,
     #[error("HTTP error: unexpected status code: `{0}`")]
     UnexpectedStatusCode(String),
 
@@ -200,10 +198,14 @@ impl CachingLoader {
             let result = response
                 .headers()
                 .get("Last-Modified")
-                .ok_or(CachingLoaderError::ReceivedStatus304WithoutLastModifiedHeader)?
-                .to_str()
+                .map(|value| value.to_str())
+                .transpose()
                 .map_err(|_| CachingLoaderError::CannotParseLastModifiedHeader)?;
-            let last_modified = OffsetDateTime::parse(result, &Rfc2822)?;
+
+            let last_modified = match result {
+                None => OffsetDateTime::now_utc(),
+                Some(value) => OffsetDateTime::parse(value, &Rfc2822)?,
+            };
             Ok(FetchContextResult::LastModifiedHeader(last_modified))
         } else {
             Err(CachingLoaderError::UnexpectedStatusCode(status.to_string()))

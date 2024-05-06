@@ -95,6 +95,18 @@ async fn context_fetch_mock_304(mock_server: &MockServer) {
         .await;
 }
 
+async fn context_fetch_mock_304_without_last_modified_header(mock_server: &MockServer) {
+    Mock::given(path("/context"))
+        .and(headers(
+            "if-modified-since",
+            vec!["Sat", "02 Apr 2005 20:37:00 GMT"],
+        ))
+        .respond_with(ResponseTemplate::new(304))
+        .expect(1)
+        .mount(mock_server)
+        .await;
+}
+
 #[tokio::test]
 async fn test_load_context_success_cache_miss_external_fetch_occured() {
     let response_content = "validstring";
@@ -216,7 +228,7 @@ async fn test_load_context_success_cache_hit_but_too_old_200() {
 }
 
 #[tokio::test]
-async fn test_load_context_success_cache_hit_but_too_old_304() {
+async fn test_load_context_success_cache_hit_but_too_old_304_with_last_modified_header() {
     let response_content = "validstring";
 
     let mock_server = MockServer::start().await;
@@ -243,6 +255,56 @@ async fn test_load_context_success_cache_hit_but_too_old_304() {
         .times(1)
         .return_once(|request| {
             assert_eq!(request.last_modified, datetime!(2006-04-02 21:37 +1));
+            Ok(())
+        });
+    repository
+        .expect_get_repository_size()
+        .times(1)
+        .return_once(|| Ok(2u32));
+    repository
+        .expect_delete_oldest_context()
+        .times(1)
+        .return_once(|| Ok(()));
+
+    let loader = CachingLoader {
+        cache_size: 1,
+        cache_refresh_timeout: Duration::seconds(99999),
+        client: Default::default(),
+        json_ld_context_repository: Arc::new(repository),
+    };
+
+    assert_eq!(response_content, loader.load_context(&url).await.unwrap());
+}
+
+#[tokio::test]
+async fn test_load_context_success_cache_hit_but_too_old_304_without_last_modified_header() {
+    let response_content = "validstring";
+
+    let mock_server = MockServer::start().await;
+    context_fetch_mock_304_without_last_modified_header(&mock_server).await;
+
+    let url = format!("{}/context", mock_server.uri());
+
+    let cloned_url = url.clone();
+    let mut repository = MockJsonLdContextRepository::default();
+    repository
+        .expect_get_json_ld_context_by_url()
+        .return_once(move |_| {
+            Ok(Some(JsonLdContext {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                context: response_content.to_string().into_bytes(),
+                url: cloned_url.parse().unwrap(),
+                hit_counter: 0,
+            }))
+        });
+    let now = OffsetDateTime::now_utc();
+    repository
+        .expect_update_json_ld_context()
+        .times(1)
+        .return_once(move |request| {
+            assert!(request.last_modified > now);
             Ok(())
         });
     repository
