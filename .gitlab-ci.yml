@@ -263,7 +263,6 @@ upload_sdk_artifacts:
     ANDROID_CONTAINER_PATH: "android/${CI_PIPELINE_ID}"
     ANDROID_SDK_DEBUG_FILE: "onecore-debug.aar"
     ANDROID_SDK_RELEASE_FILE: "onecore-release.aar"
-
     IOS_CONTAINER_PATH: "ios/${CI_PIPELINE_ID}"
     IOS_BUILD_SOURCE_PATH: "artifacts"
     IOS_BUILD_FILE: "deploy.zip"
@@ -308,8 +307,7 @@ generate_binding_files:
       - target/uniffi/ios/one_core.swift
     expire_in: 10 days
   extends:
-    - .only_main_or_tag_manual
-
+    - .only_main_or_tag
 
 test_e2e:
   stage: e2e_tests
@@ -382,22 +380,28 @@ e2e:trigger_tests:
 
 dependency_track:upload-bom:
   stage: scan
-  when: manual
   variables:
     D_TRACK_PATH: ${DEPENDENCY_TRACK_BASE_URL}/api/v1/bom
     SBOM_FILE_PATH: "merged_sbom.json"
+    SBOM_FILES: >-
+      apps/core-server/core-server.cdx.json
+      apps/migration/migration.cdx.json
+      lib/one-core/one-core.cdx.json
+      lib/shared-types/shared-types.cdx.json
+      lib/sql-data-provider/sql-data-provider.cdx.json
+      platforms/uniffi-bindgen/uniffi-bindgen.cdx.json
+      platforms/uniffi/one-core-uniffi.cdx.json
   extends:
     - .only_main_or_tag_or_manual
   script:
     - cargo cyclonedx -f json
-    - FILES="apps/core-server/bom.json apps/migration/bom.json lib/one-core/bom.json lib/shared-types/bom.json lib/sql-data-provider/bom.json platforms/uniffi/bom.json platforms/uniffi-bindgen/bom.json"
-    - cyclonedx-cli merge --input-files ${FILES} --input-format=json --output-format=json --group apps > ${SBOM_FILE_PATH}
+    - cyclonedx-cli merge --input-files ${SBOM_FILES} --input-format=json --output-format=json --group apps > ${SBOM_FILE_PATH}
     - file_content=$(base64 -i $SBOM_FILE_PATH)
-    - >
-      curl -v --fail -X PUT \
+    - |
+      curl -i --fail -X PUT \
         -H "Content-Type: application/json" \
         -H "X-API-Key: ${DEPENDENCY_TRACK_API_KEY}" \
-        --data @- ${D_TRACK_PATH} <<EOF
+        --data @- ${D_TRACK_PATH} << EOF
       {
         "projectName": "${DEPENDENCY_TRACK_PROJECT_NAME}",
         "projectVersion": "${D_TRACK_PROJECT_VERSION}",
