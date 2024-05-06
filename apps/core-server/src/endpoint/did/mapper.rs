@@ -1,4 +1,5 @@
 use super::dto::{CreateDidRequestRestDTO, DidFilterQueryParamsRest, ExactDidFilterColumnRestEnum};
+use dto_mapper::convert_inner;
 use one_core::model::{
     did::DidFilterValue,
     list_filter::{ListFilterCondition, ListFilterValue, StringMatch, StringMatchType},
@@ -60,10 +61,18 @@ impl From<DidFilterQueryParamsRest> for ListFilterCondition<DidFilterValue> {
             )
         });
 
-        let key_roles = value.key_roles.map(|values| {
-            DidFilterValue::KeyRoles(values.into_iter().map(|key_role| key_role.into()).collect())
-        });
+        let key_roles = value
+            .key_roles
+            .map(|values| DidFilterValue::KeyRoles(convert_inner(values)));
 
-        organisation_id & r#type & (name | did_value) & deactivated & key_algorithms & key_roles
+        let did_methods = value.did_methods.map(DidFilterValue::DidMethods);
+
+        organisation_id
+            & r#type
+            & (name | did_value)
+            & deactivated
+            & key_algorithms
+            & key_roles
+            & did_methods
     }
 }
