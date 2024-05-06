@@ -101,7 +101,7 @@ pub fn create_config(
         sentry_environment: None,
         trace_level: Some("debug".into()),
         hide_error_response_cause: true,
-        json_ld_context_config: Some(JsonLdContextConfig {
+        json_ld_context: Some(JsonLdContextConfig {
             cache_refresh_timeout: Duration::seconds(86400),
             cache_size: 1000,
         }),

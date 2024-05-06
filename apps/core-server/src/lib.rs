@@ -36,5 +36,5 @@ pub struct ServerConfig {
     // when set to true hides the `cause` field in the error response
     pub hide_error_response_cause: bool,
     #[serde(default)]
-    pub json_ld_context_config: Option<JsonLdContextConfig>,
+    pub json_ld_context: Option<JsonLdContextConfig>,
 }
