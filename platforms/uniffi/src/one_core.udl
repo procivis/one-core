@@ -187,23 +187,40 @@ dictionary CredentialDetailBindingDTO {
   string? suspend_end_date;
 };
 
+[Enum]
+interface ProofRequestClaimValueBindingDTO {
+  Value(string value);
+  Claims(sequence<ProofRequestClaimBindingDTO> value);
+};
+
 dictionary ProofRequestClaimBindingDTO {
+  ProofRequestClaimValueBindingDTO? value;
+  ProofClaimSchemaBindingDTO schema;
+};
+
+dictionary ProofClaimSchemaBindingDTO {
   string id;
+  boolean required;
   string key;
   string data_type;
-  boolean required;
+  sequence<ProofClaimSchemaBindingDTO> claims;
+};
+
+dictionary ProofInputBindingDTO {
+  sequence<ProofRequestClaimBindingDTO> claims;
+  CredentialDetailBindingDTO? credential;
   CredentialSchemaBindingDTO credential_schema;
+  i64? validity_constraint;
 };
 
 dictionary ProofRequestBindingDTO {
   string id;
   string created_date;
   string last_modified;
-  sequence<ProofRequestClaimBindingDTO> claims;
   string? verifier_did;
   string transport;
   string? redirect_uri;
-  sequence<CredentialDetailBindingDTO> credentials;
+  sequence<ProofInputBindingDTO> proof_inputs;
 };
 
 dictionary PresentationSubmitCredentialRequestBindingDTO {

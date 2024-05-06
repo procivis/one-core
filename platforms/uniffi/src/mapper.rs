@@ -91,17 +91,10 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
             last_modified: value.last_modified.format_timestamp(),
-            // will be fixed in ONE-1735
-            claims: vec![],
             verifier_did: value.verifier_did.map(|inner| inner.did.to_string()),
             transport: value.transport,
             redirect_uri: value.redirect_uri,
-            credentials: value
-                .proof_inputs
-                .into_iter()
-                .filter_map(|p| p.credential)
-                .map(Into::into)
-                .collect(),
+            proof_inputs: convert_inner(value.proof_inputs),
         }
     }
 }

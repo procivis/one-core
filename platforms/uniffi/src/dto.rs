@@ -21,6 +21,8 @@ use one_core::service::credential_schema::dto::{
 use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
+use one_core::service::proof::dto::{ProofClaimDTO, ProofClaimValueDTO, ProofInputDTO};
+use one_core::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::{
     model::{
@@ -392,19 +394,10 @@ pub struct ProofRequestBindingDTO {
     pub id: String,
     pub created_date: String,
     pub last_modified: String,
-    pub claims: Vec<ProofRequestClaimBindingDTO>,
     pub verifier_did: Option<String>,
     pub transport: String,
     pub redirect_uri: Option<String>,
-    pub credentials: Vec<CredentialDetailBindingDTO>,
-}
-
-pub struct ProofRequestClaimBindingDTO {
-    pub id: String,
-    pub key: String,
-    pub data_type: String,
-    pub required: bool,
-    pub credential_schema: CredentialSchemaBindingDTO,
+    pub proof_inputs: Vec<ProofInputBindingDTO>,
 }
 
 #[derive(TryInto)]
@@ -421,6 +414,57 @@ pub struct PresentationSubmitCredentialRequestBindingDTO {
 pub struct PresentationDefinitionBindingDTO {
     #[from(with_fn = convert_inner)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupBindingDTO>,
+}
+
+pub enum ProofRequestClaimValueBindingDTO {
+    Value {
+        value: String,
+    },
+    Claims {
+        value: Vec<ProofRequestClaimBindingDTO>,
+    },
+}
+
+impl From<ProofClaimValueDTO> for ProofRequestClaimValueBindingDTO {
+    fn from(value: ProofClaimValueDTO) -> Self {
+        match value {
+            ProofClaimValueDTO::Value(value) => Self::Value { value },
+            ProofClaimValueDTO::Claims(claims) => ProofRequestClaimValueBindingDTO::Claims {
+                value: convert_inner(claims),
+            },
+        }
+    }
+}
+
+#[derive(From)]
+#[from(ProofClaimSchemaResponseDTO)]
+pub struct ProofClaimSchemaBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    pub required: bool,
+    pub key: String,
+    pub data_type: String,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<ProofClaimSchemaBindingDTO>,
+}
+
+#[derive(From)]
+#[from(ProofClaimDTO)]
+pub struct ProofRequestClaimBindingDTO {
+    pub schema: ProofClaimSchemaBindingDTO,
+    #[from(with_fn = convert_inner)]
+    pub value: Option<ProofRequestClaimValueBindingDTO>,
+}
+
+#[derive(From)]
+#[from(ProofInputDTO)]
+pub struct ProofInputBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<ProofRequestClaimBindingDTO>,
+    #[from(with_fn = convert_inner)]
+    pub credential: Option<CredentialDetailBindingDTO>,
+    pub credential_schema: CredentialSchemaBindingDTO,
+    pub validity_constraint: Option<i64>,
 }
 
 #[derive(From)]
