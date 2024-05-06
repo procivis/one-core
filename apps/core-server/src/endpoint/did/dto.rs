@@ -173,6 +173,8 @@ pub struct DidFilterQueryParamsRest {
     pub key_algorithms: Option<Vec<String>>,
     #[param(inline, rename = "keyRoles[]")]
     pub key_roles: Option<Vec<KeyRoleRestEnum>>,
+    #[param(inline, rename = "didMethods[]")]
+    pub did_methods: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

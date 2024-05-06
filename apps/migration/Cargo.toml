@@ -14,8 +14,8 @@ path              = "src/main.rs"
 required-features = ["cli", "mysql"]
 
 [dependencies]
-sea-orm = { workspace = true, features = ["with-time"] }
-sea-orm-migration = { version = "0.12", default_features = false, features = ["runtime-tokio-rustls", "sqlx-sqlite"] }
+sea-orm           = { workspace = true, features = ["with-time"] }
+sea-orm-migration = { version = "0.12", default-features = false, features = ["runtime-tokio-rustls", "sqlx-sqlite"] }
 time.workspace    = true
 tokio             = { workspace = true, features = ["macros", "rt-multi-thread"], optional = true }
 

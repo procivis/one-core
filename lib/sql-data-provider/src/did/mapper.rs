@@ -83,6 +83,9 @@ impl IntoFilterCondition for DidFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
+            DidFilterValue::DidMethods(methods) => {
+                did::Column::Method.is_in(methods).into_condition()
+            }
         }
     }
 }

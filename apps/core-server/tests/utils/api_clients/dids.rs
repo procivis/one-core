@@ -39,6 +39,7 @@ impl DidsApi {
         self.client.post("/api/did/v1", body).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn list(
         &self,
         page: u64,
@@ -47,15 +48,17 @@ impl DidsApi {
         deactivated: bool,
         key_algorithms: Option<String>,
         key_roles: Option<String>,
+        did_methods: Option<String>,
     ) -> Response {
         let mut url = format!("/api/did/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}&deactivated={deactivated}");
-        if key_algorithms.is_some() {
-            let key_algorithms = key_algorithms.unwrap();
+        if let Some(key_algorithms) = key_algorithms {
             url.push_str(&format!("&keyAlgorithms[]={key_algorithms}"));
         }
-        if key_roles.is_some() {
-            let key_roles = key_roles.unwrap();
+        if let Some(key_roles) = key_roles {
             url.push_str(&format!("&keyRoles[]={key_roles}"));
+        }
+        if let Some(did_methods) = did_methods {
+            url.push_str(&format!("&didMethods[]={did_methods}"));
         }
         self.client.get(&url).await
     }

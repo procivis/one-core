@@ -34,7 +34,7 @@ async fn test_get_did_list_filters_deactivated_dids() {
     let resp = context
         .api
         .dids
-        .list(0, 10, &organisation.id, false, None, None)
+        .list(0, 10, &organisation.id, false, None, None, None)
         .await;
 
     // THEN
@@ -157,6 +157,60 @@ async fn test_get_did_list_filters_with_key_filtering() {
             false,
             Some("EDDSA".to_string()),
             Some("ASSERTION_METHOD".to_string()),
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(1, values.len());
+    values[0]["id"].assert_eq(&expected_did.id);
+}
+
+#[tokio::test]
+async fn test_get_did_list_filters_with_did_method_filtering() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let expected_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("FOO".into()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("BAR".into()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .dids
+        .list(
+            0,
+            10,
+            &organisation.id,
+            false,
+            None,
+            None,
+            Some("FOO".into()),
         )
         .await;
 
