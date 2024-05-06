@@ -24,15 +24,11 @@ async fn test_openid4vc_jsonld_flow_ecdsa_eddsa() {
     test_openid4vc_jsonld_flow(ecdsa_key_1(), eddsa_key_1(), "NONE").await
 }
 
-//Todo (ONE-1968): This works, but running too many tests at once will cause 429 Too Many Requests from w3.org
-#[ignore]
 #[tokio::test]
 async fn test_openid4vc_jsonld_flow_eddsa_ecdsa() {
     test_openid4vc_jsonld_flow(eddsa_key_1(), ecdsa_key_1(), "NONE").await
 }
 
-// Todo (ONE-1968): This works, but running too many tests at once will cause 429 Too Many Requests from w3.org
-#[ignore]
 #[tokio::test]
 async fn test_openid4vc_jsonld_flow_ecdsa_ecdsa() {
     test_openid4vc_jsonld_flow(ecdsa_key_1(), ecdsa_key_2(), "NONE").await
@@ -53,6 +49,8 @@ async fn test_openid4vc_jsonld_flow(
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
+
+    server_context.db.json_ld_contexts.prepare_cache().await;
 
     let (server_did, holder_did, local_key) = prepare_dids(
         &server_context,
@@ -186,6 +184,7 @@ async fn test_openid4vc_jsonld_flow(
     // Valid holder context
     let holder_context = TestContext::new().await;
     let holder_organisation = holder_context.db.organisations.create().await;
+    holder_context.db.json_ld_contexts.prepare_cache().await;
 
     let (holder_did, server_did, local_key) = prepare_dids(
         &holder_context,

@@ -14,8 +14,6 @@ use crate::{
     utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
 };
 
-// Todo (ONE-1968): This works, but running too many tests at once will cause 429 Too Many Requests from w3.org
-#[ignore]
 #[tokio::test]
 async fn test_openid4vc_jsonld_bbsplus_flow_bitstring() {
     test_openid4vc_jsonld_bbsplus_flow("BITSTRINGSTATUSLIST").await
@@ -36,6 +34,8 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let base_url = server_context.config.app.core_base_url.clone();
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
+
+    server_context.db.json_ld_contexts.prepare_cache().await;
 
     let (server_issuer_did, _, server_issuer_key) = prepare_dids(
         &server_context,
@@ -199,6 +199,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     // Valid holder context
     let holder_context = TestContext::new().await;
     let holder_organisation = holder_context.db.organisations.create().await;
+    holder_context.db.json_ld_contexts.prepare_cache().await;
 
     let (holder_local_did, verifier_remote_did, local_holer_key) = prepare_dids(
         &holder_context,
@@ -438,6 +439,7 @@ async fn test_opeind4vc_jsondl_only_bbs_supported() {
 
     let server_context = TestContext::new().await;
     let server_organisation = server_context.db.organisations.create().await;
+    server_context.db.json_ld_contexts.prepare_cache().await;
 
     let (server_issuer_did, holder_did, server_issuer_key) = prepare_dids(
         &server_context,

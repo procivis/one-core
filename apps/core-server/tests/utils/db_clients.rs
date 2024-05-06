@@ -1,3 +1,4 @@
+use crate::utils::db_clients::json_ld_context::JsonLdContextDB;
 use crate::utils::db_clients::lvvcs::LvvcsDB;
 use one_core::repository::DataRepository;
 use sql_data_provider::{DataLayer, DbConn};
@@ -18,8 +19,9 @@ pub mod credentials;
 pub mod dids;
 pub mod histories;
 pub mod interactions;
+pub mod json_ld_context;
 pub mod keys;
-mod lvvcs;
+pub mod lvvcs;
 pub mod organisations;
 pub mod proof_schemas;
 pub mod proofs;
@@ -31,12 +33,13 @@ pub struct DbClient {
     pub credential_schemas: CredentialSchemasDB,
     pub credentials: CredentialsDB,
     pub histories: HistoriesDB,
+    pub json_ld_contexts: JsonLdContextDB,
     pub keys: KeysDB,
+    pub lvvcs: LvvcsDB,
     pub revocation_lists: RevocationListsDB,
     pub proof_schemas: ProofSchemasDB,
     pub proofs: ProofsDB,
     pub interactions: InteractionsDB,
-    pub lvvcs: LvvcsDB,
 }
 
 impl DbClient {
@@ -48,12 +51,13 @@ impl DbClient {
             credential_schemas: CredentialSchemasDB::new(layer.get_credential_schema_repository()),
             credentials: CredentialsDB::new(layer.get_credential_repository()),
             histories: HistoriesDB::new(layer.get_history_repository()),
+            json_ld_contexts: JsonLdContextDB::new(layer.get_json_ld_context_repository()),
             keys: KeysDB::new(layer.get_key_repository()),
+            lvvcs: LvvcsDB::new(layer.get_lvvc_repository()),
             revocation_lists: RevocationListsDB::new(layer.get_revocation_list_repository()),
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),
             proofs: ProofsDB::new(layer.get_proof_repository()),
             interactions: InteractionsDB::new(layer.get_interaction_repository()),
-            lvvcs: LvvcsDB::new(layer.get_lvvc_repository()),
         }
     }
 }
