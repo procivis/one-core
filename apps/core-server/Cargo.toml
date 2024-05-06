@@ -1,9 +1,10 @@
 [package]
-name    = "core-server"
-version = "0.1.0"
-edition = "2021"
-build   = "build.rs"
-publish = false
+name                   = "core-server"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+build                  = "build.rs"
+publish                = false
 
 # disable doctests
 [lib]
@@ -14,9 +15,10 @@ doctest = false
 strict = []
 
 [dependencies]
-one-core                     = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
-sql-data-provider            = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["mysql"] }
-shared-types                 = { version = "0.1.0", path = "../../lib/shared-types", features = ["utoipa"] }
+one-core          = { workspace = true, features = ["config_json", "config_yaml", "config_env"] }
+sql-data-provider = { workspace = true, features = ["mysql"] }
+shared-types      = { workspace = true, features = ["utoipa"] }
+
 axum.workspace               = true
 ct-codecs.workspace          = true
 dto_mapper.workspace         = true
@@ -51,9 +53,10 @@ serde_json.workspace = true
 codegen              = { version = "0.2" }
 
 [dev-dependencies]
+sql-data-provider = { workspace = true, features = ["test_utils"] }
+
 reqwest               = { version = "0.11", features = ["json"] }
 wiremock.workspace    = true
-sql-data-provider     = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
 rand.workspace        = true
 rand_chacha.workspace = true
 indoc                 = { version = "2.0" }

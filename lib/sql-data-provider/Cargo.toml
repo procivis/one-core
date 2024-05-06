@@ -1,8 +1,9 @@
 [package]
-name              = "sql-data-provider"
-version.workspace = true
-edition.workspace = true
-publish           = false
+name                   = "sql-data-provider"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+publish                = false
 
 [features]
 # Treat build warnings as error
@@ -11,7 +12,9 @@ mysql      = ["migration/mysql", "sea-orm/sqlx-mysql"]
 test_utils = []
 
 [dependencies]
-one-core              = { version = "0.1.0", path = "../../lib/one-core" }
+one-core.workspace = true
+shared-types       = { workspace = true, features = ["sea-orm"] }
+
 anyhow.workspace      = true
 async-trait           = { version = "0.1" }
 migration             = { version = "0.1.0", path = "../../apps/migration", default-features = false }
@@ -25,13 +28,13 @@ serde.workspace       = true
 uuid.workspace        = true
 tokio                 = { workspace = true, features = ["macros"] }
 url                   = { workspace = true }
-shared-types          = { version = "0.1.0", path = "../shared-types", features = ["sea-orm"] }
 autometrics.workspace = true
 hex.workspace         = true
 
 [dev-dependencies]
+one-core = { workspace = true, features = ["mock"] }
+
 mockall.workspace  = true
-one-core           = { version = "0.1.0", path = "../../lib/one-core", features = ["mock"] }
 futures.workspace  = true
 tempfile.workspace = true
 

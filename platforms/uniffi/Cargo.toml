@@ -1,8 +1,9 @@
 [package]
-name    = "one-core-uniffi"
-version = "0.1.0"
-edition = "2021"
-publish = false
+name                   = "one-core-uniffi"
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+publish                = false
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
@@ -12,8 +13,10 @@ crate-type = ["cdylib", "staticlib"]
 strict = []
 
 [dependencies]
-one-core             = { version = "0.1.0", path = "../../lib/one-core" }
-sql-data-provider    = { version = "0.1.0", path = "../../lib/sql-data-provider" }
+one-core.workspace          = true
+sql-data-provider.workspace = true
+shared-types.workspace      = true
+
 dto_mapper.workspace = true
 uniffi.workspace     = true
 serde.workspace      = true
@@ -23,7 +26,6 @@ tokio.workspace      = true
 uuid.workspace       = true
 url.workspace        = true
 thiserror.workspace  = true
-shared-types         = { version = "0.1.0", path = "../../lib/shared-types" }
 
 [build-dependencies]
 uniffi = { workspace = true, features = ["build"] }
