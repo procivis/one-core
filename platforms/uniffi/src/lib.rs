@@ -48,7 +48,7 @@ fn initialize_core(
         let core_config = placeholder_config.core.clone();
         let native_key_storage = native_key_storage.clone();
 
-        let json_ld_context_config = placeholder_config.app.json_ld_context_config.to_owned();
+        let json_ld_context_config = placeholder_config.app.json_ld_context.to_owned();
         Box::pin(async move {
             let db_url = format!("sqlite:{db_path}?mode=rwc");
             let db_conn = sql_data_provider::db_conn(db_url, true)
@@ -81,5 +81,5 @@ fn initialize_core(
 #[serde(rename_all = "camelCase")]
 pub struct MobileConfig {
     #[serde(default)]
-    pub json_ld_context_config: Option<JsonLdContextConfig>,
+    pub json_ld_context: Option<JsonLdContextConfig>,
 }
