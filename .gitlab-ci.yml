@@ -392,7 +392,7 @@ dependency_track:upload-bom:
       platforms/uniffi-bindgen/uniffi-bindgen.cdx.json
       platforms/uniffi/one-core-uniffi.cdx.json
   extends:
-    - .only_main_or_tag_or_manual
+    - .only_main_or_tag
   script:
     - cargo cyclonedx -f json
     - cyclonedx-cli merge --input-files ${SBOM_FILES} --input-format=json --output-format=json --group apps > ${SBOM_FILE_PATH}
@@ -426,6 +426,8 @@ dependency_track:policy_violations:
   allow_failure: true
   needs:
     - job: dependency_track:upload-bom
+  extends:
+    - .only_main_or_tag
   script:
     - *dTrack_metrics
     - violated_licences=$(echo ${metrics} | jq -r .policyViolationsFail)
@@ -441,6 +443,8 @@ dependency_track:metrics:
   allow_failure: true
   needs:
     - job: dependency_track:upload-bom
+  extends:
+    - .only_main_or_tag
   script:
     - *dTrack_metrics
     - critical=$(echo ${metrics} | jq -r .critical)
