@@ -314,5 +314,6 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
             "BITSTRINGSTATUSLIST".to_string(),
             "LVVC".to_string(),
         ],
+        verification_key_algorithms: vec!["EDDSA".to_string()],
     }
 }

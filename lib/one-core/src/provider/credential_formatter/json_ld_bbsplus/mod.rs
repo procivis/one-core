@@ -138,6 +138,12 @@ impl CredentialFormatter for JsonLdBbsplus {
                 "BITSTRINGSTATUSLIST".to_string(),
                 "LVVC".to_string(),
             ],
+            verification_key_algorithms: vec![
+                "EDDSA".to_string(),
+                "ES256".to_string(),
+                "BBS_PLUS".to_string(),
+                "DILITHIUM".to_string(),
+            ],
         }
     }
 

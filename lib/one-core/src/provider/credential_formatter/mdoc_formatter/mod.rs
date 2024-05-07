@@ -378,6 +378,7 @@ impl CredentialFormatter for MdocFormatter {
             proof_exchange_protocols: vec!["OPENID4VC".to_string()],
             revocation_methods: vec!["NONE".to_string()],
             signing_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
+            verification_key_algorithms: vec!["EDDSA".to_string(), "ES256".to_string()],
         }
     }
 

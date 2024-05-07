@@ -1,3 +1,4 @@
 mod did_capabilities;
 mod did_multi_key;
+mod formatter_verification_key_algorithms;
 mod revocation_method_capabilities;
