@@ -4,14 +4,18 @@ use cocoon::MiniCocoon;
 use rand::RngCore;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
+use rcgen::SignatureAlgorithm;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
 use crate::crypto::signer::error::SignerError;
+use crate::crypto::signer::Signer;
 use crate::model::key::Key;
-use crate::service::error::ValidationError;
+use crate::provider::key_storage::dto::GenerateCSRRequestDTO;
+use crate::provider::key_storage::internal::mapper::request_to_certificate_params;
+use crate::service::error::{KeyStorageError, ValidationError};
 use crate::{
     provider::{
         key_algorithm::provider::KeyAlgorithmProvider,
@@ -108,12 +112,62 @@ impl KeyStorage for InternalKeyProvider {
             features: vec!["EXPORTABLE".to_string()],
         }
     }
+
+    async fn generate_x509_csr(
+        &self,
+        key: &Key,
+        request: GenerateCSRRequestDTO,
+    ) -> Result<String, ServiceError> {
+        let crypto = self.key_algorithm_provider.get_signer(&key.key_type)?;
+
+        let key_pair = rcgen::KeyPair::from_remote(Box::new(InternalRemoteKeyPair {
+            crypto,
+            encryption_key: Zeroizing::new(self.encryption_key.to_owned()),
+            public_key: key.public_key.to_owned(),
+            private_key: Zeroizing::new(key.key_reference.to_owned()),
+        }))
+        .map_err(KeyStorageError::from)?;
+
+        Ok(request_to_certificate_params(request)
+            .serialize_request(&key_pair)
+            .map_err(KeyStorageError::from)?
+            .pem()
+            .map_err(KeyStorageError::from)?)
+    }
 }
 
-fn decrypt_if_password_is_provided(
+struct InternalRemoteKeyPair {
+    pub crypto: Arc<dyn Signer>,
+    pub encryption_key: Zeroizing<Option<[u8; 32]>>,
+    pub public_key: Vec<u8>,
+    pub private_key: Zeroizing<Vec<u8>>,
+}
+
+impl rcgen::RemoteKeyPair for InternalRemoteKeyPair {
+    fn public_key(&self) -> &[u8] {
+        self.public_key.as_slice()
+    }
+
+    fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
+        let private_key = Zeroizing::new(
+            decrypt_if_password_is_provided(&self.private_key, &self.encryption_key)
+                .map_err(|_| rcgen::Error::RemoteKeyError)?,
+        );
+
+        self.crypto
+            .sign(msg, &self.public_key, &private_key)
+            .map_err(|_| rcgen::Error::RemoteKeyError)
+    }
+
+    fn algorithm(&self) -> &'static SignatureAlgorithm {
+        &rcgen::PKCS_ED25519
+    }
+}
+
+pub fn decrypt_if_password_is_provided(
     data: &[u8],
     encryption_key: &Option<[u8; 32]>,
-) -> Result<Vec<u8>, ServiceError> {
+) -> Result<Vec<u8>, KeyStorageError> {
     match encryption_key {
         None => Ok(data.to_vec()),
         Some(encryption_key) => {
@@ -121,7 +175,7 @@ fn decrypt_if_password_is_provided(
             let cocoon = MiniCocoon::from_key(encryption_key, &[0u8; 32]);
             cocoon
                 .unwrap(data)
-                .map_err(|_| ServiceError::Other("Decryption failure".to_string()))
+                .map_err(|_| KeyStorageError::PasswordDecryptionFailure)
         }
     }
 }
@@ -150,9 +204,10 @@ fn generate_random_seed() -> [u8; 32] {
 
 /// Simplified KDF
 /// * TODO: use pbkdf2 or similar algorithm to prevent dictionary brute-force password attack
-fn convert_passphrase_to_encryption_key(passphrase: &str) -> [u8; 32] {
+pub fn convert_passphrase_to_encryption_key(passphrase: &str) -> [u8; 32] {
     Sha256::digest(passphrase).into()
 }
 
+mod mapper;
 #[cfg(test)]
 mod test;

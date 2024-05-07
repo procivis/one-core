@@ -27,7 +27,7 @@ mockall                    = { workspace = true, optional = true }
 rand.workspace             = true
 rand_chacha.workspace      = true
 sha2                       = { version = "0.10" }
-ed25519-compact            = { version = "2.1" }
+ed25519-compact            = { version = "2.1", features = ["pem"] }
 bit-vec                    = { version = "0.6" }
 flate2                     = { version = "1.0" }
 regex                      = { version = "1.10" }
@@ -69,6 +69,8 @@ jsonptr                    = { version = "0.4.7" }
 indexmap                   = { version = "2.2.6", features = ["serde"] }
 josekit                    = { version = "0.8", features = ["vendored"] }
 zeroize                    = { version = "1.7.0", features = ["serde"] }
+rcgen                      = { version = "0.13.1" }
+yasna                      = { version = "0.5.2" }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

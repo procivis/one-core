@@ -2,9 +2,13 @@ use super::KeyService;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+use crate::service::key::dto::{
+    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
+};
 use crate::{
     model::{
         key::{GetKeyList, Key},
@@ -54,7 +58,7 @@ fn generic_key(name: &str, organisation_id: Uuid) -> Key {
         name: name.to_owned(),
         key_reference: vec![],
         storage_type: "INTERNAL".to_string(),
-        key_type: "RSA4096".to_string(),
+        key_type: "EDDSA".to_string(),
         organisation: Some(Organisation {
             id: organisation_id.into(),
             created_date: now,
@@ -201,4 +205,126 @@ async fn test_get_key_list() {
 
     assert_eq!(data.values[0].name, keys[0].name);
     assert_eq!(data.values[1].name, keys[1].name);
+}
+
+fn generic_csr_request() -> KeyGenerateCSRRequestDTO {
+    KeyGenerateCSRRequestDTO {
+        profile: KeyGenerateCSRRequestProfile::Mdl,
+        not_before: OffsetDateTime::now_utc(),
+        expires_at: OffsetDateTime::now_utc(),
+        subject: KeyGenerateCSRRequestSubjectDTO {
+            country_name: "CH".to_string(),
+            common_name: "name".to_string(),
+            state_or_province_name: None,
+            organisation_name: None,
+            locality_name: None,
+            serial_number: None,
+        },
+    }
+}
+
+#[tokio::test]
+async fn test_generate_csr_success() {
+    let mut repository = MockKeyRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+    let mut key_storage = MockKeyStorage::default();
+
+    let org_id: Uuid = Uuid::new_v4();
+    let key = generic_key("NAME", org_id);
+    let expected_pem_output = "hello";
+    {
+        let key = key.clone();
+        repository
+            .expect_get_key()
+            .once()
+            .returning(move |_, _| Ok(Some(key.clone())));
+        key_storage
+            .expect_generate_x509_csr()
+            .once()
+            .returning(move |_, _| Ok(expected_pem_output.to_string()));
+    }
+
+    let service = setup_service(
+        repository,
+        MockHistoryRepository::default(),
+        organisation_repository,
+        key_storage,
+        generic_config().core,
+    );
+
+    let result = service
+        .generate_csr(&key.id, generic_csr_request())
+        .await
+        .unwrap();
+    assert_eq!(expected_pem_output, result.content);
+}
+
+#[tokio::test]
+async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
+    let mut repository = MockKeyRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+    let key_storage = MockKeyStorage::default();
+
+    let org_id: Uuid = Uuid::new_v4();
+    let mut key = generic_key("NAME", org_id);
+    key.key_type = "BBS_PLUS".to_string();
+    {
+        let key = key.clone();
+        repository
+            .expect_get_key()
+            .once()
+            .returning(move |_, _| Ok(Some(key.clone())));
+    }
+
+    let service = setup_service(
+        repository,
+        MockHistoryRepository::default(),
+        organisation_repository,
+        key_storage,
+        generic_config().core,
+    );
+
+    let result = service.generate_csr(&key.id, generic_csr_request()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::UnsupportedKeyTypeForCSR
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_generate_csr_failed_requested_for_more_than_457_days() {
+    let mut repository = MockKeyRepository::default();
+    let organisation_repository = MockOrganisationRepository::default();
+    let key_storage = MockKeyStorage::default();
+
+    let org_id: Uuid = Uuid::new_v4();
+    let key = generic_key("NAME", org_id);
+    {
+        let key = key.clone();
+        repository
+            .expect_get_key()
+            .once()
+            .returning(move |_, _| Ok(Some(key.clone())));
+    }
+
+    let service = setup_service(
+        repository,
+        MockHistoryRepository::default(),
+        organisation_repository,
+        key_storage,
+        generic_config().core,
+    );
+
+    let mut request = generic_csr_request();
+    request.expires_at = request.not_before + Duration::days(458);
+
+    let result = service.generate_csr(&key.id, request).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(
+            ValidationError::CertificateRequestedForMoreThan457Days
+        ))
+    ));
 }

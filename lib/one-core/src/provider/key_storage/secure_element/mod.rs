@@ -3,6 +3,7 @@ use shared_types::KeyId;
 use std::sync::Arc;
 use zeroize::Zeroizing;
 
+use crate::provider::key_storage::dto::GenerateCSRRequestDTO;
 use crate::{
     crypto::signer::error::SignerError,
     model::key::Key,
@@ -57,6 +58,14 @@ impl KeyStorage for SecureElementKeyProvider {
             security: vec![KeySecurity::Hardware],
             features: vec![],
         }
+    }
+
+    async fn generate_x509_csr(
+        &self,
+        _key: &Key,
+        _request: GenerateCSRRequestDTO,
+    ) -> Result<String, ServiceError> {
+        todo!()
     }
 }
 

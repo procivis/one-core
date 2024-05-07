@@ -1,6 +1,9 @@
 use shared_types::KeyId;
 use uuid::Uuid;
 
+use crate::service::error::MissingProviderError;
+use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO};
+use crate::service::key::validator::validate_generate_csr_request;
 use crate::{
     model::{key::KeyRelations, organisation::OrganisationRelations},
     repository::error::DataLayerError,
@@ -103,5 +106,42 @@ impl KeyService {
         let result = self.key_repository.get_key_list(query).await?;
 
         Ok(result.into())
+    }
+
+    /// Returns x509 CSR of given key
+    ///
+    /// # Arguments
+    ///
+    /// * `KeyId` - Id of an existing key
+    pub async fn generate_csr(
+        &self,
+        key_id: &KeyId,
+        request: KeyGenerateCSRRequestDTO,
+    ) -> Result<KeyGenerateCSRResponseDTO, ServiceError> {
+        let key = self
+            .key_repository
+            .get_key(
+                key_id,
+                &KeyRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
+            .await?;
+
+        let Some(key) = key else {
+            return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
+        };
+
+        validate_generate_csr_request(&request, &key.key_type, &self.config.key_algorithm)?;
+
+        let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
+            ServiceError::MissingProvider(MissingProviderError::KeyStorage(
+                key.key_type.to_owned(),
+            )),
+        )?;
+
+        Ok(KeyGenerateCSRResponseDTO {
+            content: key_storage.generate_x509_csr(&key, request.into()).await?,
+        })
     }
 }
