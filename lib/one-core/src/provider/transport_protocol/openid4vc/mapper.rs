@@ -255,8 +255,8 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
     })
 }
 
-fn is_level_two(claim_schema_key: &str) -> bool {
-    claim_schema_key.matches(NESTED_CLAIM_MARKER).count() == 1
+fn is_min_level_two(claim_schema_key: &str) -> bool {
+    claim_schema_key.matches(NESTED_CLAIM_MARKER).count() >= 1
 }
 
 pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
@@ -289,7 +289,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
 
     let constraint_fields = claim_schemas
         .iter()
-        .filter(|claim| format_type != FormatType::Mdoc || is_level_two(&claim.schema.key))
+        .filter(|claim| format_type != FormatType::Mdoc || is_min_level_two(&claim.schema.key))
         .map(|claim| {
             Ok(OpenID4VPPresentationDefinitionConstraintField {
                 id: Some(claim.schema.id),

@@ -185,6 +185,24 @@ async fn test_share_proof_success_mdoc() {
               "path": [
                 "$['namespace']['location']"
               ]
+            },
+            {
+              "filter": null,
+              "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
+              "intent_to_retain": true,
+              "optional": false,
+              "path": [
+                "$['namespace']['location/X']"
+              ]
+            },
+            {
+              "filter": null,
+              "id": "48db4654-01c4-4a43-9df4-300f1f425c43",
+              "intent_to_retain": true,
+              "optional": false,
+              "path": [
+                "$['namespace']['location/Y']"
+              ]
             }
           ],
           "validity_credential_nbf": null
