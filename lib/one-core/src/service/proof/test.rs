@@ -586,6 +586,7 @@ async fn test_create_proof_without_related_key() {
             proof_exchange_protocols: vec![transport_copy],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
+            verification_key_algorithms: vec![],
         });
     credential_formatter_provider
         .expect_get_formatter()
@@ -689,6 +690,7 @@ async fn test_create_proof_with_related_key() {
             proof_exchange_protocols: vec![transport_copy],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
+            verification_key_algorithms: vec![],
         });
     credential_formatter_provider
         .expect_get_formatter()
@@ -777,6 +779,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
             proof_exchange_protocols: vec![transport],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
+            verification_key_algorithms: vec![],
         });
     credential_formatter_provider
         .expect_get_formatter()
@@ -838,6 +841,7 @@ async fn test_create_proof_failed_incompatible_transport() {
             proof_exchange_protocols: vec![],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
+            verification_key_algorithms: vec![],
         });
     credential_formatter_provider
         .expect_get_formatter()
@@ -919,6 +923,7 @@ async fn test_create_proof_did_deactivated_error() {
             proof_exchange_protocols: vec![transport],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
+            verification_key_algorithms: vec![],
         });
     credential_formatter_provider
         .expect_get_formatter()

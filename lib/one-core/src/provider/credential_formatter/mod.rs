@@ -96,6 +96,7 @@ pub struct FormatterCapabilities {
     pub proof_exchange_protocols: Vec<String>,
     pub revocation_methods: Vec<String>,
     pub signing_key_algorithms: Vec<String>,
+    pub verification_key_algorithms: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Display)]
