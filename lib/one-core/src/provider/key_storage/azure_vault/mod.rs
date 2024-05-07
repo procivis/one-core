@@ -16,6 +16,7 @@ use mapper::{
 };
 use zeroize::Zeroizing;
 
+use crate::provider::key_storage::dto::GenerateCSRRequestDTO;
 use crate::{
     crypto::{
         signer::{error::SignerError, es256::ES256Signer},
@@ -142,6 +143,14 @@ impl KeyStorage for AzureVaultKeyProvider {
             algorithms: vec!["ES256".to_string()],
             security: vec![KeySecurity::Hardware],
         }
+    }
+
+    async fn generate_x509_csr(
+        &self,
+        _key: &Key,
+        _request: GenerateCSRRequestDTO,
+    ) -> Result<String, ServiceError> {
+        todo!()
     }
 }
 

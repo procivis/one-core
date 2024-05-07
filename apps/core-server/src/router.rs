@@ -126,6 +126,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route("/api/key/v1/:id", get(key::controller::get_key))
         .route(
+            "/api/key/v1/:id/generate-csr",
+            post(key::controller::generate_csr),
+        )
+        .route(
             "/api/key/v1",
             post(key::controller::post_key).get(key::controller::get_key_list),
         )
@@ -341,6 +345,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::history::controller::get_history_list,
             endpoint::history::controller::get_history_entry,
 
+            endpoint::key::controller::generate_csr,
             endpoint::key::controller::get_key,
             endpoint::key::controller::get_key_list,
             endpoint::key::controller::post_key,
@@ -441,6 +446,10 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::key::dto::KeyRequestRestDTO,
                 endpoint::key::dto::KeyResponseRestDTO,
                 endpoint::key::dto::KeyListItemResponseRestDTO,
+                endpoint::key::dto::KeyGenerateCSRRequestRestDTO,
+                endpoint::key::dto::KeyGenerateCSRRequestProfileRest,
+                endpoint::key::dto::KeyGenerateCSRRequestSubjectRestDTO,
+                endpoint::key::dto::KeyGenerateCSRResponseRestDTO,
 
                 endpoint::proof::dto::ProofStateRestEnum,
                 endpoint::proof::dto::CreateProofRequestRestDTO,

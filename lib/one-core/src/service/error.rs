@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
+use crate::crypto::signer::error::SignerError;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::ProofId;
@@ -84,6 +85,9 @@ pub enum ServiceError {
 
     #[error(transparent)]
     Repository(#[from] DataLayerError),
+
+    #[error(transparent)]
+    KeyStorage(#[from] KeyStorageError),
 
     #[error("Response mapping error: {0}")]
     ResponseMapping(String),
@@ -239,6 +243,9 @@ pub enum BusinessLogicError {
 
     #[error("Claim schema key exceeded max length (255)")]
     ClaimSchemaKeyTooLong,
+
+    #[error("Unsupported key type for CSR")]
+    UnsupportedKeyTypeForCSR,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -318,6 +325,9 @@ pub enum ValidationError {
 
     #[error("Attribute combination not allowed")]
     AttributeCombinationNotAllowed,
+
+    #[error("Certificate requested for more than 457 days of validity")]
+    CertificateRequestedForMoreThan457Days,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -345,6 +355,17 @@ pub enum MissingProviderError {
 
     #[error("Cannot find task `{0}`")]
     Task(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum KeyStorageError {
+    #[error("Password decryption failure")]
+    PasswordDecryptionFailure,
+
+    #[error("Signer error: `{0}`")]
+    SignerError(#[from] SignerError),
+    #[error("Rcgen error: `{0}`")]
+    RcgenError(#[from] rcgen::Error),
 }
 
 impl MissingProviderError {
@@ -655,6 +676,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Claim schema key exceeded max length (255)")]
     BR_0126,
+
+    #[strum(to_string = "Unsupported key type for CSR")]
+    BR_0128,
 }
 
 impl From<FormatError> for ServiceError {
@@ -683,7 +707,7 @@ impl ServiceError {
             ServiceError::TransportProtocolError(error) => error.error_code(),
             ServiceError::CryptoError(_) => ErrorCode::BR_0050,
             ServiceError::FormatterError(error) => error.error_code(),
-            ServiceError::KeyStorageError(_) => ErrorCode::BR_0039,
+            ServiceError::KeyStorageError(_) | ServiceError::KeyStorage(_) => ErrorCode::BR_0039,
             ServiceError::MappingError(_) => ErrorCode::BR_0047,
             ServiceError::OpenID4VCError(_) => ErrorCode::BR_0048,
             ServiceError::ConfigValidationError(error) => error.error_code(),
@@ -775,6 +799,7 @@ impl BusinessLogicError {
                 ErrorCode::BR_0117
             }
             BusinessLogicError::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
+            BusinessLogicError::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
         }
     }
 }
@@ -805,6 +830,7 @@ impl ValidationError {
             ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(_) => ErrorCode::BR_0108,
             ValidationError::MissingLayoutAttribute(_) => ErrorCode::BR_0105,
             ValidationError::AttributeCombinationNotAllowed => ErrorCode::BR_0118,
+            ValidationError::CertificateRequestedForMoreThan457Days => ErrorCode::BR_0084,
         }
     }
 }

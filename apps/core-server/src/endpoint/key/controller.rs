@@ -13,12 +13,14 @@ use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, OkOrErrorResponse,
 };
 use crate::endpoint::key::dto::{
-    KeyListItemResponseRestDTO, KeyRequestRestDTO, KeyResponseRestDTO,
+    KeyGenerateCSRRequestRestDTO, KeyGenerateCSRResponseRestDTO, KeyListItemResponseRestDTO,
+    KeyRequestRestDTO, KeyResponseRestDTO,
 };
 use crate::extractor::Qs;
 use crate::mapper::list_try_from;
-
 use crate::router::AppState;
+
+use super::dto::GetKeyQuery;
 
 #[utoipa::path(
     get,
@@ -55,8 +57,6 @@ pub(crate) async fn get_key(
         }
     }
 }
-
-use super::dto::GetKeyQuery;
 
 #[utoipa::path(
     post,
@@ -110,6 +110,42 @@ pub(crate) async fn get_key_list(
                     )
                 }
             }
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/key/v1/{id}/generate-csr",
+    request_body = KeyGenerateCSRRequestRestDTO,
+    responses(OkOrErrorResponse<KeyResponseRestDTO>),
+    params(
+        ("id" = Uuid, Path, description = "Key id")
+    ),
+    tag = "key",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn generate_csr(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<KeyId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<KeyGenerateCSRRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<KeyGenerateCSRResponseRestDTO> {
+    let result = state
+        .core
+        .key_service
+        .generate_csr(&id, request.into())
+        .await;
+
+    match result {
+        Ok(value) => OkOrErrorResponse::ok(KeyGenerateCSRResponseRestDTO::from(value)),
+        Err(error) => {
+            tracing::error!("Error while getting key: {:?}", error);
+            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
         }
     }
 }

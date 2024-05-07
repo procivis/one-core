@@ -110,6 +110,11 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         algorithm: 'Ed25519'
+            BBS_PLUS:
+                display: 'keyAlgorithm.bbs_plus'
+                order: 2
+                type: 'BBS_PLUS'
+                params: null
         keyStorage:
             INTERNAL:
                 display: 'display'

@@ -1,11 +1,14 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
-use dto_mapper::{Into, TryFrom};
+use dto_mapper::{From, Into, TryFrom};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use one_core::service::key::dto::{KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO};
+use one_core::service::key::dto::{
+    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
+    KeyGenerateCSRResponseDTO, KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
+};
 
 use crate::{dto::common::GetListQueryParams, mapper::MapperError, serialize::front_time};
 
@@ -87,3 +90,44 @@ pub enum SortableKeyColumnRestDTO {
 }
 
 pub type GetKeyQuery = GetListQueryParams<SortableKeyColumnRestDTO>;
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(KeyGenerateCSRRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyGenerateCSRRequestRestDTO {
+    pub profile: KeyGenerateCSRRequestProfileRest,
+    #[serde(rename = "nbf", with = "time::serde::rfc3339")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub not_before: OffsetDateTime,
+    #[serde(rename = "exp", with = "time::serde::rfc3339")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub expires_at: OffsetDateTime,
+    pub subject: KeyGenerateCSRRequestSubjectRestDTO,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[into(KeyGenerateCSRRequestProfile)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum KeyGenerateCSRRequestProfileRest {
+    Mdl,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(KeyGenerateCSRRequestSubjectDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyGenerateCSRRequestSubjectRestDTO {
+    pub country_name: String,
+    pub common_name: String,
+
+    pub state_or_province_name: Option<String>,
+    pub organisation_name: Option<String>,
+    pub locality_name: Option<String>,
+    pub serial_number: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[from(KeyGenerateCSRResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyGenerateCSRResponseRestDTO {
+    pub content: String,
+}
