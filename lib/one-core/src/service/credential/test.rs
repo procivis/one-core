@@ -750,6 +750,80 @@ async fn test_create_credential_success() {
 }
 
 #[tokio::test]
+async fn test_create_credential_failed_issuance_did_method_incompatible() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut did_repository = MockDidRepository::default();
+
+    let credential = generic_credential();
+    {
+        let issuer_did = credential.issuer_did.clone().unwrap();
+        let credential_schema = credential.schema.clone().unwrap();
+
+        did_repository
+            .expect_get_did()
+            .times(1)
+            .returning(move |_, _| Ok(Some(issuer_did.clone())));
+
+        credential_schema_repository
+            .expect_get_credential_schema()
+            .times(1)
+            .returning(move |_, _| Ok(Some(credential_schema.clone())));
+    }
+
+    let mut formatter_capabilities = generic_formatter_capabilities();
+    formatter_capabilities.issuance_did_methods.clear();
+
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .once()
+        .return_once(|| formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_formatter()
+        .once()
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .return_once(move |_| Some(Arc::new(formatter)));
+
+    let service = setup_service(Repositories {
+        credential_repository: Default::default(),
+        credential_schema_repository,
+        did_repository,
+        history_repository: Default::default(),
+        formatter_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
+            issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
+            issuer_key: None,
+            transport: "PROCIVIS_TEMPORARY".to_string(),
+            claim_values: vec![CredentialRequestClaimDTO {
+                claim_schema_id: credential.claims.as_ref().unwrap()[0]
+                    .schema
+                    .as_ref()
+                    .unwrap()
+                    .id
+                    .to_owned(),
+                value: credential.claims.as_ref().unwrap()[0].value.to_owned(),
+            }],
+            redirect_uri: None,
+        })
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::BusinessLogic(
+            BusinessLogicError::IncompatibleIssuanceDidMethod
+        ))
+    ));
+}
+
+#[tokio::test]
 async fn test_create_credential_fails_if_did_is_deactivated() {
     let mut did_repository = MockDidRepository::default();
     let did_id = Uuid::new_v4();
@@ -2350,6 +2424,7 @@ fn test_validate_create_request_all_nested_claims_are_required() {
     ]);
 
     validate_create_request(
+        "KEY",
         "PROCIVIS_TEMPORARY",
         &[
             CredentialRequestClaimDTO {
@@ -2424,6 +2499,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     ]);
 
     validate_create_request(
+        "KEY",
         "PROCIVIS_TEMPORARY",
         &[
             CredentialRequestClaimDTO {
@@ -2446,6 +2522,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     .unwrap();
 
     validate_create_request(
+        "KEY",
         "PROCIVIS_TEMPORARY",
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
@@ -2458,6 +2535,7 @@ fn test_validate_create_request_all_optional_nested_object_with_required_claims(
     .unwrap();
 
     let result = validate_create_request(
+        "KEY",
         "PROCIVIS_TEMPORARY",
         &[
             CredentialRequestClaimDTO {
@@ -2533,6 +2611,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     ]);
 
     validate_create_request(
+        "KEY",
         "PROCIVIS_TEMPORARY",
         &[
             CredentialRequestClaimDTO {
@@ -2555,6 +2634,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     .unwrap();
 
     let result = validate_create_request(
+        "KEY",
         "PROCIVIS_TEMPORARY",
         &[CredentialRequestClaimDTO {
             claim_schema_id: address_claim_id,
@@ -2572,6 +2652,7 @@ fn test_validate_create_request_all_required_nested_object_with_optional_claims(
     ));
 
     validate_create_request(
+        "KEY",
         "PROCIVIS_TEMPORARY",
         &[
             CredentialRequestClaimDTO {

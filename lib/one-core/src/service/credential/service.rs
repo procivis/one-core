@@ -114,6 +114,7 @@ impl CredentialService {
             .get_capabilities();
 
         super::validator::validate_create_request(
+            &issuer_did.did_method,
             &request.transport,
             &request.claim_values,
             &schema,

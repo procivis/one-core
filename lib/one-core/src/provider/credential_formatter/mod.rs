@@ -92,6 +92,7 @@ impl From<CredentialSchemaData> for Option<CredentialSchema> {
 #[serde(rename_all = "camelCase")]
 pub struct FormatterCapabilities {
     pub features: Vec<String>,
+    pub issuance_did_methods: Vec<String>,
     pub issuance_exchange_protocols: Vec<String>,
     pub proof_exchange_protocols: Vec<String>,
     pub revocation_methods: Vec<String>,
