@@ -232,6 +232,9 @@ pub enum BusinessLogicError {
     #[error("Revocation method not compatible with selected format")]
     RevocationMethodNotCompatibleWithSelectedFormat,
 
+    #[error("Incompatible issuance did method")]
+    IncompatibleIssuanceDidMethod,
+
     #[error("Incompatible issuance transport protocol")]
     IncompatibleIssuanceTransportProtocol,
 
@@ -677,6 +680,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Claim schema key exceeded max length (255)")]
     BR_0126,
 
+    #[strum(to_string = "DID method is not supported for issuance of this credential format")]
+    BR_0127,
+
     #[strum(to_string = "Unsupported key type for CSR")]
     BR_0128,
 }
@@ -793,6 +799,7 @@ impl BusinessLogicError {
             BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat => {
                 ErrorCode::BR_0110
             }
+            BusinessLogicError::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
             BusinessLogicError::IncompatibleIssuanceTransportProtocol => ErrorCode::BR_0111,
             BusinessLogicError::IncompatibleProofTransportProtocol => ErrorCode::BR_0112,
             BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => {

@@ -352,6 +352,7 @@ async fn test_create_credential_schema_success() {
         .once()
         .return_once(|| FormatterCapabilities {
             features: vec![],
+            issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![],
             revocation_methods: vec!["NONE".to_string()],
@@ -455,6 +456,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .once()
         .return_once(|| FormatterCapabilities {
             features: vec![],
+            issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![],
             revocation_methods: vec!["NONE".to_string()],
@@ -558,6 +560,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         .once()
         .return_once(|| FormatterCapabilities {
             features: vec![],
+            issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![],
             revocation_methods: vec!["NONE".to_string()],
@@ -810,6 +813,7 @@ async fn test_create_credential_schema_unique_name_error() {
         .once()
         .return_once(|| FormatterCapabilities {
             features: vec![],
+            issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![],
             revocation_methods: vec!["NONE".to_string()],
@@ -982,6 +986,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         .once()
         .return_once(|| FormatterCapabilities {
             features: vec![],
+            issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![],
             revocation_methods: vec!["NONE".to_string()],

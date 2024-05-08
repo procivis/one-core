@@ -14,6 +14,7 @@ use crate::{
 };
 
 pub(crate) fn validate_create_request(
+    did_method: &str,
     transport: &str,
     claims: &[CredentialRequestClaimDTO],
     schema: &CredentialSchema,
@@ -26,6 +27,7 @@ pub(crate) fn validate_create_request(
         formatter_capabilities,
         config,
     )?;
+    validate_format_and_did_method_compatibility(did_method, formatter_capabilities, config)?;
 
     // ONE-843: cannot create credential based on deleted schema
     if schema.deleted_at.is_some() {
@@ -143,6 +145,23 @@ fn validate_format_and_transport_protocol_compatibility(
         .contains(&exchange_protocol.r#type.to_string())
     {
         return Err(BusinessLogicError::IncompatibleIssuanceTransportProtocol.into());
+    }
+
+    Ok(())
+}
+
+fn validate_format_and_did_method_compatibility(
+    did_method: &str,
+    formatter_capabilities: &FormatterCapabilities,
+    config: &CoreConfig,
+) -> Result<(), ServiceError> {
+    let did_method_type = config.did.get_fields(did_method)?.r#type;
+
+    if !formatter_capabilities
+        .issuance_did_methods
+        .contains(&did_method_type.to_string())
+    {
+        return Err(BusinessLogicError::IncompatibleIssuanceDidMethod.into());
     }
 
     Ok(())
