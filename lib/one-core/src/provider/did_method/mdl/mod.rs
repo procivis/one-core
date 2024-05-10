@@ -113,7 +113,7 @@ impl DidMethod for DidMdl {
         self.validate_issuer(&certificate)?;
 
         let did_mdl = Base64UrlSafeNoPadding::encode_to_string(pem.contents)
-            .map(|cert| format!("did:mdl:{cert}"))
+            .map(|cert| format!("did:mdl:certificate:{cert}"))
             .map_err(|err| {
                 DidMethodError::CouldNotCreate(format!("Base64 encoding failed: {err}"))
             })?;

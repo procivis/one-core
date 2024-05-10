@@ -110,5 +110,8 @@ async fn test_create_mdl_did_for(
     let did = service.create(&did_id, &Some(params), &keys).await.unwrap();
 
     // assert
-    assert_eq!(&format!("did:mdl:{certificate_der_base64}"), did.as_str())
+    assert_eq!(
+        &format!("did:mdl:certificate:{certificate_der_base64}"),
+        did.as_str()
+    )
 }
