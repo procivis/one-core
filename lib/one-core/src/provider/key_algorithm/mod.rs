@@ -57,6 +57,8 @@ pub trait KeyAlgorithm: Send + Sync {
             std::any::type_name::<Self>()
         )))
     }
+
+    fn public_key_to_der(&self, _public_key: &[u8]) -> Result<Vec<u8>, ServiceError>;
 }
 
 pub fn key_algorithms_from_config(
