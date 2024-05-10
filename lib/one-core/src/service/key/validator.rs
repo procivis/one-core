@@ -28,7 +28,7 @@ pub(super) fn validate_generate_csr_request(
     config: &KeyAlgorithmConfig,
 ) -> Result<(), ServiceError> {
     let config_key_type = config.get_fields(key_type)?.r#type;
-    if config_key_type != KeyAlgorithmType::Ecdsa && config_key_type != KeyAlgorithmType::Eddsa {
+    if config_key_type != KeyAlgorithmType::Es256 && config_key_type != KeyAlgorithmType::Eddsa {
         return Err(BusinessLogicError::UnsupportedKeyTypeForCSR.into());
     }
 

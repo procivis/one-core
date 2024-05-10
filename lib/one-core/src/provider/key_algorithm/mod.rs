@@ -76,7 +76,6 @@ pub fn key_algorithms_from_config(
                 let params = config.get(name)?;
                 Arc::new(Es256::new(params))
             }
-            KeyAlgorithmType::Ecdsa => continue,
             KeyAlgorithmType::BbsPlus => Arc::new(BBS),
             KeyAlgorithmType::MlDsa => {
                 let params = config.get(name)?;
