@@ -229,6 +229,9 @@ pub enum DidType {
     #[serde(rename = "UNIVERSAL_RESOLVER")]
     #[strum(serialize = "UNIVERSAL_RESOLVER")]
     UNIVERSAL,
+    #[serde(rename = "MDL")]
+    #[strum(serialize = "MDL")]
+    MDL,
 }
 
 pub type DatatypeConfig = ConfigBlock<DatatypeType>;

@@ -90,4 +90,8 @@ impl KeyAlgorithm for BBS {
             Err(ServiceError::KeyAlgorithmError("invalid kty".to_string()))
         }
     }
+
+    fn public_key_to_der(&self, _public_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
+        unimplemented!()
+    }
 }

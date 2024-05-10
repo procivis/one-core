@@ -9,8 +9,8 @@ use crate::provider::did_method::dto::PublicKeyJwkEllipticDataDTO;
 use crate::provider::{did_method::dto::PublicKeyJwkDTO, key_algorithm::GeneratedKey};
 use crate::service::error::ServiceError;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use elliptic_curve::pkcs8::EncodePublicKey;
 use p256::elliptic_curve::sec1::ToEncodedPoint;
-
 pub struct Es256;
 
 #[cfg(test)]
@@ -111,5 +111,18 @@ impl KeyAlgorithm for Es256 {
             .map_err(|err| ServiceError::Other(format!("Failed parsing key from bytes {err}")))?;
 
         Ok(secret_key.to_jwk_string())
+    }
+
+    fn public_key_to_der(&self, public_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
+        let pk = p256::PublicKey::from_sec1_bytes(public_key)
+            .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
+
+        let der = pk.to_public_key_der().map_err(|err| {
+            ServiceError::KeyAlgorithmError(format!(
+                "Failed converting ES256 public key to DER: {err}"
+            ))
+        })?;
+
+        Ok(der.into_vec())
     }
 }

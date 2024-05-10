@@ -112,6 +112,13 @@ impl KeyAlgorithm for Eddsa {
 
         Ok(jwk_string)
     }
+
+    fn public_key_to_der(&self, public_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
+        let pk = ed25519_compact::PublicKey::from_slice(public_key)
+            .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
+
+        Ok(pk.to_der())
+    }
 }
 
 pub trait JwkEddsaExt {

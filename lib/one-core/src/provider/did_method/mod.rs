@@ -7,7 +7,7 @@ use shared_types::{DidId, DidValue};
 use thiserror::Error;
 
 use crate::config::core_config::{self, DidConfig, DidType, Fields};
-use crate::config::{ConfigError, ConfigValidationError};
+use crate::config::{ConfigError, ConfigParsingError, ConfigValidationError};
 use crate::model::key::Key;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
@@ -17,12 +17,14 @@ use crate::provider::did_method::x509::X509Method;
 use super::key_algorithm::provider::KeyAlgorithmProvider;
 
 use self::dto::{AmountOfKeys, DidDocumentDTO};
+use self::mdl::DidMdl;
 use self::universal::UniversalDidMethod;
 
 pub mod common;
 pub mod dto;
 pub mod jwk;
 pub mod key;
+pub mod mdl;
 pub mod provider;
 pub mod universal;
 pub mod web;
@@ -103,6 +105,16 @@ pub fn did_method_providers_from_config(
             core_config::DidType::UNIVERSAL => {
                 let params = did_config.get(name)?;
                 Arc::new(UniversalDidMethod::new(params)) as _
+            }
+            core_config::DidType::MDL => {
+                let params = did_config.get(name)?;
+                let did_mdl =
+                    DidMdl::new(params, key_algorithm_provider.clone()).map_err(|err| {
+                        ConfigParsingError::GeneralParsingError(format!(
+                            "Invalid DID MDL config: {err}"
+                        ))
+                    })?;
+                Arc::new(did_mdl) as _
             }
         };
         providers.insert(name.to_owned(), method);
