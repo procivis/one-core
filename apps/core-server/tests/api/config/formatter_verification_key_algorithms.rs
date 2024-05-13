@@ -16,19 +16,19 @@ async fn test_format_capabilities_for_verification_key_algorithms() {
 
     assert_eq!(
         resp["format"]["JWT"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ES256", "BBS_PLUS", "DILITHIUM"])
+        json!(["EDDSA", "ES256", "DILITHIUM"])
     );
     assert_eq!(
         resp["format"]["SDJWT"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ES256", "BBS_PLUS", "DILITHIUM"])
+        json!(["EDDSA", "ES256", "DILITHIUM"])
     );
     assert_eq!(
         resp["format"]["JSON_LD_CLASSIC"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ES256", "BBS_PLUS", "DILITHIUM"])
+        json!(["EDDSA", "ES256"])
     );
     assert_eq!(
         resp["format"]["JSON_LD_BBSPLUS"]["capabilities"]["verificationKeyAlgorithms"],
-        json!(["EDDSA", "ES256", "BBS_PLUS", "DILITHIUM"])
+        json!(["EDDSA", "ES256", "DILITHIUM"])
     );
     assert_eq!(
         resp["format"]["MDOC"]["capabilities"]["verificationKeyAlgorithms"],
