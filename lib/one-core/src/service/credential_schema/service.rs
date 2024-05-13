@@ -165,7 +165,7 @@ impl CredentialSchemaService {
     ) -> Result<GetCredentialSchemaListResponseDTO, ServiceError> {
         let result = self
             .credential_schema_repository
-            .get_credential_schema_list(query)
+            .get_credential_schema_list(query, &Default::default())
             .await?;
         Ok(list_response_into(result))
     }

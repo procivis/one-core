@@ -7,14 +7,12 @@ use std::str::FromStr;
 
 use uuid::Uuid;
 
-use crate::common::calculate_pages_count;
 use crate::list_query_generic::{
     get_equals_condition, get_string_match_condition, IntoFilterCondition, IntoSortingColumn,
 };
 
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList,
-    SortableCredentialSchemaColumn,
+    CredentialSchema, CredentialSchemaClaim, SortableCredentialSchemaColumn,
 };
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
@@ -108,21 +106,6 @@ pub(super) fn entity_model_to_credential_schema(
         schema_type: value.schema_type.into(),
         schema_id: value.schema_id,
     })
-}
-
-pub(crate) fn create_list_response(
-    credential_schemas: Vec<credential_schema::Model>,
-    limit: u64,
-    items_count: u64,
-) -> GetCredentialSchemaList {
-    GetCredentialSchemaList {
-        values: credential_schemas
-            .into_iter()
-            .filter_map(|item| entity_model_to_credential_schema(item, true).ok())
-            .collect(),
-        total_pages: calculate_pages_count(items_count, limit),
-        total_items: items_count,
-    }
 }
 
 impl GetEntityColumn for SortableCredentialSchemaColumn {

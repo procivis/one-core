@@ -222,7 +222,7 @@ async fn test_get_credential_schema_list_success() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_| Ok(clone.clone()));
+            .returning(move |_, _| Ok(clone.clone()));
     }
 
     let service = setup_service(
@@ -344,7 +344,7 @@ async fn test_create_credential_schema_success() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_| Ok(clone.clone()));
+            .returning(move |_, _| Ok(clone.clone()));
     }
 
     formatter
@@ -448,7 +448,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_| Ok(clone.clone()));
+            .returning(move |_, _| Ok(clone.clone()));
     }
 
     formatter
@@ -552,7 +552,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_| Ok(clone.clone()));
+            .returning(move |_, _| Ok(clone.clone()));
     }
 
     formatter
@@ -805,7 +805,7 @@ async fn test_create_credential_schema_unique_name_error() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_| Ok(response.clone()));
+            .returning(move |_, _| Ok(response.clone()));
     }
 
     formatter
@@ -978,7 +978,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
         repository
             .expect_get_credential_schema_list()
             .times(1)
-            .returning(move |_| Ok(clone.clone()));
+            .returning(move |_, _| Ok(clone.clone()));
     }
 
     formatter

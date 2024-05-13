@@ -250,16 +250,19 @@ async fn test_get_credential_schema_list_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let result = repository
-        .get_credential_schema_list(GetCredentialSchemaQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 5,
-            }),
-            filtering: Some(
-                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
-            ),
-            ..Default::default()
-        })
+        .get_credential_schema_list(
+            GetCredentialSchemaQuery {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 5,
+                }),
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+                ),
+                ..Default::default()
+            },
+            &Default::default(),
+        )
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -288,16 +291,19 @@ async fn test_get_credential_schema_list_deleted_schema() {
     .unwrap();
 
     let result = repository
-        .get_credential_schema_list(GetCredentialSchemaQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 1,
-            }),
-            filtering: Some(
-                CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
-            ),
-            ..Default::default()
-        })
+        .get_credential_schema_list(
+            GetCredentialSchemaQuery {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 1,
+                }),
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(organisation.id).condition(),
+                ),
+                ..Default::default()
+            },
+            &Default::default(),
+        )
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();

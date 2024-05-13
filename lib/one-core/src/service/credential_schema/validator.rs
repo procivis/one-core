@@ -22,7 +22,10 @@ pub(crate) async fn credential_schema_already_exists(
     organisation_id: OrganisationId,
 ) -> Result<(), ServiceError> {
     let credential_schemas = repository
-        .get_credential_schema_list(create_unique_name_check_request(name, organisation_id)?)
+        .get_credential_schema_list(
+            create_unique_name_check_request(name, organisation_id)?,
+            &Default::default(),
+        )
         .await?;
     if credential_schemas.total_items > 0 {
         return Err(BusinessLogicError::CredentialSchemaAlreadyExists.into());
