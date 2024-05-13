@@ -61,7 +61,10 @@ async fn test_format_credential() {
 
     assert_eq!(
         jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"algorithm","typ":"JWT"}"#).unwrap()
+        &Base64UrlSafeNoPadding::encode_to_string(
+            r##"{"alg":"algorithm","kid":"#key0","typ":"JWT"}"##
+        )
+        .unwrap()
     );
     assert_eq!(
         jwt_parts[2],
@@ -252,7 +255,10 @@ async fn test_format_presentation() {
 
     assert_eq!(
         jwt_parts[0],
-        &Base64UrlSafeNoPadding::encode_to_string(r#"{"alg":"algorithm","typ":"JWT"}"#).unwrap()
+        &Base64UrlSafeNoPadding::encode_to_string(
+            r##"{"alg":"algorithm","kid":"#key0","typ":"JWT"}"##
+        )
+        .unwrap()
     );
     assert_eq!(
         jwt_parts[2],

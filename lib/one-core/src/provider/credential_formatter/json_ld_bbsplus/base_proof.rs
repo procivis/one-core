@@ -10,7 +10,6 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_bbsplus::model::BbsProofComponents;
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::{json_ld, CredentialData};
-use crate::provider::did_method::dto::{DidDocumentDTO, PublicKeyJwkDTO};
 
 use super::model::{GroupedFormatDataDocument, HashData, CBOR_PREFIX_BASE};
 
@@ -32,17 +31,6 @@ impl JsonLdBbsplus {
         if algorithm != "BBS_PLUS" {
             return Err(FormatterError::BBSOnly);
         }
-
-        let issuer_did = &credential.issuer_did;
-
-        // We only do that to get public key here.
-        let did_document = self
-            .did_method_provider
-            .resolve(issuer_did)
-            .await
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-
-        let _ = allow_bbs_key_only(&did_document);
 
         // Those fields have to be presented by holder for verifier.
         // It's not the same as 'required claim' for issuance.
@@ -70,11 +58,15 @@ impl JsonLdBbsplus {
 
         let grouped = self.create_grouped_transformation(&transformed)?;
 
+        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
+            "Missing jwk key id".to_string(),
+        ))?;
+
         let mut proof_config = json_ld::prepare_proof_config(
             "assertionMethod",
             "bbs-2023",
             ld_credential.context.clone(),
-            &did_document,
+            key_id,
         )
         .await?;
 
@@ -83,19 +75,7 @@ impl JsonLdBbsplus {
 
         let hash_data = self.prepare_proof_hashes(&canonical_proof_config, &grouped)?;
 
-        let algorithm = self
-            .key_algorithm_provider
-            .get_key_algorithm("BBS_PLUS")
-            .ok_or(FormatterError::CouldNotFormat(
-                "Missing BBS_PLUS key algorithm".to_owned(),
-            ))?;
-
-        // FIXME This could be safely done when when AuthenticationFn object is initialized. We could have a mismatch here.
-        let public_key_bytes = algorithm
-            .jwk_to_bytes(&did_document.verification_method[0].public_key_jwk)
-            .map_err(|_| {
-                FormatterError::CouldNotFormat("Failed to extract public key bytes".to_owned())
-            })?;
+        let public_key_bytes = auth_fn.get_public_key();
 
         let proof_value = self
             .serialize_proof_value(
@@ -349,23 +329,6 @@ impl JsonLdBbsplus {
         // For multibase output
         Ok(format!("u{b64}",))
     }
-}
-
-fn allow_bbs_key_only(did_document: &DidDocumentDTO) -> Result<(), FormatterError> {
-    let jwk = &did_document
-        .verification_method
-        .first()
-        .ok_or(FormatterError::BBSOnly)?
-        .public_key_jwk;
-
-    if let PublicKeyJwkDTO::Okp(public_key) = jwk {
-        if public_key.crv != "Bls12381G2" {
-            return Err(FormatterError::BBSOnly);
-        }
-    } else {
-        return Err(FormatterError::BBSOnly);
-    }
-    Ok(())
 }
 
 fn prepare_mandatory_pointers(credential_status: &[CredentialStatus]) -> Vec<String> {

@@ -206,6 +206,7 @@ impl OneCore {
             revocation_method_provider.clone(),
             key_provider.clone(),
             data_provider.get_history_repository(),
+            did_method_provider.clone(),
             core_base_url.clone(),
         ));
 
@@ -312,7 +313,7 @@ impl OneCore {
                 data_provider.get_proof_repository(),
                 data_provider.get_did_repository(),
                 formatter_provider.clone(),
-                did_method_provider,
+                did_method_provider.clone(),
                 revocation_method_provider,
                 key_algorithm_provider,
                 data_provider.get_history_repository(),
@@ -336,6 +337,7 @@ impl OneCore {
                 key_provider,
                 formatter_provider,
                 protocol_provider,
+                did_method_provider,
                 config.clone(),
             ),
             task_service: TaskService::new(task_provider),

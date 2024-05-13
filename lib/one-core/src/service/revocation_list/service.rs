@@ -141,6 +141,7 @@ impl RevocationListService {
                 formatter,
                 self.lvvc_repository.clone(),
                 self.key_provider.clone(),
+                self.did_method_provider.clone(),
                 revocation.get_json_ld_context()?,
             )
             .await?;

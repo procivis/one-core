@@ -76,6 +76,7 @@ pub trait TransportProtocol: Send + Sync {
         credential_presentations: Vec<PresentedCredential>,
         holder_did: &Did,
         key: &Key,
+        jwk_key_id: Option<String>,
     ) -> Result<(), TransportProtocolError>;
 
     async fn accept_credential(
@@ -83,6 +84,7 @@ pub trait TransportProtocol: Send + Sync {
         credential: &Credential,
         holder_did: &Did,
         key: &Key,
+        jwk_key_id: Option<String>,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError>;
 
     async fn reject_credential(

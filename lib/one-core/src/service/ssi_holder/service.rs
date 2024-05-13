@@ -193,7 +193,7 @@ impl SSIHolderService {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
-        let Some(did) = self
+        let Some(holder_did) = self
             .did_repository
             .get_did(
                 &submission.did_id,
@@ -208,8 +208,29 @@ impl SSIHolderService {
         };
 
         let selected_key = match submission.key_id {
-            Some(key_id) => did.find_key(&key_id, KeyRole::Authentication)?,
-            None => did.find_key_by_role(KeyRole::Authentication)?,
+            Some(key_id) => holder_did.find_key(&key_id, KeyRole::Authentication)?,
+            None => holder_did.find_first_key_by_role(KeyRole::Authentication)?,
+        };
+
+        let did_document = self.did_method_provider.resolve(&holder_did.did).await?;
+        let authentication_methods =
+            did_document
+                .authentication
+                .ok_or(ServiceError::MappingError(
+                    "Missing authentication keys".to_owned(),
+                ))?;
+        let holder_jwk_key_id = match authentication_methods
+            .iter()
+            .find(|id| id.contains(&selected_key.id.to_string()))
+            .cloned()
+        {
+            Some(id) => id,
+            None => authentication_methods
+                .first()
+                .ok_or(ServiceError::MappingError(
+                    "Missing first authentication key".to_owned(),
+                ))?
+                .to_owned(),
         };
 
         let transport_protocol = self
@@ -218,6 +239,7 @@ impl SSIHolderService {
             .ok_or(MissingProviderError::TransportProtocol(
                 proof.transport.clone(),
             ))?;
+
         let presentation_definition = transport_protocol
             .get_presentation_definition(&proof)
             .await?;
@@ -393,12 +415,18 @@ impl SSIHolderService {
         }
 
         let submit_result = transport_protocol
-            .submit_proof(&proof, credential_presentations, &did, selected_key)
+            .submit_proof(
+                &proof,
+                credential_presentations,
+                &holder_did,
+                selected_key,
+                Some(holder_jwk_key_id),
+            )
             .await;
 
         if submit_result.is_ok() {
             self.proof_repository
-                .set_proof_holder_did(&proof.id, did.to_owned())
+                .set_proof_holder_did(&proof.id, holder_did.to_owned())
                 .await?;
 
             self.proof_repository
@@ -426,7 +454,7 @@ impl SSIHolderService {
             let _ = self
                 .history_repository
                 .create_history(proof_accepted_history_event(&Proof {
-                    holder_did: Some(did),
+                    holder_did: Some(holder_did),
                     ..proof
                 }))
                 .await;
@@ -483,7 +511,7 @@ impl SSIHolderService {
 
         let selected_key = match key_id {
             Some(key_id) => did.find_key(&key_id, KeyRole::Authentication)?,
-            None => did.find_key_by_role(KeyRole::Authentication)?,
+            None => did.find_first_key_by_role(KeyRole::Authentication)?,
         };
 
         let key_security = self
@@ -520,7 +548,7 @@ impl SSIHolderService {
                 .ok_or(MissingProviderError::TransportProtocol(
                     credential.transport.clone(),
                 ))?
-                .accept_credential(&credential, &did, selected_key)
+                .accept_credential(&credential, &did, selected_key, None)
                 .await?;
 
             self.credential_repository

@@ -236,6 +236,7 @@ impl TransportProtocol for OpenID4VC {
         credential_presentations: Vec<PresentedCredential>,
         holder_did: &Did,
         key: &Key,
+        jwk_key_id: Option<String>,
     ) -> Result<(), TransportProtocolError> {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
@@ -260,7 +261,11 @@ impl TransportProtocol for OpenID4VC {
 
                 ("MDOC", "mso_mdoc")
             }
-            _ if formats.contains("JSON_LD_CLASSIC") || formats.contains("JSON_LD_BBSPLUS") => {
+            _ if formats.contains("JSON_LD_CLASSIC")
+                || formats.contains("JSON_LD_BBSPLUS")
+                // Workaround for missing cryptosuite information in openid4vc
+                || formats.contains("JSON_LD") =>
+            {
                 ("JSON_LD_CLASSIC", "ldp_vp")
             }
             _ => ("JWT", "jwt_vp_json"),
@@ -273,7 +278,7 @@ impl TransportProtocol for OpenID4VC {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key)
+            .get_signature_provider(key, jwk_key_id)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let presentation_submission = create_presentation_submission(
@@ -379,6 +384,7 @@ impl TransportProtocol for OpenID4VC {
         credential: &Credential,
         holder_did: &Did,
         key: &Key,
+        jwk_key_id: Option<String>,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
         let schema = credential
             .schema
@@ -393,7 +399,7 @@ impl TransportProtocol for OpenID4VC {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key)
+            .get_signature_provider(key, jwk_key_id)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(

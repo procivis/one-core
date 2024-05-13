@@ -1,10 +1,17 @@
+use std::vec;
 use std::{collections::HashMap, sync::Arc};
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
+use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::provider::did_method::dto::{
+    DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
+};
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_storage::{KeySecurity, KeyStorageCapabilities, MockKeyStorage};
 use crate::repository::mock::organisation_repository::MockOrganisationRepository;
 use crate::service::test_utilities::dummy_key;
@@ -324,12 +331,12 @@ async fn test_submit_proof_succeeds() {
 
     transport_protocol
         .expect_submit_proof()
-        .withf(move |proof, _, _, _| {
+        .withf(move |proof, _, _, _, _| {
             assert_eq!(proof.id, proof_id);
             true
         })
         .once()
-        .returning(|_, _, _, _| Ok(()));
+        .returning(|_, _, _, _, _| Ok(()));
 
     let mut protocol_provider = MockTransportProtocolProvider::new();
     protocol_provider
@@ -343,6 +350,34 @@ async fn test_submit_proof_succeeds() {
         .expect_create_history()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(move |_| {
+            Ok(DidDocumentDTO {
+                context: json!({}),
+                id: dummy_did().did,
+                verification_method: vec![DidVerificationMethodDTO {
+                    id: "did-vm-id".to_string(),
+                    r#type: "did-vm-type".to_string(),
+                    controller: "did-vm-controller".to_string(),
+                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                        r#use: None,
+                        crv: "P-256".to_string(),
+                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
+                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
+                    }),
+                }],
+                authentication: Some(vec!["did-vm-id".to_string()]),
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                rest: json!({}),
+            })
+        });
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
@@ -350,6 +385,7 @@ async fn test_submit_proof_succeeds() {
         protocol_provider: Arc::new(protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
+        did_method_provider: Arc::new(did_method_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -514,12 +550,12 @@ async fn test_submit_proof_repeating_claims() {
 
     transport_protocol
         .expect_submit_proof()
-        .withf(move |proof, _, _, _| {
+        .withf(move |proof, _, _, _, _| {
             assert_eq!(proof.id, proof_id);
             true
         })
         .once()
-        .returning(|_, _, _, _| Ok(()));
+        .returning(|_, _, _, _, _| Ok(()));
 
     let mut protocol_provider = MockTransportProtocolProvider::new();
     protocol_provider
@@ -554,6 +590,34 @@ async fn test_submit_proof_repeating_claims() {
         .expect_create_history()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(move |_| {
+            Ok(DidDocumentDTO {
+                context: json!({}),
+                id: dummy_did().did,
+                verification_method: vec![DidVerificationMethodDTO {
+                    id: "did-vm-id".to_string(),
+                    r#type: "did-vm-type".to_string(),
+                    controller: "did-vm-controller".to_string(),
+                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                        r#use: None,
+                        crv: "P-256".to_string(),
+                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
+                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
+                    }),
+                }],
+                authentication: Some(vec!["did-vm-id".to_string()]),
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                rest: json!({}),
+            })
+        });
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
@@ -561,6 +625,7 @@ async fn test_submit_proof_repeating_claims() {
         protocol_provider: Arc::new(protocol_provider),
         history_repository: Arc::new(history_repository),
         did_repository: Arc::new(did_repository),
+        did_method_provider: Arc::new(did_method_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -639,7 +704,7 @@ async fn test_accept_credential() {
     transport_protocol_mock
         .expect_accept_credential()
         .once()
-        .returning(|_, _, _| {
+        .returning(|_, _, _, _| {
             Ok(SubmitIssuerResponse {
                 credential: "credential".to_string(),
                 format: "credential format".to_string(),
@@ -719,6 +784,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         key_provider: Arc::new(MockKeyProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
+        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         config: Arc::new(generic_config().core),
     }
 }

@@ -49,13 +49,13 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
     pub fn new(
         signature_type: String,
         algorithm: String,
-        key_id: Option<DidValue>,
+        key_id: Option<String>,
         payload: JWTPayload<Payload>,
     ) -> Jwt<Payload> {
         let header = JWTHeader {
             signature_type: Some(signature_type),
             algorithm,
-            key_id: key_id.map(|x| x.to_string()),
+            key_id,
         };
 
         Jwt { header, payload }
@@ -86,7 +86,7 @@ impl<Payload: Serialize + DeserializeOwned + Debug> Jwt<Payload> {
                         Ok(x) => x,
                         Err(err) => match err {},
                     }),
-                    None,
+                    header.key_id.as_deref(),
                     &header.algorithm,
                     jwt.as_bytes(),
                     &signature,

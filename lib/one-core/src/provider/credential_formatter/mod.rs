@@ -132,6 +132,8 @@ pub trait TokenVerifier: Send + Sync {
 #[async_trait]
 pub trait SignatureProvider: Send + Sync {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError>;
+    fn get_key_id(&self) -> Option<String>;
+    fn get_public_key(&self) -> Vec<u8>;
 }
 
 #[derive(Debug, Default)]
@@ -299,6 +301,12 @@ pub(crate) struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
 impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         Ok(self.0(message))
+    }
+    fn get_key_id(&self) -> Option<String> {
+        Some("#key0".to_owned())
+    }
+    fn get_public_key(&self) -> Vec<u8> {
+        vec![]
     }
 }
 

@@ -80,7 +80,7 @@ impl Did {
             .key)
     }
 
-    pub fn find_key_by_role(&self, role: KeyRole) -> Result<&Key, ServiceError> {
+    pub fn find_first_key_by_role(&self, role: KeyRole) -> Result<&Key, ServiceError> {
         Ok(&self
             .keys
             .as_ref()

@@ -164,14 +164,14 @@ pub(super) fn get_key_id_by_role(
 }
 
 pub(super) fn map_key_to_verification_method(
-    did: &Did,
+    did_value: &DidValue,
+    public_key_id: &KeyId,
     public_key_jwk: PublicKeyJwkDTO,
 ) -> Result<DidVerificationMethodDTO, ServiceError> {
-    let assertion_method_key = did.find_key_by_role(KeyRole::AssertionMethod)?;
     Ok(DidVerificationMethodDTO {
-        id: format!("{}#key-{}", did.did, assertion_method_key.id),
+        id: format!("{}#key-{}", did_value, public_key_id),
         r#type: "JsonWebKey2020".to_string(),
-        controller: did.did.as_str().to_string(),
+        controller: did_value.to_string(),
         public_key_jwk,
     })
 }

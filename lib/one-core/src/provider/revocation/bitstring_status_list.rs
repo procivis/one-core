@@ -306,7 +306,7 @@ impl BitstringStatusList {
             .find(|k| k.role == KeyRole::AssertionMethod)
             .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
 
-        let auth_fn = self.key_provider.get_signature_provider(&key.key)?;
+        let auth_fn = self.key_provider.get_signature_provider(&key.key, None)?;
 
         let status_list = BitstringStatusListJwtFormatter::format_status_list(
             revocation_list_url,
