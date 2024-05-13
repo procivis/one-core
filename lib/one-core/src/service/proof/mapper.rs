@@ -3,10 +3,13 @@ use super::dto::{
     ProofInputDTO, ProofListItemResponseDTO,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::config::core_config::DatatypeType;
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::key::Key;
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
+use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
 use crate::{
     model::{
         did::Did,
@@ -17,7 +20,8 @@ use crate::{
     service::error::ServiceError,
 };
 use dto_mapper::convert_inner;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialId, CredentialSchemaId};
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -329,6 +333,41 @@ pub fn get_verifier_proof_detail(proof: Proof) -> Result<ProofDetailResponseDTO,
     })
 }
 
+fn renest_proof_claims(claims: Vec<ProofClaimDTO>) -> Vec<ProofClaimDTO> {
+    let mut result: Vec<ProofClaimDTO> = vec![];
+    let mut nested_grouped_by_root: HashMap<String, Vec<ProofClaimDTO>> = HashMap::new();
+
+    for mut claim in claims {
+        let claim_key = claim.schema.key.clone();
+        if let Some((root_claim, remaining_path)) = claim_key.split_once(NESTED_CLAIM_MARKER) {
+            remaining_path.clone_into(&mut claim.schema.key);
+            nested_grouped_by_root
+                .entry(root_claim.to_owned())
+                .or_default()
+                .push(claim);
+        } else {
+            result.push(claim);
+        }
+    }
+
+    for (root_key, inner_claims) in nested_grouped_by_root {
+        result.push(ProofClaimDTO {
+            schema: ProofClaimSchemaResponseDTO {
+                id: Uuid::new_v4().into(),
+                required: true,
+                key: root_key,
+                data_type: DatatypeType::Object.to_string(),
+                claims: vec![],
+            },
+            value: Some(ProofClaimValueDTO::Claims(renest_proof_claims(
+                inner_claims,
+            ))),
+        })
+    }
+
+    result
+}
+
 pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, ServiceError> {
     let organisation_id = value
         .holder_did
@@ -340,10 +379,25 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
     let redirect_uri = value.redirect_uri.to_owned();
 
     let mut proof_inputs = vec![];
-    for claim in value.claims.iter().flatten() {
-        let Some(credential) = &claim.credential else {
-            continue;
-        };
+
+    let mut submitted_credentials: HashMap<
+        CredentialId,
+        (
+            Vec<ProofClaimDTO>,
+            CredentialDetailResponseDTO,
+            CredentialSchemaListItemResponseDTO,
+        ),
+    > = HashMap::new();
+
+    for proof_claim in value.claims.iter().flatten() {
+        let credential = proof_claim
+            .credential
+            .as_ref()
+            .ok_or(ServiceError::MappingError(format!(
+                "Missing credential for claim: {}",
+                proof_claim.claim.id
+            )))?;
+
         let credential_schema = credential
             .schema
             .as_ref()
@@ -352,10 +406,47 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
                 credential.id
             )))?;
 
+        let claim_schema = proof_claim
+            .claim
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError(format!(
+                "Missing claim schema for claim: {}",
+                proof_claim.claim.id
+            )))?;
+
+        let claim = ProofClaimDTO {
+            schema: ProofClaimSchemaResponseDTO {
+                id: claim_schema.id,
+                required: true,
+                key: claim_schema.key.clone(),
+                data_type: claim_schema.data_type.clone(),
+                claims: vec![],
+            },
+            value: Some(ProofClaimValueDTO::Value(
+                proof_claim.claim.value.to_string(),
+            )),
+        };
+
+        match submitted_credentials.entry(credential.id) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().0.push(claim);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert((
+                    vec![claim],
+                    CredentialDetailResponseDTO::try_from(credential.clone())?,
+                    credential_schema.clone().into(),
+                ));
+            }
+        }
+    }
+
+    for (claims, credential, credential_schema) in submitted_credentials.into_values() {
         proof_inputs.push(ProofInputDTO {
-            claims: vec![],
-            credential: Some(CredentialDetailResponseDTO::try_from(credential.clone())?),
-            credential_schema: credential_schema.clone().into(),
+            claims: renest_proof_claims(claims),
+            credential: Some(credential),
+            credential_schema,
             validity_constraint: None,
         });
     }
