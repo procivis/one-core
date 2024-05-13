@@ -9,6 +9,7 @@ use serde::Deserialize;
 use shared_types::DidValue;
 use time::Duration;
 
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::common::nest_claims;
 use crate::provider::credential_formatter::sdjwt_formatter::model::{
@@ -297,7 +298,13 @@ fn prepare_sd_presentation(presentation: CredentialPresentation) -> Result<Strin
 
     let mut token = jwt.to_owned();
     for (disclosure, _, disclosure_encoded) in deserialized_disclosures {
-        if presentation.disclosed_keys.contains(&disclosure.key) {
+        if presentation.disclosed_keys.contains(&disclosure.key)
+            || presentation.disclosed_keys.iter().any(|key| {
+                disclosure
+                    .key
+                    .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", key))
+            })
+        {
             token.push('~');
             token.push_str(&disclosure_encoded);
         }
