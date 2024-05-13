@@ -87,7 +87,8 @@ impl DidService {
                     Ok((
                         key.to_owned(),
                         map_key_to_verification_method(
-                            &did,
+                            &did.did,
+                            key,
                             key_algorithm.bytes_to_jwk(&value.public_key, None)?,
                         )?,
                     ))

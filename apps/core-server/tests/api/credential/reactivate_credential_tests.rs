@@ -1,7 +1,11 @@
+use std::str::FromStr;
+
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::eddsa_testing_params;
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::did::DidType;
+use one_core::model::did::{KeyRole, RelatedKey};
+use shared_types::DidValue;
 
 #[tokio::test]
 async fn test_reactivate_credential_with_bitstring_status_list_success() {
@@ -46,13 +50,25 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
 async fn test_reactivate_credential_with_lvvc_success() {
     // GIVEN
     let (context, organisation, issuer_did, _) = TestContext::new_with_did().await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
     let holder_did = context
         .db
         .dids
         .create(
             &organisation,
             TestingDidParams {
-                did_type: Some(DidType::Remote),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.clone(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )

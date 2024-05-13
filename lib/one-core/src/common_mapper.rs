@@ -259,7 +259,7 @@ pub fn get_encryption_key_jwk_from_proof(
     let encryption_key = match verifier_key {
         Ok(key) => Ok(key),
         Err(ServiceError::Validation(_) | ServiceError::MappingError(_)) => {
-            verifier_did.find_key_by_role(KeyRole::KeyAgreement)
+            verifier_did.find_first_key_by_role(KeyRole::KeyAgreement)
         }
         Err(error) => Err(error),
     }?

@@ -53,12 +53,6 @@ impl CredentialFormatter for JsonLdClassic {
         json_ld_context_url: Option<String>,
         custom_subject_name: Option<String>,
     ) -> Result<String, FormatterError> {
-        let did_document = self
-            .did_method_provider
-            .resolve(&credential.issuer_did)
-            .await
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-
         let mut credential = json_ld::prepare_credential(
             credential,
             holder_did,
@@ -78,11 +72,15 @@ impl CredentialFormatter for JsonLdClassic {
             }
         };
 
+        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
+            "Missing jwk key id".to_string(),
+        ))?;
+
         let mut proof = json_ld::prepare_proof_config(
             "assertionMethod",
             cryptosuite,
             vec![Context::DataIntegrityV2.to_string()],
-            &did_document,
+            key_id,
         )
         .await?;
 
@@ -145,12 +143,6 @@ impl CredentialFormatter for JsonLdClassic {
             })?
         };
 
-        let did_document = self
-            .did_method_provider
-            .resolve(holder_did)
-            .await
-            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-
         let mut presentation = LdPresentation {
             context,
             r#type: "VerifiablePresentation".to_string(),
@@ -171,11 +163,15 @@ impl CredentialFormatter for JsonLdClassic {
             }
         };
 
+        let key_id = auth_fn.get_key_id().ok_or(FormatterError::CouldNotFormat(
+            "Missing jwk key id".to_string(),
+        ))?;
+
         let mut proof = json_ld::prepare_proof_config(
             "authentication",
             cryptosuite,
             vec![Context::DataIntegrityV2.to_string()],
-            &did_document,
+            key_id,
         )
         .await?;
 

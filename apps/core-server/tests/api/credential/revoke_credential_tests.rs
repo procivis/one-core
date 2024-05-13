@@ -1,6 +1,9 @@
+use std::str::FromStr;
+
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::revocation_list::RevocationListPurpose;
+use shared_types::DidValue;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams};
@@ -101,6 +104,10 @@ async fn test_revoke_credential_with_lvvc_success() {
                     role: KeyRole::AssertionMethod,
                     key: key.clone(),
                 }]),
+                did: Some(
+                    DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )

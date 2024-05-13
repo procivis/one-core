@@ -43,7 +43,7 @@ impl super::DidMethod for JWKDidMethod {
         let key = match keys {
             [key] => key,
             [] => return Err(DidMethodError::CouldNotCreate("Missing key".to_string())),
-            _ => return Err(DidMethodError::CouldNotCreate("Too much keys".to_string())),
+            _ => return Err(DidMethodError::CouldNotCreate("Too many keys".to_string())),
         };
         let key_algorithm = self
             .key_algorithm_provider

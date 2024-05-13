@@ -1,9 +1,12 @@
+use std::str::FromStr;
+
 use one_core::model::{
     credential::CredentialStateEnum,
     did::{KeyRole, RelatedKey},
     proof::ProofStateEnum,
 };
 use serde_json::json;
+use shared_types::DidValue;
 use wiremock::{
     http::Method,
     matchers::{body_string_contains, method, path, query_param},
@@ -34,6 +37,10 @@ async fn test_presentation_submit_endpoint_for_procivis_temp() {
                 role: KeyRole::Authentication,
                 key,
             }]),
+            did: Some(
+                DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
+                    .unwrap(),
+            ),
             ..Default::default()
         }),
     )

@@ -239,7 +239,7 @@ impl ProofService {
 
         let verifier_key = match request.verifier_key {
             Some(verifier_key) => verifier_did.find_key(&verifier_key, KeyRole::Authentication)?,
-            None => verifier_did.find_key_by_role(KeyRole::Authentication)?,
+            None => verifier_did.find_first_key_by_role(KeyRole::Authentication)?,
         }
         .to_owned();
 

@@ -1,5 +1,8 @@
+use std::str::FromStr;
+
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
+use shared_types::DidValue;
 
 use crate::{
     fixtures::{self, TestingCredentialParams, TestingDidParams},
@@ -20,6 +23,10 @@ async fn test_temporary_issuer_reject_success() {
         &organisation,
         Some(TestingDidParams {
             did_type: Some(DidType::Remote),
+            did: Some(
+                DidValue::from_str("did:key:z6Mkw6BZWh2yCJW3HJ9RuJfuFdSzmzRbgWgbzLnfahzZ3ZBB")
+                    .unwrap(),
+            ),
             ..Default::default()
         }),
     )

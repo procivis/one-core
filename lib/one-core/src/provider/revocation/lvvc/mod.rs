@@ -16,6 +16,7 @@ use crate::{
             provider::CredentialFormatterProvider,
             CredentialData, CredentialFormatter, CredentialSchemaData,
         },
+        did_method::provider::DidMethodProvider,
         key_storage::provider::KeyProvider,
         revocation::RevocationMethod,
         transport_protocol::TransportProtocolError,
@@ -58,10 +59,12 @@ pub struct LvvcProvider {
     lvvc_repository: Arc<dyn LvvcRepository>,
     credential_formatter: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     client: reqwest::Client,
     params: Params,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl LvvcProvider {
     pub(crate) fn new(
         core_base_url: Option<String>,
@@ -69,6 +72,7 @@ impl LvvcProvider {
         lvvc_repository: Arc<dyn LvvcRepository>,
         credential_formatter: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         client: reqwest::Client,
         params: Params,
     ) -> Self {
@@ -78,6 +82,7 @@ impl LvvcProvider {
             lvvc_repository,
             credential_formatter,
             key_provider,
+            did_method_provider,
             client,
             params,
         }
@@ -120,6 +125,7 @@ impl LvvcProvider {
             self.formatter(credential)?,
             self.lvvc_repository.clone(),
             self.key_provider.clone(),
+            self.did_method_provider.clone(),
             self.get_json_ld_context()?,
         )
         .await
@@ -388,6 +394,7 @@ pub(crate) async fn create_lvvc_with_status(
     formatter: Arc<dyn CredentialFormatter>,
     lvvc_repository: Arc<dyn LvvcRepository>,
     key_provider: Arc<dyn KeyProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     json_ld_context: JsonLdContext,
 ) -> Result<Lvvc, ServiceError> {
     let base_url = core_base_url.as_ref().ok_or_else(|| {
@@ -409,7 +416,29 @@ pub(crate) async fn create_lvvc_with_status(
         .and_then(|keys| keys.iter().find(|k| k.role == KeyRole::AssertionMethod))
         .map(|k| &k.key)
         .ok_or_else(|| ServiceError::MappingError("LVVC issuance is missing key".to_string()))?;
-    let auth_fn = key_provider.get_signature_provider(key)?;
+
+    let did_document = did_method_provider.resolve(&issuer_did.did).await?;
+    let assertion_methods = did_document
+        .assertion_method
+        .ok_or(ServiceError::MappingError(
+            "Missing assertion_method keys".to_owned(),
+        ))?;
+
+    let issuer_jwk_key_id = match assertion_methods
+        .iter()
+        .find(|id| id.contains(&key.id.to_string()))
+        .cloned()
+    {
+        Some(id) => id,
+        None => assertion_methods
+            .first()
+            .ok_or(ServiceError::MappingError(
+                "Missing first assertion_method key".to_owned(),
+            ))?
+            .to_owned(),
+    };
+
+    let auth_fn = key_provider.get_signature_provider(key, Some(issuer_jwk_key_id))?;
 
     let lvvc_credential_id = Uuid::new_v4();
     let mut claims = vec![create_id_claim(base_url, credential.id)];
@@ -481,7 +510,7 @@ pub(crate) async fn prepare_bearer_token(
         ..Default::default()
     };
 
-    let signer = key_provider.get_signature_provider(&authentication_key.key)?;
+    let signer = key_provider.get_signature_provider(&authentication_key.key, None)?;
     let bearer_token = Jwt::new("JWT".to_string(), "HS256".to_string(), None, payload)
         .tokenize(signer)
         .await?;

@@ -1,10 +1,12 @@
+use std::str::FromStr;
+
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::{
     credential::CredentialStateEnum,
     did::{KeyRole, RelatedKey},
 };
 use serde_json::json;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, DidValue};
 use time::{macros::format_description, OffsetDateTime};
 use uuid::Uuid;
 
@@ -61,6 +63,10 @@ async fn test_post_issuer_credential_with(revocation_method: &str) -> (TestConte
                     role: KeyRole::AssertionMethod,
                     key: key.clone(),
                 }]),
+                did: Some(
+                    DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
+                        .unwrap(),
+                ),
                 ..Default::default()
             },
         )

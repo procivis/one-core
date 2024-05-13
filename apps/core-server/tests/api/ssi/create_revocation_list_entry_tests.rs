@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use one_core::model::{
     credential::CredentialStateEnum,
     did::{KeyRole, RelatedKey},
 };
 use serde_json::Value;
+use shared_types::DidValue;
 
 use crate::{fixtures::TestingCredentialParams, utils::server::run_server};
 use crate::{
@@ -27,6 +30,10 @@ async fn test_add_credential_to_list() {
                 role: KeyRole::AssertionMethod,
                 key: key.to_owned(),
             }]),
+            did: Some(
+                DidValue::from_str("did:key:z6MkuJnXWiLNmV3SooQ72iDYmUE1sz5HTCXWhKNhDZuqk4Rj")
+                    .unwrap(),
+            ),
             ..Default::default()
         }),
     )

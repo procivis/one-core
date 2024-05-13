@@ -15,6 +15,7 @@ use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialData;
+use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
@@ -57,9 +58,11 @@ pub(crate) struct TransportProtocolProviderImpl {
     history_repository: Arc<dyn HistoryRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
     core_base_url: Option<String>,
 }
 
+#[allow(clippy::too_many_arguments)]
 impl TransportProtocolProviderImpl {
     pub fn new(
         protocols: HashMap<String, Arc<dyn TransportProtocol>>,
@@ -68,6 +71,7 @@ impl TransportProtocolProviderImpl {
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         history_repository: Arc<dyn HistoryRepository>,
+        did_method_provider: Arc<dyn DidMethodProvider>,
         core_base_url: Option<String>,
     ) -> Self {
         Self {
@@ -77,6 +81,7 @@ impl TransportProtocolProviderImpl {
             revocation_method_provider,
             key_provider,
             history_repository,
+            did_method_provider,
             core_base_url,
         }
     }
@@ -148,6 +153,7 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .ok_or(MissingProviderError::RevocationMethod(
                 credential_schema.revocation_method.clone(),
             ))?;
+
         let credential_status = revocation_method
             .add_issued_credential(&credential)
             .await?
@@ -160,7 +166,36 @@ impl TransportProtocolProvider for TransportProtocolProviderImpl {
             .as_ref()
             .ok_or(ServiceError::Other("Missing Key".to_owned()))?;
 
-        let auth_fn = self.key_provider.get_signature_provider(key)?;
+        let issuer_did_value = &credential
+            .issuer_did
+            .as_ref()
+            .ok_or(ServiceError::Other("Missing issuer did".to_string()))?
+            .did;
+
+        let did_document = self.did_method_provider.resolve(issuer_did_value).await?;
+        let assertion_methods = did_document
+            .assertion_method
+            .ok_or(ServiceError::MappingError(
+                "Missing assertion_method keys".to_owned(),
+            ))?;
+
+        let issuer_jwk_key_id = match assertion_methods
+            .iter()
+            .find(|id| id.contains(&key.id.to_string()))
+            .cloned()
+        {
+            Some(id) => id,
+            None => assertion_methods
+                .first()
+                .ok_or(ServiceError::MappingError(
+                    "Missing first assertion_method key".to_owned(),
+                ))?
+                .to_owned(),
+        };
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(key, Some(issuer_jwk_key_id))?;
 
         let redirect_uri = credential.redirect_uri.to_owned();
 

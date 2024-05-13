@@ -1,12 +1,17 @@
 use std::collections::HashSet;
 use std::{collections::HashMap, sync::Arc};
 
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use serde_json::{json, Value};
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
+use crate::provider::did_method::dto::{
+    DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
+};
+use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::transport_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::transport_protocol::mapper::get_relevant_credentials_to_credential_schemas;
 use crate::repository::credential_repository::CredentialRepository;
@@ -140,7 +145,7 @@ async fn test_issuer_submit_succeeds() {
     key_provider
         .expect_get_signature_provider()
         .once()
-        .returning(|_| Ok(Box::<MockSignatureProvider>::default()));
+        .returning(|_, _| Ok(Box::<MockSignatureProvider>::default()));
 
     let mut config = dummy_config();
     config.key_algorithm.insert(
@@ -165,6 +170,34 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(|_| Ok(Uuid::new_v4().into()));
 
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(move |_| {
+            Ok(DidDocumentDTO {
+                context: json!({}),
+                id: dummy_did().did,
+                verification_method: vec![DidVerificationMethodDTO {
+                    id: "did-vm-id".to_string(),
+                    r#type: "did-vm-type".to_string(),
+                    controller: "did-vm-controller".to_string(),
+                    public_key_jwk: PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+                        r#use: None,
+                        crv: "P-256".to_string(),
+                        x: Base64UrlSafeNoPadding::encode_to_string("xabc").unwrap(),
+                        y: Some(Base64UrlSafeNoPadding::encode_to_string("yabc").unwrap()),
+                    }),
+                }],
+                authentication: None,
+                assertion_method: Some(vec!["did-vm-id".to_string()]),
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                rest: json!({}),
+            })
+        });
+
     let service = TransportProtocolProviderImpl::new(
         Default::default(),
         Arc::new(formatter_provider),
@@ -172,6 +205,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(revocation_method_provider),
         Arc::new(key_provider),
         Arc::new(history_repository),
+        Arc::new(did_method_provider),
         Some("base_url".to_string()),
     );
 

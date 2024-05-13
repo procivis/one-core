@@ -221,6 +221,7 @@ impl TransportProtocol for ProcivisTemp {
         credential_presentations: Vec<PresentedCredential>,
         holder_did: &Did,
         key: &Key,
+        jwk_key_id: Option<String>,
     ) -> Result<(), TransportProtocolError> {
         let presentation_formatter = self
             .formatter_provider
@@ -229,7 +230,7 @@ impl TransportProtocol for ProcivisTemp {
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key)
+            .get_signature_provider(key, jwk_key_id)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         let tokens: Vec<String> = credential_presentations
@@ -274,6 +275,7 @@ impl TransportProtocol for ProcivisTemp {
         credential: &Credential,
         holder_did: &Did,
         _key: &Key,
+        _jwk_key_id: Option<String>,
     ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/submit");

@@ -11,9 +11,9 @@ use sophia_jsonld::loader_factory::DefaultLoaderFactory;
 use sophia_jsonld::{JsonLdOptions, JsonLdParser};
 use time::OffsetDateTime;
 
+use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::common::nest_claims;
 use crate::provider::credential_formatter::json_ld::caching_loader::CachingLoader;
-use crate::{crypto::CryptoProvider, provider::did_method::dto::DidDocumentDTO};
 
 use super::{error::FormatterError, AuthenticationFn, Context, CredentialData, VerificationFn};
 
@@ -81,22 +81,9 @@ pub(super) async fn prepare_proof_config(
     proof_purpose: &str,
     cryptosuite: &str,
     context: Vec<String>,
-    did_document: &DidDocumentDTO,
+    key_id: String,
 ) -> Result<LdProof, FormatterError> {
     let r#type = "DataIntegrityProof".to_owned();
-
-    // We take first key as we don't have a way to select other one.
-    let key_id = did_document
-        .assertion_method
-        .as_ref()
-        .ok_or(FormatterError::CouldNotFormat(
-            "Missing assertion method id".to_owned(),
-        ))?
-        .first()
-        .ok_or(FormatterError::CouldNotFormat(
-            "Missing assertion method".to_owned(),
-        ))?
-        .clone();
 
     Ok(LdProof {
         context,

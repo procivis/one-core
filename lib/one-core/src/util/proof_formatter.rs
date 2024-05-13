@@ -47,7 +47,7 @@ impl OpenID4VCIProofJWTFormatter {
         let jwt = Jwt::new(
             "openid4vci-proof+jwt".to_owned(),
             algorithm,
-            Some(holder_did.did.to_owned()),
+            Some(holder_did.did.to_string()),
             payload,
         );
 
