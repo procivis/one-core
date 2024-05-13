@@ -187,7 +187,6 @@ impl CredentialFormatter for JWTFormatter {
             verification_key_algorithms: vec![
                 "EDDSA".to_string(),
                 "ES256".to_string(),
-                "BBS_PLUS".to_string(),
                 "DILITHIUM".to_string(),
             ],
         }
