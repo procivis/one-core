@@ -17,7 +17,6 @@ use crate::{
         error::DataLayerError,
         history_repository::MockHistoryRepository,
         mock::{
-            claim_schema_repository::MockClaimSchemaRepository,
             organisation_repository::MockOrganisationRepository,
             proof_schema_repository::MockProofSchemaRepository,
         },
@@ -38,7 +37,6 @@ use uuid::Uuid;
 
 fn setup_service(
     proof_schema_repository: MockProofSchemaRepository,
-    claim_schema_repository: MockClaimSchemaRepository,
     credential_schema_repository: MockCredentialSchemaRepository,
     organisation_repository: MockOrganisationRepository,
 ) -> ProofSchemaService {
@@ -49,7 +47,6 @@ fn setup_service(
 
     ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
-        claim_schema_repository: Arc::new(claim_schema_repository),
         credential_schema_repository: Arc::new(credential_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
         history_repository: Arc::new(history_repository),
@@ -85,7 +82,6 @@ async fn test_get_proof_schema_exists() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -116,7 +112,6 @@ async fn test_get_proof_schema_deleted() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -139,7 +134,6 @@ async fn test_get_proof_schema_missing() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -181,7 +175,6 @@ async fn test_get_proof_schema_list_success() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -218,7 +211,6 @@ async fn test_get_proof_schema_list_failure() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -274,7 +266,6 @@ async fn test_delete_proof_schema_success() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -309,7 +300,6 @@ async fn test_delete_proof_schema_failure() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -333,15 +323,6 @@ async fn test_create_proof_schema_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
     };
-    let mut claim_schema_repository = MockClaimSchemaRepository::default();
-    claim_schema_repository
-        .expect_get_claim_schema_list()
-        .times(1)
-        .with(
-            eq(vec![claim_schema_id]),
-            eq(ClaimSchemaRelations::default()),
-        )
-        .returning(move |_, _| Ok(vec![claim_schema.clone()]));
 
     let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -362,7 +343,7 @@ async fn test_create_proof_schema_success() {
     credential_schema_repository
         .expect_get_credential_schema_list()
         .times(1)
-        .returning(move |_| {
+        .returning(move |_, _| {
             let schema = CredentialSchema {
                 id: credential_schema_id,
                 deleted_at: None,
@@ -372,7 +353,10 @@ async fn test_create_proof_schema_success() {
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
-                claim_schemas: None,
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: claim_schema.clone(),
+                    required: false,
+                }]),
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
@@ -435,7 +419,6 @@ async fn test_create_proof_schema_success() {
 
     let service = setup_service(
         proof_schema_repository,
-        claim_schema_repository,
         credential_schema_repository,
         organisation_repository,
     );
@@ -480,7 +463,6 @@ async fn test_create_proof_schema_unique_name_error() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -495,21 +477,49 @@ async fn test_create_proof_schema_unique_name_error() {
 #[tokio::test]
 async fn test_create_proof_schema_claims_dont_exist() {
     let claim_schema_id = Uuid::new_v4().into();
-    let mut claim_schema_repository = MockClaimSchemaRepository::default();
-    claim_schema_repository
-        .expect_get_claim_schema_list()
+    let credential_schema_id = Uuid::new_v4().into();
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
         .times(1)
-        .returning(|_, _| {
-            Err(DataLayerError::IncompleteClaimsSchemaList {
-                expected: 1,
-                got: 0,
+        .returning(move |_, _| {
+            let schema = CredentialSchema {
+                id: credential_schema_id,
+                deleted_at: None,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "credential-schema".to_string(),
+                format: "JWT".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: None,
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: Uuid::new_v4().into(),
+                        key: "key".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: OffsetDateTime::now_utc(),
+                        last_modified: OffsetDateTime::now_utc(),
+                    },
+                    required: false,
+                }]),
+                organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+                schema_id: "CredentialSchemaId".to_owned(),
+            };
+
+            Ok(GetListResponse {
+                values: vec![schema],
+                total_pages: 1,
+                total_items: 1,
             })
         });
 
-    let mut proof_schema_repository = MockProofSchemaRepository::default();
-
     let proof_schema = generic_proof_schema();
 
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository
         .expect_get_proof_schema_list()
         .times(1)
@@ -536,8 +546,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
 
     let service = setup_service(
         proof_schema_repository,
-        claim_schema_repository,
-        MockCredentialSchemaRepository::default(),
+        credential_schema_repository,
         organisation_repository,
     );
 
@@ -547,7 +556,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
             expire_duration: 0,
             organisation_id,
             proof_input_schemas: vec![ProofInputSchemaRequestDTO {
-                credential_schema_id: Uuid::new_v4().into(),
+                credential_schema_id,
                 validity_constraint: None,
                 claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
                     id: claim_schema_id,
@@ -560,7 +569,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
-            BusinessLogicError::MissingClaimSchemas
+            BusinessLogicError::MissingClaimSchema { .. }
         ))
     ));
 }
@@ -569,7 +578,6 @@ async fn test_create_proof_schema_claims_dont_exist() {
 async fn test_create_proof_schema_no_claims() {
     let service = setup_service(
         MockProofSchemaRepository::default(),
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -598,7 +606,6 @@ async fn test_create_proof_schema_no_claims() {
 async fn test_create_proof_schema_no_required_claims() {
     let service = setup_service(
         MockProofSchemaRepository::default(),
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -630,7 +637,6 @@ async fn test_create_proof_schema_no_required_claims() {
 async fn test_create_proof_schema_duplicit_claims() {
     let service = setup_service(
         MockProofSchemaRepository::default(),
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );
@@ -754,7 +760,6 @@ async fn test_get_proof_schema_success_nested_claims() {
 
     let service = setup_service(
         proof_schema_repository,
-        MockClaimSchemaRepository::default(),
         MockCredentialSchemaRepository::default(),
         MockOrganisationRepository::default(),
     );

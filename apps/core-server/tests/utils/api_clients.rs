@@ -17,6 +17,8 @@ use self::proofs::ProofsApi;
 use self::ssi::SSIApi;
 use self::tasks::TasksApi;
 
+use super::field_match::FieldHelpers;
+
 pub mod config;
 pub mod credential_schemas;
 pub mod credentials;
@@ -114,6 +116,10 @@ impl Response {
 
     pub async fn json_value(self) -> Value {
         self.json().await
+    }
+
+    pub async fn error_code(self) -> String {
+        self.json_value().await["code"].parse()
     }
 }
 

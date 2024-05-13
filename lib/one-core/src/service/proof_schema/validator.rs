@@ -1,11 +1,13 @@
-use shared_types::OrganisationId;
-
-use super::dto::CreateProofSchemaRequestDTO;
+use super::dto::{CreateProofSchemaRequestDTO, ProofInputSchemaRequestDTO};
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential_schema::CredentialSchema;
 use crate::service::error::{BusinessLogicError, ValidationError};
 use crate::service::proof_schema::mapper::create_unique_name_check_request;
 use crate::{
     repository::proof_schema_repository::ProofSchemaRepository, service::error::ServiceError,
 };
+use itertools::Itertools;
+use shared_types::OrganisationId;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -52,4 +54,37 @@ pub fn validate_create_request(
     }
 
     Ok(())
+}
+
+pub fn extract_claims_from_credential_schema(
+    proof_input: &[ProofInputSchemaRequestDTO],
+    schemas: &[CredentialSchema],
+) -> Result<Vec<ClaimSchema>, ServiceError> {
+    proof_input
+        .iter()
+        .map(|proof_input| {
+            let schema = schemas
+                .iter()
+                .find(|schema| schema.id == proof_input.credential_schema_id)
+                .ok_or_else(|| ServiceError::MappingError("Missing credential schema".into()))?;
+
+            let claims = schema.claim_schemas.as_ref().ok_or_else(|| {
+                ServiceError::MappingError("Missing credential schema claims".into())
+            })?;
+
+            Ok::<_, ServiceError>(proof_input.claim_schemas.iter().map(|proof_claim| {
+                claims
+                    .iter()
+                    .find(|schema_claim| schema_claim.schema.id == proof_claim.id)
+                    .map(|schema_claim| schema_claim.schema.clone())
+                    .ok_or_else(|| {
+                        ServiceError::BusinessLogic(BusinessLogicError::MissingClaimSchema {
+                            claim_schema_id: proof_claim.id,
+                        })
+                    })
+            }))
+        })
+        .flatten_ok()
+        .map(|r| r.and_then(std::convert::identity))
+        .collect()
 }

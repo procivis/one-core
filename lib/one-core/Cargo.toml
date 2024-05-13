@@ -72,7 +72,8 @@ zeroize                    = { version = "1.7.0", features = ["serde"] }
 rcgen                      = { version = "0.13.1" }
 yasna                      = { version = "0.5.2" }
 x509-parser                = { version = "0.16", features = ["verify"] }
-ouroboros                  = "0.18.3"
+ouroboros                  = { version = "0.18" }
+itertools                  = { version = "0.12" }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }

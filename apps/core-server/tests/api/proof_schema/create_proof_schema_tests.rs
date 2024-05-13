@@ -334,3 +334,44 @@ async fn test_fail_to_create_proof_schema_from_deleted_credential_schema() {
     // THEN
     assert_eq!(resp.status(), 400);
 }
+
+#[tokio::test]
+async fn test_fail_to_create_proof_schema_with_claims_not_related_to_credential_schema() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let credential_schema1 = context
+        .db
+        .credential_schemas
+        .create("test1", &organisation, "NONE", Default::default())
+        .await;
+
+    let credential_schema2 = context
+        .db
+        .credential_schemas
+        .create("test2", &organisation, "NONE", Default::default())
+        .await;
+
+    let claims2 = credential_schema2
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .iter()
+        .map(|v| (v.schema.id, v.required));
+
+    // WHEN
+    let resp = context
+        .api
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            organisation.id,
+            claims2,
+            credential_schema1.id,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0010");
+}

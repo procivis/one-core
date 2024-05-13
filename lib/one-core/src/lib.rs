@@ -291,7 +291,6 @@ impl OneCore {
             ),
             proof_schema_service: ProofSchemaService::new(
                 data_provider.get_proof_schema_repository(),
-                data_provider.get_claim_schema_repository(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),

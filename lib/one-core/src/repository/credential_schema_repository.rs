@@ -34,6 +34,7 @@ pub trait CredentialSchemaRepository: Send + Sync {
     async fn get_credential_schema_list(
         &self,
         query_params: GetCredentialSchemaQuery,
+        relations: &CredentialSchemaRelations,
     ) -> Result<GetCredentialSchemaList, DataLayerError>;
 
     async fn update_credential_schema(
@@ -55,20 +56,23 @@ impl dyn CredentialSchemaRepository {
         organisation_id: OrganisationId,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let mut schema = self
-            .get_credential_schema_list(GetCredentialSchemaQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: 1,
-                }),
-                filtering: Some(
-                    CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
-                        & CredentialSchemaFilterValue::Name(StringMatch {
-                            r#match: StringMatchType::Equals,
-                            value: name.to_owned(),
-                        }),
-                ),
-                ..Default::default()
-            })
+            .get_credential_schema_list(
+                GetCredentialSchemaQuery {
+                    pagination: Some(ListPagination {
+                        page: 0,
+                        page_size: 1,
+                    }),
+                    filtering: Some(
+                        CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                            & CredentialSchemaFilterValue::Name(StringMatch {
+                                r#match: StringMatchType::Equals,
+                                value: name.to_owned(),
+                            }),
+                    ),
+                    ..Default::default()
+                },
+                &Default::default(),
+            )
             .await?;
 
         Ok(schema.values.pop())

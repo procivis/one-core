@@ -7,7 +7,10 @@ use super::{
         proof_schema_created_history_event, proof_schema_deleted_history_event,
         proof_schema_from_create_request,
     },
-    validator::{proof_schema_name_already_exists, validate_create_request},
+    validator::{
+        extract_claims_from_credential_schema, proof_schema_name_already_exists,
+        validate_create_request,
+    },
     ProofSchemaService,
 };
 use crate::{
@@ -31,7 +34,7 @@ use crate::{
         proof_schema::mapper::convert_proof_schema_to_response,
     },
 };
-use shared_types::{ClaimSchemaId, CredentialSchemaId};
+use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
 
 impl ProofSchemaService {
@@ -112,25 +115,6 @@ impl ProofSchemaService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let claim_schema_ids: Vec<ClaimSchemaId> = request
-            .proof_input_schemas
-            .iter()
-            .flat_map(|proof_input_schema| {
-                proof_input_schema.claim_schemas.iter().map(|item| item.id)
-            })
-            .collect();
-
-        let claim_schemas = self
-            .claim_schema_repository
-            .get_claim_schema_list(claim_schema_ids, &ClaimSchemaRelations::default())
-            .await
-            .map_err(|error| match error {
-                DataLayerError::IncompleteClaimsSchemaList { .. } => {
-                    BusinessLogicError::MissingClaimSchemas.into()
-                }
-                error => ServiceError::from(error),
-            })?;
-
         let credential_schema_ids: Vec<CredentialSchemaId> = request
             .proof_input_schemas
             .iter()
@@ -140,24 +124,37 @@ impl ProofSchemaService {
         let expected_credential_schemas = credential_schema_ids.len();
         let credential_schemas = self
             .credential_schema_repository
-            .get_credential_schema_list(GetCredentialSchemaQuery {
-                pagination: Some(ListPagination {
-                    page: 0,
-                    page_size: expected_credential_schemas as u32,
-                }),
-                filtering: Some(
-                    CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
-                        .condition()
-                        & CredentialSchemaFilterValue::CredentialSchemaIds(credential_schema_ids),
-                ),
-                ..Default::default()
-            })
+            .get_credential_schema_list(
+                GetCredentialSchemaQuery {
+                    pagination: Some(ListPagination {
+                        page: 0,
+                        page_size: expected_credential_schemas as u32,
+                    }),
+                    filtering: Some(
+                        CredentialSchemaFilterValue::OrganisationId(request.organisation_id)
+                            .condition()
+                            & CredentialSchemaFilterValue::CredentialSchemaIds(
+                                credential_schema_ids,
+                            ),
+                    ),
+                    ..Default::default()
+                },
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
             .await?
             .values;
 
         if credential_schemas.len() != expected_credential_schemas {
             return Err(BusinessLogicError::MissingCredentialSchema.into());
         }
+
+        let claim_schemas = extract_claims_from_credential_schema(
+            &request.proof_input_schemas,
+            &credential_schemas,
+        )?;
 
         let now = OffsetDateTime::now_utc();
         let proof_schema = proof_schema_from_create_request(
