@@ -222,7 +222,7 @@ bitrise_ios_sdk:
       --access-token $BITRISE_API_ACCESS_TOKEN
       --slug $BITRISE_PROJECT_SLUG
       --workflow $BITRISE_WORKFLOW
-      --branch "$CI_COMMIT_REF_NAME"
+      --commit "$CI_COMMIT_SHA"
       --env "CI_PIPELINE_ID:$CI_PIPELINE_ID"
       --output "artifacts"
   extends:
