@@ -306,10 +306,16 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             Some(revocation_method) => Set(revocation_method),
         };
 
+        let format = match request.format {
+            None => Unchanged(Default::default()),
+            Some(format) => Set(format),
+        };
+
         let update_model = credential_schema::ActiveModel {
             id: Unchanged(id.to_string()),
             last_modified: Set(OffsetDateTime::now_utc()),
             revocation_method,
+            format,
             ..Default::default()
         };
 

@@ -450,13 +450,13 @@ impl TransportProtocol for OpenID4VC {
         let result: OpenID4VCICredentialResponseDTO =
             serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?;
 
-        let format = detect_correct_format(schema, &result.credential)
+        let real_format = detect_correct_format(schema, &result.credential)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         // revocation method must be updated based on the issued credential (unknown in credential offer)
         let response_credential = self
             .formatter_provider
-            .get_formatter(&format)
+            .get_formatter(&real_format)
             .ok_or_else(|| {
                 TransportProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?
@@ -465,7 +465,8 @@ impl TransportProtocol for OpenID4VC {
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         // Revocation method should be the same for every credential in list
-        if let Some(credential_status) = response_credential.status.first() {
+        let revocation_method = if let Some(credential_status) = response_credential.status.first()
+        {
             let (_, revocation_method) = self
                 .revocation_provider
                 .get_revocation_method_by_status_type(&credential_status.r#type)
@@ -473,15 +474,19 @@ impl TransportProtocol for OpenID4VC {
                     "Revocation method not found for status type {}",
                     credential_status.r#type
                 )))?;
+            Some(revocation_method)
+        } else {
+            None
+        };
 
-            self.credential_schema_repository
-                .update_credential_schema(UpdateCredentialSchemaRequest {
-                    id: schema.id,
-                    revocation_method: Some(revocation_method),
-                })
-                .await
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
-        }
+        self.credential_schema_repository
+            .update_credential_schema(UpdateCredentialSchemaRequest {
+                id: schema.id,
+                revocation_method,
+                format: Some(real_format),
+            })
+            .await
+            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         // issuer_did must be set based on issued credential (unknown in credential offer)
         let issuer_did_value =

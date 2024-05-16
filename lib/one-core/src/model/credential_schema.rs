@@ -134,4 +134,5 @@ pub type GetCredentialSchemaQuery =
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub revocation_method: Option<RevocationMethod>,
+    pub format: Option<String>,
 }
