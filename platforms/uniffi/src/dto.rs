@@ -7,6 +7,7 @@ use one_core::model::common::ExactColumn;
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::model::credential_schema::LayoutType;
 use one_core::model::did::{KeyRole, SortableDidColumn};
+use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
@@ -704,4 +705,21 @@ pub struct UnexportableEntitiesBindingDTO {
     pub total_credentials: u64,
     pub total_keys: u64,
     pub total_dids: u64,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateTrustAnchorRequestBindingDTO {
+    pub name: String,
+    pub r#type: String,
+    pub publisher_reference: String,
+    pub role: TrustAnchorRoleBinding,
+    pub priority: u32,
+    pub organisation_id: String,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(TrustAnchorRole)]
+pub enum TrustAnchorRoleBinding {
+    Publisher,
+    Client,
 }

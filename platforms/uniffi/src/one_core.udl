@@ -492,6 +492,20 @@ dictionary MetadataBindingDTO {
   string created_at;
 };
 
+enum TrustAnchorRoleBinding {
+  "Publisher",
+  "Client",
+};
+
+dictionary CreateTrustAnchorRequestBindingDTO {
+  string name;
+  string type;
+  string publisher_reference;
+  TrustAnchorRoleBinding role;
+  u32 priority;
+  string organisation_id;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -566,6 +580,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   HistoryListItemBindingDTO get_history_entry(string history_id);
+
+  [Throws=BindingError]
+  void create_trust_anchor(CreateTrustAnchorRequestBindingDTO anchor);
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);

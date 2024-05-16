@@ -1,3 +1,4 @@
+use service::trust_anchor::TrustAnchorService;
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::Duration;
@@ -65,6 +66,7 @@ pub struct OneCore {
     pub revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
     pub organisation_service: OrganisationService,
     pub backup_service: BackupService,
+    pub trust_anchor_service: TrustAnchorService,
     pub did_service: DidService,
     pub credential_service: CredentialService,
     pub credential_schema_service: CredentialSchemaService,
@@ -216,6 +218,11 @@ impl OneCore {
             key_providers,
             transport_protocols,
             revocation_methods,
+            trust_anchor_service: TrustAnchorService::new(
+                data_provider.get_trust_anchor_repository(),
+                data_provider.get_history_repository(),
+                config.clone(),
+            ),
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),
                 data_provider.get_history_repository(),
@@ -298,12 +305,10 @@ impl OneCore {
                 config.clone(),
             ),
             proof_service: ProofService::new(
-                data_provider.get_credential_repository(),
                 data_provider.get_proof_repository(),
                 data_provider.get_proof_schema_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_history_repository(),
-                data_provider.get_interaction_repository(),
                 formatter_provider.clone(),
                 protocol_provider.clone(),
                 config.clone(),

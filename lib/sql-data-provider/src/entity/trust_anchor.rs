@@ -1,10 +1,13 @@
 use dto_mapper::{From, Into};
+use one_core::model::trust_anchor::TrustAnchor;
 use sea_orm::entity::prelude::*;
 
 use shared_types::{DidId, OrganisationId, TrustAnchorId};
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Into, From)]
+#[into(TrustAnchor)]
+#[from(TrustAnchor)]
 #[sea_orm(table_name = "trust_anchor")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -16,7 +19,7 @@ pub struct Model {
     pub type_field: String,
     pub publisher_reference: String,
     pub role: TrustAnchorRole,
-    pub priority: u64,
+    pub priority: u32,
     pub organisation_id: OrganisationId,
 }
 
@@ -40,7 +43,9 @@ impl Related<super::organisation::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[into(one_core::model::trust_anchor::TrustAnchorRole)]
+#[from(one_core::model::trust_anchor::TrustAnchorRole)]
 #[sea_orm(
     rs_type = "String",
     db_type = "Enum",

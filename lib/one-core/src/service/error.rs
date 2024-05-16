@@ -249,6 +249,12 @@ pub enum BusinessLogicError {
 
     #[error("Unsupported key type for CSR")]
     UnsupportedKeyTypeForCSR,
+
+    #[error("Trust anchor name already in use")]
+    TrustAnchorNameTaken,
+
+    #[error("Trust anchor type not found")]
+    UnknownTrustAnchorType,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -671,6 +677,12 @@ pub enum ErrorCode {
     #[strum(to_string = "Incompatible proof transport protocol")]
     BR_0112,
 
+    #[strum(to_string = "Trust anchor name already in use")]
+    BR_0113,
+
+    #[strum(to_string = "Trust anchor type not found")]
+    BR_0114,
+
     #[strum(to_string = "Invalid claim type (mdoc top level only objects allowed)")]
     BR_0117,
 
@@ -807,6 +819,8 @@ impl BusinessLogicError {
             }
             BusinessLogicError::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
             BusinessLogicError::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
+            BusinessLogicError::TrustAnchorNameTaken => ErrorCode::BR_0113,
+            BusinessLogicError::UnknownTrustAnchorType => ErrorCode::BR_0114,
         }
     }
 }

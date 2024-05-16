@@ -99,7 +99,8 @@ rusty_fork_test! {
                     order: 0
                     params: null
             task: {}
-    "};
+            trustManagement: {}
+        "};
 
         let config3 = indoc::indoc! {"
             keyAlgorithm:
@@ -109,7 +110,7 @@ rusty_fork_test! {
                     params:
                         public:
                             algorithm: 'TestAlg'
-    "};
+        "};
 
         let config4 = indoc::indoc! {"
             keyAlgorithm:
@@ -122,7 +123,7 @@ rusty_fork_test! {
                             algorithm: 'TestAlg'
                         private:
                             test_array: ['1', '2']
-    "};
+        "};
 
         #[cfg(feature = "config_json")]
         let config5 = indoc::indoc! {"

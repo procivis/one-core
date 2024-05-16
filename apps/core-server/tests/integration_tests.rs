@@ -49,3 +49,6 @@ mod ssi_tests;
 // Task
 #[path = "api/task/mod.rs"]
 mod task_tests;
+
+#[path = "api/trust_anchor/mod.rs"]
+mod trust_anchor;

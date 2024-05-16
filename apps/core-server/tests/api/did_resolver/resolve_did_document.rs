@@ -56,8 +56,7 @@ async fn test_fail_to_resolve_invalid_did_jwk() {
 
     // THEN
     assert_eq!(resp.status(), 500);
-    let error = resp.json_value().await;
-    assert_eq!(error["code"], "BR_0064");
+    assert_eq!("BR_0064", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -116,8 +115,7 @@ async fn test_fail_to_resolve_invalid_did_key() {
 
     // THEN
     assert_eq!(resp.status(), 500);
-    let error = resp.json_value().await;
-    assert_eq!(error["code"], "BR_0064");
+    assert_eq!("BR_0064", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -196,8 +194,7 @@ async fn test_fail_to_resolve_invalid_did_universal_document() {
 
     // THEN
     assert_eq!(resp.status(), 500);
-    let error = resp.json_value().await;
-    assert_eq!(error["code"], "BR_0064");
+    assert_eq!("BR_0064", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -210,6 +207,5 @@ async fn test_fail_to_resolve_unknown_did_type() {
 
     // THEN
     assert_eq!(resp.status(), 404);
-    let error = resp.json_value().await;
-    assert_eq!(error["code"], "BR_0031");
+    assert_eq!("BR_0031", resp.error_code().await);
 }

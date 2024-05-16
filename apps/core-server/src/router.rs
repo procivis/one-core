@@ -21,6 +21,7 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::dto::response::ErrorResponse;
+use crate::endpoint::trust_anchor;
 use crate::middleware::get_http_request_context;
 use crate::{
     build_info, dto,
@@ -188,6 +189,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(interaction::controller::presentation_reject),
         )
         .route("/api/task/v1/run", post(task::controller::post_task))
+        .route(
+            "/api/trust-anchor/v1",
+            post(trust_anchor::controller::create_trust_anchor),
+        )
         .layer(middleware::from_fn(crate::middleware::bearer_check));
 
     let unprotected = Router::new()
@@ -390,6 +395,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
             endpoint::task::controller::post_task,
 
+            endpoint::trust_anchor::controller::create_trust_anchor,
+
             endpoint::misc::get_build_info,
             endpoint::misc::health_check,
             endpoint::misc::get_metrics,
@@ -544,6 +551,9 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
                 endpoint::task::dto::TaskRequestRestDTO,
                 endpoint::task::dto::TaskResponseRestDTO,
+
+                endpoint::trust_anchor::dto::CreateTrustAnchorRequestRestDTO,
+                endpoint::trust_anchor::dto::TrustAnchorRoleRest,
 
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,

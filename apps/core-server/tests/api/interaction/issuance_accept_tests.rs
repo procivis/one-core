@@ -209,8 +209,7 @@ async fn test_fail_issuance_accept_procivis_temp_unknown_did() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0024");
+    assert_eq!("BR_0024", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -275,8 +274,7 @@ async fn test_fail_issuance_accept_procivis_temp_unknown_key() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0037");
+    assert_eq!("BR_0037", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -341,8 +339,7 @@ async fn test_fail_issuance_accept_procivis_temp_wrong_key_role() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0096");
+    assert_eq!("BR_0096", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -407,8 +404,7 @@ async fn test_fail_issuance_accept_procivis_temp_no_key_with_auth_role() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0096");
+    assert_eq!("BR_0096", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -481,8 +477,7 @@ async fn test_fail_issuance_accept_procivis_temp_wallet_storage_type_not_met() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0097");
+    assert_eq!("BR_0097", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -722,8 +717,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0024");
+    assert_eq!("BR_0024", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -804,8 +798,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0037");
+    assert_eq!("BR_0037", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -886,8 +879,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0096");
+    assert_eq!("BR_0096", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -968,8 +960,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0096");
+    assert_eq!("BR_0096", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -1058,6 +1049,5 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let body = resp.json_value().await;
-    assert_eq!(body["code"], "BR_0097");
+    assert_eq!("BR_0097", resp.error_code().await);
 }

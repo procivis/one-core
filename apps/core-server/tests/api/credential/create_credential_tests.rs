@@ -242,8 +242,7 @@ async fn test_fail_to_create_credential_invalid_key_role() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let resp = resp.json_value().await;
-    assert_eq!(resp["code"], "BR_0096");
+    assert_eq!("BR_0096", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -277,8 +276,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let resp = resp.json_value().await;
-    assert_eq!(resp["code"], "BR_0096");
+    assert_eq!("BR_0096", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -360,6 +358,5 @@ async fn test_create_credential_failed_specified_object_claim() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let resp = resp.json_value().await;
-    assert_eq!(resp["code"], "BR_0061");
+    assert_eq!("BR_0061", resp.error_code().await);
 }
