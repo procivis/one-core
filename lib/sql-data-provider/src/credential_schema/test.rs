@@ -501,10 +501,12 @@ async fn test_update_credential_schema_success() {
     } = setup_with_schema(Repositories::default()).await;
 
     let new_revocation_method = "new-method";
+    let new_format = "new-format";
     let result = repository
         .update_credential_schema(UpdateCredentialSchemaRequest {
             id: credential_schema.id,
             revocation_method: Some(new_revocation_method.to_string()),
+            format: Some(new_format.to_string()),
         })
         .await;
     assert!(result.is_ok());
@@ -515,4 +517,5 @@ async fn test_update_credential_schema_success() {
         .unwrap();
     assert_eq!(db_schemas.len(), 1);
     assert_eq!(db_schemas[0].revocation_method, new_revocation_method);
+    assert_eq!(db_schemas[0].format, new_format);
 }
