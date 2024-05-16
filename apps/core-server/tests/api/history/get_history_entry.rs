@@ -74,7 +74,5 @@ async fn test_fail_to_get_history_entry_unknown_id() {
 
     // THEN
     assert_eq!(resp.status(), 404);
-
-    let resp = resp.json_value().await;
-    assert_eq!(resp["code"], "BR_0100");
+    assert_eq!("BR_0100", resp.error_code().await);
 }

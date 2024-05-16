@@ -46,6 +46,7 @@ pub struct CoreConfig {
     pub(crate) key_algorithm: KeyAlgorithmConfig,
     pub(crate) key_storage: KeyStorageConfig,
     pub(crate) task: TaskConfig,
+    pub(crate) trust_management: TrustManagementConfig,
 }
 
 #[serde_as]
@@ -307,6 +308,17 @@ pub enum TaskType {
     #[serde(rename = "SUSPEND_CHECK")]
     #[strum(serialize = "SUSPEND_CHECK")]
     SuspendCheck,
+}
+
+pub type TrustManagementConfig = ConfigBlock<TrustManagement>;
+
+#[derive(
+    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
+pub enum TrustManagement {
+    #[serde(rename = "SIMPLE_TRUST_LIST")]
+    #[strum(serialize = "SIMPLE_TRUST_LIST")]
+    SimpleTrustList,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -10,7 +10,7 @@ use migration::{Migrator, MigratorTrait};
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::json_ld_context_repository::JsonLdContextRepository;
 use one_core::repository::lvvc_repository::LvvcRepository;
-use one_core::repository::trust_repository::TrustRepository;
+use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::{
     claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
     credential_repository::CredentialRepository,
@@ -24,7 +24,7 @@ use organisation::OrganisationProvider;
 use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
-use trust::TrustProvider;
+use trust_anchor::TrustAnchorProvider;
 
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
@@ -56,7 +56,7 @@ pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
 pub mod revocation_list;
-pub mod trust;
+pub mod trust_anchor;
 
 // Re-exporting the DatabaseConnection to avoid unnecessary dependency on sea_orm in cases where we only need the DB connection
 pub type DbConn = DatabaseConnection;
@@ -81,7 +81,7 @@ pub struct DataLayer {
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     lvvc_repository: Arc<dyn LvvcRepository>,
     backup_repository: Arc<dyn BackupRepository>,
-    trust_repository: Arc<dyn TrustRepository>,
+    trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
 }
 
 impl DataLayer {
@@ -130,7 +130,7 @@ impl DataLayer {
             did_repository: did_repository.clone(),
         });
 
-        let trust_repository = Arc::new(TrustProvider { _db: db.clone() });
+        let trust_anchor_repository = Arc::new(TrustAnchorProvider { db: db.clone() });
 
         let credential_repository = Arc::new(CredentialProvider {
             db: db.clone(),
@@ -172,7 +172,7 @@ impl DataLayer {
             revocation_list_repository,
             lvvc_repository,
             backup_repository,
-            trust_repository,
+            trust_anchor_repository,
         }
     }
 }
@@ -224,8 +224,8 @@ impl DataRepository for DataLayer {
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository> {
         self.backup_repository.clone()
     }
-    fn get_trust_repository(&self) -> Arc<dyn TrustRepository> {
-        self.trust_repository.clone()
+    fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository> {
+        self.trust_anchor_repository.clone()
     }
 }
 

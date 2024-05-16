@@ -122,6 +122,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 order: 0
                 params: null
         task: {}
+        trustManagement: {}
     "};
 
     AppConfig::from_yaml_str_configs(vec![config]).unwrap()

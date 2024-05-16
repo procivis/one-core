@@ -121,8 +121,7 @@ async fn test_fail_to_create_did_key_to_much_keys() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    let resp = resp.json_value().await;
-    assert_eq!(resp["code"], "BR_0030");
+    assert_eq!("BR_0030", resp.error_code().await);
 }
 
 #[tokio::test]

@@ -8,12 +8,14 @@ use crate::{
         ProofRequestBindingDTO,
     },
     utils::{into_id, TimestampFormat},
-    CredentialSchemaTypeBindingEnum, HistoryListItemBindingDTO, HistoryMetadataBinding,
+    CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum, HistoryListItemBindingDTO,
+    HistoryMetadataBinding,
 };
 use dto_mapper::convert_inner;
 use one_core::service::{
     credential::dto::{CredentialSchemaType, DetailCredentialClaimValueResponseDTO},
     credential_schema::dto::CredentialSchemaListItemResponseDTO,
+    trust_anchor::dto::CreateTrustAnchorRequestDTO,
 };
 use one_core::{
     model::did::DidType,
@@ -257,5 +259,19 @@ impl From<CredentialSchemaType> for CredentialSchemaTypeBindingEnum {
             CredentialSchemaType::Mdoc => Self::Mdoc {},
             CredentialSchemaType::Other(value) => Self::Other { value },
         }
+    }
+}
+
+impl TryFrom<CreateTrustAnchorRequestBindingDTO> for CreateTrustAnchorRequestDTO {
+    type Error = ServiceError;
+    fn try_from(value: CreateTrustAnchorRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name,
+            type_: value.r#type,
+            publisher_reference: value.publisher_reference,
+            role: value.role.into(),
+            priority: value.priority,
+            organisation_id: into_id(&value.organisation_id)?,
+        })
     }
 }

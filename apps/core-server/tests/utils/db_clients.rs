@@ -13,6 +13,7 @@ use self::organisations::OrganisationsDB;
 use self::proof_schemas::ProofSchemasDB;
 use self::proofs::ProofsDB;
 use self::revocation_lists::RevocationListsDB;
+use self::trust_anchors::TrustAnchorDB;
 
 pub mod credential_schemas;
 pub mod credentials;
@@ -26,6 +27,7 @@ pub mod organisations;
 pub mod proof_schemas;
 pub mod proofs;
 pub mod revocation_lists;
+pub mod trust_anchors;
 
 pub struct DbClient {
     pub organisations: OrganisationsDB,
@@ -40,6 +42,7 @@ pub struct DbClient {
     pub proof_schemas: ProofSchemasDB,
     pub proofs: ProofsDB,
     pub interactions: InteractionsDB,
+    pub trust_anchors: TrustAnchorDB,
 }
 
 impl DbClient {
@@ -58,6 +61,7 @@ impl DbClient {
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),
             proofs: ProofsDB::new(layer.get_proof_repository()),
             interactions: InteractionsDB::new(layer.get_interaction_repository()),
+            trust_anchors: TrustAnchorDB::new(layer.get_trust_anchor_repository()),
         }
     }
 }

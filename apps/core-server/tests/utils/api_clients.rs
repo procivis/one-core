@@ -16,6 +16,7 @@ use self::proof_schemas::ProofSchemasApi;
 use self::proofs::ProofsApi;
 use self::ssi::SSIApi;
 use self::tasks::TasksApi;
+use self::trust_anchors::TrustAnchorsApi;
 
 use super::field_match::FieldHelpers;
 
@@ -32,6 +33,7 @@ pub mod proof_schemas;
 pub mod proofs;
 pub mod ssi;
 pub mod tasks;
+pub mod trust_anchors;
 
 pub fn http_client() -> &'static reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
@@ -137,6 +139,7 @@ pub struct Client {
     pub ssi: SSIApi,
     pub tasks: TasksApi,
     pub config: ConfigApi,
+    pub trust_anchors: TrustAnchorsApi,
 }
 
 impl Client {
@@ -156,7 +159,8 @@ impl Client {
             proofs: ProofsApi::new(client.clone()),
             ssi: SSIApi::new(client.clone()),
             tasks: TasksApi::new(client.clone()),
-            config: ConfigApi::new(client),
+            config: ConfigApi::new(client.clone()),
+            trust_anchors: TrustAnchorsApi::new(client),
         }
     }
 }
