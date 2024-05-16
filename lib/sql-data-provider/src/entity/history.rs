@@ -109,4 +109,8 @@ pub enum HistoryEntityType {
     Organisation,
     #[sea_orm(string_value = "BACKUP")]
     Backup,
+    #[sea_orm(string_value = "TRUST_ANCHOR")]
+    TrustAnchor,
+    #[sea_orm(string_value = "TRUST_ENTITY")]
+    TrustEntity,
 }

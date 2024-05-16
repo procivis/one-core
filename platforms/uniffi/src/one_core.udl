@@ -416,6 +416,8 @@ enum HistoryEntityTypeBindingEnum {
   "ProofSchema",
   "Organisation",
   "Backup",
+  "TrustAnchor",
+  "TrustEntity",
 };
 
 [Enum]

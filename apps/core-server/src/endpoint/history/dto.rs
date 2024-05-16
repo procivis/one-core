@@ -71,6 +71,8 @@ pub enum HistoryEntityType {
     ProofSchema,
     Organisation,
     Backup,
+    TrustAnchor,
+    TrustEntity,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

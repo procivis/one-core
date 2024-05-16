@@ -30,6 +30,7 @@ mod m20240314_141907_remove_proof_schema_claim_schema_relation;
 mod m20240319_105859_typed_credential_schema;
 mod m20240321_154846_add_layout_type_and_layout_properties_to_credential_schema;
 mod m20240424_124450_add_json_ld_context;
+mod m20240514_070446_add_trust_model;
 
 pub struct Migrator;
 
@@ -65,6 +66,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240321_154846_add_layout_type_and_layout_properties_to_credential_schema::Migration),
             Box::new(m20240319_105859_typed_credential_schema::Migration),
             Box::new(m20240424_124450_add_json_ld_context::Migration),
+            Box::new(m20240514_070446_add_trust_model::Migration),
         ]
     }
 }
