@@ -612,6 +612,8 @@ pub enum HistoryEntityTypeBindingEnum {
     ProofSchema,
     Organisation,
     Backup,
+    TrustAnchor,
+    TrustEntity,
 }
 
 #[derive(Debug, Clone)]
