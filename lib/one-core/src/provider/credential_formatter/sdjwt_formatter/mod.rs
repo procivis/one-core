@@ -85,7 +85,8 @@ impl CredentialFormatter for SDJWTFormatter {
             nonce: None,
         };
 
-        let jwt = Jwt::new("SDJWT".to_owned(), algorithm.to_owned(), None, payload);
+        let key_id = auth_fn.get_key_id();
+        let jwt = Jwt::new("SDJWT".to_owned(), algorithm.to_owned(), key_id, payload);
 
         let mut token = jwt.tokenize(auth_fn).await?;
 
