@@ -86,7 +86,9 @@ impl JsonLdBbsplus {
 
         let bbs_header = [transformed_proof_config_hash, mandatory_nquads_hash].concat();
 
-        let public_key = self.get_public_key(&ld_credential).await?;
+        let public_key = self
+            .get_public_key(&ld_credential, &ld_proof.verification_method)
+            .await?;
 
         let verify_proof_input = BbsProofInput {
             header: bbs_header,
@@ -113,6 +115,7 @@ impl JsonLdBbsplus {
     async fn get_public_key(
         &self,
         ld_credential: &LdCredential,
+        method_id: &str,
     ) -> Result<Vec<u8>, FormatterError> {
         let did_document = self
             .did_method_provider
@@ -125,8 +128,22 @@ impl JsonLdBbsplus {
             .ok_or(FormatterError::CouldNotVerify(
                 "Missing BBS_PLUS algorithm".to_owned(),
             ))?;
+
+        let verification_method = if let Some(multikey) = did_document
+            .verification_method
+            .iter()
+            .find(|vm| vm.id == method_id)
+        {
+            multikey
+        } else {
+            did_document
+                .verification_method
+                .first()
+                .ok_or(FormatterError::Failed("Missing issuer key".to_string()))?
+        };
+
         let public_key = algo_provider
-            .jwk_to_bytes(&did_document.verification_method[0].public_key_jwk)
+            .jwk_to_bytes(&verification_method.public_key_jwk)
             .map_err(|e| {
                 FormatterError::CouldNotVerify(format!("Could not get public key from JWK: {e}"))
             })?;
