@@ -15,6 +15,7 @@ use crate::{
         credential_formatter::model::DetailCredential,
         transport_protocol::dto::SubmitIssuerResponse,
     },
+    service::credential::dto::CredentialSchemaType,
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -53,8 +54,16 @@ pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
     pub r#type: Vec<String>,
+    pub credential_schema: Option<OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO {
+    pub id: String,
+    pub r#type: CredentialSchemaType,
 }
 
 #[derive(Clone, Debug, Deserialize)]
