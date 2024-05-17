@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
+use crate::endpoint::credential_schema::dto::{CredentialSchemaType, WalletStorageTypeRestEnum};
 use crate::serialize::front_time_option;
 use crate::{
     endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
@@ -23,9 +23,9 @@ use one_core::provider::transport_protocol::openid4vc::dto::{
     OpenID4VPFormat,
 };
 use one_core::service::oidc::dto::{
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VPDirectPostRequestDTO,
-    OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO,
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
+    OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
+    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
 };
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
@@ -119,6 +119,7 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
@@ -131,8 +132,19 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO {
     pub r#type: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_inner)]
+    pub credential_schema: Option<OpenID4VCIIssuerMetadataCredentialSchemaRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
+#[from(OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO)]
+pub struct OpenID4VCIIssuerMetadataCredentialSchemaRestDTO {
+    pub id: String,
+    pub r#type: CredentialSchemaType,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

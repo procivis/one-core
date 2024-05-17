@@ -18,6 +18,7 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 use super::dto::{
+    OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataMdocClaimsResponseDTO, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
 };
@@ -138,6 +139,10 @@ fn credentials_supported_others(
             claims: None,
             credential_definition: Some(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
                 r#type: vec!["VerifiableCredential".to_string()],
+                credential_schema: Some(OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO {
+                    id: schema.schema_id,
+                    r#type: schema.schema_type.into(),
+                }),
             }),
             doctype: None,
             display: Some(vec![
