@@ -1,6 +1,12 @@
 use std::collections::HashMap;
 
 use serde::Deserialize;
+use shared_types::CredentialId;
+
+use crate::service::{
+    credential::dto::DetailCredentialClaimResponseDTO,
+    credential_schema::dto::CredentialSchemaDetailResponseDTO, did::dto::DidListItemResponseDTO,
+};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct IssuerResponseDTO {
@@ -44,4 +50,14 @@ pub struct JsonLDNestedContextDTO {
 pub struct JsonLDInlineEntityDTO {
     pub id: String,
     pub context: JsonLDContextDTO,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectIssuerResponseDTO {
+    pub id: CredentialId,
+    pub schema: CredentialSchemaDetailResponseDTO,
+    pub issuer_did: DidListItemResponseDTO,
+    pub claims: Vec<DetailCredentialClaimResponseDTO>,
+    pub redirect_uri: Option<String>,
 }

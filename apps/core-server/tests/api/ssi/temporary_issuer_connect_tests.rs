@@ -39,9 +39,7 @@ async fn test_temporary_issuer_connect_success() {
     resp["schema"]["id"].assert_eq(&credential_schema.id);
     assert_eq!(resp["schema"]["walletStorageType"], "SOFTWARE");
     assert_eq!(resp["schema"]["schemaType"], "ProcivisOneSchema2024");
-    assert_eq!("PENDING", resp["state"]);
     assert_eq!("test", resp["claims"][0]["value"]);
-    assert_eq!("ISSUER", resp["role"]);
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(

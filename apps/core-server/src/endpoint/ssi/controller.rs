@@ -1,28 +1,22 @@
 use super::dto::{
-    ConnectVerifierResponseRestDTO, IssuerResponseRestDTO, JsonLDContextResponseRestDTO,
-    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
+    ConnectIssuerResponseRestDTO, ConnectVerifierResponseRestDTO, DidDocumentRestDTO,
+    IssuerResponseRestDTO, JsonLDContextResponseRestDTO, OpenID4VCICredentialOfferRestDTO,
+    OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
+    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
+    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
+    OpenID4VCITokenResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
     OpenID4VPPresentationDefinitionResponseRestDTO, PostSsiIssuerConnectQueryParams,
-    PostSsiIssuerSubmitQueryParams, PostSsiVerifierConnectQueryParams, ProofRejectQueryParams,
-    ProofSubmitQueryParams,
+    PostSsiIssuerRejectQueryParams, PostSsiIssuerSubmitQueryParams,
+    PostSsiVerifierConnectQueryParams, ProofRejectQueryParams, ProofSubmitQueryParams,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
-use crate::endpoint::ssi::dto::{
-    DidDocumentRestDTO, OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
-    OpenID4VCICredentialResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
-    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
-    OpenID4VCITokenResponseRestDTO,
-};
-use crate::endpoint::{
-    credential::dto::GetCredentialResponseRestDTO, ssi::dto::PostSsiIssuerRejectQueryParams,
-};
 use crate::router::AppState;
-use axum::http::header;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header, StatusCode},
     response::{IntoResponse, Response},
     Form, Json,
 };
@@ -643,7 +637,7 @@ pub(crate) async fn ssi_verifier_submit_proof(
 #[utoipa::path(
     post,
     path = "/ssi/temporary-issuer/v1/connect",
-    responses(OkOrErrorResponse<GetCredentialResponseRestDTO>),
+    responses(OkOrErrorResponse<ConnectIssuerResponseRestDTO>),
     params(PostSsiIssuerConnectQueryParams),
     tag = "ssi",
 )]
@@ -653,7 +647,7 @@ pub(crate) async fn ssi_issuer_connect(
         Query<PostSsiIssuerConnectQueryParams>,
         ErrorResponseRestDTO,
     >,
-) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
+) -> OkOrErrorResponse<ConnectIssuerResponseRestDTO> {
     let result = state
         .core
         .ssi_issuer_service

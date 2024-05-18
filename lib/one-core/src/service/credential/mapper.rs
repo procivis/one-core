@@ -162,7 +162,7 @@ pub(super) fn renest_claims(
     Ok(nested)
 }
 
-fn from_vec_claim(
+pub(crate) fn from_vec_claim(
     claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
