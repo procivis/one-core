@@ -487,6 +487,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::proof_schema::dto::ProofInputSchemaRequestRestDTO,
                 endpoint::proof_schema::dto::ProofInputSchemaResponseRestDTO,
 
+                endpoint::ssi::dto::ConnectIssuerResponseRestDTO,
                 endpoint::ssi::dto::ConnectVerifierResponseRestDTO,
                 endpoint::ssi::dto::ProofRequestClaimRestDTO,
                 endpoint::ssi::dto::IssuerResponseRestDTO,

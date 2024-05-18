@@ -18,7 +18,7 @@ use crate::{
     },
     service::{
         ssi_issuer::SSIIssuerService,
-        test_utilities::{dummy_credential, generic_config},
+        test_utilities::{dummy_credential, dummy_did, generic_config},
     },
 };
 
@@ -34,7 +34,12 @@ async fn test_issuer_connect_succeeds() {
             true
         })
         .once()
-        .return_once(move |_, _| Ok(Some(dummy_credential())));
+        .return_once(move |_, _| {
+            Ok(Some(Credential {
+                issuer_did: Some(dummy_did()),
+                ..dummy_credential()
+            }))
+        });
 
     credential_repository
         .expect_update_credential()

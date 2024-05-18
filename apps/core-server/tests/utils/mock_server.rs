@@ -57,22 +57,20 @@ impl MockServer {
 
     pub async fn temporary_issuer_connect(
         &self,
-        protocol: &str,
         credential_id: impl Display,
         schema_id: impl Display,
         schema_type: Option<&str>,
         claims: serde_json::Value,
+        claim_schemas: serde_json::Value,
     ) {
         Mock::given(method(Method::POST))
             .and(path("/ssi/temporary-issuer/v1/connect"))
-            .and(query_param("protocol", protocol))
+            .and(query_param("protocol", "PROCIVIS_TEMPORARY"))
             .and(query_param("credential", credential_id.to_string()))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                     "claims": claims,
-                    "createdDate": "2023-11-09T08:39:16.459Z",
                     "id": credential_id.to_string(),
-                    "issuanceDate": "2023-11-09T08:39:16.459Z",
                     "issuerDid": {
                         "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
                         "createdDate": "2023-11-09T08:39:16.460Z",
@@ -83,9 +81,6 @@ impl MockServer {
                         "method": "KEY",
                         "deactivated": false,
                     },
-                    "lastModified": "2023-11-09T08:39:16.548Z",
-                    "revocationDate": null,
-                    "lvvcIssuanceDate": null,
                     "schema": {
                         "createdDate": "2023-11-08T15:46:14.997Z",
                         "format": "SDJWT",
@@ -96,9 +91,8 @@ impl MockServer {
                         "revocationMethod": "BITSTRINGSTATUSLIST",
                         "schemaId": schema_id.to_string(),
                         "schemaType": schema_type.unwrap_or("ProcivisOneSchema2024"),
+                        "claims": claim_schemas,
                     },
-                    "state": "PENDING",
-                    "role": "ISSUER",
                 }
             )))
             .mount(&self.mock)

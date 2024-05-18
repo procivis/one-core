@@ -1,6 +1,7 @@
 mod mapper;
 
 use async_trait::async_trait;
+use dto_mapper::convert_inner;
 use shared_types::CredentialId;
 use std::collections::HashSet;
 use std::{collections::HashMap, sync::Arc};
@@ -15,12 +16,14 @@ use self::mapper::{
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::model::credential_schema::{CredentialSchemaClaim, LayoutType};
 use crate::provider::credential_formatter::FormatPresentationCtx;
 use crate::provider::transport_protocol::dto::ProofClaimSchema;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
+use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::ssi_issuer::dto::ConnectIssuerResponseDTO;
 use crate::{
     model::{
         claim::{Claim, ClaimId},
@@ -49,9 +52,7 @@ use crate::{
         credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
         error::DataLayerError, interaction_repository::InteractionRepository,
     },
-    service::{
-        credential::dto::CredentialDetailResponseDTO, ssi_holder::dto::InvitationResponseDTO,
-    },
+    service::ssi_holder::dto::InvitationResponseDTO,
 };
 
 use super::mapper::get_relevant_credentials_to_credential_schemas;
@@ -437,17 +438,17 @@ async fn handle_credential_invitation(
     deps: &ProcivisTemp,
     base_url: Url,
     organisation: Organisation,
-    issuer_response: CredentialDetailResponseDTO,
+    issuer_response: ConnectIssuerResponseDTO,
 ) -> Result<InvitationResponseDTO, TransportProtocolError> {
-    let input_credential_schema: CredentialSchema = issuer_response.schema.into();
+    let now = OffsetDateTime::now_utc();
     let credential_schema = match deps
         .credential_schema_repository
-        .get_by_schema_id_and_organisation(&input_credential_schema.schema_id, organisation.id)
+        .get_by_schema_id_and_organisation(&issuer_response.schema.schema_id, organisation.id)
         .await
         .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
     {
         Some(credential_schema) => {
-            if credential_schema.schema_type != input_credential_schema.schema_type {
+            if credential_schema.schema_type != issuer_response.schema.schema_type.into() {
                 return Err(TransportProtocolError::IncorrectCredentialSchemaType);
             }
 
@@ -466,13 +467,29 @@ async fn handle_credential_invitation(
                 ))?
         }
         None => {
-            let mut credential_schema = input_credential_schema;
-            credential_schema.organisation = Some(organisation.to_owned());
-            credential_schema.claim_schemas = Some(extract_claim_schemas_from_incoming_claims(
-                &issuer_response.claims,
-                OffsetDateTime::now_utc(),
-                "",
-            )?);
+            let credential_schema = CredentialSchema {
+                id: issuer_response.schema.id,
+                deleted_at: None,
+                created_date: now,
+                last_modified: now,
+                name: issuer_response.schema.name,
+                format: issuer_response.schema.format,
+                revocation_method: issuer_response.schema.revocation_method,
+                wallet_storage_type: issuer_response.schema.wallet_storage_type,
+                layout_type: issuer_response
+                    .schema
+                    .layout_type
+                    .unwrap_or(LayoutType::Card),
+                layout_properties: convert_inner(issuer_response.schema.layout_properties),
+                schema_id: issuer_response.schema.schema_id,
+                schema_type: issuer_response.schema.schema_type.into(),
+                claim_schemas: Some(extract_claim_schemas_from_incoming(
+                    &issuer_response.schema.claims,
+                    now,
+                    "",
+                )?),
+                organisation: Some(organisation.to_owned()),
+            };
 
             let _ = deps
                 .credential_schema_repository
@@ -485,13 +502,7 @@ async fn handle_credential_invitation(
     };
 
     // insert issuer did if not yet known
-    let issuer_did_value = issuer_response
-        .issuer_did
-        .ok_or(TransportProtocolError::Failed(
-            "Issuer did not found in response".to_string(),
-        ))?
-        .did;
-
+    let issuer_did_value = issuer_response.issuer_did.did;
     let issuer_did = remote_did_from_value(issuer_did_value.to_owned(), organisation);
     let did_insert_result = deps.did_repository.create_did(issuer_did.clone()).await;
     let issuer_did = match did_insert_result {
@@ -513,8 +524,6 @@ async fn handle_credential_invitation(
             )))
         }
     };
-
-    let now = OffsetDateTime::now_utc();
 
     let interaction = interaction_from_handle_invitation(base_url, None, now);
     let interaction_id = deps
@@ -575,30 +584,32 @@ async fn handle_credential_invitation(
     })
 }
 
-fn extract_claim_schemas_from_incoming_claims(
-    incoming_claims: &[DetailCredentialClaimResponseDTO],
+fn extract_claim_schemas_from_incoming(
+    incoming_claims: &[CredentialClaimSchemaDTO],
     now: OffsetDateTime,
     prefix: &str,
 ) -> Result<Vec<CredentialSchemaClaim>, TransportProtocolError> {
     let mut result = vec![];
 
     incoming_claims.iter().try_for_each(|incoming_claim| {
+        let key = format!("{prefix}{}", incoming_claim.key);
         result.push(CredentialSchemaClaim {
             schema: ClaimSchema {
-                id: incoming_claim.schema.id,
-                key: format!("{prefix}{}", incoming_claim.schema.key.to_owned()),
-                data_type: incoming_claim.schema.datatype.to_owned(),
+                id: incoming_claim.id,
+                key: key.to_owned(),
+                data_type: incoming_claim.datatype.to_owned(),
                 created_date: now,
                 last_modified: now,
             },
-            required: incoming_claim.schema.required,
+            required: incoming_claim.required,
         });
 
-        if let DetailCredentialClaimValueResponseDTO::Nested(value) = &incoming_claim.value {
-            result.extend(extract_claim_schemas_from_incoming_claims(
-                value,
+        let nested_claims = &incoming_claim.claims;
+        if !nested_claims.is_empty() {
+            result.extend(extract_claim_schemas_from_incoming(
+                nested_claims,
                 now,
-                &format!("{prefix}{}{NESTED_CLAIM_MARKER}", incoming_claim.schema.key),
+                &format!("{key}{NESTED_CLAIM_MARKER}"),
             )?);
         }
 

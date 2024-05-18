@@ -32,26 +32,25 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {
     let credential_id = Uuid::new_v4();
     let credential_schema_id = Uuid::new_v4();
 
+    let claim_schema = json!({
+        "createdDate": "2023-11-08T15:46:14.997Z",
+        "datatype": "STRING",
+        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+        "key": "firstName",
+        "lastModified": "2023-11-08T15:46:14.997Z",
+        "required": true
+    });
     context
         .server_mock
         .temporary_issuer_connect(
-            "PROCIVIS_TEMPORARY",
             credential_id,
             credential_schema_id,
             None,
-            json!([
-                {
-                    "schema": {
-                        "createdDate": "2023-11-08T15:46:14.997Z",
-                        "datatype": "STRING",
-                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-                        "key": "firstName",
-                        "lastModified": "2023-11-08T15:46:14.997Z",
-                        "required": true
-                    },
-                    "value": "aae"
-                }
-            ]),
+            json!([{
+                "schema": claim_schema,
+                "value": "aae"
+            }]),
+            json!([claim_schema]),
         )
         .await;
 
@@ -93,7 +92,6 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
     context
         .server_mock
         .temporary_issuer_connect(
-            "PROCIVIS_TEMPORARY",
             credential_id,
             credential_schema_id,
             None,
@@ -102,7 +100,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                     "schema": {
                         "createdDate": "2023-11-08T15:46:14.997Z",
                         "datatype": "OBJECT",
-                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                        "id": "0cda8742-e93c-424f-94e7-15145953264f",
                         "key": "location",
                         "lastModified": "2023-11-08T15:46:14.997Z",
                         "required": true
@@ -112,7 +110,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                             "schema": {
                                 "createdDate": "2023-11-08T15:46:14.997Z",
                                 "datatype": "OBJECT",
-                                "id": "48db4654-01c4-4a43-9df4-300f1f425c41",
+                                "id": "77c2dd86-8fa9-41b6-af2a-bc3ee5fb357e",
                                 "key": "coordinates",
                                 "lastModified": "2023-11-08T15:46:14.997Z",
                                 "required": true
@@ -128,6 +126,44 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
                                         "required": true
                                     },
                                     "value": "123"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]),
+            json!([
+                {
+                    "createdDate": "2023-11-08T15:46:14.997Z",
+                    "datatype": "OBJECT",
+                    "id": "0cda8742-e93c-424f-94e7-15145953264f",
+                    "key": "location",
+                    "lastModified": "2023-11-08T15:46:14.997Z",
+                    "required": true,
+                    "claims": [
+                        {
+                            "createdDate": "2023-11-08T15:46:14.997Z",
+                            "datatype": "OBJECT",
+                            "id": "77c2dd86-8fa9-41b6-af2a-bc3ee5fb357e",
+                            "key": "coordinates",
+                            "lastModified": "2023-11-08T15:46:14.997Z",
+                            "required": true,
+                            "claims": [
+                                {
+                                    "createdDate": "2023-11-08T15:46:14.997Z",
+                                    "datatype": "STRING",
+                                    "id": "48db4654-01c4-4a43-9df4-300f1f425c42",
+                                    "key": "X",
+                                    "lastModified": "2023-11-08T15:46:14.997Z",
+                                    "required": true
+                                },
+                                {
+                                    "createdDate": "2023-11-08T15:46:14.997Z",
+                                    "datatype": "STRING",
+                                    "id": "569724b0-3cae-42d6-99db-01713d9f8422",
+                                    "key": "optional",
+                                    "lastModified": "2023-11-08T15:46:14.997Z",
+                                    "required": false
                                 }
                             ]
                         }
@@ -167,7 +203,12 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_with_nested_
         .map(|schema| schema.schema.key)
         .collect();
     assert_eq!(
-        vec!["location", "location/coordinates", "location/coordinates/X"],
+        vec![
+            "location",
+            "location/coordinates",
+            "location/coordinates/X",
+            "location/coordinates/optional"
+        ],
         schema_keys
     );
 
@@ -207,23 +248,28 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_match_existi
     context
         .server_mock
         .temporary_issuer_connect(
-            "PROCIVIS_TEMPORARY",
             credential_id,
             credential_schema.id,
             None,
-            json!([
-                {
-                    "schema": {
-                        "createdDate": "2023-11-08T15:46:14.997Z",
-                        "datatype": "STRING",
-                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-                        "key": "firstName",
-                        "lastModified": "2023-11-08T15:46:14.997Z",
-                        "required": true
-                    },
-                    "value": "aae"
-                }
-            ]),
+            json!([{
+                "schema": {
+                    "createdDate": "2023-11-08T15:46:14.997Z",
+                    "datatype": "STRING",
+                    "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                    "key": "firstName",
+                    "lastModified": "2023-11-08T15:46:14.997Z",
+                    "required": true
+                },
+                "value": "aae"
+            }]),
+            json!([{
+                "createdDate": "2023-11-08T15:46:14.997Z",
+                "datatype": "STRING",
+                "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+                "key": "firstName",
+                "lastModified": "2023-11-08T15:46:14.997Z",
+                "required": true
+            }]),
         )
         .await;
 
@@ -275,26 +321,27 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_issuance_match_existi
         )
         .await;
 
+    let claim_schema = json!({
+        "createdDate": "2023-11-08T15:46:14.997Z",
+        "datatype": "STRING",
+        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
+        "key": "firstName",
+        "lastModified": "2023-11-08T15:46:14.997Z",
+        "required": true
+    });
     context
         .server_mock
         .temporary_issuer_connect(
-            "PROCIVIS_TEMPORARY",
             credential_id,
             credential_schema.id,
             Some("IncorrectSchemaType"),
             json!([
                 {
-                    "schema": {
-                        "createdDate": "2023-11-08T15:46:14.997Z",
-                        "datatype": "STRING",
-                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-                        "key": "firstName",
-                        "lastModified": "2023-11-08T15:46:14.997Z",
-                        "required": true
-                    },
+                    "schema": claim_schema,
                     "value": "aae"
                 }
             ]),
+            json!([claim_schema]),
         )
         .await;
 

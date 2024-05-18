@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use super::dto::{
-    JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
+    ConnectIssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO,
+    JsonLDInlineEntityDTO,
 };
 use super::{dto::IssuerResponseDTO, SSIIssuerService};
 use crate::common_mapper::get_or_create_did;
@@ -25,10 +26,7 @@ use crate::{
         did::DidRelations,
         organisation::OrganisationRelations,
     },
-    service::{
-        credential::dto::CredentialDetailResponseDTO, error::ServiceError,
-        ssi_validator::validate_config_entity_presence,
-    },
+    service::{error::ServiceError, ssi_validator::validate_config_entity_presence},
 };
 use convert_case::{Case, Casing};
 use shared_types::{CredentialId, CredentialSchemaId, DidValue};
@@ -38,7 +36,7 @@ impl SSIIssuerService {
     pub async fn issuer_connect(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<CredentialDetailResponseDTO, ServiceError> {
+    ) -> Result<ConnectIssuerResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
         let credential = self

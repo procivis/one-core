@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 
-use crate::endpoint::credential_schema::dto::{CredentialSchemaType, WalletStorageTypeRestEnum};
+use crate::endpoint::credential::dto::CredentialDetailClaimResponseRestDTO;
+use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
+use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::serialize::front_time_option;
 use crate::{
-    endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
+    endpoint::credential_schema::dto::{
+        CredentialSchemaListItemResponseRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
+    },
     serialize::front_time,
 };
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
@@ -28,8 +32,8 @@ use one_core::service::oidc::dto::{
     PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
 };
 use one_core::service::ssi_issuer::dto::{
-    JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
-    JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
+    ConnectIssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO,
+    JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
 };
 use one_core::service::{
     oidc::{
@@ -92,6 +96,18 @@ pub struct ConnectVerifierResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub claims: Vec<ProofRequestClaimRestDTO>,
     pub verifier_did: DidValue,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(ConnectIssuerResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectIssuerResponseRestDTO {
+    pub id: CredentialId,
+    pub schema: CredentialSchemaResponseRestDTO,
+    pub issuer_did: DidListItemResponseRestDTO,
+    #[from(with_fn = convert_inner)]
+    pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

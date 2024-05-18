@@ -3,6 +3,7 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::did::Did;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::service::credential::mapper::from_vec_claim;
 use crate::service::error::ServiceError;
 use crate::service::ssi_issuer::dto::{
     JsonLDEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
@@ -14,7 +15,7 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::JsonLDContextDTO;
+use super::dto::{ConnectIssuerResponseDTO, JsonLDContextDTO};
 
 impl Default for JsonLDContextDTO {
     fn default() -> Self {
@@ -110,4 +111,27 @@ pub fn get_url_with_fragment(base_url: &str, fragment: &str) -> Result<String, S
     let mut url = Url::parse(base_url).map_err(|e| ServiceError::MappingError(e.to_string()))?;
     url.set_fragment(Some(fragment));
     Ok(url.to_string())
+}
+
+impl TryFrom<Credential> for ConnectIssuerResponseDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: Credential) -> Result<Self, Self::Error> {
+        let schema = value.schema.ok_or(ServiceError::MappingError(
+            "credential_schema is None".to_string(),
+        ))?;
+        let issuer_did = value
+            .issuer_did
+            .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+        let claims = value
+            .claims
+            .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
+        Ok(Self {
+            id: value.id,
+            issuer_did: issuer_did.into(),
+            claims: from_vec_claim(claims, &schema)?,
+            schema: schema.try_into()?,
+            redirect_uri: value.redirect_uri,
+        })
+    }
 }
