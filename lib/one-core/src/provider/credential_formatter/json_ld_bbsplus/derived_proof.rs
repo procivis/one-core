@@ -1,11 +1,13 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use itertools::Itertools;
 
 use super::super::json_ld::model::LdCredential;
 use super::super::model::CredentialPresentation;
-use super::model::TransformedEntry;
+use super::model::{GroupEntry, TransformedEntry};
 use super::JsonLdBbsplus;
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::crypto::signer::bbs::{BBSSigner, BbsDeriveInput};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld;
@@ -230,49 +232,162 @@ fn create_compressed_verifier_label_map(
     Ok(verifier_label_map)
 }
 
-// This is simplified implementation that only works with our jsonld format
+//It's all linear search but that should be ok for the expected sets of data
 pub(super) fn find_selective_indices(
     non_mandatory: &TransformedEntry,
     disclosed_keys: &[String],
 ) -> Result<Vec<usize>, FormatterError> {
-    let mut indices: Vec<usize> = Vec::new();
-
-    // This is also a simplified implementation
-    for entry in &non_mandatory.value {
-        let mut parts = entry.entry.split(' ');
-
-        let _subject: &str = parts
-            .next()
-            .ok_or(FormatterError::CouldNotExtractCredentials(
-                "Missing triple subject".to_owned(),
-            ))?;
-        let predicate = parts
-            .next()
-            .ok_or(FormatterError::CouldNotExtractCredentials(
-                "Missing triple predicate".to_owned(),
-            ))?;
-        let object = parts
-            .next()
-            .ok_or(FormatterError::CouldNotExtractCredentials(
-                "Missing triple object".to_owned(),
-            ))?;
-
-        // Store root element
-        if object.starts_with("_:") {
-            indices.push(entry.index);
-            continue;
-        }
-
-        // Find out if a key is disclosed.
-        if disclosed_keys
-            .iter()
-            .any(|key| predicate.ends_with(&format!("#{}>", key)))
-        {
-            indices.push(entry.index);
-        }
+    if non_mandatory.value.is_empty() {
+        // Nothing to disclose
+        return Ok(vec![]);
     }
 
-    Ok(indices)
+    let entries = non_mandatory.value.as_ref();
+
+    // Parent object is child subject
+    let (root_object, root_index) = find_root_object(entries)?;
+
+    let mut indices: HashSet<usize> = HashSet::from_iter(vec![root_index]);
+
+    for disclosed_key in disclosed_keys {
+        let disclosed_indices = traverse_and_collect(Some(disclosed_key), root_object, entries)?;
+        indices.extend(disclosed_indices)
+    }
+
+    Ok(indices.into_iter().collect_vec())
+}
+
+fn traverse_and_collect(
+    key: Option<&str>,
+    subject: &str,
+    entries: &[GroupEntry],
+) -> Result<HashSet<usize>, FormatterError> {
+    match key {
+        Some(key) => {
+            if key.contains(NESTED_CLAIM_MARKER) {
+                let (key, carry_over_key) = key
+                    .split_once(NESTED_CLAIM_MARKER)
+                    .ok_or(FormatterError::Failed("Invalid key format".to_string()))?;
+
+                let this_entry = find_with_predicate(key, subject, entries)?;
+                let this_triple = to_triple(this_entry.entry.as_ref())?;
+
+                let mut indices =
+                    traverse_and_collect(Some(carry_over_key), this_triple.object, entries)?;
+
+                indices.insert(this_entry.index);
+
+                Ok(indices)
+            } else {
+                let last_entry = find_with_predicate(key, subject, entries)?;
+                let last_triple = to_triple(last_entry.entry.as_ref())?;
+
+                //No collect all children because it may by an object
+                let mut indices = traverse_and_collect(None, last_triple.object, entries)?;
+
+                indices.insert(last_entry.index);
+                Ok(indices)
+            }
+        }
+        None => {
+            // In case we asked for an object we need to collect all it's chidren and their children.
+            let children = find_all_children(subject, entries)?;
+
+            let mut collected_indices = HashSet::new();
+
+            for child in &children {
+                let entry_triple = to_triple(child.entry.as_ref())?;
+                let child_indices = traverse_and_collect(None, entry_triple.object, entries)?;
+                collected_indices.extend(child_indices);
+            }
+
+            collected_indices.extend(children.into_iter().map(|entry| entry.index));
+
+            Ok(collected_indices)
+        }
+    }
+}
+
+fn find_all_children<'a>(
+    subject: &'a str,
+    entries: &'a [GroupEntry],
+) -> Result<Vec<&'a GroupEntry>, FormatterError> {
+    let result = entries
+        .iter()
+        .filter(|entry| {
+            if let Ok(triple) = to_triple(entry.entry.as_ref()) {
+                triple.subject == subject
+            } else {
+                false
+            }
+        })
+        .collect();
+    Ok(result)
+}
+
+fn find_with_predicate<'a>(
+    key: &str,
+    subject: &'a str,
+    entries: &'a [GroupEntry],
+) -> Result<&'a GroupEntry, FormatterError> {
+    entries
+        .iter()
+        .find(|entry| {
+            if let Ok(triple) = to_triple(entry.entry.as_ref()) {
+                triple.subject == subject && triple.predicate.ends_with(&["#", key, ">"].concat())
+            } else {
+                false
+            }
+        })
+        .ok_or(FormatterError::Failed(
+            "Could not find credential subject".to_string(),
+        ))
+}
+
+fn find_root_object(entries: &[GroupEntry]) -> Result<(&str, usize), FormatterError> {
+    entries
+        .iter()
+        .find_map(|entry| {
+            if let Ok(triple) = to_triple(entry.entry.as_ref()) {
+                if triple.subject.starts_with("<did:") {
+                    return Some((triple.object, entry.index));
+                }
+            }
+            None
+        })
+        .ok_or(FormatterError::Failed(
+            "Could not find credential subject".to_string(),
+        ))
+}
+
+struct Triple<'a> {
+    pub subject: &'a str,
+    pub predicate: &'a str,
+    pub object: &'a str,
+}
+
+fn to_triple(line: &str) -> Result<Triple, FormatterError> {
+    let mut split = line.split(' ');
+    let subject = split
+        .next()
+        .ok_or(FormatterError::CouldNotExtractCredentials(
+            "Missing triple subject".to_owned(),
+        ))?;
+    let predicate = split
+        .next()
+        .ok_or(FormatterError::CouldNotExtractCredentials(
+            "Missing triple predicate".to_owned(),
+        ))?;
+    let object = split
+        .next()
+        .ok_or(FormatterError::CouldNotExtractCredentials(
+            "Missing triple object".to_owned(),
+        ))?;
+    Ok(Triple {
+        subject,
+        predicate,
+        object,
+    })
 }
 
 fn extract_proof_value_components(proof_value: &str) -> Result<BbsProofComponents, FormatterError> {

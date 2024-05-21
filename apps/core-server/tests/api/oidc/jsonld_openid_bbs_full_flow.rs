@@ -15,6 +15,11 @@ use crate::{
 };
 
 #[tokio::test]
+async fn test_openid4vc_jsonld_bbsplus_flow_none() {
+    test_openid4vc_jsonld_bbsplus_flow("NONE").await
+}
+
+#[tokio::test]
 async fn test_openid4vc_jsonld_bbsplus_flow_bitstring() {
     test_openid4vc_jsonld_bbsplus_flow("BITSTRINGSTATUSLIST").await
 }
@@ -59,13 +64,13 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
         (Uuid::new_v4(), "Key", true, "STRING"),
-        (Uuid::new_v4(), "Name", true, "STRING"),
-        (Uuid::new_v4(), "Address", true, "STRING"),
+        (Uuid::new_v4(), "Address", true, "OBJECT"),
+        (Uuid::new_v4(), "Address/Address1", true, "STRING"),
+        (Uuid::new_v4(), "Address/Address2", true, "STRING"),
     ];
 
-    let mut proof_claim_schemas: Vec<(Uuid, &str, bool, &str)> = new_claim_schemas.clone();
+    let mut proof_claim_schemas: Vec<(Uuid, &str, bool, &str)> = new_claim_schemas[..2].to_vec();
     proof_claim_schemas[0].2 = false; //Key is optional
-    proof_claim_schemas[2].2 = false; //Address is optional
 
     let schema_id = Uuid::new_v4();
     let credential_schema = server_context
@@ -143,13 +148,13 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                             "optional": true
                         },
                         {
-                            "id": new_claim_schemas[1].0,
-                            "path": ["$.vc.credentialSubject.Name"],
+                            "id": new_claim_schemas[2].0,
+                            "path": ["$.vc.credentialSubject.Address/Address1"],
                             "optional": true
                         },
                         {
-                            "id": new_claim_schemas[2].0,
-                            "path": ["$.vc.credentialSubject.Address"],
+                            "id": new_claim_schemas[3].0,
+                            "path": ["$.vc.credentialSubject.Address/Address2"],
                             "optional": true
                         }
                     ]
@@ -338,16 +343,12 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                                 "const": holder_credential_schema.schema_id
                             }
                         },
+                        // Disclose the whole address
                         {
                             "id": claims[1].id,
-                            "path": ["$.vc.credentialSubject.Name"],
-                            "optional": true
-                        },
-                        {
-                            "id": claims[2].id,
                             "path": ["$.vc.credentialSubject.Address"],
                             "optional": true
-                        }
+                        },
                     ]
                 }
             }]
@@ -406,29 +407,30 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
 }
 
 fn verify_claims(claims: Vec<ProofClaim>) {
-    assert!(
-        claims
-            .iter()
-            .find(|c| c.claim.schema.as_ref().unwrap().key == "Name")
-            .unwrap()
-            .claim
-            .value
-            == "test"
-    );
-
-    assert!(
-        claims
-            .iter()
-            .find(|c| c.claim.schema.as_ref().unwrap().key == "Address")
-            .unwrap()
-            .claim
-            .value
-            == "test"
-    );
-
+    // Key was not disclosed
     assert!(!claims
         .iter()
         .any(|c| c.claim.schema.as_ref().unwrap().key == "Key"));
+
+    assert!(
+        claims
+            .iter()
+            .find(|c| c.claim.schema.as_ref().unwrap().key == "Address/Address1")
+            .unwrap()
+            .claim
+            .value
+            == "test"
+    );
+
+    assert!(
+        claims
+            .iter()
+            .find(|c| c.claim.schema.as_ref().unwrap().key == "Address/Address2")
+            .unwrap()
+            .claim
+            .value
+            == "test"
+    );
 }
 
 #[tokio::test]
