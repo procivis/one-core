@@ -80,7 +80,7 @@ impl KeyAlgorithm for MlDsa {
         }
     }
 
-    fn public_key_to_der(&self, _public_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
+    fn public_key_from_der(&self, _public_key_der: &[u8]) -> Result<Vec<u8>, ServiceError> {
         unimplemented!()
     }
 }

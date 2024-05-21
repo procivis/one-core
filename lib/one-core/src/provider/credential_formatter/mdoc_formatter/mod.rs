@@ -140,7 +140,7 @@ impl CredentialFormatter for MdocFormatter {
 
         let algorithm_header = try_build_algorithm_header(algorithm)?;
 
-        let x5chain_header = build_x5chain_header(credential.issuer_did);
+        let x5chain_header = build_x5chain_header(credential.issuer_did)?;
 
         let cose_sign1 = CoseSign1Builder::new()
             .protected(algorithm_header)
@@ -165,14 +165,14 @@ impl CredentialFormatter for MdocFormatter {
         _verification: VerificationFn,
         ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, true, ctx).await
+        extract_credentials_internal(token, true, ctx)
     }
 
     async fn extract_credentials_unverified(
         &self,
         token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, false, ExtractCredentialsCtx::default()).await
+        extract_credentials_internal(token, false, ExtractCredentialsCtx::default())
     }
 
     async fn format_presentation(
@@ -264,9 +264,8 @@ impl CredentialFormatter for MdocFormatter {
 
         for document in documents {
             let issuer_signed = document.issuer_signed;
-            let issuer_did = extract_did_from_x5chain_header(&issuer_signed.issuer_auth);
+            let issuer_did = extract_did_from_x5chain_header(&issuer_signed.issuer_auth)?;
 
-            let issuer_did = issuer_did.ok_or(FormatterError::MissingIssuer)?;
             try_verify_issuer_auth(&issuer_signed.issuer_auth, &issuer_did, &verification).await?;
             let _holder_public_key = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
 
@@ -526,7 +525,7 @@ async fn try_verify_issuer_auth(
         .map_err(|err| FormatterError::CouldNotVerify(err.to_string()))
 }
 
-async fn extract_credentials_internal(
+fn extract_credentials_internal(
     token: &str,
     verify: bool,
     ctx: ExtractCredentialsCtx,
@@ -537,7 +536,7 @@ async fn extract_credentials_internal(
     let issuer_signed: IssuerSigned = ciborium::from_reader(&token[..])
         .map_err(|err| FormatterError::Failed(format!("Issuer signed decoding failed: {err}")))?;
 
-    let issuer_did = extract_did_from_x5chain_header(&issuer_signed.issuer_auth);
+    let issuer_did = extract_did_from_x5chain_header(&issuer_signed.issuer_auth)?;
     let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
     let Some(namespaces) = issuer_signed.name_spaces else {
         return Err(FormatterError::Failed(
@@ -592,7 +591,7 @@ async fn extract_credentials_internal(
         issued_at: Some(mso.validity_info.valid_from.into()),
         expires_at: Some(mso.validity_info.valid_until.into()),
         invalid_before: None,
-        issuer_did,
+        issuer_did: Some(issuer_did),
         subject: ctx.holder_did,
         claims: CredentialSubject { values: claims },
         status: vec![],
@@ -752,13 +751,22 @@ fn try_build_namespaces(claims: Vec<(String, String)>) -> Result<Namespaces, For
     Ok(namespaces)
 }
 
-fn build_x5chain_header(issuer_did: DidValue) -> Header {
+fn build_x5chain_header(issuer_did: DidValue) -> Result<Header, FormatterError> {
     let x5chain_label = coset::iana::HeaderParameter::X5Chain.to_i64();
-    let x5chain_value = ciborium::Value::Bytes(issuer_did.to_string().into_bytes());
 
-    HeaderBuilder::new()
+    let body = issuer_did
+        .as_str()
+        .strip_prefix("did:mdl:certificate:")
+        .ok_or_else(|| FormatterError::CouldNotFormat("Invalid mdl did".into()))?;
+
+    let decoded = Base64UrlSafeNoPadding::decode_to_vec(body, None)
+        .map_err(|e| FormatterError::CouldNotFormat(format!("Base64url decoding failed: {e}")))?;
+
+    let x5chain_value = ciborium::Value::Bytes(decoded);
+
+    Ok(HeaderBuilder::new()
         .value(x5chain_label, x5chain_value)
-        .build()
+        .build())
 }
 
 fn try_build_algorithm_header(algorithm: &str) -> Result<ProtectedHeader, FormatterError> {
@@ -779,7 +787,9 @@ fn try_build_algorithm_header(algorithm: &str) -> Result<ProtectedHeader, Format
     })
 }
 
-fn extract_did_from_x5chain_header(CoseSign1(cose_sign1): &CoseSign1) -> Option<DidValue> {
+fn extract_did_from_x5chain_header(
+    CoseSign1(cose_sign1): &CoseSign1,
+) -> Result<DidValue, FormatterError> {
     let x5chain_label = Label::Int(coset::iana::HeaderParameter::X5Chain.to_i64());
 
     cose_sign1
@@ -787,17 +797,25 @@ fn extract_did_from_x5chain_header(CoseSign1(cose_sign1): &CoseSign1) -> Option<
         .rest
         .iter()
         .find(|(label, _)| label == &x5chain_label)
+        .context(anyhow::anyhow!("Missing x5chain header"))
         .and_then(|(_, value)| {
-            let value = value.as_bytes()?;
-            let value = String::from_utf8_lossy(value);
+            let value = value
+                .as_bytes()
+                .context(anyhow::anyhow!("Invalid value for x5chain header"))?;
 
-            let value = match DidValue::from_str(&value) {
-                Ok(v) => v,
+            let (_, _certificate) = x509_parser::parse_x509_certificate(value)
+                .map_err(|err| anyhow::anyhow!("Invalid x509 certificate: {err}"))?;
+
+            let did = Base64UrlSafeNoPadding::encode_to_string(value)
+                .map(|cert| format!("did:mdl:certificate:{cert}"))
+                .map_err(|err| anyhow::anyhow!("Base64 encoding failed: {err}"))?;
+
+            match DidValue::from_str(&did) {
+                Ok(did) => Ok(did),
                 Err(err) => match err {},
-            };
-
-            Some(value)
+            }
         })
+        .map_err(|err| FormatterError::Failed(format!("Failed extracting x5chain header {err}")))
 }
 
 fn extract_algorithm_from_header(cose_sign1: &coset::CoseSign1) -> Option<String> {

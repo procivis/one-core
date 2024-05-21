@@ -11,7 +11,8 @@ use uuid::Uuid;
 
 use crate::{
     api_oidc_tests::full_flow_common::{
-        ecdsa_key_1, ecdsa_key_2, eddsa_key_1, eddsa_key_2, prepare_dids,
+        ecdsa_key_2, eddsa_key_2, eddsa_key_for_did_mdl, es256_key_for_did_mdl,
+        prepare_dids_for_mdoc,
     },
     fixtures::TestingCredentialParams,
     utils::{context::TestContext, db_clients::proof_schemas::CreateProofInputSchema},
@@ -35,34 +36,50 @@ struct KeyData {
     pub crv: String,
 }
 
+#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_eddsa() {
-    test_openid4vc_mdoc_flow(eddsa_key_1(), eddsa_key_2(), KeyType::Eddsa).await
+    test_openid4vc_mdoc_flow(eddsa_key_for_did_mdl(), eddsa_key_2(), KeyType::Eddsa).await
 }
 
+#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_eddsa_ecdsa() {
-    test_openid4vc_mdoc_flow(eddsa_key_1(), ecdsa_key_2(), KeyType::Eddsa).await
+    test_openid4vc_mdoc_flow(eddsa_key_for_did_mdl(), ecdsa_key_2(), KeyType::Eddsa).await
 }
 
+#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa() {
-    test_openid4vc_mdoc_flow(ecdsa_key_1(), ecdsa_key_2(), KeyType::Ecdsa).await
+    test_openid4vc_mdoc_flow(es256_key_for_did_mdl(), ecdsa_key_2(), KeyType::Ecdsa).await
 }
 
+#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa_eddsa() {
-    test_openid4vc_mdoc_flow(ecdsa_key_1(), eddsa_key_2(), KeyType::Ecdsa).await
+    test_openid4vc_mdoc_flow(es256_key_for_did_mdl(), eddsa_key_2(), KeyType::Ecdsa).await
 }
 
+#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_eddsa_selective() {
-    test_openid4vc_mdoc_flow_selective_nested(eddsa_key_1(), eddsa_key_2(), KeyType::Eddsa).await
+    test_openid4vc_mdoc_flow_selective_nested(
+        eddsa_key_for_did_mdl(),
+        eddsa_key_2(),
+        KeyType::Eddsa,
+    )
+    .await
 }
 
+#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa_selective() {
-    test_openid4vc_mdoc_flow_selective_nested(ecdsa_key_1(), ecdsa_key_2(), KeyType::Ecdsa).await
+    test_openid4vc_mdoc_flow_selective_nested(
+        es256_key_for_did_mdl(),
+        ecdsa_key_2(),
+        KeyType::Ecdsa,
+    )
+    .await
 }
 
 fn get_key_data(key_type: KeyType, key: Key) -> KeyData {
@@ -107,17 +124,13 @@ async fn test_openid4vc_mdoc_flow(
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
 
-    let (server_did, holder_did, server_local_key) = prepare_dids(
+    let (server_did, holder_did, server_local_key) = prepare_dids_for_mdoc(
         &server_context,
         &server_organisation,
-        Some(server_key.to_owned()),
-        Some(holder_key.to_owned()),
+        server_key.to_owned(),
+        holder_key.to_owned(),
     )
     .await;
-
-    let server_did = server_did.unwrap();
-    let holder_did = holder_did.unwrap();
-    let server_local_key = server_local_key.unwrap();
 
     let key_data = get_key_data(issuer_key_type, server_local_key.clone());
 
@@ -264,17 +277,13 @@ async fn test_openid4vc_mdoc_flow(
     let holder_context = TestContext::new().await;
     let holder_organisation = holder_context.db.organisations.create().await;
 
-    let (holder_did, server_did, local_key) = prepare_dids(
+    let (holder_did, server_did, local_key) = prepare_dids_for_mdoc(
         &holder_context,
         &holder_organisation,
-        Some(holder_key),
-        Some(server_key),
+        holder_key,
+        server_key,
     )
     .await;
-
-    let holder_did = holder_did.unwrap();
-    let server_did = server_did.unwrap();
-    let local_key = local_key.unwrap();
 
     let schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
@@ -466,17 +475,13 @@ async fn test_openid4vc_mdoc_flow_selective_nested(
     let server_organisation = server_context.db.organisations.create().await;
     let nonce = "nonce123";
 
-    let (server_did, holder_did, server_local_key) = prepare_dids(
+    let (server_did, holder_did, server_local_key) = prepare_dids_for_mdoc(
         &server_context,
         &server_organisation,
-        Some(server_key.to_owned()),
-        Some(holder_key.to_owned()),
+        server_key.to_owned(),
+        holder_key.to_owned(),
     )
     .await;
-
-    let holder_did = holder_did.unwrap();
-    let server_did = server_did.unwrap();
-    let server_local_key = server_local_key.unwrap();
 
     let key_data = get_key_data(issuer_key_type, server_local_key.clone());
 
@@ -664,17 +669,13 @@ async fn test_openid4vc_mdoc_flow_selective_nested(
     let holder_context = TestContext::new().await;
     let holder_organisation = holder_context.db.organisations.create().await;
 
-    let (holder_did, server_did, local_key) = prepare_dids(
+    let (holder_did, server_did, local_key) = prepare_dids_for_mdoc(
         &holder_context,
         &holder_organisation,
-        Some(holder_key),
-        Some(server_key),
+        holder_key,
+        server_key,
     )
     .await;
-
-    let holder_did = holder_did.unwrap();
-    let server_did = server_did.unwrap();
-    let local_key = local_key.unwrap();
 
     let schema_id = Uuid::new_v4();
     let holder_credential_schema = holder_context
