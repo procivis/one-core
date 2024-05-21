@@ -28,7 +28,7 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
     pub format: String,
-    pub claims: Option<OpenID4VCIIssuerMetadataMdocClaimsResponseDTO>,
+    pub claims: Option<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>>,
     pub credential_definition: Option<OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO>,
     pub doctype: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
@@ -40,17 +40,12 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
     pub name: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct OpenID4VCIIssuerMetadataMdocClaimsResponseDTO {
-    #[serde(flatten)]
-    pub values: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
     #[serde(default)]
     pub value: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
     pub value_type: String,
+    pub mandatory: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

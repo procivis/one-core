@@ -13,13 +13,20 @@ use self::{
         OpenID4VCICredential, OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferClaim,
         OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialOfferCredentialDTO,
         OpenID4VCICredentialOfferDTO, OpenID4VCICredentialValueDetails, OpenID4VCIProof,
+        OpenID4VPInteractionData,
     },
     mapper::{
         create_claims_from_credential_definition, create_credential_offer,
-        create_open_id_for_vp_presentation_definition, create_presentation_submission,
-        get_credential_offer_url,
+        create_open_id_for_vp_presentation_definition, create_open_id_for_vp_sharing_url_encoded,
+        create_presentation_submission, get_claim_name_by_json_path, get_credential_offer_url,
+        map_offered_claims_to_credential_schema, parse_mdoc_schema_claims,
+        parse_procivis_schema_claim, presentation_definition_from_interaction_data,
     },
-    model::{HolderInteractionData, JwePayload, OpenID4VCIInteractionContent},
+    model::{
+        HolderInteractionData, JwePayload, OpenID4VCIInteractionContent,
+        OpenID4VPInteractionContent,
+    },
+    validator::validate_interaction_data,
 };
 use super::{
     deserialize_interaction_data,
@@ -27,8 +34,6 @@ use super::{
     mapper::interaction_from_handle_invitation,
     serialize_interaction_data, TransportProtocol, TransportProtocolError,
 };
-use crate::model::key::KeyRelations;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError;
 use crate::{config::core_config, provider::credential_formatter::FormatPresentationCtx};
 use crate::{
@@ -41,24 +46,27 @@ use crate::{
             CredentialStateRelations, UpdateCredentialRequest,
         },
         credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-            CredentialSchemaType, LayoutProperties, LayoutType, UpdateCredentialSchemaRequest,
+            CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
+            UpdateCredentialSchemaRequest,
         },
         did::{Did, DidRelations, DidType},
         interaction::{Interaction, InteractionId, InteractionRelations},
+        key::{Key, KeyRelations},
         organisation::{Organisation, OrganisationRelations},
         proof::{Proof, ProofClaimRelations, ProofId, ProofRelations, UpdateProofRequest},
-        proof_schema::{ProofSchemaClaimRelations, ProofSchemaRelations},
+        proof_schema::{
+            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
+        },
     },
     provider::{
         credential_formatter::provider::CredentialFormatterProvider,
+        key_algorithm::provider::KeyAlgorithmProvider,
         key_storage::provider::KeyProvider,
         revocation::provider::RevocationMethodProvider,
         transport_protocol::{
-            mapper::proof_from_handle_invitation,
-            openid4vc::{
-                dto::OpenID4VPInteractionData, mapper::create_open_id_for_vp_sharing_url_encoded,
-                model::OpenID4VPInteractionContent, validator::validate_interaction_data,
+            dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO},
+            mapper::{
+                get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
             },
         },
     },
@@ -69,6 +77,10 @@ use crate::{
         proof_repository::ProofRepository,
     },
     service::{
+        credential_schema::{
+            dto::{CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO},
+            mapper::from_create_request,
+        },
         oidc::dto::{
             OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO,
             OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
@@ -77,26 +89,9 @@ use crate::{
         ssi_holder::dto::InvitationResponseDTO,
     },
     util::{
-        oidc::{map_core_to_oidc_format, map_from_oidc_format_to_core},
+        oidc::{detect_correct_format, map_core_to_oidc_format, map_from_oidc_format_to_core},
         proof_formatter::OpenID4VCIProofJWTFormatter,
     },
-};
-use crate::{
-    model::credential_schema::WalletStorageTypeEnum,
-    model::proof_schema::ProofInputSchemaRelations,
-    provider::transport_protocol::mapper::get_relevant_credentials_to_credential_schemas,
-};
-use crate::{
-    model::key::Key,
-    provider::transport_protocol::openid4vc::mapper::{
-        get_claim_name_by_json_path, presentation_definition_from_interaction_data,
-    },
-};
-use crate::{
-    provider::transport_protocol::dto::{
-        CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
-    },
-    util::oidc::detect_correct_format,
 };
 
 mod mdoc;
@@ -989,6 +984,7 @@ async fn handle_credential_invitation(
         })?;
 
     let credential_schema_name = get_credential_schema_name(&issuer_metadata, credential)?;
+    let (schema_id, schema_type) = find_schema_data(&issuer_metadata, credential);
 
     let holder_data = HolderInteractionData {
         issuer_url: issuer_metadata.credential_issuer,
@@ -1009,112 +1005,182 @@ async fn handle_credential_invitation(
     .map_err(|error: DataLayerError| TransportProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id;
 
-    let credential_id = Uuid::new_v4().into();
-
-    let (schema_uri, schema_type) = find_schema_data(&credential_offer);
-    // doctype is the schema_id for MDOC
-    let schema_id = credential.doctype.clone().unwrap_or(schema_uri.clone());
-
     let claim_keys = build_claim_keys(credential)?;
 
-    let (claims, credential_schema) =
-        match deps
-            .credential_schema_repository
-            .get_by_schema_id_and_organisation(&schema_id, organisation.id)
-            .await
-            .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
-        {
-            Some(credential_schema) => {
-                if credential_schema.schema_type != schema_type {
-                    return Err(TransportProtocolError::IncorrectCredentialSchemaType);
-                }
-
-                let credential_schema = deps
-                    .credential_schema_repository
-                    .get_credential_schema(
-                        &credential_schema.id,
-                        &CredentialSchemaRelations {
-                            claim_schemas: Some(ClaimSchemaRelations::default()),
-                            organisation: Some(Default::default()),
-                        },
-                    )
-                    .await
-                    .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
-                    .ok_or(TransportProtocolError::Failed(
-                        "Credential schema error".to_string(),
-                    ))?;
-
-                let claim_schemas = credential_schema.claim_schemas.as_ref().ok_or(
-                    TransportProtocolError::Failed(
-                        "Missing claim schemas for existing credential schema".to_string(),
-                    ),
-                )?;
-
-                let now = OffsetDateTime::now_utc();
-                let mut claims = vec![];
-                for claim_schema in claim_schemas {
-                    let credential_value_details = &claim_keys.get(&claim_schema.schema.key);
-                    match credential_value_details {
-                        Some(value_details) => {
-                            let claim = Claim {
-                                id: Uuid::new_v4(),
-                                credential_id,
-                                created_date: now,
-                                last_modified: now,
-                                value: value_details.value.to_owned(),
-                                schema: Some(claim_schema.schema.to_owned()),
-                            };
-
-                            claims.push(claim);
-                        }
-                        None if claim_schema.required => {
-                            return Err(TransportProtocolError::Failed(format!(
-                                "Validation Error. Claim key {} missing",
-                                &claim_schema.schema.key
-                            )))
-                        }
-                        _ => {
-                            // skip non-required claims that aren't matching
-                        }
-                    }
-                }
-
-                (claims, credential_schema)
+    let credential_id = Uuid::new_v4().into();
+    let (claims, credential_schema) = match deps
+        .credential_schema_repository
+        .get_by_schema_id_and_organisation(&schema_id, organisation.id)
+        .await
+        .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
+    {
+        Some(credential_schema) => {
+            if credential_schema.schema_type != schema_type {
+                return Err(TransportProtocolError::IncorrectCredentialSchemaType);
             }
-            None => {
-                let credential_format = map_from_oidc_format_to_core(&credential.format)
+
+            let credential_schema = deps
+                .credential_schema_repository
+                .get_credential_schema(
+                    &credential_schema.id,
+                    &CredentialSchemaRelations {
+                        claim_schemas: Some(ClaimSchemaRelations::default()),
+                        organisation: Some(Default::default()),
+                    },
+                )
+                .await
+                .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
+                .ok_or(TransportProtocolError::Failed(
+                    "Credential schema error".to_string(),
+                ))?;
+
+            let claims = map_offered_claims_to_credential_schema(
+                &credential_schema,
+                credential_id,
+                &claim_keys,
+            )?;
+
+            (claims, credential_schema)
+        }
+        None => {
+            let (claims, credential_schema) = match schema_type {
+                CredentialSchemaType::ProcivisOneSchema2024 => {
+                    let procivis_schema = fetch_procivis_schema(&schema_id)
+                        .await
+                        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+
+                    let schema = from_create_request(
+                        CreateCredentialSchemaRequestDTO {
+                            name: procivis_schema.name,
+                            format: procivis_schema.format,
+                            revocation_method: procivis_schema.revocation_method,
+                            organisation_id: organisation.id,
+                            claims: procivis_schema
+                                .claims
+                                .into_iter()
+                                .map(parse_procivis_schema_claim)
+                                .collect(),
+                            wallet_storage_type: procivis_schema.wallet_storage_type,
+                            layout_type: procivis_schema.layout_type.unwrap_or(LayoutType::Card),
+                            layout_properties: procivis_schema.layout_properties,
+                            schema_id: Some(schema_id),
+                        },
+                        organisation,
+                        "",
+                        core_config::FormatType::Jwt,
+                    )
                     .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
 
-                let (claim_schemas, claims): (Vec<_>, Vec<_>) =
-                    create_claims_from_credential_definition(credential_id, &claim_keys)?;
+                    let credential_schema = CredentialSchema {
+                        schema_type,
+                        ..schema
+                    };
 
-                let layout = if schema_type.supports_custom_layout() {
-                    resolve_layout_data(&schema_uri).await.map_err(|err| {
-                        TransportProtocolError::Failed(format!(
-                            "Failed resolving layout information from schema_id {err}"
-                        ))
-                    })?
-                } else {
-                    CredentialSchemaLayout::default()
-                };
+                    let claims = map_offered_claims_to_credential_schema(
+                        &credential_schema,
+                        credential_id,
+                        &claim_keys,
+                    )?;
 
-                let credential_schema = create_and_store_credential_schema(
-                    &deps.credential_schema_repository,
-                    credential_schema_name,
-                    credential_format,
-                    claim_schemas,
-                    organisation,
-                    credential.wallet_storage_type.clone(),
-                    schema_type,
-                    schema_id,
-                    layout,
-                )
+                    (claims, credential_schema)
+                }
+                CredentialSchemaType::Mdoc => {
+                    let credential_format = map_from_oidc_format_to_core(&credential.format)
+                        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+
+                    let claim_schemas = issuer_metadata
+                        .credentials_supported
+                        .into_iter()
+                        .find(|credential| {
+                            credential
+                                .doctype
+                                .as_ref()
+                                .is_some_and(|doctype| doctype == &schema_id)
+                        })
+                        .and_then(|credential| credential.claims);
+
+                    let claims_specified = claim_schemas.is_some();
+
+                    let credential_schema = from_create_request(
+                        CreateCredentialSchemaRequestDTO {
+                            name: credential_schema_name,
+                            format: credential_format,
+                            revocation_method: "NONE".to_string(),
+                            organisation_id: organisation.id,
+                            claims: if let Some(schemas) = claim_schemas {
+                                parse_mdoc_schema_claims(schemas)
+                            } else {
+                                vec![]
+                            },
+                            wallet_storage_type: credential.wallet_storage_type.to_owned(),
+                            layout_type: LayoutType::Card,
+                            layout_properties: None,
+                            schema_id: Some(schema_id),
+                        },
+                        organisation,
+                        "",
+                        core_config::FormatType::Mdoc,
+                    )
+                    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+
+                    if claims_specified {
+                        let claims = map_offered_claims_to_credential_schema(
+                            &credential_schema,
+                            credential_id,
+                            &claim_keys,
+                        )?;
+
+                        (claims, credential_schema)
+                    } else {
+                        let (claim_schemas, claims): (Vec<_>, Vec<_>) =
+                            create_claims_from_credential_definition(credential_id, &claim_keys)?;
+
+                        (
+                            claims,
+                            CredentialSchema {
+                                claim_schemas: Some(claim_schemas),
+                                ..credential_schema
+                            },
+                        )
+                    }
+                }
+                _ => {
+                    let credential_format = map_from_oidc_format_to_core(&credential.format)
+                        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+
+                    let (claim_schemas, claims): (Vec<_>, Vec<_>) =
+                        create_claims_from_credential_definition(credential_id, &claim_keys)?;
+
+                    let now = OffsetDateTime::now_utc();
+                    let credential_schema = CredentialSchema {
+                        id: Uuid::new_v4().into(),
+                        deleted_at: None,
+                        created_date: now,
+                        last_modified: now,
+                        name: credential_schema_name,
+                        format: credential_format,
+                        wallet_storage_type: credential.wallet_storage_type.to_owned(),
+                        revocation_method: "NONE".to_string(),
+                        claim_schemas: Some(claim_schemas),
+                        organisation: Some(organisation),
+                        layout_type: LayoutType::Card,
+                        layout_properties: None,
+                        schema_type,
+                        schema_id,
+                    };
+
+                    (claims, credential_schema)
+                }
+            };
+
+            deps.credential_schema_repository
+                .create_credential_schema(credential_schema.clone())
                 .await
                 .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
 
-                (claims, credential_schema)
-            }
-        };
+            (claims, credential_schema)
+        }
+    };
 
     let credential = create_credential(credential_id, credential_schema, claims, interaction, None)
         .await
@@ -1190,15 +1256,39 @@ fn build_claims_keys_for_mdoc(
 }
 
 fn find_schema_data(
-    credential_offer: &OpenID4VCICredentialOfferDTO,
-) -> (String, CredentialSchemaType) {
-    match create_schema_id_from_issuer(&credential_offer.credential_issuer) {
+    issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
+    credential: &OpenID4VCICredentialOfferCredentialDTO,
+) -> (String /* schema_id */, CredentialSchemaType) {
+    if credential.format == "mso_mdoc" {
+        // doctype is the schema_id for MDOC
+        if let Some(doctype) = credential.doctype.to_owned() {
+            return (doctype, CredentialSchemaType::Mdoc);
+        }
+    }
+
+    let credential_schema = issuer_metadata
+        .credentials_supported
+        .first() // This is not interoperable, but since in this case we only try to detect our own schema, we know there's always only one
+        .and_then(|credential| credential.credential_definition.as_ref())
+        .and_then(|definition| definition.credential_schema.to_owned());
+
+    match credential_schema {
         None => (
             Uuid::new_v4().to_string(),
             CredentialSchemaType::FallbackSchema2024,
         ),
-        Some(schema_id) => (schema_id, CredentialSchemaType::ProcivisOneSchema2024),
+        Some(schema) => (schema.id, schema.r#type.into()),
     }
+}
+
+async fn fetch_procivis_schema(
+    schema_id: &str,
+) -> Result<CredentialSchemaDetailResponseDTO, reqwest::Error> {
+    reqwest::get(schema_id)
+        .await?
+        .error_for_status()?
+        .json()
+        .await
 }
 
 fn get_credential_schema_name(
@@ -1248,70 +1338,6 @@ fn get_credential_schema_name(
     };
 
     Ok(credential_schema_name)
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn create_and_store_credential_schema(
-    repository: &Arc<dyn CredentialSchemaRepository>,
-    name: String,
-    format: String,
-    claim_schemas: Vec<CredentialSchemaClaim>,
-    organisation: Organisation,
-    wallet_storage_type: Option<WalletStorageTypeEnum>,
-    schema_type: CredentialSchemaType,
-    schema_id: String,
-    layout: CredentialSchemaLayout,
-) -> Result<CredentialSchema, DataLayerError> {
-    let now = OffsetDateTime::now_utc();
-
-    let id = Uuid::new_v4();
-
-    let credential_schema = CredentialSchema {
-        id: id.into(),
-        deleted_at: None,
-        created_date: now,
-        last_modified: now,
-        name,
-        format,
-        wallet_storage_type,
-        revocation_method: "NONE".to_string(),
-        claim_schemas: Some(claim_schemas),
-        organisation: Some(organisation),
-        layout_type: layout.layout_type,
-        layout_properties: layout.layout_properties,
-        schema_type,
-        schema_id,
-    };
-
-    let _ = repository
-        .create_credential_schema(credential_schema.clone())
-        .await?;
-
-    Ok(credential_schema)
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct CredentialSchemaLayout {
-    layout_type: LayoutType,
-    layout_properties: Option<LayoutProperties>,
-}
-
-impl Default for CredentialSchemaLayout {
-    fn default() -> Self {
-        Self {
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-        }
-    }
-}
-
-async fn resolve_layout_data(schema_id: &str) -> Result<CredentialSchemaLayout, reqwest::Error> {
-    reqwest::get(schema_id)
-        .await?
-        .error_for_status()?
-        .json()
-        .await
 }
 
 async fn create_and_store_interaction(
@@ -1515,12 +1541,4 @@ async fn handle_proof_invitation(
         interaction_id,
         proof: Box::new(proof),
     })
-}
-
-fn create_schema_id_from_issuer(issuer: &str) -> Option<String> {
-    if issuer.contains("/ssi/oidc-issuer/v1/") {
-        return Some(issuer.replace("/ssi/oidc-issuer/v1/", "/ssi/schema/v1/"));
-    }
-
-    None
 }

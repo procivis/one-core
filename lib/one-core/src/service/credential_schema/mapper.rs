@@ -91,7 +91,7 @@ pub(super) fn create_unique_name_check_request(
     })
 }
 
-pub(super) fn from_create_request(
+pub fn from_create_request(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
     core_base_url: &str,
