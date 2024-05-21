@@ -310,12 +310,12 @@ pub enum TaskType {
     SuspendCheck,
 }
 
-pub type TrustManagementConfig = ConfigBlock<TrustManagement>;
+pub type TrustManagementConfig = ConfigBlock<TrustManagementType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
 )]
-pub enum TrustManagement {
+pub enum TrustManagementType {
     #[serde(rename = "SIMPLE_TRUST_LIST")]
     #[strum(serialize = "SIMPLE_TRUST_LIST")]
     SimpleTrustList,

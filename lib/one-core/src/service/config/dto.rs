@@ -12,4 +12,5 @@ pub struct ConfigDTO {
     pub datatype: HashMap<String, Value>,
     pub key_algorithm: HashMap<String, Value>,
     pub key_storage: HashMap<String, Value>,
+    pub trust_management: HashMap<String, Value>,
 }
