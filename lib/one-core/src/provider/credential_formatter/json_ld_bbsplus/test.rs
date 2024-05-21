@@ -164,12 +164,17 @@ async fn test_transform_grouped() {
 fn test_find_disclosed_indicies() {
     let non_mandatory = TransformedEntry {
         data_type: "Map".to_owned(),
-        value: vec![GroupEntry {
+        value: vec![
+        GroupEntry {
             index: 0,
-            entry: "_:c14n5 <https://windsurf.grotto-networking.com/selective#sailNumber> \"Earth101\" .".to_owned()
+            entry: "<did:key:123> <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#TestSubject> _:c14n5 .".to_owned()
         },
         GroupEntry {
             index: 1,
+            entry: "_:c14n5 <https://windsurf.grotto-networking.com/selective#sailNumber> \"Earth101\" .".to_owned()
+        },
+        GroupEntry {
+            index: 2,
             entry: "_:c14n5 <https://windsurf.grotto-networking.com/selective#sailNumber123> \"Earth101\" .".to_owned()
         }]
     };
@@ -177,8 +182,9 @@ fn test_find_disclosed_indicies() {
     let disclosed_keys = vec!["sailNumber".to_string()];
 
     let result = find_selective_indices(&non_mandatory, &disclosed_keys).unwrap();
-    assert_eq!(result.len(), 1);
-    assert_eq!(result[0], 0);
+    assert_eq!(result.len(), 2);
+    let expected = [0, 1];
+    assert!(result.iter().all(|index| expected.contains(index)));
 }
 
 static CANONICAL: &str = "_:c14n0 <https://windsurf.grotto-networking.com/selective#boardName> \"CompFoil170\" .
@@ -270,6 +276,52 @@ fn generate_ld_credential(subject_claims: serde_json::Value) -> LdCredential {
         proof: None,
         credential_schema: None,
     }
+}
+
+#[test]
+fn test_find_selective() {
+    let input: TransformedEntry = TransformedEntry {
+        data_type: "Map".to_string(),
+        value: vec![
+            GroupEntry {
+                entry: "<did:key:z6Mkw6BZWh2yCJW3HJ9RuJfuFdSzmzRbgWgbzLnfahzZ3ZBB> <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#TestSubject> _:b0 .".to_string(),
+                index: 0
+            },
+            GroupEntry {
+                entry: "_:b0 <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#Address> _:b1 .".to_string(),
+                index: 8
+            },
+            GroupEntry {
+                entry: "_:b0 <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#Key> \"test\" .".to_string(),
+                index: 9
+            },
+            GroupEntry {
+                entry: "_:b1 <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#Address1> \"test\" .".to_string(),
+                index: 10
+            },
+            GroupEntry {
+                entry: "_:b1 <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#Address2> _:b2 .".to_string(),
+                index: 11
+            },
+            GroupEntry {
+                entry: "_:b2 <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#Address3> \"test\" .".to_string(),
+                index: 12
+            },
+        ],
+    };
+
+    let res = find_selective_indices(
+        &input,
+        &[
+            "Address/Address2".to_string(),
+            "Address/Address1".to_string(),
+        ],
+    )
+    .unwrap();
+
+    let expected = [0, 8, 10, 11, 12];
+
+    assert!(res.iter().all(|index| expected.contains(index)));
 }
 
 #[test]
