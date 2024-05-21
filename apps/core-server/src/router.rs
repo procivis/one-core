@@ -560,7 +560,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 dto::common::GetProofSchemaListResponseRestDTO,
 
                 dto::common::GetCredentialsResponseDTO,
-                dto::common::GetCredentialSchemaResponseDTO,
+                dto::common::GetCredentialSchemasResponseDTO,
                 dto::common::GetProofsResponseRestDTO,
                 dto::common::GetKeyListResponseRestDTO,
 

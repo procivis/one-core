@@ -80,34 +80,6 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
     }
 }
 
-pub(super) fn entity_model_to_credential_schema(
-    value: credential_schema::Model,
-    skip_layout_properties: bool,
-) -> Result<CredentialSchema, DataLayerError> {
-    let id = Uuid::from_str(&value.id)?;
-
-    Ok(CredentialSchema {
-        id: id.into(),
-        deleted_at: value.deleted_at,
-        created_date: value.created_date,
-        last_modified: value.last_modified,
-        name: value.name,
-        format: value.format,
-        wallet_storage_type: convert_inner(value.wallet_storage_type),
-        revocation_method: value.revocation_method,
-        claim_schemas: None,
-        organisation: None,
-        layout_type: value.layout_type.into(),
-        layout_properties: if skip_layout_properties {
-            None
-        } else {
-            convert_inner(value.layout_properties)
-        },
-        schema_type: value.schema_type.into(),
-        schema_id: value.schema_id,
-    })
-}
-
 impl GetEntityColumn for SortableCredentialSchemaColumn {
     fn get_simple_expr(&self) -> SimpleExpr {
         match self {
@@ -157,10 +129,11 @@ pub(super) fn claim_schemas_to_relations(
         .collect()
 }
 
-pub(crate) fn credential_schema_from_models(
+pub(super) fn credential_schema_from_models(
     credential_schema: credential_schema::Model,
     claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     organisation: Option<Organisation>,
+    skip_layout_properties: bool,
 ) -> Result<CredentialSchema, DataLayerError> {
     Uuid::from_str(&credential_schema.id)
         .ok()
@@ -176,7 +149,11 @@ pub(crate) fn credential_schema_from_models(
             claim_schemas,
             organisation,
             layout_type: credential_schema.layout_type.into(),
-            layout_properties: convert_inner(credential_schema.layout_properties),
+            layout_properties: if skip_layout_properties {
+                None
+            } else {
+                convert_inner(credential_schema.layout_properties)
+            },
             schema_type: credential_schema.schema_type.into(),
             schema_id: credential_schema.schema_id,
         })

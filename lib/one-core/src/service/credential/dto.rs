@@ -134,10 +134,9 @@ pub enum CredentialStateEnum {
     Error,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, EnumString, Display)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Eq, PartialEq, EnumString, Display)]
+#[strum(serialize_all = "camelCase")]
 pub enum CredentialListIncludeEntityTypeEnum {
-    #[strum(serialize = "layoutProperties")]
     LayoutProperties,
 }
 

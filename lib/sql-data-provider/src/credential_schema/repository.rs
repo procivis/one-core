@@ -11,6 +11,7 @@ use one_core::{
         organisation::Organisation,
     },
     repository::{credential_schema_repository::CredentialSchemaRepository, error::DataLayerError},
+    service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum,
 };
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
@@ -34,8 +35,6 @@ use crate::{
     list_query_generic::SelectWithListQuery,
     mapper::to_data_layer_error,
 };
-
-use super::mapper::entity_model_to_credential_schema;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -174,7 +173,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         };
 
         let credential_schema =
-            credential_schema_from_models(credential_schema, claim_schemas, organisation)?;
+            credential_schema_from_models(credential_schema, claim_schemas, organisation, false)?;
 
         Ok(Some(credential_schema))
     }
@@ -287,7 +286,16 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .zip(claims.into_iter())
                 .zip(organisations.into_iter())
                 .map(|((credential_schema, claim_schemas), organisation)| {
-                    credential_schema_from_models(credential_schema, claim_schemas, organisation)
+                    credential_schema_from_models(
+                        credential_schema,
+                        claim_schemas,
+                        organisation,
+                        !query_params.include.as_ref().is_some_and(|include| {
+                            include.contains(
+                                &CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+                            )
+                        }),
+                    )
                 })
                 .collect::<Result<_, _>>()?,
             total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
@@ -343,6 +351,6 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             return Ok(None);
         };
 
-        Ok(entity_model_to_credential_schema(credential_schema, true).ok())
+        Ok(credential_schema_from_models(credential_schema, None, None, true).ok())
     }
 }

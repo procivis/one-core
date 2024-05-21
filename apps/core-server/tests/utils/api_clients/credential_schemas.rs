@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -50,8 +51,16 @@ impl CredentialSchemasApi {
         page: u64,
         page_size: u64,
         organisation_id: &impl Display,
+        include: Option<Vec<CredentialSchemaListIncludeEntityTypeEnum>>,
     ) -> Response {
-        let url = format!("/api/credential-schema/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}");
+        let mut url = format!("/api/credential-schema/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}");
+
+        if let Some(include) = include {
+            for item in include {
+                url += &format!("&include[]={item}")
+            }
+        }
+
         self.client.get(&url).await
     }
 

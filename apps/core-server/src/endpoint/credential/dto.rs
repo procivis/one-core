@@ -14,6 +14,7 @@ use crate::serialize::front_time_option;
 use dto_mapper::{convert_inner, From, Into};
 use one_core::service::credential::dto::CreateCredentialRequestDTO;
 use one_core::service::credential::dto::CredentialDetailResponseDTO;
+use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_core::service::credential::dto::CredentialListItemResponseDTO;
 use one_core::service::credential::dto::CredentialRequestClaimDTO;
 use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
@@ -178,9 +179,10 @@ pub struct CredentialsFilterQueryParamsRest {
     #[param(inline, rename = "status[]")]
     pub status: Option<Vec<CredentialStateRestEnum>>,
 }
+
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[into(one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum)]
+#[into(CredentialListIncludeEntityTypeEnum)]
 pub enum CredentialListIncludeEntityTypeRestEnum {
     LayoutProperties,
 }
