@@ -18,7 +18,7 @@ use crate::endpoint::{
 // ToSchema is properly generated thanks to that
 #[aliases(
     GetProofsResponseRestDTO = GetListResponseRestDTO<ProofListItemResponseRestDTO>,
-    GetCredentialSchemaResponseDTO = GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>,
+    GetCredentialSchemasResponseDTO = GetListResponseRestDTO<CredentialSchemaListItemResponseRestDTO>,
     GetDidsResponseRestDTO = GetListResponseRestDTO<DidListItemResponseRestDTO>,
     GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListItemResponseRestDTO>,
     GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>,

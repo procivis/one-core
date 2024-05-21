@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
+use strum_macros::{Display, EnumString};
 use time::OffsetDateTime;
 
 use dto_mapper::{convert_inner, From, Into};
@@ -70,6 +71,12 @@ pub struct CredentialClaimSchemaDTO {
     pub claims: Vec<CredentialClaimSchemaDTO>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, EnumString, Display)]
+#[strum(serialize_all = "camelCase")]
+pub enum CredentialSchemaListIncludeEntityTypeEnum {
+    LayoutProperties,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CredentialSchemaFilterValue {
     Name(StringMatch),
@@ -82,8 +89,11 @@ pub enum CredentialSchemaFilterValue {
 impl ListFilterValue for CredentialSchemaFilterValue {}
 
 pub type GetCredentialSchemaListResponseDTO = GetListResponse<CredentialSchemaListItemResponseDTO>;
-pub type GetCredentialSchemaQueryDTO =
-    ListQuery<SortableCredentialSchemaColumn, CredentialSchemaFilterValue>;
+pub type GetCredentialSchemaQueryDTO = ListQuery<
+    SortableCredentialSchemaColumn,
+    CredentialSchemaFilterValue,
+    CredentialSchemaListIncludeEntityTypeEnum,
+>;
 
 #[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaRequestDTO {

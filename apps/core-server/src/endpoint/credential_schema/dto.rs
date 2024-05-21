@@ -2,7 +2,8 @@ use dto_mapper::convert_inner;
 use dto_mapper::{From, Into};
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
-    CredentialSchemaDetailResponseDTO, CredentialSchemaListItemResponseDTO,
+    CredentialSchemaDetailResponseDTO, CredentialSchemaListIncludeEntityTypeEnum,
+    CredentialSchemaListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialSchemaId, OrganisationId};
@@ -35,12 +36,15 @@ pub struct CredentialSchemaListItemResponseRestDTO {
     pub format: String,
     pub revocation_method: String,
     #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
 }
 
@@ -122,9 +126,17 @@ pub struct CredentialSchemasFilterQueryParamsRest {
     pub format: Option<String>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(CredentialSchemaListIncludeEntityTypeEnum)]
+pub enum CredentialSchemaListIncludeEntityTypeRestEnum {
+    LayoutProperties,
+}
+
 pub type GetCredentialSchemaQuery = ListQueryParamsRest<
     CredentialSchemasFilterQueryParamsRest,
     SortableCredentialSchemaColumnRestEnum,
+    CredentialSchemaListIncludeEntityTypeRestEnum,
 >;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
@@ -219,7 +231,9 @@ pub struct CredentialSchemaLayoutPropertiesRestDTO {
 #[into(one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO)]
 pub struct CredentialSchemaBackgroundPropertiesRestDTO {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
 }
 
@@ -228,8 +242,11 @@ pub struct CredentialSchemaBackgroundPropertiesRestDTO {
 #[into(one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO)]
 pub struct CredentialSchemaLogoPropertiesRestDTO {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub font_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub background_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
 }
 

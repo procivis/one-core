@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
 
-use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
+use crate::service::credential_schema::dto::{
+    CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
+};
 
 use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use super::common::GetListResponse;
@@ -127,8 +129,11 @@ pub enum CodeTypeEnum {
 }
 
 pub type GetCredentialSchemaList = GetListResponse<CredentialSchema>;
-pub type GetCredentialSchemaQuery =
-    ListQuery<SortableCredentialSchemaColumn, CredentialSchemaFilterValue>;
+pub type GetCredentialSchemaQuery = ListQuery<
+    SortableCredentialSchemaColumn,
+    CredentialSchemaFilterValue,
+    CredentialSchemaListIncludeEntityTypeEnum,
+>;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateCredentialSchemaRequest {

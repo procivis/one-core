@@ -4,7 +4,7 @@ use axum_extra::extract::WithRejection;
 use shared_types::CredentialSchemaId;
 use uuid::Uuid;
 
-use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemaResponseDTO};
+use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemasResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
@@ -65,12 +65,12 @@ pub(crate) async fn get_credential_schema(
     OkOrErrorResponse::from_result(result, state, "getting credential schema")
 }
 
-declare_utoipa_alias!(GetCredentialSchemaResponseDTO);
+declare_utoipa_alias!(GetCredentialSchemasResponseDTO);
 
 #[utoipa::path(
     get,
     path = "/api/credential-schema/v1",
-    responses(OkOrErrorResponse<AliasResponse<GetCredentialSchemaResponseDTO>>),
+    responses(OkOrErrorResponse<AliasResponse<GetCredentialSchemasResponseDTO>>),
     params(GetCredentialSchemaQuery),
     tag = "credential_schema_management",
     security(
@@ -80,7 +80,7 @@ declare_utoipa_alias!(GetCredentialSchemaResponseDTO);
 pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialSchemaQuery>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<GetCredentialSchemaResponseDTO> {
+) -> OkOrErrorResponse<GetCredentialSchemasResponseDTO> {
     let result = state
         .core
         .credential_schema_service
