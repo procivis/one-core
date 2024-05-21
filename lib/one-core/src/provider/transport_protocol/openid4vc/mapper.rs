@@ -24,9 +24,12 @@ use crate::provider::transport_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
     OpenID4VPClientMetadataJwkDTO, OpenID4VPPresentationDefinitionInputDescriptorFormat,
 };
+use crate::service::credential_schema::dto::{
+    CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
+};
 use crate::service::oidc::dto::{
-    NestedPresentationSubmissionDescriptorDTO, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO,
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
+    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
 };
 use crate::{
     model::{
@@ -726,4 +729,81 @@ pub(super) fn get_parent_claim_paths(path: &str) -> Vec<&str> {
         })
         .map(|index| &path[0..index])
         .collect::<Vec<&str>>()
+}
+
+pub(super) fn parse_procivis_schema_claim(
+    claim: CredentialClaimSchemaDTO,
+) -> CredentialClaimSchemaRequestDTO {
+    CredentialClaimSchemaRequestDTO {
+        key: claim.key,
+        datatype: claim.datatype,
+        required: claim.required,
+        claims: claim
+            .claims
+            .into_iter()
+            .map(parse_procivis_schema_claim)
+            .collect(),
+    }
+}
+
+pub(super) fn parse_mdoc_schema_claims(
+    values: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
+) -> Vec<CredentialClaimSchemaRequestDTO> {
+    values
+        .into_iter()
+        .map(|(key, claim)| CredentialClaimSchemaRequestDTO {
+            key,
+            datatype: claim.value_type,
+            required: claim.mandatory.unwrap_or(false),
+            claims: parse_mdoc_schema_claims(claim.value),
+        })
+        .collect()
+}
+
+pub(super) fn map_offered_claims_to_credential_schema(
+    credential_schema: &CredentialSchema,
+    credential_id: CredentialId,
+    claim_keys: &HashMap<String, OpenID4VCICredentialValueDetails>,
+) -> Result<Vec<Claim>, TransportProtocolError> {
+    let claim_schemas =
+        credential_schema
+            .claim_schemas
+            .as_ref()
+            .ok_or(TransportProtocolError::Failed(
+                "Missing claim schemas for existing credential schema".to_string(),
+            ))?;
+
+    let now = OffsetDateTime::now_utc();
+    let mut claims = vec![];
+    for claim_schema in claim_schemas
+        .iter()
+        .filter(|claim| claim.schema.data_type != DatatypeType::Object.to_string())
+    {
+        let credential_value_details = &claim_keys.get(&claim_schema.schema.key);
+        match credential_value_details {
+            Some(value_details) => {
+                let claim = Claim {
+                    id: Uuid::new_v4(),
+                    credential_id,
+                    created_date: now,
+                    last_modified: now,
+                    value: value_details.value.to_owned(),
+                    schema: Some(claim_schema.schema.to_owned()),
+                };
+
+                claims.push(claim);
+            }
+            None if claim_schema.required => {
+                return Err(TransportProtocolError::Failed(format!(
+                    "Validation Error. Claim key {} missing",
+                    &claim_schema.schema.key
+                )))
+            }
+            _ => {
+                // skip non-required claims that aren't matching
+            }
+        }
+    }
+
+    Ok(claims)
 }

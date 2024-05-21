@@ -44,16 +44,6 @@ pub enum CredentialSchemaType {
     Other(String),
 }
 
-impl CredentialSchemaType {
-    pub(crate) fn supports_custom_layout(&self) -> bool {
-        match self {
-            Self::ProcivisOneSchema2024 => true,
-            Self::FallbackSchema2024 | Self::Mdoc => false,
-            Self::Other(_) => false,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CredentialSchemaClaim {
     pub schema: ClaimSchema,

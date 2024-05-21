@@ -20,7 +20,7 @@ use uuid::Uuid;
 use super::dto::{
     OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataMdocClaimsResponseDTO, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
+    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
 };
 
 pub(super) fn create_issuer_metadata_response(
@@ -53,9 +53,7 @@ fn credentials_supported_mdoc(
         OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
             wallet_storage_type: schema.wallet_storage_type,
             format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
-            claims: Some(OpenID4VCIIssuerMetadataMdocClaimsResponseDTO {
-                values: claim_schema_values,
-            }),
+            claims: Some(claim_schema_values),
             credential_definition: None,
             doctype: Some(schema.schema_id),
             display: Some(vec![
@@ -104,6 +102,7 @@ fn nest_schemas(
                 OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
                     value: nest_schemas(value.value)?,
                     value_type: value.value_type,
+                    mandatory: value.mandatory,
                 },
             ))
         })
@@ -121,6 +120,7 @@ fn schemas_to_values(
                 OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
                     value: Default::default(),
                     value_type: schema.schema.data_type,
+                    mandatory: Some(schema.required),
                 },
             )
         })

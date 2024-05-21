@@ -39,7 +39,6 @@ use one_core::service::{
             OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
             OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
             OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-            OpenID4VCIIssuerMetadataMdocClaimsResponseDTO,
             OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
             OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
         },
@@ -109,8 +108,8 @@ pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[from(with_fn = convert_inner)]
-    pub claims: Option<OpenID4VCIIssuerMetadataMdocClaimsResponseRestDTO>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub claims: Option<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub credential_definition: Option<OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO>,
@@ -148,20 +147,14 @@ pub struct OpenID4VCIIssuerMetadataCredentialSchemaRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
-#[from(OpenID4VCIIssuerMetadataMdocClaimsResponseDTO)]
-pub struct OpenID4VCIIssuerMetadataMdocClaimsResponseRestDTO {
-    #[serde(flatten)]
-    #[from(with_fn = convert_inner)]
-    pub values: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataMdocClaimsValuesDTO)]
 pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
     #[from(with_fn = convert_inner)]
     #[serde(skip_serializing_if = "HashMap::is_empty", default)]
     pub value: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>,
     pub value_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mandatory: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]

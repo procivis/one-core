@@ -39,10 +39,13 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CredentialSchemaDetailResponseDTO {
     pub id: CredentialSchemaId,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,

@@ -390,7 +390,7 @@ async fn test_handle_invitation_endpoint_for_procivis_temp_proving() {
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value() {
     let mock_server = MockServer::start().await;
-    let (context, organistion) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -436,7 +436,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
                         "credential_definition": {
                             "type": [
                                 "VerifiableCredential"
-                            ]
+                            ],
+                            "credentialSchema": {
+                                "id": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
+                                "type": "ProcivisOneSchema2024"
+                            }
                         },
                         "format": "vc+sd-jwt",
                     }
@@ -490,6 +494,26 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
     Mock::given(method(Method::GET))
         .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "id": credential_schema_id,
+            "createdDate": "2024-05-16T10:47:48.093Z",
+            "lastModified": "2024-05-16T10:47:48.093Z",
+            "name": "test",
+            "format": "SDJWT",
+            "revocationMethod": "NONE",
+            "organisationId": organisation.id,
+            "claims": [
+              {
+                "id": "6afd9ffc-1fff-442c-980e-b9141b6910d6",
+                "createdDate": "2024-05-16T10:47:48.093Z",
+                "lastModified": "2024-05-16T10:47:48.093Z",
+                "key": "field",
+                "datatype": "STRING",
+                "required": true
+              }
+            ],
+            "walletStorageType": "SOFTWARE",
+            "schemaId": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
+            "schemaType": "ProcivisOneSchema2024",
             "layoutType": "CARD",
         })))
         .expect(1)
@@ -506,7 +530,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
     let resp = context
         .api
         .interactions
-        .handle_invitation(organistion.id, credential_offer_url.as_ref())
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
         .await;
 
     // THEN
@@ -530,7 +554,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_with_double_layered_nested_claims(
 ) {
     let mock_server = MockServer::start().await;
-    let (context, organistion) = TestContext::new_with_organisation().await;
+    let (context, organisation) = TestContext::new_with_organisation().await;
 
     let credential_schema_id = Uuid::new_v4();
     let credential_issuer = format!(
@@ -576,7 +600,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
                         "credential_definition": {
                             "type": [
                                 "VerifiableCredential"
-                            ]
+                            ],
+                            "credentialSchema": {
+                                "id": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
+                                "type": "ProcivisOneSchema2024"
+                            }
                         },
                         "format": "vc+sd-jwt",
                     }
@@ -627,9 +655,53 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
     .expect(1)
     .mount(&mock_server).await;
 
+    let address_claim_schema = json!({
+        "id": "545f984b-4fdf-4e26-aba0-61b72d21dbd9",
+        "createdDate": "2024-05-16T18:34:34.115Z",
+        "lastModified": "2024-05-16T18:34:34.115Z",
+        "key": "address",
+        "datatype": "OBJECT",
+        "required": true,
+        "claims": [{
+            "id": "545f984b-4fdf-4e26-aba0-61b72d21dbd9",
+            "createdDate": "2024-05-16T18:34:34.115Z",
+            "lastModified": "2024-05-16T18:34:34.115Z",
+            "key": "location",
+            "datatype": "OBJECT",
+            "required": true,
+            "claims": [{
+                "id": "545f984b-4fdf-4e26-aba0-61b72d21dbd9",
+                "createdDate": "2024-05-16T18:34:34.115Z",
+                "lastModified": "2024-05-16T18:34:34.115Z",
+                "key": "position",
+                "datatype": "OBJECT",
+                "required": true,
+                "claims": [{
+                    "id": "e4f1b7c1-809b-41a1-8f59-a6ee34011480",
+                    "createdDate": "2024-05-16T18:34:34.115Z",
+                    "lastModified": "2024-05-16T18:34:34.115Z",
+                    "key": "x",
+                    "datatype": "STRING",
+                    "required": true
+                }],
+            }],
+        }],
+    });
+
     Mock::given(method(Method::GET))
         .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "id": credential_schema_id,
+            "createdDate": "2024-05-16T10:47:48.093Z",
+            "lastModified": "2024-05-16T10:47:48.093Z",
+            "name": "test",
+            "format": "SDJWT",
+            "revocationMethod": "NONE",
+            "organisationId": organisation.id,
+            "claims": [address_claim_schema],
+            "walletStorageType": "SOFTWARE",
+            "schemaId": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
+            "schemaType": "ProcivisOneSchema2024",
             "layoutType": "CARD",
         })))
         .expect(1)
@@ -646,7 +718,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
     let resp = context
         .api
         .interactions
-        .handle_invitation(organistion.id, credential_offer_url.as_ref())
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
         .await;
 
     // THEN
@@ -670,10 +742,10 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .collect();
     assert_eq!(
         vec![
-            "address/location/position/x",
             "address",
             "address/location",
             "address/location/position",
+            "address/location/position/x",
         ],
         claim_schema_keys
     );
@@ -754,6 +826,9 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
                             ]
                         },
                         "format": "vc+sd-jwt",
+                        "display": [{
+                            "name": credential_schema.name,
+                        }],
                     }
                 ]
             }
@@ -881,7 +956,11 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
                         "credential_definition": {
                             "type": [
                                 "VerifiableCredential"
-                            ]
+                            ],
+                            "credentialSchema": {
+                                "id": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
+                                "type": "ProcivisOneSchema2024"
+                            }
                         },
                         "format": "vc+sd-jwt",
                     }
@@ -944,6 +1023,26 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
     Mock::given(method(Method::GET))
         .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "id": credential_schema_id,
+            "createdDate": "2024-05-16T10:47:48.093Z",
+            "lastModified": "2024-05-16T10:47:48.093Z",
+            "name": "test",
+            "format": "SDJWT",
+            "revocationMethod": "NONE",
+            "organisationId": organisation.id,
+            "claims": [
+              {
+                "id": "6afd9ffc-1fff-442c-980e-b9141b6910d6",
+                "createdDate": "2024-05-16T10:47:48.093Z",
+                "lastModified": "2024-05-16T10:47:48.093Z",
+                "key": "field",
+                "datatype": "STRING",
+                "required": true
+              }
+            ],
+            "walletStorageType": "SOFTWARE",
+            "schemaId": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
+            "schemaType": "ProcivisOneSchema2024",
             "layoutType": "CARD",
         })))
         .expect(1)
@@ -1135,27 +1234,28 @@ async fn test_handle_invitation_mdoc() {
             {
                 "credential_endpoint": format!("{credential_issuer}/credential"),
                 "credential_issuer": credential_issuer,
-
-                "credentials_supported": [
-                    {
-                        "claims": {
-                            "company": {
-                                "value_type": "OBJECT",
-                            },
-                            "address": {
-                                "value_type": "OBJECT",
-                            },
-                            "streetName": {
-                                "value_type": "STRING",
-                            },
-                            "streetNumber": {
-                                "value_type": "NUMBER",
-                            },
-                        },
-                        "format": "mso_mdoc",
-                        "doctype": "custom-doctype"
-                    }
-                ]
+                "credentials_supported": [{
+                    "claims": {
+                        "company": {
+                            "value_type": "OBJECT",
+                            "value": {
+                                "address": {
+                                    "value_type": "OBJECT",
+                                    "value": {
+                                        "streetName": {
+                                            "value_type": "STRING"
+                                        },
+                                        "streetNumber": {
+                                            "value_type": "NUMBER"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "format": "mso_mdoc",
+                    "doctype": "custom-doctype"
+                }]
             }
         )))
         .expect(1)
@@ -1201,15 +1301,6 @@ async fn test_handle_invitation_mdoc() {
     )))
     .expect(1)
     .mount(&mock_server).await;
-
-    Mock::given(method(Method::GET))
-        .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "layoutType": "CARD",
-        })))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
 
     // WHEN
     let credential_offer = serde_json::to_string(&credential_offer).unwrap();

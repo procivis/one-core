@@ -495,7 +495,6 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIIssuerMetadataCredentialSchemaRestDTO,
                 endpoint::ssi::dto::OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO,
-                endpoint::ssi::dto::OpenID4VCIIssuerMetadataMdocClaimsResponseRestDTO,
                 endpoint::ssi::dto::OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO,
                 endpoint::ssi::dto::OpenID4VCICredentialDefinitionRequestRestDTO,
                 endpoint::ssi::dto::OpenID4VCICredentialRequestRestDTO,

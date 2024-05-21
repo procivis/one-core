@@ -285,7 +285,7 @@ async fn test_get_issuer_metadata_mdoc() {
     let credential = result.credentials_supported[0].to_owned();
     assert_eq!("mso_mdoc".to_string(), credential.format);
     assert_eq!(schema.name, credential.display.unwrap()[0].name);
-    let claims = credential.claims.unwrap().values;
+    let claims = credential.claims.unwrap();
     assert_eq!(
         HashMap::from([(
             "location".to_string(),
@@ -295,9 +295,11 @@ async fn test_get_issuer_metadata_mdoc() {
                     OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
                         value: Default::default(),
                         value_type: "STRING".to_string(),
+                        mandatory: Some(true)
                     }
                 )]),
                 value_type: "OBJECT".to_string(),
+                mandatory: Some(true)
             }
         )]),
         claims
