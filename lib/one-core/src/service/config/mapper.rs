@@ -17,6 +17,7 @@ impl TryFrom<&CoreConfig> for ConfigDTO {
         dto.datatype = filter_config_entities(dto.datatype);
         dto.key_algorithm = filter_config_entities(dto.key_algorithm);
         dto.key_storage = filter_config_entities(dto.key_storage);
+        dto.trust_management = filter_config_entities(dto.trust_management);
 
         Ok(dto)
     }

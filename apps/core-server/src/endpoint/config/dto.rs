@@ -7,7 +7,7 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
-#[schema(example = json!({"format": {}, "exchange": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}}))]
+#[schema(example = json!({"format": {}, "exchange": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}, "trustManagement": {}}))]
 #[from(ConfigDTO)]
 pub struct ConfigRestDTO {
     pub format: HashMap<String, Value>,
@@ -17,4 +17,5 @@ pub struct ConfigRestDTO {
     pub datatype: HashMap<String, Value>,
     pub key_algorithm: HashMap<String, Value>,
     pub key_storage: HashMap<String, Value>,
+    pub trust_management: HashMap<String, Value>,
 }

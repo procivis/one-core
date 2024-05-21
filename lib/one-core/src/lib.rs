@@ -1,3 +1,4 @@
+use provider::trust_management::provider::TrustManagementProviderImpl;
 use service::trust_anchor::TrustAnchorService;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -187,6 +188,11 @@ impl OneCore {
             revocation_method_provider.to_owned(),
         )?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
+
+        let trust_managers = crate::provider::trust_management::provider::from_config(
+            &mut core_config.trust_management,
+        )?;
+        let _trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
 
         let config = Arc::new(core_config);
 
