@@ -21,6 +21,7 @@ impl DidsApi {
         keys: DidKeys,
         method: &str,
         name: &str,
+        params: Option<serde_json::Value>,
     ) -> Response {
         let body = json!({
           "keys": {
@@ -33,7 +34,7 @@ impl DidsApi {
           "method": method,
           "name": name,
           "organisationId": organisation_id.into(),
-          "params": {}
+          "params": params.unwrap_or(serde_json::json!({})),
         });
 
         self.client.post("/api/did/v1", body).await

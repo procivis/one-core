@@ -506,6 +506,18 @@ impl TransportProtocol for OpenID4VC {
             Some(did) => did.id,
             None => {
                 let id = Uuid::new_v4();
+                let did_method = match issuer_did_value.as_str() {
+                    mdl if mdl.starts_with("did:mdl") => "MDL",
+                    key if key.starts_with("did:key") => "KEY",
+                    jwk if jwk.starts_with("did:jwk") => "JWK",
+                    ion if ion.starts_with("did:ion") => "ION",
+                    x509 if x509.starts_with("did:x509") => "X509",
+                    other => {
+                        tracing::warn!("Unmapped did-method for issuer did: {other}");
+                        "UNKNOWN"
+                    }
+                };
+
                 self.did_repository
                     .create_did(Did {
                         id: id.into(),
@@ -515,7 +527,7 @@ impl TransportProtocol for OpenID4VC {
                         organisation: schema.organisation.to_owned(),
                         did: issuer_did_value,
                         did_type: DidType::Remote,
-                        did_method: "KEY".to_string(),
+                        did_method: did_method.to_string(),
                         keys: None,
                         deactivated: false,
                     })

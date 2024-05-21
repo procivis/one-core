@@ -125,6 +125,7 @@ impl KeyStorage for InternalKeyProvider {
             encryption_key: Zeroizing::new(self.encryption_key.to_owned()),
             public_key: key.public_key.to_owned(),
             private_key: Zeroizing::new(key.key_reference.to_owned()),
+            key_type: key.key_type.clone(),
         }))
         .map_err(KeyStorageError::from)?;
 
@@ -141,6 +142,7 @@ struct InternalRemoteKeyPair {
     pub encryption_key: Zeroizing<Option<[u8; 32]>>,
     pub public_key: Vec<u8>,
     pub private_key: Zeroizing<Vec<u8>>,
+    pub key_type: String,
 }
 
 impl rcgen::RemoteKeyPair for InternalRemoteKeyPair {
@@ -160,7 +162,11 @@ impl rcgen::RemoteKeyPair for InternalRemoteKeyPair {
     }
 
     fn algorithm(&self) -> &'static SignatureAlgorithm {
-        &rcgen::PKCS_ED25519
+        if self.key_type == "ES256" {
+            &rcgen::PKCS_ECDSA_P256_SHA256
+        } else {
+            &rcgen::PKCS_ED25519
+        }
     }
 }
 

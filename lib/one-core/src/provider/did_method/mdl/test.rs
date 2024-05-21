@@ -63,6 +63,10 @@ async fn test_create_mdl_did_for(
         key_pair: issuer_key,
     } = rcgen::generate_simple_self_signed(["procivis.test".to_string()]).unwrap();
 
+    let key = rcgen::KeyPair::generate_for(signature_algorithm).unwrap();
+    let public_key = key.public_key_der();
+    let public_key = key_algorithm.public_key_from_der(&public_key).unwrap();
+
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
 
     key_algorithm_provider
@@ -80,8 +84,6 @@ async fn test_create_mdl_did_for(
 
     let did_id = DidId::from(Uuid::new_v4());
 
-    let key = rcgen::KeyPair::generate_for(signature_algorithm).unwrap();
-
     let certificate = CertificateParams::new(["procivis2.test".to_string()])
         .unwrap()
         .signed_by(&key, &root_cert, &issuer_key)
@@ -95,7 +97,7 @@ async fn test_create_mdl_did_for(
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        public_key: key.public_key_raw().to_vec(),
+        public_key,
         name: "test-did-mld".to_string(),
         key_reference: vec![],
         storage_type: "INTERNAL".to_string(),
