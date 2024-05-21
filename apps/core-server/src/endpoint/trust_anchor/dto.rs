@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateTrustAnchorRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrustAnchorRequestRestDTO {

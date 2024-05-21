@@ -18,6 +18,7 @@ mod ssi_validator;
 pub mod ssi_verifier;
 pub mod task;
 pub mod trust_anchor;
+pub mod trust_entity;
 
 #[cfg(test)]
 pub mod test_utilities;

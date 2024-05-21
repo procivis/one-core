@@ -11,6 +11,7 @@ use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::json_ld_context_repository::JsonLdContextRepository;
 use one_core::repository::lvvc_repository::LvvcRepository;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
+use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::repository::{
     claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
     credential_repository::CredentialRepository,
@@ -25,6 +26,7 @@ use proof::ProofProvider;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
 use trust_anchor::TrustAnchorProvider;
+use trust_entity::TrustEntityProvider;
 
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
@@ -57,6 +59,7 @@ pub mod proof;
 pub mod proof_schema;
 pub mod revocation_list;
 pub mod trust_anchor;
+pub mod trust_entity;
 
 // Re-exporting the DatabaseConnection to avoid unnecessary dependency on sea_orm in cases where we only need the DB connection
 pub type DbConn = DatabaseConnection;
@@ -82,6 +85,7 @@ pub struct DataLayer {
     lvvc_repository: Arc<dyn LvvcRepository>,
     backup_repository: Arc<dyn BackupRepository>,
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
+    trust_entity_repository: Arc<dyn TrustEntityRepository>,
 }
 
 impl DataLayer {
@@ -131,6 +135,7 @@ impl DataLayer {
         });
 
         let trust_anchor_repository = Arc::new(TrustAnchorProvider { db: db.clone() });
+        let trust_entity_repository = Arc::new(TrustEntityProvider { db: db.clone() });
 
         let credential_repository = Arc::new(CredentialProvider {
             db: db.clone(),
@@ -173,6 +178,7 @@ impl DataLayer {
             lvvc_repository,
             backup_repository,
             trust_anchor_repository,
+            trust_entity_repository,
         }
     }
 }
@@ -226,6 +232,9 @@ impl DataRepository for DataLayer {
     }
     fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository> {
         self.trust_anchor_repository.clone()
+    }
+    fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
+        self.trust_entity_repository.clone()
     }
 }
 

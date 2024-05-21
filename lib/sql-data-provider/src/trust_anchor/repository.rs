@@ -3,7 +3,7 @@ use one_core::{
     model::trust_anchor::TrustAnchor,
     repository::{error::DataLayerError, trust_anchor_repository::TrustAnchorRepository},
 };
-use sea_orm::{ActiveModelTrait, Set};
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use shared_types::TrustAnchorId;
 
 use crate::{entity::trust_anchor, mapper::to_data_layer_error};
@@ -30,5 +30,15 @@ impl TrustAnchorRepository for TrustAnchorProvider {
         .map_err(to_data_layer_error)?;
 
         Ok(value.id)
+    }
+
+    async fn get(&self, id: TrustAnchorId) -> Result<Option<TrustAnchor>, DataLayerError> {
+        let model = trust_anchor::Entity::find_by_id(id)
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?
+            .map(Into::into);
+
+        Ok(model)
     }
 }

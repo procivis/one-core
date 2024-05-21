@@ -1,10 +1,13 @@
 use dto_mapper::{From, Into};
+use one_core::model::trust_entity::TrustEntity;
 use sea_orm::entity::prelude::*;
 
 use shared_types::{DidId, OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, From, Into)]
+#[into(TrustEntity)]
+#[from(TrustEntity)]
 #[sea_orm(table_name = "trust_entity")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -41,7 +44,9 @@ impl Related<super::trust_anchor::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
+#[into(one_core::model::trust_entity::TrustEntityRole)]
+#[from(one_core::model::trust_entity::TrustEntityRole)]
 #[sea_orm(
     rs_type = "String",
     db_type = "Enum",

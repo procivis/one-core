@@ -30,25 +30,23 @@ mod api_proof_tests;
 #[path = "api/interaction/mod.rs"]
 mod api_interaction_tests;
 
-//DID
 #[path = "api/did/mod.rs"]
 mod api_did_tests;
 
-//DID-RESOLVER
 #[path = "api/did_resolver/mod.rs"]
 mod api_did_resolver_tests;
 
-//KEY
 #[path = "api/key/mod.rs"]
 mod api_key_tests;
 
-// SSI
 #[path = "api/ssi/mod.rs"]
 mod ssi_tests;
 
-// Task
 #[path = "api/task/mod.rs"]
 mod task_tests;
 
 #[path = "api/trust_anchor/mod.rs"]
 mod trust_anchor;
+
+#[path = "api/trust_entity/mod.rs"]
+mod trust_entity;
