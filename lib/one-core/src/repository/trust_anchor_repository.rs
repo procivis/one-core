@@ -5,4 +5,5 @@ use shared_types::TrustAnchorId;
 #[async_trait::async_trait]
 pub trait TrustAnchorRepository: Send + Sync {
     async fn create(&self, anchor: TrustAnchor) -> Result<TrustAnchorId, DataLayerError>;
+    async fn get(&self, id: TrustAnchorId) -> Result<Option<TrustAnchor>, DataLayerError>;
 }

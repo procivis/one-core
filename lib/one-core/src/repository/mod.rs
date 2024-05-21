@@ -17,6 +17,7 @@ pub mod proof_repository;
 pub mod proof_schema_repository;
 pub mod revocation_list_repository;
 pub mod trust_anchor_repository;
+pub mod trust_entity_repository;
 
 use std::sync::Arc;
 
@@ -38,6 +39,8 @@ use proof_schema_repository::ProofSchemaRepository;
 use revocation_list_repository::RevocationListRepository;
 use trust_anchor_repository::TrustAnchorRepository;
 
+use self::trust_entity_repository::TrustEntityRepository;
+
 pub trait DataRepository {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository>;
     fn get_did_repository(&self) -> Arc<dyn DidRepository>;
@@ -55,6 +58,7 @@ pub trait DataRepository {
     fn get_lvvc_repository(&self) -> Arc<dyn LvvcRepository>;
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository>;
     fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository>;
+    fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository>;
 }
 
 #[cfg(any(test, feature = "mock"))]

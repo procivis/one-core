@@ -14,6 +14,7 @@ use super::{simple_list::SimpleList, TrustManagement};
 
 #[cfg_attr(test, mockall::automock)]
 pub trait TrustManagementProvider: Send + Sync {
+    fn get(&self, name: &str) -> Option<Arc<dyn TrustManagement>>;
     fn get_by_credential(&self, credential: &Credential) -> Option<Arc<dyn TrustManagement>>;
     fn get_by_interaction(
         &self,
@@ -34,6 +35,10 @@ impl TrustManagementProviderImpl {
 }
 
 impl TrustManagementProvider for TrustManagementProviderImpl {
+    fn get(&self, name: &str) -> Option<Arc<dyn TrustManagement>> {
+        self.trust_managers.get(name).cloned()
+    }
+
     fn get_by_credential(&self, _credential: &Credential) -> Option<Arc<dyn TrustManagement>> {
         unimplemented!()
     }

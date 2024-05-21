@@ -21,13 +21,12 @@ use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::dto::response::ErrorResponse;
-use crate::endpoint::trust_anchor;
 use crate::middleware::get_http_request_context;
 use crate::{
     build_info, dto,
     endpoint::{
         self, config, credential, credential_schema, did, did_resolver, history, interaction, key,
-        misc, organisation, proof, proof_schema, ssi, task,
+        misc, organisation, proof, proof_schema, ssi, task, trust_anchor, trust_entity,
     },
     ServerConfig,
 };
@@ -192,6 +191,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route(
             "/api/trust-anchor/v1",
             post(trust_anchor::controller::create_trust_anchor),
+        )
+        .route(
+            "/api/trust-entity/v1",
+            post(trust_entity::controller::create_trust_entity),
         )
         .layer(middleware::from_fn(crate::middleware::bearer_check));
 
@@ -397,6 +400,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
             endpoint::trust_anchor::controller::create_trust_anchor,
 
+            endpoint::trust_entity::controller::create_trust_entity,
+
             endpoint::misc::get_build_info,
             endpoint::misc::health_check,
             endpoint::misc::get_metrics,
@@ -556,6 +561,9 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::trust_anchor::dto::CreateTrustAnchorRequestRestDTO,
                 endpoint::trust_anchor::dto::TrustAnchorRoleRest,
 
+                endpoint::trust_entity::dto::CreateTrustEntityRequestRestDTO,
+                endpoint::trust_entity::dto::TrustEntityRoleRest,
+
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,
 
@@ -572,6 +580,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 dto::error::ErrorCode,
                 dto::error::Cause,
 
+                shared_types::ClaimId,
+                shared_types::ClaimSchemaId,
                 shared_types::CredentialId,
                 shared_types::CredentialSchemaId,
                 shared_types::DidId,
@@ -580,8 +590,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 shared_types::HistoryId,
                 shared_types::KeyId,
                 shared_types::OrganisationId,
-                shared_types::ClaimSchemaId,
-                shared_types::ClaimId,
+                shared_types::TrustAnchorId,
+                shared_types::TrustEntityId,
             )
         ),
         tags(

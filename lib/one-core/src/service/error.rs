@@ -1,4 +1,6 @@
-use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, HistoryId, OrganisationId};
+use shared_types::{
+    ClaimSchemaId, CredentialId, CredentialSchemaId, HistoryId, OrganisationId, TrustAnchorId,
+};
 use shared_types::{DidId, DidValue, KeyId};
 use strum_macros::Display;
 use thiserror::Error;
@@ -127,6 +129,9 @@ pub enum EntityNotFoundError {
 
     #[error("History entry `{0}` not found")]
     History(HistoryId),
+
+    #[error("Trust anchor `{0}` not found")]
+    TrustAnchor(TrustAnchorId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -255,6 +260,12 @@ pub enum BusinessLogicError {
 
     #[error("Trust anchor type not found")]
     UnknownTrustAnchorType,
+
+    #[error("Trust anchor must be publish")]
+    TrustAnchorMustBePublish,
+
+    #[error("trustAnchorId and entityId are already present")]
+    TrustEntityAlreadyPresent,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -367,6 +378,9 @@ pub enum MissingProviderError {
 
     #[error("Cannot find task `{0}`")]
     Task(String),
+
+    #[error("Cannot find trust manager `{0}`")]
+    TrustManager(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -391,6 +405,7 @@ impl MissingProviderError {
             MissingProviderError::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
             MissingProviderError::TransportProtocol(_) => ErrorCode::BR_0046,
             MissingProviderError::Task(_) => ErrorCode::BR_0103,
+            MissingProviderError::TrustManager(_) => ErrorCode::BR_0132,
         }
     }
 }
@@ -686,11 +701,20 @@ pub enum ErrorCode {
     #[strum(to_string = "Trust anchor type not found")]
     BR_0114,
 
+    #[strum(to_string = "Trust anchor not found")]
+    BR_0115,
+
     #[strum(to_string = "Invalid claim type (mdoc top level only objects allowed)")]
     BR_0117,
 
     #[strum(to_string = "Attribute combination not allowed")]
     BR_0118,
+
+    #[strum(to_string = "trustAnchorId and entityId are already present")]
+    BR_0120,
+
+    #[strum(to_string = "Trust anchor must be publish")]
+    BR_0123,
 
     #[strum(to_string = "Claim schema key exceeded max length (255)")]
     BR_0126,
@@ -700,6 +724,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Unsupported key type for CSR")]
     BR_0128,
+
+    #[strum(to_string = "Trust management provider not found")]
+    BR_0132,
 
     #[strum(to_string = "Credential schema: Duplicit claim schema")]
     BR_0133,
@@ -774,6 +801,7 @@ impl EntityNotFoundError {
             EntityNotFoundError::CredentialSchema(_) => ErrorCode::BR_0006,
             EntityNotFoundError::Lvvc(_) => ErrorCode::BR_0000,
             EntityNotFoundError::History(_) => ErrorCode::BR_0100,
+            EntityNotFoundError::TrustAnchor(_) => ErrorCode::BR_0115,
         }
     }
 }
@@ -827,6 +855,8 @@ impl BusinessLogicError {
             BusinessLogicError::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
             BusinessLogicError::TrustAnchorNameTaken => ErrorCode::BR_0113,
             BusinessLogicError::UnknownTrustAnchorType => ErrorCode::BR_0114,
+            BusinessLogicError::TrustAnchorMustBePublish => ErrorCode::BR_0123,
+            BusinessLogicError::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
         }
     }
 }

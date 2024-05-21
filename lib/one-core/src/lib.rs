@@ -1,5 +1,6 @@
 use provider::trust_management::provider::TrustManagementProviderImpl;
 use service::trust_anchor::TrustAnchorService;
+use service::trust_entity::TrustEntityService;
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::Duration;
@@ -68,6 +69,7 @@ pub struct OneCore {
     pub organisation_service: OrganisationService,
     pub backup_service: BackupService,
     pub trust_anchor_service: TrustAnchorService,
+    pub trust_entity_service: TrustEntityService,
     pub did_service: DidService,
     pub credential_service: CredentialService,
     pub credential_schema_service: CredentialSchemaService,
@@ -192,7 +194,7 @@ impl OneCore {
         let trust_managers = crate::provider::trust_management::provider::from_config(
             &mut core_config.trust_management,
         )?;
-        let _trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
+        let trust_management_provider = Arc::new(TrustManagementProviderImpl::new(trust_managers));
 
         let config = Arc::new(core_config);
 
@@ -228,6 +230,12 @@ impl OneCore {
                 data_provider.get_trust_anchor_repository(),
                 data_provider.get_history_repository(),
                 config.clone(),
+            ),
+            trust_entity_service: TrustEntityService::new(
+                data_provider.get_trust_anchor_repository(),
+                data_provider.get_trust_entity_repository(),
+                data_provider.get_history_repository(),
+                trust_management_provider,
             ),
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),
