@@ -858,6 +858,86 @@ async fn test_create_credential_schema_unique_name_error() {
 }
 
 #[tokio::test]
+async fn test_create_credential_schema_failed_unique_claims_error() {
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockHistoryRepository::default(),
+        MockOrganisationRepository::default(),
+        MockCredentialFormatterProvider::default(),
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: None,
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![
+                CredentialClaimSchemaRequestDTO {
+                    key: "sameRoot".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    claims: vec![],
+                },
+                CredentialClaimSchemaRequestDTO {
+                    key: "sameRoot".to_string(),
+                    datatype: "STRING".to_string(),
+                    required: true,
+                    claims: vec![],
+                },
+            ],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::Validation(ValidationError::CredentialSchemaDuplicitClaim)
+    ));
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: None,
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "parent".to_string(),
+                datatype: "OBJECT".to_string(),
+                required: true,
+                claims: vec![
+                    CredentialClaimSchemaRequestDTO {
+                        key: "sameNested".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                    CredentialClaimSchemaRequestDTO {
+                        key: "sameNested".to_string(),
+                        datatype: "STRING".to_string(),
+                        required: true,
+                        claims: vec![],
+                    },
+                ],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::Validation(ValidationError::CredentialSchemaDuplicitClaim)
+    ));
+}
+
+#[tokio::test]
 async fn test_create_credential_schema_fail_validation() {
     let repository = MockCredentialSchemaRepository::default();
     let history_repository = MockHistoryRepository::default();
