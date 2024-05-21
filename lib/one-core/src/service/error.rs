@@ -301,6 +301,9 @@ pub enum ValidationError {
     #[error("Credential schema: Claim `{0}` name contains invalid character '/'")]
     CredentialSchemaClaimSchemaSlashInKeyName(String),
 
+    #[error("Credential schema: Duplicit claim schema")]
+    CredentialSchemaDuplicitClaim,
+
     #[error("Credential: Missing claim, schema-id: {claim_schema_id}")]
     CredentialMissingClaim { claim_schema_id: ClaimSchemaId },
 
@@ -697,6 +700,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Unsupported key type for CSR")]
     BR_0128,
+
+    #[strum(to_string = "Credential schema: Duplicit claim schema")]
+    BR_0133,
 }
 
 impl From<FormatError> for ServiceError {
@@ -833,6 +839,7 @@ impl ValidationError {
             ValidationError::DidInvalidKeyNumber => ErrorCode::BR_0030,
             ValidationError::CredentialSchemaMissingClaims => ErrorCode::BR_0008,
             ValidationError::CredentialMissingClaim { .. } => ErrorCode::BR_0003,
+            ValidationError::CredentialSchemaDuplicitClaim => ErrorCode::BR_0133,
             ValidationError::ProofSchemaMissingClaims => ErrorCode::BR_0016,
             ValidationError::ProofSchemaNoRequiredClaim => ErrorCode::BR_0017,
             ValidationError::ProofSchemaDuplicitClaim => ErrorCode::BR_0018,

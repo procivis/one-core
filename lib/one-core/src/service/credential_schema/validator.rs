@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use shared_types::OrganisationId;
@@ -179,6 +180,8 @@ fn validate_nested_claim_schemas(
     claims: &[CredentialClaimSchemaRequestDTO],
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
+    validate_claim_schema_keys_unique(claims)?;
+
     for claim_schema in gather_claim_schemas(claims) {
         validate_claim_schema(claim_schema, config)?;
     }
@@ -211,6 +214,24 @@ fn validate_claim_schema_name(
     } else {
         Ok(())
     }
+}
+
+fn validate_claim_schema_keys_unique(
+    claims: &[CredentialClaimSchemaRequestDTO],
+) -> Result<(), ValidationError> {
+    let mut uniq = HashSet::new();
+    if !claims
+        .iter()
+        .all(move |claim| uniq.insert(claim.key.to_owned()))
+    {
+        return Err(ValidationError::CredentialSchemaDuplicitClaim);
+    }
+
+    for claim in claims {
+        validate_claim_schema_keys_unique(&claim.claims)?;
+    }
+
+    Ok(())
 }
 
 fn validate_claim_schema_type(
