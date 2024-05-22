@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::endpoint::credential::dto::CredentialDetailClaimResponseRestDTO;
 use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use crate::serialize::front_time_option;
 use crate::{
     endpoint::credential_schema::dto::{
@@ -56,10 +57,11 @@ use one_core::service::{
     },
     ssi_issuer::dto::IssuerResponseDTO,
     ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
+    trust_anchor::dto::{GetTrustAnchorResponseDTO, GetTrustEntityResponseDTO},
 };
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
-use shared_types::{CredentialId, DidValue, KeyId};
+use shared_types::{CredentialId, DidValue, KeyId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -691,4 +693,44 @@ pub enum OID4VPAuthorizationEncryptedResponseAlgorithm {
 #[from(AuthorizationEncryptedResponseContentEncryptionAlgorithm)]
 pub enum OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm {
     A256GCM,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]
+#[from(GetTrustAnchorResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTrustAnchorResponseRestDTO {
+    pub id: TrustAnchorId,
+    pub name: String,
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
+    pub created_date: OffsetDateTime,
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
+    pub last_modified: OffsetDateTime,
+    #[from(with_fn = convert_inner)]
+    pub entities: Vec<GetTrustEntityResponseRestDTO>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, ToSchema, From)]
+#[from(GetTrustEntityResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTrustEntityResponseRestDTO {
+    pub id: TrustEntityId,
+    pub name: String,
+    pub entity_id: String,
+
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
+    pub created_date: OffsetDateTime,
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
+    pub last_modified: OffsetDateTime,
+
+    pub logo: Option<String>,
+    pub website: Option<String>,
+    pub terms_url: Option<String>,
+    pub privacy_url: Option<String>,
+    pub role: TrustEntityRoleRest,
+
+    pub trust_anchor_id: TrustAnchorId,
 }

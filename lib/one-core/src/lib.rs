@@ -228,6 +228,7 @@ impl OneCore {
             revocation_methods,
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),
+                data_provider.get_trust_entity_repository(),
                 data_provider.get_history_repository(),
                 config.clone(),
             ),

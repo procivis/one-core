@@ -128,4 +128,11 @@ impl SSIApi {
 
         self.client.get(&url).await
     }
+
+    pub async fn get_trust_list(&self, id: impl Into<Uuid>) -> Response {
+        let trust_anchor_id = id.into();
+        let url = format!("/ssi/trust/v1/{trust_anchor_id}");
+
+        self.client.get(&url).await
+    }
 }

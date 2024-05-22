@@ -1,8 +1,9 @@
 use super::dto::{
     ConnectIssuerResponseRestDTO, ConnectVerifierResponseRestDTO, DidDocumentRestDTO,
-    IssuerResponseRestDTO, JsonLDContextResponseRestDTO, OpenID4VCICredentialOfferRestDTO,
-    OpenID4VCICredentialRequestRestDTO, OpenID4VCICredentialResponseRestDTO,
-    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
+    GetTrustAnchorResponseRestDTO, IssuerResponseRestDTO, JsonLDContextResponseRestDTO,
+    OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
+    OpenID4VCICredentialResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
+    OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO, OpenID4VPClientMetadataResponseRestDTO,
     OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO,
@@ -25,7 +26,7 @@ use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
 use headers::Authorization;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use shared_types::{CredentialId, CredentialSchemaId, DidId};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, TrustAnchorId};
 use uuid::Uuid;
 
 #[utoipa::path(
@@ -735,6 +736,36 @@ pub(crate) async fn get_json_ld_context(
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/trust/v1/{trustAnchorId}",
+    params(
+        ("trustAnchorId" = TrustAnchorId, Path, description = "Trust anchor id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = GetTrustAnchorResponseRestDTO),
+        (status = 400, description = "Trust anchor type is not SIMPLE_TRUST_LIST"),
+        (status = 404, description = "Trust anchor not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn ssi_get_trust_list(
+    state: State<AppState>,
+    WithRejection(Path(trust_anchor_id), _): WithRejection<
+        Path<TrustAnchorId>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<GetTrustAnchorResponseRestDTO> {
+    let result = state
+        .core
+        .trust_anchor_service
+        .get_trust_list(trust_anchor_id)
+        .await;
+
+    OkOrErrorResponse::from_result(result, state, "getting trust list")
 }
 
 #[utoipa::path(

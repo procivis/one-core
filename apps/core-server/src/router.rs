@@ -274,6 +274,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         .route(
             "/ssi/schema/v1/:id",
             get(ssi::controller::ssi_get_credential_schema),
+        )
+        .route(
+            "/ssi/trust/v1/:trustAnchorId",
+            get(ssi::controller::ssi_get_trust_list),
         );
 
     let technical_endpoints = Router::new()
@@ -389,6 +393,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             endpoint::ssi::controller::oidc_client_metadata,
             endpoint::ssi::controller::get_json_ld_context,
             endpoint::ssi::controller::ssi_get_credential_schema,
+            endpoint::ssi::controller::ssi_get_trust_list,
 
             endpoint::interaction::controller::handle_invitation,
             endpoint::interaction::controller::issuance_accept,
@@ -546,6 +551,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 endpoint::ssi::dto::JsonLDNestedEntityRestDTO,
                 endpoint::ssi::dto::JsonLDNestedContextRestDTO,
                 endpoint::ssi::dto::PublicKeyJwkMlweDataRestDTO,
+                endpoint::ssi::dto::GetTrustAnchorResponseRestDTO,
+                endpoint::ssi::dto::GetTrustEntityResponseRestDTO,
 
                 endpoint::interaction::dto::HandleInvitationRequestRestDTO,
                 endpoint::interaction::dto::HandleInvitationResponseRestDTO,
