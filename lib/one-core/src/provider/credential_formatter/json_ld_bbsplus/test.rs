@@ -288,11 +288,11 @@ fn test_find_selective() {
                 index: 0
             },
             GroupEntry {
-                entry: "_:b0 <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#Address> _:b1 .".to_string(),
+                entry: "_:b0 <http://127.0.0.1:42643/ssi/context/v1/7f539283-3468-4d50-8540-7e9f831acc0c#Address%20root> _:b1 .".to_string(),
                 index: 8
             },
             GroupEntry {
-                entry: "_:b0 <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#Key> \"test\" .".to_string(),
+                entry: "_:b0 <http://127.0.0.1:38083/ssi/context/v1/7201a00e-dc01-4dbf-bcae-f78f6baeeb8e#Key%201> \"test\" .".to_string(),
                 index: 9
             },
             GroupEntry {
@@ -313,8 +313,8 @@ fn test_find_selective() {
     let res = find_selective_indices(
         &input,
         &[
-            "Address/Address2".to_string(),
-            "Address/Address1".to_string(),
+            "Address root/Address2".to_string(),
+            "Address root/Address1".to_string(),
         ],
     )
     .unwrap();
