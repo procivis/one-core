@@ -1,7 +1,7 @@
 use shared_types::{
-    ClaimSchemaId, CredentialId, CredentialSchemaId, HistoryId, OrganisationId, TrustAnchorId,
+    ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
+    OrganisationId, TrustAnchorId,
 };
-use shared_types::{DidId, DidValue, KeyId};
 use strum_macros::Display;
 use thiserror::Error;
 use uuid::Uuid;
@@ -266,6 +266,9 @@ pub enum BusinessLogicError {
 
     #[error("trustAnchorId and entityId are already present")]
     TrustEntityAlreadyPresent,
+
+    #[error("Trust anchor type is not SIMPLE_TRUST_LIST")]
+    TrustAnchorTypeIsNotSimpleTrustList,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -710,6 +713,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Attribute combination not allowed")]
     BR_0118,
 
+    #[strum(to_string = "Trust anchor type is not Simple Trust List")]
+    BR_0122,
+
     #[strum(to_string = "trustAnchorId and entityId are already present")]
     BR_0120,
 
@@ -857,6 +863,7 @@ impl BusinessLogicError {
             BusinessLogicError::UnknownTrustAnchorType => ErrorCode::BR_0114,
             BusinessLogicError::TrustAnchorMustBePublish => ErrorCode::BR_0123,
             BusinessLogicError::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
+            BusinessLogicError::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
         }
     }
 }

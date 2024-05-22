@@ -2,6 +2,9 @@ use shared_types::{OrganisationId, TrustAnchorId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::TrustManagementType;
+use crate::service::error::EntityNotFoundError;
+use crate::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 use crate::{
     config::validator::trust_management::validate_trust_management,
     model::{
@@ -39,6 +42,41 @@ impl TrustAnchorService {
             }
             Err(err) => Err(err.into()),
         }
+    }
+
+    pub async fn get_trust_list(
+        &self,
+        trust_anchor_id: TrustAnchorId,
+    ) -> Result<GetTrustAnchorResponseDTO, ServiceError> {
+        let result = self
+            .trust_anchor_repository
+            .get(trust_anchor_id)
+            .await?
+            .ok_or(ServiceError::EntityNotFound(
+                EntityNotFoundError::TrustAnchor(trust_anchor_id),
+            ))?;
+
+        let trust_list_type = self
+            .config
+            .trust_management
+            .get_fields(&result.type_field)?
+            .r#type;
+        if trust_list_type != TrustManagementType::SimpleTrustList {
+            return Err(BusinessLogicError::TrustAnchorTypeIsNotSimpleTrustList.into());
+        }
+
+        let entities = self
+            .trust_entity_repository
+            .get_by_trust_anchor_id(trust_anchor_id)
+            .await?;
+
+        Ok(GetTrustAnchorResponseDTO {
+            id: result.id,
+            name: result.name,
+            created_date: result.created_date,
+            last_modified: result.last_modified,
+            entities: entities.into_iter().map(Into::into).collect(),
+        })
     }
 }
 
