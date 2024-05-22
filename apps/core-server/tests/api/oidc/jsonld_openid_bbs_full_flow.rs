@@ -63,10 +63,10 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
     let server_local_verifier_key = local_verifier_key.unwrap();
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str)> = vec![
-        (Uuid::new_v4(), "Key", true, "STRING"),
-        (Uuid::new_v4(), "Address", true, "OBJECT"),
-        (Uuid::new_v4(), "Address/Address1", true, "STRING"),
-        (Uuid::new_v4(), "Address/Address2", true, "STRING"),
+        (Uuid::new_v4(), "Key 1", true, "STRING"),
+        (Uuid::new_v4(), "Address root", true, "OBJECT"),
+        (Uuid::new_v4(), "Address root/Address1", true, "STRING"),
+        (Uuid::new_v4(), "Address root/Address2", true, "STRING"),
     ];
 
     let mut proof_claim_schemas: Vec<(Uuid, &str, bool, &str)> = new_claim_schemas[..2].to_vec();
@@ -144,17 +144,17 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                         },
                         {
                             "id": new_claim_schemas[0].0,
-                            "path": ["$.vc.credentialSubject.Key"],
+                            "path": ["$.vc.credentialSubject.Key 1"],
                             "optional": true
                         },
                         {
                             "id": new_claim_schemas[2].0,
-                            "path": ["$.vc.credentialSubject.Address/Address1"],
+                            "path": ["$.vc.credentialSubject.Address root/Address1"],
                             "optional": true
                         },
                         {
                             "id": new_claim_schemas[3].0,
-                            "path": ["$.vc.credentialSubject.Address/Address2"],
+                            "path": ["$.vc.credentialSubject.Address root/Address2"],
                             "optional": true
                         }
                     ]
@@ -346,7 +346,7 @@ async fn test_openid4vc_jsonld_bbsplus_flow(revocation_method: &str) {
                         // Disclose the whole address
                         {
                             "id": claims[1].id,
-                            "path": ["$.vc.credentialSubject.Address"],
+                            "path": ["$.vc.credentialSubject.Address root"],
                             "optional": true
                         },
                     ]
@@ -410,12 +410,12 @@ fn verify_claims(claims: Vec<ProofClaim>) {
     // Key was not disclosed
     assert!(!claims
         .iter()
-        .any(|c| c.claim.schema.as_ref().unwrap().key == "Key"));
+        .any(|c| c.claim.schema.as_ref().unwrap().key == "Key 1"));
 
     assert!(
         claims
             .iter()
-            .find(|c| c.claim.schema.as_ref().unwrap().key == "Address/Address1")
+            .find(|c| c.claim.schema.as_ref().unwrap().key == "Address root/Address1")
             .unwrap()
             .claim
             .value
@@ -425,7 +425,7 @@ fn verify_claims(claims: Vec<ProofClaim>) {
     assert!(
         claims
             .iter()
-            .find(|c| c.claim.schema.as_ref().unwrap().key == "Address/Address2")
+            .find(|c| c.claim.schema.as_ref().unwrap().key == "Address root/Address2")
             .unwrap()
             .claim
             .value

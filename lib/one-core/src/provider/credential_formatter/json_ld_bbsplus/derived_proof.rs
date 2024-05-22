@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use itertools::Itertools;
+use urlencoding::encode;
 
 use super::super::json_ld::model::LdCredential;
 use super::super::model::CredentialPresentation;
@@ -330,11 +331,15 @@ fn find_with_predicate<'a>(
     subject: &'a str,
     entries: &'a [GroupEntry],
 ) -> Result<&'a GroupEntry, FormatterError> {
+    let key_url_encoded = encode(key).to_string();
     entries
         .iter()
         .find(|entry| {
             if let Ok(triple) = to_triple(entry.entry.as_ref()) {
-                triple.subject == subject && triple.predicate.ends_with(&["#", key, ">"].concat())
+                triple.subject == subject
+                    && triple
+                        .predicate
+                        .ends_with(&["#", &key_url_encoded, ">"].concat())
             } else {
                 false
             }
@@ -356,17 +361,17 @@ fn find_root_object(entries: &[GroupEntry]) -> Result<(&str, usize), FormatterEr
             None
         })
         .ok_or(FormatterError::Failed(
-            "Could not find credential subject".to_string(),
+            "Could not find credential root".to_string(),
         ))
 }
 
-struct Triple<'a> {
+pub(super) struct Triple<'a> {
     pub subject: &'a str,
     pub predicate: &'a str,
     pub object: &'a str,
 }
 
-fn to_triple(line: &str) -> Result<Triple, FormatterError> {
+pub(super) fn to_triple(line: &str) -> Result<Triple, FormatterError> {
     let mut split = line.split(' ');
     let subject = split
         .next()
