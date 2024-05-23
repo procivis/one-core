@@ -1,7 +1,6 @@
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
-use crate::provider::key_storage::dto::GenerateCSRRequestDTO;
 use crate::provider::key_storage::KeyStorageCapabilities;
 use crate::{
     crypto::signer::error::SignerError,
@@ -33,14 +32,6 @@ impl KeyStorage for PKCS11KeyProvider {
 
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities::default()
-    }
-
-    async fn generate_x509_csr(
-        &self,
-        _key: &Key,
-        _request: GenerateCSRRequestDTO,
-    ) -> Result<String, ServiceError> {
-        todo!()
     }
 }
 

@@ -12,13 +12,11 @@ use crate::config::{ConfigError, ConfigValidationError};
 use crate::crypto::{signer::error::SignerError, CryptoProvider};
 use crate::model::key::Key;
 use crate::provider::key_storage::azure_vault::AzureVaultKeyProvider;
-use crate::provider::key_storage::dto::GenerateCSRRequestDTO;
 use crate::provider::key_storage::pkcs11::PKCS11KeyProvider;
 use crate::{provider::key_storage::internal::InternalKeyProvider, service::error::ServiceError};
 use shared_types::KeyId;
 
 pub mod azure_vault;
-pub mod dto;
 pub mod internal;
 pub mod pkcs11;
 pub mod provider;
@@ -53,12 +51,6 @@ pub trait KeyStorage: Send + Sync {
     fn secret_key_as_jwk(&self, key: &Key) -> Result<Zeroizing<String>, ServiceError>;
 
     fn get_capabilities(&self) -> KeyStorageCapabilities;
-
-    async fn generate_x509_csr(
-        &self,
-        key: &Key,
-        request: GenerateCSRRequestDTO,
-    ) -> Result<String, ServiceError>;
 }
 
 pub fn key_providers_from_config(

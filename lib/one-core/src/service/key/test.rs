@@ -224,42 +224,6 @@ fn generic_csr_request() -> KeyGenerateCSRRequestDTO {
 }
 
 #[tokio::test]
-async fn test_generate_csr_success() {
-    let mut repository = MockKeyRepository::default();
-    let organisation_repository = MockOrganisationRepository::default();
-    let mut key_storage = MockKeyStorage::default();
-
-    let org_id: Uuid = Uuid::new_v4();
-    let key = generic_key("NAME", org_id);
-    let expected_pem_output = "hello";
-    {
-        let key = key.clone();
-        repository
-            .expect_get_key()
-            .once()
-            .returning(move |_, _| Ok(Some(key.clone())));
-        key_storage
-            .expect_generate_x509_csr()
-            .once()
-            .returning(move |_, _| Ok(expected_pem_output.to_string()));
-    }
-
-    let service = setup_service(
-        repository,
-        MockHistoryRepository::default(),
-        organisation_repository,
-        key_storage,
-        generic_config().core,
-    );
-
-    let result = service
-        .generate_csr(&key.id, generic_csr_request())
-        .await
-        .unwrap();
-    assert_eq!(expected_pem_output, result.content);
-}
-
-#[tokio::test]
 async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
     let mut repository = MockKeyRepository::default();
     let organisation_repository = MockOrganisationRepository::default();

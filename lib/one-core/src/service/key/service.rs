@@ -1,6 +1,13 @@
+use std::sync::Arc;
+
+use anyhow::{bail, Context};
+use rcgen::{KeyPair, RemoteKeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519};
 use shared_types::KeyId;
 use uuid::Uuid;
 
+use crate::model::key::Key;
+use crate::provider::key_algorithm::es256::Es256;
+use crate::provider::key_storage::KeyStorage;
 use crate::service::error::MissingProviderError;
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO};
 use crate::service::key::validator::validate_generate_csr_request;
@@ -17,6 +24,7 @@ use crate::{
     },
 };
 
+use super::mapper::request_to_certificate_params;
 use super::{
     dto::{GetKeyListResponseDTO, GetKeyQueryDTO},
     KeyService,
@@ -139,9 +147,84 @@ impl KeyService {
                 key.key_type.to_owned(),
             )),
         )?;
+        let remote_key = RemoteKeyAdapter::create_remote_key(
+            key,
+            key_storage,
+            tokio::runtime::Handle::current(),
+        )
+        .map_err(|err| ServiceError::Other(format!("Failed creating remote key {err}")))?;
+        let key_pair = KeyPair::from_remote(remote_key).unwrap();
 
-        Ok(KeyGenerateCSRResponseDTO {
-            content: key_storage.generate_x509_csr(&key, request.into()).await?,
+        let content = request_to_certificate_params(request)
+            .serialize_request(&key_pair)
+            .map_err(|err| ServiceError::Other(format!("Failed creating CSR: {err}")))?
+            .pem()
+            .map_err(|err| ServiceError::Other(format!("CSR PEM conversion failed: {err}")))?;
+
+        Ok(KeyGenerateCSRResponseDTO { content })
+    }
+}
+
+struct RemoteKeyAdapter {
+    key: Key,
+    decompressed_public_key: Option<Vec<u8>>,
+    key_storage: Arc<dyn KeyStorage>,
+    algorithm: &'static rcgen::SignatureAlgorithm,
+    handle: tokio::runtime::Handle,
+}
+
+impl RemoteKeyAdapter {
+    fn create_remote_key(
+        key: Key,
+        key_storage: Arc<dyn KeyStorage>,
+        handle: tokio::runtime::Handle,
+    ) -> anyhow::Result<Box<(dyn RemoteKeyPair + Send + Sync + 'static)>> {
+        let mut decompressed_public_key = None;
+
+        let algorithm = match key.key_type.as_str() {
+            "ES256" => &PKCS_ECDSA_P256_SHA256,
+            "EDDSA" => &PKCS_ED25519,
+            other => bail!("Unsupported key type `{other}` for CSR"),
+        };
+        if algorithm == &PKCS_ECDSA_P256_SHA256 {
+            decompressed_public_key = Some(
+                Es256::decompress_public_key(&key.public_key)
+                    .context("Key decompression failed")?,
+            );
+        }
+
+        Ok(Box::new(Self {
+            key,
+            key_storage,
+            algorithm,
+            handle,
+            decompressed_public_key,
+        }) as _)
+    }
+}
+
+impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
+    fn public_key(&self) -> &[u8] {
+        self.decompressed_public_key
+            .as_ref()
+            .unwrap_or(&self.key.public_key)
+    }
+
+    fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
+        let _guard = self.handle.enter();
+
+        futures::executor::block_on(async {
+            self.key_storage
+                .sign(&self.key, msg)
+                .await
+                .map_err(|error| {
+                    tracing::error!(%error,  "Failed to sign CSR");
+                    rcgen::Error::RemoteKeyError
+                })
         })
+    }
+
+    fn algorithm(&self) -> &'static rcgen::SignatureAlgorithm {
+        self.algorithm
     }
 }
