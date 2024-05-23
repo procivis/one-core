@@ -6,19 +6,30 @@ use crate::provider::did_method::{
     DidMethodError,
 };
 
-pub(super) enum DidKeyType {
+#[derive(Debug)]
+pub enum DidKeyType {
     Eddsa,
     Ecdsa,
     Bbs,
 }
 
-pub(super) struct DecodedDidKey {
-    pub(super) multibase: String,
-    pub(super) decoded_multibase: Vec<u8>,
-    pub(super) type_: DidKeyType,
+impl DidKeyType {
+    pub fn is_eddsa(&self) -> bool {
+        matches!(self, Self::Eddsa)
+    }
+
+    pub fn is_ecdsa(&self) -> bool {
+        matches!(self, Self::Ecdsa)
+    }
 }
 
-pub(super) fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
+pub struct DecodedDidKey {
+    pub multibase: String,
+    pub decoded_multibase: Vec<u8>,
+    pub type_: DidKeyType,
+}
+
+pub fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
     let tail = did
         .as_str()
         .strip_prefix("did:key:")
@@ -50,7 +61,7 @@ pub(super) fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError
     })
 }
 
-pub(super) fn generate_document(
+pub fn generate_document(
     decoded: DecodedDidKey,
     did: &DidValue,
     public_key_jwk: PublicKeyJwkDTO,

@@ -17,7 +17,7 @@ use crate::provider::did_method::x509::X509Method;
 use super::key_algorithm::provider::KeyAlgorithmProvider;
 
 use self::dto::{AmountOfKeys, DidDocumentDTO};
-use self::mdl::DidMdl;
+use self::mdl::{DidMdl, DidMdlValidator};
 use self::universal::UniversalDidMethod;
 
 pub mod common;
@@ -77,12 +77,18 @@ pub trait DidMethod: Send + Sync {
     fn visit_config_fields(&self, fields: &Fields<DidType>) -> Fields<DidType>;
 }
 
+pub type DidMethodProviders = (
+    HashMap<String, Arc<dyn DidMethod>>,
+    Option<Arc<dyn DidMdlValidator>>,
+);
+
 pub fn did_method_providers_from_config(
     did_config: &mut DidConfig,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     base_url: Option<String>,
-) -> Result<HashMap<String, Arc<dyn DidMethod>>, ConfigError> {
+) -> Result<DidMethodProviders, ConfigError> {
     let mut providers: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
+    let mut did_mdl_validator: Option<Arc<dyn DidMdlValidator>> = None;
 
     for (name, field) in did_config.iter() {
         let method = match &field.r#type {
@@ -114,7 +120,11 @@ pub fn did_method_providers_from_config(
                             "Invalid DID MDL config: {err}"
                         ))
                     })?;
-                Arc::new(did_mdl) as _
+                let did_mdl = Arc::new(did_mdl);
+
+                did_mdl_validator = Some(did_mdl.clone() as _);
+
+                did_mdl as _
             }
         };
         providers.insert(name.to_owned(), method);
@@ -126,5 +136,5 @@ pub fn did_method_providers_from_config(
         }
     }
 
-    Ok(providers)
+    Ok((providers, did_mdl_validator))
 }

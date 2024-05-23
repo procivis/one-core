@@ -13,8 +13,7 @@ use crate::provider::credential_formatter::{
     },
     model::{CredentialPresentation, CredentialStatus},
     test_utilities::test_credential_detail_response_dto,
-    CredentialData, CredentialFormatter, ExtractCredentialsCtx, ExtractPresentationCtx, MockAuth,
-    MockTokenVerifier,
+    CredentialData, CredentialFormatter, ExtractPresentationCtx, MockAuth, MockTokenVerifier,
 };
 
 #[tokio::test]
@@ -144,11 +143,7 @@ async fn test_extract_credentials() {
         .return_once(|_, _, _, _, _| Ok(()));
 
     let result = jwt_formatter
-        .extract_credentials(
-            &token,
-            Box::new(verify_mock),
-            ExtractCredentialsCtx::default(),
-        )
+        .extract_credentials(&token, Box::new(verify_mock))
         .await;
 
     let credentials = result.unwrap();

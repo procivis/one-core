@@ -348,7 +348,7 @@ async fn test_submit_proof_succeeds() {
     formatter
         .expect_extract_credentials()
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -571,7 +571,7 @@ async fn test_submit_proof_failed_credential_revoked() {
     formatter
         .expect_extract_credentials()
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -765,7 +765,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     formatter
         .expect_extract_credentials()
         .once()
-        .returning(move |_, _, _| {
+        .returning(move |_, _| {
             Ok(DetailCredential {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),
@@ -885,7 +885,7 @@ fn mock_ssi_verifier_service() -> SSIVerifierService {
     let did_method = MockDidMethod::new();
     let mut did_methods: HashMap<String, Arc<dyn DidMethod>> = HashMap::new();
     did_methods.insert("INTERNAL".to_string(), Arc::new(did_method));
-    let did_method_provider = DidMethodProviderImpl::new(did_methods);
+    let did_method_provider = DidMethodProviderImpl::new(did_methods, None);
 
     SSIVerifierService {
         did_repository: Arc::new(MockDidRepository::new()),

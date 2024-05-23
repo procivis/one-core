@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use shared_types::DidValue;
 
-use super::{dto::DidDocumentDTO, DidMethod};
+use super::{dto::DidDocumentDTO, mdl::DidMdlValidator, DidMethod};
 use crate::{
     common_mapper::did_method_id_from_value,
     service::error::{MissingProviderError, ServiceError},
@@ -14,15 +14,24 @@ pub trait DidMethodProvider: Send + Sync {
     fn get_did_method(&self, did_method_id: &str) -> Option<Arc<dyn DidMethod>>;
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocumentDTO, ServiceError>;
+
+    fn get_did_mdl_validator(&self) -> Option<Arc<dyn DidMdlValidator>>;
 }
 
 pub struct DidMethodProviderImpl {
     did_methods: HashMap<String, Arc<dyn DidMethod>>,
+    did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
 }
 
 impl DidMethodProviderImpl {
-    pub fn new(did_methods: HashMap<String, Arc<dyn DidMethod>>) -> Self {
-        Self { did_methods }
+    pub fn new(
+        did_methods: HashMap<String, Arc<dyn DidMethod>>,
+        did_mdl_validator: Option<Arc<dyn DidMdlValidator>>,
+    ) -> Self {
+        Self {
+            did_methods,
+            did_mdl_validator,
+        }
     }
 }
 
@@ -40,5 +49,9 @@ impl DidMethodProvider for DidMethodProviderImpl {
             .ok_or(MissingProviderError::DidMethod(did_method_id))?;
 
         Ok(method.resolve(did).await?)
+    }
+
+    fn get_did_mdl_validator(&self) -> Option<Arc<dyn DidMdlValidator>> {
+        self.did_mdl_validator.clone()
     }
 }

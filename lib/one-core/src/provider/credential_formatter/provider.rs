@@ -87,6 +87,7 @@ pub(crate) fn credential_formatters_from_config(
                 Arc::new(MdocFormatter::new(
                     params,
                     did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
                     core_base_url.clone(),
                 )) as _
             }

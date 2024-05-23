@@ -11,9 +11,7 @@ use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{DetailCredential, Presentation};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{
-    ExtractCredentialsCtx, ExtractPresentationCtx, TokenVerifier,
-};
+use crate::provider::credential_formatter::{ExtractPresentationCtx, TokenVerifier};
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
@@ -211,7 +209,6 @@ pub(super) async fn validate_credential(
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
     key_verification: Box<KeyVerification>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
-    credential_context: ExtractCredentialsCtx,
 ) -> Result<DetailCredential, ServiceError> {
     let holder_did = presentation
         .issuer_did
@@ -233,7 +230,7 @@ pub(super) async fn validate_credential(
         .ok_or(OpenID4VCIError::VCFormatsNotSupported)?;
 
     let credential = formatter
-        .extract_credentials(credential, key_verification, credential_context)
+        .extract_credentials(credential, key_verification)
         .await
         .map_err(|e| {
             if matches!(e, FormatterError::CouldNotExtractCredentials(_)) {

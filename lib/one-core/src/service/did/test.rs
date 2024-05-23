@@ -43,7 +43,7 @@ fn setup_service(
     did_methods.insert("KEY".to_string(), Arc::new(did_method));
 
     let did_repository = Arc::new(did_repository);
-    let did_method_provider = DidMethodProviderImpl::new(did_methods);
+    let did_method_provider = DidMethodProviderImpl::new(did_methods, None);
 
     DidService::new(
         did_repository,

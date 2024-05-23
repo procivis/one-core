@@ -10,7 +10,6 @@ use x509_parser::{
     certificate::X509Certificate,
     oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519},
     pem::Pem,
-    x509::SubjectPublicKeyInfo,
 };
 
 use crate::{
@@ -25,8 +24,11 @@ use super::{
     DidCapabilities, DidMethod, DidMethodError, Operation,
 };
 
+pub use validator::{DidMdlValidationError, DidMdlValidator};
+
 #[cfg(test)]
 mod test;
+mod validator;
 
 pub struct DidMdl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -70,18 +72,6 @@ impl DidMdl {
             key_algorithm_provider,
         })
     }
-
-    fn validate_issuer(&self, certificate: &X509Certificate) -> Result<(), DidMethodError> {
-        let signer_public_key = self.params.with_iaca_certificate(|cert| cert.public_key());
-
-        certificate
-            .verify_signature(Some(signer_public_key))
-            .map_err(|err| {
-                DidMethodError::CouldNotCreate(format!(
-                    "Failed signature verification of provided certificate: {err}"
-                ))
-            })
-    }
 }
 
 #[async_trait::async_trait]
@@ -102,26 +92,18 @@ impl DidMethod for DidMdl {
             ));
         };
 
-        let selected_key = select_key(keys)?;
-
         let certificate = extract_x509_certificate(params)?;
+
+        let selected_key = select_key(keys)?;
 
         let pem = parse_pem(certificate)?;
         let certificate = parse_x509_from_pem(&pem)?;
 
-        if !certificate.validity().is_valid() {
-            return Err(DidMethodError::CouldNotCreate(
-                "Provided certificate is not valid".to_owned(),
-            ));
-        }
+        self.validate_subject_public_key(&certificate, selected_key)
+            .map_err(|err| DidMethodError::CouldNotCreate(err.to_string()))?;
 
-        verify_subject_public_key(
-            self.key_algorithm_provider.as_ref(),
-            &certificate.subject_pki,
-            selected_key,
-        )?;
-
-        self.validate_issuer(&certificate)?;
+        self.validate_certificate(&certificate)
+            .map_err(|err| DidMethodError::CouldNotCreate(err.to_string()))?;
 
         let did_mdl = Base64UrlSafeNoPadding::encode_to_string(pem.contents)
             .map(|cert| format!("did:mdl:certificate:{cert}"))
@@ -205,7 +187,42 @@ impl DidMethod for DidMdl {
                     rest: Default::default(),
                 })
             }
-            _ => unimplemented!(),
+            mdl_public_key if mdl_public_key.starts_with("did:mdl:public_key:") => {
+                let did_key: DidValue = match mdl_public_key
+                    .replace("did:mdl:public_key", "did:key")
+                    .parse()
+                {
+                    Ok(did_key) => did_key,
+                    Err(err) => match err {},
+                };
+
+                let decoded_did_key = super::key::decode_did(&did_key)?;
+                let algorithm = if decoded_did_key.type_.is_ecdsa() {
+                    "ES256"
+                } else if decoded_did_key.type_.is_eddsa() {
+                    "EDDSA"
+                } else {
+                    return Err(DidMethodError::ResolutionError(format!(
+                        "Unsupported algorithm for mdl public key: {:?}",
+                        decoded_did_key.type_
+                    )));
+                };
+
+                let Some(key_algorithm) = self.key_algorithm_provider.get_key_algorithm(algorithm)
+                else {
+                    return Err(DidMethodError::ResolutionError(format!(
+                        "Missing algorithm for mdl public key: {algorithm}",
+                    )));
+                };
+                let public_key_jwk = key_algorithm
+                    .bytes_to_jwk(&decoded_did_key.decoded_multibase, None)
+                    .map_err(|err| DidMethodError::ResolutionError(err.to_string()))?;
+
+                super::key::generate_document(decoded_did_key, &did_key, public_key_jwk)
+            }
+            other => Err(DidMethodError::ResolutionError(format!(
+                "`{other}` cannot be resolved as did:mdl"
+            ))),
         }
     }
 
@@ -240,33 +257,6 @@ impl DidMethod for DidMdl {
             ..fields.clone()
         }
     }
-}
-
-fn verify_subject_public_key(
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    subject_pki: &SubjectPublicKeyInfo<'_>,
-    selected_key: &Key,
-) -> Result<(), DidMethodError> {
-    let Some(key_algorithm) = key_algorithm_provider.get_key_algorithm(&selected_key.key_type)
-    else {
-        return Err(DidMethodError::KeyAlgorithmNotFound);
-    };
-
-    let subject_pki = key_algorithm
-        .public_key_from_der(subject_pki.raw)
-        .map_err(|err| {
-            DidMethodError::CouldNotCreate(format!(
-                "Failed extracting subject public key from DER: {err}"
-            ))
-        })?;
-
-    if selected_key.public_key != subject_pki {
-        return Err(DidMethodError::CouldNotCreate(
-            "Invalid provided certificate: subject public key doesn't match".to_owned(),
-        ));
-    }
-
-    Ok(())
 }
 
 fn extract_x509_certificate(params: &serde_json::Value) -> Result<&str, DidMethodError> {
