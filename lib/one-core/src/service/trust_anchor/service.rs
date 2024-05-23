@@ -96,6 +96,13 @@ impl TrustAnchorService {
             .await
             .map_err(Into::into)
     }
+
+    pub async fn delete_trust_anchor(&self, anchor_id: TrustAnchorId) -> Result<(), ServiceError> {
+        self.trust_anchor_repository
+            .delete(anchor_id)
+            .await
+            .map_err(Into::into)
+    }
 }
 
 fn create_history_event(trust_id: TrustAnchorId, organisation_id: OrganisationId) -> History {

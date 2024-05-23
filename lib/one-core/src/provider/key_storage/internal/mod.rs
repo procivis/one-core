@@ -1,28 +1,19 @@
 use std::sync::Arc;
 
 use cocoon::MiniCocoon;
-use rand::RngCore;
-use rand::SeedableRng;
+use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use rcgen::SignatureAlgorithm;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use shared_types::KeyId;
 use zeroize::Zeroizing;
 
-use crate::crypto::signer::error::SignerError;
-use crate::crypto::signer::Signer;
-use crate::model::key::Key;
-use crate::service::error::{KeyStorageError, ValidationError};
-use crate::{
-    provider::{
-        key_algorithm::provider::KeyAlgorithmProvider,
-        key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities},
-    },
-    service::error::ServiceError,
-};
-
 use super::KeySecurity;
+use crate::crypto::signer::error::SignerError;
+use crate::model::key::Key;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities};
+use crate::service::error::{KeyStorageError, ServiceError, ValidationError};
 
 #[cfg(test)]
 mod test;
@@ -111,39 +102,6 @@ impl KeyStorage for InternalKeyProvider {
             ],
             security: vec![KeySecurity::Software],
             features: vec!["EXPORTABLE".to_string()],
-        }
-    }
-}
-
-struct InternalRemoteKeyPair {
-    pub crypto: Arc<dyn Signer>,
-    pub encryption_key: Zeroizing<Option<[u8; 32]>>,
-    pub public_key: Vec<u8>,
-    pub private_key: Zeroizing<Vec<u8>>,
-    pub key_type: String,
-}
-
-impl rcgen::RemoteKeyPair for InternalRemoteKeyPair {
-    fn public_key(&self) -> &[u8] {
-        self.public_key.as_slice()
-    }
-
-    fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
-        let private_key = Zeroizing::new(
-            decrypt_if_password_is_provided(&self.private_key, &self.encryption_key)
-                .map_err(|_| rcgen::Error::RemoteKeyError)?,
-        );
-
-        self.crypto
-            .sign(msg, &self.public_key, &private_key)
-            .map_err(|_| rcgen::Error::RemoteKeyError)
-    }
-
-    fn algorithm(&self) -> &'static SignatureAlgorithm {
-        if self.key_type == "ES256" {
-            &rcgen::PKCS_ECDSA_P256_SHA256
-        } else {
-            &rcgen::PKCS_ED25519
         }
     }
 }

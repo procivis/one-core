@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
 use core_server::ServerConfig;
-use one_core::model::did::{Did, KeyRole};
+use one_core::config::core_config::AppConfig;
+use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_core::{config::core_config::AppConfig, model::did::RelatedKey};
 use shared_types::DidValue;
 use tokio::task::JoinHandle;
 use tracing_subscriber::layer::SubscriberExt;

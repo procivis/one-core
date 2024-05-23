@@ -13,4 +13,5 @@ pub trait TrustAnchorRepository: Send + Sync {
         &self,
         filters: ListTrustAnchorsQueryDTO,
     ) -> Result<GetTrustAnchorsResponseDTO, DataLayerError>;
+    async fn delete(&self, id: TrustAnchorId) -> Result<(), DataLayerError>;
 }

@@ -90,4 +90,12 @@ impl TrustAnchorRepository for TrustAnchorProvider {
             total_items: items_count,
         })
     }
+
+    async fn delete(&self, id: TrustAnchorId) -> Result<(), DataLayerError> {
+        trust_anchor::Entity::delete_by_id(id)
+            .exec(&self.db)
+            .await
+            .map_err(to_data_layer_error)
+            .map(|_| ())
+    }
 }

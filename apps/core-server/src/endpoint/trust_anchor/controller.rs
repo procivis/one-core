@@ -82,3 +82,27 @@ pub(crate) async fn get_trust_anchors(
         .await;
     OkOrErrorResponse::from_result(result, state, "listing trust anchors")
 }
+
+#[utoipa::path(
+    delete,
+    path = "/api/trust-anchor/v1/{id}",
+    params(
+        ("id" = TrustAnchorId, Path, description = "Trust anchor id")
+    ),
+    responses(EmptyOrErrorResponse),
+    tag = "trust_anchor",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn delete_trust_anchor(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<TrustAnchorId>, ErrorResponseRestDTO>,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .trust_anchor_service
+        .delete_trust_anchor(id)
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "deleting trust anchor")
+}
