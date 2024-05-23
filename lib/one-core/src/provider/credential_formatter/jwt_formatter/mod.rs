@@ -18,8 +18,8 @@ use super::{
     error::FormatterError,
     jwt::model::JWTPayload,
     model::{CredentialPresentation, DetailCredential, Presentation},
-    AuthenticationFn, Context, CredentialData, CredentialFormatter, ExtractCredentialsCtx,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, VerificationFn,
+    AuthenticationFn, Context, CredentialData, CredentialFormatter, ExtractPresentationCtx,
+    FormatPresentationCtx, FormatterCapabilities, VerificationFn,
 };
 
 pub struct JWTFormatter {
@@ -79,7 +79,6 @@ impl CredentialFormatter for JWTFormatter {
         &self,
         token: &str,
         verification: VerificationFn,
-        _ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
         // Build fails if verification fails
         let jwt: Jwt<VC> = Jwt::build_from_token(token, Some(verification)).await?;

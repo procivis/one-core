@@ -310,7 +310,6 @@ impl TransportProtocol for OpenID4VC {
                 .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
             let payload = JwePayload {
-                iss: holder_did.did.clone(),
                 aud: response_uri.clone(),
                 exp: (OffsetDateTime::now_utc() + Duration::minutes(10)),
                 vp_token,

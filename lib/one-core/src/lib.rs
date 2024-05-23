@@ -126,13 +126,15 @@ impl OneCore {
             secure_element_key_storage,
         )?;
         let key_provider = Arc::new(KeyProviderImpl::new(key_providers.to_owned()));
-
-        let did_methods = did_method_providers_from_config(
+        let (did_methods, did_mdl_validator) = did_method_providers_from_config(
             &mut core_config.did,
             key_algorithm_provider.clone(),
             core_base_url.clone(),
         )?;
-        let did_method_provider = Arc::new(DidMethodProviderImpl::new(did_methods.to_owned()));
+        let did_method_provider = Arc::new(DidMethodProviderImpl::new(
+            did_methods.to_owned(),
+            did_mdl_validator,
+        ));
 
         let client = reqwest::Client::new();
 

@@ -8,8 +8,7 @@ use crate::{
     },
     provider::{
         credential_formatter::{
-            model::DetailCredential, provider::CredentialFormatterProvider, ExtractCredentialsCtx,
-            ExtractPresentationCtx,
+            model::DetailCredential, provider::CredentialFormatterProvider, ExtractPresentationCtx,
         },
         did_method::provider::DidMethodProvider,
         key_algorithm::provider::KeyAlgorithmProvider,
@@ -166,11 +165,7 @@ pub(super) async fn validate_proof(
             .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 
         let credential = credential_formatter
-            .extract_credentials(
-                &credential,
-                key_verification_credentials.clone(),
-                ExtractCredentialsCtx::default(),
-            )
+            .extract_credentials(&credential, key_verification_credentials.clone())
             .await?;
 
         // Check if “nbf” attribute of VCs and VP are valid. || Check if VCs are expired.

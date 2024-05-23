@@ -36,31 +36,26 @@ struct KeyData {
     pub crv: String,
 }
 
-#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_eddsa() {
     test_openid4vc_mdoc_flow(eddsa_key_for_did_mdl(), eddsa_key_2(), KeyType::Eddsa).await
 }
 
-#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_eddsa_ecdsa() {
     test_openid4vc_mdoc_flow(eddsa_key_for_did_mdl(), ecdsa_key_2(), KeyType::Eddsa).await
 }
 
-#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa() {
     test_openid4vc_mdoc_flow(es256_key_for_did_mdl(), ecdsa_key_2(), KeyType::Ecdsa).await
 }
 
-#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa_eddsa() {
     test_openid4vc_mdoc_flow(es256_key_for_did_mdl(), eddsa_key_2(), KeyType::Ecdsa).await
 }
 
-#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_eddsa_selective() {
     test_openid4vc_mdoc_flow_selective_nested(
@@ -71,7 +66,6 @@ async fn test_openid4vc_mdoc_flow_eddsa_selective() {
     .await
 }
 
-#[ignore = "will be enabled in ONE-2305"]
 #[tokio::test]
 async fn test_openid4vc_mdoc_flow_ecdsa_selective() {
     test_openid4vc_mdoc_flow_selective_nested(

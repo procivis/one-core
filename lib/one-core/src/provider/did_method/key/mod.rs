@@ -1,6 +1,4 @@
-mod helpers;
-
-use self::helpers::{decode_did, generate_document};
+pub(super) use self::helpers::{decode_did, generate_document};
 use super::{
     dto::{DidDocumentDTO, Keys},
     AmountOfKeys, DidCapabilities, DidMethodError, Operation,
@@ -14,6 +12,8 @@ use async_trait::async_trait;
 use serde_json::json;
 use shared_types::{DidId, DidValue};
 use std::sync::Arc;
+
+mod helpers;
 
 pub struct KeyDidMethod {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -51,7 +51,6 @@ impl super::DidMethod for KeyDidMethod {
         let multibase = key_algorithm
             .get_multibase(&key.public_key)
             .map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
-        // todo(mite): add constructor for this
         let did_value: DidValue = match format!("did:key:{}", multibase).parse() {
             Ok(v) => v,
             Err(err) => match err {},

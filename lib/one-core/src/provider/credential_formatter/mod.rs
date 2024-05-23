@@ -136,18 +136,12 @@ pub trait SignatureProvider: Send + Sync {
     fn get_public_key(&self) -> Vec<u8>;
 }
 
-#[derive(Debug, Default)]
-pub struct ExtractCredentialsCtx {
-    pub holder_did: Option<DidValue>,
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct ExtractPresentationCtx {
     nonce: Option<String>,
     mdoc_generated_nonce: Option<String>,
     issuance_date: Option<OffsetDateTime>,
     expiration_date: Option<OffsetDateTime>,
-    holder_did: Option<DidValue>,
 }
 
 impl ExtractPresentationCtx {
@@ -172,16 +166,6 @@ impl ExtractPresentationCtx {
 
         self
     }
-
-    pub fn with_holder_did(mut self, holder_did: DidValue) -> Self {
-        self.holder_did = Some(holder_did);
-
-        self
-    }
-
-    pub fn get_holder_did(&self) -> Option<DidValue> {
-        self.holder_did.clone()
-    }
 }
 
 impl From<OpenID4VPInteractionContent> for ExtractPresentationCtx {
@@ -191,7 +175,6 @@ impl From<OpenID4VPInteractionContent> for ExtractPresentationCtx {
             mdoc_generated_nonce: None,
             issuance_date: None,
             expiration_date: None,
-            holder_did: None,
         }
     }
 }
@@ -253,7 +236,6 @@ pub trait CredentialFormatter: Send + Sync {
         &self,
         credentials: &str,
         verification: Box<dyn TokenVerifier>,
-        ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError>;
 
     async fn format_credential_presentation(

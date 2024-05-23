@@ -27,7 +27,7 @@ use crate::model::proof_schema::{
 use crate::model::key::{Key, KeyRelations};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::credential_formatter::{ExtractCredentialsCtx, ExtractPresentationCtx};
+use crate::provider::credential_formatter::ExtractPresentationCtx;
 use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::transport_protocol::openid4vc::dto::{
@@ -69,7 +69,7 @@ use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
-use shared_types::{CredentialId, CredentialSchemaId, DidValue, KeyId};
+use shared_types::{CredentialId, CredentialSchemaId, KeyId};
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::str::FromStr;
@@ -708,17 +708,10 @@ impl OIDCService {
                 if let Some(mdoc_generated_nonce) = submission.mdoc_generated_nonce.clone() {
                     ctx = ctx.with_mdoc_generated_nonce(mdoc_generated_nonce);
                 }
-                if let Some(holder_did) = submission.holder_did.clone() {
-                    ctx = ctx.with_holder_did(holder_did);
-                }
 
                 ctx
             } else {
                 ExtractPresentationCtx::empty()
-            };
-
-            let credential_context = ExtractCredentialsCtx {
-                holder_did: context.get_holder_did(),
             };
 
             let presentation = validate_presentation(
@@ -774,7 +767,6 @@ impl OIDCService {
                 &self.formatter_provider,
                 self.build_key_verification(KeyRole::AssertionMethod),
                 &self.revocation_method_provider,
-                credential_context,
             )
             .await?;
 
@@ -962,7 +954,6 @@ impl OIDCService {
                 vp_token,
                 state,
                 mdoc_generated_nonce: None,
-                holder_did: None,
             }),
             OpenID4VPDirectPostRequestDTO {
                 response: Some(jwe),
@@ -1004,7 +995,6 @@ impl OIDCService {
                     vp_token: payload.vp_token,
                     state: payload.state.parse()?,
                     mdoc_generated_nonce,
-                    holder_did: Some(payload.iss),
                 })
             }
             _ => Err(ServiceError::OpenID4VCError(
@@ -1020,7 +1010,6 @@ struct RequestData {
     pub vp_token: String,
     pub state: Uuid,
     pub mdoc_generated_nonce: Option<String>,
-    pub holder_did: Option<DidValue>,
 }
 
 fn extract_jwe_header(jwe: &str) -> Result<JweHeader, anyhow::Error> {

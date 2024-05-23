@@ -27,7 +27,9 @@ use crate::model::credential_schema::CredentialSchemaType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
+use crate::provider::did_method::mdl::DidMdlValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 use self::cose::CoseSign1Builder;
 use self::mdoc::{
@@ -40,9 +42,8 @@ use self::mdoc::{
 use super::common::nest_claims;
 use super::model::{CredentialPresentation, CredentialSchema, CredentialSubject, Presentation};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, ExtractCredentialsCtx,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, SignatureProvider,
-    TokenVerifier, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialFormatter, ExtractPresentationCtx,
+    FormatPresentationCtx, FormatterCapabilities, SignatureProvider, TokenVerifier, VerificationFn,
 };
 
 mod cose;
@@ -54,6 +55,7 @@ mod test;
 pub struct MdocFormatter {
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     base_url: Option<String>,
 }
 
@@ -73,13 +75,25 @@ impl MdocFormatter {
     pub fn new(
         params: Params,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         base_url: Option<String>,
     ) -> Self {
         Self {
             params,
             did_method_provider,
+            key_algorithm_provider,
             base_url,
         }
+    }
+
+    fn did_mdl_validator(&self) -> Result<Arc<dyn DidMdlValidator>, FormatterError> {
+        let Some(validator) = self.did_method_provider.get_did_mdl_validator().clone() else {
+            return Err(FormatterError::CouldNotExtractPresentation(
+                "Missing did mdl validator".to_owned(),
+            ));
+        };
+
+        Ok(validator)
     }
 }
 
@@ -163,16 +177,15 @@ impl CredentialFormatter for MdocFormatter {
         &self,
         token: &str,
         _verification: VerificationFn,
-        ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, true, ctx)
+        extract_credentials_internal(self.key_algorithm_provider.as_ref(), token, true)
     }
 
     async fn extract_credentials_unverified(
         &self,
         token: &str,
     ) -> Result<DetailCredential, FormatterError> {
-        extract_credentials_internal(token, false, ExtractCredentialsCtx::default())
+        extract_credentials_internal(self.key_algorithm_provider.as_ref(), token, false)
     }
 
     async fn format_presentation(
@@ -250,24 +263,31 @@ impl CredentialFormatter for MdocFormatter {
 
         let mut tokens: Vec<String> = Vec::with_capacity(documents.len());
 
-        let holder_did = context.holder_did.ok_or_else(|| {
-            FormatterError::Failed(
-                "Extract presentation context for MDOC is missing holder DID".to_owned(),
-            )
-        })?;
-
         let nonce = &context
             .nonce
             .ok_or(FormatterError::CouldNotExtractPresentation(
                 "Missing nonce".to_owned(),
             ))?;
 
+        let did_mdl_validator = self.did_mdl_validator()?;
+        let mut current_issuer_did = None;
+
+        // can we have more than one document?
         for document in documents {
             let issuer_signed = document.issuer_signed;
-            let issuer_did = extract_did_from_x5chain_header(&issuer_signed.issuer_auth)?;
+
+            let issuer_did = extract_did_from_x5chain_header(
+                Some(did_mdl_validator.as_ref()),
+                &issuer_signed.issuer_auth,
+            )?;
 
             try_verify_issuer_auth(&issuer_signed.issuer_auth, &issuer_did, &verification).await?;
-            let _holder_public_key = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
+
+            let holder_did = try_extract_holder_did_mdl_public_key(
+                self.key_algorithm_provider.as_ref(),
+                &issuer_signed.issuer_auth,
+            )?;
+            current_issuer_did = Some(holder_did.clone());
 
             //try verify device signed
             let device_signed = document.device_signed;
@@ -322,7 +342,7 @@ impl CredentialFormatter for MdocFormatter {
             id: Some(Uuid::new_v4().to_string()),
             issued_at: context.issuance_date,
             expires_at: context.expiration_date,
-            issuer_did: Some(holder_did),
+            issuer_did: current_issuer_did,
             nonce: Some(nonce.clone()),
             credentials: tokens,
         })
@@ -410,6 +430,39 @@ impl CredentialFormatter for MdocFormatter {
             nonce: context.nonce,
             credentials: tokens,
         })
+    }
+}
+
+fn try_extract_holder_did_mdl_public_key(
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    issuer_auth: &CoseSign1,
+) -> Result<DidValue, FormatterError> {
+    let holder_public_key = try_extract_holder_public_key(issuer_auth)?;
+    let algorithm = match &holder_public_key {
+        PublicKeyJwkDTO::Ec(_) => "ES256",
+        PublicKeyJwkDTO::Okp(_) => "EDDSA",
+        key @ (PublicKeyJwkDTO::Rsa(_) | PublicKeyJwkDTO::Oct(_) | PublicKeyJwkDTO::Mlwe(_)) => {
+            return Err(FormatterError::Failed(format!(
+                "Key `{key:?}` should not be available for mdoc",
+            )));
+        }
+    };
+
+    let Some(key_algorithm) = key_algorithm_provider.get_key_algorithm(algorithm) else {
+        return Err(FormatterError::CouldNotVerify(format!(
+            "Key algorithm `{algorithm}` not configured"
+        )));
+    };
+    let public_key = key_algorithm
+        .jwk_to_bytes(&holder_public_key)
+        .map_err(|err| FormatterError::Failed(format!("Cannot convert jwk: {err}")))?;
+    let encoded_public_key = key_algorithm
+        .get_multibase(&public_key)
+        .map_err(|err| FormatterError::Failed(format!("Cannot convert to multibase: {err}")))?;
+
+    match format!("did:mdl:public_key:{encoded_public_key}").parse() {
+        Ok(did) => Ok(did),
+        Err(err) => match err {},
     }
 }
 
@@ -526,9 +579,9 @@ async fn try_verify_issuer_auth(
 }
 
 fn extract_credentials_internal(
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
     token: &str,
     verify: bool,
-    ctx: ExtractCredentialsCtx,
 ) -> Result<DetailCredential, FormatterError> {
     let token = Base64UrlSafeNoPadding::decode_to_vec(token, None)
         .map_err(|err| FormatterError::Failed(format!("Base64 decoding failed: {err}")))?;
@@ -536,13 +589,16 @@ fn extract_credentials_internal(
     let issuer_signed: IssuerSigned = ciborium::from_reader(&token[..])
         .map_err(|err| FormatterError::Failed(format!("Issuer signed decoding failed: {err}")))?;
 
-    let issuer_did = extract_did_from_x5chain_header(&issuer_signed.issuer_auth)?;
+    let issuer_did = extract_did_from_x5chain_header(None, &issuer_signed.issuer_auth)?;
     let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
     let Some(namespaces) = issuer_signed.name_spaces else {
         return Err(FormatterError::Failed(
             "IssuerSigned object is missing namespaces".to_owned(),
         ));
     };
+
+    let holder_did =
+        try_extract_holder_did_mdl_public_key(key_algorithm_provider, &issuer_signed.issuer_auth)?;
 
     if verify {
         let digest_algo = mso.digest_algorithm;
@@ -592,7 +648,7 @@ fn extract_credentials_internal(
         expires_at: Some(mso.validity_info.valid_until.into()),
         invalid_before: None,
         issuer_did: Some(issuer_did),
-        subject: ctx.holder_did,
+        subject: Some(holder_did),
         claims: CredentialSubject { values: claims },
         status: vec![],
         credential_schema: Some(CredentialSchema {
@@ -788,6 +844,7 @@ fn try_build_algorithm_header(algorithm: &str) -> Result<ProtectedHeader, Format
 }
 
 fn extract_did_from_x5chain_header(
+    did_mdl_validator: Option<&dyn DidMdlValidator>,
     CoseSign1(cose_sign1): &CoseSign1,
 ) -> Result<DidValue, FormatterError> {
     let x5chain_label = Label::Int(coset::iana::HeaderParameter::X5Chain.to_i64());
@@ -803,8 +860,14 @@ fn extract_did_from_x5chain_header(
                 .as_bytes()
                 .context(anyhow::anyhow!("Invalid value for x5chain header"))?;
 
-            let (_, _certificate) = x509_parser::parse_x509_certificate(value)
-                .map_err(|err| anyhow::anyhow!("Invalid x509 certificate: {err}"))?;
+            let (_, certificate) = x509_parser::parse_x509_certificate(value)
+                .map_err(|err| anyhow::anyhow!("Cannot parse x509 certificate: {err}"))?;
+
+            if let Some(did_mdl_validator) = did_mdl_validator {
+                did_mdl_validator
+                    .validate_certificate(&certificate)
+                    .map_err(|err| anyhow::anyhow!("Invalid x509 certificate: {err}"))?;
+            }
 
             let did = Base64UrlSafeNoPadding::encode_to_string(value)
                 .map(|cert| format!("did:mdl:certificate:{cert}"))

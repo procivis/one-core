@@ -16,8 +16,8 @@ use super::error::FormatterError;
 use super::json_ld::{self, model::*};
 use super::model::{CredentialPresentation, CredentialSubject, DetailCredential, Presentation};
 use super::{
-    AuthenticationFn, Context, CredentialData, CredentialFormatter, ExtractCredentialsCtx,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, VerificationFn,
+    AuthenticationFn, Context, CredentialData, CredentialFormatter, ExtractPresentationCtx,
+    FormatPresentationCtx, FormatterCapabilities, VerificationFn,
 };
 
 #[allow(dead_code)]
@@ -107,7 +107,6 @@ impl CredentialFormatter for JsonLdClassic {
         &self,
         credential: &str,
         verification_fn: VerificationFn,
-        _ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(credential, Some(verification_fn))
             .await

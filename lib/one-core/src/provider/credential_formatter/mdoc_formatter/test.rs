@@ -9,6 +9,8 @@ use uuid::Uuid;
 use crate::provider::credential_formatter::{CredentialSchemaData, MockSignatureProvider};
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 
 use super::mdoc::*;
 use super::*;
@@ -225,7 +227,22 @@ async fn test_credential_formatting_ok_for_es256() {
     };
     let algorithm = "ES256";
 
-    let formatter = MdocFormatter::new(params, Arc::new(did_method_provider), None);
+    let key_algorithm = MockKeyAlgorithm::new();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .never()
+        .returning({
+            let key_algorithm = Arc::new(key_algorithm);
+            move |_| Some(key_algorithm.clone())
+        });
+
+    let formatter = MdocFormatter::new(
+        params,
+        Arc::new(did_method_provider),
+        Arc::new(key_algorithm_provider),
+        None,
+    );
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));
@@ -376,7 +393,32 @@ async fn test_unverified_credential_extraction() {
     };
     let algorithm = "ES256";
 
-    let formatter = MdocFormatter::new(params, Arc::new(did_method_provider), None);
+    let mut key_algorithm = MockKeyAlgorithm::new();
+    key_algorithm
+        .expect_jwk_to_bytes()
+        .once()
+        .returning(|_| Ok(b"abcd".to_vec()));
+
+    key_algorithm
+        .expect_get_multibase()
+        .withf(|pk| pk == b"abcd")
+        .returning(|_| Ok("zAbCd".to_string()));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_get_key_algorithm()
+        .once()
+        .returning({
+            let key_algorithm = Arc::new(key_algorithm);
+            move |_| Some(key_algorithm.clone())
+        });
+
+    let formatter = MdocFormatter::new(
+        params,
+        Arc::new(did_method_provider),
+        Arc::new(key_algorithm_provider),
+        None,
+    );
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn.expect_sign().returning(|msg| Ok(msg.to_vec()));

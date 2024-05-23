@@ -49,7 +49,7 @@ fn setup_provider(
         Arc::new(KeyDidMethod::new(Arc::new(key_algorithm_provider))),
     );
 
-    Arc::new(DidMethodProviderImpl::new(did_methods))
+    Arc::new(DidMethodProviderImpl::new(did_methods, None))
 }
 
 #[tokio::test]

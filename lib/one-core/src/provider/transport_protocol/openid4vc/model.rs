@@ -1,7 +1,6 @@
 use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use serde::{Deserialize, Serialize};
-use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
 
@@ -34,7 +33,6 @@ pub(super) struct HolderInteractionData {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwePayload {
-    pub iss: DidValue,
     pub aud: Url,
     #[serde(with = "unix_timestamp")]
     pub exp: OffsetDateTime,

@@ -32,7 +32,7 @@ use super::jwt::model::JWTPayload;
 use super::jwt::Jwt;
 use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential, ExtractCredentialsCtx,
+    AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, FormatterError,
     Presentation, VerificationFn,
 };
@@ -101,7 +101,6 @@ impl CredentialFormatter for SDJWTFormatter {
         &self,
         token: &str,
         verification: VerificationFn,
-        _ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
         self.extract_credentials_internal(token, Some(verification))
             .await

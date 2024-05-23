@@ -17,8 +17,8 @@ use crate::repository::json_ld_context_repository::JsonLdContextRepository;
 use super::json_ld::model::LdCredential;
 use super::model::{CredentialPresentation, Presentation};
 use super::{
-    AuthenticationFn, CredentialData, CredentialFormatter, ExtractCredentialsCtx,
-    ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, VerificationFn,
+    AuthenticationFn, CredentialData, CredentialFormatter, ExtractPresentationCtx,
+    FormatPresentationCtx, FormatterCapabilities, VerificationFn,
 };
 
 mod base_proof;
@@ -75,7 +75,6 @@ impl CredentialFormatter for JsonLdBbsplus {
         &self,
         credential: &str,
         verification_fn: VerificationFn,
-        _ctx: ExtractCredentialsCtx,
     ) -> Result<DetailCredential, FormatterError> {
         self.verify(credential, verification_fn).await
     }
