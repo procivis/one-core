@@ -34,6 +34,13 @@ impl Es256 {
         _ = params.algorithm;
         Self
     }
+
+    pub fn decompress_public_key(public_key: &[u8]) -> Result<Vec<u8>, ServiceError> {
+        let public_key = p256::PublicKey::from_sec1_bytes(public_key)
+            .map_err(|e| ServiceError::KeyAlgorithmError(e.to_string()))?;
+
+        Ok(public_key.to_encoded_point(false).to_bytes().into())
+    }
 }
 
 impl KeyAlgorithm for Es256 {

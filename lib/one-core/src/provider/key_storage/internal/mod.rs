@@ -13,8 +13,6 @@ use zeroize::Zeroizing;
 use crate::crypto::signer::error::SignerError;
 use crate::crypto::signer::Signer;
 use crate::model::key::Key;
-use crate::provider::key_storage::dto::GenerateCSRRequestDTO;
-use crate::provider::key_storage::internal::mapper::request_to_certificate_params;
 use crate::service::error::{KeyStorageError, ValidationError};
 use crate::{
     provider::{
@@ -25,6 +23,9 @@ use crate::{
 };
 
 use super::KeySecurity;
+
+#[cfg(test)]
+mod test;
 
 pub struct InternalKeyProvider {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -112,29 +113,6 @@ impl KeyStorage for InternalKeyProvider {
             features: vec!["EXPORTABLE".to_string()],
         }
     }
-
-    async fn generate_x509_csr(
-        &self,
-        key: &Key,
-        request: GenerateCSRRequestDTO,
-    ) -> Result<String, ServiceError> {
-        let crypto = self.key_algorithm_provider.get_signer(&key.key_type)?;
-
-        let key_pair = rcgen::KeyPair::from_remote(Box::new(InternalRemoteKeyPair {
-            crypto,
-            encryption_key: Zeroizing::new(self.encryption_key.to_owned()),
-            public_key: key.public_key.to_owned(),
-            private_key: Zeroizing::new(key.key_reference.to_owned()),
-            key_type: key.key_type.clone(),
-        }))
-        .map_err(KeyStorageError::from)?;
-
-        Ok(request_to_certificate_params(request)
-            .serialize_request(&key_pair)
-            .map_err(KeyStorageError::from)?
-            .pem()
-            .map_err(KeyStorageError::from)?)
-    }
 }
 
 struct InternalRemoteKeyPair {
@@ -213,7 +191,3 @@ fn generate_random_seed() -> [u8; 32] {
 pub fn convert_passphrase_to_encryption_key(passphrase: &str) -> [u8; 32] {
     Sha256::digest(passphrase).into()
 }
-
-mod mapper;
-#[cfg(test)]
-mod test;

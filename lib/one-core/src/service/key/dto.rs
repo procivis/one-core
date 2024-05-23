@@ -3,11 +3,7 @@ use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use dto_mapper::{From, Into};
-
-use crate::provider::key_storage::dto::{
-    GenerateCSRRequestDTO, GenerateCSRRequestProfile, GenerateCSRRequestSubjectDTO,
-};
+use dto_mapper::From;
 
 use crate::model::{
     common::{GetListQueryParams, GetListResponse},
@@ -51,8 +47,7 @@ pub struct KeyListItemResponseDTO {
 pub type GetKeyListResponseDTO = GetListResponse<KeyListItemResponseDTO>;
 pub type GetKeyQueryDTO = GetListQueryParams<SortableKeyColumn>;
 
-#[derive(Debug, Into)]
-#[into(GenerateCSRRequestDTO)]
+#[derive(Debug)]
 pub struct KeyGenerateCSRRequestDTO {
     pub profile: KeyGenerateCSRRequestProfile,
     pub not_before: OffsetDateTime,
@@ -60,14 +55,12 @@ pub struct KeyGenerateCSRRequestDTO {
     pub subject: KeyGenerateCSRRequestSubjectDTO,
 }
 
-#[derive(Debug, Into)]
-#[into(GenerateCSRRequestProfile)]
+#[derive(Debug)]
 pub enum KeyGenerateCSRRequestProfile {
     Mdl,
 }
 
-#[derive(Debug, Into)]
-#[into(GenerateCSRRequestSubjectDTO)]
+#[derive(Debug)]
 pub struct KeyGenerateCSRRequestSubjectDTO {
     pub country_name: String,
     pub common_name: String,
