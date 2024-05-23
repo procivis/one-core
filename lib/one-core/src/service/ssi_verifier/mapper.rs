@@ -87,6 +87,15 @@ pub(crate) fn proof_accepted_history_event(proof: &Proof) -> History {
     )
 }
 
+pub(crate) fn proof_accept_errored_history_event(proof: &Proof) -> History {
+    history_event(
+        proof.id.into(),
+        proof.verifier_did.as_ref(),
+        HistoryEntityType::Proof,
+        HistoryAction::Errored,
+    )
+}
+
 fn history_event(
     entity_id: EntityId,
     verifier_did: Option<&Did>,

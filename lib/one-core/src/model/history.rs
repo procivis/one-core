@@ -43,6 +43,7 @@ pub enum HistoryAction {
     Created,
     Deactivated,
     Deleted,
+    Errored,
     Issued,
     Offered,
     Reactivated,

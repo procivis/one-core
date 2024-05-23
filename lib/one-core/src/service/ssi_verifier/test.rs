@@ -9,6 +9,7 @@ use crate::{
         claim_schema::ClaimSchema,
         credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType},
         did::{Did, DidRelations},
+        history::HistoryAction,
         organisation::Organisation,
         proof::{Proof, ProofState, ProofStateEnum},
         proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema},
@@ -448,6 +449,16 @@ async fn test_submit_proof_failed_credential_revoked() {
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .withf(move |history| {
+            assert_eq!(history.entity_id, Some(proof_id.into()));
+            assert_eq!(history.action, HistoryAction::Errored);
+            true
+        })
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
 
     proof_repository
         .expect_get_proof()
@@ -607,6 +618,7 @@ async fn test_submit_proof_failed_credential_revoked() {
     let service = SSIVerifierService {
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
+        history_repository: Arc::new(history_repository),
         revocation_method_provider: Arc::new(revocation_method_provider),
         did_repository: Arc::new(did_repository),
         ..mock_ssi_verifier_service()
@@ -631,6 +643,16 @@ async fn test_submit_proof_failed_credential_suspended() {
     let issuer_did: DidValue = "did:issuer".parse().unwrap();
 
     let mut proof_repository = MockProofRepository::new();
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .withf(move |history| {
+            assert_eq!(history.entity_id, Some(proof_id.into()));
+            assert_eq!(history.action, HistoryAction::Errored);
+            true
+        })
+        .once()
+        .returning(|_| Ok(Uuid::new_v4().into()));
 
     proof_repository
         .expect_get_proof()
@@ -794,6 +816,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let service = SSIVerifierService {
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
+        history_repository: Arc::new(history_repository),
         revocation_method_provider: Arc::new(revocation_method_provider),
         did_repository: Arc::new(did_repository),
         ..mock_ssi_verifier_service()

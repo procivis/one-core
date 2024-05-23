@@ -68,6 +68,8 @@ pub enum HistoryAction {
     Deactivated,
     #[sea_orm(string_value = "DELETED")]
     Deleted,
+    #[sea_orm(string_value = "ERRORED")]
+    Errored,
     #[sea_orm(string_value = "ISSUED")]
     Issued,
     #[sea_orm(string_value = "OFFERED")]

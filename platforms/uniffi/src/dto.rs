@@ -7,6 +7,7 @@ use one_core::model::common::ExactColumn;
 use one_core::model::credential::SortableCredentialColumn;
 use one_core::model::credential_schema::LayoutType;
 use one_core::model::did::{KeyRole, SortableDidColumn};
+use one_core::model::proof::ProofStateEnum;
 use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
@@ -80,6 +81,17 @@ pub enum CredentialStateBindingEnum {
     Rejected,
     Revoked,
     Suspended,
+    Error,
+}
+
+#[derive(From)]
+#[from(ProofStateEnum)]
+pub enum ProofStateBindingEnum {
+    Created,
+    Pending,
+    Requested,
+    Accepted,
+    Rejected,
     Error,
 }
 
@@ -396,6 +408,7 @@ pub struct ProofRequestBindingDTO {
     pub created_date: String,
     pub last_modified: String,
     pub verifier_did: Option<String>,
+    pub state: ProofStateBindingEnum,
     pub transport: String,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputBindingDTO>,
@@ -590,6 +603,7 @@ pub enum HistoryActionBindingEnum {
     Created,
     Deactivated,
     Deleted,
+    Errored,
     Issued,
     Offered,
     Reactivated,
