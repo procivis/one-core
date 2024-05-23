@@ -61,6 +61,10 @@ enum CredentialStateBindingEnum {
   "Created", "Pending", "Offered", "Accepted", "Rejected", "Revoked", "Error", "Suspended"
 };
 
+enum ProofStateBindingEnum {
+  "Created", "Pending", "Requested", "Accepted", "Rejected", "Error"
+};
+
 enum WalletStorageTypeBindingEnum {
   "Hardware", "Software"
 };
@@ -220,6 +224,7 @@ dictionary ProofRequestBindingDTO {
   string? verifier_did;
   string transport;
   string? redirect_uri;
+  ProofStateBindingEnum state;
   sequence<ProofInputBindingDTO> proof_inputs;
 };
 
@@ -396,6 +401,7 @@ enum HistoryActionBindingEnum {
   "Created",
   "Deactivated",
   "Deleted",
+  "Errored",
   "Issued",
   "Offered",
   "Reactivated",

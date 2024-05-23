@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::{
     dto::{ConnectVerifierResponseDTO, ValidatedProofClaimDTO},
-    mapper::proof_verifier_to_connect_verifier_response,
+    mapper::{proof_accept_errored_history_event, proof_verifier_to_connect_verifier_response},
     validator::validate_proof,
     SSIVerifierService,
 };
@@ -154,6 +154,11 @@ impl SSIVerifierService {
             Ok(claims) => claims,
             Err(e) => {
                 self.fail_proof(&proof_id).await?;
+                let _ = self
+                    .history_repository
+                    .create_history(proof_accept_errored_history_event(&proof))
+                    .await;
+
                 return Err(e);
             }
         };

@@ -14,6 +14,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{DidRelations, KeyRole};
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
@@ -473,6 +474,20 @@ impl OIDCService {
             }
             Err(err) => {
                 self.mark_proof_as_failed(&proof.id).await?;
+
+                let _ = self
+                    .history_repository
+                    .create_history(History {
+                        id: Uuid::new_v4().into(),
+                        created_date: OffsetDateTime::now_utc(),
+                        action: HistoryAction::Errored,
+                        entity_id: Some(proof.id.into()),
+                        entity_type: HistoryEntityType::Proof,
+                        metadata: None,
+                        organisation: proof.schema.and_then(|schema| schema.organisation),
+                    })
+                    .await;
+
                 Err(err)
             }
         }

@@ -84,6 +84,10 @@ pub(crate) fn proof_accepted_history_event(proof: &Proof) -> History {
     proof_history_event(proof, HistoryAction::Accepted)
 }
 
+pub(crate) fn proof_submit_errored_history_event(proof: &Proof) -> History {
+    proof_history_event(proof, HistoryAction::Errored)
+}
+
 fn credential_history_event(credential: &Credential, action: HistoryAction) -> History {
     History {
         id: Uuid::new_v4().into(),

@@ -92,6 +92,7 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),
+            state: value.state.into(),
             last_modified: value.last_modified.format_timestamp(),
             verifier_did: value.verifier_did.map(|inner| inner.did.to_string()),
             transport: value.transport,

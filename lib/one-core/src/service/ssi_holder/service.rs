@@ -4,7 +4,7 @@ use super::{
         credential_accepted_history_event, credential_offered_history_event,
         credential_pending_history_event, credential_rejected_history_event,
         proof_accepted_history_event, proof_pending_history_event, proof_rejected_history_event,
-        proof_requested_history_event,
+        proof_requested_history_event, proof_submit_errored_history_event,
     },
     SSIHolderService,
 };
@@ -424,15 +424,13 @@ impl SSIHolderService {
             )
             .await;
 
-        if submit_result.is_ok() {
-            self.proof_repository
-                .set_proof_holder_did(&proof.id, holder_did.to_owned())
-                .await?;
+        self.proof_repository
+            .set_proof_holder_did(&proof.id, holder_did.to_owned())
+            .await?;
 
-            self.proof_repository
-                .set_proof_claims(&proof.id, submitted_claims)
-                .await?;
-        }
+        self.proof_repository
+            .set_proof_claims(&proof.id, submitted_claims)
+            .await?;
 
         let now = OffsetDateTime::now_utc();
         self.proof_repository
@@ -450,15 +448,19 @@ impl SSIHolderService {
             )
             .await?;
 
-        if submit_result.is_ok() {
-            let _ = self
-                .history_repository
-                .create_history(proof_accepted_history_event(&Proof {
-                    holder_did: Some(holder_did),
-                    ..proof
-                }))
-                .await;
-        }
+        let history_event = if submit_result.is_ok() {
+            proof_accepted_history_event(&Proof {
+                holder_did: Some(holder_did),
+                ..proof
+            })
+        } else {
+            proof_submit_errored_history_event(&Proof {
+                holder_did: Some(holder_did),
+                ..proof
+            })
+        };
+
+        let _ = self.history_repository.create_history(history_event).await;
 
         Ok(submit_result?)
     }

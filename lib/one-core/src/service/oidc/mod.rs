@@ -10,6 +10,7 @@ use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -25,6 +26,7 @@ pub struct OIDCService {
     pub(crate) core_base_url: Option<String>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
+    history_repository: Arc<dyn HistoryRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     key_repository: Arc<dyn KeyRepository>,
     key_provider: Arc<dyn KeyProvider>,
@@ -44,6 +46,7 @@ impl OIDCService {
         core_base_url: Option<String>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
+        history_repository: Arc<dyn HistoryRepository>,
         proof_repository: Arc<dyn ProofRepository>,
         key_repository: Arc<dyn KeyRepository>,
         key_provider: Arc<dyn KeyProvider>,
@@ -61,6 +64,7 @@ impl OIDCService {
             credential_schema_repository,
             credential_repository,
             proof_repository,
+            history_repository,
             key_repository,
             key_provider,
             interaction_repository,
