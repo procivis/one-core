@@ -2,20 +2,18 @@ use shared_types::{OrganisationId, TrustAnchorId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::core_config::TrustManagementType;
-use crate::service::error::EntityNotFoundError;
-use crate::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
-use crate::{
-    config::validator::trust_management::validate_trust_management,
-    model::{
-        history::{History, HistoryAction, HistoryEntityType},
-        organisation::Organisation,
-    },
-    repository::error::DataLayerError,
-    service::error::{BusinessLogicError, ServiceError},
+use super::dto::{
+    CreateTrustAnchorRequestDTO, GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO,
 };
-
-use super::{dto::CreateTrustAnchorRequestDTO, TrustAnchorService};
+use super::TrustAnchorService;
+use crate::config::core_config::TrustManagementType;
+use crate::config::validator::trust_management::validate_trust_management;
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::organisation::Organisation;
+use crate::model::trust_anchor::TrustAnchor;
+use crate::repository::error::DataLayerError;
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
 
 impl TrustAnchorService {
     pub async fn create_trust_anchor(
@@ -77,6 +75,26 @@ impl TrustAnchorService {
             last_modified: result.last_modified,
             entities: entities.into_iter().map(Into::into).collect(),
         })
+    }
+
+    pub async fn get_trust_anchor(
+        &self,
+        anchor_id: TrustAnchorId,
+    ) -> Result<TrustAnchor, ServiceError> {
+        self.trust_anchor_repository
+            .get(anchor_id)
+            .await?
+            .ok_or(EntityNotFoundError::TrustAnchor(anchor_id).into())
+    }
+
+    pub async fn list_trust_anchors(
+        &self,
+        filters: ListTrustAnchorsQueryDTO,
+    ) -> Result<GetTrustAnchorsResponseDTO, ServiceError> {
+        self.trust_anchor_repository
+            .list(filters)
+            .await
+            .map_err(Into::into)
     }
 }
 

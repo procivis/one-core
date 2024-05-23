@@ -79,7 +79,7 @@ Run compiled application (Local env)
 - Run MariaDB for local developing
 
 ```shell
-docker-compose -f docker/db.yml up -d
+docker compose -f docker/db.yml up -d
 or
 makers dbstart
 ```
@@ -87,7 +87,7 @@ makers dbstart
 - Stop MariaDB for local developing
 
 ```shell
-docker-compose -f docker/db.yml down
+docker compose -f docker/db.yml down
 or
 makers dbstop
 ```
@@ -101,7 +101,7 @@ makers dbdrop
 - Print MariaDB logs
 
 ```shell
-docker-compose -f docker/db.yml logs -f
+docker compose -f docker/db.yml logs -f
 ```
 
 - Build project

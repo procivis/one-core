@@ -1,17 +1,19 @@
+use std::fmt;
+
 use dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
-use std::fmt;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::endpoint::{
-    credential::dto::CredentialListItemResponseRestDTO,
-    credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
-    did::dto::DidListItemResponseRestDTO, history::dto::HistoryResponseRestDTO,
-    key::dto::KeyListItemResponseRestDTO, proof::dto::ProofListItemResponseRestDTO,
-    proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
-};
+use crate::endpoint::credential::dto::CredentialListItemResponseRestDTO;
+use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
+use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::history::dto::HistoryResponseRestDTO;
+use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
+use crate::endpoint::proof::dto::ProofListItemResponseRestDTO;
+use crate::endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO;
+use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +25,8 @@ use crate::endpoint::{
     GetCredentialsResponseDTO = GetListResponseRestDTO<CredentialListItemResponseRestDTO>,
     GetProofSchemaListResponseRestDTO = GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>,
     GetKeyListResponseRestDTO = GetListResponseRestDTO<KeyListItemResponseRestDTO>,
-    GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>
+    GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>,
+    GetTrustAnchorListResponseRestDTO = GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>,
 )]
 pub struct GetListResponseRestDTO<T>
 where

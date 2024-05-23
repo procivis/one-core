@@ -1,39 +1,40 @@
 use std::collections::HashMap;
 
-use super::dto::{ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingDTO};
-use crate::{
-    dto::{
-        CredentialDetailBindingDTO, CredentialListItemBindingDTO, DidRequestBindingDTO,
-        DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
-        ProofRequestBindingDTO,
-    },
-    utils::{into_id, TimestampFormat},
-    CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum, HistoryListItemBindingDTO,
-    HistoryMetadataBinding,
-};
 use dto_mapper::convert_inner;
-use one_core::service::{
-    credential::dto::{CredentialSchemaType, DetailCredentialClaimValueResponseDTO},
-    credential_schema::dto::CredentialSchemaListItemResponseDTO,
-    trust_anchor::dto::CreateTrustAnchorRequestDTO,
+use one_core::model::did::DidType;
+use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
+use one_core::model::list_query::{ListPagination, ListSorting};
+use one_core::service::credential::dto::{
+    CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+    DetailCredentialSchemaResponseDTO,
 };
-use one_core::{
-    model::did::DidType,
-    service::{
-        credential::dto::{
-            CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-            DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
-        },
-        did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},
-        error::ServiceError,
-        history::dto::{HistoryMetadataResponse, HistoryResponseDTO},
-        key::dto::KeyRequestDTO,
-        proof::dto::ProofDetailResponseDTO,
-        ssi_holder::dto::InvitationResponseDTO,
-    },
+use one_core::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
+use one_core::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
+use one_core::service::error::ServiceError;
+use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDTO};
+use one_core::service::key::dto::KeyRequestDTO;
+use one_core::service::proof::dto::ProofDetailResponseDTO;
+use one_core::service::ssi_holder::dto::InvitationResponseDTO;
+use one_core::service::trust_anchor::dto::{
+    CreateTrustAnchorRequestDTO, ListTrustAnchorsQueryDTO, TrustAnchorFilterValue,
 };
 use serde_json::json;
 use shared_types::KeyId;
+
+use super::dto::{ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingDTO};
+use crate::dto::{
+    CredentialDetailBindingDTO, CredentialListItemBindingDTO, DidRequestBindingDTO,
+    DidRequestKeysBindingDTO, HandleInvitationResponseBindingEnum, KeyRequestBindingDTO,
+    ProofRequestBindingDTO,
+};
+use crate::error::BindingError;
+use crate::utils::{into_id, TimestampFormat};
+use crate::{
+    CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum,
+    ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
+    ListTrustAnchorsFiltersBindings,
+};
 
 pub(crate) fn serialize_config_entity(
     input: HashMap<String, serde_json::Value>,
@@ -273,6 +274,57 @@ impl TryFrom<CreateTrustAnchorRequestBindingDTO> for CreateTrustAnchorRequestDTO
             role: value.role.into(),
             priority: value.priority,
             organisation_id: into_id(&value.organisation_id)?,
+        })
+    }
+}
+
+impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
+    type Error = BindingError;
+
+    fn try_from(value: ListTrustAnchorsFiltersBindings) -> Result<Self, Self::Error> {
+        let exact = value.exact.unwrap_or_default();
+        let get_string_match_type = |column| {
+            if exact.contains(&column) {
+                StringMatchType::Equals
+            } else {
+                StringMatchType::StartsWith
+            }
+        };
+
+        let name = value.name.map(|name| {
+            TrustAnchorFilterValue::Name(StringMatch {
+                r#match: get_string_match_type(ExactTrustAnchorFilterColumnBindings::Name),
+                value: name,
+            })
+        });
+
+        let role = value
+            .role
+            .map(|role| TrustAnchorFilterValue::Role(role.into()));
+
+        let type_ = value.r#type.map(|type_| {
+            TrustAnchorFilterValue::Type(StringMatch {
+                r#match: get_string_match_type(ExactTrustAnchorFilterColumnBindings::Type),
+                value: type_,
+            })
+        });
+
+        let organisation_id =
+            TrustAnchorFilterValue::OrganisationId(into_id(&value.organisation_id)?).condition();
+
+        let filtering = organisation_id & name & role & type_;
+
+        Ok(Self {
+            pagination: Some(ListPagination {
+                page: value.page,
+                page_size: value.page_size,
+            }),
+            sorting: value.sort.map(|column| ListSorting {
+                column: column.into(),
+                direction: convert_inner(value.sort_direction),
+            }),
+            filtering: Some(filtering),
+            include: None,
         })
     }
 }
