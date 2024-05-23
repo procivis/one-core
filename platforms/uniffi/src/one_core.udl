@@ -512,6 +512,62 @@ dictionary CreateTrustAnchorRequestBindingDTO {
   string organisation_id;
 };
 
+dictionary GetTrustAnchoResponseBindingDTO {
+  string id;
+  string name;
+  string created_date;
+  string last_modified;
+  string type;
+  string publisher_reference;
+  TrustAnchorRoleBinding role;
+  u32 priority;
+  string organisation_id;
+};
+
+enum SortableTrustAnchorColumnBindings {
+  "Name",
+  "CreatedDate",
+  "Type",
+  "Role",
+  "Priority",
+};
+
+enum ExactTrustAnchorFilterColumnBindings {
+  "Name",
+  "Type",
+};
+
+dictionary ListTrustAnchorsFiltersBindings {
+  u32 page;
+  u32 page_size;
+  SortableTrustAnchorColumnBindings? sort;
+  SortDirection? sort_direction;
+  string? name;
+  TrustAnchorRoleBinding? role;
+  string? type;
+  string organisation_id;
+  sequence<ExactTrustAnchorFilterColumnBindings>? exact;
+};
+
+dictionary TrustAnchorsListItemResponseBindingDTO {
+  string id;
+  string name;
+  string created_date;
+  string last_modified;
+  string type;
+  string publisher_reference;
+  TrustAnchorRoleBinding role;
+  u32 priority;
+  string organisation_id;
+  u64 entities;
+};
+
+dictionary TrustAnchorsListBindingDTO {
+  sequence<TrustAnchorsListItemResponseBindingDTO> values;
+  u64 total_pages;
+  u64 total_items;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -589,6 +645,12 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   void create_trust_anchor(CreateTrustAnchorRequestBindingDTO anchor);
+
+  [Throws=BindingError]
+  GetTrustAnchoResponseBindingDTO get_trust_anchor(string anchor_id);
+
+  [Throws=BindingError]
+  TrustAnchorsListBindingDTO list_trust_anchors(ListTrustAnchorsFiltersBindings filters);
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);

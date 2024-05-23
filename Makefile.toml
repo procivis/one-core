@@ -58,12 +58,12 @@ command = "cargo"
 args    = ["test", "--test", "integration_tests"]
 
 [tasks.dbstart]
-command = "docker-compose"
-args    = ["-f", "docker/db.yml", "up", "-d"]
+command = "docker"
+args    = ["compose", "-f", "docker/db.yml", "up", "-d"]
 
 [tasks.dbstop]
-command = "docker-compose"
-args    = ["-f", "docker/db.yml", "down"]
+command = "docker"
+args    = ["compose", "-f", "docker/db.yml", "down"]
 
 [tasks.dbdrop]
 script = [

@@ -1,19 +1,27 @@
-use crate::error::NativeKeyStorageError;
-use crate::mapper::serialize_config_entity;
-use crate::utils::{format_timestamp_opt, into_id, TimestampFormat};
-use dto_mapper::convert_inner;
-use dto_mapper::{From, Into, TryInto};
+use std::collections::HashMap;
+
+use dto_mapper::{convert_inner, From, Into, TryInto};
 use one_core::model::common::ExactColumn;
 use one_core::model::credential::SortableCredentialColumn;
-use one_core::model::credential_schema::LayoutType;
-use one_core::model::did::{KeyRole, SortableDidColumn};
+use one_core::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+use one_core::model::did::{DidType, KeyRole, SortableDidColumn};
+use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEnum};
 use one_core::model::proof::ProofStateEnum;
-use one_core::model::trust_anchor::TrustAnchorRole;
+use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
+use one_core::provider::key_storage::GeneratedKey;
+use one_core::provider::transport_protocol::dto::{
+    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+};
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
-use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
-use one_core::service::credential::dto::CredentialRole;
+use one_core::service::config::dto::ConfigDTO;
+use one_core::service::credential::dto::{
+    CredentialListIncludeEntityTypeEnum, CredentialRevocationCheckResponseDTO, CredentialRole,
+    CredentialStateEnum, GetCredentialListResponseDTO,
+};
 use one_core::service::credential_schema::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesRequestDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaDetailResponseDTO,
@@ -22,34 +30,18 @@ use one_core::service::credential_schema::dto::{
 };
 use one_core::service::did::dto::{DidListItemResponseDTO, GetDidListResponseDTO};
 use one_core::service::error::ServiceError;
+use one_core::service::history::dto::GetHistoryListResponseDTO;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use one_core::service::proof::dto::{ProofClaimDTO, ProofClaimValueDTO, ProofInputDTO};
 use one_core::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
-use one_core::{
-    model::{
-        credential_schema::WalletStorageTypeEnum,
-        did::DidType,
-        history::{HistoryAction, HistoryEntityType, HistorySearchEnum},
-    },
-    provider::{
-        key_storage::GeneratedKey,
-        transport_protocol::dto::{
-            PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-            PresentationDefinitionRequestedCredentialResponseDTO,
-            PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
-            PresentationDefinitionRuleTypeEnum,
-        },
-    },
-    service::{
-        config::dto::ConfigDTO,
-        credential::dto::{
-            CredentialRevocationCheckResponseDTO, CredentialStateEnum, GetCredentialListResponseDTO,
-        },
-        history::dto::GetHistoryListResponseDTO,
-    },
+use one_core::service::trust_anchor::dto::{
+    GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn, TrustAnchorsListItemResponseDTO,
 };
-use std::collections::HashMap;
+
+use crate::error::NativeKeyStorageError;
+use crate::mapper::serialize_config_entity;
+use crate::utils::{format_timestamp_opt, into_id, TimestampFormat};
 
 #[derive(From)]
 #[from(ConfigDTO)]
@@ -731,9 +723,91 @@ pub struct CreateTrustAnchorRequestBindingDTO {
     pub organisation_id: String,
 }
 
-#[derive(Clone, Debug, Into)]
+#[derive(Clone, Debug, Into, From)]
 #[into(TrustAnchorRole)]
+#[from(TrustAnchorRole)]
 pub enum TrustAnchorRoleBinding {
     Publisher,
     Client,
+}
+
+#[derive(Clone, Debug, From)]
+#[from(TrustAnchor)]
+pub struct GetTrustAnchoResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    pub name: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+    #[from(rename = type_field)]
+    pub r#type: String,
+    pub publisher_reference: String,
+    pub role: TrustAnchorRoleBinding,
+    pub priority: u32,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub organisation_id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Into)]
+#[into(SortableTrustAnchorColumn)]
+pub enum SortableTrustAnchorColumnBindings {
+    Name,
+    CreatedDate,
+    Type,
+    Role,
+    Priority,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ExactTrustAnchorFilterColumnBindings {
+    Name,
+    Type,
+}
+
+#[derive(Clone, Debug)]
+pub struct ListTrustAnchorsFiltersBindings {
+    pub page: u32,
+    pub page_size: u32,
+
+    pub sort: Option<SortableTrustAnchorColumnBindings>,
+    pub sort_direction: Option<SortDirection>,
+
+    pub name: Option<String>,
+    pub role: Option<TrustAnchorRoleBinding>,
+    pub r#type: Option<String>,
+    pub organisation_id: String,
+
+    pub exact: Option<Vec<ExactTrustAnchorFilterColumnBindings>>,
+}
+
+#[derive(Clone, Debug, From)]
+#[from(TrustAnchorsListItemResponseDTO)]
+pub struct TrustAnchorsListItemResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    pub name: String,
+
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub created_date: String,
+    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
+    pub last_modified: String,
+
+    pub r#type: String,
+    pub publisher_reference: String,
+    pub role: TrustAnchorRoleBinding,
+    pub priority: u32,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub organisation_id: String,
+    pub entities: u64,
+}
+
+#[derive(From)]
+#[from(GetTrustAnchorsResponseDTO)]
+pub struct TrustAnchorsListBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub values: Vec<TrustAnchorsListItemResponseBindingDTO>,
+    pub total_pages: u64,
+    pub total_items: u64,
 }

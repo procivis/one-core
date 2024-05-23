@@ -2,10 +2,11 @@ use dto_mapper::From;
 use shared_types::{OrganisationId, TrustAnchorId, TrustEntityId};
 use time::OffsetDateTime;
 
-use crate::model::{
-    trust_anchor::TrustAnchorRole,
-    trust_entity::{TrustEntity, TrustEntityRole},
-};
+use crate::model::common::GetListResponse;
+use crate::model::list_filter::{ListFilterValue, StringMatch};
+use crate::model::list_query::ListQuery;
+use crate::model::trust_anchor::TrustAnchorRole;
+use crate::model::trust_entity::{TrustEntity, TrustEntityRole};
 
 #[derive(Clone, Debug)]
 pub struct CreateTrustAnchorRequestDTO {
@@ -44,3 +45,39 @@ pub struct GetTrustEntityResponseDTO {
 
     pub trust_anchor_id: TrustAnchorId,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableTrustAnchorColumn {
+    Name,
+    CreatedDate,
+    Type,
+    Role,
+    Priority,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum TrustAnchorFilterValue {
+    Name(StringMatch),
+    Role(TrustAnchorRole),
+    Type(StringMatch),
+    OrganisationId(OrganisationId),
+}
+
+impl ListFilterValue for TrustAnchorFilterValue {}
+
+pub type ListTrustAnchorsQueryDTO = ListQuery<SortableTrustAnchorColumn, TrustAnchorFilterValue>;
+
+pub struct TrustAnchorsListItemResponseDTO {
+    pub id: TrustAnchorId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub r#type: String,
+    pub publisher_reference: String,
+    pub role: TrustAnchorRole,
+    pub priority: u32,
+    pub organisation_id: OrganisationId,
+    pub entities: u32,
+}
+
+pub type GetTrustAnchorsResponseDTO = GetListResponse<TrustAnchorsListItemResponseDTO>;

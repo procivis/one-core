@@ -1,20 +1,25 @@
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
+use shared_types::TrustAnchorId;
 
+use crate::dto::common::GetTrustAnchorListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::EmptyOrErrorResponse;
-
+use crate::dto::response::{
+    declare_utoipa_alias, AliasResponse, EmptyOrErrorResponse, OkOrErrorResponse,
+};
+use crate::endpoint::trust_anchor::dto::{
+    CreateTrustAnchorRequestRestDTO, GetTrustAnchorResponseRestDTO, ListTrustAnchorsQuery,
+};
+use crate::extractor::Qs;
 use crate::router::AppState;
-
-use super::dto::CreateTrustAnchorRequestRestDTO;
 
 #[utoipa::path(
     post,
     path = "/api/trust-anchor/v1",
     request_body = CreateTrustAnchorRequestRestDTO,
     responses(EmptyOrErrorResponse),
-    tag = "trust-anchor",
+    tag = "trust_anchor",
     security(
         ("bearer" = [])
     ),
@@ -32,4 +37,48 @@ pub(crate) async fn create_trust_anchor(
         .create_trust_anchor(request.into())
         .await;
     EmptyOrErrorResponse::from_result(result, state, "creating trust anchor")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/trust-anchor/v1/{id}",
+    params(
+        ("id" = TrustAnchorId, Path, description = "Trust anchor id")
+    ),
+    responses(OkOrErrorResponse<GetTrustAnchorResponseRestDTO>),
+    tag = "trust_anchor",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_trust_anchor(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<TrustAnchorId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetTrustAnchorResponseRestDTO> {
+    let result = state.core.trust_anchor_service.get_trust_anchor(id).await;
+    OkOrErrorResponse::from_result(result, state, "fetching trust anchor")
+}
+
+declare_utoipa_alias!(GetTrustAnchorListResponseRestDTO);
+
+#[utoipa::path(
+    get,
+    path = "/api/trust-anchor/v1",
+    responses(OkOrErrorResponse<AliasResponse<GetTrustAnchorListResponseRestDTO>>),
+    params(ListTrustAnchorsQuery),
+    tag = "trust_anchor",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_trust_anchors(
+    state: State<AppState>,
+    WithRejection(Qs(query), _): WithRejection<Qs<ListTrustAnchorsQuery>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetTrustAnchorListResponseRestDTO> {
+    let result = state
+        .core
+        .trust_anchor_service
+        .list_trust_anchors(query.into())
+        .await;
+    OkOrErrorResponse::from_result(result, state, "listing trust anchors")
 }
