@@ -16,8 +16,10 @@ use one_core::model::did::{Did, DidRelations, DidType, RelatedKey};
 use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
-use one_core::model::proof::{Proof, ProofClaimRelations, ProofState, ProofStateEnum};
-use one_core::model::proof::{ProofId, ProofRelations, ProofStateRelations};
+use one_core::model::proof::{
+    Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
+    ProofStateRelations,
+};
 use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
@@ -30,7 +32,8 @@ use one_core::repository::DataRepository;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
-use sql_data_provider::{test_utilities::*, DataLayer, DbConn};
+use sql_data_provider::test_utilities::*;
+use sql_data_provider::{DataLayer, DbConn};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;

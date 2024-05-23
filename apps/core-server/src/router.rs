@@ -197,6 +197,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(trust_anchor::controller::get_trust_anchors),
         )
         .route(
+            "/api/trust-anchor/v1/:id",
+            delete(trust_anchor::controller::delete_trust_anchor),
+        )
+        .route(
             "/api/trust-entity/v1",
             post(trust_entity::controller::create_trust_entity),
         )
@@ -410,6 +414,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             trust_anchor::controller::create_trust_anchor,
             trust_anchor::controller::get_trust_anchor,
             trust_anchor::controller::get_trust_anchors,
+            trust_anchor::controller::delete_trust_anchor,
 
             trust_entity::controller::create_trust_entity,
 

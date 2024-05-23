@@ -59,4 +59,9 @@ impl TrustAnchorsApi {
 
         self.client.get(&url).await
     }
+
+    pub async fn delete(&self, trust_anchor: impl Into<Uuid>) -> Response {
+        let url = format!("/api/trust-anchor/v1/{}", trust_anchor.into());
+        self.client.delete(&url).await
+    }
 }

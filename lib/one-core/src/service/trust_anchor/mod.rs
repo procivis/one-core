@@ -1,12 +1,9 @@
 use std::sync::Arc;
 
-use crate::{
-    config::core_config,
-    repository::{
-        history_repository::HistoryRepository, trust_anchor_repository::TrustAnchorRepository,
-        trust_entity_repository::TrustEntityRepository,
-    },
-};
+use crate::config::core_config;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::trust_anchor_repository::TrustAnchorRepository;
+use crate::repository::trust_entity_repository::TrustEntityRepository;
 
 pub mod dto;
 pub mod mapper;
