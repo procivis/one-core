@@ -495,6 +495,7 @@ impl CredentialService {
                         organisation: Some(OrganisationRelations::default()),
                         ..Default::default()
                     }),
+                    key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
             )

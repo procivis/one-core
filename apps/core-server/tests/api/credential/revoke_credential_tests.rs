@@ -120,7 +120,7 @@ async fn test_revoke_credential_with_lvvc_success() {
             TestingDidParams {
                 keys: Some(vec![RelatedKey {
                     role: KeyRole::AssertionMethod,
-                    key,
+                    key: key.clone(),
                 }]),
                 ..Default::default()
             },
@@ -142,6 +142,7 @@ async fn test_revoke_credential_with_lvvc_success() {
             "PROCIVIS_TEMPORARY",
             TestingCredentialParams {
                 holder_did: Some(holder_did),
+                key: Some(key),
                 ..Default::default()
             },
         )
