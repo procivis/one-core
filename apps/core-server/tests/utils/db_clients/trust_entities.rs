@@ -4,7 +4,7 @@ use one_core::{
     model::trust_entity::{TrustEntity, TrustEntityRole},
     repository::trust_entity_repository::TrustEntityRepository,
 };
-use shared_types::TrustAnchorId;
+use shared_types::{TrustAnchorId, TrustEntityId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -41,5 +41,9 @@ impl TrustEntityDB {
         self.repository.create(trust_anchor.clone()).await.unwrap();
 
         trust_anchor
+    }
+
+    pub async fn get(&self, id: TrustEntityId) -> Option<TrustEntity> {
+        self.repository.get(id).await.unwrap()
     }
 }

@@ -1,3 +1,4 @@
+use shared_types::TrustEntityId;
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
     OrganisationId, TrustAnchorId,
@@ -132,6 +133,9 @@ pub enum EntityNotFoundError {
 
     #[error("Trust anchor `{0}` not found")]
     TrustAnchor(TrustAnchorId),
+
+    #[error("Trust entity `{0}` not found")]
+    TrustEntity(TrustEntityId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -713,6 +717,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Attribute combination not allowed")]
     BR_0118,
 
+    #[strum(to_string = "Trust entity not found")]
+    BR_0121,
+
     #[strum(to_string = "Trust anchor type is not Simple Trust List")]
     BR_0122,
 
@@ -808,6 +815,7 @@ impl EntityNotFoundError {
             EntityNotFoundError::Lvvc(_) => ErrorCode::BR_0000,
             EntityNotFoundError::History(_) => ErrorCode::BR_0100,
             EntityNotFoundError::TrustAnchor(_) => ErrorCode::BR_0115,
+            EntityNotFoundError::TrustEntity(_) => ErrorCode::BR_0121,
         }
     }
 }

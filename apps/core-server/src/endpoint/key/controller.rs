@@ -115,7 +115,7 @@ pub(crate) async fn get_key_list(
     post,
     path = "/api/key/v1/{id}/generate-csr",
     request_body = KeyGenerateCSRRequestRestDTO,
-    responses(OkOrErrorResponse<KeyResponseRestDTO>),
+    responses(OkOrErrorResponse<KeyGenerateCSRResponseRestDTO>),
     params(
         ("id" = Uuid, Path, description = "Key id")
     ),

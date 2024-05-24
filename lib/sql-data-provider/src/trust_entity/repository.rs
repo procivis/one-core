@@ -46,4 +46,21 @@ impl TrustEntityRepository for TrustEntityProvider {
 
         Ok(entities.into_iter().map(Into::into).collect())
     }
+
+    async fn get(&self, id: TrustEntityId) -> Result<Option<TrustEntity>, DataLayerError> {
+        let entity = trust_entity::Entity::find_by_id(id)
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(entity.map(TrustEntity::from))
+    }
+
+    async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError> {
+        trust_entity::Entity::delete_by_id(id)
+            .exec(&self.db)
+            .await
+            .map(|_| ())
+            .map_err(to_data_layer_error)
+    }
 }
