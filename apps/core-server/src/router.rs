@@ -204,6 +204,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             "/api/trust-entity/v1",
             post(trust_entity::controller::create_trust_entity),
         )
+        .route(
+            "/api/trust-entity/v1/:id",
+            delete(trust_entity::controller::delete_trust_entity),
+        )
         .layer(middleware::from_fn(crate::middleware::bearer_check));
 
     let unprotected = Router::new()
@@ -417,6 +421,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             trust_anchor::controller::delete_trust_anchor,
 
             trust_entity::controller::create_trust_entity,
+            trust_entity::controller::delete_trust_entity,
 
             misc::get_build_info,
             misc::health_check,

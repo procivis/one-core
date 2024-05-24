@@ -42,9 +42,10 @@ impl TrustEntityService {
             Ok(entity_id) => {
                 let _ = self
                     .history_repository
-                    .create_history(create_history_event(
+                    .create_history(history_event(
                         entity_id,
                         trust_anchor.organisation_id,
+                        HistoryAction::Created,
                     ))
                     .await;
                 Ok(entity_id)
@@ -55,13 +56,44 @@ impl TrustEntityService {
             Err(err) => Err(err.into()),
         }
     }
+
+    pub async fn delete_trust_entity(&self, id: TrustEntityId) -> Result<(), ServiceError> {
+        let Some(trust_entity) = self.trust_entity_repository.get(id).await? else {
+            return Err(ServiceError::EntityNotFound(
+                EntityNotFoundError::TrustEntity(id),
+            ));
+        };
+
+        let trust_anchor = self
+            .trust_anchor_repository
+            .get(trust_entity.trust_anchor_id)
+            .await?
+            .expect("trust-anchor is never deleted without first deleting the trust-entity");
+
+        self.trust_entity_repository.delete(id).await?;
+
+        let _ = self
+            .history_repository
+            .create_history(history_event(
+                id,
+                trust_anchor.organisation_id,
+                HistoryAction::Deleted,
+            ))
+            .await;
+
+        Ok(())
+    }
 }
 
-fn create_history_event(entity_id: TrustEntityId, organisation_id: OrganisationId) -> History {
+fn history_event(
+    entity_id: TrustEntityId,
+    organisation_id: OrganisationId,
+    action: HistoryAction,
+) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Created,
+        action,
         entity_id: Some(entity_id.into()),
         entity_type: HistoryEntityType::TrustEntity,
         metadata: None,

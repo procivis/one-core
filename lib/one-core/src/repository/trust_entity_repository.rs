@@ -9,4 +9,6 @@ pub trait TrustEntityRepository: Send + Sync {
         &self,
         trust_anchor_id: TrustAnchorId,
     ) -> Result<Vec<TrustEntity>, DataLayerError>;
+    async fn get(&self, id: TrustEntityId) -> Result<Option<TrustEntity>, DataLayerError>;
+    async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError>;
 }
