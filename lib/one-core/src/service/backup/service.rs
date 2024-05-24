@@ -1,40 +1,21 @@
-use std::{fs::File, sync::Arc};
+use std::fs::File;
 
-use crate::{
-    crypto::encryption::{decrypt_file, encrypt_file},
-    model::history::HistoryAction,
-    repository::{
-        backup_repository::BackupRepository, error::DataLayerError,
-        history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
-    },
-    service::error::ServiceError,
-};
 use anyhow::Context;
 use futures::{FutureExt, TryFutureExt};
 use tempfile::{tempfile_in, NamedTempFile};
 
-use super::{
-    dto::{BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO},
-    utils::{
-        build_metadata_file_content, create_backup_history_event, create_zip,
-        dir_path_from_file_path, get_metadata_from_zip, hash_reader, load_db_from_zip, map_error,
-    },
-    BackupService,
+use super::dto::{BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO};
+use super::utils::{
+    build_metadata_file_content, create_backup_history_event, create_zip, dir_path_from_file_path,
+    get_metadata_from_zip, hash_reader, load_db_from_zip, map_error,
 };
+use super::BackupService;
+use crate::crypto::encryption::{decrypt_file, encrypt_file};
+use crate::model::history::HistoryAction;
+use crate::repository::error::DataLayerError;
+use crate::service::error::ServiceError;
 
 impl BackupService {
-    pub fn new(
-        backup_repository: Arc<dyn BackupRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
-        organisation_repository: Arc<dyn OrganisationRepository>,
-    ) -> Self {
-        Self {
-            backup_repository,
-            history_repository,
-            organisation_repository,
-        }
-    }
-
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
     pub async fn create_backup(
         &self,
@@ -57,6 +38,27 @@ impl BackupService {
             .delete_unexportable(db_copy.path())
             .await?;
 
+        let organisation = self
+            .organisation_repository
+            .get_organisation_list()
+            .await
+            .and_then(|organisations| {
+                organisations
+                    .into_iter()
+                    .next()
+                    .ok_or(DataLayerError::MappingError)
+            })?;
+
+        let histroy_event = create_backup_history_event(
+            organisation,
+            HistoryAction::Created,
+            Some(unexportable.clone().into()),
+        );
+
+        self.backup_repository
+            .add_history_event(db_copy.path(), histroy_event.clone())
+            .await?;
+
         let metadata_file = build_metadata_file_content(&mut db_copy, db_metadata.version)?;
 
         let zip_file = tempfile_in(&output_dir)
@@ -68,24 +70,8 @@ impl BackupService {
             .map_err(map_error)?;
 
         let history_id = self
-            .organisation_repository
-            .get_organisation_list()
-            .map(|result| {
-                result.and_then(|organisations| {
-                    organisations
-                        .into_iter()
-                        .next()
-                        .ok_or(DataLayerError::MappingError)
-                })
-            })
-            .and_then(|organisation| {
-                self.history_repository
-                    .create_history(create_backup_history_event(
-                        organisation,
-                        HistoryAction::Created,
-                        Some(unexportable.clone().into()),
-                    ))
-            })
+            .history_repository
+            .create_history(histroy_event)
             .await?;
 
         Ok(BackupCreateResponseDTO {
