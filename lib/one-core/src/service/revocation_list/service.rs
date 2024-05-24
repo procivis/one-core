@@ -39,6 +39,7 @@ impl RevocationListService {
                         ..Default::default()
                     }),
                     holder_did: Some(DidRelations::default()),
+                    key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
             )

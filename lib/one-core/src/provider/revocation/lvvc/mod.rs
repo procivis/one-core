@@ -410,11 +410,9 @@ pub(crate) async fn create_lvvc_with_status(
         ServiceError::MappingError("LVVC issuance is missing credential schema".to_string())
     })?;
 
-    let key = issuer_did
-        .keys
+    let key = credential
+        .key
         .as_ref()
-        .and_then(|keys| keys.iter().find(|k| k.role == KeyRole::AssertionMethod))
-        .map(|k| &k.key)
         .ok_or_else(|| ServiceError::MappingError("LVVC issuance is missing key".to_string()))?;
 
     let did_document = did_method_provider.resolve(&issuer_did.did).await?;

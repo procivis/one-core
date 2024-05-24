@@ -68,6 +68,14 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
 async fn test_suspend_credential_with_lvvc_success() {
     // GIVEN
     let (context, organisation, issuer_did, _) = TestContext::new_with_did().await;
+    let issuer_key = issuer_did
+        .keys
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .key
+        .clone();
     let holder_did = context
         .db
         .dids
@@ -98,6 +106,7 @@ async fn test_suspend_credential_with_lvvc_success() {
             "PROCIVIS_TEMPORARY",
             TestingCredentialParams {
                 holder_did: Some(holder_did),
+                key: Some(issuer_key),
                 ..Default::default()
             },
         )
