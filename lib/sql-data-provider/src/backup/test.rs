@@ -1,27 +1,23 @@
 use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
-use sea_orm::{ActiveModelTrait, ActiveValue::NotSet, DatabaseConnection, EntityTrait, Set};
+use sea_orm::ActiveValue::NotSet;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId};
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 
-use crate::{
-    db_conn,
-    entity::{
-        credential::{self, CredentialRole},
-        credential_state::{self, CredentialState},
-        did::{self, DidType},
-        key,
-        key_did::KeyRole,
-    },
-    test_utilities::{
-        assert_eq_unordered, get_dummy_date, insert_credential_schema_to_database, insert_key_did,
-        insert_many_claims_schema_to_database, insert_many_claims_to_database,
-        insert_organisation_to_database, ClaimInsertInfo, ProofInput,
-    },
-};
-
 use super::BackupProvider;
+use crate::db_conn;
+use crate::entity::credential::{self, CredentialRole};
+use crate::entity::credential_state::{self, CredentialState};
+use crate::entity::did::{self, DidType};
+use crate::entity::key;
+use crate::entity::key_did::KeyRole;
+use crate::test_utilities::{
+    assert_eq_unordered, get_dummy_date, insert_credential_schema_to_database, insert_key_did,
+    insert_many_claims_schema_to_database, insert_many_claims_to_database,
+    insert_organisation_to_database, ClaimInsertInfo, ProofInput,
+};
 
 async fn insert_key_to_database(
     database: &DatabaseConnection,

@@ -4,35 +4,28 @@ use anyhow::Context;
 use autometrics::autometrics;
 use dto_mapper::{convert_inner, try_convert_inner, Into};
 use migration::{Alias, Expr, Func, Query};
-use one_core::{
-    model::backup::{Metadata, UnexportableEntities},
-    repository::{backup_repository::BackupRepository, error::DataLayerError},
-};
+use one_core::model::backup::{Metadata, UnexportableEntities};
+use one_core::model::history::History;
+use one_core::repository::backup_repository::BackupRepository;
+use one_core::repository::error::DataLayerError;
 use sea_orm::{
-    ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, FromQueryResult,
-    Iterable, JoinType, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait,
-    RelationTrait, Statement, Values,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait,
+    FromQueryResult, Iterable, JoinType, Order, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, QueryTrait, RelationTrait, Statement, Values,
 };
 use time::OffsetDateTime;
 
-use crate::{
-    backup::helpers::coalesce_to_empty_array,
-    entity::{claim_schema, credential_schema_claim_schema},
-};
-use crate::{
-    backup::{
-        helpers::{
-            json_agg_columns, json_object_columns, open_sqlite_on_path, JsonAgg, JsonObject,
-        },
-        models::UnexportableCredentialModel,
-    },
-    entity::{
-        claim, credential, credential_schema, credential_state, did, key, key_did, organisation,
-    },
-    mapper::to_data_layer_error,
-};
-
 use super::BackupProvider;
+use crate::backup::helpers::{
+    coalesce_to_empty_array, json_agg_columns, json_object_columns, open_sqlite_on_path, JsonAgg,
+    JsonObject,
+};
+use crate::backup::models::UnexportableCredentialModel;
+use crate::entity::{
+    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
+    credential_state, did, history, key, key_did, organisation,
+};
+use crate::mapper::to_data_layer_error;
 
 impl BackupProvider {
     pub fn new(db: DatabaseConnection, exportable_storages: Vec<String>) -> Self {
@@ -347,6 +340,18 @@ impl BackupRepository for BackupProvider {
             .await
             .map(|_| ())
             .map_err(to_data_layer_error)
+    }
+
+    #[tracing::instrument(level = "debug", skip(self), err(Debug))]
+    async fn add_history_event(&self, path: &Path, history: History) -> Result<(), DataLayerError> {
+        let db = open_sqlite_on_path(path).await?;
+
+        history::ActiveModel::try_from(history)?
+            .insert(&db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(())
     }
 }
 

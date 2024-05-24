@@ -4,27 +4,21 @@ use tempfile::NamedTempFile;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::BackupService;
+use crate::model::backup::{Metadata, UnexportableEntities};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
 };
-use crate::{
-    model::{
-        backup::{Metadata, UnexportableEntities},
-        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::CredentialSchema,
-        history::{HistoryAction, HistoryEntityType},
-        organisation::Organisation,
-    },
-    repository::{
-        backup_repository::MockBackupRepository, history_repository::MockHistoryRepository,
-        mock::organisation_repository::MockOrganisationRepository,
-    },
-    service::test_utilities::{dummy_did, dummy_key, dummy_organisation},
-};
-
-use super::BackupService;
+use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::model::organisation::Organisation;
+use crate::repository::backup_repository::MockBackupRepository;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::mock::organisation_repository::MockOrganisationRepository;
+use crate::service::test_utilities::{dummy_did, dummy_key, dummy_organisation};
 
 #[derive(Default)]
 struct Repositories {
@@ -199,6 +193,12 @@ async fn test_backup_flow() {
             let organisation = organisation.clone();
             || Ok(vec![organisation])
         });
+
+    repositories
+        .backup_repository
+        .expect_add_history_event()
+        .once()
+        .return_once(|_, _| Ok(()));
 
     repositories
         .history_repository
