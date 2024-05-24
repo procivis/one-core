@@ -19,7 +19,7 @@ impl TrustAnchorService {
     pub async fn create_trust_anchor(
         &self,
         anchor: CreateTrustAnchorRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<TrustAnchorId, ServiceError> {
         validate_trust_management(&anchor.type_, &self.config.trust_management)
             .map_err(|_| BusinessLogicError::UnknownTrustAnchorType)?;
 
@@ -31,9 +31,13 @@ impl TrustAnchorService {
             Ok(id) => {
                 let _ = self
                     .history_repository
-                    .create_history(create_history_event(id, organisation_id))
+                    .create_history(create_history_event(
+                        id,
+                        organisation_id,
+                        HistoryAction::Created,
+                    ))
                     .await;
-                Ok(())
+                Ok(id)
             }
             Err(DataLayerError::AlreadyExists) => {
                 Err(BusinessLogicError::TrustAnchorNameTaken.into())
@@ -98,18 +102,36 @@ impl TrustAnchorService {
     }
 
     pub async fn delete_trust_anchor(&self, anchor_id: TrustAnchorId) -> Result<(), ServiceError> {
-        self.trust_anchor_repository
-            .delete(anchor_id)
-            .await
-            .map_err(Into::into)
+        let anchor = self
+            .trust_anchor_repository
+            .get(anchor_id)
+            .await?
+            .ok_or(EntityNotFoundError::TrustAnchor(anchor_id))?;
+
+        self.trust_anchor_repository.delete(anchor_id).await?;
+
+        let _ = self
+            .history_repository
+            .create_history(create_history_event(
+                anchor.id,
+                anchor.organisation_id,
+                HistoryAction::Deleted,
+            ))
+            .await;
+
+        Ok(())
     }
 }
 
-fn create_history_event(trust_id: TrustAnchorId, organisation_id: OrganisationId) -> History {
+fn create_history_event(
+    trust_id: TrustAnchorId,
+    organisation_id: OrganisationId,
+    action: HistoryAction,
+) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Created,
+        action,
         entity_id: Some(trust_id.into()),
         entity_type: HistoryEntityType::TrustAnchor,
         metadata: None,

@@ -1,5 +1,6 @@
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
-use one_core::model::{trust_anchor::TrustAnchorRole, trust_entity::TrustEntityRole};
+use one_core::model::trust_anchor::TrustAnchorRole;
+use one_core::model::trust_entity::TrustEntityRole;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -28,7 +29,7 @@ async fn test_create_trust_entity() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 204);
+    assert_eq!(resp.status(), 201);
 }
 
 #[tokio::test]

@@ -2,8 +2,10 @@ use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
 use shared_types::CredentialId;
-use uuid::Uuid;
 
+use super::dto::{
+    CredentialRevocationCheckRequestRestDTO, CredentialRevocationCheckResponseRestDTO,
+};
 use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
 };
@@ -17,12 +19,7 @@ use crate::endpoint::credential::dto::{
     SuspendCredentialRequestRestDTO,
 };
 use crate::extractor::Qs;
-
 use crate::router::AppState;
-
-use super::dto::{
-    CredentialRevocationCheckRequestRestDTO, CredentialRevocationCheckResponseRestDTO,
-};
 
 #[utoipa::path(
     delete,
@@ -114,7 +111,7 @@ pub(crate) async fn post_credential(
         .create_credential(request.into())
         .await;
 
-    CreatedOrErrorResponse::from_result(result.map(Uuid::from), state, "creating credential")
+    CreatedOrErrorResponse::from_result(result, state, "creating credential")
 }
 
 #[utoipa::path(

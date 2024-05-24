@@ -644,7 +644,7 @@ interface OneCoreBinding {
   HistoryListItemBindingDTO get_history_entry(string history_id);
 
   [Throws=BindingError]
-  void create_trust_anchor(CreateTrustAnchorRequestBindingDTO anchor);
+  string create_trust_anchor(CreateTrustAnchorRequestBindingDTO anchor);
 
   [Throws=BindingError]
   GetTrustAnchoResponseBindingDTO get_trust_anchor(string anchor_id);

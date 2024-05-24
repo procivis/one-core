@@ -114,9 +114,12 @@ pub struct EntityResponseRestDTO {
     pub id: Uuid,
 }
 
-impl From<Uuid> for EntityResponseRestDTO {
-    fn from(id: Uuid) -> Self {
-        EntityResponseRestDTO { id }
+impl<T> From<T> for EntityResponseRestDTO
+where
+    T: Into<Uuid>,
+{
+    fn from(id: T) -> Self {
+        EntityResponseRestDTO { id: id.into() }
     }
 }
 

@@ -3,10 +3,11 @@ use axum::Json;
 use axum_extra::extract::WithRejection;
 use shared_types::TrustAnchorId;
 
-use crate::dto::common::GetTrustAnchorListResponseRestDTO;
+use crate::dto::common::{EntityResponseRestDTO, GetTrustAnchorListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
-    declare_utoipa_alias, AliasResponse, EmptyOrErrorResponse, OkOrErrorResponse,
+    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
+    OkOrErrorResponse,
 };
 use crate::endpoint::trust_anchor::dto::{
     CreateTrustAnchorRequestRestDTO, GetTrustAnchorResponseRestDTO, ListTrustAnchorsQuery,
@@ -18,7 +19,7 @@ use crate::router::AppState;
     post,
     path = "/api/trust-anchor/v1",
     request_body = CreateTrustAnchorRequestRestDTO,
-    responses(EmptyOrErrorResponse),
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
     tag = "trust_anchor",
     security(
         ("bearer" = [])
@@ -30,13 +31,13 @@ pub(crate) async fn create_trust_anchor(
         Json<CreateTrustAnchorRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> EmptyOrErrorResponse {
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
         .trust_anchor_service
         .create_trust_anchor(request.into())
         .await;
-    EmptyOrErrorResponse::from_result(result, state, "creating trust anchor")
+    CreatedOrErrorResponse::from_result(result, state, "creating trust anchor")
 }
 
 #[utoipa::path(

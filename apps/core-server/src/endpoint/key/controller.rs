@@ -1,12 +1,11 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
-use shared_types::KeyId;
-use uuid::Uuid;
-
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
+use shared_types::KeyId;
 
+use super::dto::GetKeyQuery;
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
@@ -19,8 +18,6 @@ use crate::endpoint::key::dto::{
 use crate::extractor::Qs;
 use crate::mapper::list_try_from;
 use crate::router::AppState;
-
-use super::dto::GetKeyQuery;
 
 #[utoipa::path(
     get,
@@ -73,7 +70,7 @@ pub(crate) async fn post_key(
     WithRejection(Json(request), _): WithRejection<Json<KeyRequestRestDTO>, ErrorResponseRestDTO>,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
     let result = state.core.key_service.generate_key(request.into()).await;
-    CreatedOrErrorResponse::from_result(result.map(Uuid::from), state, "creating key")
+    CreatedOrErrorResponse::from_result(result, state, "creating key")
 }
 
 declare_utoipa_alias!(GetKeyListResponseRestDTO);
