@@ -21,7 +21,7 @@ async fn test_create_anchor() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 204);
+    assert_eq!(resp.status(), 201);
 }
 
 #[tokio::test]

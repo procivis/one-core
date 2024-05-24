@@ -2,23 +2,21 @@ use shared_types::{OrganisationId, TrustEntityId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    model::{
-        history::{History, HistoryAction, HistoryEntityType},
-        organisation::Organisation,
-        trust_anchor::TrustAnchorRole,
-    },
-    repository::error::DataLayerError,
-    service::error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
+use super::dto::CreateTrustEntityRequestDTO;
+use super::TrustEntityService;
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::organisation::Organisation;
+use crate::model::trust_anchor::TrustAnchorRole;
+use crate::repository::error::DataLayerError;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-
-use super::{dto::CreateTrustEntityRequestDTO, TrustEntityService};
 
 impl TrustEntityService {
     pub async fn create_trust_entity(
         &self,
         entity: CreateTrustEntityRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<TrustEntityId, ServiceError> {
         let trust_anchor = self
             .trust_anchor_repository
             .get(entity.trust_anchor_id)
@@ -49,7 +47,7 @@ impl TrustEntityService {
                         trust_anchor.organisation_id,
                     ))
                     .await;
-                Ok(())
+                Ok(entity_id)
             }
             Err(DataLayerError::AlreadyExists) => {
                 Err(BusinessLogicError::TrustEntityAlreadyPresent.into())

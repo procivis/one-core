@@ -2,8 +2,8 @@ use axum::extract::{Path, State};
 use axum::Json;
 use axum_extra::extract::WithRejection;
 use shared_types::CredentialSchemaId;
-use uuid::Uuid;
 
+use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemasResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
@@ -12,10 +12,7 @@ use crate::dto::response::{
 };
 use crate::endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO;
 use crate::extractor::Qs;
-
 use crate::router::AppState;
-
-use super::dto::{CredentialSchemaResponseRestDTO, GetCredentialSchemaQuery};
 
 #[utoipa::path(
     delete,
@@ -111,5 +108,5 @@ pub(crate) async fn post_credential_schema(
         .credential_schema_service
         .create_credential_schema(request.into())
         .await;
-    CreatedOrErrorResponse::from_result(result.map(Uuid::from), state, "creating credential schema")
+    CreatedOrErrorResponse::from_result(result, state, "creating credential schema")
 }
