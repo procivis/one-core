@@ -1,26 +1,19 @@
 use shared_types::CredentialSchemaId;
 
-use crate::{
-    common_mapper::list_response_into,
-    model::{
-        claim_schema::ClaimSchemaRelations, credential_schema::CredentialSchemaRelations,
-        organisation::OrganisationRelations,
-    },
-    repository::error::DataLayerError,
-    service::{
-        credential_schema::{
-            dto::{
-                CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
-                GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
-            },
-            mapper::{
-                from_create_request, schema_create_history_event, schema_delete_history_event,
-            },
-            CredentialSchemaService,
-        },
-        error::{BusinessLogicError, EntityNotFoundError, ServiceError},
-    },
+use crate::common_mapper::list_response_into;
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::organisation::OrganisationRelations;
+use crate::repository::error::DataLayerError;
+use crate::service::credential_schema::dto::{
+    CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
+    GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
 };
+use crate::service::credential_schema::mapper::{
+    from_create_request, schema_create_history_event, schema_delete_history_event,
+};
+use crate::service::credential_schema::CredentialSchemaService;
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 
 impl CredentialSchemaService {
     /// Creates a credential according to request
@@ -46,6 +39,7 @@ impl CredentialSchemaService {
         super::validator::credential_schema_already_exists(
             &self.credential_schema_repository,
             &request.name,
+            request.schema_id.clone(),
             request.organisation_id,
         )
         .await?;

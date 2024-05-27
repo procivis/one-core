@@ -12,7 +12,7 @@ async fn test_create_credential_schema_success() {
     let resp = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation.id)
+        .create("some credential schema", organisation.id, None)
         .await;
 
     // THEN
@@ -47,19 +47,20 @@ async fn test_create_credential_schema_with_the_same_name_in_different_organisat
     let resp = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation.id)
+        .create("some credential schema", organisation.id, None)
         .await;
 
     let resp1 = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation1.id)
+        .create("some credential schema", organisation1.id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 201);
     assert_eq!(resp1.status(), 201);
 }
+
 #[tokio::test]
 async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisation() {
     // GIVEN
@@ -69,14 +70,14 @@ async fn test_fail_to_create_credential_schema_with_the_same_name_in_organisatio
     let resp = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation.id)
+        .create("some credential schema", organisation.id, None)
         .await;
     assert_eq!(resp.status(), 201);
 
     let resp = context
         .api
         .credential_schemas
-        .create("some credential schema", organisation.id)
+        .create("some credential schema", organisation.id, None)
         .await;
 
     // THEN
@@ -106,9 +107,32 @@ async fn test_create_credential_schema_with_the_same_name_and_organisation_as_de
     let resp = context
         .api
         .credential_schemas
-        .create(schema_name, organisation.id)
+        .create(schema_name, organisation.id, None)
         .await;
 
     // THEN
     assert_eq!(resp.status(), 201);
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_with_same_schema_id() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create("some credential schema1", organisation.id, Some("foo"))
+        .await;
+
+    let resp1 = context
+        .api
+        .credential_schemas
+        .create("some credential schema2", organisation.id, Some("foo"))
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    assert_eq!(resp1.status(), 400);
 }
