@@ -15,7 +15,12 @@ impl CredentialSchemasApi {
         Self { client }
     }
 
-    pub async fn create(&self, name: &str, organisation_id: impl Into<Uuid>) -> Response {
+    pub async fn create(
+        &self,
+        name: &str,
+        organisation_id: impl Into<Uuid>,
+        schema_id: Option<&str>,
+    ) -> Response {
         let body = json!({
           "claims": [
             {
@@ -35,7 +40,8 @@ impl CredentialSchemasApi {
             "labelColor": "label-color",
             "labelImage": "label-image",
             "primaryAttribute": "firstName",
-          }
+          },
+          "schemaId": schema_id,
         });
 
         self.client.post("/api/credential-schema/v1", body).await

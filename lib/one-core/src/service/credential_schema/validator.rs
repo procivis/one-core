@@ -5,26 +5,28 @@ use shared_types::OrganisationId;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
+use crate::config::validator::datatype::validate_datatypes;
+use crate::config::validator::format::validate_format;
+use crate::config::validator::revocation::validate_revocation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::service::credential_schema::dto::CredentialClaimSchemaRequestDTO;
+use crate::service::credential_schema::dto::{
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
+};
 use crate::service::credential_schema::mapper::create_unique_name_check_request;
-use crate::service::error::{BusinessLogicError, MissingProviderError, ValidationError};
-use crate::{
-    config::validator::{
-        datatype::validate_datatypes, format::validate_format, revocation::validate_revocation,
-    },
-    service::{credential_schema::dto::CreateCredentialSchemaRequestDTO, error::ServiceError},
+use crate::service::error::{
+    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
 
 pub(crate) async fn credential_schema_already_exists(
     repository: &Arc<dyn CredentialSchemaRepository>,
     name: &str,
+    schema_id: Option<String>,
     organisation_id: OrganisationId,
 ) -> Result<(), ServiceError> {
     let credential_schemas = repository
         .get_credential_schema_list(
-            create_unique_name_check_request(name, organisation_id)?,
+            create_unique_name_check_request(name, schema_id, organisation_id)?,
             &Default::default(),
         )
         .await?;
