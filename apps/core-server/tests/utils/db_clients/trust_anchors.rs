@@ -28,9 +28,9 @@ impl TrustAnchorDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             type_field: type_.into(),
-            publisher_reference: "123".into(),
+            publisher_reference: Some("123".into()),
             role,
-            priority: 10,
+            priority: Some(10),
             organisation_id,
         };
 

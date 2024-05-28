@@ -29,9 +29,12 @@ async fn test_get_trust_anchor() {
     body["id"].assert_eq(&anchor.id);
     assert_eq!(body["name"], anchor.name);
     assert_eq!(body["type"], anchor.type_field);
-    assert_eq!(body["publisherReference"], anchor.publisher_reference);
+    assert_eq!(
+        body["publisherReference"],
+        anchor.publisher_reference.unwrap()
+    );
     assert_eq!(body["role"], "PUBLISHER");
-    assert_eq!(body["priority"], anchor.priority);
+    assert_eq!(body["priority"], anchor.priority.unwrap());
     body["organisationId"].assert_eq(&anchor.organisation_id);
 }
 

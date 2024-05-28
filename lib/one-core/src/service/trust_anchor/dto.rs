@@ -12,9 +12,9 @@ use crate::model::trust_entity::{TrustEntity, TrustEntityRole};
 pub struct CreateTrustAnchorRequestDTO {
     pub name: String,
     pub type_: String,
-    pub publisher_reference: String,
+    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRole,
-    pub priority: u32,
+    pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
 }
 

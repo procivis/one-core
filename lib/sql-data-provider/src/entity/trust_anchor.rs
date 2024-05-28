@@ -1,7 +1,6 @@
 use dto_mapper::{From, Into};
 use one_core::model::trust_anchor::TrustAnchor;
 use sea_orm::entity::prelude::*;
-
 use shared_types::{DidId, OrganisationId, TrustAnchorId};
 use time::OffsetDateTime;
 
@@ -17,9 +16,9 @@ pub struct Model {
     pub name: String,
     #[sea_orm(column_name = "type")]
     pub type_field: String,
-    pub publisher_reference: String,
+    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRole,
-    pub priority: u32,
+    pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
 }
 

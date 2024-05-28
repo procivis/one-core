@@ -506,9 +506,9 @@ enum TrustAnchorRoleBinding {
 dictionary CreateTrustAnchorRequestBindingDTO {
   string name;
   string type;
-  string publisher_reference;
+  string? publisher_reference;
   TrustAnchorRoleBinding role;
-  u32 priority;
+  u32? priority;
   string organisation_id;
 };
 
@@ -518,9 +518,9 @@ dictionary GetTrustAnchoResponseBindingDTO {
   string created_date;
   string last_modified;
   string type;
-  string publisher_reference;
+  string? publisher_reference;
   TrustAnchorRoleBinding role;
-  u32 priority;
+  u32? priority;
   string organisation_id;
 };
 
