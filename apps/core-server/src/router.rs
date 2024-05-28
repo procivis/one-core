@@ -113,6 +113,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 .get(proof_schema::controller::get_proof_schema_detail),
         )
         .route(
+            "/api/proof-schema/v1/:id/share",
+            get(proof_schema::controller::share_proof_schema),
+        )
+        .route(
             "/api/history/v1",
             get(history::controller::get_history_list),
         )
@@ -383,6 +387,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             proof_schema::controller::post_proof_schema,
             proof_schema::controller::get_proof_schemas,
             proof_schema::controller::get_proof_schema_detail,
+            proof_schema::controller::share_proof_schema,
             proof_schema::controller::delete_proof_schema,
 
             proof::controller::get_proof_details,
@@ -516,6 +521,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 proof_schema::dto::ProofClaimSchemaResponseRestDTO,
                 proof_schema::dto::ProofInputSchemaRequestRestDTO,
                 proof_schema::dto::ProofInputSchemaResponseRestDTO,
+                proof_schema::dto::ProofSchemaShareResponseRestDTO,
 
                 ssi::dto::ConnectIssuerResponseRestDTO,
                 ssi::dto::ConnectVerifierResponseRestDTO,

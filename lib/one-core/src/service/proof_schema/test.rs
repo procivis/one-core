@@ -1,39 +1,36 @@
-use super::ProofSchemaService;
-use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaRelations};
-use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
-use crate::service::test_utilities::generic_config;
-use crate::{
-    model::{
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
-        common::GetListResponse,
-        credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType},
-        organisation::{Organisation, OrganisationRelations},
-        proof_schema::{
-            GetProofSchemaList, ProofInputSchemaRelations, ProofSchema, ProofSchemaRelations,
-        },
-    },
-    repository::{
-        credential_schema_repository::MockCredentialSchemaRepository,
-        error::DataLayerError,
-        history_repository::MockHistoryRepository,
-        mock::{
-            organisation_repository::MockOrganisationRepository,
-            proof_schema_repository::MockProofSchemaRepository,
-        },
-    },
-    service::{
-        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
-        proof_schema::dto::{
-            CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
-            ProofInputSchemaRequestDTO,
-        },
-    },
-};
-use mockall::{predicate::*, PredicateBooleanExt};
-use shared_types::CredentialSchemaId;
 use std::sync::Arc;
+
+use mockall::predicate::*;
+use mockall::PredicateBooleanExt;
+use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::ProofSchemaService;
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::common::GetListResponse;
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    LayoutType,
+};
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::proof_schema::{
+    GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
+    ProofSchema, ProofSchemaRelations,
+};
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::error::DataLayerError;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::mock::organisation_repository::MockOrganisationRepository;
+use crate::repository::mock::proof_schema_repository::MockProofSchemaRepository;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
+};
+use crate::service::proof_schema::dto::{
+    CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaQueryDTO,
+    ProofInputSchemaRequestDTO,
+};
+use crate::service::test_utilities::generic_config;
 
 fn setup_service(
     proof_schema_repository: MockProofSchemaRepository,
@@ -51,6 +48,7 @@ fn setup_service(
         organisation_repository: Arc::new(organisation_repository),
         history_repository: Arc::new(history_repository),
         config: Arc::new(generic_config().core),
+        base_url: Default::default(),
     }
 }
 

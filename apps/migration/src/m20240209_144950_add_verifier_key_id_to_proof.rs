@@ -1,14 +1,12 @@
 use sea_orm::{DbBackend, EntityTrait, FromQueryResult};
 use sea_orm_migration::prelude::*;
 
-use crate::{
-    m20240110_000001_initial::{
-        Claim, CustomDateTime, Did, Interaction, Key, KeyDid, Proof, ProofClaim,
-        ProofRequestStateEnum, ProofSchema, ProofState,
-    },
-    m20240123_124653_proof_state_enum_rename_offered_to_requested::ProofRequestState,
-    m20240209_144950_models::old_proof,
+use crate::m20240110_000001_initial::{
+    Claim, CustomDateTime, Did, Interaction, Key, KeyDid, Proof, ProofClaim, ProofRequestStateEnum,
+    ProofSchema, ProofState,
 };
+use crate::m20240123_124653_proof_state_enum_rename_offered_to_requested::ProofRequestState;
+use crate::m20240209_144950_models::old_proof;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

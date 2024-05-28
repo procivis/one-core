@@ -1,9 +1,9 @@
+use sea_orm::{EnumIter, Iterable};
+use sea_orm_migration::prelude::*;
+
 use crate::extension::postgres::Type;
 use crate::m20240110_000001_initial::CustomDateTime;
 use crate::m20240130_105023_add_history::{History, HistoryAction};
-use sea_orm::EnumIter;
-use sea_orm::Iterable;
-use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

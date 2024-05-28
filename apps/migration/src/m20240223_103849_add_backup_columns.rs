@@ -1,13 +1,11 @@
 use sea_orm::{EnumIter, Iterable};
 use sea_orm_migration::prelude::*;
 
-use crate::{
-    m20240110_000001_initial::{CustomDateTime, Did, Key, Organisation},
-    m20240130_105023_add_history::{History, HistoryAction, HistoryEntityType},
-    m20240130_153529_add_pending_variant_to_history_action_enum_in_history_table::UpdatedHistoryAction,
-    m20240209_144950_add_verifier_key_id_to_proof::{
-        copy_data_to_new_tables, drop_and_rename_tables,
-    },
+use crate::m20240110_000001_initial::{CustomDateTime, Did, Key, Organisation};
+use crate::m20240130_105023_add_history::{History, HistoryAction, HistoryEntityType};
+use crate::m20240130_153529_add_pending_variant_to_history_action_enum_in_history_table::UpdatedHistoryAction;
+use crate::m20240209_144950_add_verifier_key_id_to_proof::{
+    copy_data_to_new_tables, drop_and_rename_tables,
 };
 
 #[derive(DeriveMigrationName)]

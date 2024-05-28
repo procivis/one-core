@@ -1,46 +1,37 @@
-use super::{
-    dto::{
-        CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
-        ProofId,
-    },
-    mapper::{
-        get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
-        proof_requested_history_event,
-    },
-    ProofService,
-};
-use crate::{
-    common_mapper::list_response_try_into,
-    common_validator::throw_if_latest_proof_state_not_eq,
-    config::validator::exchange::validate_exchange_type,
-    model::{
-        claim::ClaimRelations,
-        common::EntityShareResponseDTO,
-        credential::CredentialRelations,
-        credential_schema::CredentialSchemaRelations,
-        did::{DidRelations, KeyRole},
-        interaction::InteractionRelations,
-        key::KeyRelations,
-        organisation::OrganisationRelations,
-        proof::{
-            Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
-            ProofStateRelations,
-        },
-        proof_schema::{
-            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
-        },
-    },
-    provider::transport_protocol::dto::PresentationDefinitionResponseDTO,
-    service::error::{
-        BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
-        ValidationError,
-    },
-};
-use crate::{
-    model::claim_schema::ClaimSchemaRelations,
-    service::proof::validator::validate_format_and_transport_protocol_compatibility,
-};
 use time::OffsetDateTime;
+
+use super::dto::{
+    CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO, ProofDetailResponseDTO,
+    ProofId,
+};
+use super::mapper::{
+    get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
+    proof_requested_history_event,
+};
+use super::ProofService;
+use crate::common_mapper::list_response_try_into;
+use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::config::validator::exchange::validate_exchange_type;
+use crate::model::claim::ClaimRelations;
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::common::EntityShareResponseDTO;
+use crate::model::credential::CredentialRelations;
+use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::did::{DidRelations, KeyRole};
+use crate::model::interaction::InteractionRelations;
+use crate::model::key::KeyRelations;
+use crate::model::organisation::OrganisationRelations;
+use crate::model::proof::{
+    Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
+};
+use crate::model::proof_schema::{
+    ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
+};
+use crate::provider::transport_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+};
+use crate::service::proof::validator::validate_format_and_transport_protocol_compatibility;
 
 impl ProofService {
     /// Returns details of a proof
@@ -264,7 +255,6 @@ impl ProofService {
     /// # Arguments
     ///
     /// * `id` - proof identifier
-    /// * `base_url` - verifier base url
     pub async fn share_proof(&self, id: &ProofId) -> Result<EntityShareResponseDTO, ServiceError> {
         let (proof, proof_state) = self.get_proof_with_state(id).await?;
 

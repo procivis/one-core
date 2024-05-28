@@ -1,8 +1,6 @@
-use sea_orm_migration::{
-    prelude::*,
-    sea_orm::{EnumIter, Iterable},
-    sea_query::extension::postgres::Type,
-};
+use sea_orm_migration::prelude::*;
+use sea_orm_migration::sea_orm::{EnumIter, Iterable};
+use sea_orm_migration::sea_query::extension::postgres::Type;
 
 use crate::m20240130_105023_add_history::{History, HistoryAction};
 

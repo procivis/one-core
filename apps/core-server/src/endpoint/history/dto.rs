@@ -1,16 +1,15 @@
 use dto_mapper::{convert_inner, From, Into};
+use one_core::service::history::dto::HistoryResponseDTO;
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, CredentialSchemaId, DidId, EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use one_core::service::history::dto::HistoryResponseDTO;
-
-use crate::deserialize::deserialize_timestamp;
-use crate::{dto::common::ListQueryParamsRest, serialize::front_time};
-
 use super::mapper::convert_history_metadata;
+use crate::deserialize::deserialize_timestamp;
+use crate::dto::common::ListQueryParamsRest;
+use crate::serialize::front_time;
 
 pub type GetHistoryQuery =
     ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;

@@ -1,14 +1,6 @@
-use provider::trust_management::provider::TrustManagementProviderImpl;
-use service::trust_anchor::TrustAnchorService;
-use service::trust_entity::TrustEntityService;
 use std::collections::HashMap;
 use std::sync::Arc;
-use time::Duration;
 
-use crate::config::core_config::JsonLdContextConfig;
-use crate::provider::key_storage::key_providers_from_config;
-use crate::provider::key_storage::provider::KeyProviderImpl;
-use crate::provider::key_storage::KeyStorage;
 use config::core_config::CoreConfig;
 use config::ConfigError;
 use crypto::hasher::sha256::SHA256;
@@ -20,15 +12,30 @@ use crypto::signer::Signer;
 use crypto::{CryptoProvider, CryptoProviderImpl};
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use provider::key_storage::secure_element::NativeKeyStorage;
-use provider::task::{provider::TaskProviderImpl, tasks_from_config};
-use provider::transport_protocol::{provider::TransportProtocolProviderImpl, TransportProtocol};
+use provider::task::provider::TaskProviderImpl;
+use provider::task::tasks_from_config;
+use provider::transport_protocol::provider::TransportProtocolProviderImpl;
+use provider::transport_protocol::TransportProtocol;
+use provider::trust_management::provider::TrustManagementProviderImpl;
 use repository::DataRepository;
-use service::{
-    backup::BackupService, config::ConfigService, credential::CredentialService, did::DidService,
-    organisation::OrganisationService, proof::ProofService, proof_schema::ProofSchemaService,
-    ssi_holder::SSIHolderService, ssi_issuer::SSIIssuerService, ssi_verifier::SSIVerifierService,
-    task::TaskService,
-};
+use service::backup::BackupService;
+use service::config::ConfigService;
+use service::credential::CredentialService;
+use service::did::DidService;
+use service::organisation::OrganisationService;
+use service::proof::ProofService;
+use service::proof_schema::ProofSchemaService;
+use service::ssi_holder::SSIHolderService;
+use service::ssi_issuer::SSIIssuerService;
+use service::ssi_verifier::SSIVerifierService;
+use service::task::TaskService;
+use service::trust_anchor::TrustAnchorService;
+use service::trust_entity::TrustEntityService;
+use time::Duration;
+
+use crate::config::core_config::JsonLdContextConfig;
+use crate::provider::key_storage::provider::KeyProviderImpl;
+use crate::provider::key_storage::{key_providers_from_config, KeyStorage};
 
 pub mod config;
 pub mod provider;
@@ -322,6 +329,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),
                 config.clone(),
+                core_base_url.clone(),
             ),
             proof_service: ProofService::new(
                 data_provider.get_proof_repository(),

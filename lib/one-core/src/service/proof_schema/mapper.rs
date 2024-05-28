@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+use dto_mapper::convert_inner;
+use shared_types::{CredentialSchemaId, OrganisationId};
+use time::OffsetDateTime;
+use uuid::Uuid;
+
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO,
     ProofInputSchemaResponseDTO, ProofSchemaId,
@@ -10,17 +15,10 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::ExactColumn;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
-use crate::service::error::BusinessLogicError;
+use crate::model::organisation::Organisation;
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::proof_schema::dto::GetProofSchemaQueryDTO;
-use crate::{
-    model::{organisation::Organisation, proof_schema::ProofSchema},
-    service::error::ServiceError,
-};
-use dto_mapper::convert_inner;
-use shared_types::{CredentialSchemaId, OrganisationId};
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 pub(super) fn convert_proof_schema_to_response(
     value: ProofSchema,
@@ -307,11 +305,14 @@ pub(super) fn proof_schema_created_history_event(
     }
 }
 
-pub(super) fn proof_schema_deleted_history_event(proof_schema: ProofSchema) -> History {
+pub(super) fn proof_schema_history_event(
+    proof_schema: ProofSchema,
+    action: HistoryAction,
+) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
-        action: HistoryAction::Deleted,
+        action,
         entity_id: Some(proof_schema.id.into()),
         entity_type: HistoryEntityType::ProofSchema,
         metadata: None,

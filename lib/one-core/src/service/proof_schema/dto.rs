@@ -3,13 +3,9 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    model::{
-        common::{GetListQueryParams, GetListResponse},
-        proof_schema::{ProofSchema, SortableProofSchemaColumn},
-    },
-    service::credential_schema::dto::CredentialSchemaListItemResponseDTO,
-};
+use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
+use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 
 pub type ProofSchemaId = Uuid;
 
@@ -73,4 +69,9 @@ pub struct ProofInputSchemaRequestDTO {
     pub credential_schema_id: CredentialSchemaId,
     pub validity_constraint: Option<i64>,
     pub claim_schemas: Vec<CreateProofSchemaClaimRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProofSchemaShareResponseDTO {
+    pub url: String,
 }

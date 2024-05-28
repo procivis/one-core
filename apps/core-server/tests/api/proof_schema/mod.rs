@@ -2,3 +2,4 @@ mod create_proof_schema_tests;
 mod delete_proof_schema_tests;
 mod get_proof_schema_tests;
 mod list_proof_schema_tests;
+mod share_proof_schema_tests;

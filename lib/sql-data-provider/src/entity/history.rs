@@ -1,11 +1,11 @@
 use dto_mapper::{From, Into};
+use one_core::model::history::{
+    HistoryAction as ModelHistoryAction, HistoryEntityType as ModelHistoryEntityType,
+};
 use sea_orm::entity::prelude::*;
+use shared_types::{EntityId, HistoryId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-use one_core::model::history::HistoryAction as ModelHistoryAction;
-use one_core::model::history::HistoryEntityType as ModelHistoryEntityType;
-use shared_types::{EntityId, HistoryId, OrganisationId};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "history")]

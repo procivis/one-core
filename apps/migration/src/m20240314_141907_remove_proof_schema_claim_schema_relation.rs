@@ -1,18 +1,15 @@
+use m20240110_000001_initial::ProofSchema as OldProofSchema;
+use m20240223_094129_validity_constraint_in_proof_schema::ProofSchema as NewProofSchema;
 use sea_orm::{DbBackend, Statement};
 use sea_orm_migration::prelude::*;
 
-use crate::{
-    m20240110_000001_initial::{
-        self, ClaimSchema, CredentialSchemaClaimSchema, ProofSchemaClaimSchema,
-    },
-    m20240223_094129_validity_constraint_in_proof_schema,
-    m20240314_101347_recreate_proof_input_schema_and_proof_input_claim_schema_tables::{
-        ProofInputClaimSchema, ProofInputSchema,
-    },
+use crate::m20240110_000001_initial::{
+    self, ClaimSchema, CredentialSchemaClaimSchema, ProofSchemaClaimSchema,
 };
-
-use m20240110_000001_initial::ProofSchema as OldProofSchema;
-use m20240223_094129_validity_constraint_in_proof_schema::ProofSchema as NewProofSchema;
+use crate::m20240223_094129_validity_constraint_in_proof_schema;
+use crate::m20240314_101347_recreate_proof_input_schema_and_proof_input_claim_schema_tables::{
+    ProofInputClaimSchema, ProofInputSchema,
+};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

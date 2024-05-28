@@ -68,7 +68,7 @@ pub struct TrustAnchorsListItemResponseDTO {
     pub r#type: String,
     pub publisher_reference: Option<String>,
     pub role: TrustAnchorRole,
-    pub priority: u32,
+    pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
     pub entities: u32,
 }
