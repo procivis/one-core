@@ -411,6 +411,8 @@ enum HistoryActionBindingEnum {
   "Pending",
   "Suspended",
   "Restored",
+  "Shared",
+  "Imported",
 };
 
 enum HistoryEntityTypeBindingEnum {
