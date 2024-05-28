@@ -229,28 +229,25 @@ pub(super) fn unnest_claim_schemas(
 }
 
 fn unnest_claim_schemas_inner(
-    mut claim_schemas: Vec<CredentialClaimSchemaRequestDTO>,
+    claim_schemas: Vec<CredentialClaimSchemaRequestDTO>,
     prefix: String,
 ) -> Vec<CredentialClaimSchemaRequestDTO> {
-    let nested_claims = claim_schemas
-        .iter()
-        .map(|claim_schema| {
-            unnest_claim_schemas_inner(
-                claim_schema.claims.to_owned(),
-                format!("{prefix}{}/", claim_schema.key),
-            )
-        })
-        .collect::<Vec<Vec<CredentialClaimSchemaRequestDTO>>>()
-        .into_iter()
-        .flatten()
-        .collect::<Vec<CredentialClaimSchemaRequestDTO>>();
+    let mut result = vec![];
 
-    for claim_schema in claim_schemas.iter_mut() {
-        claim_schema.key = format!("{prefix}{}", claim_schema.key);
-        claim_schema.claims = vec![];
+    for claim_schema in claim_schemas {
+        let key = format!("{prefix}{}", claim_schema.key);
+
+        let nested =
+            unnest_claim_schemas_inner(claim_schema.claims, format!("{key}{NESTED_CLAIM_MARKER}"));
+
+        result.push(CredentialClaimSchemaRequestDTO {
+            key,
+            claims: vec![],
+            ..claim_schema
+        });
+
+        result.extend(nested);
     }
 
-    claim_schemas.extend(nested_claims);
-
-    claim_schemas
+    result
 }

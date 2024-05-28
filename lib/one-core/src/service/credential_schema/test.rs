@@ -1444,12 +1444,6 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
             claims: vec![],
         },
         CredentialClaimSchemaRequestDTO {
-            key: "address/postal_data".to_string(),
-            datatype: "OBJECT".to_string(),
-            required: true,
-            claims: vec![],
-        },
-        CredentialClaimSchemaRequestDTO {
             key: "address/location/x".to_string(),
             datatype: "STRING".to_string(),
             required: true,
@@ -1458,6 +1452,12 @@ async fn test_unnest_claim_schemas_from_request_multiple_layers_of_nested_claims
         CredentialClaimSchemaRequestDTO {
             key: "address/location/y".to_string(),
             datatype: "STRING".to_string(),
+            required: true,
+            claims: vec![],
+        },
+        CredentialClaimSchemaRequestDTO {
+            key: "address/postal_data".to_string(),
+            datatype: "OBJECT".to_string(),
             required: true,
             claims: vec![],
         },

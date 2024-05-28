@@ -1087,7 +1087,7 @@ async fn handle_credential_invitation(
                     let credential_format = map_from_oidc_format_to_core(&credential.format)
                         .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
 
-                    let claim_schemas = issuer_metadata
+                    let metadata_credential = issuer_metadata
                         .credentials_supported
                         .into_iter()
                         .find(|credential| {
@@ -1095,9 +1095,14 @@ async fn handle_credential_invitation(
                                 .doctype
                                 .as_ref()
                                 .is_some_and(|doctype| doctype == &schema_id)
-                        })
-                        .and_then(|credential| credential.claims);
+                        });
 
+                    let element_order = metadata_credential
+                        .as_ref()
+                        .and_then(|credential| credential.order.to_owned());
+
+                    let claim_schemas =
+                        metadata_credential.and_then(|credential| credential.claims);
                     let claims_specified = claim_schemas.is_some();
 
                     let credential_schema = from_create_request(
@@ -1107,7 +1112,7 @@ async fn handle_credential_invitation(
                             revocation_method: "NONE".to_string(),
                             organisation_id: organisation.id,
                             claims: if let Some(schemas) = claim_schemas {
-                                parse_mdoc_schema_claims(schemas)
+                                parse_mdoc_schema_claims(schemas, element_order)
                             } else {
                                 vec![]
                             },

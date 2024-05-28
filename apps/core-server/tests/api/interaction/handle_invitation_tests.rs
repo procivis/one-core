@@ -1,4 +1,3 @@
-use maplit::btreeset;
 use one_core::{
     model::{
         credential_schema::{CredentialSchemaType, WalletStorageTypeEnum},
@@ -9,10 +8,7 @@ use one_core::{
     },
 };
 use serde_json::json;
-use std::{
-    collections::{BTreeSet, HashMap},
-    str::FromStr,
-};
+use std::{collections::HashMap, str::FromStr};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -1247,21 +1243,30 @@ async fn test_handle_invitation_mdoc() {
                     "company": {
                         "value_type": "OBJECT",
                         "value": {
-                                "address": {
-                                    "value_type": "OBJECT",
-                                    "value": {
-                                        "streetName": {
-                                            "value_type": "STRING",
-                                            "value": "Deitzingerstrasse 111"
-                                        },
-                                        "streetNumber": {
-                                            "value_type": "NUMBER",
-                                            "value": "55"
-                                        },
-                                    }
+                            "address": {
+                                "value_type": "OBJECT",
+                                "value": {
+                                    "streetName": {
+                                        "value_type": "STRING",
+                                        "value": "Deitzingerstrasse 111"
+                                    },
+                                    "streetNumber": {
+                                        "value_type": "NUMBER",
+                                        "value": "55"
+                                    },
                                 }
+                            }
                         }
-                    }
+                    },
+                    "first.namespace": {
+                        "value_type": "OBJECT",
+                        "value": {
+                            "field": {
+                                "value_type": "STRING",
+                                "value": "test"
+                            }
+                        }
+                    },
                 },
                 "doctype": "custom-doctype",
             }
@@ -1283,25 +1288,29 @@ async fn test_handle_invitation_mdoc() {
                 "credential_issuer": credential_issuer,
                 "credentials_supported": [{
                     "claims": {
+                        "first.namespace": {
+                            "field": {
+                                "value_type": "STRING"
+                            }
+                        },
                         "company": {
-                            "value_type": "OBJECT",
-                            "value": {
-                                "address": {
-                                    "value_type": "OBJECT",
-                                    "value": {
-                                        "streetName": {
-                                            "value_type": "STRING"
-                                        },
-                                        "streetNumber": {
-                                            "value_type": "NUMBER"
-                                        }
+                            "address": {
+                                "value_type": "OBJECT",
+                                "value": {
+                                    "streetName": {
+                                        "value_type": "STRING"
+                                    },
+                                    "streetNumber": {
+                                        "value_type": "NUMBER"
                                     }
-                                }
+                                },
+                                "order": ["streetName", "streetNumber"]
                             }
                         }
                     },
                     "format": "mso_mdoc",
-                    "doctype": "custom-doctype"
+                    "doctype": "custom-doctype",
+                    "order": ["first.namespace~field", "company~address"]
                 }]
             }
         )))
@@ -1373,7 +1382,7 @@ async fn test_handle_invitation_mdoc() {
         .credentials
         .get(&resp["credentialIds"][0].parse())
         .await;
-    let claim_schema_keys: BTreeSet<String> = credential
+    let claim_schema_keys: Vec<String> = credential
         .schema
         .unwrap()
         .claim_schemas
@@ -1383,11 +1392,13 @@ async fn test_handle_invitation_mdoc() {
         .collect();
 
     assert_eq!(
-        btreeset![
-            "company/address/streetName".into(),
-            "company/address/streetNumber".into(),
-            "company".into(),
-            "company/address".into(),
+        vec![
+            "first.namespace".to_string(),
+            "first.namespace/field".to_string(),
+            "company".to_string(),
+            "company/address".to_string(),
+            "company/address/streetName".to_string(),
+            "company/address/streetNumber".to_string(),
         ],
         claim_schema_keys
     );

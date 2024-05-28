@@ -66,6 +66,8 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
+use super::mapper::convert_mdoc_claims;
+
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 #[serde(rename_all = "camelCase")]
@@ -126,8 +128,12 @@ pub struct OpenID4VCIIssuerMetadataResponseRestDTO {
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[from(with_fn = convert_mdoc_claims)]
+    pub claims:
+        Option<HashMap<String, HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner_of_inner)]
-    pub claims: Option<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>>,
+    pub order: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[from(with_fn = convert_inner)]
     pub credential_definition: Option<OpenID4VCIIssuerMetadataCredentialDefinitionResponseRestDTO>,
@@ -173,6 +179,8 @@ pub struct OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO {
     pub value_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mandatory: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
