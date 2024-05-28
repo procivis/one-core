@@ -8,9 +8,9 @@ pub struct TrustAnchor {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub type_field: String,
-    pub publisher_reference: String,
+    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRole,
-    pub priority: u32,
+    pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
 }
 

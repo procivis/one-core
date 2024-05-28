@@ -50,9 +50,9 @@ pub struct GetTrustAnchorResponseRestDTO {
     #[from(rename = type_field)]
     pub r#type: String,
 
-    pub publisher_reference: String,
+    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleRest,
-    pub priority: u32,
+    pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
 }
 
