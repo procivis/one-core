@@ -13,7 +13,7 @@ async fn test_get_trust_anchor() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -35,7 +35,7 @@ async fn test_get_trust_anchor() {
     );
     assert_eq!(body["role"], "PUBLISHER");
     assert_eq!(body["priority"], anchor.priority.unwrap());
-    body["organisationId"].assert_eq(&anchor.organisation_id);
+    body["organisationId"].assert_eq(&anchor.organisation.unwrap().id);
 }
 
 #[tokio::test]

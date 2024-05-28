@@ -1,5 +1,7 @@
-use shared_types::{TrustAnchorId, TrustEntityId};
+use shared_types::TrustEntityId;
 use time::OffsetDateTime;
+
+use super::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 
 #[derive(Clone, Debug)]
 pub struct TrustEntity {
@@ -13,7 +15,9 @@ pub struct TrustEntity {
     pub terms_url: Option<String>,
     pub privacy_url: Option<String>,
     pub role: TrustEntityRole,
-    pub trust_anchor_id: TrustAnchorId,
+
+    // Relations
+    pub trust_anchor: Option<TrustAnchor>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -21,4 +25,9 @@ pub enum TrustEntityRole {
     Issuer,
     Verifier,
     Both,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct TrustEntityRelations {
+    pub trust_anchor: Option<TrustAnchorRelations>,
 }

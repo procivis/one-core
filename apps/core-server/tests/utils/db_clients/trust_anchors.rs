@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use one_core::model::organisation::Organisation;
 use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
-use shared_types::OrganisationId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -18,7 +18,7 @@ impl TrustAnchorDB {
     pub async fn create(
         &self,
         name: &str,
-        organisation_id: OrganisationId,
+        organisation: Organisation,
         type_: &str,
         role: TrustAnchorRole,
     ) -> TrustAnchor {
@@ -31,7 +31,7 @@ impl TrustAnchorDB {
             publisher_reference: Some("123".into()),
             role,
             priority: Some(10),
-            organisation_id,
+            organisation: Some(organisation),
         };
 
         self.repository.create(trust_anchor.clone()).await.unwrap();

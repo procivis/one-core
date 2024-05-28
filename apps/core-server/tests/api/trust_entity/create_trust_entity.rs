@@ -1,6 +1,9 @@
 use core_server::endpoint::trust_entity::dto::TrustEntityRoleRest;
-use one_core::model::trust_anchor::TrustAnchorRole;
-use one_core::model::trust_entity::TrustEntityRole;
+use one_core::model::{
+    trust_anchor::{TrustAnchor, TrustAnchorRole},
+    trust_entity::TrustEntityRole,
+};
+use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -15,7 +18,7 @@ async fn test_create_trust_entity() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -25,7 +28,7 @@ async fn test_create_trust_entity() {
     let resp = context
         .api
         .trust_entities
-        .create("entity", "name", TrustEntityRoleRest::Both, anchor.id)
+        .create("entity", "name", TrustEntityRoleRest::Both, &anchor)
         .await;
 
     // THEN
@@ -37,11 +40,23 @@ async fn test_fail_to_create_trust_entity_unknown_trust_id() {
     // GIVEN
     let context = TestContext::new().await;
 
+    let ta = TrustAnchor {
+        id: Uuid::new_v4().into(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        name: "name".to_owned(),
+        publisher_reference: Some("test".to_owned()),
+        type_field: "test".to_owned(),
+        organisation: None,
+        priority: Some(1),
+        role: TrustAnchorRole::Publisher,
+    };
+
     // WHEN
     let resp = context
         .api
         .trust_entities
-        .create("entity", "name", TrustEntityRoleRest::Both, Uuid::new_v4())
+        .create("entity", "name", TrustEntityRoleRest::Both, &ta)
         .await;
 
     // THEN
@@ -59,7 +74,7 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Client,
         )
@@ -69,7 +84,7 @@ async fn test_fail_to_create_trust_entity_trust_role_is_not_publish() {
     let resp = context
         .api
         .trust_entities
-        .create("entity", "name", TrustEntityRoleRest::Both, anchor.id)
+        .create("entity", "name", TrustEntityRoleRest::Both, &anchor)
         .await;
 
     // THEN
@@ -87,7 +102,7 @@ async fn test_fail_to_create_trust_entity_entity_is_present() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -96,14 +111,14 @@ async fn test_fail_to_create_trust_entity_entity_is_present() {
     context
         .db
         .trust_entities
-        .create("entity", "name", TrustEntityRole::Both, anchor.id)
+        .create("entity", "name", TrustEntityRole::Both, anchor.clone())
         .await;
 
     // WHEN
     let resp = context
         .api
         .trust_entities
-        .create("entity", "name", TrustEntityRoleRest::Both, anchor.id)
+        .create("entity", "name", TrustEntityRoleRest::Both, &anchor)
         .await;
 
     // THEN
@@ -121,7 +136,7 @@ async fn test_delete_trust_entity() {
         .trust_anchors
         .create(
             "trust-anchor",
-            organisation.id,
+            organisation,
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -134,7 +149,7 @@ async fn test_delete_trust_entity() {
             "trust-entity-id",
             "trust-entity",
             TrustEntityRole::Both,
-            anchor.id,
+            anchor,
         )
         .await;
 

@@ -12,7 +12,7 @@ async fn test_delete_trust_anchor() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            organisation,
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -21,7 +21,7 @@ async fn test_delete_trust_anchor() {
     context
         .db
         .trust_entities
-        .create("entity_id", "name", TrustEntityRole::Both, anchor.id)
+        .create("entity_id", "name", TrustEntityRole::Both, anchor.clone())
         .await;
 
     // WHEN

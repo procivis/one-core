@@ -1,4 +1,5 @@
 use core_server::endpoint::trust_anchor::dto::TrustAnchorRoleRest;
+use one_core::model::organisation::Organisation;
 use serde_json::json;
 use shared_types::OrganisationId;
 use uuid::Uuid;
@@ -22,7 +23,7 @@ impl TrustAnchorsApi {
     pub async fn create(
         &self,
         name: &str,
-        organisation_id: impl Into<Uuid>,
+        organisation: &Organisation,
         type_: &str,
         role: TrustAnchorRoleRest,
     ) -> Response {
@@ -32,7 +33,7 @@ impl TrustAnchorsApi {
           "publisherReference": "",
           "role": role,
           "priority": 10,
-          "organisationId": organisation_id.into()
+          "organisationId": organisation.id
         });
 
         self.client.post("/api/trust-anchor/v1", body).await

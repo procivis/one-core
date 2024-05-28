@@ -7,7 +7,7 @@ use one_core::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 use one_core::model::did::{DidType, KeyRole, SortableDidColumn};
 use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEnum};
 use one_core::model::proof::ProofStateEnum;
-use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
+use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::provider::key_storage::GeneratedKey;
 use one_core::provider::transport_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
@@ -36,7 +36,8 @@ use one_core::service::proof::dto::{ProofClaimDTO, ProofClaimValueDTO, ProofInpu
 use one_core::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
 use one_core::service::ssi_holder::dto::PresentationSubmitCredentialRequestDTO;
 use one_core::service::trust_anchor::dto::{
-    GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn, TrustAnchorsListItemResponseDTO,
+    GetTrustAnchorDetailResponseDTO, GetTrustAnchorsResponseDTO, SortableTrustAnchorColumn,
+    TrustAnchorsListItemResponseDTO,
 };
 
 use crate::error::NativeKeyStorageError;
@@ -732,8 +733,8 @@ pub enum TrustAnchorRoleBinding {
 }
 
 #[derive(Clone, Debug, From)]
-#[from(TrustAnchor)]
-pub struct GetTrustAnchoResponseBindingDTO {
+#[from(GetTrustAnchorDetailResponseDTO)]
+pub struct GetTrustAnchorResponseBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,
     pub name: String,
@@ -741,7 +742,6 @@ pub struct GetTrustAnchoResponseBindingDTO {
     pub created_date: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
-    #[from(rename = type_field)]
     pub r#type: String,
     pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleBinding,
@@ -795,9 +795,9 @@ pub struct TrustAnchorsListItemResponseBindingDTO {
     pub last_modified: String,
 
     pub r#type: String,
-    pub publisher_reference: String,
+    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleBinding,
-    pub priority: u32,
+    pub priority: Option<u32>,
     #[from(with_fn_ref = "ToString::to_string")]
     pub organisation_id: String,
     pub entities: u64,

@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
-use crate::config::core_config;
-use crate::repository::history_repository::HistoryRepository;
-use crate::repository::trust_anchor_repository::TrustAnchorRepository;
-use crate::repository::trust_entity_repository::TrustEntityRepository;
+use crate::{
+    config::core_config,
+    repository::{
+        history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
+        trust_anchor_repository::TrustAnchorRepository,
+        trust_entity_repository::TrustEntityRepository,
+    },
+};
 
 pub mod dto;
 pub mod mapper;
@@ -14,6 +18,7 @@ pub struct TrustAnchorService {
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
     history_repository: Arc<dyn HistoryRepository>,
+    organisation_repository: Arc<dyn OrganisationRepository>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -22,12 +27,14 @@ impl TrustAnchorService {
         trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
         trust_entity_repository: Arc<dyn TrustEntityRepository>,
         history_repository: Arc<dyn HistoryRepository>,
+        organisation_repository: Arc<dyn OrganisationRepository>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             trust_anchor_repository,
             trust_entity_repository,
             history_repository,
+            organisation_repository,
             config,
         }
     }

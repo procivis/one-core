@@ -18,7 +18,7 @@ pub async fn new_with_trust_list() -> (
         .trust_anchors
         .create(
             "ta1",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -31,7 +31,7 @@ pub async fn new_with_trust_list() -> (
             "entity1",
             "entity1",
             TrustEntityRole::Issuer,
-            trust_anchor.id,
+            trust_anchor.clone(),
         )
         .await;
 
@@ -42,7 +42,7 @@ pub async fn new_with_trust_list() -> (
             "entity2",
             "entity2",
             TrustEntityRole::Verifier,
-            trust_anchor.id,
+            trust_anchor.clone(),
         )
         .await;
 
@@ -90,7 +90,7 @@ async fn test_get_trust_list_failed_list_is_not_simple_trust_list() {
         .trust_anchors
         .create(
             "ta1",
-            organisation.id,
+            organisation.clone(),
             "COMPLICATED_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )

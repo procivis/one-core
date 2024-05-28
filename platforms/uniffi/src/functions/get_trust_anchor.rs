@@ -1,12 +1,12 @@
 use crate::error::BindingError;
 use crate::utils::into_id;
-use crate::{GetTrustAnchoResponseBindingDTO, OneCoreBinding};
+use crate::{GetTrustAnchorResponseBindingDTO, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn get_trust_anchor(
         &self,
         trust_anchor_id: String,
-    ) -> Result<GetTrustAnchoResponseBindingDTO, BindingError> {
+    ) -> Result<GetTrustAnchorResponseBindingDTO, BindingError> {
         self.block_on(async {
             let core = self.use_core().await?;
             Ok(core

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::endpoint::credential::dto::CredentialDetailClaimResponseRestDTO;
 use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
 use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
 use crate::serialize::front_time_option;
 use crate::{
@@ -57,7 +58,8 @@ use one_core::service::{
     },
     ssi_issuer::dto::IssuerResponseDTO,
     ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
-    trust_anchor::dto::{GetTrustAnchorResponseDTO, GetTrustEntityResponseDTO},
+    trust_anchor::dto::GetTrustAnchorResponseDTO,
+    trust_entity::dto::GetTrustEntityResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
@@ -740,5 +742,6 @@ pub struct GetTrustEntityResponseRestDTO {
     pub privacy_url: Option<String>,
     pub role: TrustEntityRoleRest,
 
-    pub trust_anchor_id: TrustAnchorId,
+    #[from(with_fn = convert_inner)]
+    pub trust_anchor: Option<GetTrustAnchorDetailResponseRestDTO>,
 }

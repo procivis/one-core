@@ -14,6 +14,7 @@ use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::endpoint::proof::dto::ProofListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO;
 use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
+use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +28,7 @@ use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
     GetKeyListResponseRestDTO = GetListResponseRestDTO<KeyListItemResponseRestDTO>,
     GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>,
     GetTrustAnchorListResponseRestDTO = GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>,
+    GetTrustEntityListResponseRestDTO = GetListResponseRestDTO<ListTrustEntitiesResponseItemRestDTO>,
 )]
 pub struct GetListResponseRestDTO<T>
 where

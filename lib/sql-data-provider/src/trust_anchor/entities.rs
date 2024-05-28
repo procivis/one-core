@@ -14,7 +14,7 @@ pub(super) struct TrustAnchorsListItemEntityModel {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub r#type: String,
-    pub publisher_reference: String,
+    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRole,
     pub priority: u32,
     pub organisation_id: OrganisationId,
