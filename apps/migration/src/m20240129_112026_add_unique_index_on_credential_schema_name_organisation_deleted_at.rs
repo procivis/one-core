@@ -1,9 +1,7 @@
 use sea_orm_migration::prelude::*;
 
-use crate::{
-    m20240110_000001_initial::CredentialSchema,
-    m20240116_153515_make_name_indexes_unique::UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX,
-};
+use crate::m20240110_000001_initial::CredentialSchema;
+use crate::m20240116_153515_make_name_indexes_unique::UNIQUE_CREDENTIAL_SCHEMA_NAME_IN_ORGANISATION_INDEX;
 
 pub const UNIQUE_INDEX_CREDENTIAL_SCHEMA_ORGANISATION_ID_NAME_DELETED_AT: &str =
     "index-CredentialSchema-OrganisationId-Name-DeletedAt_Unique";

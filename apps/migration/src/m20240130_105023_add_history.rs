@@ -1,5 +1,6 @@
-use crate::m20240110_000001_initial::Organisation;
 use sea_orm_migration::prelude::*;
+
+use crate::m20240110_000001_initial::Organisation;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;

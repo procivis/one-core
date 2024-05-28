@@ -1,5 +1,11 @@
+use axum::extract::{Path, State};
+use axum::Json;
+use axum_extra::extract::WithRejection;
+use uuid::Uuid;
+
 use super::dto::{
     CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
+    ProofSchemaShareResponseRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -8,13 +14,7 @@ use crate::dto::response::{
     OkOrErrorResponse,
 };
 use crate::extractor::Qs;
-
 use crate::router::AppState;
-
-use axum::extract::{Path, State};
-use axum::Json;
-use axum_extra::extract::WithRejection;
-use uuid::Uuid;
 
 #[utoipa::path(
     post,
@@ -107,4 +107,24 @@ pub(crate) async fn delete_proof_schema(
         .delete_proof_schema(&id)
         .await;
     EmptyOrErrorResponse::from_result(result, state, "deleting proof schema")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/proof-schema/v1/{id}/share",
+    responses(OkOrErrorResponse<ProofSchemaShareResponseRestDTO>),
+    params(
+        ("id" = Uuid, Path, description = "Schema id")
+    ),
+    tag = "proof_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn share_proof_schema(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<ProofSchemaShareResponseRestDTO> {
+    let result = state.core.proof_schema_service.share_proof_schema(id).await;
+    OkOrErrorResponse::from_result(result, state, "sharing proof schema")
 }

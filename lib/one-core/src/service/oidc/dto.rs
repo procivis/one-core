@@ -6,17 +6,11 @@ use thiserror::Error;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    model::{
-        credential_schema::{CredentialSchema, WalletStorageTypeEnum},
-        proof_schema::ProofInputClaimSchema,
-    },
-    provider::{
-        credential_formatter::model::DetailCredential,
-        transport_protocol::dto::SubmitIssuerResponse,
-    },
-    service::credential::dto::CredentialSchemaType,
-};
+use crate::model::credential_schema::{CredentialSchema, WalletStorageTypeEnum};
+use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
+use crate::service::credential::dto::CredentialSchemaType;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataResponseDTO {

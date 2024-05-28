@@ -1,10 +1,10 @@
-use crate::config::core_config;
-use crate::repository::{
-    credential_schema_repository::CredentialSchemaRepository,
-    history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
-    proof_schema_repository::ProofSchemaRepository,
-};
 use std::sync::Arc;
+
+use crate::config::core_config;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
+use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
 pub mod dto;
 pub mod service;
@@ -19,6 +19,7 @@ pub struct ProofSchemaService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     config: Arc<core_config::CoreConfig>,
+    base_url: Option<String>,
 }
 
 impl ProofSchemaService {
@@ -28,6 +29,7 @@ impl ProofSchemaService {
         organisation_repository: Arc<dyn OrganisationRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         config: Arc<core_config::CoreConfig>,
+        base_url: Option<String>,
     ) -> Self {
         Self {
             proof_schema_repository,
@@ -35,6 +37,7 @@ impl ProofSchemaService {
             history_repository,
             credential_schema_repository,
             config,
+            base_url,
         }
     }
 }

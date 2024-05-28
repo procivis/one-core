@@ -1,9 +1,8 @@
-use dto_mapper::convert_inner;
-use dto_mapper::{From, Into};
+use dto_mapper::{convert_inner, From, Into};
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
     GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
-    ProofInputSchemaResponseDTO,
+    ProofInputSchemaResponseDTO, ProofSchemaShareResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -11,11 +10,9 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::{
-    dto::common::GetListQueryParams,
-    endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO,
-    serialize::{front_time, front_time_option},
-};
+use crate::dto::common::GetListQueryParams;
+use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
+use crate::serialize::{front_time, front_time_option};
 
 // create endpoint
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Validate, Into)]
@@ -124,4 +121,11 @@ pub struct ProofInputSchemaResponseRestDTO {
     pub claim_schemas: Vec<ProofClaimSchemaResponseRestDTO>,
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
     pub validity_constraint: Option<i64>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(ProofSchemaShareResponseDTO)]
+pub struct ProofSchemaShareResponseRestDTO {
+    pub url: String,
 }

@@ -1,41 +1,33 @@
-use super::{
-    dto::{
-        CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaQueryDTO,
-        GetProofSchemaResponseDTO, ProofSchemaId,
-    },
-    mapper::{
-        proof_schema_created_history_event, proof_schema_deleted_history_event,
-        proof_schema_from_create_request,
-    },
-    validator::{
-        extract_claims_from_credential_schema, proof_schema_name_already_exists,
-        validate_create_request,
-    },
-    ProofSchemaService,
-};
-use crate::{
-    common_mapper::list_response_into,
-    model::{
-        claim_schema::ClaimSchemaRelations,
-        credential_schema::{CredentialSchemaRelations, GetCredentialSchemaQuery},
-        list_filter::ListFilterValue,
-        organisation::OrganisationRelations,
-        proof_schema::{
-            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
-        },
-    },
-    repository::error::DataLayerError,
-    service::error::{BusinessLogicError, EntityNotFoundError, ServiceError},
-};
-use crate::{
-    model::list_query::ListPagination,
-    service::{
-        credential_schema::dto::CredentialSchemaFilterValue,
-        proof_schema::mapper::convert_proof_schema_to_response,
-    },
-};
 use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
+
+use super::dto::{
+    CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaQueryDTO,
+    GetProofSchemaResponseDTO, ProofSchemaId, ProofSchemaShareResponseDTO,
+};
+use super::mapper::{
+    proof_schema_created_history_event, proof_schema_from_create_request,
+    proof_schema_history_event,
+};
+use super::validator::{
+    extract_claims_from_credential_schema, proof_schema_name_already_exists,
+    validate_create_request,
+};
+use super::ProofSchemaService;
+use crate::common_mapper::list_response_into;
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::credential_schema::{CredentialSchemaRelations, GetCredentialSchemaQuery};
+use crate::model::history::HistoryAction;
+use crate::model::list_filter::ListFilterValue;
+use crate::model::list_query::ListPagination;
+use crate::model::organisation::OrganisationRelations;
+use crate::model::proof_schema::{
+    ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
+};
+use crate::repository::error::DataLayerError;
+use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
+use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
 
 impl ProofSchemaService {
     /// Returns details of a proof schema
@@ -213,9 +205,39 @@ impl ProofSchemaService {
 
         let _ = self
             .history_repository
-            .create_history(proof_schema_deleted_history_event(proof_schema))
+            .create_history(proof_schema_history_event(
+                proof_schema,
+                HistoryAction::Deleted,
+            ))
             .await;
 
         Ok(())
+    }
+
+    pub async fn share_proof_schema(
+        &self,
+        id: ProofSchemaId,
+    ) -> Result<ProofSchemaShareResponseDTO, ServiceError> {
+        let base_url = self.base_url.as_ref().ok_or_else(|| {
+            ServiceError::Other("Missing core_base_url for sharing proof schema".to_string())
+        })?;
+
+        let proof_schema = self
+            .proof_schema_repository
+            .get_proof_schema(&id, &Default::default())
+            .await?
+            .ok_or(EntityNotFoundError::ProofSchema(id))?;
+
+        let _ = self
+            .history_repository
+            .create_history(proof_schema_history_event(
+                proof_schema,
+                HistoryAction::Shared,
+            ))
+            .await;
+
+        Ok(ProofSchemaShareResponseDTO {
+            url: format!("{base_url}/ssi/proof-schema/v1/{id}"),
+        })
     }
 }

@@ -1,25 +1,10 @@
 use std::collections::HashMap;
 
-use crate::endpoint::credential::dto::CredentialDetailClaimResponseRestDTO;
-use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
-use crate::endpoint::did::dto::DidListItemResponseRestDTO;
-use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
-use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
-use crate::serialize::front_time_option;
-use crate::{
-    endpoint::credential_schema::dto::{
-        CredentialSchemaListItemResponseRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
-    },
-    serialize::front_time,
-};
 use dto_mapper::{convert_inner, convert_inner_of_inner, From, Into};
-use one_core::provider::did_method::dto::DidDocumentDTO;
-use one_core::provider::did_method::dto::DidVerificationMethodDTO;
-use one_core::provider::did_method::dto::PublicKeyJwkDTO;
-use one_core::provider::did_method::dto::PublicKeyJwkEllipticDataDTO;
-use one_core::provider::did_method::dto::PublicKeyJwkMlweDataDTO;
-use one_core::provider::did_method::dto::PublicKeyJwkOctDataDTO;
-use one_core::provider::did_method::dto::PublicKeyJwkRsaDataDTO;
+use one_core::provider::did_method::dto::{
+    DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
+    PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO, PublicKeyJwkRsaDataDTO,
+};
 use one_core::provider::transport_protocol::openid4vc::dto::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VCICredentialDefinition,
@@ -29,38 +14,32 @@ use one_core::provider::transport_protocol::openid4vc::dto::{
     OpenID4VPFormat,
 };
 use one_core::service::oidc::dto::{
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
+    NestedPresentationSubmissionDescriptorDTO, OpenID4VCICredentialDefinitionRequestDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
+    OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
+    OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
+    OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
     PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
 };
+use one_core::service::oidc::model::{
+    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPPresentationDefinitionConstraintFieldFilter,
+    OpenID4VPPresentationDefinitionInputDescriptor,
+    OpenID4VPPresentationDefinitionInputDescriptorFormat,
+};
 use one_core::service::ssi_issuer::dto::{
-    ConnectIssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO,
-    JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
+    ConnectIssuerResponseDTO, IssuerResponseDTO, JsonLDContextDTO, JsonLDContextResponseDTO,
+    JsonLDEntityDTO, JsonLDInlineEntityDTO, JsonLDNestedContextDTO, JsonLDNestedEntityDTO,
 };
-use one_core::service::{
-    oidc::{
-        dto::{
-            OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
-            OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError,
-            OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO,
-            OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-            OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
-            OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
-            OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-        },
-        model::{
-            OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-            OpenID4VPPresentationDefinitionConstraintField,
-            OpenID4VPPresentationDefinitionConstraintFieldFilter,
-            OpenID4VPPresentationDefinitionInputDescriptor,
-            OpenID4VPPresentationDefinitionInputDescriptorFormat,
-        },
-    },
-    ssi_issuer::dto::IssuerResponseDTO,
-    ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO},
-    trust_anchor::dto::GetTrustAnchorResponseDTO,
-    trust_entity::dto::GetTrustEntityResponseDTO,
-};
+use one_core::service::ssi_verifier::dto::{ConnectVerifierResponseDTO, ProofRequestClaimDTO};
+use one_core::service::trust_anchor::dto::GetTrustAnchorResponseDTO;
+use one_core::service::trust_entity::dto::GetTrustEntityResponseDTO;
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
 use shared_types::{CredentialId, DidValue, KeyId, TrustAnchorId, TrustEntityId};
@@ -69,6 +48,15 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use super::mapper::convert_mdoc_claims;
+use crate::endpoint::credential::dto::CredentialDetailClaimResponseRestDTO;
+use crate::endpoint::credential_schema::dto::{
+    CredentialSchemaListItemResponseRestDTO, CredentialSchemaResponseRestDTO, CredentialSchemaType,
+    WalletStorageTypeRestEnum,
+};
+use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO;
+use crate::endpoint::trust_entity::dto::TrustEntityRoleRest;
+use crate::serialize::{front_time, front_time_option};
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
