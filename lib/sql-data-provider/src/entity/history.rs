@@ -88,6 +88,10 @@ pub enum HistoryAction {
     Suspended,
     #[sea_orm(string_value = "RESTORED")]
     Restored,
+    #[sea_orm(string_value = "SHARED")]
+    Shared,
+    #[sea_orm(string_value = "IMPORTED")]
+    Imported,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

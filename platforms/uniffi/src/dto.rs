@@ -606,6 +606,8 @@ pub enum HistoryActionBindingEnum {
     Suspended,
     Pending,
     Restored,
+    Shared,
+    Imported,
 }
 
 #[derive(From, Into)]

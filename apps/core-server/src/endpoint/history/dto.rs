@@ -57,6 +57,8 @@ pub enum HistoryAction {
     Pending,
     Suspended,
     Restored,
+    Shared,
+    Imported,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
