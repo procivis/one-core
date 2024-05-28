@@ -23,22 +23,22 @@ ct-codecs          = { version = "1.1" }
 dto_mapper         = { version = "0.1.0", git = "https://mapper:glpat-JNN_iB6UdokzLFhH9ujR@gitlab.procivis.ch/procivis/one/dto-mapper-rs.git", tag = "0.1.5" }
 wiremock           = { version = "0.6" }
 mockall            = { version = "0.12" }
-reqwest            = { version = "0.11", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
+reqwest            = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
 serde              = { version = "1.0" }
 serde_json         = { version = "1.0" }
-serde_qs           = { version = "0.12" }
+serde_qs           = { version = "0.13" }
 serde_urlencoded   = { version = "0.7" }
-serde_with         = { version = "3.7", features = ["json", "time_0_3"] }
+serde_with         = { version = "3.8", features = ["json", "time_0_3"] }
 strum              = { version = "0.26", features = ["derive"] }
-shadow-rs          = { version = "0.27" }
+shadow-rs          = { version = "0.28" }
 time               = { version = "0.3", features = ["macros", "serde"] }
 tracing            = { version = "0.1" }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
-uuid               = { version = "1.7", features = ["v4", "serde"] }
-validator          = { version = "0.17", features = ["derive"] }
-uniffi             = { version = "0.26", features = ["cli"] }
+uuid               = { version = "1.8", features = ["v4", "serde"] }
+validator          = { version = "0.18", features = ["derive"] }
+uniffi             = { version = "0.27", features = ["cli"] }
 thiserror          = { version = "1.0" }
-tokio              = { version = "1.36" }
+tokio              = { version = "1.37" }
 url                = { version = "2.5", features = ["serde"] }
 utoipa             = { version = "4.2", default-features = false }
 sea-orm            = { version = "0.12", default-features = false }

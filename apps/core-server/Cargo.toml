@@ -38,7 +38,7 @@ headers                      = { version = "0.4" }
 axum-extra                   = { version = "0.9", features = ["typed-header"] }
 tokio                        = { workspace = true, features = ["macros", "rt-multi-thread"] }
 utoipa                       = { workspace = true, features = ["uuid", "axum_extras", "url", "uuid"] }
-utoipa-swagger-ui            = { version = "6.0", features = ["axum"] }
+utoipa-swagger-ui            = { version = "7.1", features = ["axum"] }
 serde_with.workspace         = true
 sentry                       = { version = "0.32", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }
 prometheus                   = { version = "0.13", features = ["process"] }
@@ -51,14 +51,14 @@ serde_json.workspace = true
 codegen              = { version = "0.2" }
 
 [dev-dependencies]
-reqwest               = { version = "0.11", features = ["json"] }
+reqwest               = { version = "0.12", features = ["json"] }
 wiremock.workspace    = true
 sql-data-provider     = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
 rand.workspace        = true
 rand_chacha.workspace = true
 indoc                 = { version = "2.0" }
-maplit                = "1.0"
-hex-literal           = "0.4"
+maplit                = { version = "1.0" }
+hex-literal           = { version = "0.4" }
 p256.workspace        = true
 
 [lints]

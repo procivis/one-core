@@ -1,22 +1,17 @@
-use std::{
-    ffi::OsStr,
-    io::{self, Cursor, Read, Seek, SeekFrom, Write},
-    path::PathBuf,
-};
+use std::ffi::OsStr;
+use std::io::{self, Cursor, Read, Seek, SeekFrom, Write};
+use std::path::PathBuf;
 
 use anyhow::Context;
 use time::OffsetDateTime;
 use uuid::Uuid;
+use zip::write::SimpleFileOptions;
 
 use super::dto::MetadataDTO;
-use crate::{
-    crypto::hasher::sha256::SHA256,
-    model::{
-        history::{History, HistoryAction, HistoryEntityType, HistoryMetadata},
-        organisation::Organisation,
-    },
-    service::error::ServiceError,
-};
+use crate::crypto::hasher::sha256::SHA256;
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
+use crate::model::organisation::Organisation;
+use crate::service::error::ServiceError;
 
 const DB_FILE: &str = "database.sqlite3";
 const METADATA_FILE: &str = "metadata.json";
@@ -52,7 +47,7 @@ fn add_to_zip<T: Write + Seek>(
     archive: &mut zip::ZipWriter<T>,
 ) -> Result<(), ServiceError> {
     archive
-        .start_file(name, Default::default())
+        .start_file(name, SimpleFileOptions::default())
         .with_context(|| format!("Failed to create {name} in zip"))
         .map_err(map_error)?;
 

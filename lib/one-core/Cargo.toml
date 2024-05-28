@@ -43,14 +43,14 @@ p256.workspace             = true
 fmap.workspace             = true
 pqc_dilithium              = { version = "0.2.0", git = "https://github.com/kibernetikos/dilithium", rev = "b7106801cf" }
 convert_case               = { version = "0.6" }
-contextual                 = "0.1.6"
-json-syntax                = "0.9.6"
-locspan                    = "0.7.13"
-json-ld                    = "0.15.1"
-mime                       = "0.3.17"
-rdf-types                  = "0.15.2"
-sophia_iri                 = "0.8.0"
-sophia_jsonld              = { version = "0.8.0", features = ["http_client"] }
+contextual                 = { version = "0.1" }
+json-syntax                = { version = "0.9" }
+locspan                    = { version = "0.7" }
+json-ld                    = { version = "0.15" }
+mime                       = { version = "0.3" }
+rdf-types                  = { version = "0.15" }
+sophia_iri                 = { version = "0.8" }
+sophia_jsonld              = { version = "0.8", features = ["http_client"] }
 sophia_api                 = { version = "0.8" }
 sophia_c14n                = { version = "0.8" }
 pairing_crypto             = { version = "0.4", git = "https://github.com/Iskander508/pairing_crypto", rev = "517a424a989b57b987aacb3642bd7cd2c60b94d1" }
@@ -60,21 +60,21 @@ ciborium                   = { version = "0.2" }
 coset                      = { version = "0.3" }
 chacha20poly1305           = { version = "0.10" }
 tempfile.workspace         = true
-zip                        = { version = "0.6" }
+zip                        = { version = "2.1" }
 pbkdf2                     = { version = "0.12", features = ["simple"] }
 futures.workspace          = true
 tracing.workspace          = true
 hex.workspace              = true
-jsonptr                    = { version = "0.4.7" }
-indexmap                   = { version = "2.2.6", features = ["serde"] }
+jsonptr                    = { version = "0.4" }
+indexmap                   = { version = "2.2", features = ["serde"] }
 josekit                    = { version = "0.8", features = ["vendored"] }
-zeroize                    = { version = "1.7.0", features = ["serde"] }
-rcgen                      = { version = "0.13.1" }
-yasna                      = { version = "0.5.2" }
+zeroize                    = { version = "1.8", features = ["serde"] }
+rcgen                      = { version = "0.13" }
+yasna                      = { version = "0.5" }
 x509-parser                = { version = "0.16", features = ["verify"] }
 ouroboros                  = { version = "0.18" }
-itertools                  = { version = "0.12" }
-urlencoding                = { version = "2.1.3" }
+itertools                  = { version = "0.13" }
+urlencoding                = { version = "2.1" }
 
 [dev-dependencies]
 bs58               = { version = "0.5" }
@@ -84,8 +84,8 @@ tokio              = { workspace = true, features = ["rt-multi-thread", "macros"
 assert2            = { version = "0.3" }
 indoc              = { version = "2.0" }
 rusty-fork         = { version = "0.3" }
-hex-literal        = "0.4"
-maplit             = "1.0"
+hex-literal        = { version = "0.4" }
+maplit             = { version = "1.0" }
 
 [build-dependencies]
 shadow-rs.workspace = true

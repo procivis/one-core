@@ -22,13 +22,13 @@ no-default-features = false
 # https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
 [advisories]
 version = 2
-db-path       = "~/.cargo/advisory-db"
-db-urls       = ["https://github.com/rustsec/advisory-db"]
-yanked        = "deny"
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked  = "deny"
 
 ignore = [
     { id = "RUSTSEC-2023-0055", reason = "no safe upgrade available, hard to replace dependency of JSON-LD" },
-    { id = "RUSTSEC-2023-0071", reason = "no safe upgrade available, can be avoided by not using RSA in mysql server" }
+    { id = "RUSTSEC-2023-0071", reason = "no safe upgrade available, can be avoided by not using RSA in mysql server" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
@@ -47,6 +47,7 @@ allow = [
     "MIT-0",
     "Unicode-DFS-2016",
     "Zlib",
+    "BSL-1.0",
 ]
 confidence-threshold = 0.8
 
