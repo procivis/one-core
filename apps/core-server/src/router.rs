@@ -288,6 +288,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             get(ssi::controller::ssi_get_credential_schema),
         )
         .route(
+            "/ssi/proof-schema/v1/:id",
+            get(ssi::controller::ssi_get_proof_schema),
+        )
+        .route(
             "/ssi/trust/v1/:trustAnchorId",
             get(ssi::controller::ssi_get_trust_list),
         );
@@ -405,6 +409,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             ssi::controller::oidc_client_metadata,
             ssi::controller::get_json_ld_context,
             ssi::controller::ssi_get_credential_schema,
+            ssi::controller::ssi_get_proof_schema,
             ssi::controller::ssi_get_trust_list,
 
             interaction::controller::handle_invitation,

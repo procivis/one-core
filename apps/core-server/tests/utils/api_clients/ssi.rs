@@ -135,4 +135,9 @@ impl SSIApi {
 
         self.client.get(&url).await
     }
+
+    pub async fn get_proof_schema(&self, id: impl Into<Uuid>) -> Response {
+        let url = format!("/ssi/proof-schema/v1/{}", id.into());
+        self.client.get(&url).await
+    }
 }
