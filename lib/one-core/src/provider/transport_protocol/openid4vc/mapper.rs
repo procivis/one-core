@@ -747,15 +747,63 @@ pub(super) fn parse_procivis_schema_claim(
 }
 
 pub(super) fn parse_mdoc_schema_claims(
+    values: HashMap<String, HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>>,
+    element_order: Option<Vec<String>>,
+) -> Vec<CredentialClaimSchemaRequestDTO> {
+    let mut claims_by_namespace: Vec<_> = values
+        .into_iter()
+        .map(|(namespace, elements)| CredentialClaimSchemaRequestDTO {
+            key: namespace,
+            datatype: DatatypeType::Object.to_string(),
+            required: true,
+            claims: parse_mdoc_schema_elements(elements),
+        })
+        .collect();
+
+    if let Some(order) = element_order {
+        claims_by_namespace.iter_mut().for_each(|namespace| {
+            namespace.claims.sort_by_key(|claim| {
+                order
+                    .iter()
+                    .position(|element| element == &format!("{}~{}", namespace.key, claim.key))
+                    .unwrap_or_default()
+            })
+        });
+
+        claims_by_namespace.sort_by_key(|claim| {
+            order
+                .iter()
+                .position(|element| element.starts_with(&format!("{}~", claim.key)))
+                .unwrap_or_default()
+        });
+    }
+
+    claims_by_namespace
+}
+
+fn parse_mdoc_schema_elements(
     values: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
 ) -> Vec<CredentialClaimSchemaRequestDTO> {
     values
         .into_iter()
-        .map(|(key, claim)| CredentialClaimSchemaRequestDTO {
-            key,
-            datatype: claim.value_type,
-            required: claim.mandatory.unwrap_or(false),
-            claims: parse_mdoc_schema_claims(claim.value),
+        .map(|(key, claim)| {
+            let mut claims = parse_mdoc_schema_elements(claim.value);
+
+            if let Some(order) = claim.order {
+                claims.sort_by_key(|claim| {
+                    order
+                        .iter()
+                        .position(|item| item == &claim.key)
+                        .unwrap_or_default()
+                });
+            }
+
+            CredentialClaimSchemaRequestDTO {
+                key,
+                datatype: claim.value_type,
+                required: claim.mandatory.unwrap_or(false),
+                claims,
+            }
         })
         .collect()
 }

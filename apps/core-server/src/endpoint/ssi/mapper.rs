@@ -1,9 +1,15 @@
+use std::collections::HashMap;
+
 use crate::endpoint::ssi::dto::{
     DurationSecondsRest, OpenID4VCICredentialOfferClaimValueDTO, OpenID4VCIErrorResponseRestDTO,
 };
-use dto_mapper::convert_inner;
+use dto_mapper::{convert_inner, convert_inner_of_inner};
 use one_core::provider::transport_protocol::openid4vc::dto::OpenID4VCICredentialOfferClaimValue;
-use one_core::service::oidc::dto::{DurationSeconds, OpenID4VCIError};
+use one_core::service::oidc::dto::{
+    DurationSeconds, OpenID4VCIError, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
+};
+
+use super::dto::OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO;
 
 impl From<OpenID4VCIError> for OpenID4VCIErrorResponseRestDTO {
     fn from(value: OpenID4VCIError) -> Self {
@@ -30,4 +36,10 @@ impl From<OpenID4VCICredentialOfferClaimValue> for OpenID4VCICredentialOfferClai
             }
         }
     }
+}
+
+pub(super) fn convert_mdoc_claims(
+    input: Option<HashMap<String, HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>>>,
+) -> Option<HashMap<String, HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesRestDTO>>> {
+    input.map(convert_inner_of_inner)
 }

@@ -45,15 +45,41 @@ pub(super) fn create_issuer_metadata_response(
 fn credentials_supported_mdoc(
     schema: CredentialSchema,
 ) -> Result<Vec<OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO>, ServiceError> {
-    let claim_schema_values = schemas_to_values(schema.claim_schemas.ok_or(
-        ServiceError::MappingError("claim_schemas is None".to_string()),
-    )?)?;
+    let claim_schemas = schema.claim_schemas.ok_or(ServiceError::MappingError(
+        "claim_schemas is None".to_string(),
+    ))?;
+
+    // order of namespaces and elements inside MDOC schema as defined in OpenID4VCI mdoc spec: `{namespace}~{element}`
+    let element_order: Vec<String> = claim_schemas
+        .iter()
+        .filter(|claim| {
+            claim
+                .schema
+                .key
+                .chars()
+                .filter(|c| *c == NESTED_CLAIM_MARKER)
+                .count()
+                == 1
+        })
+        .map(|element| element.schema.key.replace(NESTED_CLAIM_MARKER, "~"))
+        .collect();
+
+    let claim_schema_values = schemas_to_mdoc_values(claim_schemas)?;
+    let claims = claim_schema_values
+        .into_iter()
+        .map(|(namespace, elements)| (namespace, elements.value))
+        .collect();
 
     Ok(vec![
         OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO {
             wallet_storage_type: schema.wallet_storage_type,
             format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
-            claims: Some(claim_schema_values),
+            claims: Some(claims),
+            order: if element_order.len() > 1 {
+                Some(element_order)
+            } else {
+                None
+            },
             credential_definition: None,
             doctype: Some(schema.schema_id),
             display: Some(vec![
@@ -63,70 +89,97 @@ fn credentials_supported_mdoc(
     ])
 }
 
-fn nest_schemas(
-    schemas: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
+fn schemas_to_mdoc_values(
+    schemas: Vec<CredentialSchemaClaim>,
 ) -> Result<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>, ServiceError> {
-    // Copy non-nested schemas to new buffer
-    let mut result: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO> = schemas
-        .iter()
-        .filter_map(|(key, value)| {
-            if key.find(NESTED_CLAIM_MARKER).is_some() {
-                None
-            } else {
-                Some((key.to_owned(), value.to_owned()))
-            }
-        })
-        .collect();
+    let mdoc_claims = nest_mdoc_claims(
+        schemas
+            .into_iter()
+            .map(|claim| MdocClaimSchema {
+                key: claim.schema.key.to_owned(),
+                schema: claim,
+                claims: vec![],
+            })
+            .collect(),
+    )?;
 
-    // Assign nested schemas to mentioned buffer
-    schemas.iter().try_for_each(|(key, value)| {
-        if let Some(index) = key.find(NESTED_CLAIM_MARKER) {
-            let prefix = &key[0..index];
-            let entry = result.get_mut(prefix).ok_or(ServiceError::MappingError(
-                "failed to find parent claim schema".to_string(),
-            ))?;
-            entry
-                .value
-                .insert(remove_first_nesting_layer(key), value.to_owned());
-        }
+    Ok(order_mdoc_claims(mdoc_claims))
+}
+
+#[derive(Clone, Debug)]
+struct MdocClaimSchema {
+    pub schema: CredentialSchemaClaim,
+    pub key: String,
+    pub claims: Vec<MdocClaimSchema>,
+}
+
+fn nest_mdoc_claims(schemas: Vec<MdocClaimSchema>) -> Result<Vec<MdocClaimSchema>, ServiceError> {
+    // split nested and non-nested
+    let (mut root, nested): (Vec<_>, Vec<_>) = schemas
+        .into_iter()
+        .partition(|claim| claim.key.find(NESTED_CLAIM_MARKER).is_none());
+
+    // Assign nested schemas to mentioned root
+    nested.into_iter().try_for_each(|claim| {
+        let key = &claim.key;
+        let delimiter_index = key.find(NESTED_CLAIM_MARKER).ok_or_else(|| {
+            ServiceError::MappingError(format!("Invalid nested claim schema key `{key}`"))
+        })?;
+        let parent = &key[0..delimiter_index];
+        let parent_entry = root
+            .iter_mut()
+            .find(|claim| claim.key == parent)
+            .ok_or_else(|| {
+                ServiceError::MappingError(format!("failed to find parent claim schema `{parent}`"))
+            })?;
+        parent_entry.claims.push(MdocClaimSchema {
+            key: remove_first_nesting_layer(key),
+            ..claim
+        });
 
         Ok::<(), ServiceError>(())
     })?;
 
-    // Redo for every nesting
-    result
-        .into_iter()
-        .map(|(key, value)| {
-            Ok((
-                key,
-                OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
-                    value: nest_schemas(value.value)?,
-                    value_type: value.value_type,
-                    mandatory: value.mandatory,
-                },
-            ))
+    // Redo for all sub-levels
+    root.into_iter()
+        .map(|claim| {
+            Ok(MdocClaimSchema {
+                claims: nest_mdoc_claims(claim.claims)?,
+                ..claim
+            })
         })
         .collect::<Result<_, ServiceError>>()
 }
 
-fn schemas_to_values(
-    schemas: Vec<CredentialSchemaClaim>,
-) -> Result<HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>, ServiceError> {
-    let result = schemas
+fn order_mdoc_claims(
+    schemas: Vec<MdocClaimSchema>,
+) -> HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO> {
+    schemas
         .into_iter()
-        .map(|schema| {
+        .map(|claim| {
+            let order = if claim.claims.len() > 1 {
+                Some(
+                    claim
+                        .claims
+                        .iter()
+                        .map(|claim| claim.key.to_owned())
+                        .collect(),
+                )
+            } else {
+                None
+            };
+
             (
-                schema.schema.key.to_owned(),
+                claim.key,
                 OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
-                    value: Default::default(),
-                    value_type: schema.schema.data_type,
-                    mandatory: Some(schema.required),
+                    value: order_mdoc_claims(claim.claims),
+                    value_type: claim.schema.schema.data_type,
+                    mandatory: Some(claim.schema.required),
+                    order,
                 },
             )
         })
-        .collect();
-
-    nest_schemas(result)
+        .collect()
 }
 
 fn credentials_supported_others(
@@ -137,6 +190,7 @@ fn credentials_supported_others(
             wallet_storage_type: schema.wallet_storage_type,
             format: map_core_to_oidc_format(&schema.format).map_err(ServiceError::from)?,
             claims: None,
+            order: None,
             credential_definition: Some(OpenID4VCIIssuerMetadataCredentialDefinitionResponseDTO {
                 r#type: vec!["VerifiableCredential".to_string()],
                 credential_schema: Some(OpenID4VCIIssuerMetadataCredentialSchemaResponseDTO {
