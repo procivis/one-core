@@ -7,14 +7,14 @@ use sea_orm::{
 };
 use shared_types::CredentialId;
 
-use crate::entity::lvvc;
+use crate::entity::validity_credential::{self, ValidityCredentialType};
 
-use super::LvvcProvider;
+use super::ValidityCredentialProvider;
 
 #[async_trait::async_trait]
-impl LvvcRepository for LvvcProvider {
+impl LvvcRepository for ValidityCredentialProvider {
     async fn insert(&self, lvvc: Lvvc) -> Result<(), DataLayerError> {
-        lvvc::Model::from(lvvc)
+        validity_credential::Model::from(lvvc)
             .into_active_model()
             .insert(&self.db_conn)
             .await
@@ -27,9 +27,13 @@ impl LvvcRepository for LvvcProvider {
         &self,
         credential_id: CredentialId,
     ) -> Result<Option<Lvvc>, DataLayerError> {
-        let model = lvvc::Entity::find()
-            .filter(lvvc::Column::CredentialId.eq(credential_id))
-            .order_by_desc(lvvc::Column::CreatedDate)
+        let model = validity_credential::Entity::find()
+            .filter(
+                validity_credential::Column::CredentialId
+                    .eq(credential_id)
+                    .and(validity_credential::Column::Type.eq(ValidityCredentialType::Lvvc)),
+            )
+            .order_by_desc(validity_credential::Column::CreatedDate)
             .one(&self.db_conn)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
@@ -41,8 +45,12 @@ impl LvvcRepository for LvvcProvider {
         &self,
         credential_id: CredentialId,
     ) -> Result<Vec<Lvvc>, DataLayerError> {
-        let model = lvvc::Entity::find()
-            .filter(lvvc::Column::CredentialId.eq(credential_id))
+        let model = validity_credential::Entity::find()
+            .filter(
+                validity_credential::Column::CredentialId
+                    .eq(credential_id)
+                    .and(validity_credential::Column::Type.eq(ValidityCredentialType::Lvvc)),
+            )
             .all(&self.db_conn)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;

@@ -34,6 +34,8 @@ mod m20240514_070446_add_trust_model;
 mod m20240522_081021_fix_trust_priority_type;
 mod m20240522_093357_add_errored_variant_to_history_action_enum_in_history_table;
 mod m20240523_093449_add_cascade_to_trust_entity_fk;
+mod m20240528_090016_rename_lvvc_table_to_validity_credential;
+mod m20240528_092240_add_type_field_to_validity_credential_table;
 mod m20240528_093449_make_trust_columns_optional;
 mod m20240528_120000_add_shared_imported_history_action;
 
@@ -77,6 +79,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20240523_093449_add_cascade_to_trust_entity_fk::Migration),
             Box::new(m20240528_093449_make_trust_columns_optional::Migration),
             Box::new(m20240528_120000_add_shared_imported_history_action::Migration),
+            Box::new(m20240528_090016_rename_lvvc_table_to_validity_credential::Migration),
+            Box::new(m20240528_092240_add_type_field_to_validity_credential_table::Migration),
         ]
     }
 }

@@ -11,15 +11,15 @@ use uuid::Uuid;
 
 use crate::{
     db_conn,
-    entity::{did::DidType, lvvc},
-    lvvc::LvvcProvider,
+    entity::{did::DidType, validity_credential},
     test_utilities,
+    validity_credential::ValidityCredentialProvider,
 };
 
 #[tokio::test]
 async fn test_insert_lvvc() {
     let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
-    let provider = LvvcProvider::new(db_conn.clone());
+    let provider = ValidityCredentialProvider::new(db_conn.clone());
 
     let credential_id = create_and_store_credential(&db_conn).await;
 
@@ -32,7 +32,7 @@ async fn test_insert_lvvc() {
 
     provider.insert(lvvc.clone()).await.unwrap();
 
-    let lvvc_model = lvvc::Entity::find_by_id(lvvc.id)
+    let lvvc_model = validity_credential::Entity::find_by_id(lvvc.id)
         .one(&db_conn)
         .await
         .unwrap()
@@ -44,7 +44,7 @@ async fn test_insert_lvvc() {
 #[tokio::test]
 async fn test_get_latest_lvvc_by_credential_id() {
     let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
-    let provider = LvvcProvider::new(db_conn.clone());
+    let provider = ValidityCredentialProvider::new(db_conn.clone());
 
     let credential_id = create_and_store_credential(&db_conn).await;
     let lvvcs = create_lvvcs_for(credential_id, &db_conn).await;
@@ -64,7 +64,7 @@ async fn test_get_latest_lvvc_by_credential_id() {
 #[tokio::test]
 async fn test_get_all_lvvc_by_credential_id() {
     let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
-    let provider = LvvcProvider::new(db_conn.clone());
+    let provider = ValidityCredentialProvider::new(db_conn.clone());
 
     let credential_id = create_and_store_credential(&db_conn).await;
 
@@ -102,7 +102,7 @@ async fn create_lvvcs_for(credential_id: CredentialId, db_conn: &DatabaseConnect
     ];
 
     for lvvc in &lvvcs {
-        lvvc::Model::from(lvvc.clone())
+        validity_credential::Model::from(lvvc.clone())
             .into_active_model()
             .insert(db_conn)
             .await
