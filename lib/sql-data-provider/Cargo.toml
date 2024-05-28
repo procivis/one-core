@@ -29,7 +29,7 @@ shared-types          = { version = "0.1.0", path = "../shared-types", features 
 autometrics.workspace = true
 hex.workspace         = true
 futures               = { version = "0.3" }
-itertools             = { version = "0.12" }
+itertools             = { version = "0.13" }
 
 [dev-dependencies]
 mockall.workspace  = true

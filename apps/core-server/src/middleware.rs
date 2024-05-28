@@ -1,13 +1,11 @@
 use std::sync::Arc;
-use time::Instant;
+use std::time::Instant;
 
-use axum::{
-    body::Body,
-    extract::MatchedPath,
-    http::{Request, StatusCode},
-    middleware::Next,
-    Extension,
-};
+use axum::body::Body;
+use axum::extract::MatchedPath;
+use axum::http::{Request, StatusCode};
+use axum::middleware::Next;
+use axum::Extension;
 use sentry::{Hub, SentryFutureExt};
 
 use crate::ServerConfig;
@@ -131,7 +129,7 @@ pub async fn metrics_counter(
     let resp = next.run(request).await;
     let duration = start_time.elapsed();
 
-    let duration = duration.whole_microseconds() as f64 / 1_000_000f64;
+    let duration = duration.as_micros() as f64 / 1_000_000f64;
 
     crate::metrics::track_response_status_code(
         method.as_str(),
