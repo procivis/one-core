@@ -5,7 +5,6 @@ use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
 use interaction::InteractionProvider;
-use lvvc::LvvcProvider;
 use migration::{Migrator, MigratorTrait};
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::json_ld_context_repository::JsonLdContextRepository;
@@ -27,6 +26,7 @@ use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
 use trust_anchor::TrustAnchorProvider;
 use trust_entity::TrustEntityProvider;
+use validity_credential::ValidityCredentialProvider;
 
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
@@ -53,13 +53,13 @@ pub mod history;
 pub mod interaction;
 pub mod json_ld_context;
 pub mod key;
-pub mod lvvc;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
 pub mod revocation_list;
 pub mod trust_anchor;
 pub mod trust_entity;
+pub mod validity_credential;
 
 // Re-exporting the DatabaseConnection to avoid unnecessary dependency on sea_orm in cases where we only need the DB connection
 pub type DbConn = DatabaseConnection;
@@ -163,7 +163,7 @@ impl DataLayer {
             key_repository: key_repository.clone(),
         });
 
-        let lvvc_repository = Arc::new(LvvcProvider::new(db.clone()));
+        let lvvc_repository = Arc::new(ValidityCredentialProvider::new(db.clone()));
         let backup_repository = Arc::new(BackupProvider::new(db.clone(), exportable_storages));
 
         Self {

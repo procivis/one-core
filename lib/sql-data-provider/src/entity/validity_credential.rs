@@ -1,12 +1,15 @@
 use anyhow::Context;
-use sea_orm::prelude::{
-    ActiveModelBehavior, BlobSize, DeriveEntityModel, DerivePrimaryKey, DeriveRelation,
-    EntityTrait, EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,
+use sea_orm::{
+    prelude::{
+        ActiveModelBehavior, BlobSize, DeriveEntityModel, DerivePrimaryKey, DeriveRelation,
+        EntityTrait, EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait,
+    },
+    DeriveActiveEnum,
 };
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "lvvc")]
+#[sea_orm(table_name = "validity_credential")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
@@ -14,6 +17,20 @@ pub struct Model {
     #[sea_orm(column_type = "Binary(BlobSize::Long)")]
     pub credential: Vec<u8>,
     pub credential_id: String,
+    pub r#type: ValidityCredentialType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "Enum",
+    enum_name = "validity_credential_type_enum"
+)]
+pub enum ValidityCredentialType {
+    #[sea_orm(string_value = "LVVC")]
+    Lvvc,
+    #[sea_orm(string_value = "MDOC")]
+    Mdoc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

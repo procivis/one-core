@@ -6,11 +6,11 @@ mod repository;
 #[cfg(test)]
 mod test;
 
-pub struct LvvcProvider {
+pub struct ValidityCredentialProvider {
     db_conn: DatabaseConnection,
 }
 
-impl LvvcProvider {
+impl ValidityCredentialProvider {
     pub fn new(db_conn: DatabaseConnection) -> Self {
         Self { db_conn }
     }
