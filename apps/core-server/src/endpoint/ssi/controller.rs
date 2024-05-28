@@ -1,3 +1,16 @@
+use axum::extract::{Path, Query, State};
+use axum::http::{header, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::{Form, Json};
+use axum_extra::extract::WithRejection;
+use axum_extra::typed_header::TypedHeader;
+use headers::authorization::Bearer;
+use headers::Authorization;
+use one_core::model::proof_schema::ProofSchemaId;
+use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use shared_types::{CredentialId, CredentialSchemaId, DidId, TrustAnchorId};
+use uuid::Uuid;
+
 use super::dto::{
     ConnectIssuerResponseRestDTO, ConnectVerifierResponseRestDTO, DidDocumentRestDTO,
     GetTrustAnchorResponseRestDTO, IssuerResponseRestDTO, JsonLDContextResponseRestDTO,
@@ -14,20 +27,8 @@ use super::dto::{
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::credential_schema::dto::CredentialSchemaResponseRestDTO;
+use crate::endpoint::proof_schema::dto::GetProofSchemaResponseRestDTO;
 use crate::router::AppState;
-use axum::{
-    extract::{Path, Query, State},
-    http::{header, StatusCode},
-    response::{IntoResponse, Response},
-    Form, Json,
-};
-use axum_extra::extract::WithRejection;
-use axum_extra::typed_header::TypedHeader;
-use headers::authorization::Bearer;
-use headers::Authorization;
-use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use shared_types::{CredentialId, CredentialSchemaId, DidId, TrustAnchorId};
-use uuid::Uuid;
 
 #[utoipa::path(
     post,
@@ -792,4 +793,25 @@ pub(crate) async fn ssi_get_credential_schema(
         .await;
 
     OkOrErrorResponse::from_result(result, state, "getting credential schema")
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/proof-schema/v1/{id}",
+    params(
+        ("id" = ProofSchemaId, Path, description = "Proof schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = GetProofSchemaResponseRestDTO),
+        (status = 404, description = "Proof schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+)]
+pub(crate) async fn ssi_get_proof_schema(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetProofSchemaResponseRestDTO> {
+    let result = state.core.proof_schema_service.get_proof_schema(&id).await;
+    OkOrErrorResponse::from_result(result, state, "getting proof schema")
 }
