@@ -512,7 +512,7 @@ dictionary CreateTrustAnchorRequestBindingDTO {
   string organisation_id;
 };
 
-dictionary GetTrustAnchoResponseBindingDTO {
+dictionary GetTrustAnchorResponseBindingDTO {
   string id;
   string name;
   string created_date;
@@ -555,9 +555,9 @@ dictionary TrustAnchorsListItemResponseBindingDTO {
   string created_date;
   string last_modified;
   string type;
-  string publisher_reference;
+  string? publisher_reference;
   TrustAnchorRoleBinding role;
-  u32 priority;
+  u32? priority;
   string organisation_id;
   u64 entities;
 };
@@ -647,7 +647,7 @@ interface OneCoreBinding {
   string create_trust_anchor(CreateTrustAnchorRequestBindingDTO anchor);
 
   [Throws=BindingError]
-  GetTrustAnchoResponseBindingDTO get_trust_anchor(string anchor_id);
+  GetTrustAnchorResponseBindingDTO get_trust_anchor(string anchor_id);
 
   [Throws=BindingError]
   TrustAnchorsListBindingDTO list_trust_anchors(ListTrustAnchorsFiltersBindings filters);

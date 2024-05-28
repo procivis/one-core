@@ -1,12 +1,12 @@
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
 use migration::{Alias, Expr, Func};
-use one_core::model::trust_anchor::TrustAnchor;
+use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO};
 use sea_orm::{
-    ActiveModelTrait, EntityTrait, JoinType, PaginatorTrait, QueryOrder, QuerySelect, Related, Set,
+    ActiveModelTrait, EntityTrait, JoinType, PaginatorTrait, QueryOrder, QuerySelect, Related,
 };
 use shared_types::TrustAnchorId;
 
@@ -21,32 +21,43 @@ use crate::trust_anchor::entities::TrustAnchorsListItemEntityModel;
 #[async_trait::async_trait]
 impl TrustAnchorRepository for TrustAnchorProvider {
     async fn create(&self, anchor: TrustAnchor) -> Result<TrustAnchorId, DataLayerError> {
-        let value = trust_anchor::ActiveModel {
-            id: Set(anchor.id),
-            created_date: Set(anchor.created_date),
-            last_modified: Set(anchor.last_modified),
-            name: Set(anchor.name),
-            type_field: Set(anchor.type_field),
-            publisher_reference: Set(anchor.publisher_reference),
-            role: Set(anchor.role.into()),
-            priority: Set(anchor.priority),
-            organisation_id: Set(anchor.organisation_id),
-        }
-        .insert(&self.db)
-        .await
-        .map_err(to_data_layer_error)?;
+        let anchor: trust_anchor::ActiveModel = anchor.clone().try_into()?;
+        let result = anchor.insert(&self.db).await.map_err(to_data_layer_error)?;
 
-        Ok(value.id)
+        Ok(result.id)
     }
 
-    async fn get(&self, id: TrustAnchorId) -> Result<Option<TrustAnchor>, DataLayerError> {
-        let model = trust_anchor::Entity::find_by_id(id)
+    async fn get(
+        &self,
+        id: TrustAnchorId,
+        relations: &TrustAnchorRelations,
+    ) -> Result<Option<TrustAnchor>, DataLayerError> {
+        let anchor_model = trust_anchor::Entity::find_by_id(id)
             .one(&self.db)
             .await
-            .map_err(to_data_layer_error)?
-            .map(Into::into);
+            .map_err(to_data_layer_error)?;
 
-        Ok(model)
+        let Some(anchor_model) = anchor_model else {
+            return Ok(None);
+        };
+
+        let organisation_id = anchor_model.organisation_id.to_owned();
+
+        let mut anchor = TrustAnchor::from(anchor_model);
+
+        if let Some(organisation_relations) = &relations.organisation {
+            anchor.organisation = Some(
+                self.organisation_repository
+                    .get_organisation(&organisation_id, organisation_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "trust_anchor-organisation",
+                        id: organisation_id.to_string(),
+                    })?,
+            );
+        }
+
+        Ok(Some(anchor))
     }
 
     async fn list(

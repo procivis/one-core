@@ -134,8 +134,14 @@ impl DataLayer {
             did_repository: did_repository.clone(),
         });
 
-        let trust_anchor_repository = Arc::new(TrustAnchorProvider { db: db.clone() });
-        let trust_entity_repository = Arc::new(TrustEntityProvider { db: db.clone() });
+        let trust_anchor_repository = Arc::new(TrustAnchorProvider {
+            db: db.clone(),
+            organisation_repository: organisation_repository.clone(),
+        });
+        let trust_entity_repository = Arc::new(TrustEntityProvider {
+            db: db.clone(),
+            trust_anchor_repository: trust_anchor_repository.clone(),
+        });
 
         let credential_repository = Arc::new(CredentialProvider {
             db: db.clone(),

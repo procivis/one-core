@@ -14,7 +14,7 @@ async fn test_list_trust_anchors() {
         .trust_anchors
         .create(
             "name1",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -24,7 +24,7 @@ async fn test_list_trust_anchors() {
         .trust_anchors
         .create(
             "name2",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -61,7 +61,7 @@ async fn test_list_trust_anchors_with_entities() {
             .trust_anchors
             .create(
                 &format!("name{id}"),
-                organisation.id,
+                organisation.clone(),
                 "SIMPLE_TRUST_LIST",
                 TrustAnchorRole::Publisher,
             )
@@ -74,7 +74,7 @@ async fn test_list_trust_anchors_with_entities() {
                 &format!("entity_id{id}-1"),
                 &format!("name{id}-1"),
                 TrustEntityRole::Both,
-                anchor.id,
+                anchor.clone(),
             )
             .await;
 
@@ -85,7 +85,7 @@ async fn test_list_trust_anchors_with_entities() {
                 &format!("entity_id{id}-2"),
                 &format!("name{id}-2"),
                 TrustEntityRole::Both,
-                anchor.id,
+                anchor.clone(),
             )
             .await;
     }
@@ -121,7 +121,7 @@ async fn test_filter_trust_anchor_by_name() {
         .trust_anchors
         .create(
             "foo",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -132,7 +132,7 @@ async fn test_filter_trust_anchor_by_name() {
         .trust_anchors
         .create(
             "bar",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )

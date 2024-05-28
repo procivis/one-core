@@ -269,7 +269,7 @@ impl TryFrom<CreateTrustAnchorRequestBindingDTO> for CreateTrustAnchorRequestDTO
     fn try_from(value: CreateTrustAnchorRequestBindingDTO) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
-            type_: value.r#type,
+            r#type: value.r#type,
             publisher_reference: value.publisher_reference,
             role: value.role.into(),
             priority: value.priority,

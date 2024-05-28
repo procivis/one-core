@@ -202,11 +202,13 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route(
             "/api/trust-entity/v1",
-            post(trust_entity::controller::create_trust_entity),
+            post(trust_entity::controller::create_trust_entity)
+                .get(trust_entity::controller::get_trust_entities),
         )
         .route(
             "/api/trust-entity/v1/:id",
-            delete(trust_entity::controller::delete_trust_entity),
+            delete(trust_entity::controller::delete_trust_entity)
+                .get(trust_entity::controller::get_trust_entity_details),
         )
         .layer(middleware::from_fn(crate::middleware::bearer_check));
 
@@ -427,6 +429,8 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
             trust_entity::controller::create_trust_entity,
             trust_entity::controller::delete_trust_entity,
+            trust_entity::controller::get_trust_entity_details,
+            trust_entity::controller::get_trust_entities,
 
             misc::get_build_info,
             misc::health_check,
@@ -590,9 +594,12 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
                 trust_anchor::dto::TrustAnchorRoleRest,
                 trust_anchor::dto::GetTrustAnchorResponseRestDTO,
                 trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO,
+                trust_anchor::dto::GetTrustAnchorDetailResponseRestDTO,
 
                 trust_entity::dto::CreateTrustEntityRequestRestDTO,
                 trust_entity::dto::TrustEntityRoleRest,
+                trust_entity::dto::GetTrustEntityResponseRestDTO,
+                trust_entity::dto::ListTrustEntitiesResponseItemRestDTO,
 
                 dto::common::GetDidsResponseRestDTO,
                 dto::common::GetProofSchemaListResponseRestDTO,

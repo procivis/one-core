@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
 use one_core::{
-    model::trust_entity::{TrustEntity, TrustEntityRole},
+    model::{
+        organisation::OrganisationRelations,
+        trust_anchor::{TrustAnchor, TrustAnchorRelations},
+        trust_entity::{TrustEntity, TrustEntityRelations, TrustEntityRole},
+    },
     repository::trust_entity_repository::TrustEntityRepository,
 };
-use shared_types::{TrustAnchorId, TrustEntityId};
+use shared_types::TrustEntityId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -22,28 +26,38 @@ impl TrustEntityDB {
         entity_id: &str,
         name: &str,
         role: TrustEntityRole,
-        trust_anchor_id: TrustAnchorId,
+        trust_anchor: TrustAnchor,
     ) -> TrustEntity {
-        let trust_anchor = TrustEntity {
+        let trust_entity = TrustEntity {
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             entity_id: entity_id.into(),
             name: name.into(),
-            logo: None,
-            website: None,
-            terms_url: None,
-            privacy_url: None,
+            logo: Some("Logo".to_owned()),
+            website: Some("Website".to_owned()),
+            terms_url: Some("TermsUrl".to_owned()),
+            privacy_url: Some("PrivacyUrl".to_owned()),
             role,
-            trust_anchor_id,
+            trust_anchor: Some(trust_anchor),
         };
 
-        self.repository.create(trust_anchor.clone()).await.unwrap();
+        self.repository.create(trust_entity.clone()).await.unwrap();
 
-        trust_anchor
+        trust_entity
     }
 
     pub async fn get(&self, id: TrustEntityId) -> Option<TrustEntity> {
-        self.repository.get(id).await.unwrap()
+        self.repository
+            .get(
+                id,
+                &TrustEntityRelations {
+                    trust_anchor: Some(TrustAnchorRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                },
+            )
+            .await
+            .unwrap()
     }
 }

@@ -3,10 +3,16 @@ use axum::Json;
 use axum_extra::extract::WithRejection;
 use shared_types::TrustEntityId;
 
-use super::dto::CreateTrustEntityRequestRestDTO;
-use crate::dto::common::EntityResponseRestDTO;
+use super::dto::{CreateTrustEntityRequestRestDTO, ListTrustEntitiesQuery};
+use crate::dto::common::{EntityResponseRestDTO, GetTrustEntityListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse};
+use crate::dto::response::{
+    declare_utoipa_alias, AliasResponse, CreatedOrErrorResponse, EmptyOrErrorResponse,
+    OkOrErrorResponse,
+};
+
+use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
+use crate::extractor::Qs;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -57,4 +63,49 @@ pub(crate) async fn delete_trust_entity(
         .await;
 
     EmptyOrErrorResponse::from_result(result, state, "deleting trust entity")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/trust-entity/v1/{id}",
+    responses(OkOrErrorResponse<GetTrustEntityResponseRestDTO>),
+    params(
+        ("id" = Uuid, Path, description = "Trust Entity id")
+    ),
+    tag = "trust_entity",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_trust_entity_details(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<TrustEntityId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetTrustEntityResponseRestDTO> {
+    let result = state.core.trust_entity_service.get_trust_entity(id).await;
+
+    OkOrErrorResponse::from_result(result, state, "getting trust entity")
+}
+
+declare_utoipa_alias!(GetTrustEntityListResponseRestDTO);
+
+#[utoipa::path(
+    get,
+    path = "/api/trust-entity/v1",
+    responses(OkOrErrorResponse<AliasResponse<GetTrustEntityListResponseRestDTO>>),
+    params(ListTrustEntitiesQuery),
+    tag = "trust_entity",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn get_trust_entities(
+    state: State<AppState>,
+    WithRejection(Qs(query), _): WithRejection<Qs<ListTrustEntitiesQuery>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetTrustEntityListResponseRestDTO> {
+    let result = state
+        .core
+        .trust_entity_service
+        .list_trust_entities(query.into())
+        .await;
+    OkOrErrorResponse::from_result(result, state, "listing trust entities")
 }

@@ -14,7 +14,7 @@ async fn test_create_anchor() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            &organisation,
             "SIMPLE_TRUST_LIST",
             TrustAnchorRoleRest::Publisher,
         )
@@ -35,7 +35,7 @@ async fn test_fail_to_create_anchor_unknown_format() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            &organisation,
             "NOT_SO_SIMPLE_TRUST_LIST",
             TrustAnchorRoleRest::Publisher,
         )
@@ -55,7 +55,7 @@ async fn test_fail_to_create_anchor_name_already_taken() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            organisation.clone(),
             "SIMPLE_TRUST_LIST",
             TrustAnchorRole::Publisher,
         )
@@ -67,7 +67,7 @@ async fn test_fail_to_create_anchor_name_already_taken() {
         .trust_anchors
         .create(
             "name",
-            organisation.id,
+            &organisation,
             "SIMPLE_TRUST_LIST",
             TrustAnchorRoleRest::Publisher,
         )

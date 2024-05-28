@@ -1,7 +1,8 @@
 use dto_mapper::{From, Into};
-use one_core::model::trust_anchor::{TrustAnchor, TrustAnchorRole};
+use one_core::model::trust_anchor::TrustAnchorRole;
 use one_core::service::trust_anchor::dto::{
-    CreateTrustAnchorRequestDTO, SortableTrustAnchorColumn, TrustAnchorsListItemResponseDTO,
+    CreateTrustAnchorRequestDTO, GetTrustAnchorDetailResponseDTO, SortableTrustAnchorColumn,
+    TrustAnchorsListItemResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, TrustAnchorId};
@@ -16,11 +17,10 @@ use crate::serialize::front_time;
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrustAnchorRequestRestDTO {
     pub name: String,
-    #[serde(rename = "type")]
-    pub type_: String,
-    pub publisher_reference: String,
+    pub r#type: String,
+    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleRest,
-    pub priority: u32,
+    pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
 }
 
@@ -33,8 +33,8 @@ pub enum TrustAnchorRoleRest {
     Client,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(TrustAnchor)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
+#[from(GetTrustAnchorDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct GetTrustAnchorResponseRestDTO {
     pub id: TrustAnchorId,
@@ -47,7 +47,6 @@ pub struct GetTrustAnchorResponseRestDTO {
     #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
-    #[from(rename = type_field)]
     pub r#type: String,
 
     pub publisher_reference: Option<String>,
@@ -71,9 +70,9 @@ pub struct ListTrustAnchorsResponseItemRestDTO {
     pub last_modified: OffsetDateTime,
 
     pub r#type: String,
-    pub publisher_reference: String,
+    pub publisher_reference: Option<String>,
     pub role: TrustAnchorRoleRest,
-    pub priority: u32,
+    pub priority: Option<u32>,
     pub organisation_id: OrganisationId,
     pub entities: u64,
 }
@@ -109,3 +108,23 @@ pub enum SortableTrustAnchorColumnRestEnum {
 
 pub type ListTrustAnchorsQuery =
     ListQueryParamsRest<TrustAnchorsFilterQueryParamsRest, SortableTrustAnchorColumnRestEnum>;
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, ToSchema, From, Into)]
+#[from(GetTrustAnchorDetailResponseDTO)]
+#[into(GetTrustAnchorDetailResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTrustAnchorDetailResponseRestDTO {
+    pub id: TrustAnchorId,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub created_date: OffsetDateTime,
+    #[serde(serialize_with = "front_time")]
+    #[schema(value_type = String, example = "2023-06-09T14:19:57.000Z")]
+    pub last_modified: OffsetDateTime,
+    pub name: String,
+    pub r#type: String,
+    pub publisher_reference: Option<String>,
+    pub role: TrustAnchorRoleRest,
+    pub priority: Option<u32>,
+    pub organisation_id: OrganisationId,
+}

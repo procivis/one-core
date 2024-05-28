@@ -1,6 +1,6 @@
 use shared_types::TrustAnchorId;
 
-use crate::model::trust_anchor::TrustAnchor;
+use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::repository::error::DataLayerError;
 use crate::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO};
 
@@ -8,7 +8,13 @@ use crate::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnc
 #[async_trait::async_trait]
 pub trait TrustAnchorRepository: Send + Sync {
     async fn create(&self, anchor: TrustAnchor) -> Result<TrustAnchorId, DataLayerError>;
-    async fn get(&self, id: TrustAnchorId) -> Result<Option<TrustAnchor>, DataLayerError>;
+
+    async fn get(
+        &self,
+        id: TrustAnchorId,
+        relations: &TrustAnchorRelations,
+    ) -> Result<Option<TrustAnchor>, DataLayerError>;
+
     async fn list(
         &self,
         filters: ListTrustAnchorsQueryDTO,

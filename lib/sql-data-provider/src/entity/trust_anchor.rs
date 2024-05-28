@@ -4,9 +4,7 @@ use sea_orm::entity::prelude::*;
 use shared_types::{DidId, OrganisationId, TrustAnchorId};
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Into, From)]
-#[into(TrustAnchor)]
-#[from(TrustAnchor)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "trust_anchor")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
