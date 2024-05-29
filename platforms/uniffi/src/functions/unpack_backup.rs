@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use crate::{error::BindingError, MetadataBindingDTO, OneCoreBinding};
+use crate::error::BindingError;
+use crate::{MetadataBindingDTO, OneCoreBinding};
 
 impl OneCoreBinding {
     pub fn unpack_backup(

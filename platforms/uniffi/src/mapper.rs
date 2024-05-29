@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
-use dto_mapper::convert_inner;
+use dto_mapper::{convert_inner, convert_inner_of_inner};
+use one_core::model::common::GetListQueryParams;
 use one_core::model::did::DidType;
 use one_core::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use one_core::model::list_query::{ListPagination, ListSorting};
+use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -21,6 +23,7 @@ use one_core::service::trust_anchor::dto::{
 };
 use serde_json::json;
 use shared_types::KeyId;
+use time::OffsetDateTime;
 
 use super::dto::{ClaimBindingDTO, ClaimValueBindingDTO, CredentialSchemaBindingDTO};
 use crate::dto::{
@@ -33,7 +36,7 @@ use crate::utils::{into_id, TimestampFormat};
 use crate::{
     CreateTrustAnchorRequestBindingDTO, CredentialSchemaTypeBindingEnum,
     ExactTrustAnchorFilterColumnBindings, HistoryListItemBindingDTO, HistoryMetadataBinding,
-    ListTrustAnchorsFiltersBindings,
+    ListProofSchamasFiltersBindingDTO, ListTrustAnchorsFiltersBindings,
 };
 
 pub(crate) fn serialize_config_entity(
@@ -327,4 +330,28 @@ impl TryFrom<ListTrustAnchorsFiltersBindings> for ListTrustAnchorsQueryDTO {
             include: None,
         })
     }
+}
+
+impl TryFrom<ListProofSchamasFiltersBindingDTO> for GetListQueryParams<SortableProofSchemaColumn> {
+    type Error = BindingError;
+
+    fn try_from(value: ListProofSchamasFiltersBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            page: value.page,
+            page_size: value.page_size,
+            sort: convert_inner(value.sort),
+            sort_direction: convert_inner(value.sort_direction),
+            name: value.name,
+            organisation_id: into_id(&value.organisation_id)?,
+            exact: convert_inner_of_inner(value.exact),
+            ids: value
+                .ids
+                .map(|ids| ids.into_iter().map(|id| into_id(&id)).collect())
+                .transpose()?,
+        })
+    }
+}
+
+pub fn optional_time(value: Option<OffsetDateTime>) -> Option<String> {
+    value.as_ref().map(TimestampFormat::format_timestamp)
 }

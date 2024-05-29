@@ -1,6 +1,7 @@
 use std::path::Path;
 
-use crate::{error::BindingError, OneCoreBinding};
+use crate::error::BindingError;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn rollback_import(&self) -> Result<(), BindingError> {

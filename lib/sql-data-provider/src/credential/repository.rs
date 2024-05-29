@@ -1,48 +1,43 @@
-use crate::{
-    common::calculate_pages_count,
-    credential::{
-        entity_model::CredentialListEntityModel,
-        mapper::{
-            credentials_to_repository, get_credential_state_active_model, request_to_active_model,
-        },
-        CredentialProvider,
-    },
-    entity::{
-        claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
-        credential_state, did,
-    },
-    list_query_generic::SelectWithListQuery,
-};
+use std::str::FromStr;
+use std::sync::Arc;
+
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
-use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
-use one_core::{
-    model::{
-        claim::{Claim, ClaimId, ClaimRelations},
-        credential::{
-            Credential, CredentialRelations, CredentialState, GetCredentialList,
-            GetCredentialQuery, UpdateCredentialRequest,
-        },
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::{Did, DidRelations},
-        interaction::InteractionId,
-    },
-    repository::{
-        claim_repository::ClaimRepository, credential_repository::CredentialRepository,
-        credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-        error::DataLayerError,
-    },
+use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
+use one_core::model::credential::{
+    Credential, CredentialRelations, CredentialState, GetCredentialList, GetCredentialQuery,
+    UpdateCredentialRequest,
 };
+use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use one_core::model::did::{Did, DidRelations};
+use one_core::model::interaction::InteractionId;
+use one_core::repository::claim_repository::ClaimRepository;
+use one_core::repository::credential_repository::CredentialRepository;
+use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
+use one_core::repository::did_repository::DidRepository;
+use one_core::repository::error::DataLayerError;
+use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
+use sea_orm::sea_query::{Alias, Expr, IntoCondition, Query};
 use sea_orm::{
-    sea_query::{Alias, Expr, IntoCondition, Query},
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait,
     FromQueryResult, JoinType, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait,
     Select, Set, SqlErr, Unchanged,
 };
 use shared_types::{CredentialId, CredentialSchemaId, DidId};
-use std::{str::FromStr, sync::Arc};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::common::calculate_pages_count;
+use crate::credential::entity_model::CredentialListEntityModel;
+use crate::credential::mapper::{
+    credentials_to_repository, get_credential_state_active_model, request_to_active_model,
+};
+use crate::credential::CredentialProvider;
+use crate::entity::{
+    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
+    credential_state, did,
+};
+use crate::list_query_generic::SelectWithListQuery;
 
 async fn get_credential_schema(
     schema_id: &CredentialSchemaId,
@@ -487,7 +482,7 @@ impl CredentialRepository for CredentialProvider {
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
-            .filter(credential::Column::InteractionId.eq(&interaction_id.to_string()))
+            .filter(credential::Column::InteractionId.eq(interaction_id.to_string()))
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
