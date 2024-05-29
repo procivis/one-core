@@ -1,4 +1,5 @@
-use crate::{dto::VersionBindingDTO, OneCoreBinding};
+use crate::dto::VersionBindingDTO;
+use crate::OneCoreBinding;
 
 impl OneCoreBinding {
     pub fn version(&self) -> VersionBindingDTO {

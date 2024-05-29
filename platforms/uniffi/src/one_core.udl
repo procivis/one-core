@@ -570,6 +570,43 @@ dictionary TrustAnchorsListBindingDTO {
   u64 total_items;
 };
 
+enum SortableProofSchemaColumnBinding {
+  "Name",
+  "CreatedDate",
+};
+
+enum ProofSchemaListQueryExactColumnBinding {
+  "Name",
+};
+
+dictionary ListProofSchamasFiltersBindingDTO {
+  u32 page;
+  u32 page_size;
+
+  SortableProofSchemaColumnBinding? sort;
+  SortDirection? sort_direction;
+
+  string organisation_id;
+  string? name;
+  sequence<ProofSchemaListQueryExactColumnBinding>? exact;
+  sequence<string>? ids;
+};
+
+dictionary GetProofSchemaListItemBindingDTO {
+  string id;
+  string created_date;
+  string last_modified;
+  string? deleted_at;
+  string name;
+  u32 expire_duration;
+};
+
+dictionary ProofSchemaListBindingDTO {
+  sequence<GetProofSchemaListItemBindingDTO> values;
+  u64 total_pages;
+  u64 total_items;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -653,6 +690,9 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   TrustAnchorsListBindingDTO list_trust_anchors(ListTrustAnchorsFiltersBindings filters);
+
+  [Throws=BindingError]
+  ProofSchemaListBindingDTO get_proof_schemas(ListProofSchamasFiltersBindingDTO filters);
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);
