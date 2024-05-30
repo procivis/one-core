@@ -306,6 +306,7 @@ impl OneCore {
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
+                crypto.clone(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 core_base_url.clone(),

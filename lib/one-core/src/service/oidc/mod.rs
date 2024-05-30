@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -38,6 +39,7 @@ pub struct OIDCService {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+    crypto: Arc<dyn CryptoProvider>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -58,6 +60,7 @@ impl OIDCService {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
+        crypto: Arc<dyn CryptoProvider>,
     ) -> Self {
         Self {
             core_base_url,
@@ -75,6 +78,7 @@ impl OIDCService {
             did_method_provider,
             key_algorithm_provider,
             revocation_method_provider,
+            crypto,
         }
     }
 }

@@ -76,6 +76,20 @@ impl HttpClient {
         Response { resp }
     }
 
+    pub async fn post_form(&self, url: &str, form: &[(&str, &str)]) -> Response {
+        let url = format!("{}{url}", self.base_url);
+
+        let resp = http_client()
+            .post(url)
+            .bearer_auth(&self.token)
+            .form(form)
+            .send()
+            .await
+            .unwrap();
+
+        Response { resp }
+    }
+
     pub async fn patch(&self, url: &str, body: impl Into<Option<Value>>) -> Response {
         let url = format!("{}{url}", self.base_url);
 

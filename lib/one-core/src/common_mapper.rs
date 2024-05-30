@@ -64,6 +64,14 @@ pub(crate) fn get_exchange_param_token_expires_in(
     Ok(Duration::seconds(params.token_expires_in as _))
 }
 
+pub(crate) fn get_exchange_param_refresh_token_expires_in(
+    config: &CoreConfig,
+) -> Result<Duration, ServiceError> {
+    let params: OpenID4VCParams = config.exchange.get_by_type(ExchangeType::OpenId4Vc)?;
+
+    Ok(Duration::seconds(params.refresh_expires_in as _))
+}
+
 pub(crate) async fn get_or_create_did(
     did_repository: &dyn DidRepository,
     organisation: &Option<Organisation>,

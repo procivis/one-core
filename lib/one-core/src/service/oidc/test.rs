@@ -2,13 +2,14 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use mockall::predicate::{always, eq};
+use mockall::predicate::{self, always, eq};
 use serde_json::json;
 use shared_types::{DidId, DidValue};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
+use crate::crypto::MockCryptoProvider;
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{
@@ -84,6 +85,7 @@ struct Mocks {
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
+    pub crypto_provider: MockCryptoProvider,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -104,6 +106,7 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.revocation_method_provider),
+        Arc::new(mocks.crypto_provider),
     )
 }
 
@@ -130,21 +133,34 @@ fn generic_credential_schema() -> CredentialSchema {
 fn dummy_interaction(
     pre_authorized_code: bool,
     access_token_expires_at: Option<&str>,
+    refresh_token: Option<&str>,
+    refresh_token_expires_at: Option<&str>,
 ) -> Interaction {
+    let mut data = json!({
+        "pre_authorized_code_used": pre_authorized_code,
+        "access_token": "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+        "access_token_expires_at": access_token_expires_at.unwrap_or("2099-10-28T07:03:38.4404734Z"),
+    });
+
+    if let Some(refresh_token) = refresh_token {
+        data.as_object_mut()
+            .unwrap()
+            .insert("refresh_token".to_string(), json!(refresh_token));
+    }
+
+    if let Some(refresh_token_expires_at) = refresh_token_expires_at {
+        data.as_object_mut().unwrap().insert(
+            "refresh_token_expires_at".to_string(),
+            json!(refresh_token_expires_at),
+        );
+    }
+
     Interaction {
         id: Uuid::new_v4(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         host: Some("http://host-base-url".parse().unwrap()),
-        data: Some(
-            json!({
-            "pre_authorized_code_used": pre_authorized_code,
-            "access_token": "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            "access_token_expires_at": access_token_expires_at.unwrap_or("2099-10-28T07:03:38.4404734Z"),
-            })
-            .to_string()
-            .into_bytes(),
-        ),
+        data: Some(data.to_string().into_bytes()),
     }
 }
 
@@ -168,7 +184,7 @@ fn dummy_credential(state: CredentialStateEnum, pre_authroized_code: bool) -> Cr
         issuer_did: None,
         holder_did: None,
         schema: None,
-        interaction: Some(dummy_interaction(pre_authroized_code, None)),
+        interaction: Some(dummy_interaction(pre_authroized_code, None, None, None)),
         revocation_list: None,
         key: None,
     }
@@ -380,9 +396,8 @@ async fn test_oidc_create_token() {
     let result = service
         .oidc_create_token(
             &schema.id,
-            OpenID4VCITokenRequestDTO {
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
-                grant_type: "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
             },
         )
         .await;
@@ -395,10 +410,12 @@ async fn test_oidc_create_token() {
         "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
         result_content.access_token
     );
+    assert!(result_content.refresh_token.is_none());
+    assert!(result_content.refresh_token_expires_in.is_none());
 }
 
 #[tokio::test]
-async fn test_oidc_create_token_invalid_grant_type() {
+async fn test_oidc_create_token_empty_pre_authorized_code() {
     let schema = generic_credential_schema();
     let service = setup_service(Mocks {
         config: generic_config().core,
@@ -407,9 +424,8 @@ async fn test_oidc_create_token_invalid_grant_type() {
     let result = service
         .oidc_create_token(
             &schema.id,
-            OpenID4VCITokenRequestDTO {
-                pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
-                grant_type: "something else".to_string(),
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code: "".to_string(),
             },
         )
         .await;
@@ -418,7 +434,7 @@ async fn test_oidc_create_token_invalid_grant_type() {
     assert!(matches!(
         result,
         Err(ServiceError::OpenID4VCError(
-            OpenID4VCIError::UnsupportedGrantType
+            OpenID4VCIError::InvalidRequest
         ))
     ));
 }
@@ -458,9 +474,8 @@ async fn test_oidc_create_token_pre_authorized_code_used() {
     let result = service
         .oidc_create_token(
             &schema.id,
-            OpenID4VCITokenRequestDTO {
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
-                grant_type: "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
             },
         )
         .await;
@@ -507,9 +522,8 @@ async fn test_oidc_create_token_wrong_credential_state() {
     let result = service
         .oidc_create_token(
             &schema.id,
-            OpenID4VCITokenRequestDTO {
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
-                grant_type: "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
             },
         )
         .await;
@@ -552,7 +566,7 @@ async fn test_oidc_create_credential_success() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(true, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
 
         transport_provider
             .expect_issue_credential()
@@ -659,7 +673,7 @@ async fn test_oidc_create_credential_success_mdoc() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(true, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
 
         transport_provider
             .expect_issue_credential()
@@ -932,7 +946,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(false, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(false, None, None, None))));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -987,7 +1001,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(true, None))));
+            .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -1046,6 +1060,8 @@ async fn test_oidc_create_credential_access_token_expired() {
                 Ok(Some(dummy_interaction(
                     true,
                     Some("2022-10-28T07:03:38.4404734Z"),
+                    None,
+                    None,
                 )))
             });
     }
@@ -1793,4 +1809,227 @@ async fn test_get_client_metadata_success() {
         },
         result
     );
+}
+
+#[tokio::test]
+async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+    let mut crypto_provider = MockCryptoProvider::new();
+
+    let mut schema = generic_credential_schema();
+    schema.format = "MDOC".to_string();
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .once()
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .return_once({
+            let schema = schema.clone();
+            move |_, _| Ok(Some(schema))
+        });
+
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_, _| Ok(vec![dummy_credential(CredentialStateEnum::Pending, false)]));
+
+    credential_repository
+        .expect_update_credential()
+        .once()
+        .return_once(|_| Ok(()));
+
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .return_once(|_| Ok(()));
+
+    crypto_provider
+        .expect_generate_alphanumeric()
+        .once()
+        .with(predicate::eq(32))
+        .return_once(|_| "abcdefghijklmnopqrstuvwxyzABCDEF".to_string());
+
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        credential_repository,
+        interaction_repository,
+        crypto_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .oidc_create_token(
+            &schema.id,
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+            },
+        )
+        .await;
+
+    let result = result.unwrap();
+    assert_eq!("bearer", result.token_type);
+    assert_eq!(
+        "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+        result.access_token
+    );
+
+    assert_eq!(
+        Some("c62f4237-3c74-42f2-a5ff-c72489e025f7.abcdefghijklmnopqrstuvwxyzABCDEF"),
+        result.refresh_token.as_deref()
+    );
+    assert!(result.refresh_token_expires_in.is_some());
+}
+
+#[tokio::test]
+async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+    let mut crypto_provider = MockCryptoProvider::new();
+
+    let schema = generic_credential_schema();
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .once()
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .return_once({
+            let schema = schema.clone();
+            move |_, _| Ok(Some(schema))
+        });
+
+    let interaction_id: Uuid = "c62f4237-3c74-42f2-a5ff-c72489e025f7".parse().unwrap();
+    let refresh_token = "c62f4237-3c74-42f2-a5ff-c72489e025f7.AAAAA";
+    let refresh_token_expires_at = "2077-10-28T07:03:38.4404734Z";
+    let credential = Credential {
+        interaction: Some(dummy_interaction(
+            false,
+            None,
+            Some(refresh_token),
+            Some(refresh_token_expires_at),
+        )),
+        ..dummy_credential(CredentialStateEnum::Accepted, false)
+    };
+
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .withf(move |interaction_id_, _| *interaction_id_ == interaction_id)
+        .once()
+        .return_once(move |_, _| Ok(vec![credential]));
+
+    interaction_repository
+        .expect_update_interaction()
+        .once()
+        .return_once(|_| Ok(()));
+
+    crypto_provider
+        .expect_generate_alphanumeric()
+        .once()
+        .with(predicate::eq(32))
+        .return_once(|_| "1ABC".to_string());
+    crypto_provider
+        .expect_generate_alphanumeric()
+        .once()
+        .with(predicate::eq(32))
+        .return_once(|_| "2ABC".to_string());
+
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        credential_repository,
+        interaction_repository,
+        crypto_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .oidc_create_token(
+            &schema.id,
+            OpenID4VCITokenRequestDTO::RefreshToken {
+                refresh_token: refresh_token.to_string(),
+            },
+        )
+        .await
+        .unwrap();
+
+    assert_eq!("bearer", result.token_type);
+    assert_eq!(
+        "c62f4237-3c74-42f2-a5ff-c72489e025f7.1ABC",
+        result.access_token
+    );
+
+    assert_eq!(
+        Some("c62f4237-3c74-42f2-a5ff-c72489e025f7.2ABC"),
+        result.refresh_token.as_deref()
+    );
+    assert!(result.refresh_token_expires_in.is_some());
+}
+
+#[tokio::test]
+async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+
+    let schema = generic_credential_schema();
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .once()
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .return_once({
+            let schema = schema.clone();
+            move |_, _| Ok(Some(schema))
+        });
+
+    let interaction_id: Uuid = "c62f4237-3c74-42f2-a5ff-c72489e025f7".parse().unwrap();
+    let refresh_token = "c62f4237-3c74-42f2-a5ff-c72489e025f7.AAAAA";
+    // expired refresh token
+    let refresh_token_expires_at = "2023-10-28T07:03:38.4404734Z";
+    let credential = Credential {
+        interaction: Some(dummy_interaction(
+            false,
+            None,
+            Some(refresh_token),
+            Some(refresh_token_expires_at),
+        )),
+        ..dummy_credential(CredentialStateEnum::Accepted, false)
+    };
+
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .withf(move |interaction_id_, _| *interaction_id_ == interaction_id)
+        .once()
+        .return_once(move |_, _| Ok(vec![credential]));
+
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        credential_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .oidc_create_token(
+            &schema.id,
+            OpenID4VCITokenRequestDTO::RefreshToken {
+                refresh_token: refresh_token.to_string(),
+            },
+        )
+        .await
+        .err()
+        .unwrap();
+
+    assert2::assert!(let ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken) = result);
 }

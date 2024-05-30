@@ -46,6 +46,7 @@ exchange:
       public:
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
+        refreshExpiresIn: 7776000 # 90 days in seconds
   MDL:
     display: "exchange.mdl"
     type: "MDL"

@@ -1,7 +1,7 @@
 use crate::common_mapper::{
     extracted_credential_to_model, get_encryption_key_jwk_from_proof,
-    get_exchange_param_pre_authorization_expires_in, get_exchange_param_token_expires_in,
-    get_or_create_did,
+    get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
+    get_exchange_param_token_expires_in, get_or_create_did,
 };
 use crate::common_validator::{
     throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
@@ -45,7 +45,7 @@ use crate::service::oidc::dto::{
     PresentationSubmissionMappingDTO,
 };
 use crate::service::oidc::mapper::{
-    interaction_data_to_dto, parse_access_token, parse_interaction_content,
+    interaction_data_to_dto, parse_access_token, parse_interaction_content, parse_refresh_token,
     vec_last_position_from_token_path,
 };
 use crate::service::oidc::model::OpenID4VPPresentationDefinition;
@@ -71,7 +71,7 @@ use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
 use josekit::jwe::{JweDecrypter, JweHeader};
 use shared_types::{CredentialId, CredentialSchemaId, KeyId};
 use std::collections::HashMap;
-use std::ops::{Add, Sub};
+use std::ops::Sub;
 use std::str::FromStr;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -79,6 +79,7 @@ use uuid::Uuid;
 use super::dto::{
     OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, ValidatedProofClaimDTO,
 };
+use super::validator::validate_refresh_token;
 
 impl OIDCService {
     pub async fn oidc_get_issuer_metadata(
@@ -346,16 +347,22 @@ impl OIDCService {
 
         throw_if_token_request_invalid(&request)?;
 
-        if self
+        let Some(credential_schema) = self
             .credential_schema_repository
             .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
             .await?
-            .is_none()
-        {
+        else {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
-        }
+        };
 
-        let interaction_id = Uuid::from_str(&request.pre_authorized_code)?;
+        let interaction_id = match &request {
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code,
+            } => Uuid::from_str(pre_authorized_code)?,
+            OpenID4VCITokenRequestDTO::RefreshToken { refresh_token } => {
+                parse_refresh_token(refresh_token)?
+            }
+        };
 
         let credentials = self
             .credential_repository
@@ -380,38 +387,73 @@ impl OIDCService {
                 "interaction is None".to_string(),
             ))?;
 
-        throw_if_interaction_created_date(
-            get_exchange_param_pre_authorization_expires_in(&self.config)?,
-            &interaction,
-        )?;
+        // both refresh and access token have the same structure
+        let generate_new_token = || {
+            format!(
+                "{}.{}",
+                interaction_id,
+                self.crypto.generate_alphanumeric(32)
+            )
+        };
 
         let mut interaction_data = interaction_data_to_dto(&interaction)?;
 
-        throw_if_interaction_pre_authorized_code_used(&interaction_data)?;
+        match &request {
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } => {
+                throw_if_interaction_created_date(
+                    get_exchange_param_pre_authorization_expires_in(&self.config)?,
+                    &interaction,
+                )?;
+                throw_if_interaction_pre_authorized_code_used(&interaction_data)?;
 
-        for credential in &credentials {
-            throw_if_latest_credential_state_not_eq(credential, CredentialStateEnum::Pending)?;
-            self.credential_repository
-                .update_credential(UpdateCredentialRequest {
-                    id: credential.id,
-                    state: Some(CredentialState {
-                        created_date: now,
-                        state: CredentialStateEnum::Offered,
-                        suspend_end_date: None,
-                    }),
-                    credential: None,
-                    holder_did_id: None,
-                    issuer_did_id: None,
-                    interaction: None,
-                    key: None,
-                    redirect_uri: None,
-                })
-                .await?;
-        }
+                for credential in &credentials {
+                    throw_if_latest_credential_state_not_eq(
+                        credential,
+                        CredentialStateEnum::Pending,
+                    )?;
+                    self.credential_repository
+                        .update_credential(UpdateCredentialRequest {
+                            id: credential.id,
+                            state: Some(CredentialState {
+                                created_date: now,
+                                state: CredentialStateEnum::Offered,
+                                suspend_end_date: None,
+                            }),
+                            credential: None,
+                            holder_did_id: None,
+                            issuer_did_id: None,
+                            interaction: None,
+                            key: None,
+                            redirect_uri: None,
+                        })
+                        .await?;
+                }
 
-        interaction_data.pre_authorized_code_used = true;
-        interaction_data.access_token_expires_at =
-            Some(now.add(get_exchange_param_token_expires_in(&self.config)?));
+                interaction_data.pre_authorized_code_used = true;
+                interaction_data.access_token_expires_at =
+                    Some(now + get_exchange_param_token_expires_in(&self.config)?);
+
+                // we add refresh token for mdoc
+                if credential_schema.format == "MDOC" {
+                    interaction_data.refresh_token = Some(generate_new_token());
+
+                    interaction_data.refresh_token_expires_at =
+                        Some(now + get_exchange_param_refresh_token_expires_in(&self.config)?);
+                }
+            }
+
+            OpenID4VCITokenRequestDTO::RefreshToken { refresh_token } => {
+                validate_refresh_token(&interaction_data, refresh_token)?;
+                // we update both the access token and the refresh token
+                interaction_data.access_token = generate_new_token();
+                interaction_data.access_token_expires_at =
+                    Some(now + get_exchange_param_token_expires_in(&self.config)?);
+
+                interaction_data.refresh_token = Some(generate_new_token());
+                interaction_data.refresh_token_expires_at =
+                    Some(now + get_exchange_param_refresh_token_expires_in(&self.config)?);
+            }
+        };
 
         let data = serde_json::to_vec(&interaction_data)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;

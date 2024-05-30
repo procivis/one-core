@@ -131,6 +131,7 @@ pub(crate) struct OpenID4VC {
 pub(crate) struct OpenID4VCParams {
     pub(crate) pre_authorized_code_expires_in: u64,
     pub(crate) token_expires_in: u64,
+    pub(crate) refresh_expires_in: u64,
     pub(crate) credential_offer_by_value: Option<bool>,
     pub(crate) client_metadata_by_value: Option<bool>,
     pub(crate) presentation_definition_by_value: Option<bool>,
@@ -963,8 +964,7 @@ async fn handle_credential_invitation(
     let token_response: OpenID4VCITokenResponseDTO = deps
         .client
         .post(&oicd_discovery.token_endpoint)
-        .form(&OpenID4VCITokenRequestDTO {
-            grant_type: "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
+        .form(&OpenID4VCITokenRequestDTO::PreAuthorizedCode {
             pre_authorized_code: credential_offer.grants.code.pre_authorized_code.clone(),
         })
         .send()

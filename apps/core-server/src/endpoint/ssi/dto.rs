@@ -22,9 +22,9 @@ use one_core::service::oidc::dto::{
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedResponseDTO,
     OpenID4VCIIssuerMetadataMdocClaimsValuesDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
-    PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO, OpenID4VPDirectPostRequestDTO,
+    OpenID4VPDirectPostResponseDTO, PresentationSubmissionDescriptorDTO,
+    PresentationSubmissionMappingDTO,
 };
 use one_core::service::oidc::model::{
     OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
@@ -186,12 +186,13 @@ pub struct OpenID4VCIDiscoveryResponseRestDTO {
     pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
-#[into(OpenID4VCITokenRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 pub struct OpenID4VCITokenRequestRestDTO {
+    #[schema(example = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
     pub grant_type: String,
     #[serde(rename = "pre-authorized_code")]
-    pub pre_authorized_code: String,
+    pub pre_authorized_code: Option<String>,
+    pub refresh_token: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
@@ -306,6 +307,12 @@ pub struct OpenID4VCITokenResponseRestDTO {
     pub access_token: String,
     pub token_type: String,
     pub expires_in: DurationSecondsRest,
+    #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub refresh_token: Option<String>,
+    #[from(with_fn = convert_inner)]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub refresh_token_expires_in: Option<DurationSecondsRest>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
