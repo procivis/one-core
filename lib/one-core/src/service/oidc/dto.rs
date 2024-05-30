@@ -79,6 +79,10 @@ pub struct OpenID4VCITokenResponseDTO {
     pub access_token: String,
     pub token_type: String,
     pub expires_in: DurationSeconds,
+    #[serde(default)]
+    pub refresh_token: Option<String>,
+    #[serde(default)]
+    pub refresh_token_expires_in: Option<DurationSeconds>,
 }
 
 #[derive(Clone, Debug)]
@@ -87,10 +91,25 @@ pub struct OpenID4VCIErrorResponseDTO {
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub struct OpenID4VCITokenRequestDTO {
-    pub grant_type: String,
-    #[serde(rename = "pre-authorized_code")]
-    pub pre_authorized_code: String,
+#[serde(tag = "grant_type")]
+pub enum OpenID4VCITokenRequestDTO {
+    #[serde(rename = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
+    PreAuthorizedCode {
+        #[serde(rename = "pre-authorized_code")]
+        pre_authorized_code: String,
+    },
+    #[serde(rename = "refresh_token")]
+    RefreshToken { refresh_token: String },
+}
+
+impl OpenID4VCITokenRequestDTO {
+    pub fn is_pre_authorized_code(&self) -> bool {
+        matches!(self, Self::PreAuthorizedCode { .. })
+    }
+
+    pub fn is_refresh_token(&self) -> bool {
+        matches!(self, Self::RefreshToken { .. })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Error)]
@@ -121,6 +140,14 @@ pub struct OpenID4VCIInteractionDataDTO {
     pub access_token: String,
     #[serde(with = "time::serde::rfc3339::option")]
     pub access_token_expires_at: Option<OffsetDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub refresh_token: Option<String>,
+    #[serde(
+        with = "time::serde::rfc3339::option",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub refresh_token_expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]

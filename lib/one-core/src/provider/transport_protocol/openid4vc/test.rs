@@ -97,6 +97,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VC {
             client_metadata_by_value: None,
             presentation_definition_by_value: None,
             allow_insecure_http_transport: Some(true),
+            refresh_expires_in: 1000,
         }),
         Arc::new(generic_config().core),
     )
@@ -433,6 +434,7 @@ async fn test_generate_share_credentials_offer_by_value() {
             client_metadata_by_value: None,
             presentation_definition_by_value: None,
             allow_insecure_http_transport: Some(true),
+            refresh_expires_in: 1000,
         }),
         ..Default::default()
     });
@@ -716,6 +718,7 @@ async fn test_handle_invitation_proof_failed() {
             client_metadata_by_value: None,
             presentation_definition_by_value: None,
             allow_insecure_http_transport: None,
+            refresh_expires_in: 1000,
         }),
         ..Default::default()
     });

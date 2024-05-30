@@ -1,68 +1,229 @@
 use one_core::model::credential::CredentialStateEnum;
 use serde_json::json;
 use time::{macros::format_description, OffsetDateTime};
+use uuid::Uuid;
 
 use crate::{
-    fixtures::{self, TestingCredentialParams},
-    utils::{self, server::run_server},
+    fixtures::TestingCredentialParams,
+    utils::{context::TestContext, db_clients::credential_schemas::TestingCreateSchemaParams},
 };
 
 #[tokio::test]
-async fn test_post_issuer_token() {
+async fn test_oidc_create_token() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
 
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let credential_schema =
-        fixtures::create_credential_schema(&db_conn, "test", &organisation, "NONE").await;
+    let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
 
+    let interaction_id = Uuid::new_v4();
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token": "access_token",
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&format).unwrap(),
     });
-    let data = serde_json::to_vec(&data).unwrap();
-    let interaction = fixtures::create_interaction(&db_conn, &base_url, &data).await;
-    let interaction_id = interaction.id;
-    fixtures::create_credential(
-        &db_conn,
-        &credential_schema,
-        CredentialStateEnum::Pending,
-        &did,
-        "OPENID4VC",
-        TestingCredentialParams {
-            interaction: Some(interaction),
-            ..Default::default()
-        },
-    )
-    .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-schema",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams::default(),
+        )
+        .await;
 
-    // WHEN
-    let _handle = run_server(listener, config, &db_conn);
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            Some(interaction_id),
+            &context.config.app.core_base_url,
+            &serde_json::to_vec(&data).unwrap(),
+        )
+        .await;
 
-    let url = format!(
-        "{base_url}/ssi/oidc-issuer/v1/{}/token",
-        credential_schema.id
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                ..TestingCredentialParams::default()
+            },
+        )
+        .await;
+
+    let pre_authorized_code = interaction_id.to_string();
+    let resp = context
+        .api
+        .ssi
+        .create_token(credential_schema.id, Some(&pre_authorized_code), None)
+        .await;
+
+    assert_eq!(200, resp.status());
+
+    let resp = resp.json_value().await;
+
+    assert_eq!(json!("bearer"), resp["token_type"]);
+    assert!(resp.get("access_token").is_some());
+    assert!(resp.get("expires_in").is_some());
+    assert!(resp.get("refresh_token").is_none());
+    assert!(resp.get("refresh_token_expires_in").is_none());
+}
+
+#[tokio::test]
+async fn test_oidc_create_token_for_mdoc_creates_refresh_token() {
+    // GIVEN
+
+    let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
+
+    let interaction_id = Uuid::new_v4();
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    let data = json!({
+        "pre_authorized_code_used": false,
+        "access_token": "access_token",
+        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&format).unwrap(),
+    });
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-schema",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            Some(interaction_id),
+            &context.config.app.core_base_url,
+            &serde_json::to_vec(&data).unwrap(),
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                ..TestingCredentialParams::default()
+            },
+        )
+        .await;
+
+    let pre_authorized_code = interaction_id.to_string();
+    let resp = context
+        .api
+        .ssi
+        .create_token(credential_schema.id, Some(&pre_authorized_code), None)
+        .await;
+
+    assert_eq!(200, resp.status());
+
+    let resp = resp.json_value().await;
+
+    assert_eq!(json!("bearer"), resp["token_type"]);
+    assert!(resp.get("access_token").is_some());
+    assert!(resp.get("expires_in").is_some());
+    assert!(resp.get("refresh_token").is_some());
+    assert!(resp.get("refresh_token_expires_in").is_some());
+}
+
+#[tokio::test]
+async fn test_oidc_create_token_for_refresh_token_grant_updates_both_access_and_refresh_tokens() {
+    // GIVEN
+    let (context, org, issuer_did, _key) = TestContext::new_with_did().await;
+
+    let interaction_id = Uuid::new_v4();
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+
+    let refresh_token = format!("{interaction_id}.Hv6mLRzFn0XmMxbU95VDqJQlPessiTvu");
+    let refresh_token_expires_at = OffsetDateTime::now_utc() + time::Duration::seconds(60);
+
+    let access_token = "access_token";
+    let access_token_expires_at = OffsetDateTime::now_utc() + time::Duration::seconds(20);
+
+    let data = json!({
+        "pre_authorized_code_used": false,
+        "access_token": access_token,
+        "access_token_expires_at": access_token_expires_at.format(&format).unwrap(),
+        "refresh_token": refresh_token,
+        "refresh_token_expires_at": refresh_token_expires_at.format(&format).unwrap(),
+    });
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-schema",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            Some(interaction_id),
+            &context.config.app.core_base_url,
+            &serde_json::to_vec(&data).unwrap(),
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &issuer_did,
+            "OPENID4VC",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                ..TestingCredentialParams::default()
+            },
+        )
+        .await;
+
+    let pre_authorized_code = interaction_id.to_string();
+    let resp = context
+        .api
+        .ssi
+        .create_token(credential_schema.id, Some(&pre_authorized_code), None)
+        .await;
+
+    assert_eq!(200, resp.status());
+
+    let resp = resp.json_value().await;
+
+    assert_eq!(json!("bearer"), resp["token_type"]);
+
+    assert!(resp.get("access_token").is_some());
+    assert!(resp["expires_in"].as_i64().unwrap() > access_token_expires_at.unix_timestamp());
+
+    assert!(resp.get("refresh_token").is_some());
+    assert!(
+        resp["refresh_token_expires_in"].as_i64().unwrap()
+            > refresh_token_expires_at.unix_timestamp()
     );
-
-    let resp = utils::client()
-        .post(url)
-        .form(&[
-            ("pre-authorized_code", interaction_id.to_string()),
-            (
-                "grant_type",
-                "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
-            ),
-        ])
-        .send()
-        .await
-        .unwrap();
-
-    // THEN
-    assert_eq!(resp.status(), 200);
 }

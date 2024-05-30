@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
+use shared_types::CredentialSchemaId;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -139,5 +140,37 @@ impl SSIApi {
     pub async fn get_proof_schema(&self, id: impl Into<Uuid>) -> Response {
         let url = format!("/ssi/proof-schema/v1/{}", id.into());
         self.client.get(&url).await
+    }
+
+    pub async fn create_token(
+        &self,
+        id: CredentialSchemaId,
+        pre_authorized_code: Option<&str>,
+        refresh_token: Option<&str>,
+    ) -> Response {
+        let form_data = match (pre_authorized_code, refresh_token) {
+            (Some(_), Some(_)) => {
+                panic!("Only one of `pre_authorized_code` or `refresh_token` must be present")
+            }
+            (None, None) => {
+                panic!("One of `pre_authorized_code` or `refresh_token` must be present")
+            }
+
+            (Some(pre_authorized_code), _) => [
+                (
+                    "grant_type",
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+                ),
+                ("pre-authorized_code", pre_authorized_code),
+            ],
+            (_, Some(refresh_token)) => [
+                ("grant_type", "refresh_token"),
+                ("refresh_token", refresh_token),
+            ],
+        };
+
+        let url = format!("/ssi/oidc-issuer/v1/{id}/token");
+
+        self.client.post_form(&url, &form_data).await
     }
 }

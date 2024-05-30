@@ -216,7 +216,8 @@ pub(super) fn create_service_discovery_response(
         jwks_uri: format!("{base_url}/jwks"),
         response_types_supported: vec!["token".to_string()],
         grant_types_supported: vec![
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string()
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
+            "refresh_token".to_string(),
         ],
         subject_types_supported: vec!["public".to_string()],
         id_token_signing_alg_values_supported: vec![],
@@ -237,8 +238,16 @@ impl TryFrom<OpenID4VCIInteractionDataDTO> for OpenID4VCITokenResponseDTO {
                     ))?
                     .unix_timestamp(),
             ),
+            refresh_token: value.refresh_token,
+            refresh_token_expires_in: value
+                .refresh_token_expires_at
+                .map(|dt| DurationSeconds(dt.unix_timestamp())),
         })
     }
+}
+
+pub(super) fn parse_refresh_token(token: &str) -> Result<InteractionId, ServiceError> {
+    parse_access_token(token)
 }
 
 pub(super) fn parse_access_token(access_token: &str) -> Result<InteractionId, ServiceError> {

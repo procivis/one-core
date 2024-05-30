@@ -8,6 +8,7 @@ use headers::authorization::Bearer;
 use headers::Authorization;
 use one_core::model::proof_schema::ProofSchemaId;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use one_core::service::oidc::dto::OpenID4VCITokenRequestDTO;
 use shared_types::{CredentialId, CredentialSchemaId, DidId, TrustAnchorId};
 use uuid::Uuid;
 
@@ -310,11 +311,16 @@ pub(crate) async fn oidc_create_token(
         ErrorResponseRestDTO,
     >,
 ) -> Response {
-    let result = state
-        .core
-        .oidc_service
-        .oidc_create_token(&id, request.into())
-        .await;
+    let result = async {
+        let request = OpenID4VCITokenRequestDTO::try_from(request)?;
+
+        state
+            .core
+            .oidc_service
+            .oidc_create_token(&id, request)
+            .await
+    }
+    .await;
 
     match result {
         Ok(value) => (

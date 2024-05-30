@@ -69,6 +69,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                     public:
                         preAuthorizedCodeExpiresIn: 300
                         tokenExpiresIn: 86400
+                        refreshExpiresIn: 886400
         revocation:
             NONE:
                 display: 'revocation.none'

@@ -36,18 +36,20 @@ use super::dto::ValidatedProofClaimDTO;
 pub(crate) fn throw_if_token_request_invalid(
     request: &OpenID4VCITokenRequestDTO,
 ) -> Result<(), ServiceError> {
-    if request.grant_type.is_empty() || request.pre_authorized_code.is_empty() {
-        return Err(ServiceError::OpenID4VCError(
+    match &request {
+        OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+            pre_authorized_code,
+        } if pre_authorized_code.is_empty() => Err(ServiceError::OpenID4VCError(
             OpenID4VCIError::InvalidRequest,
-        ));
-    }
+        )),
+        OpenID4VCITokenRequestDTO::RefreshToken { refresh_token } if refresh_token.is_empty() => {
+            Err(ServiceError::OpenID4VCError(
+                OpenID4VCIError::InvalidRequest,
+            ))
+        }
 
-    if request.grant_type != "urn:ietf:params:oauth:grant-type:pre-authorized_code" {
-        return Err(ServiceError::OpenID4VCError(
-            OpenID4VCIError::UnsupportedGrantType,
-        ));
+        _ => Ok(()),
     }
-    Ok(())
 }
 
 pub(crate) fn throw_if_interaction_created_date(
@@ -411,4 +413,31 @@ pub(super) fn validate_transport_type(
     } else {
         Ok(())
     }
+}
+
+pub(super) fn validate_refresh_token(
+    interaction_data: &OpenID4VCIInteractionDataDTO,
+    refresh_token: &str,
+) -> Result<(), ServiceError> {
+    let Some(stored_refresh_token) = interaction_data.refresh_token.as_ref() else {
+        return Err(ServiceError::OpenID4VCError(
+            OpenID4VCIError::InvalidRequest,
+        ));
+    };
+
+    if refresh_token != stored_refresh_token {
+        return Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken));
+    }
+
+    let Some(expires_at) = interaction_data.refresh_token_expires_at.as_ref() else {
+        return Err(ServiceError::OpenID4VCError(
+            OpenID4VCIError::InvalidRequest,
+        ));
+    };
+
+    if &OffsetDateTime::now_utc() > expires_at {
+        return Err(ServiceError::OpenID4VCError(OpenID4VCIError::InvalidToken));
+    }
+
+    Ok(())
 }
