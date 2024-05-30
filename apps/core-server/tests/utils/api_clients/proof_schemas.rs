@@ -55,6 +55,6 @@ impl ProofSchemasApi {
 
     pub async fn share(&self, proof_schema_id: impl Into<Uuid>) -> Response {
         let url = format!("/api/proof-schema/v1/{}/share", proof_schema_id.into());
-        self.client.get(&url).await
+        self.client.post(&url, None).await
     }
 }

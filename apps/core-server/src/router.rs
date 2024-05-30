@@ -114,7 +114,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
         )
         .route(
             "/api/proof-schema/v1/:id/share",
-            get(proof_schema::controller::share_proof_schema),
+            post(proof_schema::controller::share_proof_schema),
         )
         .route(
             "/api/history/v1",

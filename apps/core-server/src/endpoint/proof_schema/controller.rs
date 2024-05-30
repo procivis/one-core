@@ -110,7 +110,7 @@ pub(crate) async fn delete_proof_schema(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/api/proof-schema/v1/{id}/share",
     responses(OkOrErrorResponse<ProofSchemaShareResponseRestDTO>),
     params(
