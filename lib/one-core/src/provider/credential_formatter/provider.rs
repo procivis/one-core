@@ -89,6 +89,7 @@ pub(crate) fn credential_formatters_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     core_base_url.clone(),
+                    config.clone().datatype,
                 )) as _
             }
         };

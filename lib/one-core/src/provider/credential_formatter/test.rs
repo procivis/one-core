@@ -120,10 +120,22 @@ fn test_from_credential_detail_response_nested_claim_mapping() {
     .unwrap()
     .claims;
 
-    let expected: Vec<(String, String)> = vec![
-        ("location/x".to_string(), "123".to_string()),
-        ("location/y".to_string(), "456".to_string()),
-        ("street".to_string(), "some street".to_string()),
+    let expected: Vec<(String, String, Option<String>)> = vec![
+        (
+            "location/x".to_string(),
+            "123".to_string(),
+            Some("STRING".to_string()),
+        ),
+        (
+            "location/y".to_string(),
+            "456".to_string(),
+            Some("STRING".to_string()),
+        ),
+        (
+            "street".to_string(),
+            "some street".to_string(),
+            Some("STRING".to_string()),
+        ),
     ];
 
     assert_eq!(expected, actual);

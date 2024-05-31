@@ -48,17 +48,25 @@ pub(crate) fn status_from_lvvc_claims(
     })
 }
 
-pub(super) fn create_id_claim(base_url: &str, credential_id: CredentialId) -> (String, String) {
+pub(super) fn create_id_claim(
+    base_url: &str,
+    credential_id: CredentialId,
+) -> (String, String, Option<String>) {
     (
         "id".to_owned(),
         format!("{base_url}/ssi/credential/v1/{credential_id}"),
+        None,
     )
 }
 
 pub(super) fn create_status_claims(
     status: &LvvcStatus,
-) -> Result<Vec<(String, String)>, ServiceError> {
-    let mut result = vec![("status".to_owned(), status.to_string())];
+) -> Result<Vec<(String, String, Option<String>)>, ServiceError> {
+    let mut result = vec![(
+        "status".to_owned(),
+        status.to_string(),
+        Some("STRING".to_owned()),
+    )];
 
     if let LvvcStatus::Suspended {
         suspend_end_date: Some(end_date),
@@ -70,12 +78,15 @@ pub(super) fn create_status_claims(
     Ok(result)
 }
 
-fn suspend_end_date_claim(end_date: &OffsetDateTime) -> Result<(String, String), ServiceError> {
+fn suspend_end_date_claim(
+    end_date: &OffsetDateTime,
+) -> Result<(String, String, Option<String>), ServiceError> {
     Ok((
         "suspendEndDate".to_owned(),
         end_date
             .format(SUSPEND_END_DATE_FORMAT)
             .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+        Some("DATE".to_owned()),
     ))
 }
 
@@ -112,11 +123,15 @@ mod tests {
         })
         .unwrap();
         assert_eq!(claims.len(), 2);
-        let claims: HashMap<String, String> = HashMap::from_iter(claims);
+        let claims: HashMap<String, String> = HashMap::from_iter(
+            claims
+                .iter()
+                .map(|(path, value, _)| (path.to_owned(), value.to_owned())),
+        );
         assert_eq!(claims.get("status").unwrap(), "SUSPENDED");
         assert_eq!(
             claims.get("suspendEndDate").unwrap(),
-            "2005-04-02T21:37:00Z"
+            "2005-04-02T21:37:00Z",
         );
     }
 

@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use crate::provider::credential_formatter::error::FormatterError;
 
 pub(super) fn nest_claims(
-    claims: impl IntoIterator<Item = (String, String)>,
+    claims: impl IntoIterator<Item = (String, String, Option<String>)>,
 ) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
     let mut data = serde_json::Value::Object(Default::default());
 
-    for (full_path, value) in claims {
+    for (full_path, value, _) in claims {
         let pointer = jsonptr::Pointer::try_from(format!("/{full_path}"))?;
         pointer.assign(&mut data, value)?;
     }
@@ -30,9 +30,9 @@ mod tests {
     #[test]
     fn test_format_nested_vc_jwt() {
         let claims = vec![
-            ("name".to_string(), "John".to_string()),
-            ("location/x".to_string(), "1".to_string()),
-            ("location/y".to_string(), "2".to_string()),
+            ("name".to_string(), "John".to_string(), None),
+            ("location/x".to_string(), "1".to_string(), None),
+            ("location/y".to_string(), "2".to_string(), None),
         ];
         let expected = HashMap::from([
             (

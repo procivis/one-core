@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use anyhow::Context;
 use async_trait::async_trait;
+use ciborium::Value;
 use coset::iana::{self, EnumI64};
 use coset::{
     CoseKey, CoseKeyBuilder, Header, HeaderBuilder, Label, ProtectedHeader,
@@ -57,6 +59,7 @@ pub struct MdocFormatter {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     base_url: Option<String>,
+    datatype_config: DatatypeConfig,
 }
 
 #[serde_as]
@@ -77,12 +80,14 @@ impl MdocFormatter {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         base_url: Option<String>,
+        datatype_config: DatatypeConfig,
     ) -> Self {
         Self {
             params,
             did_method_provider,
             key_algorithm_provider,
             base_url,
+            datatype_config,
         }
     }
 
@@ -116,7 +121,7 @@ impl CredentialFormatter for MdocFormatter {
             )
         })?;
 
-        let namespaces = try_build_namespaces(credential.claims)?;
+        let namespaces = try_build_namespaces(credential.claims, &self.datatype_config)?;
 
         let cose_key = try_build_cose_key(&*self.did_method_provider, holder_did).await?;
 
@@ -777,10 +782,13 @@ pub async fn try_verify_detached_signature_with_provider(
         .await
 }
 
-fn try_build_namespaces(claims: Vec<(String, String)>) -> Result<Namespaces, FormatterError> {
+fn try_build_namespaces(
+    claims: Vec<(String, String, Option<String>)>,
+    datatype_config: &DatatypeConfig,
+) -> Result<Namespaces, FormatterError> {
     let mut namespaces = Namespaces::new();
 
-    for (digest_id, (path, value)) in claims.into_iter().enumerate() {
+    for (digest_id, (path, value, data_type)) in claims.into_iter().enumerate() {
         let (namespace, name) = path.split_once('/').ok_or_else(|| {
             FormatterError::Failed(format!(
                 "Invalid claim path without top-level object: {path}"
@@ -799,7 +807,11 @@ fn try_build_namespaces(claims: Vec<(String, String)>) -> Result<Namespaces, For
             digest_id: digest_id as u64,
             random,
             element_identifier: name.to_owned(),
-            element_value: ciborium::Value::from(value),
+            element_value: map_to_ciborium_value(
+                value,
+                data_type.ok_or(FormatterError::Failed("Missing data type".to_string()))?,
+                datatype_config,
+            )?,
         };
 
         namespaces
@@ -809,6 +821,40 @@ fn try_build_namespaces(claims: Vec<(String, String)>) -> Result<Namespaces, For
     }
 
     Ok(namespaces)
+}
+
+fn map_to_ciborium_value(
+    value: String,
+    data_type: String,
+    datatype_config: &DatatypeConfig,
+) -> Result<Value, FormatterError> {
+    let fields = datatype_config
+        .get_fields(&data_type)
+        .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+    if fields.r#type == DatatypeType::File {
+        let mut splitted_base64 = value.splitn(2, ',');
+        let raw_base64 = splitted_base64
+            .next()
+            .ok_or(FormatterError::Failed("Missing base64 data".to_string()))?;
+        let bytes = raw_base64.as_bytes();
+        if let Some(params) = &fields.params {
+            if let Some(public) = &params.public {
+                if let Some(encode) = public.get("encodeAsMdlPortrait") {
+                    if encode.as_bool().unwrap_or(false) {
+                        return Ok(ciborium::Value::from(bytes));
+                    }
+                }
+            }
+        }
+        let type_base64 = splitted_base64.next().ok_or(FormatterError::Failed(
+            "Missing data type of base64".to_string(),
+        ))?;
+        return Ok(ciborium::Value::Array(vec![
+            ciborium::Value::from(type_base64),
+            ciborium::Value::from(bytes),
+        ]));
+    }
+    Ok(ciborium::Value::from(value))
 }
 
 fn build_x5chain_header(issuer_did: DidValue) -> Result<Header, FormatterError> {
@@ -1006,13 +1052,43 @@ fn try_extract_claims(
     for (root, inner_claims) in namespaces {
         for Bytes::<IssuerSignedItem>(claim) in inner_claims {
             let path = format!("{root}/{}", claim.element_identifier);
-            let value = claim.element_value.into_text().map_err(|err| {
-                FormatterError::Failed(format!(
-                    "Expected String value for key `{path}` got {err:?}"
-                ))
-            })?;
+            // TODO: This needs to be refactored when we implement nested lists
+            if claim.element_value.is_array() {
+                let element_value = claim.element_value.into_array().expect("it's an array");
+                if element_value.len() == 2 {
+                    let bytes = element_value[1]
+                        .as_bytes()
+                        .ok_or_else(|| FormatterError::Failed("Not a byte array".to_owned()))?;
+                    let value = String::from_utf8_lossy(bytes);
 
-            claims.push((path, value))
+                    let data_type_value = element_value[0].as_text().ok_or_else(|| {
+                        FormatterError::Failed(format!("Expected String value for key `{path}`"))
+                    })?;
+                    claims.push((
+                        path,
+                        format!("{},{}", data_type_value, value),
+                        Some("PICTURE".to_owned()),
+                    ))
+                }
+            } else if claim.element_value.is_bytes() {
+                let bytes = claim
+                    .element_value
+                    .into_bytes()
+                    .map_err(|_| FormatterError::Failed("Not a byte array".to_owned()))?;
+                let value = String::from_utf8_lossy(&bytes);
+                claims.push((
+                    path,
+                    format!("data:image/jpg;base64,{}", value),
+                    Some("MDL_PICTURE".to_owned()),
+                ))
+            } else {
+                let value = claim.element_value.into_text().map_err(|err| {
+                    FormatterError::Failed(format!(
+                        "Expected String value for key `{path}` got {err:?}"
+                    ))
+                })?;
+                claims.push((path, value, Some("STRING".to_owned())))
+            }
         }
     }
 
