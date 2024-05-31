@@ -6,6 +6,7 @@ use one_core::model::proof::ProofStateEnum;
 use one_core::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
 };
+use one_core::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
 use serde_json::json;
 use time::OffsetDateTime;
 use url::Url;
@@ -519,17 +520,23 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
         .mount(&mock_server)
         .await;
 
+    let test_token = "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE";
     Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
-    .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-        {
-            "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
-            "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            "token_type": "bearer"
-        }
-    )))
-    .expect(1)
-    .mount(&mock_server).await;
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/token"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "access_token": test_token,
+                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token": test_token,
+                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "token_type": "bearer"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
 
     Mock::given(method(Method::GET))
         .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
@@ -587,7 +594,14 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
     assert_eq!(
         credential.schema.unwrap().wallet_storage_type,
         Some(WalletStorageTypeEnum::Software)
-    )
+    );
+
+    let interaction: HolderInteractionData =
+        serde_json::from_slice(&credential.interaction.unwrap().data.unwrap()).unwrap();
+    assert_eq!(interaction.access_token, test_token);
+    assert_eq!(interaction.refresh_token, Some(test_token.to_string()));
+    assert!(interaction.access_token_expires_at.is_some());
+    assert!(interaction.refresh_token_expires_at.is_some());
 }
 
 #[tokio::test]
@@ -1039,17 +1053,23 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         .mount(&mock_server)
         .await;
 
+    let test_token = "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE";
     Mock::given(method(Method::POST))
-    .and(path(format!("/ssi/oidc-issuer/v1/{credential_schema_id}/token")))
-    .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-        {
-            "access_token": "4994a63d-d822-4fb9-87bf-6f298247c571.0ss4z9sgtsNYafQKhDeOINLhQIdW8yQE",
-            "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            "token_type": "bearer"
-        }
-    )))
-    .expect(1)
-    .mount(&mock_server).await;
+        .and(path(format!(
+            "/ssi/oidc-issuer/v1/{credential_schema_id}/token"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "access_token": test_token,
+                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token": test_token,
+                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "token_type": "bearer"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
 
     Mock::given(method(Method::GET))
         .and(path(format!(
@@ -1117,7 +1137,14 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
     assert_eq!(
         credential.schema.unwrap().wallet_storage_type,
         Some(WalletStorageTypeEnum::Software)
-    )
+    );
+
+    let interaction: HolderInteractionData =
+        serde_json::from_slice(&credential.interaction.unwrap().data.unwrap()).unwrap();
+    assert_eq!(interaction.access_token, test_token);
+    assert_eq!(interaction.refresh_token, Some(test_token.to_string()));
+    assert!(interaction.access_token_expires_at.is_some());
+    assert!(interaction.refresh_token_expires_at.is_some());
 }
 
 #[tokio::test]
