@@ -259,8 +259,8 @@ impl SDJWTFormatter {
                 values: nest_claims(
                     deserialized_disclosures
                         .into_iter()
-                        .map(|(dis, _, _)| (dis.key, dis.value))
-                        .collect::<Vec<(String, String)>>(),
+                        .map(|(dis, _, _)| (dis.key, dis.value, None))
+                        .collect::<Vec<(String, String, Option<String>)>>(),
                 )?,
             },
             status: jwt.payload.custom.vc.credential_status,

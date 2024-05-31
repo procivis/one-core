@@ -10,12 +10,12 @@ use crate::{
 use super::model::{SDCredentialSubject, Sdvc, VCContent};
 
 pub(super) fn claims_to_formatted_disclosure(
-    claims: &[(String, String)],
+    claims: &[(String, String, Option<String>)],
     crypto: &Arc<dyn CryptoProvider>,
 ) -> Vec<String> {
     claims
         .iter()
-        .filter_map(|(key, value)| {
+        .filter_map(|(key, value, _data_type)| {
             let salt = crypto.generate_salt_base64();
             serde_json::to_string(&[&salt, key, value]).ok()
         })

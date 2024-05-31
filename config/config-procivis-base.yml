@@ -167,6 +167,17 @@ datatype:
           - image/png
         fileSize: 4194304
         showAs: IMAGE
+  MDL_PICTURE:
+    display: "datatype.picture"
+    type: "FILE"
+    order: 402
+    params:
+      public:
+        accept:
+          - image/jpeg
+        fileSize: 4194304
+        showAs: IMAGE
+        encodeAsMdlPortrait: true
   COUNT:
     display: "datatype.count"
     type: "NUMBER"

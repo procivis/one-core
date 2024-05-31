@@ -194,6 +194,7 @@ struct FileParams {
     pub accept: Option<Vec<String>>,
     pub file_size: Option<usize>,
     pub show_as: Option<String>,
+    pub encode_as_mdl_portrait: Option<bool>,
 }
 
 fn validate_file(value: &str, params: FileParams) -> Result<(), DatatypeValidationError> {

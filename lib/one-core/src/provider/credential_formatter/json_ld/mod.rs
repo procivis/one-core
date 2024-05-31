@@ -127,7 +127,7 @@ pub(super) fn prepare_credential_type(
 
 pub(super) fn prepare_credential_subject(
     credential_schema_name: &str,
-    claims: Vec<(String, String)>,
+    claims: Vec<(String, String, Option<String>)>,
     holder_did: &DidValue,
     custom_subject_name: Option<String>,
 ) -> Result<LdCredentialSubject, FormatterError> {

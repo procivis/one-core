@@ -52,7 +52,7 @@ pub struct CredentialData {
     pub id: String,
     pub issuance_date: OffsetDateTime,
     pub valid_for: Duration,
-    pub claims: Vec<(String, String)>,
+    pub claims: Vec<(String, String, Option<String>)>,
     pub issuer_did: DidValue,
     pub status: Vec<CredentialStatus>,
     pub schema: CredentialSchemaData,
@@ -320,12 +320,19 @@ impl CredentialData {
     }
 }
 
-fn map_claims(claims: &[DetailCredentialClaimResponseDTO], prefix: &str) -> Vec<(String, String)> {
+fn map_claims(
+    claims: &[DetailCredentialClaimResponseDTO],
+    prefix: &str,
+) -> Vec<(String, String, Option<String>)> {
     let mut result = vec![];
 
     claims.iter().for_each(|claim| match &claim.value {
         DetailCredentialClaimValueResponseDTO::String(value) => {
-            result.push((format!("{prefix}{}", claim.schema.key), value.to_owned()));
+            result.push((
+                format!("{prefix}{}", claim.schema.key),
+                value.to_owned(),
+                Some(claim.clone().schema.datatype),
+            ));
         }
         DetailCredentialClaimValueResponseDTO::Nested(value) => {
             let nested_claims = map_claims(value, &format!("{prefix}{}/", claim.schema.key));

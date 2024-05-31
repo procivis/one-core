@@ -11,6 +11,7 @@ use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO}
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::service::test_utilities::generic_config;
 
 use super::mdoc::*;
 use super::*;
@@ -174,7 +175,11 @@ async fn test_credential_formatting_ok_for_es256() {
         id: Uuid::new_v4().to_string(),
         issuance_date: OffsetDateTime::now_utc(),
         valid_for: time::Duration::seconds(10),
-        claims: vec![("a/b/c".to_string(), "15".to_string())],
+        claims: vec![(
+            "a/b/c".to_string(),
+            "15".to_string(),
+            Some("STRING".to_string()),
+        )],
         issuer_did: issuer_did.clone(),
         status: vec![],
         schema: CredentialSchemaData {
@@ -237,11 +242,14 @@ async fn test_credential_formatting_ok_for_es256() {
             move |_| Some(key_algorithm.clone())
         });
 
+    let config = generic_config().core;
+
     let formatter = MdocFormatter::new(
         params,
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
+        config.datatype,
     );
 
     let mut auth_fn = MockSignatureProvider::new();
@@ -340,7 +348,11 @@ async fn test_unverified_credential_extraction() {
         id: Uuid::new_v4().to_string(),
         issuance_date,
         valid_for,
-        claims: vec![("a/b/c".to_string(), "15".to_string())],
+        claims: vec![(
+            "a/b/c".to_string(),
+            "15".to_string(),
+            Some("STRING".to_string()),
+        )],
         issuer_did: issuer_did.clone(),
         status: vec![],
         schema: CredentialSchemaData {
@@ -413,11 +425,14 @@ async fn test_unverified_credential_extraction() {
             move |_| Some(key_algorithm.clone())
         });
 
+    let config = generic_config().core;
+
     let formatter = MdocFormatter::new(
         params,
         Arc::new(did_method_provider),
         Arc::new(key_algorithm_provider),
         None,
+        config.datatype,
     );
 
     let mut auth_fn = MockSignatureProvider::new();
