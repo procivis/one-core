@@ -437,15 +437,12 @@ impl TransportProtocol for OpenID4VC {
         let response = response
             .error_for_status()
             .map_err(TransportProtocolError::HttpRequestError)?;
-        let response_value = response
-            .text()
+        let response_value: OpenID4VCICredentialResponseDTO = response
+            .json()
             .await
             .map_err(TransportProtocolError::HttpRequestError)?;
 
-        let result: OpenID4VCICredentialResponseDTO =
-            serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?;
-
-        let real_format = detect_correct_format(schema, &result.credential)
+        let real_format = detect_correct_format(schema, &response_value.credential)
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
         // revocation method must be updated based on the issued credential (unknown in credential offer)
@@ -455,7 +452,7 @@ impl TransportProtocol for OpenID4VC {
             .ok_or_else(|| {
                 TransportProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?
-            .extract_credentials_unverified(&result.credential)
+            .extract_credentials_unverified(&response_value.credential)
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
@@ -535,7 +532,7 @@ impl TransportProtocol for OpenID4VC {
             .update_credential(UpdateCredentialRequest {
                 id: credential.id,
                 issuer_did_id: Some(issuer_did_id),
-                redirect_uri: Some(result.redirect_uri.to_owned()),
+                redirect_uri: Some(response_value.redirect_uri.to_owned()),
                 credential: None,
                 holder_did_id: None,
                 state: None,
@@ -545,7 +542,7 @@ impl TransportProtocol for OpenID4VC {
             .await
             .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
 
-        Ok(result.into())
+        Ok(response_value.into())
     }
 
     async fn reject_credential(
@@ -596,6 +593,8 @@ impl TransportProtocol for OpenID4VC {
                 self.crypto.generate_alphanumeric(32)
             ),
             access_token_expires_at: None,
+            refresh_token: None,
+            refresh_token_expires_at: None,
         };
         add_new_interaction(
             interaction_id,
@@ -992,6 +991,10 @@ async fn handle_credential_invitation(
         access_token_expires_at: Some(
             OffsetDateTime::now_utc() + Duration::seconds(token_response.expires_in.0),
         ),
+        refresh_token: token_response.refresh_token,
+        refresh_token_expires_at: token_response
+            .refresh_token_expires_in
+            .map(|expires_in| OffsetDateTime::now_utc() + Duration::seconds(expires_in.0)),
     };
     let data = serialize_interaction_data(&holder_data)?;
 

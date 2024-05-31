@@ -1,6 +1,8 @@
 use super::CredentialService;
 use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::{CredentialRevocationState, RevocationMethodCapabilities};
+use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::lvvc_repository::MockLvvcRepository;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -64,9 +66,11 @@ struct Repositories {
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub did_repository: MockDidRepository,
     pub history_repository: MockHistoryRepository,
+    pub interaction_repository: MockInteractionRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockTransportProtocolProvider,
+    pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
     pub lvvc_repository: MockLvvcRepository,
 }
@@ -77,9 +81,11 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.did_repository),
         Arc::new(repositories.history_repository),
+        Arc::new(repositories.interaction_repository),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
+        Arc::new(repositories.key_provider),
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
     )
@@ -1141,6 +1147,7 @@ async fn test_check_revocation_invalid_state() {
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let credential = generic_credential();
     {
@@ -1150,12 +1157,51 @@ async fn test_check_revocation_invalid_state() {
             .returning(move |_, _| Ok(Some(credential_clone.clone())));
     }
 
+    let mut credential_formatter = MockCredentialFormatter::default();
+
+    {
+        let credential_clone = credential.clone();
+        credential_formatter
+            .expect_extract_credentials_unverified()
+            .once()
+            .with(eq(""))
+            .returning(move |_| {
+                Ok(DetailCredential {
+                    id: Some(credential_clone.id.to_string()),
+                    issued_at: Some(credential_clone.issuance_date),
+                    expires_at: None,
+                    update_at: None,
+                    invalid_before: None,
+                    issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
+                    subject: None,
+                    claims: CredentialSubject {
+                        values: HashMap::new(),
+                    },
+                    status: vec![CredentialStatus {
+                        id: "id".to_string(),
+                        r#type: "type".to_string(),
+                        status_purpose: Some("purpose".to_string()),
+                        additional_fields: HashMap::default(),
+                    }],
+                    credential_schema: None,
+                })
+            });
+    }
+
+    let formatter = Arc::new(credential_formatter);
+    formatter_provider
+        .expect_get_formatter()
+        .times(1)
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .returning(move |_| Some(formatter.clone()));
+
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         did_repository,
         revocation_method_provider,
         config: generic_config().core,
+        formatter_provider,
         ..Default::default()
     });
 
@@ -1188,6 +1234,7 @@ async fn test_check_revocation_non_revocable() {
                 id: None,
                 issued_at: None,
                 expires_at: None,
+                update_at: None,
                 invalid_before: None,
                 issuer_did: None,
                 subject: None,
@@ -1260,7 +1307,7 @@ async fn test_check_revocation_already_revoked() {
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
-    let formatter_provider = MockCredentialFormatterProvider::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let credential = Credential {
         state: Some(vec![CredentialState {
@@ -1270,6 +1317,44 @@ async fn test_check_revocation_already_revoked() {
         }]),
         ..generic_credential()
     };
+
+    let mut credential_formatter = MockCredentialFormatter::default();
+
+    {
+        let credential_clone = credential.clone();
+        credential_formatter
+            .expect_extract_credentials_unverified()
+            .times(2)
+            .with(eq(""))
+            .returning(move |_| {
+                Ok(DetailCredential {
+                    id: Some(credential_clone.id.to_string()),
+                    issued_at: Some(credential_clone.issuance_date),
+                    expires_at: None,
+                    update_at: None,
+                    invalid_before: None,
+                    issuer_did: Some(credential_clone.issuer_did.as_ref().unwrap().did.clone()),
+                    subject: None,
+                    claims: CredentialSubject {
+                        values: HashMap::new(),
+                    },
+                    status: vec![CredentialStatus {
+                        id: "id".to_string(),
+                        r#type: "type".to_string(),
+                        status_purpose: Some("purpose".to_string()),
+                        additional_fields: HashMap::default(),
+                    }],
+                    credential_schema: None,
+                })
+            });
+    }
+
+    let formatter = Arc::new(credential_formatter);
+    formatter_provider
+        .expect_get_formatter()
+        .times(2)
+        .with(eq(credential.schema.as_ref().unwrap().format.to_owned()))
+        .returning(move |_| Some(formatter.clone()));
 
     {
         let credential_clone = credential.clone();
@@ -1318,7 +1403,8 @@ async fn test_check_revocation_being_revoked() {
     let mut credential_repository = MockCredentialRepository::default();
     let credential_schema_repository = MockCredentialSchemaRepository::default();
     let did_repository = MockDidRepository::default();
-    let mut revocation_method_provider = MockRevocationMethodProvider::default();
+    let mut revocation_method_provider: MockRevocationMethodProvider =
+        MockRevocationMethodProvider::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
 
     let mut formatter = MockCredentialFormatter::default();
@@ -1332,6 +1418,7 @@ async fn test_check_revocation_being_revoked() {
                 id: None,
                 issued_at: None,
                 expires_at: None,
+                update_at: None,
                 invalid_before: None,
                 issuer_did: None,
                 subject: None,

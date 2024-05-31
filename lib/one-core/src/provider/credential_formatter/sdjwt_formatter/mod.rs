@@ -245,6 +245,7 @@ impl SDJWTFormatter {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
+            update_at: None,
             invalid_before: jwt.payload.invalid_before,
             issuer_did: jwt.payload.issuer.map(|v| match v.parse() {
                 Ok(v) => v,

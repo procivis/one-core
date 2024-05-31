@@ -28,6 +28,7 @@ impl TryFrom<LdCredential> for DetailCredential {
             id: Some(value.id),
             issued_at: Some(value.issuance_date),
             expires_at: None,
+            update_at: None,
             invalid_before: None,
             issuer_did: Some(value.issuer),
             subject: Some(value.credential_subject.id),

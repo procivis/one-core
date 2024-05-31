@@ -1,12 +1,24 @@
+use std::sync::Arc;
+
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::interaction::InteractionRelations;
+use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{CredentialRevocationState, RevocationMethodCapabilities};
+use crate::provider::transport_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
+use crate::provider::transport_protocol::openid4vc::model::HolderInteractionData;
+use crate::provider::transport_protocol::{deserialize_interaction_data, TransportProtocolError};
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::dto::SuspendCredentialRequestDTO;
 use crate::service::credential::mapper::{
     credential_revocation_history_event, credential_revocation_state_to_model_state,
 };
+use crate::service::oidc::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCITokenResponseDTO};
+use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::{
     common_mapper::list_response_try_into,
     common_validator::{
@@ -604,14 +616,29 @@ impl CredentialService {
                         ..Default::default()
                     }),
                     issuer_did: Some(DidRelations::default()),
+                    holder_did: Some(DidRelations::default()),
+                    interaction: Some(InteractionRelations::default()),
+                    key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
             )
             .await?;
 
-        let Some(credential) = credential else {
+        let Some(mut credential) = credential else {
             return Err(EntityNotFoundError::Credential(credential_id).into());
         };
+
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError("schema is None".to_string()))?
+            .clone();
+
+        let credential_str = String::from_utf8(credential.credential.clone())
+            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+
+        // Workaround credential format detection
+        let format = detect_correct_format(&credential_schema, &credential_str)?;
 
         let current_state = credential
             .state
@@ -624,29 +651,46 @@ impl CredentialService {
             .to_owned()
             .state;
 
-        let credential_schema = credential
-            .schema
-            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+        let formatter = self.formatter_provider.get_formatter(&format).ok_or(
+            MissingProviderError::Formatter(credential_schema.format.clone()),
+        )?;
 
-        let credential_str = String::from_utf8(credential.credential)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        // we will update that later
+        let mut detail_credential = formatter
+            .extract_credentials_unverified(&credential_str)
+            .await?;
 
-        // Workaround credential format detection
-        let format = detect_correct_format(&credential_schema, &credential_str)?;
+        if format == "MDOC" && !is_mso_up_to_date(&detail_credential) {
+            let interaction_data: HolderInteractionData =
+                deserialize_interaction_data(credential.interaction.as_ref())?;
+
+            update_mso_interaction_access_token(
+                &mut credential,
+                &self.interaction_repository,
+                interaction_data.clone(),
+            )
+            .await?;
+
+            obtain_and_update_new_mso(
+                &mut credential,
+                &self.credential_repository,
+                &self.key_provider,
+                interaction_data,
+            )
+            .await?;
+
+            let credential_str = String::from_utf8(credential.credential.clone())
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+
+            detail_credential = formatter
+                .extract_credentials_unverified(&credential_str)
+                .await?;
+        }
 
         let credential_status = match current_state {
             CredentialStateEnum::Accepted | CredentialStateEnum::Suspended => {
-                let formatter = self
-                    .formatter_provider
-                    .get_formatter(&format)
-                    .ok_or(MissingProviderError::Formatter(credential_schema.format))?;
-
-                let credential = formatter
-                    .extract_credentials_unverified(&credential_str)
-                    .await?;
-
-                if !credential.status.is_empty() {
-                    credential.status
+                if !detail_credential.status.is_empty() {
+                    detail_credential.status
                 } else {
                     // no credential status -> credential is irrevocable
                     return Ok(CredentialRevocationCheckResponseDTO {
@@ -681,7 +725,7 @@ impl CredentialService {
             .revocation_method_provider
             .get_revocation_method(&credential_schema.revocation_method)
             .ok_or(MissingProviderError::RevocationMethod(
-                credential_schema.revocation_method,
+                credential_schema.revocation_method.clone(),
             ))?;
 
         let issuer_did = credential
@@ -757,7 +801,7 @@ impl CredentialService {
                 .create_history(credential_revocation_history_event(
                     credential_id,
                     worst_revocation_state,
-                    credential_schema.organisation,
+                    credential_schema.organisation.clone(),
                 ))
                 .await;
         }
@@ -769,4 +813,167 @@ impl CredentialService {
             reason: None,
         })
     }
+}
+
+async fn obtain_and_update_new_mso(
+    credential: &mut Credential,
+    credentials: &Arc<dyn CredentialRepository>,
+    key_provider: &Arc<dyn KeyProvider>,
+    interaction_data: HolderInteractionData,
+) -> Result<(), ServiceError> {
+    let key = credential
+        .key
+        .as_ref()
+        .ok_or(ServiceError::Other("Missing key".to_owned()))?
+        .clone();
+    let holder_did = credential
+        .holder_did
+        .as_ref()
+        .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
+        .clone();
+
+    let auth_fn = key_provider
+        .get_signature_provider(&key, None)
+        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+    let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
+        interaction_data.issuer_url,
+        &holder_did,
+        key.key_type.to_owned(),
+        auth_fn,
+    )
+    .await
+    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+
+    let schema = credential
+        .schema
+        .as_ref()
+        .ok_or(TransportProtocolError::Failed("schema is None".to_string()))?;
+
+    let body = OpenID4VCICredential {
+        proof: OpenID4VCIProof {
+            proof_type: "jwt".to_string(),
+            jwt: proof_jwt,
+        },
+        format: "mso_mdoc".to_owned(),
+        credential_definition: None,
+        doctype: Some(schema.schema_id.to_owned()),
+    };
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(interaction_data.credential_endpoint)
+        .bearer_auth(interaction_data.access_token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(TransportProtocolError::HttpRequestError)?;
+    let response = response
+        .error_for_status()
+        .map_err(TransportProtocolError::HttpRequestError)?;
+    let response_value = response
+        .text()
+        .await
+        .map_err(TransportProtocolError::HttpRequestError)?;
+
+    let result: OpenID4VCICredentialResponseDTO =
+        serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?;
+
+    // Update credential value
+    credential.credential = result.credential.as_bytes().to_vec();
+
+    let update_request = UpdateCredentialRequest {
+        id: credential.id,
+        credential: Some(credential.credential.clone()),
+        holder_did_id: None,
+        issuer_did_id: None,
+        state: None,
+        interaction: None,
+        key: None,
+        redirect_uri: None,
+    };
+
+    credentials.update_credential(update_request).await?;
+    Ok(())
+}
+
+async fn update_mso_interaction_access_token(
+    credential: &mut Credential,
+    interactions: &Arc<dyn InteractionRepository>,
+    mut interaction_data: HolderInteractionData,
+) -> Result<(), ServiceError> {
+    let now = OffsetDateTime::now_utc();
+
+    let access_token_expires_at =
+        interaction_data
+            .access_token_expires_at
+            .ok_or(ServiceError::Other(
+                "Missing expires_at in interaction data for mso".to_owned(),
+            ))?;
+
+    if access_token_expires_at <= now {
+        // Fetch a new one
+        let client = reqwest::Client::new();
+        let url = format!("{}/token", interaction_data.issuer_url);
+        let refresh_token = interaction_data
+            .refresh_token
+            .ok_or(ServiceError::Other("Missing refresh token".to_owned()))?;
+
+        let token_response: OpenID4VCITokenResponseDTO = client
+            .post(&url)
+            .form(&[
+                ("refresh_token", refresh_token),
+                ("grant_type", "refresh_token".to_string()),
+            ])
+            .send()
+            .await
+            .map_err(TransportProtocolError::HttpResponse)?
+            .error_for_status()
+            .map_err(TransportProtocolError::HttpResponse)?
+            .json()
+            .await
+            .map_err(TransportProtocolError::HttpResponse)?;
+
+        interaction_data.access_token = token_response.access_token;
+        interaction_data.access_token_expires_at =
+            Some(OffsetDateTime::now_utc() + time::Duration::seconds(token_response.expires_in.0));
+
+        interaction_data.refresh_token = token_response.refresh_token;
+        interaction_data.refresh_token_expires_at = token_response
+            .refresh_token_expires_in
+            .map(|expires_in| OffsetDateTime::now_utc() + time::Duration::seconds(expires_in.0));
+
+        let mut interaction = credential
+            .interaction
+            .as_ref()
+            .ok_or(ServiceError::Other("Missing interaction".to_owned()))?
+            .clone();
+
+        interaction.data = Some(
+            serde_json::to_vec(&interaction_data)
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+        );
+
+        // Update in database
+        interactions.update_interaction(interaction.clone()).await?;
+
+        // Update local copy as well
+        credential.interaction = Some(interaction);
+    }
+
+    Ok(())
+}
+
+fn is_mso_up_to_date(detail_credential: &DetailCredential) -> bool {
+    let now = OffsetDateTime::now_utc();
+
+    if let Some(update_at) = detail_credential.update_at {
+        return update_at > now;
+    }
+
+    if let Some(expires_at) = detail_credential.expires_at {
+        return expires_at > now;
+    }
+
+    false
 }

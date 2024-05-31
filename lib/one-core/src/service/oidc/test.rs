@@ -417,6 +417,7 @@ async fn test_oidc_create_token() {
 #[tokio::test]
 async fn test_oidc_create_token_empty_pre_authorized_code() {
     let schema = generic_credential_schema();
+
     let service = setup_service(Mocks {
         config: generic_config().core,
         ..Default::default()
@@ -1397,6 +1398,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned()),
                 subject: Some(holder_did_clone.to_owned()),
@@ -1452,6 +1454,7 @@ async fn test_submit_proof_failed_credential_suspended() {
                 id: None,
                 issued_at: Some(OffsetDateTime::now_utc()),
                 expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+                update_at: None,
                 invalid_before: Some(OffsetDateTime::now_utc()),
                 issuer_did: Some(issuer_did_clone.to_owned()),
                 subject: Some(holder_did.to_owned()),
@@ -1541,6 +1544,7 @@ fn generic_detail_credential() -> DetailCredential {
         id: None,
         issued_at: Some(OffsetDateTime::now_utc()),
         expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
+        update_at: None,
         invalid_before: Some(OffsetDateTime::now_utc()),
         issuer_did: Some(issuer_did),
         subject: Some(holder_did),
