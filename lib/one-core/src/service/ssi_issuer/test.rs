@@ -5,22 +5,17 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::credential::{Credential, CredentialState, CredentialStateEnum};
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
 };
-use crate::{
-    model::credential::{Credential, CredentialState, CredentialStateEnum},
-    provider::transport_protocol::provider::MockTransportProtocolProvider,
-    repository::{
-        credential_repository::MockCredentialRepository,
-        credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository, history_repository::MockHistoryRepository,
-    },
-    service::{
-        ssi_issuer::SSIIssuerService,
-        test_utilities::{dummy_credential, dummy_did, generic_config},
-    },
-};
+use crate::service::ssi_issuer::SSIIssuerService;
+use crate::service::test_utilities::{dummy_credential, dummy_did, generic_config};
 
 #[tokio::test]
 async fn test_issuer_connect_succeeds() {
@@ -102,7 +97,7 @@ fn mock_ssi_issuer_service() -> SSIIssuerService {
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         credential_repository: Arc::new(MockCredentialRepository::new()),
         did_repository: Arc::new(MockDidRepository::new()),
-        protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
+        protocol_provider: Arc::new(MockExchangeProtocolProvider::new()),
         config: Arc::new(generic_config().core),
         core_base_url: Some("http://127.0.0.1".to_string()),
         history_repository: Arc::new(MockHistoryRepository::new()),

@@ -64,7 +64,7 @@ async fn insert_credential_to_database(
         } else {
             NotSet
         },
-        transport: Set("transport".to_owned()),
+        exchange: Set("exchange".to_owned()),
         redirect_uri: Set(None),
         credential: Set(vec![]),
         role: Set(CredentialRole::Holder),

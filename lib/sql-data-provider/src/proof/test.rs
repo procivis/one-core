@@ -1,50 +1,40 @@
 use std::sync::Arc;
 
 use mockall::predicate::eq;
-use one_core::{
-    model::{
-        claim::{Claim, ClaimRelations},
-        credential::{Credential, CredentialRelations, CredentialRole, CredentialStateEnum},
-        did::{Did, DidRelations, DidType},
-        interaction::{Interaction, InteractionId, InteractionRelations},
-        key::{Key, KeyRelations},
-        proof::{
-            Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
-            ProofStateRelations,
-        },
-        proof_schema::{ProofSchema, ProofSchemaId, ProofSchemaRelations},
-    },
-    repository::{
-        claim_repository::ClaimRepository,
-        claim_repository::MockClaimRepository,
-        credential_repository::{CredentialRepository, MockCredentialRepository},
-        did_repository::{DidRepository, MockDidRepository},
-        interaction_repository::InteractionRepository,
-        interaction_repository::MockInteractionRepository,
-        key_repository::KeyRepository,
-        mock::{
-            key_repository::MockKeyRepository, proof_schema_repository::MockProofSchemaRepository,
-        },
-        proof_repository::ProofRepository,
-        proof_schema_repository::ProofSchemaRepository,
-    },
+use one_core::model::claim::{Claim, ClaimRelations};
+use one_core::model::credential::{
+    Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
+use one_core::model::did::{Did, DidRelations, DidType};
+use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use one_core::model::key::{Key, KeyRelations};
+use one_core::model::proof::{
+    Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
+    ProofStateRelations,
+};
+use one_core::model::proof_schema::{ProofSchema, ProofSchemaId, ProofSchemaRelations};
+use one_core::repository::claim_repository::{ClaimRepository, MockClaimRepository};
+use one_core::repository::credential_repository::{CredentialRepository, MockCredentialRepository};
+use one_core::repository::did_repository::{DidRepository, MockDidRepository};
+use one_core::repository::interaction_repository::{
+    InteractionRepository, MockInteractionRepository,
+};
+use one_core::repository::key_repository::KeyRepository;
+use one_core::repository::mock::key_repository::MockKeyRepository;
+use one_core::repository::mock::proof_schema_repository::MockProofSchemaRepository;
+use one_core::repository::proof_repository::ProofRepository;
+use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
 use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofProvider;
-use crate::{
-    entity::{
-        claim, credential,
-        key_did::KeyRole,
-        proof_claim,
-        proof_state::{self, ProofRequestState},
-    },
-    list_query::from_pagination,
-    test_utilities::*,
-};
+use crate::entity::key_did::KeyRole;
+use crate::entity::proof_state::{self, ProofRequestState};
+use crate::entity::{claim, credential, proof_claim};
+use crate::list_query::from_pagination;
+use crate::test_utilities::*;
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -292,7 +282,7 @@ async fn test_create_proof_success() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),
-        transport: "test".to_string(),
+        exchange: "test".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: get_dummy_date(),
@@ -511,7 +501,7 @@ async fn test_get_proof_with_relations() {
                 last_modified: get_dummy_date(),
                 deleted_at: None,
                 credential: b"credential".to_vec(),
-                transport: "protocol".to_string(),
+                exchange: "protocol".to_string(),
                 redirect_uri: None,
                 role: CredentialRole::Verifier,
                 state: None,
@@ -586,7 +576,7 @@ async fn test_get_proof_with_relations() {
         issuance_date: Set(get_dummy_date()),
         redirect_uri: Set(None),
         deleted_at: Set(None),
-        transport: Set("PROCIVIS_TEMPORARY".to_owned()),
+        exchange: Set("PROCIVIS_TEMPORARY".to_owned()),
         credential: Set(vec![0, 0, 0, 0]),
         role: Set(credential::CredentialRole::Issuer),
         issuer_did_id: Set(Some(did_id)),

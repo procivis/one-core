@@ -1,14 +1,12 @@
-use one_core::{
-    model::{
-        credential_schema::{CredentialSchemaType, WalletStorageTypeEnum},
-        proof::ProofStateEnum,
-    },
-    provider::transport_protocol::openid4vc::dto::{
-        OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
-    },
+use std::collections::HashMap;
+use std::str::FromStr;
+
+use one_core::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
+use one_core::model::proof::ProofStateEnum;
+use one_core::provider::exchange_protocol::openid4vc::dto::{
+    OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPPresentationDefinition,
 };
 use serde_json::json;
-use std::{collections::HashMap, str::FromStr};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -16,10 +14,9 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::utils::{
-    context::TestContext, db_clients::credential_schemas::TestingCreateSchemaParams,
-    field_match::FieldHelpers,
-};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_handle_invitation_endpoint_for_procivis_temp_issuance() {

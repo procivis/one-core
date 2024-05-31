@@ -1,9 +1,8 @@
-use crate::utils::{
-    context::TestContext,
-    db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
-};
 use one_core::model::proof::ProofStateEnum;
 use uuid::Uuid;
+
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
 async fn test_get_client_metadata() {
@@ -111,7 +110,7 @@ async fn test_fail_to_get_client_metadata_unknown_proof_id() {
 }
 
 #[tokio::test]
-async fn test_fail_to_get_client_metadata_wrong_transport_protocol() {
+async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
     // GIVEN
     let (context, organisation, did, key) = TestContext::new_with_did().await;
 

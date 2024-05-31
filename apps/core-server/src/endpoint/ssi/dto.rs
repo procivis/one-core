@@ -5,7 +5,7 @@ use one_core::provider::did_method::dto::{
     DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
     PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO, PublicKeyJwkRsaDataDTO,
 };
-use one_core::provider::transport_protocol::openid4vc::dto::{
+use one_core::provider::exchange_protocol::openid4vc::dto::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VCICredentialDefinition,
     OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferCredentialDTO,

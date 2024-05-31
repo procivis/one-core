@@ -1,13 +1,14 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use shared_types::ClaimSchemaId;
-use std::collections::HashMap;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::common_mapper::deserialize_with_serde_json;
 
-// Equivalent of transport_protocol/openid4vc/model.rs for deserialization
-// to avoid dependency to the transport protocol itself
+// Equivalent of exchange_protocol/openid4vc/model.rs for deserialization
+// to avoid dependency to the exchange protocol itself
 #[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct OpenID4VPInteractionContent {
     pub nonce: String,

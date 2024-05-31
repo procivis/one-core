@@ -1,15 +1,15 @@
-use serde_json::json;
-use uuid::Uuid;
-
-use one_core::model::proof::ProofStateEnum;
-
-use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
-use crate::{fixtures::TestingDidParams, utils::context::TestContext};
 use one_core::model::did::{Did, KeyRole, RelatedKey};
 use one_core::model::interaction::Interaction;
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
+use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
+use serde_json::json;
+use uuid::Uuid;
+
+use crate::fixtures::TestingDidParams;
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub struct TestContextWithOID4VCIData {
     pub context: TestContext,
@@ -206,7 +206,7 @@ async fn test_get_presentation_definition_failed_not_found() {
 }
 
 #[tokio::test]
-async fn test_get_presentation_definition_failed_wrong_transport_type() {
+async fn test_get_presentation_definition_failed_wrong_exchange_type() {
     // GIVEN
     let TestContextWithOID4VCIData {
         context,

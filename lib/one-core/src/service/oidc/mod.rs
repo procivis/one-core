@@ -4,10 +4,10 @@ use crate::config::core_config;
 use crate::crypto::CryptoProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -33,7 +33,7 @@ pub struct OIDCService {
     key_provider: Arc<dyn KeyProvider>,
     interaction_repository: Arc<dyn InteractionRepository>,
     config: Arc<core_config::CoreConfig>,
-    protocol_provider: Arc<dyn TransportProtocolProvider>,
+    protocol_provider: Arc<dyn ExchangeProtocolProvider>,
     did_repository: Arc<dyn DidRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -54,7 +54,7 @@ impl OIDCService {
         key_provider: Arc<dyn KeyProvider>,
         interaction_repository: Arc<dyn InteractionRepository>,
         config: Arc<core_config::CoreConfig>,
-        protocol_provider: Arc<dyn TransportProtocolProvider>,
+        protocol_provider: Arc<dyn ExchangeProtocolProvider>,
         did_repository: Arc<dyn DidRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,

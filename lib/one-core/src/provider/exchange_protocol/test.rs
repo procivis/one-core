@@ -1,5 +1,5 @@
-use std::collections::HashSet;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use serde_json::{json, Value};
@@ -7,46 +7,37 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
+};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::interaction::Interaction;
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
+use crate::provider::credential_formatter::{MockCredentialFormatter, MockSignatureProvider};
 use crate::provider::did_method::dto::{
     DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
 };
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::transport_protocol::dto::{CredentialGroup, CredentialGroupItem};
-use crate::provider::transport_protocol::mapper::get_relevant_credentials_to_credential_schemas;
-use crate::repository::credential_repository::CredentialRepository;
-use crate::service::test_utilities::generic_config;
-use crate::{
-    config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params},
-    model::{
-        claim::Claim,
-        claim_schema::ClaimSchema,
-        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-            WalletStorageTypeEnum,
-        },
-        did::{Did, DidType, KeyRole, RelatedKey},
-        interaction::Interaction,
-        key::Key,
-        organisation::Organisation,
-    },
-    provider::{
-        credential_formatter::{
-            model::CredentialStatus, provider::MockCredentialFormatterProvider,
-            MockCredentialFormatter, MockSignatureProvider,
-        },
-        key_storage::provider::MockKeyProvider,
-        revocation::{
-            provider::MockRevocationMethodProvider, CredentialRevocationInfo, JsonLdContext,
-            MockRevocationMethod,
-        },
-        transport_protocol::provider::{TransportProtocolProvider, TransportProtocolProviderImpl},
-    },
-    repository::{
-        credential_repository::MockCredentialRepository, history_repository::MockHistoryRepository,
-    },
+use crate::provider::exchange_protocol::dto::{CredentialGroup, CredentialGroupItem};
+use crate::provider::exchange_protocol::mapper::get_relevant_credentials_to_credential_schemas;
+use crate::provider::exchange_protocol::provider::{
+    ExchangeProtocolProvider, ExchangeProtocolProviderImpl,
 };
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::revocation::{CredentialRevocationInfo, JsonLdContext, MockRevocationMethod};
+use crate::repository::credential_repository::{CredentialRepository, MockCredentialRepository};
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::service::test_utilities::generic_config;
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
@@ -198,7 +189,7 @@ async fn test_issuer_submit_succeeds() {
             })
         });
 
-    let service = TransportProtocolProviderImpl::new(
+    let service = ExchangeProtocolProviderImpl::new(
         Default::default(),
         Arc::new(formatter_provider),
         Arc::new(credential_repository),
@@ -229,7 +220,7 @@ fn dummy_credential() -> Credential {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: b"credential".to_vec(),
-        transport: "protocol".to_string(),
+        exchange: "protocol".to_string(),
         redirect_uri: None,
         role: CredentialRole::Holder,
         state: Some(vec![CredentialState {

@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::transport_protocol::provider::TransportProtocolProvider;
+use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
+use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
-use crate::repository::{
-    did_repository::DidRepository, proof_repository::ProofRepository,
-    proof_schema_repository::ProofSchemaRepository,
-};
+use crate::repository::proof_repository::ProofRepository;
+use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
 pub mod dto;
 mod mapper;
@@ -20,7 +19,7 @@ pub struct ProofService {
     did_repository: Arc<dyn DidRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    protocol_provider: Arc<dyn TransportProtocolProvider>,
+    protocol_provider: Arc<dyn ExchangeProtocolProvider>,
     config: Arc<core_config::CoreConfig>,
 }
 
@@ -31,7 +30,7 @@ impl ProofService {
         did_repository: Arc<dyn DidRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        protocol_provider: Arc<dyn TransportProtocolProvider>,
+        protocol_provider: Arc<dyn ExchangeProtocolProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {

@@ -11,11 +11,11 @@ use crypto::signer::eddsa::EDDSASigner;
 use crypto::signer::Signer;
 use crypto::{CryptoProvider, CryptoProviderImpl};
 use provider::credential_formatter::provider::CredentialFormatterProviderImpl;
+use provider::exchange_protocol::provider::ExchangeProtocolProviderImpl;
+use provider::exchange_protocol::ExchangeProtocol;
 use provider::key_storage::secure_element::NativeKeyStorage;
 use provider::task::provider::TaskProviderImpl;
 use provider::task::tasks_from_config;
-use provider::transport_protocol::provider::TransportProtocolProviderImpl;
-use provider::transport_protocol::TransportProtocol;
 use provider::trust_management::provider::TrustManagementProviderImpl;
 use repository::DataRepository;
 use service::backup::BackupService;
@@ -54,11 +54,11 @@ use crate::crypto::signer::es256::ES256Signer;
 use crate::provider::credential_formatter::provider::credential_formatters_from_config;
 use crate::provider::did_method::provider::DidMethodProviderImpl;
 use crate::provider::did_method::{did_method_providers_from_config, DidMethod};
+use crate::provider::exchange_protocol::exchange_protocol_providers_from_config;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use crate::provider::key_algorithm::{key_algorithms_from_config, KeyAlgorithm};
 use crate::provider::revocation::provider::RevocationMethodProviderImpl;
 use crate::provider::revocation::RevocationMethod;
-use crate::provider::transport_protocol::transport_protocol_providers_from_config;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::history::HistoryService;
 use crate::service::key::KeyService;
@@ -71,7 +71,7 @@ pub struct OneCore {
     pub did_methods: HashMap<String, Arc<dyn DidMethod>>,
     pub key_algorithms: HashMap<String, Arc<dyn KeyAlgorithm>>,
     pub key_providers: HashMap<String, Arc<dyn KeyStorage>>,
-    pub transport_protocols: HashMap<String, Arc<dyn TransportProtocol>>,
+    pub exchange_protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
     pub revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
     pub organisation_service: OrganisationService,
     pub backup_service: BackupService,
@@ -207,7 +207,7 @@ impl OneCore {
 
         let config = Arc::new(core_config);
 
-        let transport_protocols = transport_protocol_providers_from_config(
+        let exchange_protocols = exchange_protocol_providers_from_config(
             config.clone(),
             core_base_url.clone(),
             crypto.clone(),
@@ -218,8 +218,8 @@ impl OneCore {
             revocation_method_provider.clone(),
         )?;
 
-        let protocol_provider = Arc::new(TransportProtocolProviderImpl::new(
-            transport_protocols.to_owned(),
+        let protocol_provider = Arc::new(ExchangeProtocolProviderImpl::new(
+            exchange_protocols.to_owned(),
             formatter_provider.clone(),
             data_provider.get_credential_repository(),
             revocation_method_provider.clone(),
@@ -233,7 +233,7 @@ impl OneCore {
             did_methods,
             key_algorithms,
             key_providers,
-            transport_protocols,
+            exchange_protocols,
             revocation_methods,
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),

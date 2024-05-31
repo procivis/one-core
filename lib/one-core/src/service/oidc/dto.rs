@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::model::credential_schema::{CredentialSchema, WalletStorageTypeEnum};
 use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
+use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::service::credential::dto::CredentialSchemaType;
 
 #[derive(Clone, Debug, Deserialize)]

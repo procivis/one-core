@@ -1,8 +1,6 @@
-use one_core::{
-    config::{ConfigError, ConfigParsingError},
-    provider::transport_protocol::TransportProtocolError,
-    service::error::{BusinessLogicError, ServiceError, ValidationError},
-};
+use one_core::config::{ConfigError, ConfigParsingError};
+use one_core::provider::exchange_protocol::ExchangeProtocolError;
+use one_core::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -39,8 +37,8 @@ impl From<ServiceError> for BindingError {
             ServiceError::ConfigValidationError(_) => {
                 Self::ConfigValidationError(error.to_string())
             }
-            ServiceError::TransportProtocolError(e) => match e {
-                TransportProtocolError::OperationNotSupported => {
+            ServiceError::ExchangeProtocolError(e) => match e {
+                ExchangeProtocolError::OperationNotSupported => {
                     Self::NotSupported(error.to_string())
                 }
                 error => Self::Unknown(error.to_string()),

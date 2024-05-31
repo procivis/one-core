@@ -31,18 +31,18 @@ use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
+use crate::provider::exchange_protocol::openid4vc::dto::{
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
+};
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::revocation::{CredentialRevocationState, MockRevocationMethod};
-use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
-use crate::provider::transport_protocol::openid4vc::dto::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPFormat,
-};
-use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
@@ -79,7 +79,7 @@ struct Mocks {
     pub key_repository: MockKeyRepository,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
-    pub transport_provider: MockTransportProtocolProvider,
+    pub exchange_provider: MockExchangeProtocolProvider,
     pub did_repository: MockDidRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -100,7 +100,7 @@ fn setup_service(mocks: Mocks) -> OIDCService {
         Arc::new(mocks.key_provider),
         Arc::new(mocks.interaction_repository),
         Arc::new(mocks.config),
-        Arc::new(mocks.transport_provider),
+        Arc::new(mocks.exchange_provider),
         Arc::new(mocks.did_repository),
         Arc::new(mocks.formatter_provider),
         Arc::new(mocks.did_method_provider),
@@ -172,7 +172,7 @@ fn dummy_credential(state: CredentialStateEnum, pre_authroized_code: bool) -> Cr
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: b"credential".to_vec(),
-        transport: "protocol".to_string(),
+        exchange: "protocol".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -543,7 +543,7 @@ async fn test_oidc_create_credential_success() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let mut transport_provider = MockTransportProtocolProvider::default();
+    let mut exchange_provider = MockExchangeProtocolProvider::default();
     let mut did_repository = MockDidRepository::default();
     let now = OffsetDateTime::now_utc();
 
@@ -569,7 +569,7 @@ async fn test_oidc_create_credential_success() {
             .once()
             .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
 
-        transport_provider
+        exchange_provider
             .expect_issue_credential()
             .once()
             .return_once(|_, _| {
@@ -612,7 +612,7 @@ async fn test_oidc_create_credential_success() {
         credential_repository,
         interaction_repository,
         config: generic_config().core,
-        transport_provider,
+        exchange_provider,
         did_repository,
         ..Default::default()
     });
@@ -646,7 +646,7 @@ async fn test_oidc_create_credential_success_mdoc() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let mut transport_provider = MockTransportProtocolProvider::default();
+    let mut exchange_provider = MockExchangeProtocolProvider::default();
     let mut did_repository = MockDidRepository::default();
     let now = OffsetDateTime::now_utc();
 
@@ -676,7 +676,7 @@ async fn test_oidc_create_credential_success_mdoc() {
             .once()
             .return_once(|_, _| Ok(Some(dummy_interaction(true, None, None, None))));
 
-        transport_provider
+        exchange_provider
             .expect_issue_credential()
             .once()
             .return_once(|_, _| {
@@ -719,7 +719,7 @@ async fn test_oidc_create_credential_success_mdoc() {
         credential_repository,
         interaction_repository,
         config: generic_config().core,
-        transport_provider,
+        exchange_provider,
         did_repository,
         ..Default::default()
     });
@@ -933,7 +933,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let transport_provider = MockTransportProtocolProvider::default();
+    let exchange_provider = MockExchangeProtocolProvider::default();
 
     let schema = generic_credential_schema();
     {
@@ -954,7 +954,7 @@ async fn test_oidc_create_credential_pre_authorized_code_not_used() {
         credential_repository,
         interaction_repository,
         config: generic_config().core,
-        transport_provider,
+        exchange_provider,
         ..Default::default()
     });
 
@@ -988,7 +988,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let transport_provider = MockTransportProtocolProvider::default();
+    let exchange_provider = MockExchangeProtocolProvider::default();
 
     let schema = generic_credential_schema();
     {
@@ -1009,7 +1009,7 @@ async fn test_oidc_create_credential_interaction_data_invalid() {
         credential_repository,
         interaction_repository,
         config: generic_config().core,
-        transport_provider,
+        exchange_provider,
         ..Default::default()
     });
 
@@ -1043,7 +1043,7 @@ async fn test_oidc_create_credential_access_token_expired() {
     let mut repository = MockCredentialSchemaRepository::default();
     let credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
-    let transport_provider = MockTransportProtocolProvider::default();
+    let exchange_provider = MockExchangeProtocolProvider::default();
 
     let schema = generic_credential_schema();
     {
@@ -1071,7 +1071,7 @@ async fn test_oidc_create_credential_access_token_expired() {
         credential_repository,
         interaction_repository,
         config: generic_config().core,
-        transport_provider,
+        exchange_provider,
         ..Default::default()
     });
 
@@ -1176,7 +1176,7 @@ async fn test_oidc_verifier_presentation_definition_success() {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     issuance_date: get_dummy_date(),
-                    transport: "OPENID4VC".to_string(),
+                    exchange: "OPENID4VC".to_string(),
                     redirect_uri: None,
                     state: Some(vec![ProofState {
                         created_date: get_dummy_date(),
@@ -1677,7 +1677,7 @@ async fn test_get_client_metadata_success() {
         created_date: now,
         last_modified: now,
         issuance_date: now,
-        transport: "OPENID4VC".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: now,

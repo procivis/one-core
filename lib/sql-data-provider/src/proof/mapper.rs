@@ -1,27 +1,20 @@
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
+use std::str::FromStr;
 
-use one_core::{
-    model::{
-        claim::Claim,
-        did::Did,
-        proof::{GetProofList, Proof, ProofId, ProofState, SortableProofColumn},
-        proof_schema::ProofSchema,
-    },
-    repository::error::DataLayerError,
-};
-use sea_orm::{sea_query::SimpleExpr, IntoSimpleExpr, Set};
+use one_core::model::claim::Claim;
+use one_core::model::did::Did;
+use one_core::model::proof::{GetProofList, Proof, ProofId, ProofState, SortableProofColumn};
+use one_core::model::proof_schema::ProofSchema;
+use one_core::repository::error::DataLayerError;
+use sea_orm::sea_query::SimpleExpr;
+use sea_orm::{IntoSimpleExpr, Set};
 use shared_types::DidId;
 use uuid::Uuid;
 
 use super::model::ProofListItemModel;
-use crate::{
-    common::calculate_pages_count,
-    entity::{
-        did, proof, proof_claim, proof_schema,
-        proof_state::{self},
-    },
-    list_query::GetEntityColumn,
-};
+use crate::common::calculate_pages_count;
+use crate::entity::{did, proof, proof_claim, proof_schema, proof_state};
+use crate::list_query::GetEntityColumn;
 
 impl TryFrom<ProofListItemModel> for Proof {
     type Error = DataLayerError;
@@ -65,7 +58,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             created_date: value.created_date,
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
-            transport: value.transport,
+            exchange: value.exchange,
             redirect_uri: value.redirect_uri,
             state: None,
             schema: Some(ProofSchema {
@@ -98,7 +91,7 @@ impl TryFrom<proof::Model> for Proof {
             created_date: value.created_date,
             last_modified: value.last_modified,
             issuance_date: value.issuance_date,
-            transport: value.transport,
+            exchange: value.exchange,
             redirect_uri: value.redirect_uri,
             state: None,
             schema: None,
@@ -121,7 +114,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             last_modified: Set(value.last_modified),
             issuance_date: Set(value.issuance_date),
             redirect_uri: Set(value.redirect_uri),
-            transport: Set(value.transport),
+            exchange: Set(value.exchange),
             verifier_did_id: Set(value.verifier_did.map(|did| did.id)),
             holder_did_id: Set(value.holder_did.map(|did| did.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id.to_string())),

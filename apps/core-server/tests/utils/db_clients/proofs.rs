@@ -1,24 +1,20 @@
 use std::sync::Arc;
 
-use one_core::{
-    model::{
-        claim::{Claim, ClaimRelations},
-        claim_schema::ClaimSchemaRelations,
-        credential_schema::CredentialSchemaRelations,
-        did::{Did, DidRelations},
-        interaction::Interaction,
-        key::{Key, KeyRelations},
-        organisation::OrganisationRelations,
-        proof::{
-            Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
-            ProofStateRelations,
-        },
-        proof_schema::{
-            ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
-        },
-    },
-    repository::proof_repository::ProofRepository,
+use one_core::model::claim::{Claim, ClaimRelations};
+use one_core::model::claim_schema::ClaimSchemaRelations;
+use one_core::model::credential_schema::CredentialSchemaRelations;
+use one_core::model::did::{Did, DidRelations};
+use one_core::model::interaction::Interaction;
+use one_core::model::key::{Key, KeyRelations};
+use one_core::model::organisation::OrganisationRelations;
+use one_core::model::proof::{
+    Proof, ProofClaimRelations, ProofId, ProofRelations, ProofState, ProofStateEnum,
+    ProofStateRelations,
 };
+use one_core::model::proof_schema::{
+    ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
+};
+use one_core::repository::proof_repository::ProofRepository;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -39,7 +35,7 @@ impl ProofsDB {
         holder_did: Option<&Did>,
         proof_schema: Option<&ProofSchema>,
         state: ProofStateEnum,
-        transport: &str,
+        exchange: &str,
         interaction: Option<&Interaction>,
         verifier_key: Key,
     ) -> Proof {
@@ -48,7 +44,7 @@ impl ProofsDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             issuance_date: get_dummy_date(),
-            transport: transport.to_owned(),
+            exchange: exchange.to_owned(),
             redirect_uri: None,
             state: Some(vec![ProofState {
                 state,

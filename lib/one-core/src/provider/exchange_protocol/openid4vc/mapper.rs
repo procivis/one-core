@@ -1,29 +1,47 @@
-use shared_types::CredentialId;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::dto::{
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+};
 use crate::common_mapper::{
     get_encryption_key_jwk_from_proof, remove_first_nesting_layer, PublicKeyWithJwk,
     NESTED_CLAIM_MARKER,
 };
 use crate::config::core_config::{CoreConfig, DatatypeType, FormatType};
-use crate::model::proof::ProofId;
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::Credential;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::interaction::InteractionId;
+use crate::model::proof::{Proof, ProofId};
 use crate::model::proof_schema::ProofInputClaimSchema;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::transport_protocol::dto::{
+use crate::provider::exchange_protocol::dto::{
     CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentedCredential,
 };
-use crate::provider::transport_protocol::mapper::{
+use crate::provider::exchange_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
-use crate::provider::transport_protocol::openid4vc::dto::{
-    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPPresentationDefinitionInputDescriptorFormat,
+use crate::provider::exchange_protocol::openid4vc::dto::{
+    OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferClaim,
+    OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialOfferCredentialDTO,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject, OpenID4VCICredentialValueDetails,
+    OpenID4VCIGrant, OpenID4VCIGrants, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
+    OpenID4VPFormat, OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    OpenID4VPPresentationDefinitionConstraintFieldFilter,
+    OpenID4VPPresentationDefinitionInputDescriptor,
+    OpenID4VPPresentationDefinitionInputDescriptorFormat,
 };
+use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::credential_schema::dto::{
     CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
 };
@@ -31,35 +49,7 @@ use crate::service::oidc::dto::{
     NestedPresentationSubmissionDescriptorDTO, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO,
     PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
 };
-use crate::{
-    model::{
-        claim::Claim,
-        claim_schema::ClaimSchema,
-        credential::Credential,
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        interaction::InteractionId,
-        proof::Proof,
-    },
-    provider::transport_protocol::{
-        openid4vc::dto::{
-            OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferCredentialDTO,
-            OpenID4VCICredentialOfferDTO, OpenID4VCICredentialSubject,
-            OpenID4VCICredentialValueDetails, OpenID4VCIGrant, OpenID4VCIGrants,
-            OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPInteractionData,
-            OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-            OpenID4VPPresentationDefinitionConstraintField,
-            OpenID4VPPresentationDefinitionConstraintFieldFilter,
-            OpenID4VPPresentationDefinitionInputDescriptor,
-        },
-        TransportProtocolError,
-    },
-    util::oidc::map_core_to_oidc_format,
-};
-
-use super::dto::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm,
-};
+use crate::util::oidc::map_core_to_oidc_format;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
@@ -71,16 +61,16 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     presentation_definition_by_value: bool,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     config: &CoreConfig,
-) -> Result<String, TransportProtocolError> {
+) -> Result<String, ExchangeProtocolError> {
     let encryption_key_jwk = get_encryption_key_jwk_from_proof(&proof, key_algorithm_provider)
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     let client_metadata =
         serde_json::to_string(&create_open_id_for_vp_client_metadata(encryption_key_jwk))
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     let presentation_definition = serde_json::to_string(
         &create_open_id_for_vp_presentation_definition(interaction_id, &proof, config)?,
     )
-    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     let base_url = get_url(base_url)?;
     let callback_url = format!("{}/ssi/oidc-verifier/v1/response", base_url);
 
@@ -117,7 +107,7 @@ pub(crate) fn create_open_id_for_vp_sharing_url_encoded(
     }
 
     let encoded_params = serde_urlencoded::to_string(params)
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     Ok(encoded_params)
 }
@@ -126,7 +116,7 @@ pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,
     credentials: Vec<Credential>,
     credential_groups: Vec<CredentialGroup>,
-) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
+) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
             id: proof_id.to_string(),
@@ -171,7 +161,7 @@ pub(super) fn presentation_definition_from_interaction_data(
 
 pub(crate) fn get_claim_name_by_json_path(
     path: &[String],
-) -> Result<String, TransportProtocolError> {
+) -> Result<String, ExchangeProtocolError> {
     const VC_CREDENTIAL_PREFIX: &str = "$.vc.credentialSubject.";
 
     match path.first() {
@@ -188,18 +178,18 @@ pub(crate) fn get_claim_name_by_json_path(
             let json_pointer_path = path.join("/");
 
             if json_pointer_path.is_empty() {
-                return Err(TransportProtocolError::Failed(format!(
+                return Err(ExchangeProtocolError::Failed(format!(
                     "Invalid json path: {subscript_path}"
                 )));
             }
 
             Ok(json_pointer_path)
         }
-        Some(other) => Err(TransportProtocolError::Failed(format!(
+        Some(other) => Err(ExchangeProtocolError::Failed(format!(
             "Invalid json path: {other}"
         ))),
 
-        None => Err(TransportProtocolError::Failed("No path".to_string())),
+        None => Err(ExchangeProtocolError::Failed("No path".to_string())),
     }
 }
 
@@ -207,8 +197,8 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
     interaction_id: InteractionId,
     proof: &Proof,
     config: &CoreConfig,
-) -> Result<OpenID4VPPresentationDefinition, TransportProtocolError> {
-    let proof_schema = proof.schema.as_ref().ok_or(TransportProtocolError::Failed(
+) -> Result<OpenID4VPPresentationDefinition, ExchangeProtocolError> {
+    let proof_schema = proof.schema.as_ref().ok_or(ExchangeProtocolError::Failed(
         "Proof schema not found".to_string(),
     ))?;
     // using vec to keep the original order of claims/credentials in the proof request
@@ -235,7 +225,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition(
                 .collect(),
 
             _ => {
-                return Err(TransportProtocolError::Failed(
+                return Err(ExchangeProtocolError::Failed(
                     "Missing proof input schemas".to_owned(),
                 ))
             }
@@ -267,7 +257,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     credential_schema: CredentialSchema,
     claim_schemas: Vec<ProofInputClaimSchema>,
     config: &CoreConfig,
-) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, TransportProtocolError> {
+) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, ExchangeProtocolError> {
     let schema_id_field = OpenID4VPPresentationDefinitionConstraintField {
         id: None,
         path: vec!["$.credentialSchema.id".to_string()],
@@ -282,7 +272,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     let format_type = config
         .format
         .get_fields(&credential_schema.format)
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
         .r#type;
 
     let intent_to_retain = match format_type {
@@ -317,7 +307,7 @@ pub(crate) fn create_open_id_for_vp_presentation_definition_input_descriptor(
     })
 }
 
-fn format_path(claim_key: &str, format_type: FormatType) -> Result<String, TransportProtocolError> {
+fn format_path(claim_key: &str, format_type: FormatType) -> Result<String, ExchangeProtocolError> {
     match format_type {
         FormatType::Mdoc => match claim_key.split_once(NESTED_CLAIM_MARKER) {
             None => Ok(format!("$['{claim_key}']")),
@@ -331,12 +321,12 @@ fn create_format_map(
     format_type: FormatType,
 ) -> Result<
     HashMap<String, OpenID4VPPresentationDefinitionInputDescriptorFormat>,
-    TransportProtocolError,
+    ExchangeProtocolError,
 > {
     match format_type {
         FormatType::Jwt | FormatType::Sdjwt | FormatType::Mdoc => {
             let key = map_core_to_oidc_format(&format_type.to_string())
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
             Ok(HashMap::from([(
                 key,
                 OpenID4VPPresentationDefinitionInputDescriptorFormat {
@@ -393,10 +383,8 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VPFormat
     formats
 }
 
-fn get_url(base_url: Option<String>) -> Result<String, TransportProtocolError> {
-    base_url.ok_or(TransportProtocolError::Failed(
-        "Missing base_url".to_owned(),
-    ))
+fn get_url(base_url: Option<String>) -> Result<String, ExchangeProtocolError> {
+    base_url.ok_or(ExchangeProtocolError::Failed("Missing base_url".to_owned()))
 }
 
 pub(crate) fn create_credential_offer(
@@ -404,25 +392,25 @@ pub(crate) fn create_credential_offer(
     interaction_id: &InteractionId,
     credential: &Credential,
     config: &CoreConfig,
-) -> Result<OpenID4VCICredentialOfferDTO, TransportProtocolError> {
+) -> Result<OpenID4VCICredentialOfferDTO, ExchangeProtocolError> {
     let credential_schema = credential
         .schema
         .as_ref()
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "Missing credential schema".to_owned(),
         ))?;
 
     let claims = credential
         .claims
         .as_ref()
-        .ok_or(TransportProtocolError::Failed("Missing claims".to_owned()))?;
+        .ok_or(ExchangeProtocolError::Failed("Missing claims".to_owned()))?;
 
     let url = get_url(base_url)?;
 
     let format_type = config
         .format
         .get_fields(&credential_schema.format)
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
         .r#type;
 
     let credentials = match format_type {
@@ -445,13 +433,13 @@ fn credentials_format_mdoc(
     credential_schema: &CredentialSchema,
     claims: &[Claim],
     config: &CoreConfig,
-) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, TransportProtocolError> {
+) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, ExchangeProtocolError> {
     let claims = prepare_claims(credential_schema, claims, config)?;
 
     Ok(vec![OpenID4VCICredentialOfferCredentialDTO {
         wallet_storage_type: credential_schema.wallet_storage_type.clone(),
         format: map_core_to_oidc_format(&credential_schema.format)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
         credential_definition: None,
         doctype: Some(credential_schema.schema_id.to_owned()),
         claims: Some(claims),
@@ -462,7 +450,7 @@ pub(super) fn prepare_claims(
     credential_schema: &CredentialSchema,
     claims: &[Claim],
     config: &CoreConfig,
-) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, TransportProtocolError> {
+) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, ExchangeProtocolError> {
     let object_types = config
         .datatype
         .iter()
@@ -479,7 +467,7 @@ pub(super) fn prepare_claims(
     let mut result = claims
         .iter()
         .map(|claim| {
-            let schema = claim.schema.as_ref().ok_or(TransportProtocolError::Failed(
+            let schema = claim.schema.as_ref().ok_or(ExchangeProtocolError::Failed(
                 "claim_schema is None".to_string(),
             ))?;
             Ok((
@@ -490,14 +478,14 @@ pub(super) fn prepare_claims(
                 },
             ))
         })
-        .collect::<Result<HashMap<String, OpenID4VCICredentialOfferClaim>, TransportProtocolError>>(
+        .collect::<Result<HashMap<String, OpenID4VCICredentialOfferClaim>, ExchangeProtocolError>>(
         )?;
 
     // Copy object claims from credential schema
     let object_claims = credential_schema
         .claim_schemas
         .as_ref()
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "claim_schemas is None".to_string(),
         ))?
         .iter()
@@ -515,7 +503,7 @@ pub(super) fn prepare_claims(
                 None
             }
         })
-        .collect::<Result<HashMap<String, OpenID4VCICredentialOfferClaim>, TransportProtocolError>>(
+        .collect::<Result<HashMap<String, OpenID4VCICredentialOfferClaim>, ExchangeProtocolError>>(
         )?;
     result.extend(object_claims);
 
@@ -524,7 +512,7 @@ pub(super) fn prepare_claims(
 
 fn nest_claims(
     claims: HashMap<String, OpenID4VCICredentialOfferClaim>,
-) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, TransportProtocolError> {
+) -> Result<HashMap<String, OpenID4VCICredentialOfferClaim>, ExchangeProtocolError> {
     // Copy unnested claims
     let mut result = claims
         .iter()
@@ -541,24 +529,22 @@ fn nest_claims(
     claims.into_iter().try_for_each(|(key, value)| {
         if let Some(index) = key.find(NESTED_CLAIM_MARKER) {
             let prefix = &key[0..index];
-            let entry = result
-                .get_mut(prefix)
-                .ok_or(TransportProtocolError::Failed(
-                    "failed to find parent claim".to_string(),
-                ))?;
+            let entry = result.get_mut(prefix).ok_or(ExchangeProtocolError::Failed(
+                "failed to find parent claim".to_string(),
+            ))?;
             match &mut entry.value {
                 OpenID4VCICredentialOfferClaimValue::Nested(map) => {
                     map.insert(remove_first_nesting_layer(&key), value);
                 }
                 OpenID4VCICredentialOfferClaimValue::String(_) => {
-                    return Err(TransportProtocolError::Failed(
+                    return Err(ExchangeProtocolError::Failed(
                         "found parent OBJECT claim of String value type".to_string(),
                     ));
                 }
             }
         }
 
-        Ok::<(), TransportProtocolError>(())
+        Ok::<(), ExchangeProtocolError>(())
     })?;
 
     // Repeat for each nested claim
@@ -580,11 +566,11 @@ fn nest_claims(
 fn credentials_format_others(
     credential_schema: &CredentialSchema,
     claims: &[Claim],
-) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, TransportProtocolError> {
+) -> Result<Vec<OpenID4VCICredentialOfferCredentialDTO>, ExchangeProtocolError> {
     Ok(vec![OpenID4VCICredentialOfferCredentialDTO {
         wallet_storage_type: credential_schema.wallet_storage_type.clone(),
         format: map_core_to_oidc_format(&credential_schema.format)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
         credential_definition: Some(OpenID4VCICredentialDefinition {
             r#type: vec!["VerifiableCredential".to_string()],
             credential_subject: Some(OpenID4VCICredentialSubject {
@@ -609,11 +595,11 @@ fn credentials_format_others(
 pub(super) fn get_credential_offer_url(
     base_url: Option<String>,
     credential: &Credential,
-) -> Result<String, TransportProtocolError> {
+) -> Result<String, ExchangeProtocolError> {
     let credential_schema = credential
         .schema
         .as_ref()
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "Missing credential schema".to_owned(),
         ))?;
     let base_url = get_url(base_url)?;
@@ -626,7 +612,7 @@ pub(super) fn get_credential_offer_url(
 pub(super) fn create_claims_from_credential_definition(
     credential_id: CredentialId,
     claim_keys: &HashMap<String, OpenID4VCICredentialValueDetails>,
-) -> Result<(Vec<CredentialSchemaClaim>, Vec<Claim>), TransportProtocolError> {
+) -> Result<(Vec<CredentialSchemaClaim>, Vec<Claim>), ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
     let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
     let mut claims: Vec<Claim> = vec![];
@@ -685,11 +671,11 @@ pub(super) fn create_presentation_submission(
     interaction_data: &OpenID4VPInteractionData,
     credential_presentations: Vec<PresentedCredential>,
     format: &str,
-) -> Result<PresentationSubmissionMappingDTO, TransportProtocolError> {
+) -> Result<PresentationSubmissionMappingDTO, ExchangeProtocolError> {
     let presentation_definition_id = &interaction_data
         .presentation_definition
         .as_ref()
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "presentation_definition is None".to_string(),
         ))?
         .id;
@@ -709,7 +695,7 @@ pub(super) fn create_presentation_submission(
                         format: map_core_to_oidc_format(
                             &presented_credential.credential_schema.format,
                         )
-                        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+                        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
                         path: format!("$.vp.verifiableCredential[{index}]"),
                     }),
                 })
@@ -812,12 +798,12 @@ pub(super) fn map_offered_claims_to_credential_schema(
     credential_schema: &CredentialSchema,
     credential_id: CredentialId,
     claim_keys: &HashMap<String, OpenID4VCICredentialValueDetails>,
-) -> Result<Vec<Claim>, TransportProtocolError> {
+) -> Result<Vec<Claim>, ExchangeProtocolError> {
     let claim_schemas =
         credential_schema
             .claim_schemas
             .as_ref()
-            .ok_or(TransportProtocolError::Failed(
+            .ok_or(ExchangeProtocolError::Failed(
                 "Missing claim schemas for existing credential schema".to_string(),
             ))?;
 
@@ -842,7 +828,7 @@ pub(super) fn map_offered_claims_to_credential_schema(
                 claims.push(claim);
             }
             None if claim_schema.required => {
-                return Err(TransportProtocolError::Failed(format!(
+                return Err(ExchangeProtocolError::Failed(format!(
                     "Validation Error. Claim key {} missing",
                     &claim_schema.schema.key
                 )))

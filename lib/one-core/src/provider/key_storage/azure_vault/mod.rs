@@ -2,37 +2,28 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use dto::{AzureHsmGenerateKeyResponse, AzureHsmSignResponse};
+use mapper::{
+    create_generate_key_request, create_get_token_request, create_sign_request,
+    public_key_from_components,
+};
 use serde::Deserialize;
 use shared_types::KeyId;
 use time::{Duration, OffsetDateTime};
 use tokio::sync::Mutex;
 use url::Url;
 use uuid::Uuid;
-
-use dto::{AzureHsmGenerateKeyResponse, AzureHsmSignResponse};
-use mapper::{
-    create_generate_key_request, create_get_token_request, create_sign_request,
-    public_key_from_components,
-};
 use zeroize::Zeroizing;
 
-use crate::{
-    crypto::{
-        signer::{error::SignerError, es256::ES256Signer},
-        CryptoProvider,
-    },
-    model::key::Key,
-    provider::{
-        key_storage::{
-            azure_vault::dto::AzureHsmGetTokenResponse, GeneratedKey, KeyStorage,
-            KeyStorageCapabilities,
-        },
-        transport_protocol::TransportProtocolError,
-    },
-    service::error::{ServiceError, ValidationError},
-};
-
 use super::KeySecurity;
+use crate::crypto::signer::error::SignerError;
+use crate::crypto::signer::es256::ES256Signer;
+use crate::crypto::CryptoProvider;
+use crate::model::key::Key;
+use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::provider::key_storage::azure_vault::dto::AzureHsmGetTokenResponse;
+use crate::provider::key_storage::{GeneratedKey, KeyStorage, KeyStorageCapabilities};
+use crate::service::error::{ServiceError, ValidationError};
 
 mod dto;
 mod mapper;
@@ -82,12 +73,12 @@ impl KeyStorage for AzureVaultKeyProvider {
             .bearer_auth(access_token)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .json()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         let public_key_bytes = public_key_from_components(&response.key)?;
 
@@ -170,12 +161,12 @@ impl AzureVaultKeyProvider {
             .form(&request)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .json()
             .await
-            .map_err(TransportProtocolError::HttpResponse)?;
+            .map_err(ExchangeProtocolError::HttpResponse)?;
 
         if response.token_type != "Bearer" {
             return Err(ServiceError::Other(format!(

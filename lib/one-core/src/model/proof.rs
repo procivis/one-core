@@ -1,18 +1,15 @@
+use shared_types::DidId;
 use strum_macros::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use shared_types::DidId;
-
-use super::{
-    claim::{Claim, ClaimRelations},
-    common::{GetListQueryParams, GetListResponse},
-    credential::{Credential, CredentialRelations},
-    did::{Did, DidRelations},
-    interaction::{Interaction, InteractionId, InteractionRelations},
-    key::{Key, KeyRelations},
-    proof_schema::{ProofSchema, ProofSchemaRelations},
-};
+use super::claim::{Claim, ClaimRelations};
+use super::common::{GetListQueryParams, GetListResponse};
+use super::credential::{Credential, CredentialRelations};
+use super::did::{Did, DidRelations};
+use super::interaction::{Interaction, InteractionId, InteractionRelations};
+use super::key::{Key, KeyRelations};
+use super::proof_schema::{ProofSchema, ProofSchemaRelations};
 
 pub type ProofId = Uuid;
 
@@ -22,7 +19,7 @@ pub struct Proof {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
-    pub transport: String,
+    pub exchange: String,
     pub redirect_uri: Option<String>,
 
     // Relations

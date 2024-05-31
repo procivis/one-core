@@ -1,66 +1,51 @@
 use std::collections::HashMap;
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
+use std::sync::Arc;
 
 use maplit::hashmap;
 use mockall::{predicate, Sequence};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-use wiremock::{
-    http::Method,
-    matchers::{method, path},
-    Mock, MockServer, ResponseTemplate,
-};
-
-use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
-use crate::model::did::{KeyRole, RelatedKey};
-use crate::model::key::Key;
-use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
-use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
-use crate::provider::transport_protocol::openid4vc::dto::OpenID4VCICredentialValueDetails;
-use crate::provider::transport_protocol::openid4vc::dto::{
-    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
-};
-use crate::provider::transport_protocol::openid4vc::mapper::prepare_claims;
-use crate::provider::transport_protocol::TransportProtocol;
-use crate::service::test_utilities::generic_config;
-use crate::{
-    crypto::MockCryptoProvider,
-    model::{
-        claim::Claim,
-        claim_schema::ClaimSchema,
-        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        did::{Did, DidType},
-        interaction::Interaction,
-        organisation::Organisation,
-        proof::{Proof, ProofState, ProofStateEnum},
-        proof_schema::ProofSchema,
-    },
-    provider::{
-        credential_formatter::provider::MockCredentialFormatterProvider,
-        key_storage::provider::MockKeyProvider,
-        revocation::provider::MockRevocationMethodProvider,
-        transport_protocol::{
-            openid4vc::dto::{
-                OpenID4VPClientMetadata, OpenID4VPFormat, OpenID4VPInteractionData,
-                OpenID4VPPresentationDefinition,
-            },
-            TransportProtocolError,
-        },
-    },
-    repository::{
-        credential_repository::MockCredentialRepository,
-        credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
-        mock::proof_repository::MockProofRepository,
-    },
-    service::ssi_holder::dto::InvitationResponseDTO,
-};
+use wiremock::http::Method;
+use wiremock::matchers::{method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::{build_claims_keys_for_mdoc, OpenID4VC, OpenID4VCParams};
+use crate::crypto::MockCryptoProvider;
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
+};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::interaction::Interaction;
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::did_method::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
+use crate::provider::exchange_protocol::openid4vc::dto::{
+    OpenID4VCICredentialOfferClaim, OpenID4VCICredentialOfferClaimValue,
+    OpenID4VCICredentialValueDetails, OpenID4VPClientMetadata, OpenID4VPFormat,
+    OpenID4VPInteractionData, OpenID4VPPresentationDefinition,
+};
+use crate::provider::exchange_protocol::openid4vc::mapper::prepare_claims;
+use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::MockKeyAlgorithm;
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::repository::mock::proof_repository::MockProofRepository;
+use crate::service::ssi_holder::dto::InvitationResponseDTO;
+use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct TestInputs {
@@ -111,7 +96,7 @@ fn construct_proof_with_state() -> Proof {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "OPENID4VC".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -229,7 +214,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -639,7 +624,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(incorrect_response_type, generic_organisation())
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let missing_nonce = Url::parse(&format!("openid4vp://?response_type=vp_token&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                             , callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
@@ -647,7 +632,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(missing_nonce, generic_organisation())
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                          , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
@@ -655,7 +640,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(incorrect_client_id_scheme, generic_organisation())
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let incorrect_response_mode = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=some_mode&response_uri={}&presentation_definition={}"
                                                       , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
@@ -663,7 +648,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(incorrect_response_mode, generic_organisation())
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let incorrect_client_id_scheme = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=some_scheme&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                          , nonce, callback_url, client_metadata, callback_url, presentation_definition)).unwrap();
@@ -671,7 +656,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(incorrect_client_id_scheme, generic_organisation())
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let metadata_missing_jwt_vp_json = serde_json::to_string(&OpenID4VPClientMetadata {
         jwks: vec![],
@@ -686,7 +671,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(missing_metadata_field, generic_organisation())
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let both_client_metadata_and_uri_specified = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&client_metadata_uri={}&response_mode=direct_post&response_uri={}&presentation_definition={}"
                                                                      , nonce, callback_url, client_metadata, client_metadata_uri, callback_url, presentation_definition)).unwrap();
@@ -697,7 +682,7 @@ async fn test_handle_invitation_proof_failed() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let both_presentation_definition_and_uri_specified = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition={}&presentation_definition_uri={}"
                                                                              , nonce, callback_url, client_metadata, callback_url, presentation_definition, presentation_definition_uri)).unwrap();
@@ -708,7 +693,7 @@ async fn test_handle_invitation_proof_failed() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let protocol_https_only = setup_protocol(TestInputs {
         params: Some(OpenID4VCParams {
@@ -730,7 +715,7 @@ async fn test_handle_invitation_proof_failed() {
         .handle_invitation(client_metadata_uri_is_not_https, generic_organisation())
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 
     let invalid_presentation_definition_uri = "http://127.0.0.1/presentation_definition_uri";
     let presentation_definition_uri_is_not_https = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={}&client_id_scheme=redirect_uri&client_id={}&client_metadata={}&response_mode=direct_post&response_uri={}&presentation_definition_uri={}"
@@ -742,7 +727,7 @@ async fn test_handle_invitation_proof_failed() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(result, TransportProtocolError::InvalidRequest(_)));
+    assert!(matches!(result, ExchangeProtocolError::InvalidRequest(_)));
 }
 
 #[test]
@@ -878,7 +863,7 @@ fn test_prepare_claims_success_failed_missing_credential_schema_parent_claim_sch
     credential_schema.claim_schemas = Some(claim_schemas);
 
     let result = prepare_claims(&credential_schema, &claims, &generic_config().core).unwrap_err();
-    assert!(matches!(result, TransportProtocolError::Failed(_)));
+    assert!(matches!(result, ExchangeProtocolError::Failed(_)));
 }
 
 #[test]

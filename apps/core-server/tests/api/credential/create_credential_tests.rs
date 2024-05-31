@@ -1,12 +1,13 @@
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{KeyRole, RelatedKey};
 use shared_types::KeyId;
 use uuid::Uuid;
 
 use crate::fixtures::TestingDidParams;
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::keys::es256_testing_params;
 use crate::utils::field_match::FieldHelpers;
-use crate::utils::{context::TestContext, db_clients::keys::es256_testing_params};
-use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 
 #[tokio::test]
 async fn test_create_credential_success() {
@@ -47,7 +48,7 @@ async fn test_create_credential_success() {
         credential.state.unwrap()[0].state
     );
     assert_eq!(1, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VC", credential.transport);
+    assert_eq!("OPENID4VC", credential.exchange);
 }
 
 #[tokio::test]
@@ -103,7 +104,7 @@ async fn test_create_credential_success_with_nested_claims() {
         credential.state.unwrap()[0].state
     );
     assert_eq!(3, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VC", credential.transport);
+    assert_eq!("OPENID4VC", credential.exchange);
 }
 
 #[tokio::test]
@@ -321,7 +322,7 @@ async fn test_create_credential_with_big_picture_success() {
         credential.state.unwrap()[0].state
     );
     assert_eq!(1, credential.claims.unwrap().len());
-    assert_eq!("OPENID4VC", credential.transport);
+    assert_eq!("OPENID4VC", credential.exchange);
 }
 
 #[tokio::test]

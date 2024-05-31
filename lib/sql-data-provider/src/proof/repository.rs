@@ -1,33 +1,34 @@
-use super::{
-    mapper::{create_list_response, get_proof_claim_active_model, get_proof_state_active_model},
-    model::ProofListItemModel,
-    ProofProvider,
-};
-use crate::{
-    entity::{did, proof, proof_claim, proof_schema, proof_state},
-    list_query::SelectWithListQuery,
-};
+use std::collections::HashMap;
+use std::str::FromStr;
+
 use anyhow::anyhow;
 use autometrics::autometrics;
 use dto_mapper::convert_inner;
-use one_core::model::proof::{ProofClaim, UpdateProofRequest};
-use one_core::{
-    model::{
-        claim::{Claim, ClaimId},
-        did::Did,
-        interaction::InteractionId,
-        proof::{GetProofList, GetProofQuery, Proof, ProofId, ProofRelations, ProofState},
-    },
-    repository::{error::DataLayerError, proof_repository::ProofRepository},
+use one_core::model::claim::{Claim, ClaimId};
+use one_core::model::did::Did;
+use one_core::model::interaction::InteractionId;
+use one_core::model::proof::{
+    GetProofList, GetProofQuery, Proof, ProofClaim, ProofId, ProofRelations, ProofState,
+    UpdateProofRequest,
 };
+use one_core::repository::error::DataLayerError;
+use one_core::repository::proof_repository::ProofRepository;
+use sea_orm::sea_query::expr::Expr;
+use sea_orm::sea_query::{Alias, IntoCondition, Query};
 use sea_orm::{
-    sea_query::{expr::Expr, Alias, IntoCondition, Query},
     ActiveModelTrait, ColumnTrait, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
-use std::{collections::HashMap, str::FromStr};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::mapper::{
+    create_list_response, get_proof_claim_active_model, get_proof_state_active_model,
+};
+use super::model::ProofListItemModel;
+use super::ProofProvider;
+use crate::entity::{did, proof, proof_claim, proof_schema, proof_state};
+use crate::list_query::SelectWithListQuery;
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -269,9 +270,9 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             proof::Column::CreatedDate,
             proof::Column::LastModified,
             proof::Column::IssuanceDate,
-            proof::Column::Transport,
             proof::Column::RedirectUri,
         ])
+        .column_as(proof::Column::Exchange, "exchange")
         // add related verifierDid
         .join(
             sea_orm::JoinType::LeftJoin,

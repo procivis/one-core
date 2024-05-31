@@ -1,8 +1,12 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use shared_types::CredentialId;
 use url::Url;
 
+use super::dto::InvitationType;
+use super::mapper::credential_accepted_history_event;
+use super::ExchangeProtocol;
 use crate::common_validator::throw_if_latest_credential_state_not_eq;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -16,10 +20,10 @@ use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::CredentialData;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
+use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::transport_protocol::dto::SubmitIssuerResponse;
-use crate::provider::transport_protocol::mapper::get_issued_credential_update;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
@@ -27,20 +31,16 @@ use crate::service::error::{
     EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 
-use super::dto::InvitationType;
-use super::mapper::credential_accepted_history_event;
-use super::TransportProtocol;
-
 #[derive(Clone)]
 pub struct DetectedProtocol {
     pub invitation_type: InvitationType,
-    pub protocol: Arc<dyn TransportProtocol>,
+    pub protocol: Arc<dyn ExchangeProtocol>,
 }
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
-pub(crate) trait TransportProtocolProvider: Send + Sync {
-    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn TransportProtocol>>;
+pub(crate) trait ExchangeProtocolProvider: Send + Sync {
+    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn ExchangeProtocol>>;
 
     fn detect_protocol(&self, url: &Url) -> Option<DetectedProtocol>;
 
@@ -51,8 +51,8 @@ pub(crate) trait TransportProtocolProvider: Send + Sync {
     ) -> Result<SubmitIssuerResponse, ServiceError>;
 }
 
-pub(crate) struct TransportProtocolProviderImpl {
-    protocols: HashMap<String, Arc<dyn TransportProtocol>>,
+pub(crate) struct ExchangeProtocolProviderImpl {
+    protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
     history_repository: Arc<dyn HistoryRepository>,
@@ -63,9 +63,9 @@ pub(crate) struct TransportProtocolProviderImpl {
 }
 
 #[allow(clippy::too_many_arguments)]
-impl TransportProtocolProviderImpl {
+impl ExchangeProtocolProviderImpl {
     pub fn new(
-        protocols: HashMap<String, Arc<dyn TransportProtocol>>,
+        protocols: HashMap<String, Arc<dyn ExchangeProtocol>>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         credential_repository: Arc<dyn CredentialRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -88,8 +88,8 @@ impl TransportProtocolProviderImpl {
 }
 
 #[async_trait::async_trait]
-impl TransportProtocolProvider for TransportProtocolProviderImpl {
-    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn TransportProtocol>> {
+impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
+    fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn ExchangeProtocol>> {
         self.protocols.get(protocol_id).cloned()
     }
 

@@ -1,10 +1,14 @@
-use crate::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
-use crate::model::{credential::Credential, credential_schema::CredentialSchema};
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
-use std::collections::HashMap;
 use time::OffsetDateTime;
+
+use crate::model::credential::Credential;
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaType, WalletStorageTypeEnum,
+};
+use crate::service::credential::dto::CredentialDetailResponseDTO;
 
 #[derive(Clone, Debug)]
 pub enum InvitationType {

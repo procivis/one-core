@@ -1,9 +1,8 @@
 use dto_mapper::{From, Into};
+use one_core::model::credential::CredentialRole as ModelCredentialRole;
 use sea_orm::entity::prelude::*;
 use shared_types::{CredentialId, DidId, KeyId};
 use time::OffsetDateTime;
-
-use one_core::model::credential::CredentialRole as ModelCredentialRole;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "credential")]
@@ -19,7 +18,8 @@ pub struct Model {
     pub issuance_date: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
 
-    pub transport: String,
+    #[sea_orm(column_name = "transport")]
+    pub exchange: String,
     pub redirect_uri: Option<String>,
 
     #[sea_orm(column_type = "Binary(BlobSize::Long)")]

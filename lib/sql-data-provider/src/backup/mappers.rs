@@ -1,22 +1,17 @@
 use std::str::FromStr;
 
 use dto_mapper::convert_inner;
-use one_core::{
-    model::{
-        claim::Claim,
-        credential::Credential,
-        credential_schema::{
-            CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-        },
-        organisation::Organisation,
-    },
-    repository::error::DataLayerError,
+use one_core::model::claim::Claim;
+use one_core::model::credential::Credential;
+use one_core::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
 };
+use one_core::model::organisation::Organisation;
+use one_core::repository::error::DataLayerError;
 use uuid::Uuid;
 
-use crate::entity::credential_state;
-
 use super::models::{ClaimWithSchema, SchemaWithClaimSchema, UnexportableCredentialModel};
+use crate::entity::credential_state;
 
 impl From<ClaimWithSchema> for Claim {
     fn from(value: ClaimWithSchema) -> Self {
@@ -56,7 +51,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             last_modified: value.last_modified,
             deleted_at: value.deleted_at,
             credential: value.credential,
-            transport: value.transport,
+            exchange: value.exchange,
             redirect_uri: value.redirect_uri,
             role: value.role.into(),
             state: Some(convert_inner(states)),

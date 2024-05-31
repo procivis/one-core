@@ -1,7 +1,8 @@
-use crate::entity::did::DidType;
 use sea_orm::FromQueryResult;
 use shared_types::DidValue;
 use time::OffsetDateTime;
+
+use crate::entity::did::DidType;
 
 /// temporary struct to map items returned from the list DB query
 #[derive(FromQueryResult)]
@@ -11,7 +12,7 @@ pub(super) struct ProofListItemModel {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
-    pub transport: String,
+    pub exchange: String,
     pub redirect_uri: Option<String>,
 
     // verifier_did

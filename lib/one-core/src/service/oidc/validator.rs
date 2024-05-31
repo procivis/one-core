@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use time::{Duration, OffsetDateTime};
+
+use super::dto::ValidatedProofClaimDTO;
+use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::config::ConfigValidationError;
-
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::interaction::Interaction;
 use crate::model::proof_schema::ProofInputSchema;
@@ -27,11 +30,6 @@ use crate::util::oidc::{
     map_from_oidc_format_to_core, map_from_oidc_format_to_core_real,
     map_from_oidc_vp_format_to_core,
 };
-
-use crate::common_mapper::NESTED_CLAIM_MARKER;
-use time::{Duration, OffsetDateTime};
-
-use super::dto::ValidatedProofClaimDTO;
 
 pub(crate) fn throw_if_token_request_invalid(
     request: &OpenID4VCITokenRequestDTO,
@@ -399,16 +397,16 @@ pub(super) fn validate_config_entity_presence(
     }
 }
 
-pub(super) fn validate_transport_type(
+pub(super) fn validate_exchange_type(
     config: &CoreConfig,
-    transport: &str,
+    exchange: &str,
 ) -> Result<(), ConfigValidationError> {
-    let transport_type = config.exchange.get_fields(transport)?.r#type;
+    let exchange_type = config.exchange.get_fields(exchange)?.r#type;
 
-    if transport_type != ExchangeType::OpenId4Vc {
+    if exchange_type != ExchangeType::OpenId4Vc {
         Err(ConfigValidationError::InvalidType(
             ExchangeType::OpenId4Vc.to_string(),
-            transport.to_string(),
+            exchange.to_string(),
         ))
     } else {
         Ok(())

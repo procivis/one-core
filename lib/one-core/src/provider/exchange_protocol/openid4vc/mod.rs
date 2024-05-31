@@ -1,98 +1,91 @@
-use std::collections::HashSet;
-use std::{collections::HashMap, sync::Arc};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use shared_types::CredentialId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use self::{
-    dto::{
-        OpenID4VCICredential, OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferClaim,
-        OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialOfferCredentialDTO,
-        OpenID4VCICredentialOfferDTO, OpenID4VCICredentialValueDetails, OpenID4VCIProof,
-        OpenID4VPInteractionData,
-    },
-    mapper::{
-        create_claims_from_credential_definition, create_credential_offer,
-        create_open_id_for_vp_presentation_definition, create_open_id_for_vp_sharing_url_encoded,
-        create_presentation_submission, get_claim_name_by_json_path, get_credential_offer_url,
-        map_offered_claims_to_credential_schema, parse_mdoc_schema_claims,
-        parse_procivis_schema_claim, presentation_definition_from_interaction_data,
-    },
-    model::{
-        HolderInteractionData, JwePayload, OpenID4VCIInteractionContent,
-        OpenID4VPInteractionContent,
-    },
-    validator::validate_interaction_data,
+use self::dto::{
+    OpenID4VCICredential, OpenID4VCICredentialDefinition, OpenID4VCICredentialOfferClaim,
+    OpenID4VCICredentialOfferClaimValue, OpenID4VCICredentialOfferCredentialDTO,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialValueDetails, OpenID4VCIProof,
+    OpenID4VPInteractionData,
 };
+use self::mapper::{
+    create_claims_from_credential_definition, create_credential_offer,
+    create_open_id_for_vp_presentation_definition, create_open_id_for_vp_sharing_url_encoded,
+    create_presentation_submission, get_claim_name_by_json_path, get_credential_offer_url,
+    map_offered_claims_to_credential_schema, parse_mdoc_schema_claims, parse_procivis_schema_claim,
+    presentation_definition_from_interaction_data,
+};
+use self::model::{
+    HolderInteractionData, JwePayload, OpenID4VCIInteractionContent, OpenID4VPInteractionContent,
+};
+use self::validator::validate_interaction_data;
+use super::dto::{InvitationType, PresentedCredential, SubmitIssuerResponse};
+use super::mapper::interaction_from_handle_invitation;
 use super::{
-    deserialize_interaction_data,
-    dto::{InvitationType, PresentedCredential, SubmitIssuerResponse},
-    mapper::interaction_from_handle_invitation,
-    serialize_interaction_data, TransportProtocol, TransportProtocolError,
+    deserialize_interaction_data, serialize_interaction_data, ExchangeProtocol,
+    ExchangeProtocolError,
 };
+use crate::config::core_config;
+use crate::crypto::CryptoProvider;
+use crate::model::claim::{Claim, ClaimRelations};
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::credential::{
+    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
+    CredentialStateRelations, UpdateCredentialRequest,
+};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
+    UpdateCredentialSchemaRequest,
+};
+use crate::model::did::{Did, DidRelations, DidType};
+use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use crate::model::key::{Key, KeyRelations};
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::proof::{
+    Proof, ProofClaimRelations, ProofId, ProofRelations, UpdateProofRequest,
+};
+use crate::model::proof_schema::{
+    ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
+};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::FormatPresentationCtx;
+use crate::provider::exchange_protocol::dto::{
+    CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO,
+};
+use crate::provider::exchange_protocol::mapper::{
+    get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
+};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::did_repository::DidRepository;
+use crate::repository::error::DataLayerError;
+use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::proof_repository::ProofRepository;
+use crate::service::credential_schema::dto::{
+    CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO,
+};
+use crate::service::credential_schema::mapper::from_create_request;
 use crate::service::error::ServiceError;
-use crate::{config::core_config, provider::credential_formatter::FormatPresentationCtx};
-use crate::{
-    crypto::CryptoProvider,
-    model::{
-        claim::{Claim, ClaimRelations},
-        claim_schema::ClaimSchemaRelations,
-        credential::{
-            Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
-            CredentialStateRelations, UpdateCredentialRequest,
-        },
-        credential_schema::{
-            CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, LayoutType,
-            UpdateCredentialSchemaRequest,
-        },
-        did::{Did, DidRelations, DidType},
-        interaction::{Interaction, InteractionId, InteractionRelations},
-        key::{Key, KeyRelations},
-        organisation::{Organisation, OrganisationRelations},
-        proof::{Proof, ProofClaimRelations, ProofId, ProofRelations, UpdateProofRequest},
-        proof_schema::{
-            ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
-        },
-    },
-    provider::{
-        credential_formatter::provider::CredentialFormatterProvider,
-        key_algorithm::provider::KeyAlgorithmProvider,
-        key_storage::provider::KeyProvider,
-        revocation::provider::RevocationMethodProvider,
-        transport_protocol::{
-            dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO},
-            mapper::{
-                get_relevant_credentials_to_credential_schemas, proof_from_handle_invitation,
-            },
-        },
-    },
-    repository::{
-        credential_repository::CredentialRepository,
-        credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-        error::DataLayerError, interaction_repository::InteractionRepository,
-        proof_repository::ProofRepository,
-    },
-    service::{
-        credential_schema::{
-            dto::{CreateCredentialSchemaRequestDTO, CredentialSchemaDetailResponseDTO},
-            mapper::from_create_request,
-        },
-        oidc::dto::{
-            OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO,
-            OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
-            OpenID4VCITokenResponseDTO, OpenID4VPDirectPostResponseDTO,
-        },
-        ssi_holder::dto::InvitationResponseDTO,
-    },
-    util::{
-        oidc::{detect_correct_format, map_core_to_oidc_format, map_from_oidc_format_to_core},
-        proof_formatter::OpenID4VCIProofJWTFormatter,
-    },
+use crate::service::oidc::dto::{
+    OpenID4VCICredentialResponseDTO, OpenID4VCIDiscoveryResponseDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VPDirectPostResponseDTO,
 };
+use crate::service::ssi_holder::dto::InvitationResponseDTO;
+use crate::util::oidc::{
+    detect_correct_format, map_core_to_oidc_format, map_from_oidc_format_to_core,
+};
+use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
 
 mod mdoc;
 #[cfg(test)]
@@ -175,7 +168,7 @@ impl OpenID4VC {
 }
 
 #[async_trait]
-impl TransportProtocol for OpenID4VC {
+impl ExchangeProtocol for OpenID4VC {
     fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType> {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
@@ -198,10 +191,10 @@ impl TransportProtocol for OpenID4VC {
         &self,
         url: Url,
         organisation: Organisation,
-    ) -> Result<InvitationResponseDTO, TransportProtocolError> {
+    ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type =
             self.detect_invitation_type(&url)
-                .ok_or(TransportProtocolError::Failed(
+                .ok_or(ExchangeProtocolError::Failed(
                     "No OpenID4VC query params detected".to_string(),
                 ))?;
 
@@ -222,8 +215,8 @@ impl TransportProtocol for OpenID4VC {
         }
     }
 
-    async fn reject_proof(&self, _proof: &Proof) -> Result<(), TransportProtocolError> {
-        Err(TransportProtocolError::OperationNotSupported)
+    async fn reject_proof(&self, _proof: &Proof) -> Result<(), ExchangeProtocolError> {
+        Err(ExchangeProtocolError::OperationNotSupported)
     }
 
     async fn submit_proof(
@@ -233,7 +226,7 @@ impl TransportProtocol for OpenID4VC {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<(), TransportProtocolError> {
+    ) -> Result<(), ExchangeProtocolError> {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
 
@@ -250,7 +243,7 @@ impl TransportProtocol for OpenID4VC {
         let (format, oidc_format) = match () {
             _ if formats.contains("MDOC") => {
                 if formats.len() > 1 {
-                    return Err(TransportProtocolError::Failed(
+                    return Err(ExchangeProtocolError::Failed(
                         "Currently for a proof MDOC cannot be used with other formats".to_string(),
                     ));
                 };
@@ -270,12 +263,12 @@ impl TransportProtocol for OpenID4VC {
         let presentation_formatter = self
             .formatter_provider
             .get_formatter(format)
-            .ok_or_else(|| TransportProtocolError::Failed("Formatter not found".to_string()))?;
+            .ok_or_else(|| ExchangeProtocolError::Failed("Formatter not found".to_string()))?;
 
         let auth_fn = self
             .key_provider
             .get_signature_provider(key, jwk_key_id)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let presentation_submission = create_presentation_submission(
             &interaction_data,
@@ -295,20 +288,18 @@ impl TransportProtocol for OpenID4VC {
             let client_metadata =
                 interaction_data
                     .client_metadata
-                    .ok_or(TransportProtocolError::Failed(
+                    .ok_or(ExchangeProtocolError::Failed(
                         "Missing client_metadata for MDOC openid4vp".to_string(),
                     ))?;
 
-            let state = interaction_data
-                .state
-                .ok_or(TransportProtocolError::Failed(
-                    "Missing state in openid4vp".to_string(),
-                ))?;
+            let state = interaction_data.state.ok_or(ExchangeProtocolError::Failed(
+                "Missing state in openid4vp".to_string(),
+            ))?;
 
             let vp_token = presentation_formatter
                 .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
                 .await
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
             let payload = JwePayload {
                 aud: response_uri.clone(),
@@ -325,7 +316,7 @@ impl TransportProtocol for OpenID4VC {
                 &interaction_data.nonce,
             )
             .map_err(|err| {
-                TransportProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
+                ExchangeProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
             })?;
 
             params.insert("response", response);
@@ -335,13 +326,13 @@ impl TransportProtocol for OpenID4VC {
             let vp_token = presentation_formatter
                 .format_presentation(&tokens, &holder_did.did, &key.key_type, auth_fn, ctx)
                 .await
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
             params.insert("vp_token", vp_token);
             params.insert(
                 "presentation_submission",
                 serde_json::to_string(&presentation_submission)
-                    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?,
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?,
             );
             if let Some(state) = interaction_data.state {
                 params.insert("state", state);
@@ -354,9 +345,9 @@ impl TransportProtocol for OpenID4VC {
             .form(&params)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         let response: Result<OpenID4VPDirectPostResponseDTO, _> = response.json().await;
 
@@ -368,7 +359,7 @@ impl TransportProtocol for OpenID4VC {
                     ..Default::default()
                 })
                 .await
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
         }
 
         Ok(())
@@ -380,14 +371,14 @@ impl TransportProtocol for OpenID4VC {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
+    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError> {
         let schema = credential
             .schema
             .as_ref()
-            .ok_or(TransportProtocolError::Failed("schema is None".to_string()))?;
+            .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
 
         let format = map_core_to_oidc_format(&schema.format)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let interaction_data: HolderInteractionData =
             deserialize_interaction_data(credential.interaction.as_ref())?;
@@ -395,7 +386,7 @@ impl TransportProtocol for OpenID4VC {
         let auth_fn = self
             .key_provider
             .get_signature_provider(key, jwk_key_id)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url,
@@ -404,7 +395,7 @@ impl TransportProtocol for OpenID4VC {
             auth_fn,
         )
         .await
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let (credential_definition, doctype) = match format.as_str() {
             "mso_mdoc" => (None, Some(schema.schema_id.to_owned())),
@@ -433,28 +424,28 @@ impl TransportProtocol for OpenID4VC {
             .json(&body)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         let response = response
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         let response_value: OpenID4VCICredentialResponseDTO = response
             .json()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         let real_format = detect_correct_format(schema, &response_value.credential)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         // revocation method must be updated based on the issued credential (unknown in credential offer)
         let response_credential = self
             .formatter_provider
             .get_formatter(&real_format)
             .ok_or_else(|| {
-                TransportProtocolError::Failed(format!("{} formatter not found", schema.format))
+                ExchangeProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?
             .extract_credentials_unverified(&response_value.credential)
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         // Revocation method should be the same for every credential in list
         let revocation_method = if let Some(credential_status) = response_credential.status.first()
@@ -462,7 +453,7 @@ impl TransportProtocol for OpenID4VC {
             let (_, revocation_method) = self
                 .revocation_provider
                 .get_revocation_method_by_status_type(&credential_status.r#type)
-                .ok_or(TransportProtocolError::Failed(format!(
+                .ok_or(ExchangeProtocolError::Failed(format!(
                     "Revocation method not found for status type {}",
                     credential_status.r#type
                 )))?;
@@ -478,13 +469,13 @@ impl TransportProtocol for OpenID4VC {
                 format: Some(real_format),
             })
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         // issuer_did must be set based on issued credential (unknown in credential offer)
         let issuer_did_value =
             response_credential
                 .issuer_did
-                .ok_or(TransportProtocolError::Failed(
+                .ok_or(ExchangeProtocolError::Failed(
                     "issuer_did missing".to_string(),
                 ))?;
 
@@ -493,7 +484,7 @@ impl TransportProtocol for OpenID4VC {
             .did_repository
             .get_did_by_value(&issuer_did_value, &DidRelations::default())
             .await
-            .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
+            .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
         {
             Some(did) => did.id,
             None => {
@@ -524,7 +515,7 @@ impl TransportProtocol for OpenID4VC {
                         deactivated: false,
                     })
                     .await
-                    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+                    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
             }
         };
 
@@ -540,7 +531,7 @@ impl TransportProtocol for OpenID4VC {
                 key: None,
             })
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         Ok(response_value.into())
     }
@@ -548,14 +539,14 @@ impl TransportProtocol for OpenID4VC {
     async fn reject_credential(
         &self,
         _credential: &Credential,
-    ) -> Result<(), TransportProtocolError> {
-        Err(TransportProtocolError::OperationNotSupported)
+    ) -> Result<(), ExchangeProtocolError> {
+        Err(ExchangeProtocolError::OperationNotSupported)
     }
 
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<String, TransportProtocolError> {
+    ) -> Result<String, ExchangeProtocolError> {
         let credential = self
             .credential_repository
             .get_credential(
@@ -576,10 +567,10 @@ impl TransportProtocol for OpenID4VC {
                 },
             )
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let Some(credential) = credential else {
-            return Err(TransportProtocolError::Failed(
+            return Err(ExchangeProtocolError::Failed(
                 "Missing credential".to_string(),
             ));
         };
@@ -612,7 +603,7 @@ impl TransportProtocol for OpenID4VC {
         clear_previous_interaction(&self.interaction_repository, &credential.interaction).await?;
 
         let mut url = Url::parse(&format!("{CREDENTIAL_OFFER_URL_SCHEME}://"))
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
         let mut query = url.query_pairs_mut();
 
         if self
@@ -628,7 +619,7 @@ impl TransportProtocol for OpenID4VC {
             )?;
 
             let offer_string = serde_json::to_string(&offer)
-                .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+                .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
             query.append_pair(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY, &offer_string);
         } else {
@@ -639,7 +630,7 @@ impl TransportProtocol for OpenID4VC {
         Ok(query.finish().to_string())
     }
 
-    async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError> {
+    async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError> {
         let proof = self
             .proof_repository
             .get_proof(
@@ -668,8 +659,8 @@ impl TransportProtocol for OpenID4VC {
                 },
             )
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
-            .ok_or(TransportProtocolError::Failed(format!(
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
+            .ok_or(ExchangeProtocolError::Failed(format!(
                 "Share proof missing proof {}",
                 proof.id
             )))?;
@@ -716,13 +707,13 @@ impl TransportProtocol for OpenID4VC {
     async fn get_presentation_definition(
         &self,
         proof: &Proof,
-    ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
+    ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let interaction_data: OpenID4VPInteractionData =
             deserialize_interaction_data(proof.interaction.as_ref())?;
         let presentation_definition =
             interaction_data
                 .presentation_definition
-                .ok_or(TransportProtocolError::Failed(
+                .ok_or(ExchangeProtocolError::Failed(
                     "presentation_definition is None".to_string(),
                 ))?;
         let mut credential_groups: Vec<CredentialGroup> = vec![];
@@ -744,12 +735,12 @@ impl TransportProtocol for OpenID4VC {
                     field.filter.is_some()
                         && field.path.contains(&"$.credentialSchema.id".to_string())
                 })
-                .ok_or(TransportProtocolError::Failed(
+                .ok_or(ExchangeProtocolError::Failed(
                     "schema_id filter not found".to_string(),
                 ))?;
 
             let schema_id_filter = fields.remove(schema_id_filter_index).filter.ok_or(
-                TransportProtocolError::Failed("schema_id filter not found".to_string()),
+                ExchangeProtocolError::Failed("schema_id filter not found".to_string()),
             )?;
 
             group_id_to_schema_id.insert(input_descriptor.id.clone(), schema_id_filter.r#const);
@@ -762,7 +753,7 @@ impl TransportProtocol for OpenID4VC {
                         Ok(CredentialGroupItem {
                             id: requested_claim
                                 .id
-                                .ok_or(TransportProtocolError::Failed(
+                                .ok_or(ExchangeProtocolError::Failed(
                                     "requested_claim id is None".to_string(),
                                 ))?
                                 .to_string(),
@@ -789,7 +780,7 @@ impl TransportProtocol for OpenID4VC {
                 });
                 Ok(())
             })
-            .map_err(|e: ServiceError| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e: ServiceError| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let (credentials, credential_groups) = get_relevant_credentials_to_credential_schemas(
             &self.credential_repository,
@@ -806,12 +797,12 @@ impl TransportProtocol for OpenID4VC {
 async fn clear_previous_interaction(
     interaction_repository: &Arc<dyn InteractionRepository>,
     interaction: &Option<Interaction>,
-) -> Result<(), TransportProtocolError> {
+) -> Result<(), ExchangeProtocolError> {
     if let Some(interaction) = interaction.as_ref() {
         interaction_repository
             .delete_interaction(&interaction.id)
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     }
     Ok(())
 }
@@ -820,7 +811,7 @@ async fn update_credentials_interaction(
     credential_id: &CredentialId,
     interaction_id: &InteractionId,
     credential_repository: &Arc<dyn CredentialRepository>,
-) -> Result<(), TransportProtocolError> {
+) -> Result<(), ExchangeProtocolError> {
     let update = UpdateCredentialRequest {
         id: credential_id.to_owned(),
         interaction: Some(interaction_id.to_owned()),
@@ -835,7 +826,7 @@ async fn update_credentials_interaction(
     credential_repository
         .update_credential(update)
         .await
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     Ok(())
 }
 
@@ -843,7 +834,7 @@ async fn update_proof_interaction(
     proof_id: &ProofId,
     interaction_id: &InteractionId,
     proof_repository: &Arc<dyn ProofRepository>,
-) -> Result<(), TransportProtocolError> {
+) -> Result<(), ExchangeProtocolError> {
     let update = UpdateProofRequest {
         id: proof_id.to_owned(),
         interaction: Some(interaction_id.to_owned()),
@@ -853,7 +844,7 @@ async fn update_proof_interaction(
     proof_repository
         .update_proof(update)
         .await
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
     Ok(())
 }
 
@@ -862,13 +853,13 @@ async fn add_new_interaction(
     base_url: &Option<String>,
     interaction_repository: &Arc<dyn InteractionRepository>,
     data: Option<Vec<u8>>,
-) -> Result<(), TransportProtocolError> {
+) -> Result<(), ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
     let host = base_url
         .as_ref()
         .map(|url| {
             url.parse()
-                .map_err(|_| TransportProtocolError::Failed(format!("Invalid base url {url}")))
+                .map_err(|_| ExchangeProtocolError::Failed(format!("Invalid base url {url}")))
         })
         .transpose()?;
 
@@ -882,7 +873,7 @@ async fn add_new_interaction(
     interaction_repository
         .create_interaction(new_interaction)
         .await
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     Ok(())
 }
@@ -890,31 +881,31 @@ async fn add_new_interaction(
 async fn resolve_credential_offer(
     deps: &OpenID4VC,
     invitation_url: Url,
-) -> Result<OpenID4VCICredentialOfferDTO, TransportProtocolError> {
+) -> Result<OpenID4VCICredentialOfferDTO, ExchangeProtocolError> {
     let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();
     let credential_offer_param = query_pairs.get(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY);
     let credential_offer_reference_param =
         query_pairs.get(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY);
 
     if credential_offer_param.is_some() && credential_offer_reference_param.is_some() {
-        return Err(TransportProtocolError::Failed(
+        return Err(ExchangeProtocolError::Failed(
             format!("Detected both {CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY} and {CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY}"),
         ));
     }
 
     if let Some(credential_offer) = credential_offer_param {
         serde_json::from_str(credential_offer).map_err(|error| {
-            TransportProtocolError::Failed(format!("Failed decoding credential offer {error}"))
+            ExchangeProtocolError::Failed(format!("Failed decoding credential offer {error}"))
         })
     } else if let Some(credential_offer_reference) = credential_offer_reference_param {
         let credential_offer_url = Url::parse(credential_offer_reference).map_err(|error| {
-            TransportProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
+            ExchangeProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
         })?;
 
         // TODO: forbid plain-text http requests in production
         // let url_scheme = credential_offer_url.scheme();
         // if url_scheme != "https" {
-        //     return Err(TransportProtocolError::Failed(format!(
+        //     return Err(ExchangeProtocolError::Failed(format!(
         //         "Invalid {CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY} url scheme: {url_scheme}"
         //     )));
         // }
@@ -924,18 +915,18 @@ async fn resolve_credential_offer(
             .get(credential_offer_url)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .json()
             .await
             .map_err(|error| {
-                TransportProtocolError::Failed(format!(
+                ExchangeProtocolError::Failed(format!(
                     "Failed decoding credential offer json {error}"
                 ))
             })?)
     } else {
-        Err(TransportProtocolError::Failed(
+        Err(ExchangeProtocolError::Failed(
             "Missing credential offer param".to_string(),
         ))
     }
@@ -945,12 +936,12 @@ async fn handle_credential_invitation(
     deps: &OpenID4VC,
     invitation_url: Url,
     organisation: Organisation,
-) -> Result<InvitationResponseDTO, TransportProtocolError> {
+) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let credential_offer = resolve_credential_offer(deps, invitation_url).await?;
 
     let credential_issuer_endpoint: Url =
         credential_offer.credential_issuer.parse().map_err(|_| {
-            TransportProtocolError::Failed(format!(
+            ExchangeProtocolError::Failed(format!(
                 "Invalid credential issuer url {}",
                 credential_offer.credential_issuer
             ))
@@ -968,17 +959,17 @@ async fn handle_credential_invitation(
         })
         .send()
         .await
-        .map_err(TransportProtocolError::HttpResponse)?
+        .map_err(ExchangeProtocolError::HttpResponse)?
         .error_for_status()
-        .map_err(TransportProtocolError::HttpResponse)?
+        .map_err(ExchangeProtocolError::HttpResponse)?
         .json()
         .await
-        .map_err(TransportProtocolError::HttpResponse)?;
+        .map_err(ExchangeProtocolError::HttpResponse)?;
 
     // OID4VC credential offer query param should always contain one credential for the moment
     let credential: &OpenID4VCICredentialOfferCredentialDTO =
         credential_offer.credentials.first().ok_or_else(|| {
-            TransportProtocolError::Failed("Credential offer is missing credentials".to_string())
+            ExchangeProtocolError::Failed("Credential offer is missing credentials".to_string())
         })?;
 
     let credential_schema_name = get_credential_schema_name(&issuer_metadata, credential)?;
@@ -1004,7 +995,7 @@ async fn handle_credential_invitation(
         data,
     )
     .await
-    .map_err(|error: DataLayerError| TransportProtocolError::Failed(error.to_string()))?;
+    .map_err(|error: DataLayerError| ExchangeProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id;
 
     let claim_keys = build_claim_keys(credential)?;
@@ -1014,11 +1005,11 @@ async fn handle_credential_invitation(
         .credential_schema_repository
         .get_by_schema_id_and_organisation(&schema_id, organisation.id)
         .await
-        .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
+        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
     {
         Some(credential_schema) => {
             if credential_schema.schema_type != schema_type {
-                return Err(TransportProtocolError::IncorrectCredentialSchemaType);
+                return Err(ExchangeProtocolError::IncorrectCredentialSchemaType);
             }
 
             let credential_schema = deps
@@ -1031,8 +1022,8 @@ async fn handle_credential_invitation(
                     },
                 )
                 .await
-                .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
-                .ok_or(TransportProtocolError::Failed(
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
+                .ok_or(ExchangeProtocolError::Failed(
                     "Credential schema error".to_string(),
                 ))?;
 
@@ -1049,7 +1040,7 @@ async fn handle_credential_invitation(
                 CredentialSchemaType::ProcivisOneSchema2024 => {
                     let procivis_schema = fetch_procivis_schema(&schema_id)
                         .await
-                        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+                        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                     let schema = from_create_request(
                         CreateCredentialSchemaRequestDTO {
@@ -1071,7 +1062,7 @@ async fn handle_credential_invitation(
                         "",
                         core_config::FormatType::Jwt,
                     )
-                    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+                    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                     let credential_schema = CredentialSchema {
                         schema_type,
@@ -1088,7 +1079,7 @@ async fn handle_credential_invitation(
                 }
                 CredentialSchemaType::Mdoc => {
                     let credential_format = map_from_oidc_format_to_core(&credential.format)
-                        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+                        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                     let metadata_credential = issuer_metadata
                         .credentials_supported
@@ -1128,7 +1119,7 @@ async fn handle_credential_invitation(
                         "",
                         core_config::FormatType::Mdoc,
                     )
-                    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+                    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                     if claims_specified {
                         let claims = map_offered_claims_to_credential_schema(
@@ -1153,7 +1144,7 @@ async fn handle_credential_invitation(
                 }
                 _ => {
                     let credential_format = map_from_oidc_format_to_core(&credential.format)
-                        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+                        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
                     let (claim_schemas, claims): (Vec<_>, Vec<_>) =
                         create_claims_from_credential_definition(credential_id, &claim_keys)?;
@@ -1183,7 +1174,7 @@ async fn handle_credential_invitation(
             deps.credential_schema_repository
                 .create_credential_schema(credential_schema.clone())
                 .await
-                .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+                .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
             (claims, credential_schema)
         }
@@ -1191,7 +1182,7 @@ async fn handle_credential_invitation(
 
     let credential = create_credential(credential_id, credential_schema, claims, interaction, None)
         .await
-        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
     Ok(InvitationResponseDTO::Credential {
         interaction_id,
@@ -1201,13 +1192,13 @@ async fn handle_credential_invitation(
 
 fn build_claim_keys(
     credential: &OpenID4VCICredentialOfferCredentialDTO,
-) -> Result<HashMap<String, OpenID4VCICredentialValueDetails>, TransportProtocolError> {
+) -> Result<HashMap<String, OpenID4VCICredentialValueDetails>, ExchangeProtocolError> {
     if let Some(credential_definition) = &credential.credential_definition {
         let credential_subject = credential_definition
             .credential_subject
             .as_ref()
             .ok_or_else(|| {
-                TransportProtocolError::Failed("Missing credential subject".to_string())
+                ExchangeProtocolError::Failed("Missing credential subject".to_string())
             })?;
 
         return Ok(credential_subject.keys.to_owned());
@@ -1217,7 +1208,7 @@ fn build_claim_keys(
         return Ok(build_claims_keys_for_mdoc(credential_claims));
     }
 
-    Err(TransportProtocolError::Failed(
+    Err(ExchangeProtocolError::Failed(
         "Inconsistent credential offer missing both credential definition and claims fields"
             .to_string(),
     ))
@@ -1301,7 +1292,7 @@ async fn fetch_procivis_schema(
 fn get_credential_schema_name(
     issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
     credential: &OpenID4VCICredentialOfferCredentialDTO,
-) -> Result<String, TransportProtocolError> {
+) -> Result<String, ExchangeProtocolError> {
     let display_name = issuer_metadata
         .credentials_supported
         .first()
@@ -1316,7 +1307,7 @@ fn get_credential_schema_name(
             let doctype = credential
                 .doctype
                 .as_ref()
-                .ok_or(TransportProtocolError::Failed(
+                .ok_or(ExchangeProtocolError::Failed(
                     "docType not specified for MDOC".to_string(),
                 ))?;
 
@@ -1326,7 +1317,7 @@ fn get_credential_schema_name(
         None => {
             let credential_definition =
                 credential.credential_definition.as_ref().ok_or_else(|| {
-                    TransportProtocolError::Failed(format!(
+                    ExchangeProtocolError::Failed(format!(
                         "Missing credential definition for format: {}",
                         credential.format
                     ))
@@ -1336,7 +1327,7 @@ fn get_credential_schema_name(
                 .r#type
                 .last()
                 .ok_or_else(|| {
-                    TransportProtocolError::Failed(
+                    ExchangeProtocolError::Failed(
                         "Credential definition has no type specified".to_string(),
                     )
                 })?
@@ -1377,7 +1368,7 @@ async fn create_credential(
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        transport: "OPENID4VC".to_string(),
+        exchange: "OPENID4VC".to_string(),
         redirect_uri,
         role: CredentialRole::Holder,
         state: Some(vec![CredentialState {
@@ -1403,24 +1394,24 @@ async fn get_discovery_and_issuer_metadata(
         OpenID4VCIDiscoveryResponseDTO,
         OpenID4VCIIssuerMetadataResponseDTO,
     ),
-    TransportProtocolError,
+    ExchangeProtocolError,
 > {
     async fn fetch<T: DeserializeOwned>(
         client: &reqwest::Client,
         endpoint: impl reqwest::IntoUrl,
-    ) -> Result<T, TransportProtocolError> {
+    ) -> Result<T, ExchangeProtocolError> {
         let response = client
             .get(endpoint)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         response
             .json()
             .await
-            .map_err(TransportProtocolError::HttpResponse)
+            .map_err(ExchangeProtocolError::HttpResponse)
     }
 
     let oicd_discovery = fetch(
@@ -1438,13 +1429,13 @@ async fn interaction_data_from_query(
     query: &str,
     client: &reqwest::Client,
     allow_insecure_http_transport: bool,
-) -> Result<OpenID4VPInteractionData, TransportProtocolError> {
+) -> Result<OpenID4VPInteractionData, ExchangeProtocolError> {
     let mut interaction_data: OpenID4VPInteractionData = serde_qs::from_str(query)
-        .map_err(|e| TransportProtocolError::InvalidRequest(e.to_string()))?;
+        .map_err(|e| ExchangeProtocolError::InvalidRequest(e.to_string()))?;
 
     if interaction_data.client_metadata.is_some() && interaction_data.client_metadata_uri.is_some()
     {
-        return Err(TransportProtocolError::InvalidRequest(
+        return Err(ExchangeProtocolError::InvalidRequest(
             "client_metadata and client_metadata_uri cannot be set together".to_string(),
         ));
     }
@@ -1452,7 +1443,7 @@ async fn interaction_data_from_query(
     if interaction_data.presentation_definition.is_some()
         && interaction_data.presentation_definition_uri.is_some()
     {
-        return Err(TransportProtocolError::InvalidRequest(
+        return Err(ExchangeProtocolError::InvalidRequest(
             "presentation_definition and presentation_definition_uri cannot be set together"
                 .to_string(),
         ));
@@ -1460,7 +1451,7 @@ async fn interaction_data_from_query(
 
     if let Some(client_metadata_uri) = &interaction_data.client_metadata_uri {
         if !allow_insecure_http_transport && client_metadata_uri.scheme() != "https" {
-            return Err(TransportProtocolError::InvalidRequest(
+            return Err(ExchangeProtocolError::InvalidRequest(
                 "client_metadata_uri must use HTTPS scheme".to_string(),
             ));
         }
@@ -1469,13 +1460,13 @@ async fn interaction_data_from_query(
             .get(client_metadata_uri.to_owned())
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .json()
             .await
             .map_err(|error| {
-                TransportProtocolError::Failed(format!("Failed decoding client metadata: {error}"))
+                ExchangeProtocolError::Failed(format!("Failed decoding client metadata: {error}"))
             })?;
 
         interaction_data.client_metadata = Some(client_metadata);
@@ -1483,7 +1474,7 @@ async fn interaction_data_from_query(
 
     if let Some(presentation_definition_uri) = &interaction_data.presentation_definition_uri {
         if !allow_insecure_http_transport && presentation_definition_uri.scheme() != "https" {
-            return Err(TransportProtocolError::InvalidRequest(
+            return Err(ExchangeProtocolError::InvalidRequest(
                 "presentation_definition_uri must use HTTPS scheme".to_string(),
             ));
         }
@@ -1492,13 +1483,13 @@ async fn interaction_data_from_query(
             .get(presentation_definition_uri.to_owned())
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .json()
             .await
             .map_err(|error| {
-                TransportProtocolError::Failed(format!(
+                ExchangeProtocolError::Failed(format!(
                     "Failed decoding presentation definition: {error}"
                 ))
             })?;
@@ -1513,8 +1504,8 @@ async fn handle_proof_invitation(
     url: Url,
     deps: &OpenID4VC,
     allow_insecure_http_transport: bool,
-) -> Result<InvitationResponseDTO, TransportProtocolError> {
-    let query = url.query().ok_or(TransportProtocolError::InvalidRequest(
+) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
+    let query = url.query().ok_or(ExchangeProtocolError::InvalidRequest(
         "Query cannot be empty".to_string(),
     ))?;
 
@@ -1530,7 +1521,7 @@ async fn handle_proof_invitation(
         data,
     )
     .await
-    .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+    .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
     let interaction_id = interaction.id.to_owned();
 
     let proof_id = Uuid::new_v4();

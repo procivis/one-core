@@ -1,20 +1,15 @@
-use crate::service::credential::dto::CredentialDetailResponseDTO;
-use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
-use crate::{
-    model::{
-        common::{GetListQueryParams, GetListResponse},
-        proof::{ProofStateEnum, SortableProofColumn},
-    },
-    service::{
-        did::dto::DidListItemResponseDTO,
-        proof_schema::dto::{
-            GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO, ProofSchemaId,
-        },
-    },
-};
 use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::model::common::{GetListQueryParams, GetListResponse};
+use crate::model::proof::{ProofStateEnum, SortableProofColumn};
+use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
+use crate::service::did::dto::DidListItemResponseDTO;
+use crate::service::proof_schema::dto::{
+    GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO, ProofSchemaId,
+};
 
 pub type ProofId = Uuid;
 
@@ -22,7 +17,7 @@ pub type ProofId = Uuid;
 pub struct CreateProofRequestDTO {
     pub proof_schema_id: ProofSchemaId,
     pub verifier_did_id: DidId,
-    pub transport: String,
+    pub exchange: String,
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<KeyId>,
 }
@@ -42,7 +37,7 @@ pub struct ProofDetailResponseDTO {
     pub completed_date: Option<OffsetDateTime>,
     pub verifier_did: Option<DidListItemResponseDTO>,
     pub holder_did_id: Option<DidId>,
-    pub transport: String,
+    pub exchange: String,
     pub state: ProofStateEnum,
     pub organisation_id: Option<OrganisationId>,
     pub schema: Option<GetProofSchemaListItemDTO>,
@@ -59,7 +54,7 @@ pub struct ProofListItemResponseDTO {
     pub requested_date: Option<OffsetDateTime>,
     pub completed_date: Option<OffsetDateTime>,
     pub verifier_did: Option<DidListItemResponseDTO>,
-    pub transport: String,
+    pub exchange: String,
     pub state: ProofStateEnum,
     pub schema: Option<GetProofSchemaListItemDTO>,
 }

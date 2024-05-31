@@ -1,17 +1,15 @@
-use crate::{
-    config::core_config,
-    provider::{
-        credential_formatter::provider::CredentialFormatterProvider,
-        did_method::provider::DidMethodProvider, key_storage::provider::KeyProvider,
-        transport_protocol::provider::TransportProtocolProvider,
-    },
-    repository::{
-        credential_repository::CredentialRepository, did_repository::DidRepository,
-        history_repository::HistoryRepository, organisation_repository::OrganisationRepository,
-        proof_repository::ProofRepository,
-    },
-};
 use std::sync::Arc;
+
+use crate::config::core_config;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::did_repository::DidRepository;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
+use crate::repository::proof_repository::ProofRepository;
 
 pub mod dto;
 pub mod service;
@@ -30,7 +28,7 @@ pub struct SSIHolderService {
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    protocol_provider: Arc<dyn TransportProtocolProvider>,
+    protocol_provider: Arc<dyn ExchangeProtocolProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     config: Arc<core_config::CoreConfig>,
 }
@@ -45,7 +43,7 @@ impl SSIHolderService {
         history_repository: Arc<dyn HistoryRepository>,
         key_provider: Arc<dyn KeyProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        protocol_provider: Arc<dyn TransportProtocolProvider>,
+        protocol_provider: Arc<dyn ExchangeProtocolProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {

@@ -3,7 +3,8 @@ use shared_types::{CredentialId, DidId, DidValue};
 use time::OffsetDateTime;
 
 use crate::entity::credential_schema::{CredentialSchemaType, LayoutProperties, WalletStorageType};
-use crate::entity::{credential, credential_state, did::DidType};
+use crate::entity::did::DidType;
+use crate::entity::{credential, credential_state};
 
 #[derive(FromQueryResult)]
 pub(super) struct CredentialListEntityModel {
@@ -12,7 +13,7 @@ pub(super) struct CredentialListEntityModel {
     pub last_modified: OffsetDateTime,
     pub issuance_date: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
-    pub transport: String,
+    pub exchange: String,
     pub credential: Vec<u8>,
     pub redirect_uri: Option<String>,
     pub role: credential::CredentialRole,

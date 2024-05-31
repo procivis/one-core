@@ -1,24 +1,18 @@
 use anyhow::{anyhow, bail, Context};
-use josekit::{
-    jwe::{
-        alg::ecdh_es::{EcdhEsJweAlgorithm, EcdhEsJweEncrypter},
-        JweHeader,
-    },
-    jwk::Jwk,
-};
+use josekit::jwe::alg::ecdh_es::{EcdhEsJweAlgorithm, EcdhEsJweEncrypter};
+use josekit::jwe::JweHeader;
+use josekit::jwk::Jwk;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-use crate::provider::{did_method::dto::PublicKeyJwkDTO, key_algorithm::eddsa::JwkEddsaExt};
-
-use super::{
-    dto::{
-        AuthorizationEncryptedResponseAlgorithm,
-        AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
-        OpenID4VPClientMetadataJwkDTO,
-    },
-    model::JwePayload,
+use super::dto::{
+    AuthorizationEncryptedResponseAlgorithm,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadata,
+    OpenID4VPClientMetadataJwkDTO,
 };
+use super::model::JwePayload;
+use crate::provider::did_method::dto::PublicKeyJwkDTO;
+use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
 
 pub(crate) fn build_jwe(
     payload: JwePayload,

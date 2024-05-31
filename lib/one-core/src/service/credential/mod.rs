@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::exchange_protocol::provider::ExchangeProtocolProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::transport_protocol::provider::TransportProtocolProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
@@ -27,7 +27,7 @@ pub struct CredentialService {
     interaction_repository: Arc<dyn InteractionRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    protocol_provider: Arc<dyn TransportProtocolProvider>,
+    protocol_provider: Arc<dyn ExchangeProtocolProvider>,
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
     lvvc_repository: Arc<dyn LvvcRepository>,
@@ -43,7 +43,7 @@ impl CredentialService {
         interaction_repository: Arc<dyn InteractionRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        protocol_provider: Arc<dyn TransportProtocolProvider>,
+        protocol_provider: Arc<dyn ExchangeProtocolProvider>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
         lvvc_repository: Arc<dyn LvvcRepository>,

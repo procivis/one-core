@@ -1,32 +1,32 @@
-use crate::model::{
-    credential::{CredentialState, CredentialStateEnum, UpdateCredentialRequest},
-    did::Did,
-    history::{History, HistoryAction, HistoryEntityType},
-    interaction::Interaction,
-    key::Key,
-    proof::{self, Proof, ProofId, ProofStateEnum},
-};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+
+use shared_types::{CredentialId, DidId};
+use time::OffsetDateTime;
+use url::Url;
+use uuid::Uuid;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{FormatConfig, FormatType};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential::{Credential, CredentialRelations, CredentialStateRelations};
+use crate::model::credential::{
+    Credential, CredentialRelations, CredentialState, CredentialStateEnum,
+    CredentialStateRelations, UpdateCredentialRequest,
+};
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::DidRelations;
+use crate::model::did::{Did, DidRelations};
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::interaction::Interaction;
+use crate::model::key::Key;
 use crate::model::organisation::OrganisationRelations;
-use crate::provider::transport_protocol::dto::{
+use crate::model::proof::{self, Proof, ProofId, ProofStateEnum};
+use crate::provider::exchange_protocol::dto::{
     CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO,
 };
-use crate::provider::transport_protocol::TransportProtocolError;
+use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
-use shared_types::{CredentialId, DidId};
-use time::OffsetDateTime;
-use url::Url;
-use uuid::Uuid;
 
 pub(super) fn get_issued_credential_update(
     credential_id: &CredentialId,
@@ -78,7 +78,7 @@ pub fn proof_from_handle_invitation(
         created_date: now,
         last_modified: now,
         issuance_date: now,
-        transport: protocol.to_owned(),
+        exchange: protocol.to_owned(),
         redirect_uri,
         state: Some(vec![proof::ProofState {
             created_date: now,
@@ -96,12 +96,12 @@ pub fn proof_from_handle_invitation(
 
 pub fn credential_model_to_credential_dto(
     credentials: Vec<Credential>,
-) -> Result<Vec<CredentialDetailResponseDTO>, TransportProtocolError> {
+) -> Result<Vec<CredentialDetailResponseDTO>, ExchangeProtocolError> {
     credentials
         .into_iter()
         .map(|credential| credential.try_into())
         .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))
 }
 
 pub async fn get_relevant_credentials_to_credential_schemas(
@@ -110,13 +110,13 @@ pub async fn get_relevant_credentials_to_credential_schemas(
     group_id_to_schema_id_mapping: HashMap<String, String>,
     allowed_schema_formats: &HashSet<&str>,
     format_config: &FormatConfig,
-) -> Result<(Vec<Credential>, Vec<CredentialGroup>), TransportProtocolError> {
+) -> Result<(Vec<Credential>, Vec<CredentialGroup>), ExchangeProtocolError> {
     let mut relevant_credentials: Vec<Credential> = Vec::new();
     for group in &mut credential_groups {
         let credential_schema_id =
             group_id_to_schema_id_mapping
                 .get(&group.id)
-                .ok_or(TransportProtocolError::Failed(
+                .ok_or(ExchangeProtocolError::Failed(
                     "Incorrect group id to credential schema id mapping".to_owned(),
                 ))?;
 
@@ -137,13 +137,13 @@ pub async fn get_relevant_credentials_to_credential_schemas(
                 },
             )
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         for credential in &relevant_credentials_inner {
             let schema = credential
                 .schema
                 .as_ref()
-                .ok_or(TransportProtocolError::Failed("schema missing".to_string()))?;
+                .ok_or(ExchangeProtocolError::Failed("schema missing".to_string()))?;
 
             if !allowed_schema_formats
                 .iter()
@@ -155,9 +155,9 @@ pub async fn get_relevant_credentials_to_credential_schemas(
             let credential_state = credential
                 .state
                 .as_ref()
-                .ok_or(TransportProtocolError::Failed("state missing".to_string()))?
+                .ok_or(ExchangeProtocolError::Failed("state missing".to_string()))?
                 .first()
-                .ok_or(TransportProtocolError::Failed("state missing".to_string()))?;
+                .ok_or(ExchangeProtocolError::Failed("state missing".to_string()))?;
 
             // only consider credentials that have finished the issuance flow
             if ![
@@ -181,13 +181,13 @@ pub async fn get_relevant_credentials_to_credential_schemas(
             let claim_schemas = credential
                 .claims
                 .as_ref()
-                .ok_or(TransportProtocolError::Failed("claims missing".to_string()))?
+                .ok_or(ExchangeProtocolError::Failed("claims missing".to_string()))?
                 .iter()
                 .map(|claim| {
                     claim
                         .schema
                         .as_ref()
-                        .ok_or(TransportProtocolError::Failed("schema missing".to_string()))
+                        .ok_or(ExchangeProtocolError::Failed("schema missing".to_string()))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             if group.claims.iter().all(|requested_claim| {
@@ -225,18 +225,18 @@ fn mdoc_verify_if_only_second_level_claims_are_present(
 pub fn create_presentation_definition_field(
     field: CredentialGroupItem,
     credentials: &[Credential],
-) -> Result<PresentationDefinitionFieldDTO, TransportProtocolError> {
+) -> Result<PresentationDefinitionFieldDTO, ExchangeProtocolError> {
     let mut key_map: HashMap<String, String> = HashMap::new();
     let key = field.key;
     for credential in credentials {
         for claim in credential
             .claims
             .as_ref()
-            .ok_or(TransportProtocolError::Failed(
+            .ok_or(ExchangeProtocolError::Failed(
                 "credential claims is None".to_string(),
             ))?
         {
-            let claim_schema = claim.schema.as_ref().ok_or(TransportProtocolError::Failed(
+            let claim_schema = claim.schema.as_ref().ok_or(ExchangeProtocolError::Failed(
                 "claim schema is None".to_string(),
             ))?;
 

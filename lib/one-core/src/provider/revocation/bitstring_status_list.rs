@@ -1,31 +1,30 @@
-use shared_types::{CredentialId, DidId, DidValue};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use shared_types::{CredentialId, DidId, DidValue};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::did::KeyRole;
-use crate::model::revocation_list::RevocationListPurpose;
-use crate::model::{
-    credential::{Credential, CredentialRelations, CredentialStateEnum, CredentialStateRelations},
-    did::Did,
-    revocation_list::{RevocationList, RevocationListId, RevocationListRelations},
+use crate::model::credential::{
+    Credential, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
+};
+use crate::model::did::{Did, KeyRole};
+use crate::model::revocation_list::{
+    RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
 };
 use crate::provider::credential_formatter::model::CredentialStatus;
 use crate::provider::credential_formatter::status_list_jwt_formatter::common::StatusPurpose;
 use crate::provider::credential_formatter::status_list_jwt_formatter::BitstringStatusListJwtFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
     RevocationMethod, RevocationMethodCapabilities,
 };
-use crate::provider::transport_protocol::TransportProtocolError;
-use crate::repository::{
-    credential_repository::CredentialRepository,
-    revocation_list_repository::RevocationListRepository,
-};
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::bitstring::{extract_bitstring_index, generate_bitstring};
 use crate::util::key_verification::KeyVerification;
@@ -142,14 +141,14 @@ impl RevocationMethod for BitstringStatusList {
             .get(list_url)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         let response = response
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         let response_value = response
             .text()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),

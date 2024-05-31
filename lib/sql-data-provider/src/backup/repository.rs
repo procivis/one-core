@@ -97,10 +97,10 @@ impl BackupRepository for BackupProvider {
                 credential::Column::LastModified,
                 credential::Column::DeletedAt,
                 credential::Column::Credential,
-                credential::Column::Transport,
                 credential::Column::RedirectUri,
                 credential::Column::Role,
             ])
+            .column_as(credential::Column::Exchange, "exchange")
             .column_as(credential_schema::Column::Id, "credential_schema_id")
             .column_as(
                 credential_schema::Column::DeletedAt,

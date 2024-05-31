@@ -52,7 +52,7 @@ impl CredentialsDB {
         credential_schema: &CredentialSchema,
         state: CredentialStateEnum,
         issuer_did: &Did,
-        transport: &str,
+        exchange: &str,
         params: TestingCredentialParams<'_>,
     ) -> Credential {
         let credential_id = Uuid::new_v4().into();
@@ -79,7 +79,7 @@ impl CredentialsDB {
             issuance_date: get_dummy_date(),
             deleted_at: params.deleted_at,
             credential: params.credential.unwrap_or("").as_bytes().to_owned(),
-            transport: transport.to_owned(),
+            exchange: exchange.to_owned(),
             redirect_uri: None,
             role: params.role.unwrap_or(CredentialRole::Issuer),
             state: Some(vec![CredentialState {

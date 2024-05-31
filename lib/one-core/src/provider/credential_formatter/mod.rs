@@ -29,26 +29,18 @@ use strum::Display;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
-use crate::{
-    crypto::signer::error::SignerError,
-    model::credential_schema::CredentialSchemaType,
-    service::{
-        credential::dto::{
-            CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
-            DetailCredentialClaimValueResponseDTO,
-        },
-        error::ServiceError,
-    },
+use self::error::FormatterError;
+use self::model::{
+    CredentialPresentation, CredentialSchema, CredentialStatus, DetailCredential, Presentation,
 };
-
-use self::{
-    error::FormatterError,
-    model::{
-        CredentialPresentation, CredentialSchema, CredentialStatus, DetailCredential, Presentation,
-    },
+use super::exchange_protocol::openid4vc::dto::OpenID4VPInteractionData;
+use crate::crypto::signer::error::SignerError;
+use crate::model::credential_schema::CredentialSchemaType;
+use crate::service::credential::dto::{
+    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    DetailCredentialClaimValueResponseDTO,
 };
-
-use super::transport_protocol::openid4vc::dto::OpenID4VPInteractionData;
+use crate::service::error::ServiceError;
 use crate::service::oidc::model::OpenID4VPInteractionContent;
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;

@@ -1,15 +1,11 @@
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::{
-    fixtures::{self, TestingDidParams},
-    utils::{
-        self,
-        context::TestContext,
-        db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
-        server::run_server,
-    },
-};
+use crate::fixtures::{self, TestingDidParams};
+use crate::utils;
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::server::run_server;
 
 #[tokio::test]
 async fn test_create_proof_success_without_related_key() {
@@ -72,7 +68,7 @@ async fn test_create_proof_success_without_related_key() {
         .proofs
         .get(&Uuid::parse_str(resp["id"].as_str().unwrap()).unwrap())
         .await;
-    assert_eq!(proof.transport, "OPENID4VC");
+    assert_eq!(proof.exchange, "OPENID4VC");
 }
 
 #[tokio::test]
@@ -136,7 +132,7 @@ async fn test_create_proof_success_with_related_key() {
         .proofs
         .get(&Uuid::parse_str(resp["id"].as_str().unwrap()).unwrap())
         .await;
-    assert_eq!(proof.transport, "OPENID4VC");
+    assert_eq!(proof.exchange, "OPENID4VC");
 }
 
 #[tokio::test]
@@ -194,7 +190,7 @@ async fn test_create_proof_for_deactivated_did_returns_400() {
         .bearer_auth("test")
         .json(&json!({
           "proofSchemaId": proof_schema.id,
-          "transport": "OPENID4VC",
+          "exchange": "OPENID4VC",
           "verifierDid": did.id,
         }))
         .send()
