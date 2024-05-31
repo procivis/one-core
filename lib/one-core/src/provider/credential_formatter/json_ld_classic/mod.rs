@@ -310,6 +310,7 @@ impl JsonLdClassic {
             id: Some(credential.id),
             issued_at: Some(credential.issuance_date),
             expires_at: None,
+            update_at: None,
             invalid_before: None,
             issuer_did: Some(credential.issuer),
             subject: Some(credential.credential_subject.id),

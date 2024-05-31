@@ -10,6 +10,7 @@ pub struct DetailCredential {
     pub id: Option<String>,
     pub issued_at: Option<OffsetDateTime>,
     pub expires_at: Option<OffsetDateTime>,
+    pub update_at: Option<OffsetDateTime>,
     pub invalid_before: Option<OffsetDateTime>,
     pub issuer_did: Option<DidValue>,
     pub subject: Option<DidValue>,

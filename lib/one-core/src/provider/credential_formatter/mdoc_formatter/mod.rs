@@ -646,6 +646,10 @@ fn extract_credentials_internal(
         id: None,
         issued_at: Some(mso.validity_info.valid_from.into()),
         expires_at: Some(mso.validity_info.valid_until.into()),
+        update_at: mso
+            .validity_info
+            .expected_update
+            .map(|update| update.into()),
         invalid_before: None,
         issuer_did: Some(issuer_did),
         subject: Some(holder_did),
