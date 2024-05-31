@@ -1,27 +1,22 @@
+use dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, KeyId, OrganisationId};
 use strum_macros::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
-use dto_mapper::{From, Into};
-
 use crate::model;
-use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
-use crate::model::list_filter::ValueComparison;
-use crate::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO;
-use crate::{
-    model::{
-        common::GetListResponse,
-        credential::SortableCredentialColumn,
-        credential_schema::{CredentialFormat, RevocationMethod},
-        list_filter::{ListFilterValue, StringMatch},
-        list_query::ListQuery,
-    },
-    service::{
-        credential_schema::dto::{CredentialClaimSchemaDTO, CredentialSchemaListItemResponseDTO},
-        did::dto::DidListItemResponseDTO,
-    },
+use crate::model::common::GetListResponse;
+use crate::model::credential::SortableCredentialColumn;
+use crate::model::credential_schema::{
+    CredentialFormat, LayoutType, RevocationMethod, WalletStorageTypeEnum,
 };
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
+use crate::model::list_query::ListQuery;
+use crate::service::credential_schema::dto::{
+    CredentialClaimSchemaDTO, CredentialSchemaLayoutPropertiesRequestDTO,
+    CredentialSchemaListItemResponseDTO,
+};
+use crate::service::did::dto::DidListItemResponseDTO;
 
 #[derive(Clone, Debug)]
 pub struct CredentialListItemResponseDTO {
@@ -161,7 +156,7 @@ pub struct CreateCredentialRequestDTO {
     pub credential_schema_id: CredentialSchemaId,
     pub issuer_did: DidId,
     pub issuer_key: Option<KeyId>,
-    pub transport: String,
+    pub exchange: String,
     pub claim_values: Vec<CredentialRequestClaimDTO>,
     pub redirect_uri: Option<String>,
 }

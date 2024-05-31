@@ -1,3 +1,11 @@
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+
+use dto_mapper::convert_inner;
+use shared_types::{CredentialId, CredentialSchemaId};
+use time::OffsetDateTime;
+use uuid::Uuid;
+
 use super::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
     ProofInputDTO, ProofListItemResponseDTO,
@@ -5,26 +13,15 @@ use super::dto::{
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::DatatypeType;
 use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::model::did::Did;
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::Key;
-use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::model::proof::{self, Proof, ProofStateEnum};
+use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
+use crate::service::error::ServiceError;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
-use crate::{
-    model::{
-        did::Did,
-        history::{History, HistoryAction, HistoryEntityType},
-        proof::{self, Proof, ProofStateEnum},
-        proof_schema::ProofSchema,
-    },
-    service::error::ServiceError,
-};
-use dto_mapper::convert_inner;
-use shared_types::{CredentialId, CredentialSchemaId};
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
-use time::OffsetDateTime;
-use uuid::Uuid;
 
 fn get_or_create_proof_claim<'a>(
     proof_claims: &'a mut Vec<ProofClaimDTO>,
@@ -127,7 +124,7 @@ impl TryFrom<Proof> for ProofListItemResponseDTO {
             requested_date,
             completed_date,
             verifier_did: convert_inner(value.verifier_did),
-            transport: value.transport,
+            exchange: value.exchange,
             state: latest_state.state.clone(),
             schema: value.schema.map(|schema| schema.into()),
         })
@@ -324,7 +321,7 @@ pub fn get_verifier_proof_detail(proof: Proof) -> Result<ProofDetailResponseDTO,
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
         holder_did_id,
-        transport: list_item_response.transport,
+        exchange: list_item_response.exchange,
         state: list_item_response.state,
         organisation_id: Some(organisation_id),
         schema: list_item_response.schema,
@@ -462,7 +459,7 @@ pub fn get_holder_proof_detail(value: Proof) -> Result<ProofDetailResponseDTO, S
         completed_date: list_item_response.completed_date,
         verifier_did: list_item_response.verifier_did,
         holder_did_id,
-        transport: list_item_response.transport,
+        exchange: list_item_response.exchange,
         state: list_item_response.state,
         organisation_id,
         schema: list_item_response.schema,
@@ -483,7 +480,7 @@ pub fn proof_from_create_request(
         created_date: now,
         last_modified: now,
         issuance_date: now,
-        transport: request.transport,
+        exchange: request.exchange,
         redirect_uri: request.redirect_uri,
         state: Some(vec![proof::ProofState {
             created_date: now,

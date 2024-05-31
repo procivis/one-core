@@ -1,31 +1,27 @@
-use shared_types::TrustEntityId;
 use shared_types::{
     ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId, KeyId,
-    OrganisationId, TrustAnchorId,
+    OrganisationId, TrustAnchorId, TrustEntityId,
 };
 use strum_macros::Display;
 use thiserror::Error;
 use uuid::Uuid;
 
+use super::did::DidDeactivationError;
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
 use crate::crypto::signer::error::SignerError;
 use crate::model::credential::CredentialStateEnum;
 use crate::model::interaction::InteractionId;
-use crate::model::proof::ProofId;
-use crate::model::proof::ProofStateEnum;
+use crate::model::proof::{ProofId, ProofStateEnum};
 use crate::model::proof_schema::ProofSchemaId;
 use crate::model::revocation_list::RevocationListId;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::did_method::DidMethodError;
+use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::repository::error::DataLayerError;
 use crate::service::oidc::dto::OpenID4VCIError;
-use crate::{
-    provider::credential_formatter::error::FormatterError,
-    provider::did_method::DidMethodError,
-    provider::transport_protocol::TransportProtocolError,
-    repository::error::DataLayerError,
-    util::{bitstring::BitstringError, oidc::FormatError},
-};
-
-use super::did::DidDeactivationError;
+use crate::util::bitstring::BitstringError;
+use crate::util::oidc::FormatError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -41,8 +37,8 @@ pub enum ServiceError {
     #[error("Config validation error `{0}`")]
     ConfigValidationError(#[from] ConfigValidationError),
 
-    #[error("Transport protocol error `{0}`")]
-    TransportProtocolError(#[from] TransportProtocolError),
+    #[error("Exchange protocol error `{0}`")]
+    ExchangeProtocolError(#[from] ExchangeProtocolError),
 
     #[error("Formatter error `{0}`")]
     FormatterError(#[from] FormatterError),
@@ -56,8 +52,8 @@ pub enum ServiceError {
     #[error("Missing algorithm `{0}`")]
     MissingAlgorithm(String),
 
-    #[error("Missing transport protocol `{0}`")]
-    MissingTransportProtocol(String),
+    #[error("Missing exchange protocol `{0}`")]
+    MissingExchangeProtocol(String),
 
     #[error(transparent)]
     MissingProvider(#[from] MissingProviderError),
@@ -244,11 +240,11 @@ pub enum BusinessLogicError {
     #[error("Incompatible issuance did method")]
     IncompatibleIssuanceDidMethod,
 
-    #[error("Incompatible issuance transport protocol")]
-    IncompatibleIssuanceTransportProtocol,
+    #[error("Incompatible issuance exchange protocol")]
+    IncompatibleIssuanceExchangeProtocol,
 
-    #[error("Incompatible proof transport protocol")]
-    IncompatibleProofTransportProtocol,
+    #[error("Incompatible proof exchange protocol")]
+    IncompatibleProofExchangeProtocol,
 
     #[error("Invalid claim type (mdoc top level only objects allowed)")]
     InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed,
@@ -380,8 +376,8 @@ pub enum MissingProviderError {
     #[error("Cannot find revocation method provider for credential status type `{0}`")]
     RevocationMethodByCredentialStatusType(String),
 
-    #[error("Cannot find `{0}` in transport protocol provider")]
-    TransportProtocol(String),
+    #[error("Cannot find `{0}` in exchange protocol provider")]
+    ExchangeProtocol(String),
 
     #[error("Cannot find task `{0}`")]
     Task(String),
@@ -410,7 +406,7 @@ impl MissingProviderError {
             MissingProviderError::KeyAlgorithm(_) => ErrorCode::BR_0042,
             MissingProviderError::RevocationMethod(_) => ErrorCode::BR_0044,
             MissingProviderError::RevocationMethodByCredentialStatusType(_) => ErrorCode::BR_0045,
-            MissingProviderError::TransportProtocol(_) => ErrorCode::BR_0046,
+            MissingProviderError::ExchangeProtocol(_) => ErrorCode::BR_0046,
             MissingProviderError::Task(_) => ErrorCode::BR_0103,
             MissingProviderError::TrustManager(_) => ErrorCode::BR_0132,
         }
@@ -558,7 +554,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Missing revocation method for the provided credential status type")]
     BR_0045,
 
-    #[strum(to_string = "Missing transport protocol")]
+    #[strum(to_string = "Missing exchange protocol")]
     BR_0046,
 
     #[strum(to_string = "Model mapping")]
@@ -606,7 +602,7 @@ pub enum ErrorCode {
     #[strum(to_string = "Provided datatype is not valid or value doesn't match the expected type")]
     BR_0061,
 
-    #[strum(to_string = "Transport protocol provider error")]
+    #[strum(to_string = "Exchange protocol provider error")]
     BR_0062,
 
     #[strum(to_string = "Key algorithm provider error")]
@@ -696,10 +692,10 @@ pub enum ErrorCode {
     #[strum(to_string = "Revocation method not compatible")]
     BR_0110,
 
-    #[strum(to_string = "Incompatible issuance transport protocol")]
+    #[strum(to_string = "Incompatible issuance exchange protocol")]
     BR_0111,
 
-    #[strum(to_string = "Incompatible proof transport protocol")]
+    #[strum(to_string = "Incompatible proof exchange protocol")]
     BR_0112,
 
     #[strum(to_string = "Trust anchor name already in use")]
@@ -768,7 +764,7 @@ impl ServiceError {
             ServiceError::Repository(error) => error.error_code(),
             ServiceError::MissingProvider(error) => error.error_code(),
             ServiceError::ResponseMapping(_) => ErrorCode::BR_0055,
-            ServiceError::TransportProtocolError(error) => error.error_code(),
+            ServiceError::ExchangeProtocolError(error) => error.error_code(),
             ServiceError::CryptoError(_) => ErrorCode::BR_0050,
             ServiceError::FormatterError(error) => error.error_code(),
             ServiceError::KeyStorageError(_) | ServiceError::KeyStorage(_) => ErrorCode::BR_0039,
@@ -778,7 +774,7 @@ impl ServiceError {
             ServiceError::BitstringError(_) => ErrorCode::BR_0049,
             ServiceError::MissingSigner(_) => ErrorCode::BR_0060,
             ServiceError::MissingAlgorithm(_) => ErrorCode::BR_0061,
-            ServiceError::MissingTransportProtocol(_) => ErrorCode::BR_0046,
+            ServiceError::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
             ServiceError::KeyAlgorithmError(_) => ErrorCode::BR_0063,
             ServiceError::DidMethodError(_) => ErrorCode::BR_0064,
             ServiceError::ValidationError(_) | ServiceError::Other(_) => ErrorCode::BR_0000,
@@ -860,8 +856,8 @@ impl BusinessLogicError {
                 ErrorCode::BR_0110
             }
             BusinessLogicError::IncompatibleIssuanceDidMethod => ErrorCode::BR_0127,
-            BusinessLogicError::IncompatibleIssuanceTransportProtocol => ErrorCode::BR_0111,
-            BusinessLogicError::IncompatibleProofTransportProtocol => ErrorCode::BR_0112,
+            BusinessLogicError::IncompatibleIssuanceExchangeProtocol => ErrorCode::BR_0111,
+            BusinessLogicError::IncompatibleProofExchangeProtocol => ErrorCode::BR_0112,
             BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed => {
                 ErrorCode::BR_0117
             }
@@ -908,17 +904,17 @@ impl ValidationError {
     }
 }
 
-impl TransportProtocolError {
+impl ExchangeProtocolError {
     pub fn error_code(&self) -> ErrorCode {
         match self {
-            TransportProtocolError::Failed(_) => ErrorCode::BR_0062,
-            TransportProtocolError::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
-            TransportProtocolError::HttpRequestError(_) => ErrorCode::BR_0086,
-            TransportProtocolError::HttpResponse(_) => ErrorCode::BR_0086,
-            TransportProtocolError::JsonError(_) => ErrorCode::BR_0062,
-            TransportProtocolError::OperationNotSupported => ErrorCode::BR_0062,
-            TransportProtocolError::MissingBaseUrl => ErrorCode::BR_0062,
-            TransportProtocolError::InvalidRequest(_) => ErrorCode::BR_0085,
+            ExchangeProtocolError::Failed(_) => ErrorCode::BR_0062,
+            ExchangeProtocolError::IncorrectCredentialSchemaType => ErrorCode::BR_0087,
+            ExchangeProtocolError::HttpRequestError(_) => ErrorCode::BR_0086,
+            ExchangeProtocolError::HttpResponse(_) => ErrorCode::BR_0086,
+            ExchangeProtocolError::JsonError(_) => ErrorCode::BR_0062,
+            ExchangeProtocolError::OperationNotSupported => ErrorCode::BR_0062,
+            ExchangeProtocolError::MissingBaseUrl => ErrorCode::BR_0062,
+            ExchangeProtocolError::InvalidRequest(_) => ErrorCode::BR_0085,
         }
     }
 }

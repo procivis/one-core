@@ -3,23 +3,21 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::config::core_config::AppConfig;
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
+};
+use crate::model::did::{Did, DidType};
+use crate::model::interaction::Interaction;
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::FormatterCapabilities;
-use crate::{
-    config::core_config::AppConfig,
-    model::{
-        claim::Claim,
-        claim_schema::ClaimSchema,
-        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        did::{Did, DidType},
-        interaction::Interaction,
-        key::Key,
-        organisation::Organisation,
-        proof::Proof,
-    },
-};
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -140,7 +138,7 @@ pub fn dummy_credential() -> Credential {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: b"credential".to_vec(),
-        transport: "protocol".to_string(),
+        exchange: "protocol".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -226,7 +224,7 @@ pub fn dummy_proof() -> Proof {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "protocol".to_string(),
+        exchange: "protocol".to_string(),
         redirect_uri: None,
         state: None,
         schema: None,

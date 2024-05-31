@@ -6,11 +6,10 @@ use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
 
+use crate::common_mapper::deserialize_with_serde_json;
+use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::interaction::InteractionId;
 use crate::provider::did_method::dto::PublicKeyJwkDTO;
-use crate::{
-    common_mapper::deserialize_with_serde_json,
-    model::{credential_schema::WalletStorageTypeEnum, interaction::InteractionId},
-};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OpenID4VCICredential {

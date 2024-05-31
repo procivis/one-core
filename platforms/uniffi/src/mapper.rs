@@ -99,7 +99,7 @@ impl From<ProofDetailResponseDTO> for ProofRequestBindingDTO {
             state: value.state.into(),
             last_modified: value.last_modified.format_timestamp(),
             verifier_did: value.verifier_did.map(|inner| inner.did.to_string()),
-            transport: value.transport,
+            exchange: value.exchange,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),
         }

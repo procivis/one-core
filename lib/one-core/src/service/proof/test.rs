@@ -1,55 +1,45 @@
 use std::sync::Arc;
 
-use mockall::{predicate::*, Sequence};
+use mockall::predicate::*;
+use mockall::Sequence;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::CoreConfig;
-use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::claim::ClaimRelations;
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::{
-    CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    LayoutType, WalletStorageTypeEnum,
 };
-use crate::model::did::{KeyRole, RelatedKey};
+use crate::model::did::{Did, DidRelations, DidType, KeyRole, RelatedKey};
+use crate::model::interaction::InteractionRelations;
 use crate::model::key::Key;
-use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema};
+use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::proof::{
+    GetProofList, Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
+    ProofStateRelations,
+};
+use crate::model::proof_schema::{
+    ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
+    ProofSchemaClaimRelations, ProofSchemaRelations,
+};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::test_utilities::get_dummy_date;
 use crate::provider::credential_formatter::{FormatterCapabilities, MockCredentialFormatter};
-use crate::provider::transport_protocol::provider::MockTransportProtocolProvider;
-use crate::provider::transport_protocol::MockTransportProtocol;
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
+use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::service::error::{BusinessLogicError, EntityNotFoundError, ValidationError};
-use crate::service::test_utilities::generic_config;
-use crate::{
-    model::{
-        claim::ClaimRelations,
-        claim_schema::ClaimSchema,
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::{Did, DidRelations, DidType},
-        interaction::InteractionRelations,
-        organisation::{Organisation, OrganisationRelations},
-        proof::{
-            GetProofList, Proof, ProofClaimRelations, ProofRelations, ProofState, ProofStateEnum,
-            ProofStateRelations,
-        },
-        proof_schema::{
-            ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations, ProofSchemaRelations,
-        },
-    },
-    repository::{
-        did_repository::MockDidRepository,
-        mock::{
-            proof_repository::MockProofRepository,
-            proof_schema_repository::MockProofSchemaRepository,
-        },
-    },
-    service::{
-        error::ServiceError,
-        proof::dto::{CreateProofRequestDTO, GetProofQueryDTO, ProofId},
-    },
+use crate::repository::mock::proof_repository::MockProofRepository;
+use crate::repository::mock::proof_schema_repository::MockProofSchemaRepository;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
+use crate::service::proof::dto::{CreateProofRequestDTO, GetProofQueryDTO, ProofId};
+use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct Repositories {
@@ -58,7 +48,7 @@ struct Repositories {
     pub did_repository: MockDidRepository,
     pub history_repository: MockHistoryRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
-    pub protocol_provider: MockTransportProtocolProvider,
+    pub protocol_provider: MockExchangeProtocolProvider,
     pub config: CoreConfig,
 }
 
@@ -80,7 +70,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -145,7 +135,7 @@ async fn test_get_presentation_definition_holder_did_not_local() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -263,7 +253,7 @@ async fn test_get_proof_exists() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -397,7 +387,7 @@ async fn test_get_proof_exists() {
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.id, proof.id);
-    assert_eq!(result.transport, proof.transport);
+    assert_eq!(result.exchange, proof.exchange);
 }
 
 #[tokio::test]
@@ -429,7 +419,7 @@ async fn test_get_proof_list_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             created_date: OffsetDateTime::now_utc(),
@@ -505,11 +495,11 @@ async fn test_get_proof_list_success() {
 
 #[tokio::test]
 async fn test_create_proof_without_related_key() {
-    let transport = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
-        transport: transport.to_owned(),
+        exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
     };
@@ -570,7 +560,7 @@ async fn test_create_proof_without_related_key() {
 
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
-    let transport_copy = transport.to_owned();
+    let exchange_copy = exchange.to_owned();
     formatter
         .expect_get_capabilities()
         .once()
@@ -578,7 +568,7 @@ async fn test_create_proof_without_related_key() {
             features: vec![],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
-            proof_exchange_protocols: vec![transport_copy],
+            proof_exchange_protocols: vec![exchange_copy],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
             verification_key_algorithms: vec![],
@@ -593,7 +583,7 @@ async fn test_create_proof_without_related_key() {
     proof_repository
         .expect_create_proof()
         .times(1)
-        .withf(move |proof| proof.transport == transport)
+        .withf(move |proof| proof.exchange == exchange)
         .returning(move |_| Ok(proof_id));
 
     let service = setup_service(Repositories {
@@ -611,12 +601,12 @@ async fn test_create_proof_without_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_with_related_key() {
-    let transport = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "PROCIVIS_TEMPORARY".to_string();
     let verifier_key_id = Uuid::new_v4().into();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
-        transport: transport.to_owned(),
+        exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: Some(verifier_key_id),
     };
@@ -675,7 +665,7 @@ async fn test_create_proof_with_related_key() {
 
     let mut formatter = MockCredentialFormatter::default();
     let mut credential_formatter_provider = MockCredentialFormatterProvider::default();
-    let transport_copy = transport.to_owned();
+    let exchange_copy = exchange.to_owned();
     formatter
         .expect_get_capabilities()
         .once()
@@ -683,7 +673,7 @@ async fn test_create_proof_with_related_key() {
             features: vec![],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
-            proof_exchange_protocols: vec![transport_copy],
+            proof_exchange_protocols: vec![exchange_copy],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
             verification_key_algorithms: vec![],
@@ -698,7 +688,7 @@ async fn test_create_proof_with_related_key() {
     proof_repository
         .expect_create_proof()
         .times(1)
-        .withf(move |proof| proof.transport == transport)
+        .withf(move |proof| proof.exchange == exchange)
         .returning(move |_| Ok(proof_id));
 
     let service = setup_service(Repositories {
@@ -716,11 +706,11 @@ async fn test_create_proof_with_related_key() {
 
 #[tokio::test]
 async fn test_create_proof_failed_no_key_with_assertion_method_role() {
-    let transport = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
-        transport: transport.to_owned(),
+        exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
     };
@@ -773,7 +763,7 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
             features: vec![],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
-            proof_exchange_protocols: vec![transport],
+            proof_exchange_protocols: vec![exchange],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
             verification_key_algorithms: vec![],
@@ -799,12 +789,12 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
 }
 
 #[tokio::test]
-async fn test_create_proof_failed_incompatible_transport() {
-    let transport = "PROCIVIS_TEMPORARY".to_string();
+async fn test_create_proof_failed_incompatible_exchange() {
+    let exchange = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
-        transport: transport.to_owned(),
+        exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
     };
@@ -856,17 +846,17 @@ async fn test_create_proof_failed_incompatible_transport() {
     let result = service.create_proof(request.to_owned()).await;
     assert!(matches!(
         result.unwrap_err(),
-        ServiceError::BusinessLogic(BusinessLogicError::IncompatibleProofTransportProtocol)
+        ServiceError::BusinessLogic(BusinessLogicError::IncompatibleProofExchangeProtocol)
     ));
 }
 
 #[tokio::test]
 async fn test_create_proof_did_deactivated_error() {
-    let transport = "PROCIVIS_TEMPORARY".to_string();
+    let exchange = "PROCIVIS_TEMPORARY".to_string();
     let request = CreateProofRequestDTO {
         proof_schema_id: Uuid::new_v4(),
         verifier_did_id: Uuid::new_v4().into(),
-        transport: transport.to_owned(),
+        exchange: exchange.to_owned(),
         redirect_uri: None,
         verifier_key: None,
     };
@@ -919,7 +909,7 @@ async fn test_create_proof_did_deactivated_error() {
             features: vec![],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![],
-            proof_exchange_protocols: vec![transport],
+            proof_exchange_protocols: vec![exchange],
             revocation_methods: vec![],
             signing_key_algorithms: vec![],
             verification_key_algorithms: vec![],
@@ -976,7 +966,7 @@ async fn test_create_proof_schema_deleted() {
         .create_proof(CreateProofRequestDTO {
             proof_schema_id: Uuid::new_v4(),
             verifier_did_id: Uuid::new_v4().into(),
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             redirect_uri: None,
             verifier_key: None,
         })
@@ -990,8 +980,8 @@ async fn test_create_proof_schema_deleted() {
 async fn test_share_proof_created_success() {
     let proof_id = ProofId::new_v4();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Created);
-    let mut protocol = MockTransportProtocol::default();
-    let mut protocol_provider = MockTransportProtocolProvider::default();
+    let mut protocol = MockExchangeProtocol::default();
+    let mut protocol_provider = MockExchangeProtocolProvider::default();
 
     let expected_url = "test_url";
     protocol
@@ -1060,8 +1050,8 @@ async fn test_share_proof_created_success() {
 async fn test_share_proof_pending_success() {
     let proof_id = ProofId::new_v4();
     let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
-    let mut protocol = MockTransportProtocol::default();
-    let mut protocol_provider = MockTransportProtocolProvider::default();
+    let mut protocol = MockExchangeProtocol::default();
+    let mut protocol_provider = MockExchangeProtocolProvider::default();
 
     let expected_url = "test_url";
     protocol

@@ -1,32 +1,21 @@
-use crate::config::core_config::DatatypeType;
-use crate::model::credential_schema::CredentialSchemaClaim;
+use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::config::validator::datatype::validate_datatype_value;
+use crate::config::validator::exchange::validate_exchange_type;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::FormatterCapabilities;
-use crate::{
-    config::{
-        core_config::CoreConfig,
-        validator::{datatype::validate_datatype_value, exchange::validate_exchange_type},
-    },
-    model::credential_schema::CredentialSchema,
-    service::{
-        credential::dto::CredentialRequestClaimDTO,
-        error::{BusinessLogicError, ServiceError, ValidationError},
-    },
-};
+use crate::service::credential::dto::CredentialRequestClaimDTO;
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
 pub(crate) fn validate_create_request(
     did_method: &str,
-    transport: &str,
+    exchange: &str,
     claims: &[CredentialRequestClaimDTO],
     schema: &CredentialSchema,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    validate_exchange_type(transport, &config.exchange)?;
-    validate_format_and_transport_protocol_compatibility(
-        transport,
-        formatter_capabilities,
-        config,
-    )?;
+    validate_exchange_type(exchange, &config.exchange)?;
+    validate_format_and_exchange_protocol_compatibility(exchange, formatter_capabilities, config)?;
     validate_format_and_did_method_compatibility(did_method, formatter_capabilities, config)?;
 
     // ONE-843: cannot create credential based on deleted schema
@@ -133,18 +122,18 @@ fn adapt_required_state_based_on_claim_presence(
     Ok(result)
 }
 
-fn validate_format_and_transport_protocol_compatibility(
-    transport: &str,
+fn validate_format_and_exchange_protocol_compatibility(
+    exchange: &str,
     formatter_capabilities: &FormatterCapabilities,
     config: &CoreConfig,
 ) -> Result<(), ServiceError> {
-    let exchange_protocol = config.exchange.get_fields(transport)?;
+    let exchange_protocol = config.exchange.get_fields(exchange)?;
 
     if !formatter_capabilities
         .issuance_exchange_protocols
         .contains(&exchange_protocol.r#type.to_string())
     {
-        return Err(BusinessLogicError::IncompatibleIssuanceTransportProtocol.into());
+        return Err(BusinessLogicError::IncompatibleIssuanceExchangeProtocol.into());
     }
 
     Ok(())

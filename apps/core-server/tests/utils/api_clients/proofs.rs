@@ -1,6 +1,6 @@
-use serde_json::json;
 use std::fmt::Display;
 
+use serde_json::json;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -17,14 +17,14 @@ impl ProofsApi {
     pub async fn create(
         &self,
         proof_schema_id: &str,
-        transport: &str,
+        exchange: &str,
         verifier_did: &str,
         redirect_uri: Option<&str>,
         verifier_key: Option<&str>,
     ) -> Response {
         let mut body = json!({
           "proofSchemaId": proof_schema_id,
-          "transport": transport,
+          "exchange": exchange,
           "verifierDid": verifier_did
         });
 

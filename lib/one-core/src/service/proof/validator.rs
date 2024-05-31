@@ -5,8 +5,8 @@ use crate::model::proof_schema::ProofSchema;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
-pub(super) fn validate_format_and_transport_protocol_compatibility(
-    transport: &str,
+pub(super) fn validate_format_and_exchange_protocol_compatibility(
+    exchange: &str,
     config: &CoreConfig,
     proof_schema: &ProofSchema,
     formatter_provider: &Arc<dyn CredentialFormatterProvider>,
@@ -18,7 +18,7 @@ pub(super) fn validate_format_and_transport_protocol_compatibility(
             "input_schemas is None".to_string(),
         ))?;
 
-    let transport_type = config.exchange.get_fields(transport)?.r#type.to_string();
+    let exchange_type = config.exchange.get_fields(exchange)?.r#type.to_string();
 
     input_schemas.iter().try_for_each(|input_schema| {
         let credential_schema =
@@ -38,10 +38,10 @@ pub(super) fn validate_format_and_transport_protocol_compatibility(
         let capabilities = formatter.get_capabilities();
         if !capabilities
             .proof_exchange_protocols
-            .contains(&transport_type)
+            .contains(&exchange_type)
         {
             return Err(ServiceError::BusinessLogic(
-                BusinessLogicError::IncompatibleProofTransportProtocol,
+                BusinessLogicError::IncompatibleProofExchangeProtocol,
             ));
         }
 

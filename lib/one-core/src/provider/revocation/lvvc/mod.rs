@@ -1,32 +1,7 @@
-use std::{collections::HashMap, ops::Sub, sync::Arc};
+use std::collections::HashMap;
+use std::ops::Sub;
+use std::sync::Arc;
 
-use crate::{
-    model::{
-        credential::{
-            Credential, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
-        },
-        did::{DidRelations, KeyRole},
-        key::KeyRelations,
-        lvvc::Lvvc,
-    },
-    provider::{
-        credential_formatter::{
-            jwt::{model::JWTPayload, Jwt},
-            model::CredentialStatus,
-            provider::CredentialFormatterProvider,
-            CredentialData, CredentialFormatter, CredentialSchemaData,
-        },
-        did_method::provider::DidMethodProvider,
-        key_storage::provider::KeyProvider,
-        revocation::RevocationMethod,
-        transport_protocol::TransportProtocolError,
-    },
-    repository::{credential_repository::CredentialRepository, lvvc_repository::LvvcRepository},
-    service::{
-        error::{BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError},
-        ssi_issuer::dto::IssuerResponseDTO,
-    },
-};
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::{CredentialId, DidValue};
@@ -37,6 +12,29 @@ use super::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
     RevocationMethodCapabilities, VerifierCredentialData,
 };
+use crate::model::credential::{
+    Credential, CredentialRelations, CredentialStateEnum, CredentialStateRelations,
+};
+use crate::model::did::{DidRelations, KeyRole};
+use crate::model::key::KeyRelations;
+use crate::model::lvvc::Lvvc;
+use crate::provider::credential_formatter::jwt::model::JWTPayload;
+use crate::provider::credential_formatter::jwt::Jwt;
+use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::{
+    CredentialData, CredentialFormatter, CredentialSchemaData,
+};
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::RevocationMethod;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::lvvc_repository::LvvcRepository;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+};
+use crate::service::ssi_issuer::dto::IssuerResponseDTO;
 
 pub mod dto;
 pub mod mapper;
@@ -161,12 +159,12 @@ impl LvvcProvider {
             .bearer_auth(bearer_token)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?
+            .map_err(ExchangeProtocolError::HttpRequestError)?
             .json()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         let formatter = self
             .credential_formatter

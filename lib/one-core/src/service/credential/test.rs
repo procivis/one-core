@@ -1,64 +1,59 @@
+use std::collections::HashMap;
+use std::ops::Add;
+use std::sync::Arc;
+
+use mockall::predicate::*;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
 use super::CredentialService;
-use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::config::core_config::CoreConfig;
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{
+    Credential, CredentialRole, CredentialState, CredentialStateEnum, GetCredentialList,
+    UpdateCredentialRequest,
+};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    WalletStorageTypeEnum,
+};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::key::Key;
+use crate::model::list_filter::ListFilterValue as _;
+use crate::model::list_query::ListPagination;
+use crate::model::organisation::Organisation;
+use crate::provider::credential_formatter::model::{
+    CredentialStatus, CredentialSubject, DetailCredential,
+};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
+use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::revocation::{CredentialRevocationState, RevocationMethodCapabilities};
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
+use crate::provider::revocation::{
+    CredentialRevocationState, MockRevocationMethod, RevocationMethodCapabilities,
+};
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::lvvc_repository::MockLvvcRepository;
+use crate::service::credential;
 use crate::service::credential::dto::{
-    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+    CreateCredentialRequestDTO, CredentialFilterValue, CredentialRequestClaimDTO,
+    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO, GetCredentialQueryDTO,
     SuspendCredentialRequestDTO,
 };
 use crate::service::credential::mapper::renest_claims;
 use crate::service::credential::validator::validate_create_request;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::service::test_utilities::generic_formatter_capabilities;
-use crate::{
-    config::core_config::CoreConfig,
-    model::{
-        claim::Claim,
-        claim_schema::ClaimSchema,
-        credential::{
-            Credential, CredentialRole, CredentialState, CredentialStateEnum, GetCredentialList,
-            UpdateCredentialRequest,
-        },
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        did::{Did, DidType, KeyRole, RelatedKey},
-        key::Key,
-        list_filter::ListFilterValue as _,
-        list_query::ListPagination,
-        organisation::Organisation,
-    },
-    provider::{
-        credential_formatter::{
-            model::{CredentialStatus, CredentialSubject, DetailCredential},
-            provider::MockCredentialFormatterProvider,
-            MockCredentialFormatter,
-        },
-        revocation::{provider::MockRevocationMethodProvider, MockRevocationMethod},
-        transport_protocol::{provider::MockTransportProtocolProvider, MockTransportProtocol},
-    },
-    repository::{
-        credential_repository::MockCredentialRepository,
-        credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository, history_repository::MockHistoryRepository,
-    },
-    service::{
-        credential::{
-            self,
-            dto::{
-                CreateCredentialRequestDTO, CredentialFilterValue, CredentialRequestClaimDTO,
-                GetCredentialQueryDTO,
-            },
-        },
-        error::{BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError},
-        test_utilities::generic_config,
-    },
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
-use mockall::predicate::*;
-use std::ops::Add;
-use std::{collections::HashMap, sync::Arc};
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
+use crate::service::test_utilities::{generic_config, generic_formatter_capabilities};
 
 #[derive(Default)]
 struct Repositories {
@@ -69,7 +64,7 @@ struct Repositories {
     pub interaction_repository: MockInteractionRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
-    pub protocol_provider: MockTransportProtocolProvider,
+    pub protocol_provider: MockExchangeProtocolProvider,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
     pub lvvc_repository: MockLvvcRepository,
@@ -115,7 +110,7 @@ fn generic_credential() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -192,7 +187,7 @@ fn generic_credential_list_entity() -> Credential {
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -588,8 +583,8 @@ async fn test_share_credential_success() {
     let did_repository = MockDidRepository::default();
     let revocation_method_provider = MockRevocationMethodProvider::default();
 
-    let mut protocol = MockTransportProtocol::default();
-    let mut protocol_provider = MockTransportProtocolProvider::default();
+    let mut protocol = MockExchangeProtocol::default();
+    let mut protocol_provider = MockExchangeProtocolProvider::default();
 
     let expected_url = "test_url";
     protocol
@@ -738,7 +733,7 @@ async fn test_create_credential_success() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -807,7 +802,7 @@ async fn test_create_credential_failed_issuance_did_method_incompatible() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -862,7 +857,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
             credential_schema_id: Uuid::new_v4().into(),
             issuer_did: did_id.into(),
             issuer_key: None,
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![],
             redirect_uri: None,
         })
@@ -959,7 +954,7 @@ async fn test_create_credential_one_required_claim_missing_success() {
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
         issuer_key: None,
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         claim_values: vec![],
         redirect_uri: None,
     };
@@ -1048,7 +1043,7 @@ async fn test_create_credential_one_required_claim_missing_fail_required_claim_n
         credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
         issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
         issuer_key: None,
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         claim_values: vec![],
         redirect_uri: None,
     };
@@ -1125,7 +1120,7 @@ async fn test_create_credential_schema_deleted() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id,
                 value: "value".to_string(),
@@ -1570,7 +1565,7 @@ async fn test_create_credential_key_with_issuer_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(issuer_did.keys.unwrap()[0].key.id),
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1681,7 +1676,7 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1760,7 +1755,7 @@ async fn test_fail_to_create_credential_no_assertion_key() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1825,7 +1820,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(Uuid::new_v4().into()),
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1907,7 +1902,7 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -1989,7 +1984,7 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: Some(key_id.into()),
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2059,7 +2054,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
             credential_schema_id: credential.schema.as_ref().unwrap().id.to_owned(),
             issuer_did: credential.issuer_did.as_ref().unwrap().id.to_owned(),
             issuer_key: None,
-            transport: "PROCIVIS_TEMPORARY".to_string(),
+            exchange: "PROCIVIS_TEMPORARY".to_string(),
             claim_values: vec![CredentialRequestClaimDTO {
                 claim_schema_id: credential.claims.as_ref().unwrap()[0]
                     .schema
@@ -2076,7 +2071,7 @@ async fn test_create_credential_fail_incompatible_format_and_tranposrt_protocol(
     assert!(matches!(
         result,
         Err(ServiceError::BusinessLogic(
-            BusinessLogicError::IncompatibleIssuanceTransportProtocol
+            BusinessLogicError::IncompatibleIssuanceExchangeProtocol
         ))
     ));
 }

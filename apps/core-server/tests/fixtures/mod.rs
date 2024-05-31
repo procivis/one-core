@@ -533,7 +533,7 @@ pub async fn create_credential(
     credential_schema: &CredentialSchema,
     state: CredentialStateEnum,
     issuer_did: &Did,
-    transport: &str,
+    exchange: &str,
     params: TestingCredentialParams<'_>,
 ) -> Credential {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
@@ -561,7 +561,7 @@ pub async fn create_credential(
         issuance_date: get_dummy_date(),
         deleted_at: params.deleted_at,
         credential: params.credential.unwrap_or("").as_bytes().to_owned(),
-        transport: transport.to_owned(),
+        exchange: exchange.to_owned(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {
@@ -594,7 +594,7 @@ pub async fn create_proof(
     holder_did: Option<&Did>,
     proof_schema: Option<&ProofSchema>,
     state: ProofStateEnum,
-    transport: &str,
+    exchange: &str,
     interaction: Option<&Interaction>,
 ) -> Proof {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
@@ -604,7 +604,7 @@ pub async fn create_proof(
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         issuance_date: get_dummy_date(),
-        transport: transport.to_owned(),
+        exchange: exchange.to_owned(),
         redirect_uri: None,
         state: Some(vec![ProofState {
             state,

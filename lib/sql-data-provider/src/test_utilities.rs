@@ -1,4 +1,3 @@
-use shared_types::{ClaimId, ClaimSchemaId};
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -7,26 +6,25 @@ use one_core::model::credential::{CredentialState, CredentialStateEnum};
 use one_core::model::interaction::InteractionId;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
-use shared_types::{CredentialId, DidId, DidValue, EntityId, HistoryId, KeyId, OrganisationId};
-use time::{macros::datetime, Duration, OffsetDateTime};
+use shared_types::{
+    ClaimId, ClaimSchemaId, CredentialId, DidId, DidValue, EntityId, HistoryId, KeyId,
+    OrganisationId,
+};
+use time::macros::datetime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::credential_schema::{CredentialSchemaType, LayoutType};
-use crate::entity::{proof_input_claim_schema, proof_input_schema};
-use crate::{
-    db_conn,
-    entity::{
-        claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
-        credential_state, did,
-        did::DidType,
-        history::{self, HistoryAction, HistoryEntityType},
-        interaction, key, key_did,
-        key_did::KeyRole,
-        organisation, proof, proof_claim, proof_schema,
-        proof_state::{self, ProofRequestState},
-    },
-    DataLayer,
+use crate::entity::did::DidType;
+use crate::entity::history::{self, HistoryAction, HistoryEntityType};
+use crate::entity::key_did::KeyRole;
+use crate::entity::proof_state::{self, ProofRequestState};
+use crate::entity::{
+    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema,
+    credential_state, did, interaction, key, key_did, organisation, proof, proof_claim,
+    proof_input_claim_schema, proof_input_schema, proof_schema,
 };
+use crate::{db_conn, DataLayer};
 
 pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 +1)
@@ -50,7 +48,7 @@ pub async fn insert_credential(
         issuance_date: Set(now),
         redirect_uri: Set(None),
         deleted_at: Set(deleted_at),
-        transport: Set(protocol.to_owned()),
+        exchange: Set(protocol.to_owned()),
         credential: Set(vec![0, 0, 0, 0]),
         role: Set(credential::CredentialRole::Issuer),
         issuer_did_id: Set(Some(did_id)),
@@ -188,7 +186,7 @@ pub async fn insert_proof_request_to_database(
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         issuance_date: Set(get_dummy_date()),
-        transport: Set("PROCIVIS_TEMPORARY".to_string()),
+        exchange: Set("PROCIVIS_TEMPORARY".to_string()),
         redirect_uri: Set(None),
         verifier_did_id: Set(Some(verifier_did_id)),
         holder_did_id: Set(holder_did_id),

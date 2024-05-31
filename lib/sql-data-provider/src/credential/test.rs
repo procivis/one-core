@@ -3,39 +3,38 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use mockall::predicate::{always, eq};
-use one_core::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
-use one_core::model::list_filter::{ComparisonType, ValueComparison};
-use one_core::{
-    model::{
-        claim::{Claim, ClaimId, ClaimRelations},
-        claim_schema::{ClaimSchema, ClaimSchemaRelations},
-        credential::{
-            Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
-            CredentialStateRelations, UpdateCredentialRequest,
-        },
-        credential_schema::{CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations},
-        did::{Did, DidRelations},
-        interaction::{Interaction, InteractionRelations},
-        list_filter::ListFilterValue,
-        list_query::ListPagination,
-        organisation::{Organisation, OrganisationRelations},
-    },
-    repository::{
-        claim_repository::MockClaimRepository, credential_repository::CredentialRepository,
-        credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository, error::DataLayerError,
-        interaction_repository::MockInteractionRepository, mock::key_repository::MockKeyRepository,
-        revocation_list_repository::MockRevocationListRepository,
-    },
-    service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO},
+use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
+use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use one_core::model::credential::{
+    Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
+    CredentialStateRelations, UpdateCredentialRequest,
 };
+use one_core::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
+    LayoutType, WalletStorageTypeEnum,
+};
+use one_core::model::did::{Did, DidRelations};
+use one_core::model::interaction::{Interaction, InteractionRelations};
+use one_core::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
+use one_core::model::list_query::ListPagination;
+use one_core::model::organisation::{Organisation, OrganisationRelations};
+use one_core::repository::claim_repository::MockClaimRepository;
+use one_core::repository::credential_repository::CredentialRepository;
+use one_core::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use one_core::repository::did_repository::MockDidRepository;
+use one_core::repository::error::DataLayerError;
+use one_core::repository::interaction_repository::MockInteractionRepository;
+use one_core::repository::mock::key_repository::MockKeyRepository;
+use one_core::repository::revocation_list_repository::MockRevocationListRepository;
+use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialProvider;
-use crate::{entity::claim, test_utilities::*};
+use crate::entity::claim;
+use crate::test_utilities::*;
 
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
@@ -248,7 +247,7 @@ async fn test_create_credential_success() {
             last_modified: get_dummy_date(),
             deleted_at: None,
             credential: vec![],
-            transport: "transport".to_string(),
+            exchange: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
             state: None,
@@ -303,7 +302,7 @@ async fn test_create_credential_empty_claims() {
             last_modified: get_dummy_date(),
             deleted_at: None,
             credential: vec![],
-            transport: "transport".to_string(),
+            exchange: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
             state: None,
@@ -370,7 +369,7 @@ async fn test_create_credential_already_exists() {
             last_modified: get_dummy_date(),
             deleted_at: None,
             credential: vec![],
-            transport: "transport".to_string(),
+            exchange: "exchange".to_string(),
             redirect_uri: None,
             role: CredentialRole::Issuer,
             state: None,

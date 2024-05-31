@@ -1,23 +1,25 @@
+use std::sync::Arc;
+
+use dto_mapper::{convert_inner, try_convert_inner};
+use serde::{Deserialize, Deserializer};
+use shared_types::{CredentialId, DidId, DidValue, KeyId};
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
 use crate::config::core_config::{CoreConfig, ExchangeType};
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
+use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::{Did, DidRelations, DidType, KeyRole};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::did_method::dto::PublicKeyJwkDTO;
+use crate::provider::exchange_protocol::openid4vc::OpenID4VCParams;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::transport_protocol::openid4vc::OpenID4VCParams;
 use crate::repository::did_repository::DidRepository;
-use crate::service::error::{BusinessLogicError, MissingProviderError};
-use crate::{model::common::GetListResponse, service::error::ServiceError};
-use dto_mapper::{convert_inner, try_convert_inner};
-use serde::{Deserialize, Deserializer};
-use shared_types::{CredentialId, DidId, DidValue, KeyId};
-use std::sync::Arc;
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
+use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 pub const NESTED_CLAIM_MARKER: char = '/';
 
@@ -222,7 +224,7 @@ pub fn extracted_credential_to_model(
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         state: Some(vec![CredentialState {
             created_date: now,
             state: CredentialStateEnum::Accepted,

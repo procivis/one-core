@@ -252,11 +252,11 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::LastModified,
             credential::Column::IssuanceDate,
             credential::Column::DeletedAt,
-            credential::Column::Transport,
             credential::Column::Credential,
             credential::Column::RedirectUri,
             credential::Column::Role,
         ])
+        .column_as(credential::Column::Exchange, "exchange")
         .column_as(
             credential_schema::Column::CreatedDate,
             "credential_schema_created_date",

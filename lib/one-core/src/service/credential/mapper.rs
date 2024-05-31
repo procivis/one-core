@@ -4,27 +4,20 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::common_mapper::{remove_first_nesting_layer, NESTED_CLAIM_MARKER};
+use crate::model::claim::Claim;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::model::did::Did;
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
 use crate::provider::revocation::CredentialRevocationState;
-use crate::service::credential::dto::DetailCredentialClaimValueResponseDTO;
-use crate::{
-    model::{
-        claim::Claim,
-        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::{CredentialSchema, CredentialSchemaClaim},
-        did::Did,
-        history::{History, HistoryAction, HistoryEntityType},
-        key::Key,
-        organisation::Organisation,
-    },
-    service::{
-        credential::dto::{
-            CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
-            CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
-            DetailCredentialSchemaResponseDTO,
-        },
-        error::{BusinessLogicError, ServiceError},
-    },
+use crate::service::credential::dto::{
+    CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
+    CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
+    DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
 };
+use crate::service::error::{BusinessLogicError, ServiceError};
 
 impl TryFrom<Credential> for CredentialDetailResponseDTO {
     type Error = ServiceError;
@@ -268,7 +261,7 @@ pub(super) fn from_create_request(
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        transport: request.transport,
+        exchange: request.exchange,
         claims: Some(claims),
         issuer_did: Some(issuer_did),
         holder_did: None,

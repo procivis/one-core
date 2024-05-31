@@ -4,16 +4,15 @@ use shared_types::DidValue;
 
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::{
-    model::CredentialStatus, status_list_jwt_formatter::StatusList2021JWTFormatter,
-};
+use crate::provider::credential_formatter::model::CredentialStatus;
+use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
     RevocationMethod, RevocationMethodCapabilities,
 };
-use crate::provider::transport_protocol::TransportProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::util::bitstring::extract_bitstring_index;
 use crate::util::key_verification::KeyVerification;
@@ -80,14 +79,14 @@ impl RevocationMethod for StatusList2021 {
             .get(list_url)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         let response = response
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         let response_value = response
             .text()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         let key_verification = Box::new(KeyVerification {
             key_algorithm_provider: self.key_algorithm_provider.clone(),

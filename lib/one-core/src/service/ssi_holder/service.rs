@@ -1,56 +1,45 @@
-use super::{
-    dto::{InvitationResponseDTO, PresentationSubmitRequestDTO},
-    mapper::{
-        credential_accepted_history_event, credential_offered_history_event,
-        credential_pending_history_event, credential_rejected_history_event,
-        proof_accepted_history_event, proof_pending_history_event, proof_rejected_history_event,
-        proof_requested_history_event, proof_submit_errored_history_event,
-    },
-    SSIHolderService,
-};
-
-use crate::{
-    common_validator::{
-        throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
-    },
-    config::core_config::{Fields, RevocationType},
-    model::{
-        claim::{Claim, ClaimRelations},
-        claim_schema::ClaimSchemaRelations,
-        credential::{
-            CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
-            UpdateCredentialRequest,
-        },
-        credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum},
-        did::{DidRelations, KeyRole},
-        interaction::{InteractionId, InteractionRelations},
-        key::KeyRelations,
-        organisation::OrganisationRelations,
-        proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations},
-    },
-    provider::{
-        credential_formatter::model::CredentialPresentation,
-        key_storage::KeySecurity,
-        revocation::lvvc::prepare_bearer_token,
-        transport_protocol::{
-            dto::{PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential},
-            provider::DetectedProtocol,
-            TransportProtocolError,
-        },
-    },
-    service::{
-        error::{
-            BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
-            ValidationError,
-        },
-        ssi_issuer::dto::IssuerResponseDTO,
-        ssi_validator::validate_config_entity_presence,
-    },
-    util::oidc::detect_correct_format,
-};
 use shared_types::{DidId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
+
+use super::dto::{InvitationResponseDTO, PresentationSubmitRequestDTO};
+use super::mapper::{
+    credential_accepted_history_event, credential_offered_history_event,
+    credential_pending_history_event, credential_rejected_history_event,
+    proof_accepted_history_event, proof_pending_history_event, proof_rejected_history_event,
+    proof_requested_history_event, proof_submit_errored_history_event,
+};
+use super::SSIHolderService;
+use crate::common_validator::{
+    throw_if_latest_credential_state_not_eq, throw_if_latest_proof_state_not_eq,
+};
+use crate::config::core_config::{Fields, RevocationType};
+use crate::model::claim::{Claim, ClaimRelations};
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::credential::{
+    CredentialRelations, CredentialState, CredentialStateEnum, CredentialStateRelations,
+    UpdateCredentialRequest,
+};
+use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
+use crate::model::did::{DidRelations, KeyRole};
+use crate::model::interaction::{InteractionId, InteractionRelations};
+use crate::model::key::KeyRelations;
+use crate::model::organisation::OrganisationRelations;
+use crate::model::proof::{Proof, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations};
+use crate::provider::credential_formatter::model::CredentialPresentation;
+use crate::provider::exchange_protocol::dto::{
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentedCredential,
+};
+use crate::provider::exchange_protocol::provider::DetectedProtocol;
+use crate::provider::exchange_protocol::ExchangeProtocolError;
+use crate::provider::key_storage::KeySecurity;
+use crate::provider::revocation::lvvc::prepare_bearer_token;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+};
+use crate::service::ssi_issuer::dto::IssuerResponseDTO;
+use crate::service::ssi_validator::validate_config_entity_presence;
+use crate::util::oidc::detect_correct_format;
 
 impl SSIHolderService {
     pub async fn handle_invitation(
@@ -69,8 +58,8 @@ impl SSIHolderService {
         let DetectedProtocol { protocol, .. } = self
             .protocol_provider
             .detect_protocol(&url)
-            .ok_or(ServiceError::MissingTransportProtocol(
-                "Cannot detect transport protocol".to_string(),
+            .ok_or(ServiceError::MissingExchangeProtocol(
+                "Cannot detect exchange protocol".to_string(),
             ))?;
 
         let response = protocol.handle_invitation(url, organisation).await?;
@@ -141,9 +130,9 @@ impl SSIHolderService {
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         self.protocol_provider
-            .get_protocol(&proof.transport)
-            .ok_or(MissingProviderError::TransportProtocol(
-                proof.transport.clone(),
+            .get_protocol(&proof.exchange)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                proof.exchange.clone(),
             ))?
             .reject_proof(&proof)
             .await?;
@@ -233,14 +222,11 @@ impl SSIHolderService {
                 .to_owned(),
         };
 
-        let transport_protocol = self
-            .protocol_provider
-            .get_protocol(&proof.transport)
-            .ok_or(MissingProviderError::TransportProtocol(
-                proof.transport.clone(),
-            ))?;
+        let exchange_protocol = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
+            MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
+        )?;
 
-        let presentation_definition = transport_protocol
+        let presentation_definition = exchange_protocol
             .get_presentation_definition(&proof)
             .await?;
 
@@ -389,12 +375,12 @@ impl SSIHolderService {
                     .bearer_auth(bearer_token)
                     .send()
                     .await
-                    .map_err(TransportProtocolError::HttpRequestError)?
+                    .map_err(ExchangeProtocolError::HttpRequestError)?
                     .error_for_status()
-                    .map_err(TransportProtocolError::HttpRequestError)?
+                    .map_err(ExchangeProtocolError::HttpRequestError)?
                     .json()
                     .await
-                    .map_err(TransportProtocolError::HttpRequestError)?;
+                    .map_err(ExchangeProtocolError::HttpRequestError)?;
 
                 let lvvc_content = response.credential;
                 let lvvc_presentation = CredentialPresentation {
@@ -414,7 +400,7 @@ impl SSIHolderService {
             }
         }
 
-        let submit_result = transport_protocol
+        let submit_result = exchange_protocol
             .submit_proof(
                 &proof,
                 credential_presentations,
@@ -546,9 +532,9 @@ impl SSIHolderService {
 
             let issuer_response = self
                 .protocol_provider
-                .get_protocol(&credential.transport)
-                .ok_or(MissingProviderError::TransportProtocol(
-                    credential.transport.clone(),
+                .get_protocol(&credential.exchange)
+                .ok_or(MissingProviderError::ExchangeProtocol(
+                    credential.exchange.clone(),
                 ))?
                 .accept_credential(&credential, &did, selected_key, None)
                 .await?;
@@ -616,9 +602,9 @@ impl SSIHolderService {
             throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)?;
 
             self.protocol_provider
-                .get_protocol(&credential.transport)
-                .ok_or(MissingProviderError::TransportProtocol(
-                    credential.transport.clone(),
+                .get_protocol(&credential.exchange)
+                .ok_or(MissingProviderError::ExchangeProtocol(
+                    credential.exchange.clone(),
                 ))?
                 .reject_credential(&credential)
                 .await?;

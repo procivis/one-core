@@ -1,30 +1,24 @@
-use dto_mapper::convert_inner;
-use one_core::{
-    model::{
-        credential::{Credential, CredentialState, SortableCredentialColumn},
-        credential_schema::{CredentialSchema, LayoutType},
-        did::Did,
-        interaction::InteractionId,
-        revocation_list::RevocationListId,
-    },
-    repository::error::DataLayerError,
-    service::credential::dto::CredentialFilterValue,
-};
-use sea_orm::{
-    sea_query::{query::IntoCondition, SimpleExpr},
-    ColumnTrait, IntoSimpleExpr, Set,
-};
-use shared_types::{CredentialId, DidId, KeyId};
 use std::str::FromStr;
+
+use dto_mapper::convert_inner;
+use one_core::model::credential::{Credential, CredentialState, SortableCredentialColumn};
+use one_core::model::credential_schema::{CredentialSchema, LayoutType};
+use one_core::model::did::Did;
+use one_core::model::interaction::InteractionId;
+use one_core::model::revocation_list::RevocationListId;
+use one_core::repository::error::DataLayerError;
+use one_core::service::credential::dto::CredentialFilterValue;
+use sea_orm::sea_query::query::IntoCondition;
+use sea_orm::sea_query::SimpleExpr;
+use sea_orm::{ColumnTrait, IntoSimpleExpr, Set};
+use shared_types::{CredentialId, DidId, KeyId};
 use uuid::Uuid;
 
-use crate::{
-    credential::entity_model::CredentialListEntityModel,
-    entity::{self, credential, credential_schema, credential_state, did},
-    list_query_generic::{
-        get_comparison_condition, get_equals_condition, get_string_match_condition,
-        IntoFilterCondition, IntoSortingColumn,
-    },
+use crate::credential::entity_model::CredentialListEntityModel;
+use crate::entity::{self, credential, credential_schema, credential_state, did};
+use crate::list_query_generic::{
+    get_comparison_condition, get_equals_condition, get_string_match_condition,
+    IntoFilterCondition, IntoSortingColumn,
 };
 
 impl IntoSortingColumn for SortableCredentialColumn {
@@ -86,7 +80,7 @@ impl From<entity::credential::Model> for Credential {
             last_modified: credential.last_modified,
             deleted_at: credential.deleted_at,
             credential: credential.credential,
-            transport: credential.transport,
+            exchange: credential.exchange,
             redirect_uri: credential.redirect_uri,
             role: credential.role.into(),
             state: None,
@@ -117,7 +111,7 @@ pub(super) fn request_to_active_model(
         last_modified: Set(request.last_modified),
         issuance_date: Set(request.issuance_date),
         deleted_at: Set(request.deleted_at),
-        transport: Set(request.transport.to_owned()),
+        exchange: Set(request.exchange.to_owned()),
         credential: Set(request.credential.to_owned()),
         redirect_uri: Set(request.redirect_uri.to_owned()),
         issuer_did_id: Set(issuer_did.map(|did| did.id)),
@@ -198,7 +192,7 @@ pub(super) fn credential_list_model_to_repository_model(
         last_modified: credential.last_modified,
         deleted_at: credential.deleted_at,
         credential: credential.credential,
-        transport: credential.transport,
+        exchange: credential.exchange,
         redirect_uri: credential.redirect_uri,
         role: credential.role.into(),
         state: Some(state),

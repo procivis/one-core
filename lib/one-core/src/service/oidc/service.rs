@@ -1,3 +1,18 @@
+use std::collections::HashMap;
+use std::ops::Sub;
+use std::str::FromStr;
+
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
+use josekit::jwe::{JweDecrypter, JweHeader};
+use shared_types::{CredentialId, CredentialSchemaId, KeyId};
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
+use super::dto::{
+    OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, ValidatedProofClaimDTO,
+};
+use super::validator::validate_refresh_token;
 use crate::common_mapper::{
     extracted_credential_to_model, get_encryption_key_jwk_from_proof,
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
@@ -16,6 +31,7 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::interaction::InteractionRelations;
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof::{
     Proof, ProofId, ProofRelations, ProofState, ProofStateEnum, ProofStateRelations,
@@ -23,29 +39,29 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-
-use crate::model::key::{Key, KeyRelations};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::ExtractPresentationCtx;
-use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
-use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::transport_protocol::openid4vc::dto::{
+use crate::provider::exchange_protocol::openid4vc::dto::{
     OpenID4VCICredentialOfferDTO, OpenID4VPClientMetadata,
 };
-use crate::provider::transport_protocol::openid4vc::mapper::{
+use crate::provider::exchange_protocol::openid4vc::mapper::{
     create_credential_offer, create_open_id_for_vp_client_metadata,
 };
-use crate::provider::transport_protocol::openid4vc::model::JwePayload;
+use crate::provider::exchange_protocol::openid4vc::model::JwePayload;
+use crate::provider::key_algorithm::eddsa::JwkEddsaExt;
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::service::oidc::dto::{
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO, OpenID4VCIError,
-    PresentationSubmissionMappingDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialResponseDTO,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, PresentationSubmissionMappingDTO,
 };
 use crate::service::oidc::mapper::{
-    interaction_data_to_dto, parse_access_token, parse_interaction_content, parse_refresh_token,
+    create_issuer_metadata_response, create_service_discovery_response, interaction_data_to_dto,
+    parse_access_token, parse_interaction_content, parse_refresh_token,
     vec_last_position_from_token_path,
 };
 use crate::service::oidc::model::OpenID4VPPresentationDefinition;
@@ -53,33 +69,12 @@ use crate::service::oidc::validator::{
     peek_presentation, throw_if_credential_request_invalid, throw_if_interaction_created_date,
     throw_if_interaction_data_invalid, throw_if_interaction_pre_authorized_code_used,
     throw_if_token_request_invalid, validate_claims, validate_config_entity_presence,
-    validate_credential, validate_presentation, validate_transport_type,
+    validate_credential, validate_exchange_type, validate_presentation,
 };
-use crate::service::oidc::{
-    dto::{
-        OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
-        OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    },
-    mapper::{create_issuer_metadata_response, create_service_discovery_response},
-    OIDCService,
-};
+use crate::service::oidc::OIDCService;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_real;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
-use josekit::jwe::alg::ecdh_es::EcdhEsJweAlgorithm;
-use josekit::jwe::{JweDecrypter, JweHeader};
-use shared_types::{CredentialId, CredentialSchemaId, KeyId};
-use std::collections::HashMap;
-use std::ops::Sub;
-use std::str::FromStr;
-use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
-
-use super::dto::{
-    OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO, ValidatedProofClaimDTO,
-};
-use super::validator::validate_refresh_token;
 
 impl OIDCService {
     pub async fn oidc_get_issuer_metadata(
@@ -119,7 +114,7 @@ impl OIDCService {
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-        validate_transport_type(&self.config, &proof.transport)?;
+        validate_exchange_type(&self.config, &proof.exchange)?;
 
         Ok(create_open_id_for_vp_client_metadata(
             get_encryption_key_jwk_from_proof(&proof, &self.key_algorithm_provider)?,
@@ -204,7 +199,7 @@ impl OIDCService {
         throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
             .map_err(|_| ServiceError::OpenID4VCError(OpenID4VCIError::InvalidRequest))?;
 
-        if credential.transport != "OPENID4VC" {
+        if credential.exchange != "OPENID4VC" {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
         let credential_schema = credential
@@ -561,7 +556,7 @@ impl OIDCService {
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
-        validate_transport_type(&self.config, &proof.transport)?;
+        validate_exchange_type(&self.config, &proof.exchange)?;
 
         let interaction = proof
             .interaction

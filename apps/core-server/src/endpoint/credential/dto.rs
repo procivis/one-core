@@ -1,38 +1,26 @@
+use dto_mapper::{convert_inner, From, Into};
+use one_core::service::credential::dto::{
+    CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListIncludeEntityTypeEnum,
+    CredentialListItemResponseDTO, CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO,
+    CredentialRole, CredentialStateEnum, DetailCredentialClaimResponseDTO,
+    DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
+    SuspendCredentialRequestDTO,
+};
+use serde::{Deserialize, Serialize};
+use shared_types::{CredentialId, CredentialSchemaId, KeyId, OrganisationId};
+use time::OffsetDateTime;
+use utoipa::{IntoParams, ToSchema};
+use uuid::Uuid;
+
 use crate::deserialize::deserialize_timestamp;
-use crate::dto::common::ExactColumn;
-use crate::dto::common::ListQueryParamsRest;
-use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRestDTO;
-use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutType;
-use crate::endpoint::credential_schema::dto::CredentialSchemaType;
-use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
+use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::credential_schema::dto::{
-    CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
+    CredentialClaimSchemaResponseRestDTO, CredentialSchemaLayoutPropertiesRestDTO,
+    CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO, CredentialSchemaType,
+    WalletStorageTypeRestEnum,
 };
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
-use crate::serialize::front_time;
-use crate::serialize::front_time_option;
-use dto_mapper::{convert_inner, From, Into};
-use one_core::service::credential::dto::CreateCredentialRequestDTO;
-use one_core::service::credential::dto::CredentialDetailResponseDTO;
-use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
-use one_core::service::credential::dto::CredentialListItemResponseDTO;
-use one_core::service::credential::dto::CredentialRequestClaimDTO;
-use one_core::service::credential::dto::CredentialRevocationCheckResponseDTO;
-use one_core::service::credential::dto::CredentialRole;
-use one_core::service::credential::dto::CredentialStateEnum;
-use one_core::service::credential::dto::DetailCredentialClaimResponseDTO;
-use one_core::service::credential::dto::DetailCredentialClaimValueResponseDTO;
-use one_core::service::credential::dto::DetailCredentialSchemaResponseDTO;
-use one_core::service::credential::dto::SuspendCredentialRequestDTO;
-use serde::{Deserialize, Serialize};
-use shared_types::CredentialId;
-use shared_types::CredentialSchemaId;
-use shared_types::KeyId;
-use shared_types::OrganisationId;
-use time::OffsetDateTime;
-use utoipa::IntoParams;
-use utoipa::ToSchema;
-use uuid::Uuid;
+use crate::serialize::{front_time, front_time_option};
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
@@ -211,7 +199,7 @@ pub struct CreateCredentialRequestRestDTO {
     pub credential_schema_id: CredentialSchemaId,
     pub issuer_did: Uuid,
     pub issuer_key: Option<KeyId>,
-    pub transport: String,
+    pub exchange: String,
     #[into(with_fn = convert_inner)]
     pub claim_values: Vec<CredentialRequestClaimRestDTO>,
     pub redirect_uri: Option<String>,

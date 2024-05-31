@@ -1,17 +1,8 @@
-use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
-use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
-use crate::endpoint::did::dto::DidListItemResponseRestDTO;
-use crate::{
-    dto::common::GetListQueryParams,
-    endpoint::proof_schema::dto::{
-        GetProofSchemaListItemResponseRestDTO, ProofClaimSchemaResponseRestDTO,
-    },
-    serialize::{front_time, front_time_option},
-};
-use dto_mapper::convert_inner;
-use dto_mapper::{From, Into};
+use std::collections::HashMap;
+
+use dto_mapper::{convert_inner, From, Into};
 use one_core::model::proof::ProofStateEnum;
-use one_core::provider::transport_protocol::dto::{
+use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
@@ -22,10 +13,18 @@ use one_core::service::proof::dto::{
 };
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, KeyId};
-use std::collections::HashMap;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
+
+use crate::dto::common::GetListQueryParams;
+use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
+use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
+use crate::endpoint::did::dto::DidListItemResponseRestDTO;
+use crate::endpoint::proof_schema::dto::{
+    GetProofSchemaListItemResponseRestDTO, ProofClaimSchemaResponseRestDTO,
+};
+use crate::serialize::{front_time, front_time_option};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -48,7 +47,7 @@ pub struct CreateProofRequestRestDTO {
     #[into(rename = "verifier_did_id")]
     #[schema(example = "<uuid; did identifier>")]
     pub verifier_did: DidId,
-    pub transport: String,
+    pub exchange: String,
     pub redirect_uri: Option<String>,
     pub verifier_key: Option<KeyId>,
 }
@@ -96,7 +95,7 @@ pub struct ProofListItemResponseRestDTO {
 
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
-    pub transport: String,
+    pub exchange: String,
     pub state: ProofStateRestEnum,
     #[from(with_fn = convert_inner)]
     pub schema: Option<GetProofSchemaListItemResponseRestDTO>,
@@ -202,7 +201,7 @@ pub struct ProofDetailResponseRestDTO {
 
     #[from(with_fn = convert_inner)]
     pub verifier_did: Option<DidListItemResponseRestDTO>,
-    pub transport: String,
+    pub exchange: String,
     pub state: ProofStateRestEnum,
     #[from(with_fn = convert_inner)]
     pub organisation_id: Option<Uuid>,

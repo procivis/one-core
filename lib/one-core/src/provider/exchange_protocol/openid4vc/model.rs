@@ -4,9 +4,8 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use url::Url;
 
-use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
-
 use super::dto::OpenID4VPPresentationDefinition;
+use crate::service::oidc::dto::PresentationSubmissionMappingDTO;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub(super) struct OpenID4VCIInteractionContent {

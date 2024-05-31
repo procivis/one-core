@@ -2,18 +2,15 @@ use shared_types::{CredentialId, DidId, KeyId};
 use strum_macros::Display;
 use time::OffsetDateTime;
 
+use super::claim::{Claim, ClaimRelations};
+use super::common::GetListResponse;
+use super::credential_schema::{CredentialSchema, CredentialSchemaRelations};
+use super::did::{Did, DidRelations};
+use super::interaction::{Interaction, InteractionId, InteractionRelations};
+use super::key::{Key, KeyRelations};
+use super::list_query::ListQuery;
+use super::revocation_list::{RevocationList, RevocationListRelations};
 use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
-
-use super::{
-    claim::{Claim, ClaimRelations},
-    common::GetListResponse,
-    credential_schema::{CredentialSchema, CredentialSchemaRelations},
-    did::{Did, DidRelations},
-    interaction::{Interaction, InteractionId, InteractionRelations},
-    key::{Key, KeyRelations},
-    list_query::ListQuery,
-    revocation_list::{RevocationList, RevocationListRelations},
-};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Credential {
@@ -23,7 +20,7 @@ pub struct Credential {
     pub last_modified: OffsetDateTime,
     pub deleted_at: Option<OffsetDateTime>,
     pub credential: Vec<u8>,
-    pub transport: String,
+    pub exchange: String,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
 

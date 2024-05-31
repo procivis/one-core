@@ -27,11 +27,11 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::provider::transport_protocol::dto::PresentationDefinitionResponseDTO;
+use crate::provider::exchange_protocol::dto::PresentationDefinitionResponseDTO;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::proof::validator::validate_format_and_transport_protocol_compatibility;
+use crate::service::proof::validator::validate_format_and_exchange_protocol_compatibility;
 
 impl ProofService {
     /// Returns details of a proof
@@ -136,13 +136,10 @@ impl ProofService {
 
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
-        let transport = self
-            .protocol_provider
-            .get_protocol(&proof.transport)
-            .ok_or(MissingProviderError::TransportProtocol(
-                proof.transport.clone(),
-            ))?;
-        Ok(transport.get_presentation_definition(&proof).await?)
+        let exchange = self.protocol_provider.get_protocol(&proof.exchange).ok_or(
+            MissingProviderError::ExchangeProtocol(proof.exchange.clone()),
+        )?;
+        Ok(exchange.get_presentation_definition(&proof).await?)
     }
 
     /// Returns list of proofs according to query
@@ -172,7 +169,7 @@ impl ProofService {
         &self,
         request: CreateProofRequestDTO,
     ) -> Result<ProofId, ServiceError> {
-        validate_exchange_type(&request.transport, &self.config.exchange)?;
+        validate_exchange_type(&request.exchange, &self.config.exchange)?;
 
         let now = OffsetDateTime::now_utc();
         let proof_schema_id = request.proof_schema_id;
@@ -196,8 +193,8 @@ impl ProofService {
             return Err(BusinessLogicError::ProofSchemaDeleted { proof_schema_id }.into());
         }
 
-        validate_format_and_transport_protocol_compatibility(
-            &request.transport,
+        validate_format_and_exchange_protocol_compatibility(
+            &request.exchange,
             &self.config,
             &proof_schema,
             &self.credential_formatter_provider,
@@ -279,24 +276,24 @@ impl ProofService {
             }
         }
 
-        let transport_instance = &self
+        let exchange_instance = &self
             .config
             .exchange
-            .get_fields(&proof.transport)
+            .get_fields(&proof.exchange)
             .map_err(|err| {
-                ServiceError::MissingTransportProtocol(format!("{}. {err}", proof.transport))
+                ServiceError::MissingExchangeProtocol(format!("{}. {err}", proof.exchange))
             })?
             .r#type()
             .to_string();
 
-        let transport = self
+        let exchange = self
             .protocol_provider
-            .get_protocol(transport_instance)
-            .ok_or(MissingProviderError::TransportProtocol(
-                transport_instance.clone(),
+            .get_protocol(exchange_instance)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                exchange_instance.clone(),
             ))?;
 
-        let url = transport.share_proof(&proof).await?;
+        let url = exchange.share_proof(&proof).await?;
 
         let _ = self
             .history_repository

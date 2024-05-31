@@ -1,32 +1,31 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use serde::{de, Serialize};
+use thiserror::Error;
+use url::Url;
+
 use self::dto::{
     InvitationType, PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
 };
+use crate::config::core_config::{CoreConfig, ExchangeType};
+use crate::config::ConfigValidationError;
+use crate::crypto::CryptoProvider;
+use crate::model::credential::Credential;
 use crate::model::did::Did;
+use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::model::proof::Proof;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::exchange_protocol::openid4vc::OpenID4VC;
+use crate::provider::exchange_protocol::procivis_temp::ProcivisTemp;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::{
-    config::{
-        core_config::{CoreConfig, ExchangeType},
-        ConfigValidationError,
-    },
-    crypto::CryptoProvider,
-    model::{credential::Credential, interaction::Interaction, proof::Proof},
-    provider::{
-        credential_formatter::provider::CredentialFormatterProvider,
-        key_storage::provider::KeyProvider,
-        revocation::provider::RevocationMethodProvider,
-        transport_protocol::{openid4vc::OpenID4VC, procivis_temp::ProcivisTemp},
-    },
-    repository::DataRepository,
-    service::ssi_holder::dto::InvitationResponseDTO,
-};
-use async_trait::async_trait;
-use serde::{de, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-use thiserror::Error;
-use url::Url;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::repository::DataRepository;
+use crate::service::ssi_holder::dto::InvitationResponseDTO;
 
 pub mod dto;
 mod mapper;
@@ -37,8 +36,8 @@ pub(crate) mod provider;
 mod test;
 
 #[derive(Debug, Error)]
-pub enum TransportProtocolError {
-    #[error("Transport protocol failure: `{0}`")]
+pub enum ExchangeProtocolError {
+    #[error("Exchange protocol failure: `{0}`")]
     Failed(String),
     #[error("HTTP request error: `{0}`")]
     HttpRequestError(reqwest::Error),
@@ -58,7 +57,7 @@ pub enum TransportProtocolError {
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
-pub trait TransportProtocol: Send + Sync {
+pub trait ExchangeProtocol: Send + Sync {
     // holder methods
     fn detect_invitation_type(&self, url: &Url) -> Option<InvitationType>;
 
@@ -66,9 +65,9 @@ pub trait TransportProtocol: Send + Sync {
         &self,
         url: Url,
         organisation: Organisation,
-    ) -> Result<InvitationResponseDTO, TransportProtocolError>;
+    ) -> Result<InvitationResponseDTO, ExchangeProtocolError>;
 
-    async fn reject_proof(&self, proof: &Proof) -> Result<(), TransportProtocolError>;
+    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError>;
 
     async fn submit_proof(
         &self,
@@ -77,7 +76,7 @@ pub trait TransportProtocol: Send + Sync {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<(), TransportProtocolError>;
+    ) -> Result<(), ExchangeProtocolError>;
 
     async fn accept_credential(
         &self,
@@ -85,40 +84,38 @@ pub trait TransportProtocol: Send + Sync {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<SubmitIssuerResponse, TransportProtocolError>;
+    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError>;
 
-    async fn reject_credential(
-        &self,
-        credential: &Credential,
-    ) -> Result<(), TransportProtocolError>;
+    async fn reject_credential(&self, credential: &Credential)
+        -> Result<(), ExchangeProtocolError>;
 
     async fn get_presentation_definition(
         &self,
         proof: &Proof,
-    ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError>;
+    ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError>;
 
     // issuer methods
     /// Generates QR-code content to start the credential issuance flow
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<String, TransportProtocolError>;
+    ) -> Result<String, ExchangeProtocolError>;
 
     // verifier methods
     /// Generates QR-code content to start the proof request flow
-    async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError>;
+    async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError>;
 }
 
 pub(super) fn get_base_url_from_interaction(
     interaction: Option<&Interaction>,
-) -> Result<Url, TransportProtocolError> {
+) -> Result<Url, ExchangeProtocolError> {
     interaction
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "interaction is None".to_string(),
         ))?
         .host
         .as_ref()
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "interaction host is missing".to_string(),
         ))
         .cloned()
@@ -126,27 +123,27 @@ pub(super) fn get_base_url_from_interaction(
 
 pub(super) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
     dto: &DataDTO,
-) -> Result<Vec<u8>, TransportProtocolError> {
-    serde_json::to_vec(&dto).map_err(TransportProtocolError::JsonError)
+) -> Result<Vec<u8>, ExchangeProtocolError> {
+    serde_json::to_vec(&dto).map_err(ExchangeProtocolError::JsonError)
 }
 
 pub fn deserialize_interaction_data<DataDTO: for<'a> de::Deserialize<'a>>(
     interaction: Option<&Interaction>,
-) -> Result<DataDTO, TransportProtocolError> {
+) -> Result<DataDTO, ExchangeProtocolError> {
     let data = interaction
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "interaction is None".to_string(),
         ))?
         .data
         .as_ref()
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "interaction data is missing".to_string(),
         ))?;
-    serde_json::from_slice(data).map_err(TransportProtocolError::JsonError)
+    serde_json::from_slice(data).map_err(ExchangeProtocolError::JsonError)
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn transport_protocol_providers_from_config(
+pub(crate) fn exchange_protocol_providers_from_config(
     config: Arc<CoreConfig>,
     core_base_url: Option<String>,
     crypto: Arc<dyn CryptoProvider>,
@@ -155,8 +152,8 @@ pub(crate) fn transport_protocol_providers_from_config(
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-) -> Result<HashMap<String, Arc<dyn TransportProtocol>>, ConfigValidationError> {
-    let mut providers: HashMap<String, Arc<dyn TransportProtocol>> = HashMap::new();
+) -> Result<HashMap<String, Arc<dyn ExchangeProtocol>>, ConfigValidationError> {
+    let mut providers: HashMap<String, Arc<dyn ExchangeProtocol>> = HashMap::new();
 
     for (name, fields) in config.exchange.iter() {
         match fields.r#type {

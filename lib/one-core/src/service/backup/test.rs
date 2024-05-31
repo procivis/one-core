@@ -46,7 +46,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             last_modified: OffsetDateTime::now_utc(),
             deleted_at: None,
             credential: vec![],
-            transport: "foo".into(),
+            exchange: "foo".into(),
             redirect_uri: None,
             role: CredentialRole::Holder,
             state: Some(vec![CredentialState {

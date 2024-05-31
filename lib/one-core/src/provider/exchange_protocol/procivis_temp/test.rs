@@ -1,26 +1,19 @@
 use std::sync::Arc;
+
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::service::test_utilities::generic_config;
-use crate::{
-    model::{
-        credential::{Credential, CredentialRole},
-        proof::Proof,
-    },
-    provider::{
-        credential_formatter::provider::MockCredentialFormatterProvider,
-        key_storage::provider::MockKeyProvider,
-        transport_protocol::{TransportProtocol, TransportProtocolError},
-    },
-    repository::{
-        credential_repository::MockCredentialRepository,
-        credential_schema_repository::MockCredentialSchemaRepository,
-        did_repository::MockDidRepository, interaction_repository::MockInteractionRepository,
-    },
-};
-
 use super::ProcivisTemp;
+use crate::model::credential::{Credential, CredentialRole};
+use crate::model::proof::Proof;
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::interaction_repository::MockInteractionRepository;
+use crate::service::test_utilities::generic_config;
 
 #[derive(Default)]
 struct Repositories {
@@ -53,7 +46,7 @@ fn generate_credential(redirect_uri: Option<String>) -> Credential {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: vec![],
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri,
         role: CredentialRole::Issuer,
         state: None,
@@ -73,7 +66,7 @@ fn generate_proof(redirect_uri: Option<String>) -> Proof {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         issuance_date: OffsetDateTime::now_utc(),
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri,
         state: None,
         schema: None,
@@ -91,10 +84,7 @@ async fn test_share_credential_no_base_url() {
     let credential = generate_credential(None);
 
     let result = protocol.share_credential(&credential).await;
-    assert!(matches!(
-        result,
-        Err(TransportProtocolError::MissingBaseUrl)
-    ));
+    assert!(matches!(result, Err(ExchangeProtocolError::MissingBaseUrl)));
 }
 
 #[tokio::test]
@@ -121,10 +111,7 @@ async fn test_share_proof_no_base_url() {
     let proof = generate_proof(None);
 
     let result = protocol.share_proof(&proof).await;
-    assert!(matches!(
-        result,
-        Err(TransportProtocolError::MissingBaseUrl)
-    ));
+    assert!(matches!(result, Err(ExchangeProtocolError::MissingBaseUrl)));
 }
 
 #[tokio::test]

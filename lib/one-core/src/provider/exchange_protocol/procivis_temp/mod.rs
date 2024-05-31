@@ -1,10 +1,11 @@
 mod mapper;
 
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use dto_mapper::convert_inner;
 use shared_types::CredentialId;
-use std::collections::HashSet;
-use std::{collections::HashMap, sync::Arc};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -13,49 +14,41 @@ use self::mapper::{
     get_base_url, get_proof_claim_schemas_from_proof, presentation_definition_from_proof,
     remote_did_from_value,
 };
+use super::mapper::get_relevant_credentials_to_credential_schemas;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::CoreConfig;
-use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchemaClaim, LayoutType};
+use crate::model::claim::{Claim, ClaimId};
+use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
+};
+use crate::model::did::{Did, DidRelations, KeyRole};
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::model::proof::Proof;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::FormatPresentationCtx;
-use crate::provider::transport_protocol::dto::ProofClaimSchema;
+use crate::provider::exchange_protocol::dto::{
+    ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
+    PresentationDefinitionResponseDTO, PresentedCredential, ProofClaimSchema, SubmitIssuerResponse,
+};
+use crate::provider::exchange_protocol::mapper::{
+    interaction_from_handle_invitation, proof_from_handle_invitation,
+};
+use crate::provider::exchange_protocol::{ExchangeProtocol, ExchangeProtocolError};
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::did_repository::DidRepository;
+use crate::repository::error::DataLayerError;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::service::ssi_issuer::dto::ConnectIssuerResponseDTO;
-use crate::{
-    model::{
-        claim::{Claim, ClaimId},
-        claim_schema::ClaimSchemaRelations,
-        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::{CredentialSchema, CredentialSchemaRelations},
-        did::{Did, DidRelations, KeyRole},
-        key::Key,
-        organisation::Organisation,
-        proof::Proof,
-    },
-    provider::{
-        credential_formatter::provider::CredentialFormatterProvider,
-        key_storage::provider::KeyProvider,
-        transport_protocol::{
-            dto::{
-                ConnectVerifierResponse, CredentialGroup, CredentialGroupItem,
-                PresentationDefinitionResponseDTO, PresentedCredential, SubmitIssuerResponse,
-            },
-            mapper::{interaction_from_handle_invitation, proof_from_handle_invitation},
-            TransportProtocol, TransportProtocolError,
-        },
-    },
-    repository::{
-        credential_repository::CredentialRepository,
-        credential_schema_repository::CredentialSchemaRepository, did_repository::DidRepository,
-        error::DataLayerError, interaction_repository::InteractionRepository,
-    },
-    service::ssi_holder::dto::InvitationResponseDTO,
-};
-
-use super::mapper::get_relevant_credentials_to_credential_schemas;
 
 const REDIRECT_URI_QUERY_PARAM_KEY: &str = "redirect_uri";
 
@@ -102,14 +95,14 @@ enum InvitationType {
     ProofRequest { proof_id: String, protocol: String },
 }
 
-fn categorize_url(url: &Url) -> Result<InvitationType, TransportProtocolError> {
+fn categorize_url(url: &Url) -> Result<InvitationType, ExchangeProtocolError> {
     let query_value_for = |query_name| {
         url.query_pairs()
             .find_map(|(k, v)| (k == query_name).then_some(v))
     };
 
     let protocol = query_value_for("protocol")
-        .ok_or(TransportProtocolError::Failed(
+        .ok_or(ExchangeProtocolError::Failed(
             "Missing protocol query param".to_string(),
         ))?
         .to_string();
@@ -123,22 +116,22 @@ fn categorize_url(url: &Url) -> Result<InvitationType, TransportProtocolError> {
         });
     }
 
-    Err(TransportProtocolError::Failed("Invalid Query".to_owned()))
+    Err(ExchangeProtocolError::Failed("Invalid Query".to_owned()))
 }
 
 #[async_trait]
-impl TransportProtocol for ProcivisTemp {
+impl ExchangeProtocol for ProcivisTemp {
     fn detect_invitation_type(
         &self,
         url: &Url,
-    ) -> Option<crate::provider::transport_protocol::dto::InvitationType> {
+    ) -> Option<crate::provider::exchange_protocol::dto::InvitationType> {
         let r#type = categorize_url(url).ok()?;
         Some(match r#type {
             InvitationType::CredentialIssuance { .. } => {
-                crate::provider::transport_protocol::dto::InvitationType::CredentialIssuance
+                crate::provider::exchange_protocol::dto::InvitationType::CredentialIssuance
             }
             InvitationType::ProofRequest { .. } => {
-                crate::provider::transport_protocol::dto::InvitationType::ProofRequest
+                crate::provider::exchange_protocol::dto::InvitationType::ProofRequest
             }
         })
     }
@@ -147,7 +140,7 @@ impl TransportProtocol for ProcivisTemp {
         &self,
         url: Url,
         organisation: Organisation,
-    ) -> Result<InvitationResponseDTO, TransportProtocolError> {
+    ) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
         let invitation_type = categorize_url(&url)?;
 
         let base_url = get_base_url(&url)?;
@@ -163,18 +156,18 @@ impl TransportProtocol for ProcivisTemp {
             .post(url)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         let response = response
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         Ok(match invitation_type {
             InvitationType::CredentialIssuance { .. } => {
                 let issuer_response = response
                     .json()
                     .await
-                    .map_err(TransportProtocolError::HttpResponse)?;
+                    .map_err(ExchangeProtocolError::HttpResponse)?;
 
                 handle_credential_invitation(self, base_url, organisation, issuer_response).await?
             }
@@ -182,7 +175,7 @@ impl TransportProtocol for ProcivisTemp {
                 let proof_request = response
                     .json()
                     .await
-                    .map_err(TransportProtocolError::HttpResponse)?;
+                    .map_err(ExchangeProtocolError::HttpResponse)?;
 
                 handle_proof_invitation(
                     self,
@@ -198,7 +191,7 @@ impl TransportProtocol for ProcivisTemp {
         })
     }
 
-    async fn reject_proof(&self, proof: &Proof) -> Result<(), TransportProtocolError> {
+    async fn reject_proof(&self, proof: &Proof) -> Result<(), ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(proof.interaction.as_ref())?;
         url.set_path("/ssi/temporary-verifier/v1/reject");
         url.set_query(Some(&format!("proof={}", proof.id)));
@@ -208,10 +201,10 @@ impl TransportProtocol for ProcivisTemp {
             .post(url)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         response
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         Ok(())
     }
@@ -223,16 +216,16 @@ impl TransportProtocol for ProcivisTemp {
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
-    ) -> Result<(), TransportProtocolError> {
+    ) -> Result<(), ExchangeProtocolError> {
         let presentation_formatter = self
             .formatter_provider
             .get_formatter("JWT")
-            .ok_or_else(|| TransportProtocolError::Failed("JWT formatter not found".to_string()))?;
+            .ok_or_else(|| ExchangeProtocolError::Failed("JWT formatter not found".to_string()))?;
 
         let auth_fn = self
             .key_provider
             .get_signature_provider(key, jwk_key_id)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let tokens: Vec<String> = credential_presentations
             .into_iter()
@@ -248,7 +241,7 @@ impl TransportProtocol for ProcivisTemp {
                 FormatPresentationCtx::empty(),
             )
             .await
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let mut url = super::get_base_url_from_interaction(proof.interaction.as_ref())?;
         url.set_path("/ssi/temporary-verifier/v1/submit");
@@ -263,10 +256,10 @@ impl TransportProtocol for ProcivisTemp {
             .body(presentation)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         response
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         Ok(())
     }
@@ -277,7 +270,7 @@ impl TransportProtocol for ProcivisTemp {
         holder_did: &Did,
         _key: &Key,
         _jwk_key_id: Option<String>,
-    ) -> Result<SubmitIssuerResponse, TransportProtocolError> {
+    ) -> Result<SubmitIssuerResponse, ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/submit");
         url.set_query(Some(&format!(
@@ -290,22 +283,22 @@ impl TransportProtocol for ProcivisTemp {
             .post(url)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         let response = response
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         let response_value = response
             .text()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
-        serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)
+        serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)
     }
 
     async fn reject_credential(
         &self,
         credential: &Credential,
-    ) -> Result<(), TransportProtocolError> {
+    ) -> Result<(), ExchangeProtocolError> {
         let mut url = super::get_base_url_from_interaction(credential.interaction.as_ref())?;
         url.set_path("/ssi/temporary-issuer/v1/reject");
         url.set_query(Some(&format!("credentialId={}", credential.id)));
@@ -315,10 +308,10 @@ impl TransportProtocol for ProcivisTemp {
             .post(url)
             .send()
             .await
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
         response
             .error_for_status()
-            .map_err(TransportProtocolError::HttpRequestError)?;
+            .map_err(ExchangeProtocolError::HttpRequestError)?;
 
         Ok(())
     }
@@ -326,17 +319,17 @@ impl TransportProtocol for ProcivisTemp {
     async fn share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<String, TransportProtocolError> {
+    ) -> Result<String, ExchangeProtocolError> {
         let base_url = self
             .base_url
             .as_ref()
-            .ok_or(TransportProtocolError::MissingBaseUrl)?;
+            .ok_or(ExchangeProtocolError::MissingBaseUrl)?;
         let connect_url = format!("{}/ssi/temporary-issuer/v1/connect", base_url);
         let mut url =
-            Url::parse(&connect_url).map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            Url::parse(&connect_url).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let mut pairs = url.query_pairs_mut();
-        pairs.append_pair("protocol", &credential.transport);
+        pairs.append_pair("protocol", &credential.exchange);
         pairs.append_pair("credential", &credential.id.to_string());
 
         if let Some(redirect_uri) = credential.redirect_uri.as_ref() {
@@ -348,17 +341,17 @@ impl TransportProtocol for ProcivisTemp {
         Ok(url.to_string())
     }
 
-    async fn share_proof(&self, proof: &Proof) -> Result<String, TransportProtocolError> {
+    async fn share_proof(&self, proof: &Proof) -> Result<String, ExchangeProtocolError> {
         let base_url = self
             .base_url
             .as_ref()
-            .ok_or(TransportProtocolError::MissingBaseUrl)?;
+            .ok_or(ExchangeProtocolError::MissingBaseUrl)?;
         let connect_url = format!("{}/ssi/temporary-verifier/v1/connect", base_url);
         let mut url =
-            Url::parse(&connect_url).map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            Url::parse(&connect_url).map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
         let mut pairs = url.query_pairs_mut();
-        pairs.append_pair("protocol", &proof.transport);
+        pairs.append_pair("protocol", &proof.exchange);
         pairs.append_pair("proof", &proof.id.to_string());
 
         if let Some(redirect_uri) = proof.redirect_uri.as_ref() {
@@ -373,7 +366,7 @@ impl TransportProtocol for ProcivisTemp {
     async fn get_presentation_definition(
         &self,
         proof: &Proof,
-    ) -> Result<PresentationDefinitionResponseDTO, TransportProtocolError> {
+    ) -> Result<PresentationDefinitionResponseDTO, ExchangeProtocolError> {
         let requested_claims = get_proof_claim_schemas_from_proof(proof)?;
         let mut credential_groups: Vec<CredentialGroup> = vec![];
         let mut group_id_to_schema_id: HashMap<String, String> = HashMap::new();
@@ -381,14 +374,14 @@ impl TransportProtocol for ProcivisTemp {
         let interaction = proof
             .interaction
             .as_ref()
-            .ok_or(TransportProtocolError::Failed(
+            .ok_or(ExchangeProtocolError::Failed(
                 "interaction is None".to_string(),
             ))?;
         let proof_claim_schemas: Vec<ProofClaimSchema> =
             serde_json::from_slice(interaction.data.as_ref().ok_or(
-                TransportProtocolError::Failed("interaction.data is None".to_string()),
+                ExchangeProtocolError::Failed("interaction.data is None".to_string()),
             )?)
-            .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+            .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
         let allowed_formats: HashSet<&str> = proof_claim_schemas
             .iter()
             .map(|proof_claim_schema| proof_claim_schema.credential_schema.format.as_str())
@@ -439,17 +432,17 @@ async fn handle_credential_invitation(
     base_url: Url,
     organisation: Organisation,
     issuer_response: ConnectIssuerResponseDTO,
-) -> Result<InvitationResponseDTO, TransportProtocolError> {
+) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let now = OffsetDateTime::now_utc();
     let credential_schema = match deps
         .credential_schema_repository
         .get_by_schema_id_and_organisation(&issuer_response.schema.schema_id, organisation.id)
         .await
-        .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
+        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
     {
         Some(credential_schema) => {
             if credential_schema.schema_type != issuer_response.schema.schema_type.into() {
-                return Err(TransportProtocolError::IncorrectCredentialSchemaType);
+                return Err(ExchangeProtocolError::IncorrectCredentialSchemaType);
             }
 
             deps.credential_schema_repository
@@ -461,8 +454,8 @@ async fn handle_credential_invitation(
                     },
                 )
                 .await
-                .map_err(|err| TransportProtocolError::Failed(err.to_string()))?
-                .ok_or(TransportProtocolError::Failed(
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?
+                .ok_or(ExchangeProtocolError::Failed(
                     "Credential schema error".to_string(),
                 ))?
         }
@@ -495,7 +488,7 @@ async fn handle_credential_invitation(
                 .credential_schema_repository
                 .create_credential_schema(credential_schema.clone())
                 .await
-                .map_err(|err| TransportProtocolError::Failed(err.to_string()))?;
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
             credential_schema
         }
@@ -512,14 +505,14 @@ async fn handle_credential_invitation(
                 .did_repository
                 .get_did_by_value(&issuer_did_value, &DidRelations::default())
                 .await
-                .map_err(|err| TransportProtocolError::Failed(err.to_string()))?;
+                .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
-            issuer_did.ok_or(TransportProtocolError::Failed(format!(
+            issuer_did.ok_or(ExchangeProtocolError::Failed(format!(
                 "Error while getting DID {issuer_did_value}"
             )))?
         }
         Err(e) => {
-            return Err(TransportProtocolError::Failed(format!(
+            return Err(ExchangeProtocolError::Failed(format!(
                 "Data layer error {e}"
             )))
         }
@@ -531,7 +524,7 @@ async fn handle_credential_invitation(
         .create_interaction(interaction.clone())
         .await
         .map_err(|error| {
-            TransportProtocolError::Failed(format!("Error while creating interaction {error}"))
+            ExchangeProtocolError::Failed(format!("Error while creating interaction {error}"))
         })?;
 
     // create credential
@@ -542,14 +535,14 @@ async fn handle_credential_invitation(
         credential_schema
             .claim_schemas
             .as_ref()
-            .ok_or(TransportProtocolError::Failed(
+            .ok_or(ExchangeProtocolError::Failed(
                 "claim_schemas is None".to_string(),
             ))?;
 
     let claims = incoming_claims
         .iter()
         .map(|value| unnest_incoming_claim(credential_id, value, claim_schemas, now, ""))
-        .collect::<Result<Vec<Vec<_>>, TransportProtocolError>>()?
+        .collect::<Result<Vec<Vec<_>>, ExchangeProtocolError>>()?
         .into_iter()
         .flatten()
         .collect();
@@ -561,7 +554,7 @@ async fn handle_credential_invitation(
         last_modified: now,
         deleted_at: None,
         credential: vec![],
-        transport: "PROCIVIS_TEMPORARY".to_string(),
+        exchange: "PROCIVIS_TEMPORARY".to_string(),
         redirect_uri: issuer_response.redirect_uri,
         role: CredentialRole::Holder,
         state: Some(vec![CredentialState {
@@ -588,7 +581,7 @@ fn extract_claim_schemas_from_incoming(
     incoming_claims: &[CredentialClaimSchemaDTO],
     now: OffsetDateTime,
     prefix: &str,
-) -> Result<Vec<CredentialSchemaClaim>, TransportProtocolError> {
+) -> Result<Vec<CredentialSchemaClaim>, ExchangeProtocolError> {
     let mut result = vec![];
 
     incoming_claims.iter().try_for_each(|incoming_claim| {
@@ -625,7 +618,7 @@ fn unnest_incoming_claim(
     claim_schemas: &[CredentialSchemaClaim],
     now: OffsetDateTime,
     prefix: &str,
-) -> Result<Vec<Claim>, TransportProtocolError> {
+) -> Result<Vec<Claim>, ExchangeProtocolError> {
     match &incoming_claim.value {
         DetailCredentialClaimValueResponseDTO::String(value) => {
             let expected_key = format!("{prefix}{}", incoming_claim.schema.key);
@@ -633,7 +626,7 @@ fn unnest_incoming_claim(
             let current_claim_schema = claim_schemas
                 .iter()
                 .find(|claim_schema| claim_schema.schema.key == expected_key)
-                .ok_or(TransportProtocolError::Failed(format!(
+                .ok_or(ExchangeProtocolError::Failed(format!(
                     "missing claim schema with key {expected_key}",
                 )))?;
             Ok(vec![Claim {
@@ -657,7 +650,7 @@ fn unnest_incoming_claim(
                         &format!("{prefix}{}{NESTED_CLAIM_MARKER}", incoming_claim.schema.key),
                     )
                 })
-                .collect::<Result<Vec<Vec<_>>, TransportProtocolError>>()?
+                .collect::<Result<Vec<Vec<_>>, ExchangeProtocolError>>()?
                 .into_iter()
                 .flatten()
                 .collect();
@@ -674,12 +667,12 @@ async fn handle_proof_invitation(
     protocol: &str,
     organisation: Organisation,
     redirect_uri: Option<String>,
-) -> Result<InvitationResponseDTO, TransportProtocolError> {
+) -> Result<InvitationResponseDTO, ExchangeProtocolError> {
     let verifier_did_result = deps
         .did_repository
         .get_did_by_value(&proof_request.verifier_did, &DidRelations::default())
         .await
-        .map_err(|err| TransportProtocolError::Failed(err.to_string()))?;
+        .map_err(|err| ExchangeProtocolError::Failed(err.to_string()))?;
 
     let now = OffsetDateTime::now_utc();
     let verifier_did = match verifier_did_result {
@@ -702,7 +695,7 @@ async fn handle_proof_invitation(
                 .create_did(new_did.clone())
                 .await
                 .map_err(|error| {
-                    TransportProtocolError::Failed(format!("Data layer error {error}"))
+                    ExchangeProtocolError::Failed(format!("Data layer error {error}"))
                 })?;
 
             new_did
@@ -720,7 +713,7 @@ async fn handle_proof_invitation(
         .and_then(|key| key);
 
     let data = serde_json::to_string(&proof_request.claims)
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?
         .as_bytes()
         .to_vec();
 
@@ -730,11 +723,11 @@ async fn handle_proof_invitation(
         .interaction_repository
         .create_interaction(interaction.clone())
         .await
-        .map_err(|error| TransportProtocolError::Failed(error.to_string()))?;
+        .map_err(|error| ExchangeProtocolError::Failed(error.to_string()))?;
 
     let proof_id: Uuid = proof_id
         .parse()
-        .map_err(|_| TransportProtocolError::Failed("Cannot parse proof id".to_string()))?;
+        .map_err(|_| ExchangeProtocolError::Failed("Cannot parse proof id".to_string()))?;
 
     let proof = proof_from_handle_invitation(
         &proof_id,

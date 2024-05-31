@@ -9,12 +9,12 @@ use one_core::model::history::{HistoryAction, HistoryEntityType, HistorySearchEn
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::SortableProofSchemaColumn;
 use one_core::model::trust_anchor::TrustAnchorRole;
-use one_core::provider::key_storage::GeneratedKey;
-use one_core::provider::transport_protocol::dto::{
+use one_core::provider::exchange_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
+use one_core::provider::key_storage::GeneratedKey;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
@@ -405,7 +405,7 @@ pub struct ProofRequestBindingDTO {
     pub last_modified: String,
     pub verifier_did: Option<String>,
     pub state: ProofStateBindingEnum,
-    pub transport: String,
+    pub exchange: String,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputBindingDTO>,
 }

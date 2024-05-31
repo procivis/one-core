@@ -1,20 +1,16 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::Debug,
-};
-
-use figment::{providers::Format, Figment};
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Debug;
 
 #[cfg(feature = "config_env")]
 use figment::providers::Env;
-
-#[cfg(feature = "config_yaml")]
-use figment::providers::Yaml;
-
+use figment::providers::Format;
 #[cfg(feature = "config_json")]
 use figment::providers::Json;
-
-use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
+#[cfg(feature = "config_yaml")]
+use figment::providers::Yaml;
+use figment::Figment;
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use serde_with::{serde_as, DurationSeconds};
 use strum_macros::{Display, EnumString};
@@ -180,16 +176,6 @@ pub enum ExchangeType {
     #[serde(rename = "MDL")]
     #[strum(serialize = "MDL")]
     Mdl,
-}
-
-pub type TransportConfig = ConfigBlock<TransportType>;
-
-#[derive(
-    Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
-pub enum TransportType {
-    #[serde(rename = "HTTP")]
-    Http,
 }
 
 pub type RevocationConfig = ConfigBlock<RevocationType>;

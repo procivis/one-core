@@ -222,7 +222,7 @@ dictionary ProofRequestBindingDTO {
   string created_date;
   string last_modified;
   string? verifier_did;
-  string transport;
+  string exchange;
   string? redirect_uri;
   ProofStateBindingEnum state;
   sequence<ProofInputBindingDTO> proof_inputs;

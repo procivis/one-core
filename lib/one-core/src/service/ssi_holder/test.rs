@@ -1,5 +1,6 @@
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::vec;
-use std::{collections::HashMap, sync::Arc};
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
@@ -7,61 +8,48 @@ use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageTypeEnum};
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
+};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::interaction::Interaction;
+use crate::model::proof::{Proof, ProofState, ProofStateEnum};
+use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
+use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::did_method::dto::{
     DidDocumentDTO, DidVerificationMethodDTO, PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO,
 };
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_storage::{KeySecurity, KeyStorageCapabilities, MockKeyStorage};
-use crate::repository::mock::organisation_repository::MockOrganisationRepository;
-use crate::service::test_utilities::dummy_key;
-use crate::{
-    model::{
-        claim::Claim,
-        claim_schema::ClaimSchema,
-        credential::{Credential, CredentialRole, CredentialState, CredentialStateEnum},
-        credential_schema::CredentialSchema,
-        did::{Did, DidType, KeyRole, RelatedKey},
-        interaction::Interaction,
-        proof::{Proof, ProofState, ProofStateEnum},
-    },
-    provider::{
-        credential_formatter::{
-            provider::MockCredentialFormatterProvider, MockCredentialFormatter,
-        },
-        key_storage::provider::MockKeyProvider,
-        transport_protocol::{
-            dto::{
-                PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-                PresentationDefinitionRequestedCredentialResponseDTO,
-                PresentationDefinitionResponseDTO, PresentationDefinitionRuleDTO,
-                PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
-            },
-            provider::MockTransportProtocolProvider,
-            MockTransportProtocol,
-        },
-    },
-    repository::did_repository::MockDidRepository,
-    repository::mock::proof_repository::MockProofRepository,
-    repository::{
-        credential_repository::MockCredentialRepository, history_repository::MockHistoryRepository,
-    },
-    service::{
-        error::{BusinessLogicError, ServiceError},
-        ssi_holder::{
-            dto::{PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO},
-            SSIHolderService,
-        },
-        test_utilities::{dummy_did, dummy_proof, generic_config},
-    },
+use crate::provider::exchange_protocol::dto::{
+    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, SubmitIssuerResponse,
 };
+use crate::provider::exchange_protocol::provider::MockExchangeProtocolProvider;
+use crate::provider::exchange_protocol::MockExchangeProtocol;
+use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::key_storage::{KeySecurity, KeyStorageCapabilities, MockKeyStorage};
+use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::history_repository::MockHistoryRepository;
+use crate::repository::mock::organisation_repository::MockOrganisationRepository;
+use crate::repository::mock::proof_repository::MockProofRepository;
+use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::ssi_holder::dto::{
+    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
+};
+use crate::service::ssi_holder::SSIHolderService;
+use crate::service::test_utilities::{dummy_did, dummy_key, dummy_proof, generic_config};
 
 #[tokio::test]
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_pending(
 ) {
     let interaction_id = Uuid::new_v4();
     let proof_id = Uuid::new_v4();
-    let protocol = "transport-protocol";
+    let protocol = "exchange-protocol";
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -70,7 +58,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .return_once(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                transport: protocol.to_string(),
+                exchange: protocol.to_string(),
                 state: Some(vec![
                     ProofState {
                         created_date: OffsetDateTime::now_utc(),
@@ -104,8 +92,8 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .once()
         .return_once(move |_, _| Ok(()));
 
-    let mut transport_protocol_mock = MockTransportProtocol::new();
-    transport_protocol_mock
+    let mut exchange_protocol_mock = MockExchangeProtocol::new();
+    exchange_protocol_mock
         .expect_reject_proof()
         .withf(move |_proof_id| {
             assert_eq!(_proof_id.id, proof_id);
@@ -114,7 +102,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         .once()
         .return_once(move |_| Ok(()));
 
-    let mut protocol_provider = MockTransportProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
         .expect_get_protocol()
         .withf(move |_protocol| {
@@ -122,7 +110,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
             true
         })
         .once()
-        .return_once(move |_| Some(Arc::new(transport_protocol_mock)));
+        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -144,7 +132,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
     let reject_proof_for_state = |state| async {
         let interaction_id = Uuid::new_v4();
         let proof_id = Uuid::new_v4();
-        let protocol = "transport-protocol";
+        let protocol = "exchange-protocol";
         let mut proof_repository = MockProofRepository::new();
         proof_repository
             .expect_get_proof_by_interaction_id()
@@ -152,7 +140,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_pending() {
             .return_once(move |_, _| {
                 Ok(Some(Proof {
                     id: proof_id,
-                    transport: protocol.to_string(),
+                    exchange: protocol.to_string(),
                     state: Some(vec![
                         ProofState {
                             created_date: OffsetDateTime::now_utc(),
@@ -227,7 +215,7 @@ async fn test_submit_proof_succeeds() {
         .returning(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                transport: protocol.to_string(),
+                exchange: protocol.to_string(),
                 state: Some(vec![
                     ProofState {
                         created_date: OffsetDateTime::now_utc(),
@@ -294,8 +282,8 @@ async fn test_submit_proof_succeeds() {
         .times(1)
         .returning(move |_| Some(formatter.clone()));
 
-    let mut transport_protocol = MockTransportProtocol::new();
-    transport_protocol
+    let mut exchange_protocol = MockExchangeProtocol::new();
+    exchange_protocol
         .expect_get_presentation_definition()
         .withf(move |proof| {
             assert_eq!(proof.id, proof_id);
@@ -329,7 +317,7 @@ async fn test_submit_proof_succeeds() {
             })
         });
 
-    transport_protocol
+    exchange_protocol
         .expect_submit_proof()
         .withf(move |proof, _, _, _, _| {
             assert_eq!(proof.id, proof_id);
@@ -338,12 +326,12 @@ async fn test_submit_proof_succeeds() {
         .once()
         .returning(|_, _, _, _, _| Ok(()));
 
-    let mut protocol_provider = MockTransportProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
         .expect_get_protocol()
         .with(eq(protocol))
         .once()
-        .return_once(move |_| Some(Arc::new(transport_protocol)));
+        .return_once(move |_| Some(Arc::new(exchange_protocol)));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -434,7 +422,7 @@ async fn test_submit_proof_repeating_claims() {
         .returning(move |_, _| {
             Ok(Some(Proof {
                 id: proof_id,
-                transport: protocol.to_string(),
+                exchange: protocol.to_string(),
                 state: Some(vec![ProofState {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -487,8 +475,8 @@ async fn test_submit_proof_repeating_claims() {
         .expect_get_formatter()
         .returning(move |_| Some(formatter.clone()));
 
-    let mut transport_protocol = MockTransportProtocol::new();
-    transport_protocol
+    let mut exchange_protocol = MockExchangeProtocol::new();
+    exchange_protocol
         .expect_get_presentation_definition()
         .withf(move |proof| {
             assert_eq!(proof.id, proof_id);
@@ -548,7 +536,7 @@ async fn test_submit_proof_repeating_claims() {
             })
         });
 
-    transport_protocol
+    exchange_protocol
         .expect_submit_proof()
         .withf(move |proof, _, _, _, _| {
             assert_eq!(proof.id, proof_id);
@@ -557,12 +545,12 @@ async fn test_submit_proof_repeating_claims() {
         .once()
         .returning(|_, _, _, _, _| Ok(()));
 
-    let mut protocol_provider = MockTransportProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
         .expect_get_protocol()
         .with(eq(protocol))
         .once()
-        .return_once(move |_| Some(Arc::new(transport_protocol)));
+        .return_once(move |_| Some(Arc::new(exchange_protocol)));
 
     proof_repository
         .expect_set_proof_holder_did()
@@ -700,8 +688,8 @@ async fn test_accept_credential() {
         .once()
         .returning(|_| Ok(()));
 
-    let mut transport_protocol_mock = MockTransportProtocol::new();
-    transport_protocol_mock
+    let mut exchange_protocol_mock = MockExchangeProtocol::new();
+    exchange_protocol_mock
         .expect_accept_credential()
         .once()
         .returning(|_, _, _, _| {
@@ -712,11 +700,11 @@ async fn test_accept_credential() {
             })
         });
 
-    let mut protocol_provider = MockTransportProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(transport_protocol_mock)));
+        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -751,17 +739,17 @@ async fn test_reject_credential() {
         .once()
         .returning(|_| Ok(()));
 
-    let mut transport_protocol_mock: MockTransportProtocol = MockTransportProtocol::new();
-    transport_protocol_mock
+    let mut exchange_protocol_mock: MockExchangeProtocol = MockExchangeProtocol::new();
+    exchange_protocol_mock
         .expect_reject_credential()
         .once()
         .returning(|_| Ok(()));
 
-    let mut protocol_provider = MockTransportProtocolProvider::new();
+    let mut protocol_provider = MockExchangeProtocolProvider::new();
     protocol_provider
         .expect_get_protocol()
         .once()
-        .return_once(move |_| Some(Arc::new(transport_protocol_mock)));
+        .return_once(move |_| Some(Arc::new(exchange_protocol_mock)));
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
@@ -783,7 +771,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
-        protocol_provider: Arc::new(MockTransportProtocolProvider::new()),
+        protocol_provider: Arc::new(MockExchangeProtocolProvider::new()),
         did_method_provider: Arc::new(MockDidMethodProvider::new()),
         config: Arc::new(generic_config().core),
     }
@@ -797,7 +785,7 @@ fn dummy_credential() -> Credential {
         last_modified: OffsetDateTime::now_utc(),
         deleted_at: None,
         credential: b"credential".to_vec(),
-        transport: "protocol".to_string(),
+        exchange: "protocol".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: Some(vec![CredentialState {

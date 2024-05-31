@@ -4,63 +4,51 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::mapper::credential_offered_history_event;
+use crate::common_mapper::list_response_try_into;
+use crate::common_validator::{
+    get_latest_state, throw_if_latest_credential_state_eq, throw_if_state_not_in,
+};
+use crate::config::core_config::RevocationType;
+use crate::model::claim::ClaimRelations;
+use crate::model::claim_schema::ClaimSchemaRelations;
+use crate::model::common::EntityShareResponseDTO;
+use crate::model::credential::{
+    self, Credential, CredentialRelations, CredentialRole, CredentialState, CredentialStateEnum,
+    CredentialStateRelations, UpdateCredentialRequest,
+};
+use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::InteractionRelations;
+use crate::model::key::KeyRelations;
+use crate::model::organisation::OrganisationRelations;
 use crate::provider::credential_formatter::model::DetailCredential;
+use crate::provider::exchange_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
+use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
+use crate::provider::exchange_protocol::{deserialize_interaction_data, ExchangeProtocolError};
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::revocation::{CredentialRevocationState, RevocationMethodCapabilities};
-use crate::provider::transport_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
-use crate::provider::transport_protocol::openid4vc::model::HolderInteractionData;
-use crate::provider::transport_protocol::{deserialize_interaction_data, TransportProtocolError};
+use crate::provider::revocation::{
+    CredentialDataByRole, CredentialRevocationState, RevocationMethodCapabilities,
+};
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::error::DataLayerError;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::service::credential::dto::SuspendCredentialRequestDTO;
+use crate::service::credential::dto::{
+    CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialRevocationCheckResponseDTO,
+    GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
+};
 use crate::service::credential::mapper::{
+    claims_from_create_request, credential_created_history_event,
     credential_revocation_history_event, credential_revocation_state_to_model_state,
+    from_create_request,
+};
+use crate::service::credential::CredentialService;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::oidc::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCITokenResponseDTO};
+use crate::util::oidc::detect_correct_format;
 use crate::util::proof_formatter::OpenID4VCIProofJWTFormatter;
-use crate::{
-    common_mapper::list_response_try_into,
-    common_validator::{
-        get_latest_state, throw_if_latest_credential_state_eq, throw_if_state_not_in,
-    },
-    config::core_config::RevocationType,
-    model::{
-        claim::ClaimRelations,
-        claim_schema::ClaimSchemaRelations,
-        common::EntityShareResponseDTO,
-        credential::{
-            self, Credential, CredentialRelations, CredentialRole, CredentialState,
-            CredentialStateEnum, CredentialStateRelations, UpdateCredentialRequest,
-        },
-        credential_schema::CredentialSchemaRelations,
-        did::{DidRelations, DidType, KeyRole, RelatedKey},
-        key::KeyRelations,
-        organisation::OrganisationRelations,
-    },
-    provider::revocation::CredentialDataByRole,
-    repository::error::DataLayerError,
-    service::{
-        credential::{
-            dto::{
-                CreateCredentialRequestDTO, CredentialDetailResponseDTO,
-                CredentialRevocationCheckResponseDTO, GetCredentialListResponseDTO,
-                GetCredentialQueryDTO,
-            },
-            mapper::{
-                claims_from_create_request, credential_created_history_event, from_create_request,
-            },
-            CredentialService,
-        },
-        error::{
-            BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
-            ValidationError,
-        },
-    },
-    util::oidc::detect_correct_format,
-};
-
-use super::mapper::credential_offered_history_event;
 
 impl CredentialService {
     /// Creates a credential according to request
@@ -127,7 +115,7 @@ impl CredentialService {
 
         super::validator::validate_create_request(
             &issuer_did.did_method,
-            &request.transport,
+            &request.exchange,
             &request.claim_values,
             &schema,
             &formatter_capabilities,
@@ -420,26 +408,26 @@ impl CredentialService {
             state => return Err(BusinessLogicError::InvalidCredentialState { state }.into()),
         }
 
-        let credential_transport = &credential.transport;
+        let credential_exchange = &credential.exchange;
 
-        let transport_instance = &self
+        let exchange_instance = &self
             .config
             .exchange
-            .get_fields(credential_transport)
+            .get_fields(credential_exchange)
             .map_err(|err| {
-                ServiceError::MissingTransportProtocol(format!("{credential_transport}: {err}"))
+                ServiceError::MissingExchangeProtocol(format!("{credential_exchange}: {err}"))
             })?
             .r#type()
             .to_string();
 
-        let transport = self
+        let exchange = self
             .protocol_provider
-            .get_protocol(transport_instance)
-            .ok_or(MissingProviderError::TransportProtocol(
-                transport_instance.clone(),
+            .get_protocol(exchange_instance)
+            .ok_or(MissingProviderError::ExchangeProtocol(
+                exchange_instance.clone(),
             ))?;
 
-        let url = transport.share_credential(&credential).await?;
+        let url = exchange.share_credential(&credential).await?;
 
         let _ = self
             .history_repository
@@ -834,7 +822,7 @@ async fn obtain_and_update_new_mso(
 
     let auth_fn = key_provider
         .get_signature_provider(&key, None)
-        .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+        .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
         interaction_data.issuer_url,
@@ -843,12 +831,12 @@ async fn obtain_and_update_new_mso(
         auth_fn,
     )
     .await
-    .map_err(|e| TransportProtocolError::Failed(e.to_string()))?;
+    .map_err(|e| ExchangeProtocolError::Failed(e.to_string()))?;
 
     let schema = credential
         .schema
         .as_ref()
-        .ok_or(TransportProtocolError::Failed("schema is None".to_string()))?;
+        .ok_or(ExchangeProtocolError::Failed("schema is None".to_string()))?;
 
     let body = OpenID4VCICredential {
         proof: OpenID4VCIProof {
@@ -867,17 +855,17 @@ async fn obtain_and_update_new_mso(
         .json(&body)
         .send()
         .await
-        .map_err(TransportProtocolError::HttpRequestError)?;
+        .map_err(ExchangeProtocolError::HttpRequestError)?;
     let response = response
         .error_for_status()
-        .map_err(TransportProtocolError::HttpRequestError)?;
+        .map_err(ExchangeProtocolError::HttpRequestError)?;
     let response_value = response
         .text()
         .await
-        .map_err(TransportProtocolError::HttpRequestError)?;
+        .map_err(ExchangeProtocolError::HttpRequestError)?;
 
     let result: OpenID4VCICredentialResponseDTO =
-        serde_json::from_str(&response_value).map_err(TransportProtocolError::JsonError)?;
+        serde_json::from_str(&response_value).map_err(ExchangeProtocolError::JsonError)?;
 
     // Update credential value
     credential.credential = result.credential.as_bytes().to_vec();
@@ -927,12 +915,12 @@ async fn update_mso_interaction_access_token(
             ])
             .send()
             .await
-            .map_err(TransportProtocolError::HttpResponse)?
+            .map_err(ExchangeProtocolError::HttpResponse)?
             .error_for_status()
-            .map_err(TransportProtocolError::HttpResponse)?
+            .map_err(ExchangeProtocolError::HttpResponse)?
             .json()
             .await
-            .map_err(TransportProtocolError::HttpResponse)?;
+            .map_err(ExchangeProtocolError::HttpResponse)?;
 
         interaction_data.access_token = token_response.access_token;
         interaction_data.access_token_expires_at =
