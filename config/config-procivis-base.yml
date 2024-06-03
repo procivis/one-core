@@ -168,7 +168,7 @@ datatype:
         fileSize: 4194304
         showAs: IMAGE
   MDL_PICTURE:
-    display: "datatype.picture"
+    display: "datatype.mdlPicture"
     type: "FILE"
     order: 402
     params:
