@@ -2,23 +2,28 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use shared_types::CredentialId;
+use time::{Duration, OffsetDateTime};
 use url::Url;
+use uuid::Uuid;
 
 use super::dto::InvitationType;
 use super::mapper::credential_accepted_history_event;
 use super::ExchangeProtocol;
-use crate::common_validator::throw_if_latest_credential_state_not_eq;
+use crate::common_validator::get_latest_state;
+use crate::config::core_config::CoreConfig;
+use crate::config::ConfigValidationError;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
     CredentialRelations, CredentialStateEnum, CredentialStateRelations,
 };
-use crate::model::credential_schema::CredentialSchemaRelations;
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{Did, DidRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
+use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::CredentialData;
+use crate::provider::credential_formatter::{mdoc_formatter, CredentialData};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::exchange_protocol::dto::SubmitIssuerResponse;
 use crate::provider::exchange_protocol::mapper::get_issued_credential_update;
@@ -26,10 +31,12 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::error::{
-    EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::service::oidc::dto::OpenID4VCIError;
 
 #[derive(Clone)]
 pub struct DetectedProtocol {
@@ -59,6 +66,8 @@ pub(crate) struct ExchangeProtocolProviderImpl {
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    config: Arc<CoreConfig>,
     core_base_url: Option<String>,
 }
 
@@ -72,6 +81,8 @@ impl ExchangeProtocolProviderImpl {
         key_provider: Arc<dyn KeyProvider>,
         history_repository: Arc<dyn HistoryRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
+        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+        config: Arc<CoreConfig>,
         core_base_url: Option<String>,
     ) -> Self {
         Self {
@@ -82,8 +93,58 @@ impl ExchangeProtocolProviderImpl {
             key_provider,
             history_repository,
             did_method_provider,
+            validity_credential_repository,
+            config,
             core_base_url,
         }
+    }
+
+    fn mso_expected_update_in(&self) -> Result<Duration, ConfigValidationError> {
+        self.config
+            .format
+            .get::<mdoc_formatter::Params>("MDOC")
+            .map(|p| p.mso_expected_update_in)
+    }
+
+    async fn validate(
+        &self,
+        credential_id: &CredentialId,
+        latest_state: &CredentialStateEnum,
+        credential_schema: &CredentialSchema,
+    ) -> Result<(), ServiceError> {
+        match (latest_state, credential_schema.format.as_str()) {
+            (CredentialStateEnum::Accepted, "MDOC") => {
+                let mdoc_validity_credentials = self
+                    .validity_credential_repository
+                    .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
+                    .await?
+                    .ok_or_else(|| {
+                        ServiceError::Other(format!(
+                            "Missing verifiable credential for MDOC: {credential_id}"
+                        ))
+                    })?;
+
+                let mso_expected_update_in = self.mso_expected_update_in()?;
+                let can_be_updated_at =
+                    mdoc_validity_credentials.created_date + mso_expected_update_in;
+
+                if can_be_updated_at > OffsetDateTime::now_utc() {
+                    return Err(ServiceError::OpenID4VCError(
+                        OpenID4VCIError::InvalidRequest,
+                    ));
+                }
+            }
+            (CredentialStateEnum::Offered, _) => {}
+            _ => {
+                return Err(ServiceError::BusinessLogic(
+                    BusinessLogicError::InvalidCredentialState {
+                        state: latest_state.to_owned(),
+                    },
+                ))
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -138,12 +199,14 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
 
         credential.holder_did = Some(holder_did.clone());
 
-        throw_if_latest_credential_state_not_eq(&credential, CredentialStateEnum::Offered)?;
-
         let credential_schema = credential
             .schema
             .as_ref()
-            .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+            .ok_or(BusinessLogicError::MissingCredentialSchema)?;
+        let latest_credential_state = &get_latest_state(&credential)?.state;
+
+        self.validate(credential_id, latest_credential_state, credential_schema)
+            .await?;
 
         let format = credential_schema.format.to_owned();
 
@@ -153,7 +216,6 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
             .ok_or(MissingProviderError::RevocationMethod(
                 credential_schema.revocation_method.clone(),
             ))?;
-
         let credential_status = revocation_method
             .add_issued_credential(&credential)
             .await?
@@ -228,18 +290,61 @@ impl ExchangeProtocolProvider for ExchangeProtocolProviderImpl {
             )
             .await?;
 
-        self.credential_repository
-            .update_credential(get_issued_credential_update(
-                credential_id,
-                &token,
-                holder_did.id,
-            ))
-            .await?;
+        match (credential_schema.format.as_str(), latest_credential_state) {
+            ("MDOC", CredentialStateEnum::Accepted) => {
+                self.validity_credential_repository
+                    .insert(
+                        Mdoc {
+                            id: Uuid::new_v4(),
+                            created_date: OffsetDateTime::now_utc(),
+                            credential: token.as_bytes().to_vec(),
+                            linked_credential_id: *credential_id,
+                        }
+                        .into(),
+                    )
+                    .await?;
+            }
+            ("MDOC", CredentialStateEnum::Offered) => {
+                self.credential_repository
+                    .update_credential(get_issued_credential_update(
+                        credential_id,
+                        &token,
+                        holder_did.id,
+                    ))
+                    .await?;
 
-        let _ = self
-            .history_repository
-            .create_history(credential_accepted_history_event(credential))
-            .await;
+                let _ = self
+                    .history_repository
+                    .create_history(credential_accepted_history_event(credential))
+                    .await;
+
+                self.validity_credential_repository
+                    .insert(
+                        Mdoc {
+                            id: Uuid::new_v4(),
+                            created_date: OffsetDateTime::now_utc(),
+                            credential: token.as_bytes().to_vec(),
+                            linked_credential_id: *credential_id,
+                        }
+                        .into(),
+                    )
+                    .await?;
+            }
+            _ => {
+                self.credential_repository
+                    .update_credential(get_issued_credential_update(
+                        credential_id,
+                        &token,
+                        holder_did.id,
+                    ))
+                    .await?;
+
+                let _ = self
+                    .history_repository
+                    .create_history(credential_accepted_history_event(credential))
+                    .await;
+            }
+        }
 
         Ok(SubmitIssuerResponse {
             credential: token,

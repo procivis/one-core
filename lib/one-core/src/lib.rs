@@ -180,7 +180,7 @@ impl OneCore {
             core_base_url.clone(),
             data_provider.get_credential_repository(),
             data_provider.get_revocation_list_repository(),
-            data_provider.get_lvvc_repository(),
+            data_provider.get_validity_credential_repository(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
@@ -226,6 +226,8 @@ impl OneCore {
             key_provider.clone(),
             data_provider.get_history_repository(),
             did_method_provider.clone(),
+            data_provider.get_validity_credential_repository(),
+            config.clone(),
             core_base_url.clone(),
         ));
 
@@ -268,7 +270,7 @@ impl OneCore {
                 protocol_provider.clone(),
                 key_provider.clone(),
                 config.clone(),
-                data_provider.get_lvvc_repository(),
+                data_provider.get_validity_credential_repository(),
             ),
             did_service: DidService::new(
                 data_provider.get_did_repository(),
@@ -282,7 +284,7 @@ impl OneCore {
             revocation_list_service: RevocationListService::new(
                 core_base_url.clone(),
                 data_provider.get_credential_repository(),
-                data_provider.get_lvvc_repository(),
+                data_provider.get_validity_credential_repository(),
                 data_provider.get_revocation_list_repository(),
                 crypto.clone(),
                 did_method_provider.clone(),

@@ -61,7 +61,11 @@ async fn test_get_credential_with_lvvc_success() {
         )
         .await;
 
-    context.db.lvvcs.create(None, vec![], credential.id).await;
+    context
+        .db
+        .validity_credentials
+        .create_lvvc(None, vec![], credential.id)
+        .await;
 
     // WHEN
     let resp = context.api.credentials.get(&credential.id).await;

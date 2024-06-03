@@ -40,7 +40,7 @@ use crate::repository::credential_schema_repository::MockCredentialSchemaReposit
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::lvvc_repository::MockLvvcRepository;
+use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::credential;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialFilterValue, CredentialRequestClaimDTO,
@@ -67,7 +67,7 @@ struct Repositories {
     pub protocol_provider: MockExchangeProtocolProvider,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
-    pub lvvc_repository: MockLvvcRepository,
+    pub lvvc_repository: MockValidityCredentialRepository,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {

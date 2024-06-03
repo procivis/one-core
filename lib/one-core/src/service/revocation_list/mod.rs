@@ -9,8 +9,9 @@ use crate::{
         key_storage::provider::KeyProvider, revocation::provider::RevocationMethodProvider,
     },
     repository::{
-        credential_repository::CredentialRepository, lvvc_repository::LvvcRepository,
+        credential_repository::CredentialRepository,
         revocation_list_repository::RevocationListRepository,
+        validity_credential_repository::ValidityCredentialRepository,
     },
 };
 
@@ -24,7 +25,7 @@ mod validator;
 pub struct RevocationListService {
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
-    lvvc_repository: Arc<dyn LvvcRepository>,
+    lvvc_repository: Arc<dyn ValidityCredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     crypto_provider: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -40,7 +41,7 @@ impl RevocationListService {
     pub(crate) fn new(
         core_base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository>,
-        lvvc_repository: Arc<dyn LvvcRepository>,
+        lvvc_repository: Arc<dyn ValidityCredentialRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         crypto_provider: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,

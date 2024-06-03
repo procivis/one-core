@@ -11,13 +11,13 @@ pub mod history_repository;
 pub mod interaction_repository;
 pub mod json_ld_context_repository;
 pub mod key_repository;
-pub mod lvvc_repository;
 pub mod organisation_repository;
 pub mod proof_repository;
 pub mod proof_schema_repository;
 pub mod revocation_list_repository;
 pub mod trust_anchor_repository;
 pub mod trust_entity_repository;
+pub mod validity_credential_repository;
 
 use std::sync::Arc;
 
@@ -32,12 +32,12 @@ use history_repository::HistoryRepository;
 use interaction_repository::InteractionRepository;
 use json_ld_context_repository::JsonLdContextRepository;
 use key_repository::KeyRepository;
-use lvvc_repository::LvvcRepository;
 use organisation_repository::OrganisationRepository;
 use proof_repository::ProofRepository;
 use proof_schema_repository::ProofSchemaRepository;
 use revocation_list_repository::RevocationListRepository;
 use trust_anchor_repository::TrustAnchorRepository;
+use validity_credential_repository::ValidityCredentialRepository;
 
 use self::trust_entity_repository::TrustEntityRepository;
 
@@ -55,7 +55,7 @@ pub trait DataRepository {
     fn get_proof_repository(&self) -> Arc<dyn ProofRepository>;
     fn get_interaction_repository(&self) -> Arc<dyn InteractionRepository>;
     fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository>;
-    fn get_lvvc_repository(&self) -> Arc<dyn LvvcRepository>;
+    fn get_validity_credential_repository(&self) -> Arc<dyn ValidityCredentialRepository>;
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository>;
     fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository>;
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository>;

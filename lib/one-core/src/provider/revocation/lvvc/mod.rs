@@ -17,7 +17,7 @@ use crate::model::credential::{
 };
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
-use crate::model::lvvc::Lvvc;
+use crate::model::validity_credential::Lvvc;
 use crate::provider::credential_formatter::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::jwt::Jwt;
 use crate::provider::credential_formatter::model::CredentialStatus;
@@ -30,7 +30,7 @@ use crate::provider::exchange_protocol::ExchangeProtocolError;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::lvvc_repository::LvvcRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -54,7 +54,7 @@ pub struct Params {
 pub struct LvvcProvider {
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
-    lvvc_repository: Arc<dyn LvvcRepository>,
+    lvvc_repository: Arc<dyn ValidityCredentialRepository>,
     credential_formatter: Arc<dyn CredentialFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -67,7 +67,7 @@ impl LvvcProvider {
     pub(crate) fn new(
         core_base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository>,
-        lvvc_repository: Arc<dyn LvvcRepository>,
+        lvvc_repository: Arc<dyn ValidityCredentialRepository>,
         credential_formatter: Arc<dyn CredentialFormatterProvider>,
         key_provider: Arc<dyn KeyProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -390,7 +390,7 @@ pub(crate) async fn create_lvvc_with_status(
     core_base_url: &Option<String>,
     credential_expiry: time::Duration,
     formatter: Arc<dyn CredentialFormatter>,
-    lvvc_repository: Arc<dyn LvvcRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     key_provider: Arc<dyn KeyProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     json_ld_context: JsonLdContext,
@@ -475,7 +475,9 @@ pub(crate) async fn create_lvvc_with_status(
         linked_credential_id: credential.id,
     };
 
-    lvvc_repository.insert(lvvc_credential.to_owned()).await?;
+    validity_credential_repository
+        .insert(lvvc_credential.clone().into())
+        .await?;
 
     Ok(lvvc_credential)
 }

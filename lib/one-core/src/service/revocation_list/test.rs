@@ -14,8 +14,9 @@ use crate::{
         revocation::provider::MockRevocationMethodProvider,
     },
     repository::{
-        credential_repository::MockCredentialRepository, lvvc_repository::MockLvvcRepository,
+        credential_repository::MockCredentialRepository,
         revocation_list_repository::MockRevocationListRepository,
+        validity_credential_repository::MockValidityCredentialRepository,
     },
     service::{revocation_list::RevocationListService, test_utilities::generic_config},
 };
@@ -23,7 +24,7 @@ use crate::{
 #[derive(Default)]
 struct Repositories {
     pub credential_repository: MockCredentialRepository,
-    pub lvvc_repository: MockLvvcRepository,
+    pub lvvc_repository: MockValidityCredentialRepository,
     pub revocation_list_repository: MockRevocationListRepository,
     pub crypto_provider: MockCryptoProvider,
     pub did_method_provider: MockDidMethodProvider,
