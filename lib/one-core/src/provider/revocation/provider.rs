@@ -13,8 +13,9 @@ use crate::{
         key_storage::provider::KeyProvider,
     },
     repository::{
-        credential_repository::CredentialRepository, lvvc_repository::LvvcRepository,
+        credential_repository::CredentialRepository,
         revocation_list_repository::RevocationListRepository,
+        validity_credential_repository::ValidityCredentialRepository,
     },
 };
 
@@ -72,7 +73,7 @@ pub(crate) fn from_config(
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
-    lvvc_repository: Arc<dyn LvvcRepository>,
+    lvvc_repository: Arc<dyn ValidityCredentialRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,

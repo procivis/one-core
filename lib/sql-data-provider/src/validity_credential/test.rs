@@ -1,8 +1,11 @@
 use std::time::Duration;
 
 use one_core::{
-    model::{credential::CredentialStateEnum, lvvc::Lvvc},
-    repository::lvvc_repository::LvvcRepository,
+    model::{
+        credential::CredentialStateEnum,
+        validity_credential::{Lvvc, ValidityCredential, ValidityCredentialType},
+    },
+    repository::validity_credential_repository::ValidityCredentialRepository,
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel};
 use shared_types::CredentialId;
@@ -11,7 +14,10 @@ use uuid::Uuid;
 
 use crate::{
     db_conn,
-    entity::{did::DidType, validity_credential},
+    entity::{
+        did::DidType,
+        validity_credential::{self},
+    },
     test_utilities,
     validity_credential::ValidityCredentialProvider,
 };
@@ -30,11 +36,13 @@ async fn test_insert_lvvc() {
         linked_credential_id: credential_id,
     };
 
-    provider.insert(lvvc.clone()).await.unwrap();
+    provider.insert(lvvc.clone().into()).await.unwrap();
 
     let lvvc_model = validity_credential::Entity::find_by_id(lvvc.id)
         .one(&db_conn)
         .await
+        .unwrap()
+        .map(ValidityCredential::try_from)
         .unwrap()
         .unwrap();
 
@@ -50,9 +58,11 @@ async fn test_get_latest_lvvc_by_credential_id() {
     let lvvcs = create_lvvcs_for(credential_id, &db_conn).await;
 
     let latest_lvvc = provider
-        .get_latest_by_credential_id(credential_id)
+        .get_latest_by_credential_id(credential_id, ValidityCredentialType::Lvvc)
         .await
         .unwrap()
+        .unwrap()
+        .try_into()
         .unwrap();
 
     assert_eq!(
@@ -72,7 +82,7 @@ async fn test_get_all_lvvc_by_credential_id() {
     expected_lvvcs.sort_by_key(|v| v.created_date);
 
     let mut lvvc = provider
-        .get_all_by_credential_id(credential_id)
+        .get_all_by_credential_id(credential_id, ValidityCredentialType::Lvvc)
         .await
         .unwrap()
         .into_iter()
@@ -102,7 +112,8 @@ async fn create_lvvcs_for(credential_id: CredentialId, db_conn: &DatabaseConnect
     ];
 
     for lvvc in &lvvcs {
-        validity_credential::Model::from(lvvc.clone())
+        let validity_credential: ValidityCredential = lvvc.clone().into();
+        validity_credential::Model::from(validity_credential)
             .into_active_model()
             .insert(db_conn)
             .await

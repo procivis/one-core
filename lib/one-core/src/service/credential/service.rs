@@ -22,6 +22,7 @@ use crate::model::did::{DidRelations, DidType, KeyRole, RelatedKey};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
+use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::exchange_protocol::openid4vc::dto::{OpenID4VCICredential, OpenID4VCIProof};
 use crate::provider::exchange_protocol::openid4vc::model::HolderInteractionData;
@@ -280,8 +281,8 @@ impl CredentialService {
 
         if response.schema.revocation_method == "LVVC" {
             let latest_lvvc = self
-                .lvvc_repository
-                .get_latest_by_credential_id(credential_id.to_owned())
+                .validity_credential_repository
+                .get_latest_by_credential_id(credential_id.to_owned(), ValidityCredentialType::Lvvc)
                 .await?;
 
             if let Some(latest_lvvc) = latest_lvvc {

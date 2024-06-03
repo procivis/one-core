@@ -10,7 +10,7 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::repository::lvvc_repository::LvvcRepository;
+use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
 pub mod mapper;
@@ -30,7 +30,7 @@ pub struct CredentialService {
     protocol_provider: Arc<dyn ExchangeProtocolProvider>,
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
-    lvvc_repository: Arc<dyn LvvcRepository>,
+    validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
 }
 
 impl CredentialService {
@@ -46,7 +46,7 @@ impl CredentialService {
         protocol_provider: Arc<dyn ExchangeProtocolProvider>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
-        lvvc_repository: Arc<dyn LvvcRepository>,
+        lvvc_repository: Arc<dyn ValidityCredentialRepository>,
     ) -> Self {
         Self {
             credential_repository: repository,
@@ -59,7 +59,7 @@ impl CredentialService {
             protocol_provider,
             key_provider,
             config,
-            lvvc_repository,
+            validity_credential_repository: lvvc_repository,
         }
     }
 }

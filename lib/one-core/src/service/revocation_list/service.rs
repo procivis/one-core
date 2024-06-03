@@ -6,6 +6,7 @@ use crate::{
     model::{
         credential::CredentialRelations, credential_schema::CredentialSchemaRelations,
         did::DidRelations, key::KeyRelations, revocation_list::RevocationListRelations,
+        validity_credential::ValidityCredentialType,
     },
     provider::{
         credential_formatter::error::FormatterError,
@@ -85,7 +86,7 @@ impl RevocationListService {
         // In the next step the latest LVVC credential should be obtained from the asked for credential
         let latest_lvvc = self
             .lvvc_repository
-            .get_latest_by_credential_id(id.to_owned())
+            .get_latest_by_credential_id(id.to_owned(), ValidityCredentialType::Lvvc)
             .await
             .map_err(ServiceError::from)?
             .ok_or(EntityNotFoundError::Lvvc(*id))?;

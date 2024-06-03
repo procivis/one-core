@@ -1,4 +1,6 @@
 use anyhow::Context;
+use dto_mapper::{From, Into};
+use one_core::model;
 use sea_orm::{
     prelude::{
         ActiveModelBehavior, BlobSize, DeriveEntityModel, DerivePrimaryKey, DeriveRelation,
@@ -20,12 +22,14 @@ pub struct Model {
     pub r#type: ValidityCredentialType,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
 #[sea_orm(
     rs_type = "String",
     db_type = "Enum",
     enum_name = "validity_credential_type_enum"
 )]
+#[from("model::validity_credential::ValidityCredentialType")]
+#[into("model::validity_credential::ValidityCredentialType")]
 pub enum ValidityCredentialType {
     #[sea_orm(string_value = "LVVC")]
     Lvvc,

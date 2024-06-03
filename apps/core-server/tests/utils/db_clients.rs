@@ -1,5 +1,5 @@
 use crate::utils::db_clients::json_ld_context::JsonLdContextDB;
-use crate::utils::db_clients::lvvcs::LvvcsDB;
+use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
 use one_core::repository::DataRepository;
 use sql_data_provider::{DataLayer, DbConn};
 
@@ -23,13 +23,13 @@ pub mod histories;
 pub mod interactions;
 pub mod json_ld_context;
 pub mod keys;
-pub mod lvvcs;
 pub mod organisations;
 pub mod proof_schemas;
 pub mod proofs;
 pub mod revocation_lists;
 pub mod trust_anchors;
 pub mod trust_entities;
+pub mod validity_credentials;
 
 pub struct DbClient {
     pub organisations: OrganisationsDB,
@@ -39,7 +39,7 @@ pub struct DbClient {
     pub histories: HistoriesDB,
     pub json_ld_contexts: JsonLdContextDB,
     pub keys: KeysDB,
-    pub lvvcs: LvvcsDB,
+    pub validity_credentials: ValidityCredentialsDB,
     pub revocation_lists: RevocationListsDB,
     pub proof_schemas: ProofSchemasDB,
     pub proofs: ProofsDB,
@@ -59,7 +59,9 @@ impl DbClient {
             histories: HistoriesDB::new(layer.get_history_repository()),
             json_ld_contexts: JsonLdContextDB::new(layer.get_json_ld_context_repository()),
             keys: KeysDB::new(layer.get_key_repository()),
-            lvvcs: LvvcsDB::new(layer.get_lvvc_repository()),
+            validity_credentials: ValidityCredentialsDB::new(
+                layer.get_validity_credential_repository(),
+            ),
             revocation_lists: RevocationListsDB::new(layer.get_revocation_list_repository()),
             proof_schemas: ProofSchemasDB::new(layer.get_proof_schema_repository()),
             proofs: ProofsDB::new(layer.get_proof_repository()),

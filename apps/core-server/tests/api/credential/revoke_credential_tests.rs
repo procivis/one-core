@@ -151,8 +151,8 @@ async fn test_revoke_credential_with_lvvc_success() {
     let token = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDkxMjI5MDgsImV4cCI6MTcwOTEyNjUwOCwibmJmIjoxNzA5MTIyODQ4LCJpc3MiOiJkaWQ6a2V5Ono2TWtmWGZyTm90RndpNkRLQ0JjOUd5QlNnekV4UDI2OFlVRXFQUXVCOVBHQTNoYyIsInN1YiI6ImRpZDprZXk6ejZNa2V1R3hpQ2V6ZzQ0Q0pmU2p4TG1ZOFNzZFFxZWpBOWV1SHdVTkdWYVhuQkVNIiwianRpIjoiaHR0cHM6Ly9odHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2x2dmMvNzAxY2UwNGUtZWU1OC00OTI4LWE3NjItOGIzNjA0NTcyOGE5IiwidmMiOnsiQGNvbnRleHQiOlsiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiXSwidHlwZSI6WyJWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLCJpZCI6Imh0dHBzOi8vaHR0cDovLzAuMC4wLjA6MzAwMC9zc2kvcmV2b2NhdGlvbi92MS9sdnZjLzcwMWNlMDRlLWVlNTgtNDkyOC1hNzYyLThiMzYwNDU3MjhhOSIsImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImlkIjoiaHR0cHM6Ly9odHRwOi8vMC4wLjAuMDozMDAwL3NzaS9jcmVkZW50aWFsL3YxL2JkNzU1NDMyLTNjYjctNDc4Yy05ZDdiLTQ1MDAyNTFiMzkzNSIsInN0YXR1cyI6IkFDQ0VQVEVEIn19fQ.RZ912pL5Q1P4Un1byILeKXIcgVqAoF2CHcNoF5XgM9zUPjypbf5hakZ2oVZcOXFU691hO0SMVyytMEj4ZWonAg";
     let _lvvc = context
         .db
-        .lvvcs
-        .create(None, token.into(), credential.id)
+        .validity_credentials
+        .create_lvvc(None, token.into(), credential.id)
         .await;
 
     // WHEN

@@ -8,9 +8,9 @@ use interaction::InteractionProvider;
 use migration::{Migrator, MigratorTrait};
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::json_ld_context_repository::JsonLdContextRepository;
-use one_core::repository::lvvc_repository::LvvcRepository;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
+use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use one_core::repository::{
     claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
     credential_repository::CredentialRepository,
@@ -82,7 +82,7 @@ pub struct DataLayer {
     proof_repository: Arc<dyn ProofRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
-    lvvc_repository: Arc<dyn LvvcRepository>,
+    lvvc_repository: Arc<dyn ValidityCredentialRepository>,
     backup_repository: Arc<dyn BackupRepository>,
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
@@ -230,7 +230,7 @@ impl DataRepository for DataLayer {
     fn get_revocation_list_repository(&self) -> Arc<dyn RevocationListRepository> {
         self.revocation_list_repository.clone()
     }
-    fn get_lvvc_repository(&self) -> Arc<dyn LvvcRepository> {
+    fn get_validity_credential_repository(&self) -> Arc<dyn ValidityCredentialRepository> {
         self.lvvc_repository.clone()
     }
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository> {
