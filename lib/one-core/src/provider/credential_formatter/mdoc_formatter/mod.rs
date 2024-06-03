@@ -832,26 +832,28 @@ fn map_to_ciborium_value(
         .get_fields(&data_type)
         .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
     if fields.r#type == DatatypeType::File {
-        let mut splitted_base64 = value.splitn(2, ',');
-        let raw_base64 = splitted_base64
+        let mut file_parts = value.splitn(2, ',');
+
+        let mime_type = file_parts.next().ok_or(FormatterError::Failed(
+            "Missing data type of base64".to_string(),
+        ))?;
+
+        let content = file_parts
             .next()
+            .map(str::as_bytes)
             .ok_or(FormatterError::Failed("Missing base64 data".to_string()))?;
-        let bytes = raw_base64.as_bytes();
+
         if let Some(params) = &fields.params {
             if let Some(public) = &params.public {
-                if let Some(encode) = public.get("encodeAsMdlPortrait") {
-                    if encode.as_bool().unwrap_or(false) {
-                        return Ok(ciborium::Value::from(bytes));
-                    }
+                if public["encodeAsMdlPortrait"].as_bool().unwrap_or(false) {
+                    return Ok(ciborium::Value::from(content));
                 }
             }
         }
-        let type_base64 = splitted_base64.next().ok_or(FormatterError::Failed(
-            "Missing data type of base64".to_string(),
-        ))?;
+
         return Ok(ciborium::Value::Array(vec![
-            ciborium::Value::from(type_base64),
-            ciborium::Value::from(bytes),
+            ciborium::Value::from(mime_type),
+            ciborium::Value::from(content),
         ]));
     }
     Ok(ciborium::Value::from(value))
