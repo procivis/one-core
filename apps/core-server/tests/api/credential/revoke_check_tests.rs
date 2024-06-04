@@ -297,11 +297,12 @@ async fn test_revoke_check_success_lvvc() {
     assert!(resp[0]["reason"].is_null());
 }
 
+static CREDENTIAL_CONTENT_OUTDATED: &str = "ompuYW1lU3BhY2VzoWRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YILRDxI9MRD1_2dvxXCU632DA3ncWDvcQSlxWUAyV86dxcWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdGppc3N1ZXJBdXRohEOhASehGCFZA2UwggNhMIIDB6ADAgECAhQ5-tBbtXe3UN_nAXngcyNriNdKKjAKBggqhkjOPQQDAjBiMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMREwDwYDVQQKDAhQcm9jaXZpczERMA8GA1UECwwIUHJvY2l2aXMxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20wHhcNMjQwNTE0MDcyNzAwWhcNMjQwODEyMDAwMDAwWjBKMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMRQwEgYDVQQKDAtQcm9jaXZpcyBBRzEUMBIGA1UEAwwLcHJvY2l2aXMuY2gwKjAFBgMrZXADIQDcs4rEHmKT1aKSBCao0W2a680LQUwUVVevoBNWgv6RPqOCAeAwggHcMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAWBgNVHREEDzANggtwcm9jaXZpcy5jaDAdBgNVHQ4EFgQUrPuMkGVyPhaWk6AzOMrCKUNn-iAwCgYIKoZIzj0EAwIDSAAwRQIgOPbDm85Bpw0B8h0eZ-qWyfScGkGVsF0LvzhVPSWoDUUCIQC0IYp_093p07LPqR7fR8Vv5h8po6ZsOeBnd2VkiHh2-FkBT9gYWQFKpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOhZHJvb3ShAFggVfmUvisRWHv6FqlLnkNIuNBqB5L3LuBp9CwjkW4D6R9tZGV2aWNlS2V5SW5mb6FpZGV2aWNlS2V5owEBIAYhWCA1Kez7uQnJEmT8FJmDjtpJbe1EI88UDydsvJkucktW4Gdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMDYtMDRUMDY6NDc6MjBaaXZhbGlkRnJvbcB0MjAyNC0wNi0wNFQwNjo0NzoyMFpqdmFsaWRVbnRpbMB0MjAyNC0wNi0wNFQwNjo0Nzo1MFpuZXhwZWN0ZWRVcGRhdGXAdDIwMjQtMDYtMDRUMDY6NDc6NDBaWECqz879-uP6BF3OlGrJ0kv48Oux-V_jgx-7oTSDbNSGRcaTXlFzilqxF92e9vvTyVx-ay46z9_LU2Hjcmhk7REC";
+static CREDENTIAL_CONTENT_VALID: &str = "ompuYW1lU3BhY2VzoWRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIJUToekj2hzGwDn2XaufO2ElxqPd-E0jJEP2Z8kg1XGscWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdGppc3N1ZXJBdXRohEOhASehGCFZA2UwggNhMIIDB6ADAgECAhQ5-tBbtXe3UN_nAXngcyNriNdKKjAKBggqhkjOPQQDAjBiMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMREwDwYDVQQKDAhQcm9jaXZpczERMA8GA1UECwwIUHJvY2l2aXMxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20wHhcNMjQwNTE0MDcyNzAwWhcNMjQwODEyMDAwMDAwWjBKMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMRQwEgYDVQQKDAtQcm9jaXZpcyBBRzEUMBIGA1UEAwwLcHJvY2l2aXMuY2gwKjAFBgMrZXADIQDcs4rEHmKT1aKSBCao0W2a680LQUwUVVevoBNWgv6RPqOCAeAwggHcMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAWBgNVHREEDzANggtwcm9jaXZpcy5jaDAdBgNVHQ4EFgQUrPuMkGVyPhaWk6AzOMrCKUNn-iAwCgYIKoZIzj0EAwIDSAAwRQIgOPbDm85Bpw0B8h0eZ-qWyfScGkGVsF0LvzhVPSWoDUUCIQC0IYp_093p07LPqR7fR8Vv5h8po6ZsOeBnd2VkiHh2-FkBT9gYWQFKpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOhZHJvb3ShAFggYGdZDIVhTtWtniCgGGSlIDYkXv6RXvQ6XM1-hxjCUuVtZGV2aWNlS2V5SW5mb6FpZGV2aWNlS2V5owEBIAYhWCA1Kez7uQnJEmT8FJmDjtpJbe1EI88UDydsvJkucktW4Gdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMDUtMzBUMTE6MDc6MTNaaXZhbGlkRnJvbcB0MjAyNC0wNS0zMFQxMTowNzoxM1pqdmFsaWRVbnRpbMB0MjQyNC0wMi0yM1QxMTowNzoxM1puZXhwZWN0ZWRVcGRhdGXAdDI0MjQtMDItMjNUMTE6MDc6MTNaWEACbTPgPnsWMlj3aUA7bqzpymbHbciXGBQu26JND2aiDKRAuzmJNlyb2nZp8NN0Rf-pI1enHPh-WMXuaT1MYpMG";
+
 #[tokio::test]
-async fn test_revoke_check_mdoc_outdated() {
+async fn test_revoke_check_mdoc_update() {
     // GIVEN
-    let credential_content_outdated = "ompuYW1lU3BhY2VzoWRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIMh-pNJtx_vMw1TsarmBLlScca7_2ORg1U5hLER3OkeKcWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdGppc3N1ZXJBdXRohEOhASehGCFZA2UwggNhMIIDB6ADAgECAhQ5-tBbtXe3UN_nAXngcyNriNdKKjAKBggqhkjOPQQDAjBiMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMREwDwYDVQQKDAhQcm9jaXZpczERMA8GA1UECwwIUHJvY2l2aXMxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20wHhcNMjQwNTE0MDcyNzAwWhcNMjQwODEyMDAwMDAwWjBKMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMRQwEgYDVQQKDAtQcm9jaXZpcyBBRzEUMBIGA1UEAwwLcHJvY2l2aXMuY2gwKjAFBgMrZXADIQDcs4rEHmKT1aKSBCao0W2a680LQUwUVVevoBNWgv6RPqOCAeAwggHcMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAWBgNVHREEDzANggtwcm9jaXZpcy5jaDAdBgNVHQ4EFgQUrPuMkGVyPhaWk6AzOMrCKUNn-iAwCgYIKoZIzj0EAwIDSAAwRQIgOPbDm85Bpw0B8h0eZ-qWyfScGkGVsF0LvzhVPSWoDUUCIQC0IYp_093p07LPqR7fR8Vv5h8po6ZsOeBnd2VkiHh2-FkBT9gYWQFKpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOhZHJvb3ShAFggPhWj3Nt6TvNUMYm4YXq-gAyo0MDUPcIOEJdkVDdqdBhtZGV2aWNlS2V5SW5mb6FpZGV2aWNlS2V5owEBIAYhWCA1Kez7uQnJEmT8FJmDjtpJbe1EI88UDydsvJkucktW4Gdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMDUtMzBUMDk6Mzc6MDBaaXZhbGlkRnJvbcB0MjAyNC0wNS0zMFQwOTozNzowMFpqdmFsaWRVbnRpbMB0MjAyNC0wNS0zMFQwOTozNzowMVpuZXhwZWN0ZWRVcGRhdGXAdDIwMjQtMDUtMzBUMDk6Mzc6MDFaWEAd9oVPSn2cM6-DjwPk_447EOuzKYN9ZDzc5Yk-zebrBe4WlTDLiePuZbzA95uWdOU1oy6Cz-uwtXicwXx6OxsB";
-    let credential_content_valid = "ompuYW1lU3BhY2VzoWRyb290gdgYWFykaGRpZ2VzdElEAGZyYW5kb21YIJUToekj2hzGwDn2XaufO2ElxqPd-E0jJEP2Z8kg1XGscWVsZW1lbnRJZGVudGlmaWVyY0tleWxlbGVtZW50VmFsdWVkdGVzdGppc3N1ZXJBdXRohEOhASehGCFZA2UwggNhMIIDB6ADAgECAhQ5-tBbtXe3UN_nAXngcyNriNdKKjAKBggqhkjOPQQDAjBiMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMREwDwYDVQQKDAhQcm9jaXZpczERMA8GA1UECwwIUHJvY2l2aXMxHDAaBgNVBAMME2NhLmRldi5tZGwtcGx1cy5jb20wHhcNMjQwNTE0MDcyNzAwWhcNMjQwODEyMDAwMDAwWjBKMQswCQYDVQQGEwJDSDEPMA0GA1UEBwwGWnVyaWNoMRQwEgYDVQQKDAtQcm9jaXZpcyBBRzEUMBIGA1UEAwwLcHJvY2l2aXMuY2gwKjAFBgMrZXADIQDcs4rEHmKT1aKSBCao0W2a680LQUwUVVevoBNWgv6RPqOCAeAwggHcMA4GA1UdDwEB_wQEAwIHgDAVBgNVHSUBAf8ECzAJBgcogYxdBQECMAwGA1UdEwEB_wQCMAAwHwYDVR0jBBgwFoAU7RqwneJgRVAAO9paNDIamL4tt8UwWgYDVR0fBFMwUTBPoE2gS4ZJaHR0cHM6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LzCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAKGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2lzc3Vlci80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4LmRlcjBaBggrBgEFBQcwAYZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vb2NzcC80MENEMjI1NDdGMzgzNEM1MjZDNUMyMkUxQTI2QzdFMjAzMzI0NjY4L2NlcnQvMCYGA1UdEgQfMB2GG2h0dHBzOi8vY2EuZGV2Lm1kbC1wbHVzLmNvbTAWBgNVHREEDzANggtwcm9jaXZpcy5jaDAdBgNVHQ4EFgQUrPuMkGVyPhaWk6AzOMrCKUNn-iAwCgYIKoZIzj0EAwIDSAAwRQIgOPbDm85Bpw0B8h0eZ-qWyfScGkGVsF0LvzhVPSWoDUUCIQC0IYp_093p07LPqR7fR8Vv5h8po6ZsOeBnd2VkiHh2-FkBT9gYWQFKpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOhZHJvb3ShAFggYGdZDIVhTtWtniCgGGSlIDYkXv6RXvQ6XM1-hxjCUuVtZGV2aWNlS2V5SW5mb6FpZGV2aWNlS2V5owEBIAYhWCA1Kez7uQnJEmT8FJmDjtpJbe1EI88UDydsvJkucktW4Gdkb2NUeXBlc29yZy5pc28uMjMyMjAuMS5tSURsdmFsaWRpdHlJbmZvpGZzaWduZWTAdDIwMjQtMDUtMzBUMTE6MDc6MTNaaXZhbGlkRnJvbcB0MjAyNC0wNS0zMFQxMTowNzoxM1pqdmFsaWRVbnRpbMB0MjQyNC0wMi0yM1QxMTowNzoxM1puZXhwZWN0ZWRVcGRhdGXAdDI0MjQtMDItMjNUMTE6MDc6MTNaWEACbTPgPnsWMlj3aUA7bqzpymbHbciXGBQu26JND2aiDKRAuzmJNlyb2nZp8NN0Rf-pI1enHPh-WMXuaT1MYpMG";
     let (context, organisation) = TestContext::new_with_organisation().await;
 
     let local_key = context
@@ -341,6 +342,120 @@ async fn test_revoke_check_mdoc_outdated() {
         .await;
 
     let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    // Token is up to date
+    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() + time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let issuer_url = format!(
+        "{}/ssi/oidc-issuer/v1/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "access_token": "123",
+        "access_token_expires_at": a_couple_of_seconds_ago,
+        "refresh_token": "123",
+        "refresh_token_expires_at": a_couple_of_seconds_ago,
+    }))
+    .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(None, &context.server_mock.uri(), &interaction_data)
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "PROCIVIS_TEMPORARY",
+            TestingCredentialParams {
+                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                interaction: Some(interaction),
+                key: Some(local_key),
+                holder_did: Some(issuer_did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint(&credential_schema.id, "123", CREDENTIAL_CONTENT_VALID)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("ACCEPTED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+
+    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    assert_eq!(
+        updated_credentials.credential,
+        CREDENTIAL_CONTENT_VALID.as_bytes()
+    );
+}
+
+#[tokio::test]
+async fn test_revoke_check_token_update() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let local_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    // Token is up outdated
     let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
         .format(&format)
         .unwrap();
@@ -374,7 +489,7 @@ async fn test_revoke_check_mdoc_outdated() {
             &issuer_did,
             "PROCIVIS_TEMPORARY",
             TestingCredentialParams {
-                credential: Some(credential_content_outdated),
+                credential: Some(CREDENTIAL_CONTENT_VALID),
                 interaction: Some(interaction),
                 key: Some(local_key),
                 holder_did: Some(issuer_did.clone()),
@@ -388,9 +503,224 @@ async fn test_revoke_check_mdoc_outdated() {
         .refresh_token(&credential_schema.id)
         .await;
 
-    context
-        .server_mock
-        .ssi_credential_endpoint(&credential_schema.id, "123", credential_content_valid)
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("ACCEPTED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+
+    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    let interaction = updated_credentials.interaction.unwrap();
+
+    // Interaction data updated.
+    assert_ne!(interaction.data, Some(interaction_data));
+}
+
+#[tokio::test]
+async fn test_revoke_check_mdoc_revoked() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let local_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    // Token is up outdated
+    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let issuer_url = format!(
+        "{}/ssi/oidc-issuer/v1/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "access_token": "invalid",
+        "access_token_expires_at": a_couple_of_seconds_ago,
+        "refresh_token": "invalid",
+        "refresh_token_expires_at": a_couple_of_seconds_ago,
+    }))
+    .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(None, &context.server_mock.uri(), &interaction_data)
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "PROCIVIS_TEMPORARY",
+            TestingCredentialParams {
+                credential: Some(CREDENTIAL_CONTENT_OUTDATED),
+                interaction: Some(interaction),
+                key: Some(local_key),
+                holder_did: Some(issuer_did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .revocation_check(credential.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    resp[0]["credentialId"].assert_eq(&credential.id);
+    assert_eq!("REVOKED", resp[0]["status"]);
+    assert_eq!(true, resp[0]["success"]);
+    assert!(resp[0]["reason"].is_null());
+
+    let updated_credentials = context.db.credentials.get(&credential.id).await;
+    assert_eq!(
+        updated_credentials.credential,
+        CREDENTIAL_CONTENT_OUTDATED.as_bytes()
+    );
+    assert_eq!(
+        updated_credentials.state.unwrap()[0].state,
+        CredentialStateEnum::Revoked,
+    );
+}
+
+#[tokio::test]
+async fn test_revoke_check_mdoc_fali_to_update_token_valid_mso() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation().await;
+
+    let local_key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            &organisation,
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let format = format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    // Token is up outdated
+    let a_couple_of_seconds_ago = (OffsetDateTime::now_utc() - time::Duration::seconds(20))
+        .format(&format)
+        .unwrap();
+    let issuer_url = format!(
+        "{}/ssi/oidc-issuer/v1/{}",
+        context.server_mock.uri(),
+        credential_schema.id,
+    );
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": issuer_url,
+        "credential_endpoint": format!("{}/credential", issuer_url),
+        "access_token": "invalid",
+        "access_token_expires_at": a_couple_of_seconds_ago,
+        "refresh_token": "invalid",
+        "refresh_token_expires_at": a_couple_of_seconds_ago,
+    }))
+    .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(None, &context.server_mock.uri(), &interaction_data)
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_did,
+            "PROCIVIS_TEMPORARY",
+            TestingCredentialParams {
+                credential: Some(CREDENTIAL_CONTENT_VALID),
+                interaction: Some(interaction),
+                key: Some(local_key),
+                holder_did: Some(issuer_did.clone()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN
@@ -411,11 +741,7 @@ async fn test_revoke_check_mdoc_outdated() {
 
     let updated_credentials = context.db.credentials.get(&credential.id).await;
     assert_eq!(
-        updated_credentials.credential,
-        credential_content_valid.as_bytes()
+        updated_credentials.state.unwrap()[0].state,
+        CredentialStateEnum::Accepted,
     );
-    let interaction = updated_credentials.interaction.unwrap();
-
-    // Interaction data updated.
-    assert_ne!(interaction.data, Some(interaction_data));
 }

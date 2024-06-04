@@ -629,7 +629,7 @@ impl CredentialService {
         // Workaround credential format detection
         let format = detect_correct_format(&credential_schema, &credential_str)?;
 
-        let current_state = credential
+        let mut current_state = credential
             .state
             .as_ref()
             .ok_or(ServiceError::MappingError("state is None".to_string()))?
@@ -649,31 +649,62 @@ impl CredentialService {
             .extract_credentials_unverified(&credential_str)
             .await?;
 
-        if format == "MDOC" && !is_mso_up_to_date(&detail_credential) {
+        if format == "MDOC" {
             let interaction_data: HolderInteractionData =
                 deserialize_interaction_data(credential.interaction.as_ref())?;
 
-            update_mso_interaction_access_token(
+            let result = update_mso_interaction_access_token(
                 &mut credential,
                 &self.interaction_repository,
                 interaction_data.clone(),
             )
-            .await?;
+            .await;
 
-            obtain_and_update_new_mso(
-                &mut credential,
-                &self.credential_repository,
-                &self.key_provider,
-                interaction_data,
-            )
-            .await?;
+            if result.is_ok() && mso_requires_update(&detail_credential) {
+                let result = obtain_and_update_new_mso(
+                    &mut credential,
+                    &self.credential_repository,
+                    &self.key_provider,
+                    interaction_data,
+                )
+                .await;
 
-            let credential_str = String::from_utf8(credential.credential.clone())
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                // If we have managed to refresh mso
+                if result.is_ok() {
+                    let credential_str = String::from_utf8(credential.credential.clone())
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-            detail_credential = formatter
-                .extract_credentials_unverified(&credential_str)
-                .await?;
+                    detail_credential = formatter
+                        .extract_credentials_unverified(&credential_str)
+                        .await?;
+                }
+            }
+
+            // If update could not be fetched and mso is outdated
+            // mark as revoked
+            if !is_mso_up_to_date(&detail_credential) {
+                let update_request = UpdateCredentialRequest {
+                    id: credential.id,
+                    credential: None,
+                    holder_did_id: None,
+                    issuer_did_id: None,
+                    state: Some(CredentialState {
+                        created_date: OffsetDateTime::now_utc(),
+                        state: CredentialStateEnum::Revoked,
+                        suspend_end_date: None,
+                    }),
+                    interaction: None,
+                    key: None,
+                    redirect_uri: None,
+                };
+
+                let _ = &self
+                    .credential_repository
+                    .update_credential(update_request)
+                    .await?;
+
+                current_state = CredentialStateEnum::Revoked;
+            }
         }
 
         let credential_status = match current_state {
@@ -956,12 +987,18 @@ async fn update_mso_interaction_access_token(
 fn is_mso_up_to_date(detail_credential: &DetailCredential) -> bool {
     let now = OffsetDateTime::now_utc();
 
-    if let Some(update_at) = detail_credential.update_at {
-        return update_at > now;
-    }
-
     if let Some(expires_at) = detail_credential.expires_at {
         return expires_at > now;
+    }
+
+    false
+}
+
+fn mso_requires_update(detail_credential: &DetailCredential) -> bool {
+    let now = OffsetDateTime::now_utc();
+
+    if let Some(update_at) = detail_credential.update_at {
+        return update_at < now;
     }
 
     false
