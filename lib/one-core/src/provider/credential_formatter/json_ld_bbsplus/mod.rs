@@ -18,7 +18,7 @@ use super::json_ld::model::LdCredential;
 use super::model::{CredentialPresentation, Presentation};
 use super::{
     AuthenticationFn, CredentialData, CredentialFormatter, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, VerificationFn,
+    FormatPresentationCtx, FormatterCapabilities, SelectiveDisclosureOption, VerificationFn,
 };
 
 mod base_proof;
@@ -124,6 +124,7 @@ impl CredentialFormatter for JsonLdBbsplus {
         FormatterCapabilities {
             signing_key_algorithms: vec!["BBS_PLUS".to_owned()],
             features: vec!["SELECTIVE_DISCLOSURE".to_owned()],
+            selective_disclosure: vec![SelectiveDisclosureOption::AnyLevel],
             issuance_did_methods: vec![
                 "KEY".to_string(),
                 "WEB".to_string(),

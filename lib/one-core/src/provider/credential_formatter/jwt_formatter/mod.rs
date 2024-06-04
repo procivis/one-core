@@ -166,6 +166,7 @@ impl CredentialFormatter for JWTFormatter {
                 "DILITHIUM".to_owned(),
             ],
             features: vec![],
+            selective_disclosure: vec![],
             issuance_did_methods: vec![
                 "KEY".to_string(),
                 "WEB".to_string(),

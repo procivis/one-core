@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -18,6 +19,7 @@ pub struct ProofSchemaService {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     history_repository: Arc<dyn HistoryRepository>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
 }
@@ -28,6 +30,7 @@ impl ProofSchemaService {
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         history_repository: Arc<dyn HistoryRepository>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
     ) -> Self {
@@ -36,6 +39,7 @@ impl ProofSchemaService {
             organisation_repository,
             history_repository,
             credential_schema_repository,
+            formatter_provider,
             config,
             base_url,
         }

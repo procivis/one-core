@@ -304,6 +304,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
     FormatterCapabilities {
         signing_key_algorithms: vec!["EDDSA".to_string()],
         features: vec![],
+        selective_disclosure: vec![],
         issuance_did_methods: vec![
             "KEY".to_string(),
             "WEB".to_string(),

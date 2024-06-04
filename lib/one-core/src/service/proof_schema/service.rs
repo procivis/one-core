@@ -146,6 +146,7 @@ impl ProofSchemaService {
         let claim_schemas = extract_claims_from_credential_schema(
             &request.proof_input_schemas,
             &credential_schemas,
+            &self.formatter_provider,
         )?;
 
         let now = OffsetDateTime::now_utc();

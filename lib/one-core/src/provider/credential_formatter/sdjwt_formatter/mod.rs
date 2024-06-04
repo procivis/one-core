@@ -34,7 +34,7 @@ use super::model::{CredentialPresentation, CredentialSubject};
 use super::{
     AuthenticationFn, CredentialData, CredentialFormatter, DetailCredential,
     ExtractPresentationCtx, FormatPresentationCtx, FormatterCapabilities, FormatterError,
-    Presentation, VerificationFn,
+    Presentation, SelectiveDisclosureOption, VerificationFn,
 };
 
 pub struct SDJWTFormatter {
@@ -166,6 +166,7 @@ impl CredentialFormatter for SDJWTFormatter {
                 "DILITHIUM".to_owned(),
             ],
             features: vec!["SELECTIVE_DISCLOSURE".to_string()],
+            selective_disclosure: vec![SelectiveDisclosureOption::AnyLevel],
             issuance_did_methods: vec![
                 "KEY".to_string(),
                 "WEB".to_string(),
