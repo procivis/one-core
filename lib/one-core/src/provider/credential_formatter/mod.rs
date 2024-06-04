@@ -84,12 +84,20 @@ impl From<CredentialSchemaData> for Option<CredentialSchema> {
 #[serde(rename_all = "camelCase")]
 pub struct FormatterCapabilities {
     pub features: Vec<String>,
+    pub selective_disclosure: Vec<SelectiveDisclosureOption>,
     pub issuance_did_methods: Vec<String>,
     pub issuance_exchange_protocols: Vec<String>,
     pub proof_exchange_protocols: Vec<String>,
     pub revocation_methods: Vec<String>,
     pub signing_key_algorithms: Vec<String>,
     pub verification_key_algorithms: Vec<String>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SelectiveDisclosureOption {
+    AnyLevel,
+    SecondLevel,
 }
 
 #[derive(Debug, Serialize, Deserialize, Display)]

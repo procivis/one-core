@@ -1,7 +1,9 @@
 use super::dto::{CreateProofSchemaRequestDTO, ProofInputSchemaRequestDTO};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
-use crate::service::error::{BusinessLogicError, ValidationError};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::{CredentialFormatter, SelectiveDisclosureOption};
+use crate::service::error::{BusinessLogicError, MissingProviderError, ValidationError};
 use crate::service::proof_schema::mapper::create_unique_name_check_request;
 use crate::{
     repository::proof_schema_repository::ProofSchemaRepository, service::error::ServiceError,
@@ -59,20 +61,27 @@ pub fn validate_create_request(
 pub fn extract_claims_from_credential_schema(
     proof_input: &[ProofInputSchemaRequestDTO],
     schemas: &[CredentialSchema],
+    formatter_provider: &Arc<dyn CredentialFormatterProvider>,
 ) -> Result<Vec<ClaimSchema>, ServiceError> {
     proof_input
         .iter()
         .map(|proof_input| {
-            let schema = schemas
+            let credential_schema = schemas
                 .iter()
                 .find(|schema| schema.id == proof_input.credential_schema_id)
                 .ok_or_else(|| ServiceError::MappingError("Missing credential schema".into()))?;
 
-            let claims = schema.claim_schemas.as_ref().ok_or_else(|| {
+            let formatter = formatter_provider
+                .get_formatter(&credential_schema.format.to_string())
+                .ok_or(MissingProviderError::Formatter(
+                    credential_schema.format.to_string(),
+                ))?;
+
+            let claims = credential_schema.claim_schemas.as_ref().ok_or_else(|| {
                 ServiceError::MappingError("Missing credential schema claims".into())
             })?;
 
-            Ok::<_, ServiceError>(proof_input.claim_schemas.iter().map(|proof_claim| {
+            Ok::<_, ServiceError>(proof_input.claim_schemas.iter().map(move |proof_claim| {
                 claims
                     .iter()
                     .find(|schema_claim| schema_claim.schema.id == proof_claim.id)
@@ -82,9 +91,43 @@ pub fn extract_claims_from_credential_schema(
                             claim_schema_id: proof_claim.id,
                         })
                     })
+                    .and_then(|claim_schema| {
+                        validate_proof_schema_nesting(&claim_schema, &formatter)?;
+                        Ok(claim_schema)
+                    })
             }))
         })
         .flatten_ok()
         .map(|r| r.and_then(std::convert::identity))
         .collect()
+}
+
+pub(super) fn validate_proof_schema_nesting(
+    claim_schema: &ClaimSchema,
+    formatter: &Arc<dyn CredentialFormatter>,
+) -> Result<(), ServiceError> {
+    let capabilities = formatter.get_capabilities();
+
+    // Check disclosure level
+    let valid_disclosure_level = match (
+        capabilities
+            .features
+            .contains(&"SELECTIVE_DISCLOSURE".to_string()),
+        capabilities.selective_disclosure.first(),
+    ) {
+        (true, None) => false,     // Incompatible capabilities
+        (false, Some(_)) => false, // Incompatible capabilities
+        (true, Some(SelectiveDisclosureOption::AnyLevel)) => true,
+        (true, Some(SelectiveDisclosureOption::SecondLevel)) => {
+            claim_schema.key.chars().filter(|&c| c == '/').count() <= 1
+        }
+        (false, None) => !claim_schema.key.contains('/'),
+    };
+
+    if !valid_disclosure_level {
+        return Err(ServiceError::BusinessLogic(
+            BusinessLogicError::IncorrectDisclosureLevel,
+        ));
+    }
+    Ok(())
 }

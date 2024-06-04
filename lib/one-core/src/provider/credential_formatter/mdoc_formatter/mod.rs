@@ -45,7 +45,8 @@ use super::common::nest_claims;
 use super::model::{CredentialPresentation, CredentialSchema, CredentialSubject, Presentation};
 use super::{
     AuthenticationFn, CredentialData, CredentialFormatter, ExtractPresentationCtx,
-    FormatPresentationCtx, FormatterCapabilities, SignatureProvider, TokenVerifier, VerificationFn,
+    FormatPresentationCtx, FormatterCapabilities, SelectiveDisclosureOption, SignatureProvider,
+    TokenVerifier, VerificationFn,
 };
 
 mod cose;
@@ -398,6 +399,7 @@ impl CredentialFormatter for MdocFormatter {
     fn get_capabilities(&self) -> FormatterCapabilities {
         FormatterCapabilities {
             features: vec!["SELECTIVE_DISCLOSURE".to_string()],
+            selective_disclosure: vec![SelectiveDisclosureOption::SecondLevel],
             issuance_did_methods: vec!["MDL".to_string()],
             issuance_exchange_protocols: vec!["OPENID4VC".to_string()],
             proof_exchange_protocols: vec!["OPENID4VC".to_string()],

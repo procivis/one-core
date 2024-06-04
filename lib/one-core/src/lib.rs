@@ -333,6 +333,7 @@ impl OneCore {
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),
+                formatter_provider.clone(),
                 config.clone(),
                 core_base_url.clone(),
             ),

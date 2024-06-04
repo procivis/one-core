@@ -565,13 +565,8 @@ async fn test_create_proof_without_related_key() {
         .expect_get_capabilities()
         .once()
         .return_once(|| FormatterCapabilities {
-            features: vec![],
-            issuance_did_methods: vec![],
-            issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![exchange_copy],
-            revocation_methods: vec![],
-            signing_key_algorithms: vec![],
-            verification_key_algorithms: vec![],
+            ..Default::default()
         });
     credential_formatter_provider
         .expect_get_formatter()
@@ -670,13 +665,8 @@ async fn test_create_proof_with_related_key() {
         .expect_get_capabilities()
         .once()
         .return_once(move || FormatterCapabilities {
-            features: vec![],
-            issuance_did_methods: vec![],
-            issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![exchange_copy],
-            revocation_methods: vec![],
-            signing_key_algorithms: vec![],
-            verification_key_algorithms: vec![],
+            ..Default::default()
         });
     credential_formatter_provider
         .expect_get_formatter()
@@ -760,13 +750,8 @@ async fn test_create_proof_failed_no_key_with_assertion_method_role() {
         .expect_get_capabilities()
         .once()
         .return_once(|| FormatterCapabilities {
-            features: vec![],
-            issuance_did_methods: vec![],
-            issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![exchange],
-            revocation_methods: vec![],
-            signing_key_algorithms: vec![],
-            verification_key_algorithms: vec![],
+            ..Default::default()
         });
     credential_formatter_provider
         .expect_get_formatter()
@@ -822,15 +807,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
     formatter
         .expect_get_capabilities()
         .once()
-        .return_once(|| FormatterCapabilities {
-            features: vec![],
-            issuance_did_methods: vec![],
-            issuance_exchange_protocols: vec![],
-            proof_exchange_protocols: vec![],
-            revocation_methods: vec![],
-            signing_key_algorithms: vec![],
-            verification_key_algorithms: vec![],
-        });
+        .return_once(FormatterCapabilities::default);
     credential_formatter_provider
         .expect_get_formatter()
         .once()
@@ -906,13 +883,8 @@ async fn test_create_proof_did_deactivated_error() {
         .expect_get_capabilities()
         .once()
         .return_once(|| FormatterCapabilities {
-            features: vec![],
-            issuance_did_methods: vec![],
-            issuance_exchange_protocols: vec![],
             proof_exchange_protocols: vec![exchange],
-            revocation_methods: vec![],
-            signing_key_algorithms: vec![],
-            verification_key_algorithms: vec![],
+            ..Default::default()
         });
     credential_formatter_provider
         .expect_get_formatter()

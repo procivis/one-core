@@ -1,6 +1,9 @@
 use crate::utils::{
     context::TestContext,
-    db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+    db_clients::{
+        credential_schemas::TestingCreateSchemaParams,
+        proof_schemas::{CreateProofClaim, CreateProofInputSchema},
+    },
     field_match::FieldHelpers,
 };
 
@@ -59,11 +62,13 @@ async fn test_create_nested_proof_schema_success() {
         .create_with_nested_claims("test", &organisation, "NONE", Default::default())
         .await;
 
+    //Get only root element
     let claims = credential_schema
         .claim_schemas
         .as_ref()
         .unwrap()
         .iter()
+        .take(1)
         .map(|v| (v.schema.id, v.required));
 
     // WHEN
@@ -89,7 +94,7 @@ async fn test_create_nested_proof_schema_success() {
     let input_schemas = proof_schema.input_schemas.unwrap();
     assert_eq!(input_schemas.len(), 1);
     assert_eq!(input_schemas[0].validity_constraint, Some(10));
-    assert_eq!(input_schemas[0].claim_schemas.as_ref().unwrap().len(), 5);
+    assert_eq!(input_schemas[0].claim_schemas.as_ref().unwrap().len(), 1);
 }
 
 #[tokio::test]
@@ -100,7 +105,15 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test", &organisation, "NONE", Default::default())
+        .create_with_nested_claims(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("SDJWT".to_owned()),
+                ..Default::default()
+            },
+        )
         .await;
 
     let claims = credential_schema

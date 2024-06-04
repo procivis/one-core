@@ -255,6 +255,9 @@ pub enum BusinessLogicError {
     #[error("Unsupported key type for CSR")]
     UnsupportedKeyTypeForCSR,
 
+    #[error("Incorrect nested disclosure level")]
+    IncorrectDisclosureLevel,
+
     #[error("Trust anchor name already in use")]
     TrustAnchorNameTaken,
 
@@ -413,7 +416,7 @@ impl MissingProviderError {
     }
 }
 
-#[derive(Debug, Clone, Copy, Display)]
+#[derive(Debug, Clone, Copy, Display, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
 pub enum ErrorCode {
     #[strum(to_string = "Unmapped error code")]
@@ -734,6 +737,9 @@ pub enum ErrorCode {
     #[strum(to_string = "Unsupported key type for CSR")]
     BR_0128,
 
+    #[strum(to_string = "Incorrect disclosure level")]
+    BR_0130,
+
     #[strum(to_string = "Trust management provider not found")]
     BR_0132,
 
@@ -863,6 +869,7 @@ impl BusinessLogicError {
             }
             BusinessLogicError::ClaimSchemaKeyTooLong => ErrorCode::BR_0126,
             BusinessLogicError::UnsupportedKeyTypeForCSR => ErrorCode::BR_0128,
+            BusinessLogicError::IncorrectDisclosureLevel => ErrorCode::BR_0130,
             BusinessLogicError::TrustAnchorNameTaken => ErrorCode::BR_0113,
             BusinessLogicError::UnknownTrustAnchorType => ErrorCode::BR_0114,
             BusinessLogicError::TrustAnchorMustBePublish => ErrorCode::BR_0123,
