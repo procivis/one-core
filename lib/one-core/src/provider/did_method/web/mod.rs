@@ -10,9 +10,11 @@ use shared_types::{DidId, DidValue};
 use url::Url;
 
 #[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Params {
     #[serde(default)]
     keys: Keys,
+    resolve_to_insecure_http: Option<bool>,
 }
 
 pub struct WebDidMethod {
@@ -79,7 +81,7 @@ impl super::DidMethod for WebDidMethod {
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {
-        let url = did_value_to_url(did_value)?;
+        let url = did_value_to_url(did_value, self.params.resolve_to_insecure_http)?;
 
         Ok(fetch_did_web_document(url, &self.client).await?)
     }
@@ -142,7 +144,10 @@ async fn fetch_did_web_document(
         .map_err(|e| DidMethodError::ResolutionError(format!("Could not fetch did document: {e}")))
 }
 
-fn did_value_to_url(did_value: &DidValue) -> Result<Url, DidMethodError> {
+fn did_value_to_url(
+    did_value: &DidValue,
+    resolve_to_http: Option<bool>,
+) -> Result<Url, DidMethodError> {
     let core_value =
         did_value
             .as_str()
@@ -156,11 +161,16 @@ fn did_value_to_url(did_value: &DidValue) -> Result<Url, DidMethodError> {
         "Missing host part in a did value".to_string(),
     ))?;
 
+    let scheme = match resolve_to_http {
+        Some(true) => "http",
+        _ => "https",
+    };
+
     // That's the only percent encoded character we expect here
-    let host = format!("https://{}", host.replace("%3A", ":"));
+    let host = format!("{scheme}://{}", host.replace("%3A", ":"));
 
     let mut url = Url::parse(&host).map_err(|e| DidMethodError::ResolutionError(e.to_string()))?;
-    url.set_scheme("https")
+    url.set_scheme(scheme)
         .map_err(|_| DidMethodError::ResolutionError("Could not set url scheme".to_string()))?;
 
     let remaining_parts: Vec<&str> = path_parts.collect();
