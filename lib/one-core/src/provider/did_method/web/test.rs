@@ -154,7 +154,43 @@ async fn test_did_web_value_extract() {
         println!("Checking: {} -> {}", case.0, case.1);
         assert_eq!(
             case.1,
-            did_value_to_url(&DidValue::from_str(case.0).unwrap())
+            did_value_to_url(&DidValue::from_str(case.0).unwrap(), Some(false))
+                .unwrap()
+                .to_string()
+        )
+    }
+}
+
+#[tokio::test]
+async fn test_did_web_value_extract_debug_http() {
+    let test_cases = vec![
+        (
+            "did:web:w3c-ccg.github.io",
+            "http://w3c-ccg.github.io/.well-known/did.json",
+        ),
+        (
+            "did:web:w3c-ccg.github.io:user:alice",
+            "http://w3c-ccg.github.io/user/alice/did.json",
+        ),
+        (
+            "did:web:example.com%3A3000:user:alice",
+            "http://example.com:3000/user/alice/did.json",
+        ),
+        (
+            "did:web:test-domain.com:ssi:did-web:v1:2389ba3f-81d5-4931-9222-c23ec721deb7",
+            "http://test-domain.com/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json",
+        ),
+        (
+            "did:web:test-domain.com%3A54812:ssi:did-web:v1:2389ba3f-81d5-4931-9222-c23ec721deb7",
+            "http://test-domain.com:54812/ssi/did-web/v1/2389ba3f-81d5-4931-9222-c23ec721deb7/did.json",
+        )
+    ];
+
+    for case in test_cases {
+        println!("Checking: {} -> {}", case.0, case.1);
+        assert_eq!(
+            case.1,
+            did_value_to_url(&DidValue::from_str(case.0).unwrap(), Some(true))
                 .unwrap()
                 .to_string()
         )
@@ -312,6 +348,7 @@ fn test_validate_keys() {
                 capability_invocation: MinMax { min: 2, max: 3 },
                 capability_delegation: MinMax { min: 2, max: 3 },
             },
+            ..Default::default()
         },
     )
     .unwrap();
@@ -339,6 +376,7 @@ fn test_validate_keys_no_keys() {
                 capability_invocation: MinMax { min: 2, max: 3 },
                 capability_delegation: MinMax { min: 2, max: 3 },
             },
+            ..Default::default()
         },
     )
     .unwrap();
@@ -366,6 +404,7 @@ fn test_validate_keys_too_much_keys() {
                 capability_invocation: MinMax { min: 2, max: 3 },
                 capability_delegation: MinMax { min: 2, max: 3 },
             },
+            ..Default::default()
         },
     )
     .unwrap();
@@ -393,6 +432,7 @@ fn test_validate_keys_missing_key() {
                 capability_invocation: MinMax { min: 2, max: 3 },
                 capability_delegation: MinMax { min: 2, max: 3 },
             },
+            ..Default::default()
         },
     )
     .unwrap();
