@@ -1,5 +1,5 @@
 use serde_json::json;
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, OrganisationId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -56,5 +56,17 @@ impl ProofSchemasApi {
     pub async fn share(&self, proof_schema_id: impl Into<Uuid>) -> Response {
         let url = format!("/api/proof-schema/v1/{}/share", proof_schema_id.into());
         self.client.post(&url, None).await
+    }
+
+    pub async fn import(&self, url: &str, organisation_id: OrganisationId) -> Response {
+        self.client
+            .post(
+                "/api/proof-schema/v1/import",
+                Some(json!({
+                    "url": url,
+                    "organisationId": organisation_id
+                })),
+            )
+            .await
     }
 }

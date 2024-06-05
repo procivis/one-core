@@ -21,8 +21,8 @@ use one_core::repository::interaction_repository::{
 };
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::mock::key_repository::MockKeyRepository;
-use one_core::repository::mock::proof_schema_repository::MockProofSchemaRepository;
 use one_core::repository::proof_repository::ProofRepository;
+use one_core::repository::proof_schema_repository::MockProofSchemaRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, QueryOrder, Set};
 use shared_types::{ClaimSchemaId, DidId, KeyId, OrganisationId};

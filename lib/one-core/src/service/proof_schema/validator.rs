@@ -1,4 +1,10 @@
-use super::dto::{CreateProofSchemaRequestDTO, ProofInputSchemaRequestDTO};
+use std::collections::HashSet;
+use std::sync::Arc;
+
+use itertools::Itertools;
+use shared_types::OrganisationId;
+
+use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -8,10 +14,11 @@ use crate::service::proof_schema::mapper::create_unique_name_check_request;
 use crate::{
     repository::proof_schema_repository::ProofSchemaRepository, service::error::ServiceError,
 };
-use itertools::Itertools;
-use shared_types::OrganisationId;
-use std::collections::HashSet;
-use std::sync::Arc;
+
+use super::dto::{
+    CreateProofSchemaRequestDTO, GetProofSchemaResponseDTO, ProofInputSchemaRequestDTO,
+};
+use super::ProofSchemaImportError;
 
 pub async fn proof_schema_name_already_exists(
     repository: &Arc<dyn ProofSchemaRepository>,
@@ -129,5 +136,28 @@ pub(super) fn validate_proof_schema_nesting(
             BusinessLogicError::IncorrectDisclosureLevel,
         ));
     }
+    Ok(())
+}
+
+pub(super) fn validate_imported_proof_schema(
+    schema: &GetProofSchemaResponseDTO,
+    config: &CoreConfig,
+) -> Result<(), BusinessLogicError> {
+    for schema in &schema.proof_input_schemas {
+        let format = &schema.credential_schema.format;
+        config
+            .format
+            .get_if_enabled(format)
+            .map_err(|_| ProofSchemaImportError::UnsupportedFormat(format.to_owned()))?;
+
+        for claim_schema in &schema.claim_schemas {
+            let datatype = &claim_schema.data_type;
+            config
+                .datatype
+                .get_if_enabled(datatype)
+                .map_err(|_| ProofSchemaImportError::UnsupportedDatatype(datatype.to_owned()))?;
+        }
+    }
+
     Ok(())
 }

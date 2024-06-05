@@ -607,6 +607,11 @@ dictionary ProofSchemaListBindingDTO {
   u64 total_items;
 };
 
+dictionary ProofSchemaImportRequestDTO {
+  string url;
+  string organisation_id;
+};
+
 interface OneCoreBinding {
   VersionBindingDTO version();
 
@@ -696,4 +701,7 @@ interface OneCoreBinding {
 
   [Throws=BindingError]
   void uninitialize(boolean delete_data);
+
+  [Throws=BindingError]
+  void import_proof_schema(ProofSchemaImportRequestDTO request);
 };

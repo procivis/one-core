@@ -1,28 +1,35 @@
+use futures::future;
 use shared_types::CredentialSchemaId;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use super::dto::{
     CreateProofSchemaRequestDTO, GetProofSchemaListResponseDTO, GetProofSchemaQueryDTO,
-    GetProofSchemaResponseDTO, ProofSchemaId, ProofSchemaShareResponseDTO,
+    GetProofSchemaResponseDTO, ProofSchemaId, ProofSchemaImportRequestDTO,
+    ProofSchemaShareResponseDTO,
 };
 use super::mapper::{
+    credential_schema_from_proof_input_schema, proof_input_from_import_response,
     proof_schema_created_history_event, proof_schema_from_create_request,
     proof_schema_history_event,
 };
 use super::validator::{
     extract_claims_from_credential_schema, proof_schema_name_already_exists,
-    validate_create_request,
+    validate_create_request, validate_imported_proof_schema,
 };
 use super::ProofSchemaService;
 use crate::common_mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential_schema::{CredentialSchemaRelations, GetCredentialSchemaQuery};
-use crate::model::history::HistoryAction;
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
+};
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::proof_schema::{
-    ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
+    ProofInputSchema, ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations,
+    ProofSchemaRelations,
 };
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::CredentialSchemaFilterValue;
@@ -207,7 +214,8 @@ impl ProofSchemaService {
         let _ = self
             .history_repository
             .create_history(proof_schema_history_event(
-                proof_schema,
+                proof_schema.id,
+                proof_schema.organisation,
                 HistoryAction::Deleted,
             ))
             .await;
@@ -232,7 +240,8 @@ impl ProofSchemaService {
         let _ = self
             .history_repository
             .create_history(proof_schema_history_event(
-                proof_schema,
+                proof_schema.id,
+                proof_schema.organisation,
                 HistoryAction::Shared,
             ))
             .await;
@@ -240,5 +249,107 @@ impl ProofSchemaService {
         Ok(ProofSchemaShareResponseDTO {
             url: format!("{base_url}/ssi/proof-schema/v1/{id}"),
         })
+    }
+
+    pub async fn import_proof_schema(
+        &self,
+        request: ProofSchemaImportRequestDTO,
+    ) -> Result<(), ServiceError> {
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .await?
+            .ok_or::<ServiceError>(
+                BusinessLogicError::MissingOrganisation(request.organisation_id).into(),
+            )?;
+
+        let schema = async {
+            Ok(self
+                .client
+                .get(request.url)
+                .send()
+                .await?
+                .json::<GetProofSchemaResponseDTO>()
+                .await?)
+        }
+        .await
+        .map_err(BusinessLogicError::ProofSchemaImport)?;
+
+        validate_imported_proof_schema(&schema, &self.config)?;
+
+        let now = OffsetDateTime::now_utc();
+        let input_schemas = schema
+            .proof_input_schemas
+            .iter()
+            .map(|response_input_schema| {
+                let credential_schema = credential_schema_from_proof_input_schema(
+                    response_input_schema,
+                    organisation.clone(),
+                    now,
+                );
+
+                let input_schema = proof_input_from_import_response(
+                    response_input_schema,
+                    credential_schema.clone(),
+                    now,
+                );
+
+                let organisation = organisation.clone();
+                async move {
+                    let credential_schema_id = self
+                        .credential_schema_repository
+                        .create_credential_schema(credential_schema.clone())
+                        .await?;
+
+                    let _ = self
+                        .history_repository
+                        .create_history(History {
+                            id: Uuid::new_v4().into(),
+                            created_date: now,
+                            action: HistoryAction::Created,
+                            entity_id: Some(credential_schema_id.into()),
+                            entity_type: HistoryEntityType::CredentialSchema,
+                            metadata: None,
+                            organisation: Some(organisation),
+                        })
+                        .await;
+
+                    Ok::<_, DataLayerError>(ProofInputSchema {
+                        claim_schemas: input_schema.claim_schemas,
+                        credential_schema: Some(CredentialSchema {
+                            id: credential_schema_id,
+                            ..credential_schema
+                        }),
+                        validity_constraint: input_schema.validity_constraint,
+                    })
+                }
+            });
+
+        let input_schemas: Vec<ProofInputSchema> = future::try_join_all(input_schemas).await?;
+
+        let proof_schema_id = self
+            .proof_schema_repository
+            .create_proof_schema(ProofSchema {
+                id: Uuid::new_v4(),
+                created_date: now,
+                last_modified: now,
+                deleted_at: None,
+                name: schema.name,
+                expire_duration: schema.expire_duration,
+                organisation: Some(organisation.clone()),
+                input_schemas: Some(input_schemas),
+            })
+            .await?;
+
+        let _ = self
+            .history_repository
+            .create_history(proof_schema_history_event(
+                proof_schema_id,
+                Some(organisation),
+                HistoryAction::Imported,
+            ))
+            .await;
+
+        Ok(())
     }
 }

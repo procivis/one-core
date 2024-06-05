@@ -47,7 +47,107 @@ pub(super) fn convert_proof_schema_to_response(
     })
 }
 
-pub(super) fn convert_input_schema_to_response(
+pub(super) fn credential_schema_from_proof_input_schema(
+    input_schema: &ProofInputSchemaResponseDTO,
+    organisation: Organisation,
+    now: OffsetDateTime,
+) -> CredentialSchema {
+    let claims = unnest_proof_claim_schemas(&input_schema.claim_schemas, "".into())
+        .iter()
+        .map(|imported_schema| CredentialSchemaClaim {
+            schema: ClaimSchema {
+                id: imported_schema.id,
+                key: imported_schema.key.clone(),
+                data_type: imported_schema.data_type.clone(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: imported_schema.required,
+        })
+        .collect();
+
+    CredentialSchema {
+        id: CredentialSchemaId::from(Uuid::new_v4()),
+        deleted_at: None,
+        created_date: now,
+        last_modified: now,
+        name: input_schema.credential_schema.name.clone(),
+        format: input_schema.credential_schema.format.clone(),
+        revocation_method: input_schema.credential_schema.revocation_method.clone(),
+        wallet_storage_type: input_schema.credential_schema.wallet_storage_type.clone(),
+        layout_type: input_schema
+            .credential_schema
+            .layout_type
+            .clone()
+            .unwrap_or(crate::model::credential_schema::LayoutType::Card),
+        layout_properties: input_schema
+            .credential_schema
+            .layout_properties
+            .clone()
+            .map(Into::into),
+        schema_id: input_schema.credential_schema.schema_id.clone(),
+        schema_type: input_schema.credential_schema.schema_type.clone().into(),
+        claim_schemas: Some(claims),
+        organisation: Some(organisation),
+    }
+}
+
+pub(super) fn proof_input_from_import_response(
+    input_schema: &ProofInputSchemaResponseDTO,
+    credential_schema: CredentialSchema,
+    now: OffsetDateTime,
+) -> ProofInputSchema {
+    let claim_schemas = input_schema
+        .claim_schemas
+        .iter()
+        .enumerate()
+        .map(|(i, claim_schema)| ProofInputClaimSchema {
+            schema: ClaimSchema {
+                id: claim_schema.id,
+                key: claim_schema.key.clone(),
+                data_type: claim_schema.data_type.clone(),
+                created_date: now,
+                last_modified: now,
+            },
+            required: claim_schema.required,
+            order: i as u32,
+        })
+        .collect();
+
+    ProofInputSchema {
+        validity_constraint: input_schema.validity_constraint,
+        claim_schemas: Some(claim_schemas),
+        credential_schema: Some(credential_schema),
+    }
+}
+
+fn unnest_proof_claim_schemas(
+    claim_schemas: &Vec<ProofClaimSchemaResponseDTO>,
+    prefix: String,
+) -> Vec<ProofClaimSchemaResponseDTO> {
+    let mut result = vec![];
+
+    for claim_schema in claim_schemas {
+        let key = format!("{prefix}{}", claim_schema.key);
+
+        let nested =
+            unnest_proof_claim_schemas(&claim_schema.claims, format!("{key}{NESTED_CLAIM_MARKER}"));
+
+        result.push(ProofClaimSchemaResponseDTO {
+            id: claim_schema.id,
+            required: claim_schema.required,
+            key,
+            data_type: claim_schema.data_type.clone(),
+            claims: vec![],
+        });
+
+        result.extend(nested);
+    }
+
+    result
+}
+
+fn convert_input_schema_to_response(
     value: ProofInputSchema,
     datatype_config: &DatatypeConfig,
 ) -> Result<ProofInputSchemaResponseDTO, ServiceError> {
@@ -306,16 +406,17 @@ pub(super) fn proof_schema_created_history_event(
 }
 
 pub(super) fn proof_schema_history_event(
-    proof_schema: ProofSchema,
+    proof_schema_id: ProofSchemaId,
+    organisation: Option<Organisation>,
     action: HistoryAction,
 ) -> History {
     History {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         action,
-        entity_id: Some(proof_schema.id.into()),
+        entity_id: Some(proof_schema_id.into()),
         entity_type: HistoryEntityType::ProofSchema,
         metadata: None,
-        organisation: proof_schema.organisation,
+        organisation,
     }
 }

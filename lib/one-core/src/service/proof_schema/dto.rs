@@ -1,6 +1,8 @@
 use dto_mapper::From;
+use serde::Deserialize;
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
+use url::Url;
 use uuid::Uuid;
 
 use crate::model::common::{GetListQueryParams, GetListResponse};
@@ -9,19 +11,24 @@ use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 
 pub type ProofSchemaId = Uuid;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProofClaimSchemaResponseDTO {
     pub id: ClaimSchemaId,
     pub required: bool,
     pub key: String,
     pub data_type: String,
+    #[serde(default)]
     pub claims: Vec<ProofClaimSchemaResponseDTO>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetProofSchemaResponseDTO {
     pub id: ProofSchemaId,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub organisation_id: OrganisationId,
@@ -29,7 +36,8 @@ pub struct GetProofSchemaResponseDTO {
     pub proof_input_schemas: Vec<ProofInputSchemaResponseDTO>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProofInputSchemaResponseDTO {
     pub claim_schemas: Vec<ProofClaimSchemaResponseDTO>,
     pub credential_schema: CredentialSchemaListItemResponseDTO,
@@ -74,4 +82,10 @@ pub struct ProofInputSchemaRequestDTO {
 #[derive(Clone, Debug)]
 pub struct ProofSchemaShareResponseDTO {
     pub url: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ProofSchemaImportRequestDTO {
+    pub url: Url,
+    pub organisation_id: OrganisationId,
 }

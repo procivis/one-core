@@ -7,6 +7,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 use super::did::DidDeactivationError;
+use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
 use crate::crypto::error::CryptoProviderError;
 use crate::crypto::signer::error::SignerError;
@@ -272,6 +273,9 @@ pub enum BusinessLogicError {
 
     #[error("Trust anchor type is not SIMPLE_TRUST_LIST")]
     TrustAnchorTypeIsNotSimpleTrustList,
+
+    #[error("Error while importing proof request schema: {0}")]
+    ProofSchemaImport(#[from] ProofSchemaImportError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -745,6 +749,9 @@ pub enum ErrorCode {
 
     #[strum(to_string = "Credential schema: Duplicit claim schema")]
     BR_0133,
+
+    #[strum(to_string = "Imported proof schema error")]
+    BR_0135,
 }
 
 impl From<FormatError> for ServiceError {
@@ -875,6 +882,7 @@ impl BusinessLogicError {
             BusinessLogicError::TrustAnchorMustBePublish => ErrorCode::BR_0123,
             BusinessLogicError::TrustEntityAlreadyPresent => ErrorCode::BR_0120,
             BusinessLogicError::TrustAnchorTypeIsNotSimpleTrustList => ErrorCode::BR_0122,
+            BusinessLogicError::ProofSchemaImport(_) => ErrorCode::BR_0135,
         }
     }
 }
