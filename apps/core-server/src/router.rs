@@ -117,6 +117,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             post(proof_schema::controller::share_proof_schema),
         )
         .route(
+            "/api/proof-schema/v1/import",
+            post(proof_schema::controller::import_proof_schema),
+        )
+        .route(
             "/api/history/v1",
             get(history::controller::get_history_list),
         )
@@ -388,6 +392,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
             proof_schema::controller::get_proof_schemas,
             proof_schema::controller::get_proof_schema_detail,
             proof_schema::controller::share_proof_schema,
+            proof_schema::controller::import_proof_schema,
             proof_schema::controller::delete_proof_schema,
 
             proof::controller::get_proof_details,
@@ -515,6 +520,7 @@ fn gen_openapi_documentation() -> utoipa::openapi::OpenApi {
 
                 proof_schema::dto::CreateProofSchemaRequestRestDTO,
                 proof_schema::dto::ClaimProofSchemaRequestRestDTO,
+                proof_schema::dto::ProofSchemaImportRequestRestDTO,
                 proof_schema::dto::SortableProofSchemaColumnRestEnum,
                 proof_schema::dto::GetProofSchemaListItemResponseRestDTO,
                 proof_schema::dto::GetProofSchemaResponseRestDTO,

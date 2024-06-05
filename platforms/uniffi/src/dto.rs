@@ -43,9 +43,9 @@ use one_core::service::trust_anchor::dto::{
     TrustAnchorsListItemResponseDTO,
 };
 
-use crate::error::NativeKeyStorageError;
+use crate::error::{BindingError, NativeKeyStorageError};
 use crate::mapper::{optional_time, serialize_config_entity};
-use crate::utils::{format_timestamp_opt, into_id, TimestampFormat};
+use crate::utils::{format_timestamp_opt, into_id, try_into_url, TimestampFormat};
 
 #[derive(From)]
 #[from(ConfigDTO)]
@@ -866,4 +866,13 @@ pub struct ProofSchemaListBindingDTO {
     pub values: Vec<GetProofSchemaListItemBindingDTO>,
     pub total_pages: u64,
     pub total_items: u64,
+}
+
+#[derive(Clone, Debug, TryInto)]
+#[try_into(T = one_core::service::proof_schema::dto::ProofSchemaImportRequestDTO, Error = BindingError)]
+pub struct ProofSchemaImportRequestDTO {
+    #[try_into(with_fn_ref = try_into_url)]
+    pub url: String,
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
 }

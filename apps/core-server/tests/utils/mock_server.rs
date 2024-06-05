@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
+use one_core::model::proof_schema::ProofSchemaId;
 use reqwest::header::AUTHORIZATION;
+use serde::Serialize;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue};
 use time::OffsetDateTime;
@@ -192,6 +194,15 @@ impl MockServer {
                     }
                 }
             )))
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn get_proof_schema(&self, proof_schema_id: ProofSchemaId, response: impl Serialize) {
+        Mock::given(method(Method::GET))
+            .and(path(format!("/ssi/proof-schema/v1/{proof_schema_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(response))
+            .expect(1)
             .mount(&self.mock)
             .await;
     }

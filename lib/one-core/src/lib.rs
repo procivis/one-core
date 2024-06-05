@@ -185,7 +185,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
             formatter_provider.clone(),
-            client,
+            client.clone(),
         )?;
 
         let revocation_method_provider = Arc::new(RevocationMethodProviderImpl::new(
@@ -334,6 +334,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 data_provider.get_history_repository(),
                 formatter_provider.clone(),
+                client,
                 config.clone(),
                 core_base_url.clone(),
             ),

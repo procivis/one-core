@@ -34,7 +34,7 @@ use crate::provider::exchange_protocol::MockExchangeProtocol;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::mock::proof_repository::MockProofRepository;
-use crate::repository::mock::proof_schema_repository::MockProofSchemaRepository;
+use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };

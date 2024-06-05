@@ -6,13 +6,13 @@ use one_core::{
         credential_schema::CredentialSchema,
         organisation::{Organisation, OrganisationRelations},
         proof_schema::{
-            ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
-            ProofSchemaId, ProofSchemaRelations,
+            GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema,
+            ProofInputSchemaRelations, ProofSchema, ProofSchemaId, ProofSchemaRelations,
         },
     },
     repository::proof_schema_repository::ProofSchemaRepository,
 };
-use shared_types::ClaimSchemaId;
+use shared_types::{ClaimSchemaId, OrganisationId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -103,6 +103,27 @@ impl ProofSchemasDB {
             .await
             .unwrap()
             .unwrap()
+    }
+
+    pub async fn get_all(&self, organisation_id: &OrganisationId) -> Vec<ProofSchema> {
+        let res = self
+            .repository
+            .get_proof_schema_list(GetProofSchemaQuery {
+                page: 0,
+                page_size: 100,
+                organisation_id: *organisation_id,
+                sort: None,
+                sort_direction: None,
+                name: None,
+                exact: None,
+                ids: None,
+            })
+            .await
+            .unwrap();
+
+        assert!(res.total_items <= 100);
+
+        res.values
     }
 
     pub async fn delete(&self, id: &ProofSchemaId) {

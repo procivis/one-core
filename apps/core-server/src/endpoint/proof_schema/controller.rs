@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::dto::{
     CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
-    ProofSchemaShareResponseRestDTO,
+    ProofSchemaImportRequestRestDTO, ProofSchemaShareResponseRestDTO,
 };
 use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -127,4 +127,30 @@ pub(crate) async fn share_proof_schema(
 ) -> OkOrErrorResponse<ProofSchemaShareResponseRestDTO> {
     let result = state.core.proof_schema_service.share_proof_schema(id).await;
     OkOrErrorResponse::from_result(result, state, "sharing proof schema")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/proof-schema/v1/import",
+    request_body = ProofSchemaImportRequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    tag = "proof_schema_management",
+    security(
+        ("bearer" = [])
+    ),
+)]
+pub(crate) async fn import_proof_schema(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<ProofSchemaImportRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .proof_schema_service
+        .import_proof_schema(request.into())
+        .await;
+
+    EmptyOrErrorResponse::from_result(result, state, "importing proof schema")
 }

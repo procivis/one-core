@@ -20,17 +20,20 @@ pub struct ProofSchemaService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    client: reqwest::Client,
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
 }
 
 impl ProofSchemaService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
         history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        client: reqwest::Client,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
     ) -> Self {
@@ -40,10 +43,21 @@ impl ProofSchemaService {
             history_repository,
             credential_schema_repository,
             formatter_provider,
+            client,
             config,
             base_url,
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProofSchemaImportError {
+    #[error("Unsupported datatype: {0}")]
+    UnsupportedDatatype(String),
+    #[error("Unsupported format: {0}")]
+    UnsupportedFormat(String),
+    #[error("Failed getting proof schema: {0}")]
+    HttpClient(#[from] reqwest::Error),
 }
 
 #[cfg(test)]

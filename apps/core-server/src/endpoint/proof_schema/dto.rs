@@ -2,10 +2,11 @@ use dto_mapper::{convert_inner, From, Into};
 use one_core::service::proof_schema::dto::{
     CreateProofSchemaClaimRequestDTO, CreateProofSchemaRequestDTO, GetProofSchemaListItemDTO,
     GetProofSchemaResponseDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaRequestDTO,
-    ProofInputSchemaResponseDTO, ProofSchemaShareResponseDTO,
+    ProofInputSchemaResponseDTO, ProofSchemaImportRequestDTO, ProofSchemaShareResponseDTO,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
+use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
@@ -46,6 +47,14 @@ pub struct ProofInputSchemaRequestRestDTO {
 pub struct ClaimProofSchemaRequestRestDTO {
     pub id: Uuid,
     pub required: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into)]
+#[into(ProofSchemaImportRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ProofSchemaImportRequestRestDTO {
+    pub url: Url,
+    pub organisation_id: Uuid,
 }
 
 // list endpoint
