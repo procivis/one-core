@@ -24,7 +24,7 @@ use one_core::repository::credential_schema_repository::MockCredentialSchemaRepo
 use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::MockInteractionRepository;
-use one_core::repository::mock::key_repository::MockKeyRepository;
+use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::revocation_list_repository::MockRevocationListRepository;
 use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};

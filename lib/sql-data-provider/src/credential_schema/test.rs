@@ -16,12 +16,9 @@ use one_core::{
         organisation::{Organisation, OrganisationRelations},
     },
     repository::{
-        credential_schema_repository::CredentialSchemaRepository,
-        error::DataLayerError,
-        mock::{
-            claim_schema_repository::MockClaimSchemaRepository,
-            organisation_repository::MockOrganisationRepository,
-        },
+        claim_schema_repository::MockClaimSchemaRepository,
+        credential_schema_repository::CredentialSchemaRepository, error::DataLayerError,
+        organisation_repository::MockOrganisationRepository,
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};

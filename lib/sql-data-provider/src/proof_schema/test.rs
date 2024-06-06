@@ -12,14 +12,11 @@ use one_core::{
         proof_schema::{GetProofSchemaQuery, ProofSchema, ProofSchemaId, ProofSchemaRelations},
     },
     repository::{
-        claim_schema_repository::{self, ClaimSchemaRepository},
+        claim_schema_repository::{self, ClaimSchemaRepository, MockClaimSchemaRepository},
         credential_schema_repository::MockCredentialSchemaRepository,
         credential_schema_repository::{self, CredentialSchemaRepository},
         error::DataLayerError,
-        mock::{
-            claim_schema_repository::MockClaimSchemaRepository,
-            organisation_repository::MockOrganisationRepository,
-        },
+        organisation_repository::MockOrganisationRepository,
         organisation_repository::{self, OrganisationRepository},
         proof_schema_repository::ProofSchemaRepository,
     },

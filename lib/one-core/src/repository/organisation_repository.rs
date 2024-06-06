@@ -4,6 +4,7 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 
 use super::error::DataLayerError;
 
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait OrganisationRepository: Send + Sync {
     async fn create_organisation(

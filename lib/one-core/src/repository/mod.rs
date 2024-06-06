@@ -60,6 +60,3 @@ pub trait DataRepository {
     fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository>;
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository>;
 }
-
-#[cfg(any(test, feature = "mock"))]
-pub mod mock;

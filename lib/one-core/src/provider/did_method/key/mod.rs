@@ -29,10 +29,6 @@ impl KeyDidMethod {
 
 #[async_trait]
 impl super::DidMethod for KeyDidMethod {
-    fn get_method(&self) -> String {
-        "key".to_string()
-    }
-
     async fn create(
         &self,
         _id: &DidId,
@@ -56,10 +52,6 @@ impl super::DidMethod for KeyDidMethod {
             Err(err) => match err {},
         };
         Ok(did_value)
-    }
-
-    fn check_authorization(&self) -> bool {
-        todo!()
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {

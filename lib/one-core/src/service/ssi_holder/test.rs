@@ -35,8 +35,8 @@ use crate::provider::key_storage::{KeySecurity, KeyStorageCapabilities, MockKeyS
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::repository::mock::organisation_repository::MockOrganisationRepository;
-use crate::repository::mock::proof_repository::MockProofRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
+use crate::repository::proof_repository::MockProofRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,

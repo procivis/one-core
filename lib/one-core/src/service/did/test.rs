@@ -13,10 +13,10 @@ use crate::{
         organisation::{Organisation, OrganisationRelations},
     },
     provider::did_method::{provider::DidMethodProviderImpl, DidMethod, MockDidMethod},
-    repository::mock::key_repository::MockKeyRepository,
+    repository::key_repository::MockKeyRepository,
     repository::{
         did_repository::MockDidRepository, history_repository::MockHistoryRepository,
-        mock::organisation_repository::MockOrganisationRepository,
+        organisation_repository::MockOrganisationRepository,
     },
     service::{
         did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO},

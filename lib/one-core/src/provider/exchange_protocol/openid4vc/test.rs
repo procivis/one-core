@@ -43,7 +43,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::mock::proof_repository::MockProofRepository;
+use crate::repository::proof_repository::MockProofRepository;
 use crate::service::ssi_holder::dto::InvitationResponseDTO;
 use crate::service::test_utilities::generic_config;
 

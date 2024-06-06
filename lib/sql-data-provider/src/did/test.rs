@@ -10,8 +10,8 @@ use one_core::model::{
     common::SortDirection,
     did::{Did, DidRelations, DidType, SortableDidColumn},
 };
-use one_core::repository::mock::key_repository::MockKeyRepository;
-use one_core::repository::mock::organisation_repository::MockOrganisationRepository;
+use one_core::repository::key_repository::MockKeyRepository;
+use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::repository::{did_repository::DidRepository, error::DataLayerError};
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};

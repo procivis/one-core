@@ -7,8 +7,9 @@ use one_core::{
         credential::CredentialStateEnum,
     },
     repository::{
-        claim_repository::ClaimRepository, claim_schema_repository::ClaimSchemaRepository,
-        error::DataLayerError, mock::claim_schema_repository::MockClaimSchemaRepository,
+        claim_repository::ClaimRepository,
+        claim_schema_repository::{ClaimSchemaRepository, MockClaimSchemaRepository},
+        error::DataLayerError,
     },
 };
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};

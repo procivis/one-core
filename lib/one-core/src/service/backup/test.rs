@@ -17,7 +17,7 @@ use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
 use crate::repository::backup_repository::MockBackupRepository;
 use crate::repository::history_repository::MockHistoryRepository;
-use crate::repository::mock::organisation_repository::MockOrganisationRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::test_utilities::{dummy_did, dummy_key, dummy_organisation};
 
 #[derive(Default)]

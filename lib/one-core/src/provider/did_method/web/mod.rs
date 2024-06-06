@@ -55,10 +55,6 @@ impl WebDidMethod {
 
 #[async_trait]
 impl super::DidMethod for WebDidMethod {
-    fn get_method(&self) -> String {
-        "web".to_string()
-    }
-
     async fn create(
         &self,
         id: &DidId,
@@ -74,10 +70,6 @@ impl super::DidMethod for WebDidMethod {
 
         let did_value = format!("{did_base_string}:{id}");
         Ok(DidValue::from(did_value))
-    }
-
-    fn check_authorization(&self) -> bool {
-        todo!()
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {

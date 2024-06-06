@@ -38,10 +38,6 @@ impl UniversalDidMethod {
 
 #[async_trait]
 impl super::DidMethod for UniversalDidMethod {
-    fn get_method(&self) -> String {
-        todo!()
-    }
-
     async fn create(
         &self,
         _id: &DidId,
@@ -49,10 +45,6 @@ impl super::DidMethod for UniversalDidMethod {
         _keys: &[Key],
     ) -> Result<DidValue, DidMethodError> {
         Err(DidMethodError::NotSupported)
-    }
-
-    fn check_authorization(&self) -> bool {
-        todo!()
     }
 
     async fn resolve(&self, did_value: &DidValue) -> Result<DidDocumentDTO, DidMethodError> {

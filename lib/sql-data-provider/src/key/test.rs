@@ -12,7 +12,7 @@ use one_core::model::key::{GetKeyQuery, KeyRelations};
 use one_core::{
     model::{key::Key, organisation::Organisation},
     repository::{
-        key_repository::KeyRepository, mock::organisation_repository::MockOrganisationRepository,
+        key_repository::KeyRepository, organisation_repository::MockOrganisationRepository,
     },
 };
 

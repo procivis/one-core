@@ -29,7 +29,7 @@ use crate::{
     repository::{
         credential_schema_repository::MockCredentialSchemaRepository,
         history_repository::MockHistoryRepository,
-        mock::organisation_repository::MockOrganisationRepository,
+        organisation_repository::MockOrganisationRepository,
     },
     service::{
         credential_schema::{
